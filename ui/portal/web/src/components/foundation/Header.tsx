@@ -97,9 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             {isConnected ? (
               <>
                 <ProfileIcon className="w-6 h-6" />
-                <span className="italic font-exposure font-bold capitalize">
-                  {account?.username}
-                </span>
+                <span className="italic font-exposure font-bold">{account?.username}</span>
               </>
             ) : (
               <span>{m["common.signin"]()}</span>
