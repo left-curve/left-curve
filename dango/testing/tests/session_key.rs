@@ -92,9 +92,10 @@ mod session_account {
                 expire_at,
             };
 
-            let credential = self
-                .account
-                .create_standard_credential(&session_info.to_json_vec()?);
+            // Convert to JSON value first such that the struct fields are sorted alphabetically.
+            let sign_bytes = session_info.to_json_value()?.to_json_vec()?;
+
+            let credential = self.account.create_standard_credential(&sign_bytes);
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
@@ -159,12 +160,15 @@ mod session_account {
                 data: data.clone(),
             };
 
+            // Convert to JSON value first such that the struct fields are sorted alphabetically.
+            let sign_bytes = sign_doc.to_json_value()?.to_json_vec()?;
+
             let standard_credential = StandardCredential {
                 key_hash: self.sign_with(),
                 signature: self.session_buffer.inner().sign_info_signature.clone(),
             };
 
-            let session_signature = create_signature(&self.session_sk, &sign_doc.to_json_vec()?);
+            let session_signature = create_signature(&self.session_sk, &sign_bytes);
 
             let credential = Credential::Session(SessionCredential {
                 session_info: self.session_buffer.inner().session_info.clone(),
