@@ -2,7 +2,7 @@
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
     "assets": "Assets",
-    "funds": "Funds",
+    "fund": "Fund",
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
@@ -19,7 +19,7 @@
     "to": "To",
     "error": "Error",
     "signinWithDesktop": "Sign in with Desktop",
-    "motto": "Bringing back the good things of the last cycle",
+    "motto": "Dango–the one app for everything DeFi",
     "signWithWallet": [
       {
         "declarations": ["input action"],
