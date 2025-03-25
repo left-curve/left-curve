@@ -28,8 +28,8 @@ impl Loader<Transaction> for TransactionMessagesDataLoader {
 
         let messages_by_transaction_ids: HashMap<uuid::Uuid, Vec<Message>> =
             entity::messages::Entity::find()
-            // NOTE: this filtering could raise issue if `transaction_ids` is thousands of entries long
-            //       as it would generate a SQL query with thousands of `OR` conditions
+                // NOTE: this filtering could raise issue if `transaction_ids` is thousands of entries long
+                //       as it would generate a SQL query with thousands of `OR` conditions
                 .filter(entity::messages::Column::TransactionId.is_in(transactions_ids))
                 .order_by(entity::messages::Column::OrderIdx, Order::Asc)
                 .all(&self.db)

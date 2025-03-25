@@ -28,10 +28,10 @@ impl Loader<Transaction> for TransactionEventsDataLoader {
 
         let events_by_transaction_ids: HashMap<uuid::Uuid, Vec<Event>> =
             entity::events::Entity::find()
-            // NOTE: this filtering could raise issue if `transaction_ids` is thousands of entries long
-            //       as it would generate a SQL query with thousands of `OR` conditions
+                // NOTE: this filtering could raise issue if `transaction_ids` is thousands of entries long
+                //       as it would generate a SQL query with thousands of `OR` conditions
                 .filter(entity::events::Column::TransactionId.is_in(transactions_ids))
-                // safeguard
+                // safeguard because we use `.transaction_id.expect("transaction_id is null")` below
                 .filter(entity::events::Column::TransactionId.is_not_null())
                 .order_by(entity::events::Column::EventIdx, Order::Asc)
                 .all(&self.db)
