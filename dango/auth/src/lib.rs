@@ -337,8 +337,8 @@ enum VerifyData<'a> {
 impl VerifyData<'_> {
     fn as_sign_bytes(&self) -> StdResult<Vec<u8>> {
         match self {
-            VerifyData::Session(session_info) => session_info.to_json_vec(),
-            VerifyData::Standard { sign_doc, .. } => sign_doc.to_json_vec(),
+            VerifyData::Session(session_info) => session_info.to_json_value()?.to_json_vec(),
+            VerifyData::Standard { sign_doc, .. } => sign_doc.to_json_value()?.to_json_vec(),
         }
     }
 }
