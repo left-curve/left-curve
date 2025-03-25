@@ -40,7 +40,7 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
       <div className="flex items-center justify-center text-gray-500">
         <span className="flex-1 h-[1px] bg-gray-100" />
         <div
-          className="flex items-center justify-center gap-1 px-2 cursor-pointer"
+          className="flex items-center justify-center gap-1 px-2 cursor-pointer text-blue-500"
           onClick={() => setExpandWallets(!expandWallets)}
         >
           <p>{m["common.signWithWallet"]({ action: mode })}</p>
@@ -83,7 +83,7 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
                         onClick={() => action(connector.id)}
                       >
                         <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
-                        <p className="min-w-20">{connector.name}</p>
+                        <p>{connector.name}</p>
                       </Button>
                     </motion.div>
                   );
