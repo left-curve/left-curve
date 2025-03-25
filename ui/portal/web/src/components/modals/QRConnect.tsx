@@ -16,7 +16,7 @@ export const QRConnect = forwardRef(() => {
   const { hideModal } = useApp();
 
   dataChannel?.subscribe(async (m) => {
-    if (!signingClient) return;
+    if (!signingClient || isLoadingCredential) return;
 
     try {
       const { id, type, message } = m;
