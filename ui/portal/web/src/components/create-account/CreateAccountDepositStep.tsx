@@ -14,7 +14,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
   const { register, inputs } = useInputs({ initialValues: { amount: "0" } });
 
-  const { value: fundsAmount } = inputs.amount || {};
+  const { value: fundsAmount, error } = inputs.amount || {};
 
   const { showModal } = useApp();
   const { coins, state } = useConfig();
@@ -107,7 +107,12 @@ export const CreateAccountDepositStep: React.FC = () => {
         }
       />
       <div className="flex gap-4">
-        <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
+        <Button
+          type="button"
+          fullWidth
+          onClick={() => previousStep()}
+          isDisabled={isPending || !!error}
+        >
           {m["common.back"]()}
         </Button>
         <Button type="submit" fullWidth isLoading={isPending}>
