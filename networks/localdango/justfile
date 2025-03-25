@@ -39,17 +39,23 @@ start:
   trap 'cleanup SIGTERM' TERM
   trap 'cleanup' ERR
 
-  # 1. Start the postgres service in detached mode.
+  # 1. Check whether cometbft data already exists. If not, create it.
+  if [[ ! -f "data/cometbft/data/priv_validator_state.json" ]]; then
+    mkdir -p data/cometbft/data
+    echo '{"height":"0","round":0,"step":0}' > data/cometbft/data/priv_validator_state.json
+  fi
+
+  # 2. Start the postgres service in detached mode.
   docker compose up -d db
 
-  # 2. Wait for the database to be ready.
+  # 3. Wait for the database to be ready.
   until docker compose run --rm db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}; do
     echo "Waiting for the database to be ready..."
     sleep 1
   done
   echo "Database is ready!"
 
-  # 3. Check whether the development database already exists. If not, create it.
+  # 4. Check whether the development database already exists. If not, create it.
   exists=$(docker compose run --rm db psql -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname='{{DB_NAME}}'")
   if [ "$exists" = "1" ]; then
     echo "Database {{DB_NAME}} already exists."
@@ -61,12 +67,6 @@ start:
       exit 1
     fi
     echo "Database {{DB_NAME}} successfully created."
-  fi
-
-  # 4. Check whether cometbft data already exists. If not, create it.
-  if [[ ! -f "data/cometbft/data/priv_validator_state.json" ]]; then
-    mkdir -p data/cometbft/data
-    echo '{"height":"0","round":0,"step":0}' > data/cometbft/data/priv_validator_state.json
   fi
 
   # 5. Run the cometbft service in detached mode.
