@@ -196,7 +196,9 @@ where
             messages: msgs.clone(),
             data: data.clone(),
         };
-        let standard_credential = self.create_standard_credential(&sign_doc.to_json_vec()?);
+        // Convert the JSON value first so that the struct fields are sorted alphabetically.
+        let sign_bytes = sign_doc.to_json_value()?.to_json_vec()?;
+        let standard_credential = self.create_standard_credential(&sign_bytes);
 
         Ok((data, Credential::Standard(standard_credential)))
     }
