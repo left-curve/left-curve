@@ -86,6 +86,30 @@
     "createAccount": "Create Account",
     "doThisLater": "Do this later",
     "alreadyHaveAccount": "Already have an account?",
+    "carousel": {
+      "title": [
+        {
+          "declarations": ["input step"],
+          "selectors": ["step"],
+          "match": {
+            "step=0": "Trade",
+            "step=1": "Leverage up",
+            "step=2": "Earn"
+          }
+        }
+      ],
+      "description": [
+        {
+          "declarations": ["input step"],
+          "selectors": ["step"],
+          "match": {
+            "step=0": "crypto assets, real world assets, and derivatives in Dango's blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
+            "step=1": "with Dango's unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
+            "step=2": " passive yields on your idle assets by depositing in Dango's vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
+          }
+        }
+      ]
+    },
     "stepper": {
       "steps": [
         {
