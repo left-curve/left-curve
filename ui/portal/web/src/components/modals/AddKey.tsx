@@ -7,7 +7,7 @@ import { AuthOptions } from "../auth/AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-export const AddKeyModal = forwardRef(() => {
+export const AddKeyModal = forwardRef((_props, _ref) => {
   const connectors = useConnectors();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();

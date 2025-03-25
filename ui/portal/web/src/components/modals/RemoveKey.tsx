@@ -13,7 +13,7 @@ interface Props {
   keyHash: KeyHash;
 }
 
-export const RemoveKey = forwardRef<never, Props>(({ keyHash }) => {
+export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();

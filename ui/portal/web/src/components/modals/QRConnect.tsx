@@ -7,7 +7,7 @@ import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { toast } from "../foundation/Toast";
 
-export const QRConnect = forwardRef(() => {
+export const QRConnect = forwardRef((_props, _ref) => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
     url: import.meta.env.PUBLIC_WEBRTC_URI,

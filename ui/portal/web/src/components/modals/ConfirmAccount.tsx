@@ -20,7 +20,7 @@ type ConfirmAccountProps = {
 };
 
 export const ConfirmAccount = forwardRef(
-  ({ amount, accountName, accountType, denom }: ConfirmAccountProps) => {
+  ({ amount, accountName, accountType, denom }: ConfirmAccountProps, _ref) => {
     const { hideModal, formatNumberOptions } = useApp();
 
     const { coins, state } = useConfig();
