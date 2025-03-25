@@ -48,6 +48,8 @@ export const ConfirmSend = forwardRef(
 
     const { getPrice } = usePrices();
 
+    const humanAmount = formatUnits(amount, coin.decimals);
+
     return (
       <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-3xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
         <p className="text-gray-900 diatype-lg-medium w-full text-center">
@@ -58,12 +60,12 @@ export const ConfirmSend = forwardRef(
             <p className="exposure-sm-italic text-gray-300">{m["modals.confirmSend.sending"]()}</p>
             <div className="flex items-center justify-between text-gray-700 h3-bold">
               <p>
-                {formatUnits(amount, coin.decimals)} {coin.symbol}
+                {humanAmount} {coin.symbol}
               </p>
               <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
             </div>
             <p className="text-gray-500 diatype-sm-regular">
-              {getPrice(amount, denom, { format: true, formatOptions: formatNumberOptions })}
+              {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>
           <div className="flex flex-col gap-2 w-full">

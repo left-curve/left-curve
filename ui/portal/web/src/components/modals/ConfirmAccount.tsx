@@ -28,6 +28,8 @@ export const ConfirmAccount = forwardRef(
 
     const { getPrice } = usePrices();
 
+    const humanAmount = formatUnits(amount, coin.decimals);
+
     return (
       <div className="flex flex-col bg-white-100 md:border border-gray-100 rounded-3xl relative gap-4 w-full md:max-w-[25rem]">
         <IconButton
@@ -63,12 +65,12 @@ export const ConfirmAccount = forwardRef(
             </p>
             <div className="flex items-center justify-between text-gray-700 h3-bold">
               <p>
-                {formatUnits(amount, coin.decimals)} {coin.symbol}
+                {humanAmount} {coin.symbol}
               </p>
               <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
             </div>
             <p className="text-gray-500 diatype-sm-regular">
-              {getPrice(amount, denom, { format: true, formatOptions: formatNumberOptions })}
+              {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>
         </div>
