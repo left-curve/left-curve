@@ -228,6 +228,10 @@
           "funds": {},
           "label": "hyperlane/va",
           "msg": {
+            "announce_fee_per_byte": {
+              "amount": "100",
+              "denom": "hyp/eth/usdc"
+            },
             "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7"
           },
           "salt": "aHlwZXJsYW5lL3Zh"
