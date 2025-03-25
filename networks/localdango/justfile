@@ -73,8 +73,8 @@ start:
   # Since cometbft depends on dango, this also starts the dango service.
   docker compose up -d cometbft
 
-  # 6. Follow the logs of dango.
-  docker compose logs -f dango
+  # 6. Follow the logs.
+  docker compose logs -f db -f dango -f cometbft
 
 # Stop the localnet
 stop:
