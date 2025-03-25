@@ -143,6 +143,7 @@
       ]
     },
     "errors": {
+      "couldntCompleteRequest": "Couldn't complete request",
       "usernameTaken": "Username is already taken",
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"

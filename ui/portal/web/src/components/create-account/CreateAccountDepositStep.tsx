@@ -6,6 +6,7 @@ import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
+import toast from "react-hot-toast";
 import { useApp } from "~/hooks/useApp";
 import { Modals } from "../foundation/Modal";
 
@@ -59,6 +60,9 @@ export const CreateAccountDepositStep: React.FC = () => {
       showModal(Modals.ConfirmAccount, data);
       await refreshAccounts?.();
       done();
+    },
+    onError: () => {
+      toast.error(m["signup.errors.couldntCompleteRequest"]());
     },
   });
 
