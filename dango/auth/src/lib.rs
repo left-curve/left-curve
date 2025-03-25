@@ -4,18 +4,18 @@ use {
         primitives::U160,
     },
     anyhow::{bail, ensure},
-    base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
+    base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
+        DangoQuerier,
         auth::{
             ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
-        DangoQuerier,
     },
     grug::{
-        json, Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt,
-        StdResult, Storage, StorageQuerier, Tx,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, StdResult,
+        Storage, StorageQuerier, Tx, json,
     },
     std::collections::BTreeSet,
 };
@@ -337,13 +337,8 @@ enum VerifyData<'a> {
 impl VerifyData<'_> {
     fn as_sign_bytes(&self) -> StdResult<Vec<u8>> {
         match self {
-<<<<<<< Updated upstream
-            VerifyData::Session(session_info) => session_info.to_json_value()?.to_json_vec(),
-            VerifyData::Standard { sign_doc, .. } => sign_doc.to_json_value()?.to_json_vec(),
-=======
             VerifyData::Session(session_info) => session_info.to_json_value()?,
             VerifyData::Standard { sign_doc, .. } => sign_doc.to_json_value()?,
->>>>>>> Stashed changes
         }
         .to_json_vec()
     }
@@ -359,7 +354,7 @@ mod tests {
             account_factory::Username,
             config::{AppAddresses, AppConfig},
         },
-        grug::{btree_map, Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt},
+        grug::{Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, btree_map},
         std::str::FromStr,
     };
 
@@ -382,34 +377,34 @@ mod tests {
         );
 
         let tx = r#"{
-            "credential":{
-                "standard":{
-                "key_hash":"8E60264C2887C814C0C1E873A66F51F294149EFC3161CB1A195277D330927F31",
-                "signature":{
-                    "passkey":{
-                    "authenticator_data":"SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA==",
-                    "client_data":"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiS1I3OXRVWHp4R2liTzloVmhQNlk0TmZGcmRsOHg0dVR4cm9RbU5HTGhzayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9",
-                    "sig":"fTKkzapyn0e3Q27ARsdxTGDQA0rSv/hmvSp++xJdKk4yBgP4CxqidByWOA0FmVQ2wBuob9BINpu7Eho+UFFroQ=="
-                    }
+          "credential": {
+            "standard": {
+              "key_hash": "8E60264C2887C814C0C1E873A66F51F294149EFC3161CB1A195277D330927F31",
+              "signature": {
+                "passkey": {
+                  "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA==",
+                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiS1I3OXRVWHp4R2liTzloVmhQNlk0TmZGcmRsOHg0dVR4cm9RbU5HTGhzayIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9",
+                  "sig": "fTKkzapyn0e3Q27ARsdxTGDQA0rSv/hmvSp++xJdKk4yBgP4CxqidByWOA0FmVQ2wBuob9BINpu7Eho+UFFroQ=="
                 }
+              }
+            }
+          },
+          "data": {
+            "chain_id": "dev-5",
+            "nonce": 0,
+            "username": "pass_local"
+          },
+          "gas_limit": 2448139,
+          "msgs": [
+            {
+              "transfer": {
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "1000000"
                 }
-            },
-            "data":{
-                "chain_id":"dev-5",
-                "nonce":0,
-                "username":"pass_local"
-            },
-            "gas_limit":2448139,
-            "msgs":[
-                {
-                "transfer":{
-                    "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9":{
-                    "hyp/eth/usdc":"1000000"
-                    }
-                }
-                }
-            ],
-            "sender":"0x94e4e04fbf35a0e67c559fe1c9579de9fdd0f6ed"
+              }
+            }
+          ],
+          "sender": "0x94e4e04fbf35a0e67c559fe1c9579de9fdd0f6ed"
         }"#;
 
         let querier = MockQuerier::new()
@@ -477,35 +472,34 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-            "credential":{
-                "standard":{
-                "key_hash":"622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
-                "signature":{
-                    "eip712":{
-                    "sig":"qhvraAO/AnyJO621ig38y8Rc4k12UtuKurqTjMOCHogR5UpyptvZ2lTl0gH0wjFiUTNp3uFe+WAh760HWq2Mnw==",
-                    "typed_data":"eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJkYW5nbyIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhiNjYyMjdjZjRlYTgwMGI2YjE5YWVkMTk4Mzk1ZmQwYTJkODBlZTFkIn0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
-                    }
+          "credential": {
+            "standard": {
+              "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
+              "signature": {
+                "eip712": {
+                  "sig": "qhvraAO/AnyJO621ig38y8Rc4k12UtuKurqTjMOCHogR5UpyptvZ2lTl0gH0wjFiUTNp3uFe+WAh760HWq2Mnw==",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJkYW5nbyIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhiNjYyMjdjZjRlYTgwMGI2YjE5YWVkMTk4Mzk1ZmQwYTJkODBlZTFkIn0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
                 }
+              }
+            }
+          },
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 0,
+            "username": "javier"
+          },
+          "gas_limit": 2448139,
+          "msgs": [
+            {
+              "transfer": {
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "1000000"
                 }
-            },
-            "data":{
-                "chain_id":"dev-6",
-                "nonce":0,
-                "username":"javier"
-            },
-            "gas_limit":2448139,
-            "msgs":[
-                {
-                "transfer":{
-                    "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9":{
-                    "hyp/eth/usdc":"1000000"
-                    }
-                }
-                }
-            ],
-            "sender":"0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d"
-        }
-        "#;
+              }
+            }
+          ],
+          "sender": "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d"
+        }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
@@ -526,32 +520,31 @@ mod tests {
         );
 
         let tx = r#"{
-        "credential":{
-            "standard":{
-            "key_hash":"06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
-            "signature":{
-                "secp256k1":"CLlermDLySBkXKiU33LTPtzeOt8Rp0W7bKs3nMdRbEZUDumK7fldZ6WTxCjvg7apTPO1dxqFUzsbvwfQFaxG+w=="
+          "credential": {
+            "standard": {
+              "key_hash": "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
+              "signature": {
+                "secp256k1": "CLlermDLySBkXKiU33LTPtzeOt8Rp0W7bKs3nMdRbEZUDumK7fldZ6WTxCjvg7apTPO1dxqFUzsbvwfQFaxG+w=="
+              }
             }
-            }
-        },
-        "data":{
-            "chain_id":"dev-6",
-            "nonce":0,
-            "username":"owner"
-        },
-        "gas_limit":2448142,
-        "msgs":[
+          },
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 0,
+            "username": "owner"
+          },
+          "gas_limit": 2448142,
+          "msgs": [
             {
-            "transfer":{
-                "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d":{
-                "hyp/eth/usdc":"100"
+              "transfer": {
+                "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d": {
+                  "hyp/eth/usdc": "100"
                 }
+              }
             }
-            }
-        ],
-        "sender":"0x33361de42571d6aa20c37daa6da4b5ab67bfaad9"
-        }
-        "#;
+          ],
+          "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9"
+        }"#;
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
@@ -631,40 +624,40 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-            "credential":{
-                "session":{
-                "authorization":{
-                    "key_hash":"622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
-                    "signature":{
-                    "eip712":{
-                        "sig":"t0QXAD4vGR9p5bvVG3CUvrM4dgPAUBJZkiJqvYxRfgckJlcaPf4NELBiXRfg3ZVvpkDraWh3OyG02FpAzec/PQ==",
-                        "typed_data":"eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQXNnRkd4NmJDenh6UElMQUo5Vkx5VDNFb3V5VHlsekNqcFJ2c0dleVVXOHQiLCJleHBpcmVfYXQiOiIxNzQzMDE1MzI3MTg3In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
-                    }
-                    }
-                },
-                "session_info":{
-                    "expire_at":"1743015327187",
-                    "session_key":"AsgFGx6bCzxzPILAJ9VLyT3EouyTylzCjpRvsGeyUW8t"
-                },
-                "session_signature":"8nK6wFA2AkafMOiTt7cfQfV7yBCZa477sxguieK2sI0C1iCOdX4OfiMAZYIOadZjG/+4m6IkvXe/GgTNloP72A=="
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
+                "signature": {
+                  "eip712": {
+                    "sig": "t0QXAD4vGR9p5bvVG3CUvrM4dgPAUBJZkiJqvYxRfgckJlcaPf4NELBiXRfg3ZVvpkDraWh3OyG02FpAzec/PQ==",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQXNnRkd4NmJDenh6UElMQUo5Vkx5VDNFb3V5VHlsekNqcFJ2c0dleVVXOHQiLCJleHBpcmVfYXQiOiIxNzQzMDE1MzI3MTg3In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                  }
                 }
-            },
-            "data":{
-                "chain_id":"dev-6",
-                "nonce":0,
-                "username":"javier"
-            },
-            "gas_limit":2448139,
-            "msgs":[
-                {
-                "transfer":{
-                    "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9":{
-                    "hyp/eth/usdc":"1000000"
-                    }
+              },
+              "session_info": {
+                "expire_at": "1743015327187",
+                "session_key": "AsgFGx6bCzxzPILAJ9VLyT3EouyTylzCjpRvsGeyUW8t"
+              },
+              "session_signature": "8nK6wFA2AkafMOiTt7cfQfV7yBCZa477sxguieK2sI0C1iCOdX4OfiMAZYIOadZjG/+4m6IkvXe/GgTNloP72A=="
+            }
+          },
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 0,
+            "username": "javier"
+          },
+          "gas_limit": 2448139,
+          "msgs": [
+            {
+              "transfer": {
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "1000000"
                 }
-                }
-            ],
-            "sender":"0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d"
+              }
+            }
+          ],
+          "sender": "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d"
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
