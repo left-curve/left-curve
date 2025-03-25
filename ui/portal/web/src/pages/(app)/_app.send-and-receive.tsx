@@ -204,6 +204,7 @@ function SendAndReceiveComponent() {
                 <AccountSearchInput
                   {...register("address", {
                     validate: (v) => isValidAddress(v) || m["validations.errors.invalidAddress"](),
+                    mask: (v) => v.toLowerCase(),
                   })}
                   label="To"
                   placeholder="Wallet address or name"
