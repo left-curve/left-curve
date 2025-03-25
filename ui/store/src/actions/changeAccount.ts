@@ -22,7 +22,7 @@ export function changeAccount<config extends Config>(
     if (!connection) return x;
     return {
       ...x,
-      connections: new Map(x.connectors).set(Uid as string, {
+      connectors: new Map(x.connectors).set(Uid as string, {
         ...connection,
         account,
       }),
