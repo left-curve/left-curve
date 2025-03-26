@@ -25,7 +25,7 @@ export class PrivateKeySigner implements Signer {
   }
 
   async getKeyHash(): Promise<KeyHash> {
-    return createKeyHash({ pubKey: this.#keyPair.getPublicKey() });
+    return createKeyHash(this.#keyPair.getPublicKey());
   }
 
   async signTx(signDoc: SignDoc) {

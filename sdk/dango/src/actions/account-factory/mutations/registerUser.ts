@@ -25,7 +25,7 @@ export type MsgRegisterUser = {
   registerUser: {
     username: string;
     KeyHash: Hex;
-    key: Credential;
+    key: Key;
   };
 };
 

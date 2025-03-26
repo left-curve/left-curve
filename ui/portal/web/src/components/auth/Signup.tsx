@@ -20,11 +20,7 @@ import { useEffect } from "react";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
-import {
-  createWebAuthnCredential,
-  ethHashMessage,
-  secp256k1RecoverPubKey,
-} from "@left-curve/dango/crypto";
+import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
@@ -192,7 +188,7 @@ const Credential: React.FC = () => {
 
             const publicKey = await getPublicKey();
             const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash({ credentialId: id });
+            const keyHash = createKeyHash(id);
 
             return { key, keyHash };
           }
@@ -207,10 +203,8 @@ const Credential: React.FC = () => {
             params: [challenge, controllerAddress],
           });
 
-          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
-
-          const key: Key = { secp256k1: encodeBase64(pubKey) };
-          const keyHash = createKeyHash({ pubKey });
+          const key: Key = { ethereum: controllerAddress };
+          const keyHash = createKeyHash(controllerAddress);
 
           return { key, keyHash };
         })();
