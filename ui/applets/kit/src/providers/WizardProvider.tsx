@@ -90,13 +90,14 @@ interface Props {
 
 export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
   ({ children, onStepChange, wrapper: Wrapper, startIndex = 0, persistKey, onReset, onFinish }) => {
-    const [activeStep, setActiveStep] = useState(startIndex || 0);
+    const [activeStep, setActiveStep] = useState(startIndex);
     const [isLoading, setIsLoading] = useState(false);
     const [data, setData] = useState<unknown>({});
     const hasNextStep = useRef(true);
     const hasPreviousStep = useRef(false);
     const nextStepHandler = useRef<Handler>(() => {});
-    const stepCount = React.Children.toArray(children).length;
+    const reactChildren = React.Children.toArray(children);
+    const stepCount = reactChildren.length;
 
     hasNextStep.current = activeStep < stepCount - 1;
     hasPreviousStep.current = activeStep > 0;
@@ -220,10 +221,8 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
     );
 
     const activeStepContent = useMemo(() => {
-      const reactChildren = React.Children.toArray(children);
-
       return reactChildren[activeStep];
-    }, [activeStep, children]);
+    }, [activeStep, reactChildren]);
 
     const enhancedActiveStepContent = useMemo(
       () => (Wrapper ? cloneElement(Wrapper, { children: activeStepContent }) : activeStepContent),

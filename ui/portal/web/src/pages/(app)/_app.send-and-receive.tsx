@@ -54,7 +54,7 @@ function SendAndReceiveComponent() {
   const { formatNumberOptions, showModal } = useApp();
 
   const [selectedDenom, setSelectedDenom] = useState("uusdc");
-  const { register, setValue, reset, handleSubmit } = useInputs({ strategy: "onSubmit" });
+  const { register, setValue, reset, handleSubmit, inputs } = useInputs({ strategy: "onSubmit" });
 
   const { account, isConnected } = useAccount();
   const chainId = useChainId();
@@ -72,7 +72,7 @@ function SendAndReceiveComponent() {
 
   const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
 
-  const price = getPrice(humanAmount, selectedDenom, {
+  const price = getPrice(inputs.amount?.value || "0", selectedDenom, {
     format: true,
     formatOptions: { ...formatNumberOptions, currency: "USD" },
   });
@@ -204,6 +204,7 @@ function SendAndReceiveComponent() {
                 <AccountSearchInput
                   {...register("address", {
                     validate: (v) => isValidAddress(v) || m["validations.errors.invalidAddress"](),
+                    mask: (v) => v.toLowerCase(),
                   })}
                   label="To"
                   placeholder="Wallet address or name"
@@ -216,7 +217,7 @@ function SendAndReceiveComponent() {
                 fullWidth
                 className="mt-5"
                 isLoading={isPending}
-                isDisabled={!isConnected}
+                isDisabled={!isConnected || !!inputs.amount?.error}
               >
                 {m["common.send"]()}
               </Button>

@@ -36,7 +36,7 @@ const modals = {
   },
   [Modals.ConfirmSend]: {
     component: ConfirmSend,
-    initialSnap: 0.45,
+    initialSnap: 0.6,
   },
   [Modals.ConfirmAccount]: {
     component: ConfirmAccount,

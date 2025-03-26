@@ -45,6 +45,7 @@
     }
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
     "@left-curve/ui-config": "workspace:^",

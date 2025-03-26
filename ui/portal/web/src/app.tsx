@@ -17,7 +17,6 @@ import { toast } from "./components/foundation/Toast";
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
-      console.error(error);
       if (query.meta?.errorToast) {
         toast.error(query.meta.errorToast);
       }

@@ -4,16 +4,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { KeyHash } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
-import type React from "react";
 import { useApp } from "~/hooks/useApp";
 
+import { forwardRef } from "react";
 import { m } from "~/paraglide/messages";
 
 interface Props {
   keyHash: KeyHash;
 }
 
-export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
+export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
@@ -70,4 +70,4 @@ export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
       </div>
     </div>
   );
-};
+});

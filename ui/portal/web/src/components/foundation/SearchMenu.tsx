@@ -79,7 +79,7 @@ function SearchMenu() {
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
-            "flex-col bg-rice-25 rounded-md w-full flex items-center lg:absolute relative lg:-top-5 flex-1 lg:[box-shadow:0px_2px_6px_0px_#C7C2B666] transition-all",
+            "flex-col bg-rice-25 rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:-top-5 flex-1 lg:[box-shadow:0px_2px_6px_0px_#C7C2B666] transition-all duration-300",
             !isLg && isSearchBarVisible
               ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-white p-4 gap-4"
               : "",

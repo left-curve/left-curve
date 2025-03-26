@@ -1,14 +1,13 @@
-import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconMobile, QRCode, forwardRef } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
 import { useConnectorClient, useDataChannel } from "@left-curve/store";
-import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { toast } from "../foundation/Toast";
 
-export const QRConnect: React.FC = () => {
+export const QRConnect = forwardRef((_props, _ref) => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
     url: import.meta.env.PUBLIC_WEBRTC_URI,
@@ -17,7 +16,7 @@ export const QRConnect: React.FC = () => {
   const { hideModal } = useApp();
 
   dataChannel?.subscribe(async (m) => {
-    if (!signingClient) return;
+    if (!signingClient || isLoadingCredential) return;
 
     try {
       const { id, type, message } = m;
@@ -68,4 +67,4 @@ export const QRConnect: React.FC = () => {
       </div>
     </div>
   );
-};
+});

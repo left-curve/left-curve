@@ -126,6 +126,9 @@ export {
   type RegisterUserParameters,
   type RegisterUserReturnType,
   registerUser,
+  type CreateSessionParameters,
+  type CreateSessionReturnType,
+  createSession,
 } from "./account-factory/index.js";
 
 /* -------------------------------------------------------------------------- */
