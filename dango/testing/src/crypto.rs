@@ -26,5 +26,5 @@ pub fn create_signature(sk: &SigningKey, sign_data: GenericArray<u8, U32>) -> By
     let sign_data = Identity256::from_inner(sign_data);
     let signature: Signature = sk.sign_digest(sign_data);
 
-    signature.to_bytes().as_slice().try_into().unwrap()
+    ByteArray::from_inner(signature.to_bytes().into())
 }
