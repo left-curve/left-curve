@@ -9,13 +9,13 @@ use {
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched,
-            PairUpdate, PairUpdated,
+            PairUpdate, PairUpdated, SlippageControl, SwapRoute,
         },
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Message,
         MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
-        StdResult, Storage, SudoCtx, Udec128,
+        StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -42,6 +42,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             base_denom,
             quote_denom,
         } => withdraw_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::Swap {
+            amount,
+            direction,
+            route,
+            slippage,
+        } => swap(ctx, amount, direction, SwapRoute::new(route), slippage),
     }
 }
 
@@ -295,6 +301,130 @@ fn provide_liquidity(
         )?
     }))
     // TODO: add event
+}
+
+/// Perform a swap in the pool.
+#[inline]
+fn swap(
+    ctx: MutableCtx,
+    amount: Uint128,
+    direction: Direction,
+    route: SwapRoute,
+    slippage: Option<SlippageControl>,
+) -> anyhow::Result<Response> {
+    let mut funds = ctx.funds.clone();
+
+    // Validate the route.
+    route.validate()?;
+
+    let (mut coin_in, mut coin_out) = match direction {
+        Direction::Bid => {
+            let coin_in = Coin::new(route.end().clone(), amount)?;
+            let coin_out = Coin::new(route.start().clone(), amount)?;
+            (coin_in, coin_out)
+        },
+        Direction::Ask => {
+            let coin_in = Coin::new(route.start().clone(), amount)?;
+            let coin_out = Coin::new(route.end().clone(), amount)?;
+            (coin_in, coin_out)
+        },
+    };
+
+    for (base_denom, quote_denom) in route.clone().into_iter().zip(route.into_iter().skip(1)) {
+        // Load the pair params.
+        let (pair, reserves, reverse_base_quote) =
+            match PAIRS.may_load(ctx.storage, (&base_denom, &quote_denom))? {
+                Some(pair) => (
+                    pair,
+                    RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?,
+                    false,
+                ),
+                None => (
+                    PAIRS.load(ctx.storage, (&quote_denom, &base_denom))?,
+                    RESERVES.load(ctx.storage, (&quote_denom, &base_denom))?,
+                    true,
+                ),
+            };
+
+        // For direction Ask use the output of last swap as the input for the next swap.
+        // For direction Bid use the input of last swap as the demanded output for the
+        // next swap.
+        let (new_reserves, offer, ask) = match direction {
+            Direction::Bid => pair.swap(
+                reserves,
+                base_denom.clone(),
+                quote_denom.clone(),
+                direction,
+                coin_in.amount,
+            )?,
+            Direction::Ask => pair.swap(
+                reserves,
+                base_denom.clone(),
+                quote_denom.clone(),
+                direction,
+                coin_out.amount,
+            )?,
+        };
+
+        // Update the coin in and out.
+        match direction {
+            Direction::Bid => {
+                coin_in = offer.clone();
+            },
+            Direction::Ask => {
+                coin_out = ask.clone();
+            },
+        }
+
+        // Save the updated pool reserves.
+        if reverse_base_quote {
+            RESERVES.save(ctx.storage, (&quote_denom, &base_denom), &new_reserves)?;
+        } else {
+            RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &new_reserves)?;
+        }
+    }
+
+    // Enforce slippage control.
+    if let Some(slippage_control) = slippage {
+        match slippage_control {
+            SlippageControl::MinimumOut(min_out) => {
+                ensure!(
+                    direction != Direction::Bid,
+                    "minimum out is only supported for direction: ask"
+                );
+                ensure!(coin_out.amount >= min_out, "slippage tolerance exceeded");
+            },
+            SlippageControl::MaximumIn(max_in) => {
+                ensure!(
+                    direction != Direction::Ask,
+                    "maximum in is only supported for direction: bid"
+                );
+                ensure!(coin_in.amount <= max_in, "slippage tolerance exceeded");
+            },
+            SlippageControl::PriceLimit(price_limit) => {
+                let execution_price = Udec128::checked_from_ratio(coin_out.amount, coin_in.amount)?;
+                match direction {
+                    Direction::Bid => ensure!(
+                        execution_price <= price_limit,
+                        "slippage tolerance exceeded"
+                    ),
+                    Direction::Ask => ensure!(
+                        execution_price >= price_limit,
+                        "slippage tolerance exceeded"
+                    ),
+                }
+            },
+        }
+    }
+
+    // Deduct the coin in and add the coin out to the funds.
+    funds
+        .deduct(coin_in)
+        .map_err(|_| anyhow::anyhow!("insufficient funds"))?;
+    funds.insert(coin_out)?;
+
+    // Send back any unused funds together with proceeds from swaps
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, funds)?))
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
