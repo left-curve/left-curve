@@ -52,8 +52,6 @@ impl MigrationExecuteTrait for Migration {
             save_db_block.update(&txn).await?;
         }
 
-        drop(blocks);
-
         txn.commit().await?;
 
         Ok(())

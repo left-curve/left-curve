@@ -10,12 +10,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Block::Table)
-                    .add_column(
-                        ColumnDef::new(Block::ProposerAddress)
-                            .string()
-                            .not_null()
-                            .default("".to_string()),
-                    )
+                    .modify_column(ColumnDef::new(Block::ProposerAddress).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -28,10 +23,16 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Block::Table)
-                    .drop_column(Block::ProposerAddress)
+                    .modify_column(
+                        ColumnDef::new(Block::ProposerAddress)
+                            .string()
+                            .not_null()
+                            .default("".to_string()),
+                    )
                     .to_owned(),
             )
             .await?;
+
         Ok(())
     }
 }

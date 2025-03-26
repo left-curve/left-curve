@@ -10,6 +10,9 @@ pub struct ExecuteMigrator;
 #[async_trait::async_trait]
 impl MigratorExecuteTrait for ExecuteMigrator {
     fn migrations() -> HashMap<String, Box<dyn MigrationExecuteTrait>> {
+        // Add the execution of the migration files here, name should be
+        // the same as the `sql-migration` files, and code will be executed
+        // after the migration has ran.
         let files: Vec<Box<dyn MigrationExecuteTrait>> = vec![Box::new(
             m20250326_105930_blocks_proposer_address::Migration,
         )];
@@ -21,7 +24,6 @@ impl MigratorExecuteTrait for ExecuteMigrator {
     }
 }
 
-/// The migration definition
 #[async_trait::async_trait]
 pub trait MigrationExecuteTrait: MigrationName + Send + Sync {
     /// Define actions to perform when applying the migration
@@ -32,25 +34,9 @@ pub trait MigrationExecuteTrait: MigrationName + Send + Sync {
     ) -> Result<(), Box<dyn std::error::Error>>;
 }
 
-// pub struct Migration {
-//     migration: Box<dyn MigrationExecuteTrait>,
-//     status: MigrationStatus,
-// }
-
-/// Performing migrations on a database
+/// Performing code executions after migrations
 #[async_trait::async_trait]
 pub trait MigratorExecuteTrait: Send {
-    /// Vector of migrations in time sequence
+    /// Code executions connected to the migration names
     fn migrations() -> HashMap<String, Box<dyn MigrationExecuteTrait>>;
-
-    // /// Get list of migrations wrapped in `Migration` struct
-    // fn get_migration_files() -> Vec<Migration> {
-    //     Self::migrations()
-    //         .into_iter()
-    //         .map(|(_, migration)| Migration {
-    //             migration,
-    //             status: MigrationStatus::Pending,
-    //         })
-    //         .collect()
-    // }
 }
