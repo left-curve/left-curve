@@ -36,6 +36,7 @@ impl NewUserSalt {
     /// `key_tag` is a single byte identifying the key's type:
     /// - `0` for Secp256r1
     /// - `1` for Secp256k1
+    /// - `2` for Ethereum address
     pub fn into_bytes(self) -> [u8; 70] {
         // Maximum possible length for the bytes:
         // - secret: 4
@@ -54,6 +55,11 @@ impl NewUserSalt {
             Key::Secp256k1(pk) => {
                 bytes[36] = 1;
                 bytes[37..70].copy_from_slice(&pk);
+            },
+            Key::Ethereum(addr) => {
+                bytes[36] = 2;
+                // Front-pad the address with zeros.
+                bytes[50..70].copy_from_slice(&addr);
             },
         }
         bytes

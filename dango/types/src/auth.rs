@@ -19,6 +19,17 @@ pub enum Key {
     Secp256r1(ByteArray<33>),
     /// An Secp256k1 public key in compressed form.
     Secp256k1(ByteArray<33>),
+    /// An Ethereum address.
+    ///
+    /// Ethereum uses Secp256k1 public keys, so why don't just use that? This is
+    /// because Ethereum wallets typically don't expose an API that allows a
+    /// webapp to know the public key. However, they do allow webapps to know the
+    /// address.
+    ///
+    /// A webapp can technically still know the pubkey by prompting the user to
+    /// sign a message, and extracting the pubkey from the signature. This would
+    /// however be a bad UX, and deter the more security-minded users.
+    Ethereum(Addr),
 }
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
@@ -125,10 +136,14 @@ pub struct PasskeySignature {
 /// An EIP712 signature signed with a compatible eth wallet.
 #[grug::derive(Serde)]
 pub struct Eip712Signature {
-    /// The EIP712 typed data object containing type information,
-    /// domain and the message object.
+    /// The EIP712 typed data object containing type information, domain, and
+    /// the message object.
     pub typed_data: Binary,
-    pub sig: ByteArray<64>,
+    /// Ethereum signature.
+    ///
+    /// The first 64 bytes are the typical Secp256k1 signature. The last byte
+    /// is the recovery id, which can take on the values: 0, 1, 27, 28.
+    pub sig: ByteArray<65>,
 }
 
 /// Passkey client data.

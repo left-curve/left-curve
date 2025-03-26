@@ -235,7 +235,7 @@ fn verify_signature(
     data: &VerifyData,
 ) -> anyhow::Result<()> {
     match (key, signature) {
-        (Key::Secp256k1(pk), Signature::Eip712(cred)) => {
+        (Key::Ethereum(addr), Signature::Eip712(cred)) => {
             let TypedData {
                 resolver, domain, ..
             } = cred.typed_data.deserialize_json()?;
@@ -283,7 +283,22 @@ fn verify_signature(
             }
             .eip712_signing_hash()?;
 
-            api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
+            // Recover the Ethereum public key from the signature.
+            // The first 64 bytes of the Ethereum signature is the typical
+            // Secp256k1 signature, while the last byte is the recovery ID.
+            let signature = &cred.sig[0..64];
+            let recovery_id = cred.sig[64];
+            let pk = api.secp256k1_pubkey_recover(&sign_bytes.0, signature, recovery_id, false)?;
+
+            // Derive Ethereum address from the public key.
+            let recovered_addr = &api.keccak256(&pk[1..])[12..];
+
+            ensure!(
+                addr.as_ref() == recovered_addr,
+                "recovered Ethereum address does not match: {} != {}",
+                addr,
+                hex::encode(recovered_addr)
+            );
         },
         (Key::Secp256r1(pk), Signature::Passkey(cred)) => {
             let signed_hash = {
