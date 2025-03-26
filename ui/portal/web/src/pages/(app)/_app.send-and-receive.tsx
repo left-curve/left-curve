@@ -217,7 +217,7 @@ function SendAndReceiveComponent() {
                 fullWidth
                 className="mt-5"
                 isLoading={isPending}
-                isDisabled={!isConnected || !!inputs.amount?.error || !!inputs.address?.error}
+                isDisabled={!isConnected || !!inputs.amount?.error}
               >
                 {m["common.send"]()}
               </Button>
