@@ -65,6 +65,7 @@
     }
   },
   "signin": {
+    "advancedOptions": "Advanced Options",
     "continueWithoutLogin": "Continue without login",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
