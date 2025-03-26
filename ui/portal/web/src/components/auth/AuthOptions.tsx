@@ -1,4 +1,4 @@
-import { Button, ExpandOptions, IconChevronDown, IconPasskey } from "@left-curve/applets-kit";
+import { Button, ExpandOptions, IconPasskey } from "@left-curve/applets-kit";
 import { useConnectors } from "@left-curve/store";
 import { motion } from "framer-motion";
 import type React from "react";
@@ -21,23 +21,27 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
         <p className="min-w-20"> {m["common.signWithPasskey"]({ action: mode })}</p>
       </Button>
       <ExpandOptions showOptionText={m["common.signWithWallet"]({ action: mode })}>
-        {connectors.map((connector) => {
-          if (["passkey", "session"].includes(connector.type)) return null;
-          return (
-            <Button
-              key={connector.id}
-              as={motion.div}
-              isDisabled={isPending}
-              className="gap-2"
-              variant="secondary"
-              fullWidth
-              onClick={() => action(connector.id)}
-            >
-              <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
-              <p className="min-w-20">{connector.name}</p>
-            </Button>
-          );
-        })}
+        {connectors.length > 2 ? (
+          connectors.map((connector) => {
+            if (["passkey", "session"].includes(connector.type)) return null;
+            return (
+              <Button
+                key={connector.id}
+                as={motion.div}
+                isDisabled={isPending}
+                className="gap-2"
+                variant="secondary"
+                fullWidth
+                onClick={() => action(connector.id)}
+              >
+                <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
+                <p className="min-w-20">{connector.name}</p>
+              </Button>
+            );
+          })
+        ) : (
+          <p className="text-center text-blue-400">{m["common.notWalletDetected"]()}</p>
+        )}
       </ExpandOptions>
     </div>
   );

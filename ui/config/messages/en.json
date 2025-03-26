@@ -20,6 +20,7 @@
     "error": "Error",
     "signinWithDesktop": "Sign in with Desktop",
     "motto": "Dango–the one app for everything DeFi",
+    "notWalletDetected": "No wallet detected",
     "signWithWallet": [
       {
         "declarations": ["input action"],
