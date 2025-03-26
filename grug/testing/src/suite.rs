@@ -159,10 +159,7 @@ where
             });
 
         id.start(&state_storage).unwrap_or_else(|err| {
-            panic!(
-                "fatal error while running indexer start: {}",
-                err.to_string()
-            );
+            panic!("fatal error while running indexer start: {}", err);
         });
 
         // 2. Creating the app instance
