@@ -3210,6 +3210,7 @@ dependencies = [
  "dango-account-factory",
  "dango-types",
  "grug",
+ "sha2 0.10.8",
 ]
 
 [[package]]
@@ -3438,6 +3439,7 @@ dependencies = [
  "dango-proposal-preparer",
  "dango-types",
  "dango-warp",
+ "digest 0.10.7",
  "grug",
  "grug-app",
  "grug-crypto",
@@ -3480,7 +3482,7 @@ dependencies = [
  "paste",
  "pyth-types",
  "serde",
- "serde_json",
+ "sha2 0.10.8",
  "thiserror 2.0.12",
  "tokio",
 ]
@@ -4549,6 +4551,7 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "serde",
+ "sha2 0.10.8",
 ]
 
 [[package]]

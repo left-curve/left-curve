@@ -18,6 +18,7 @@ dango-httpd             = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["tracing"] }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true }
+digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
 grug-crypto             = { workspace = true }

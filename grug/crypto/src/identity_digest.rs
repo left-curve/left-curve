@@ -52,6 +52,10 @@ macro_rules! identity {
         }
 
         impl $name {
+            pub const fn from_inner(bytes: GenericArray<u8, $array_len>) -> Self {
+                Self { bytes }
+            }
+
             pub fn into_bytes(self) -> [u8; $len] {
                 self.bytes.into()
             }

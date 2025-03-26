@@ -1,7 +1,9 @@
 use {
+    digest::{consts::U32, generic_array::GenericArray},
     grug::ByteArray,
+    grug_crypto::Identity256,
     k256::{
-        ecdsa::{Signature, SigningKey, signature::Signer},
+        ecdsa::{Signature, SigningKey, signature::DigestSigner},
         elliptic_curve::rand_core::OsRng,
     },
 };
@@ -19,10 +21,10 @@ pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
     (sk, pk)
 }
 
-pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> ByteArray<64> {
-    // This hashes `sign_bytes` with SHA2-256. If we eventually choose to use a
-    // different hash, it's necessary to update this.
-    let signature: Signature = sk.sign(sign_bytes);
+/// Note: This function expects the _hashed_ sign data.
+pub fn create_signature(sk: &SigningKey, sign_data: GenericArray<u8, U32>) -> ByteArray<64> {
+    let sign_data = Identity256::from_inner(sign_data);
+    let signature: Signature = sk.sign_digest(sign_data);
 
-    signature.to_bytes().as_slice().try_into().unwrap()
+    ByteArray::from_inner(signature.to_bytes().into())
 }
