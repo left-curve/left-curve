@@ -134,7 +134,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             </div>
           </ResizerContainer>
         </div>
-        <AuthCarousel />
+        <AuthCarousel firstVisit={false} />
       </div>
     </>
   );
