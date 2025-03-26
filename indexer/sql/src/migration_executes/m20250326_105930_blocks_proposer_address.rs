@@ -4,7 +4,8 @@ use {
     futures_util::TryStreamExt,
     grug_app::IndexerBatch,
     sea_orm::{
-        ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, TransactionTrait,
+        ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
+        QueryFilter, TransactionTrait,
     },
     sea_orm_migration::prelude::*,
 };
@@ -21,6 +22,7 @@ impl MigrationExecuteTrait for Migration {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Using stream to avoid loading all blocks into memory
         let mut blocks = entity::blocks::Entity::find()
+            .filter(entity::blocks::Column::ProposerAddress.eq(""))
             .stream(db)
             .await
             .map_err(|err| err.to_string())?;
@@ -33,9 +35,14 @@ impl MigrationExecuteTrait for Migration {
                 continue;
             }
 
-            let block = indexer
-                .block(db_block.block_height as u64)
-                .map_err(|err| err.to_string())?;
+            let Ok(block) = indexer.block(db_block.block_height as u64) else {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    db_block.block_height,
+                    "can't load block from disk, won't update proposer_address"
+                );
+                continue;
+            };
 
             // TODO: find the proposer
             let proposer_address = block.block.info.hash.to_string();
