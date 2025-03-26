@@ -334,8 +334,9 @@ where
         let all_executor_migrations = ExecuteMigrator::migrations();
 
         for migration in pending_migrations {
-            // NOTE: I would rather be able to call `Migrator::up` with a specific migration `migration`
-            // to avoid moving 1 step with another migration but sea-orm doesn't allow this
+            // NOTE: I would rather be able to call `Migrator::up` with a specific `migration`
+            // to avoid moving 1 step then execute code from another migration
+            // but sea-orm only allows to move by steps.
             Migrator::up(&self.context.db, Some(1)).await?;
 
             let migration_name = migration.name().to_string();
