@@ -22,7 +22,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { formatNumberOptions } = useApp();
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {} } = useBalances({
+  const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
   });
 
@@ -59,6 +59,7 @@ export const CreateAccountDepositStep: React.FC = () => {
     onSuccess: async (data) => {
       showModal(Modals.ConfirmAccount, data);
       await refreshAccounts?.();
+      await refreshBalances();
       done();
     },
     onError: () => {
