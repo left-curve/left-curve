@@ -3439,6 +3439,7 @@ dependencies = [
  "dango-proposal-preparer",
  "dango-types",
  "dango-warp",
+ "digest 0.10.7",
  "grug",
  "grug-app",
  "grug-crypto",

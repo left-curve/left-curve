@@ -8,6 +8,7 @@ use {
         },
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
+    digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdResult, Tx,
@@ -198,16 +199,19 @@ where
             data: data.clone(),
         };
 
-        let prehash_sign_data = sign_doc.to_prehash_sign_data()?;
-        let standard_credential = self.create_standard_credential(&prehash_sign_data);
+        let sign_data = sign_doc.to_sign_data()?;
+        let standard_credential = self.create_standard_credential(sign_data);
 
         Ok((data, Credential::Standard(standard_credential)))
     }
 
-    /// Note: This function expects the _prehash_ bytes.
-    pub fn create_standard_credential(&self, prehash_sign_doc: &[u8]) -> StandardCredential {
+    /// Note: This function expects the _hashed_ sign data.
+    pub fn create_standard_credential(
+        &self,
+        sign_data: GenericArray<u8, U32>,
+    ) -> StandardCredential {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
-        let signature = create_signature(sk, prehash_sign_doc);
+        let signature = create_signature(sk, sign_data);
 
         StandardCredential {
             key_hash: self.sign_with,

@@ -92,8 +92,8 @@ mod session_account {
                 expire_at,
             };
 
-            let prehash_sign_data = session_info.to_prehash_sign_data()?;
-            let credential = self.account.create_standard_credential(&prehash_sign_data);
+            let sign_data = session_info.to_sign_data()?;
+            let credential = self.account.create_standard_credential(sign_data);
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
@@ -158,14 +158,13 @@ mod session_account {
                 data: data.clone(),
             };
 
-            let prehash_sign_data = sign_doc.to_prehash_sign_data()?;
+            let sign_data = sign_doc.to_sign_data()?;
+            let session_signature = create_signature(&self.session_sk, sign_data);
 
             let standard_credential = StandardCredential {
                 key_hash: self.sign_with(),
                 signature: self.session_buffer.inner().sign_info_signature.clone(),
             };
-
-            let session_signature = create_signature(&self.session_sk, &prehash_sign_data);
 
             let credential = Credential::Session(SessionCredential {
                 session_info: self.session_buffer.inner().session_info.clone(),
