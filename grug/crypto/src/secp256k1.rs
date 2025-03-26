@@ -41,9 +41,8 @@ pub fn secp256k1_verify(msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> CryptoResult<
 /// - `s`: the last 32 bytes of the signature;
 /// - `v`: the recovery ID.
 ///
-/// `v` must be 0 or 1. The values 2 and 3 are unsupported by this implementation,
+/// `v` must be 0, 1, 27, or 28. The values 2 and 3 are unsupported by this implementation,
 /// which is the same restriction [as Ethereum has](https://github.com/ethereum/go-ethereum/blob/v1.9.25/internal/ethapi/api.go#L466-L469).
-/// All other values are invalid.
 ///
 /// Note: This function takes the hash of the message, not the prehash.
 pub fn secp256k1_pubkey_recover(
@@ -59,8 +58,8 @@ pub fn secp256k1_pubkey_recover(
     let mut sig = Signature::from_bytes(&sig.into())?;
 
     let mut id = match recovery_id {
-        0 => RecoveryId::new(false, false),
-        1 => RecoveryId::new(true, false),
+        0 | 27 => RecoveryId::new(false, false),
+        1 | 28 => RecoveryId::new(true, false),
         _ => return Err(CryptoError::InvalidRecoveryId { recovery_id }),
     };
 

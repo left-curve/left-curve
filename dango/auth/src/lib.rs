@@ -235,7 +235,7 @@ fn verify_signature(
     data: &VerifyData,
 ) -> anyhow::Result<()> {
     match (key, signature) {
-        (Key::Secp256k1(pk), Signature::Eip712(cred)) => {
+        (Key::Ethereum(addr), Signature::Eip712(cred)) => {
             let TypedData {
                 resolver, domain, ..
             } = cred.typed_data.deserialize_json()?;
@@ -283,7 +283,28 @@ fn verify_signature(
             }
             .eip712_signing_hash()?;
 
-            api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
+            // The first 64 bytes of the Ethereum signature is the typical
+            // Secp256k1 signature, while the last byte is the recovery ID.
+            //
+            // In Ethereum, the recovery ID is usually 27 or 28, instead of the
+            // standard 0 or 1 used in raw ECDSA recoverable signatures.
+            // However, our `Api` implementation should handle this, so no action
+            // is needed here.
+            let signature = &cred.sig[0..64];
+            let recovery_id = cred.sig[64];
+
+            // Recover the Ethereum public key from the signature.
+            let pk = api.secp256k1_pubkey_recover(&sign_bytes.0, signature, recovery_id, false)?;
+
+            // Derive Ethereum address from the public key.
+            let recovered_addr = &api.keccak256(&pk[1..])[12..];
+
+            ensure!(
+                addr.as_ref() == recovered_addr,
+                "recovered Ethereum address does not match: {} != {}",
+                addr,
+                hex::encode(recovered_addr)
+            );
         },
         (Key::Secp256r1(pk), Signature::Passkey(cred)) => {
             let signed_hash = {
@@ -441,15 +462,10 @@ mod tests {
         let user_address = Addr::from_str("0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d").unwrap();
         let user_username = Username::from_str("javier").unwrap();
         let user_keyhash =
-            Hash256::from_str("622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B")
+            Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
                 .unwrap();
-        let user_key = Key::Secp256k1(
-            [
-                3, 115, 37, 57, 128, 37, 222, 189, 9, 42, 142, 196, 85, 27, 226, 112, 136, 195,
-                174, 6, 40, 39, 221, 182, 179, 146, 169, 207, 108, 218, 67, 27, 71,
-            ]
-            .into(),
-        );
+        let user_key =
+            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
@@ -477,10 +493,10 @@ mod tests {
         let tx = r#"{
           "credential": {
             "standard": {
-              "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
+              "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
               "signature": {
                 "eip712": {
-                  "sig": "qhvraAO/AnyJO621ig38y8Rc4k12UtuKurqTjMOCHogR5UpyptvZ2lTl0gH0wjFiUTNp3uFe+WAh760HWq2Mnw==",
+                  "sig": "qhvraAO/AnyJO621ig38y8Rc4k12UtuKurqTjMOCHogR5UpyptvZ2lTl0gH0wjFiUTNp3uFe+WAh760HWq2Mnxs=",
                   "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJkYW5nbyIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhiNjYyMjdjZjRlYTgwMGI2YjE5YWVkMTk4Mzk1ZmQwYTJkODBlZTFkIn0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
                 }
               }
@@ -588,16 +604,16 @@ mod tests {
     }
 
     #[test]
-    fn session_key_authentication() {
-        let user_address = Addr::from_str("0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d").unwrap();
-        let user_username = Username::from_str("javier").unwrap();
+    fn session_key_with_passkey_authentication() {
+        let user_address = Addr::from_str("0x5614a130eb9322e549e0d86d24a7bb1a7f683b28").unwrap();
+        let user_username = Username::from_str("pass_local").unwrap();
         let user_keyhash =
-            Hash256::from_str("622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B")
+            Hash256::from_str("010AB8AAF008DA93DB00F94D818931832F54192A334D933629768B59A2932817")
                 .unwrap();
-        let user_key = Key::Secp256k1(
+        let user_key = Key::Secp256r1(
             [
-                3, 115, 37, 57, 128, 37, 222, 189, 9, 42, 142, 196, 85, 27, 226, 112, 136, 195,
-                174, 6, 40, 39, 221, 182, 179, 146, 169, 207, 108, 218, 67, 27, 71,
+                3, 49, 131, 213, 54, 16, 255, 178, 137, 198, 32, 99, 238, 21, 5, 25, 52, 140, 150,
+                228, 146, 68, 250, 57, 250, 251, 135, 159, 84, 162, 229, 40, 155,
             ]
             .into(),
         );
@@ -630,19 +646,94 @@ mod tests {
           "credential": {
             "session": {
               "authorization": {
-                "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
+                "key_hash": "010AB8AAF008DA93DB00F94D818931832F54192A334D933629768B59A2932817",
                 "signature": {
-                  "eip712": {
-                    "sig": "t0QXAD4vGR9p5bvVG3CUvrM4dgPAUBJZkiJqvYxRfgckJlcaPf4NELBiXRfg3ZVvpkDraWh3OyG02FpAzec/PQ==",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQXNnRkd4NmJDenh6UElMQUo5Vkx5VDNFb3V5VHlsekNqcFJ2c0dleVVXOHQiLCJleHBpcmVfYXQiOiIxNzQzMDE1MzI3MTg3In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                  "passkey": {
+                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA==",
+                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTlMwTFVJUUZpUC1SN01MSmE5V3RBbEttcUZhcWdfbTdqTzZaeExubE1SZyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZSwib3RoZXJfa2V5c19jYW5fYmVfYWRkZWRfaGVyZSI6ImRvIG5vdCBjb21wYXJlIGNsaWVudERhdGFKU09OIGFnYWluc3QgYSB0ZW1wbGF0ZS4gU2VlIGh0dHBzOi8vZ29vLmdsL3lhYlBleCJ9",
+                    "sig": "kutvF0E0eD+K0FCD575y1HuaToPrdBFB20VIlxiA4HeKHdXwvDjKfcMPSnV752jb9xEeBvO1Jym+Z7PJR3dfeg=="
                   }
                 }
               },
               "session_info": {
-                "expire_at": "1743015327187",
-                "session_key": "AsgFGx6bCzxzPILAJ9VLyT3EouyTylzCjpRvsGeyUW8t"
+                "expire_at": "1743109311084",
+                "session_key": "A9q7FcgFOItKcmXpqTZZyAgTLqszNCdG/LkHF+UZyBMs"
               },
-              "session_signature": "8nK6wFA2AkafMOiTt7cfQfV7yBCZa477sxguieK2sI0C1iCOdX4OfiMAZYIOadZjG/+4m6IkvXe/GgTNloP72A=="
+              "session_signature": "lBPASUUQyv+YaQg0b/1XGvqn7Iuk7R5uGsh9m1m/IdU62YQHl+VT2ZURQ4GsIIWer9oHevALgMGqjA1KraW21A=="
+            }
+          },
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 0,
+            "username": "pass_local"
+          },
+          "gas_limit": 2448139,
+          "msgs": [
+            {
+              "transfer": {
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "1000000"
+                }
+              }
+            }
+          ],
+          "sender": "0x5614a130eb9322e549e0d86d24a7bb1a7f683b28"
+        }"#;
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
+    }
+
+    #[test]
+    fn session_key_with_eip712_authentication() {
+        let user_address = Addr::from_str("0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d").unwrap();
+        let user_username = Username::from_str("javier").unwrap();
+        let user_keyhash =
+            Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
+                .unwrap();
+        let user_key =
+            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ..Default::default()
+                },
+                collateral_powers: btree_map! {},
+                ..Default::default()
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                    .unwrap();
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-6")
+            .with_mode(AuthMode::Finalize);
+
+        let tx = r#"{
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
+                "signature": {
+                  "eip712": {
+                    "sig": "2JSrtr1cB6bEVxio6xNCb4z3G7JZo3cF2FF3h6GRSTZVI3Qrqme4wyNUseKrG8J/Mo/DxwzYcj6IlcQnWENtNRs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQThiWDVhbU4yNGlXMDV4b2c2SGVLWXJ3THA5NU9qWStZcW1iUlQ3U0twZVgiLCJleHBpcmVfYXQiOiIxNzQzMTA5NjkzNjM3In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                  }
+                }
+              },
+              "session_info": {
+                "expire_at": "1743109693637",
+                "session_key": "A8bX5amN24iW05xog6HeKYrwLp95OjY+YqmbRT7SKpeX"
+              },
+              "session_signature": "510PITf+ZKexzi+g+5J5SS1JkvKBeMoUvBNh7h9viTcGCMvdkgNvdJsdOGpJcG19XYsgPIaMSKZyHEQkVUK2DQ=="
             }
           },
           "data": {
