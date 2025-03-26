@@ -78,7 +78,7 @@ export const LoginUsernameStep: React.FC = () => {
             <div className="flex items-center gap-2 flex-col">
               <Checkbox
                 size="md"
-                label="Allow use session key"
+                label={m["common.signinWithSession"]()}
                 checked={advancedOptions.useSessionKey}
                 onChange={(v) => setAdvancedOptions({ ...advancedOptions, useSessionKey: v })}
               />
