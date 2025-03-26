@@ -19,10 +19,11 @@ pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
     (sk, pk)
 }
 
-pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> ByteArray<64> {
-    // This hashes `sign_bytes` with SHA2-256. If we eventually choose to use a
-    // different hash, it's necessary to update this.
-    let signature: Signature = sk.sign(sign_bytes);
+/// Note: This function expects the _prehash_ bytes.
+pub fn create_signature(sk: &SigningKey, prehash_sign_data: &[u8]) -> ByteArray<64> {
+    // This hashes `prehash_sign_data` with SHA2-256. If we eventually choose to
+    // use a different hash, it's necessary to update this.
+    let signature: Signature = sk.sign(prehash_sign_data);
 
     signature.to_bytes().as_slice().try_into().unwrap()
 }

@@ -14,9 +14,10 @@ use {
         },
     },
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, StdResult,
-        Storage, StorageQuerier, Tx, json,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, QuerierExt, SignData, StdError,
+        StdResult, Storage, StorageQuerier, Tx, json,
     },
+    sha2::Sha256,
     std::collections::BTreeSet,
 };
 
@@ -288,13 +289,13 @@ fn verify_signature(
             let signed_hash = {
                 let client_data: ClientData = cred.client_data.deserialize_json()?;
 
-                let sign_bytes = api.sha2_256(&data.as_sign_bytes()?);
-                let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
+                let sign_data = data.to_sign_data()?;
+                let sign_data_base64 = URL_SAFE_NO_PAD.encode(sign_data);
 
                 ensure!(
-                    client_data.challenge == sign_bytes_base64,
+                    client_data.challenge == sign_data_base64,
                     "incorrect challenge: expecting {}, got {}",
-                    sign_bytes_base64,
+                    sign_data_base64,
                     client_data.challenge
                 );
 
@@ -316,9 +317,9 @@ fn verify_signature(
             api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
         },
         (Key::Secp256k1(pk), Signature::Secp256k1(sig)) => {
-            let sign_bytes = api.sha2_256(&data.as_sign_bytes()?);
+            let sign_data = data.to_sign_data()?;
 
-            api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
+            api.secp256k1_verify(&sign_data, &sig, &pk)?;
         },
         _ => bail!("key and credential types don't match!"),
     }
@@ -326,21 +327,23 @@ fn verify_signature(
 }
 
 enum VerifyData<'a> {
-    Session(&'a SessionInfo),
     Standard {
         sign_doc: SignDoc,
         chain_id: String,
         nonce: Nonce,
     },
+    Session(&'a SessionInfo),
 }
 
-impl VerifyData<'_> {
-    fn as_sign_bytes(&self) -> StdResult<Vec<u8>> {
+impl SignData for VerifyData<'_> {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> StdResult<Vec<u8>> {
         match self {
-            VerifyData::Session(session_info) => session_info.to_json_value()?,
-            VerifyData::Standard { sign_doc, .. } => sign_doc.to_json_value()?,
+            VerifyData::Standard { sign_doc, .. } => sign_doc.to_prehash_sign_data(),
+            VerifyData::Session(session_info) => session_info.to_prehash_sign_data(),
         }
-        .to_json_vec()
     }
 }
 

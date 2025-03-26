@@ -1,6 +1,10 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash256, Message, NonEmpty, Timestamp},
+    grug::{
+        Addr, Binary, ByteArray, Hash256, JsonSerExt, Message, NonEmpty, SignData, StdError,
+        Timestamp,
+    },
+    sha2::Sha256,
 };
 
 /// A number that included in each transaction's sign doc for the purpose of
@@ -61,6 +65,17 @@ pub struct SessionInfo {
     pub expire_at: Timestamp,
 }
 
+impl SignData for SessionInfo {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        // Convert to JSON value first, then to bytes, such that the struct fields
+        // are ordered alphabetically.
+        self.to_json_value()?.to_json_vec()
+    }
+}
+
 /// Data that a transaction's sender must sign with their private key.
 ///
 /// This includes the messages to be included in the transaction, as well as
@@ -71,6 +86,17 @@ pub struct SignDoc {
     pub gas_limit: u64,
     pub messages: NonEmpty<Vec<Message>>,
     pub data: Metadata,
+}
+
+impl SignData for SignDoc {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        // Convert to JSON value first, then to bytes, such that the struct fields
+        // are ordered alphabetically.
+        self.to_json_value()?.to_json_vec()
+    }
 }
 
 /// Data that the account expects for the transaction's [`data`](grug::Tx::data)

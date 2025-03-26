@@ -10,8 +10,8 @@ use {
     },
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Tx, Undefined,
-        UnsignedTx, btree_map,
+        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdResult, Tx,
+        Undefined, UnsignedTx, btree_map,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
@@ -190,22 +190,24 @@ where
         expiry: Option<Duration>,
     ) -> StdResult<(Metadata, Credential)> {
         let data = self.metadata(chain_id, nonce, expiry);
+
         let sign_doc = SignDoc {
             sender,
             gas_limit,
             messages: msgs.clone(),
             data: data.clone(),
         };
-        // Convert the JSON value first so that the struct fields are sorted alphabetically.
-        let sign_bytes = sign_doc.to_json_value()?.to_json_vec()?;
-        let standard_credential = self.create_standard_credential(&sign_bytes);
+
+        let prehash_sign_data = sign_doc.to_prehash_sign_data()?;
+        let standard_credential = self.create_standard_credential(&prehash_sign_data);
 
         Ok((data, Credential::Standard(standard_credential)))
     }
 
-    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StandardCredential {
+    /// Note: This function expects the _prehash_ bytes.
+    pub fn create_standard_credential(&self, prehash_sign_doc: &[u8]) -> StandardCredential {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
-        let signature = create_signature(sk, sign_bytes);
+        let signature = create_signature(sk, prehash_sign_doc);
 
         StandardCredential {
             key_hash: self.sign_with,
