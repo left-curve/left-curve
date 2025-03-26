@@ -20,7 +20,7 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
 }) => {
   const [isOptionExpanded, setOptionExpanded] = useState(false);
 
-  const options = Children.toArray(children);
+  const options = Children.toArray(children) as React.ReactElement[];
 
   return (
     <div className={className}>
@@ -52,7 +52,7 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
               className="flex flex-col"
             >
               <motion.div
-                className="flex flex-col gap-3 py-4"
+                className="flex flex-col gap-3 pt-4"
                 variants={{
                   hidden: {},
                   visible: {
@@ -66,15 +66,16 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
                 animate="visible"
               >
                 {options.map((option) => (
-                  <motion.div
-                    key={crypto.randomUUID()}
-                    variants={{
-                      hidden: { opacity: 0, y: -30 },
-                      visible: { opacity: 1, y: 0 },
-                    }}
-                  >
-                    {option}
-                  </motion.div>
+                  <div key={option.key}>
+                    <motion.div
+                      variants={{
+                        hidden: { opacity: 0, y: -30 },
+                        visible: { opacity: 1, y: 0 },
+                      }}
+                    >
+                      {option}
+                    </motion.div>
+                  </div>
                 ))}
               </motion.div>
             </motion.div>

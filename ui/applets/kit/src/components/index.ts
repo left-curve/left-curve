@@ -25,6 +25,7 @@ export { AccordionItem } from "./foundation/AccordionItem";
 export { BorrowBar } from "./foundation/BorrowBar";
 export { Skeleton } from "./foundation/Skeleton";
 export { ExpandOptions } from "./foundation/ExpandOptions";
+export { Checkbox } from "./foundation/Checkbox";
 
 /* ---------------------------------- Icons --------------------------------- */
 
