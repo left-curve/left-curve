@@ -283,14 +283,17 @@ fn verify_signature(
             }
             .eip712_signing_hash()?;
 
-            // Recover the Ethereum public key from the signature.
             // The first 64 bytes of the Ethereum signature is the typical
             // Secp256k1 signature, while the last byte is the recovery ID.
-            // In Ethereum, the recovery ID is usually 27 or 28
-            // instead of the standard 0 or 1 used in raw ECDSA recoverable signatures.
-            // To use it with standard crypto libraries, we subtract 27 to normalize it.
+            //
+            // In Ethereum, the recovery ID is usually 27 or 28, instead of the
+            // standard 0 or 1 used in raw ECDSA recoverable signatures.
+            // However, our `Api` implementation should handle this, so no action
+            // is needed here.
             let signature = &cred.sig[0..64];
-            let recovery_id = cred.sig[64] - 27;
+            let recovery_id = cred.sig[64];
+
+            // Recover the Ethereum public key from the signature.
             let pk = api.secp256k1_pubkey_recover(&sign_bytes.0, signature, recovery_id, false)?;
 
             // Derive Ethereum address from the public key.
