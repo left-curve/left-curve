@@ -5,7 +5,6 @@ use {
     },
     anyhow::{bail, ensure},
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
-    dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
         DangoQuerier,
         auth::{
@@ -20,6 +19,18 @@ use {
     sha2::Sha256,
     std::collections::BTreeSet,
 };
+
+/// The expected storage layout of the account factory contract.
+pub mod account_factory {
+    use {
+        dango_types::{account_factory::Username, auth::Key},
+        grug::{Addr, Hash256, Map, Set},
+    };
+
+    pub const KEYS: Map<(&Username, Hash256), Key> = Map::new("key");
+
+    pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
+}
 
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
@@ -67,7 +78,7 @@ pub fn authenticate_tx(
         ctx.querier
             .query_wasm_raw(
                 factory,
-                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+                account_factory::ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
             )?
             .is_some_and(|bytes| bytes.is_empty()),
         "account {} isn't associated with user `{}`",
@@ -182,9 +193,10 @@ pub fn verify_nonce_and_signature(
             };
 
             // Query the key by key hash and username.
-            let key = ctx
-                .querier
-                .query_wasm_path(factory, &KEYS.path((&metadata.username, key_hash)))?;
+            let key = ctx.querier.query_wasm_path(
+                factory,
+                &account_factory::KEYS.path((&metadata.username, key_hash)),
+            )?;
 
             if let Some(session) = session_credential {
                 ensure!(
@@ -441,10 +453,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -477,10 +490,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -576,10 +590,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -629,10 +644,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -704,10 +720,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 

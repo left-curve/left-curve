@@ -3162,6 +3162,7 @@ name = "dango-account-factory"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-auth",
  "dango-types",
  "grug",
 ]
@@ -3207,7 +3208,6 @@ dependencies = [
  "alloy",
  "anyhow",
  "base64 0.22.1",
- "dango-account-factory",
  "dango-types",
  "grug",
  "hex",

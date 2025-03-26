@@ -23,7 +23,6 @@ fn user_onboarding() {
     // Create a new key offchain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
-        0,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
