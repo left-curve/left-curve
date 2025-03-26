@@ -125,6 +125,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: ToString,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     /// Create a new test suite with the given DB and VM.

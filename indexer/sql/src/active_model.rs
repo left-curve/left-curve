@@ -184,6 +184,8 @@ impl Models {
             created_at: Set(created_at),
             hash: Set(block.info.hash.to_string()),
             app_hash: Set(block_outcome.app_hash.to_string()),
+            // TODO: find the proposer
+            proposer_address: Set(block.info.hash.to_string()),
         };
 
         Ok(Self {

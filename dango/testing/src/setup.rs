@@ -216,6 +216,7 @@ where
     DB: Db,
     VM: Vm + Clone + 'static,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {

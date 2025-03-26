@@ -54,6 +54,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
     O: Signer,
 {
@@ -189,6 +190,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     O: Signer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
@@ -329,6 +331,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     O: Signer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
@@ -370,6 +373,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     O: Signer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {

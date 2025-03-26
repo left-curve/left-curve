@@ -541,6 +541,7 @@ where
     VM: TestVm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     AppError: From<VM::Error> + From<PP::Error> + From<ID::Error> + From<DB::Error>,
 {
     pub fn build(self) -> (TestSuite<DB, VM, PP, ID>, TestAccounts) {

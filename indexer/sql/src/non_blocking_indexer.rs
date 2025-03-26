@@ -6,11 +6,14 @@ use {
         error::{self, IndexerError},
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
+        migration_executes::{ExecuteMigrator, MigratorExecuteTrait},
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_app::{BlockAndBlockOutcome, Indexer, IndexerBatch, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
-    sea_orm::{DatabaseConnection, TransactionTrait},
+    indexer_sql_migration::Migrator,
+    sea_orm::{ConnectOptions, Database, DatabaseConnection, TransactionTrait},
+    sea_orm_migration::MigratorTrait,
     std::{
         collections::HashMap,
         future::Future,
@@ -144,8 +147,8 @@ where
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
                 .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
+                .block_on(async { connect_db_with_url(&url).await }),
+            None => self.handle.block_on(async { connect_db().await }),
         }?;
 
         let mut context = Context {
@@ -174,8 +177,8 @@ where
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
                 .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
+                .block_on(async { connect_db_with_url(&url).await }),
+            None => self.handle.block_on(async { connect_db().await }),
         }?;
 
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
@@ -324,9 +327,89 @@ where
             );
         }
     }
+
+    pub async fn migrate_db(&self) -> Result<(), crate::error::IndexerError> {
+        let pending_migrations = Migrator::get_pending_migrations(&self.context.db).await?;
+
+        let all_executor_migrations = ExecuteMigrator::migrations();
+
+        for migration in pending_migrations {
+            Migrator::up(&self.context.db, Some(1)).await?;
+
+            let migration_name = migration.name().to_string();
+
+            if let Some(executor_migration) = all_executor_migrations.get(&migration_name) {
+                executor_migration
+                    .execute(&self.context.db, self)
+                    .await
+                    .map_err(|e| {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error = %e, "migration failed");
+
+                        crate::error::IndexerError::Migration(e.to_string())
+                    })?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<H> IndexerBatch for NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
+    fn block(&self, block_height: u64) -> Result<BlockAndBlockOutcome, Box<dyn std::error::Error>> {
+        let block_filename = self.indexer_path.block_path(block_height);
+
+        let block_to_index = match BlockToIndex::load_from_disk(block_filename) {
+            Ok(block_to_index) => block_to_index,
+            Err(err) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = %err, block_height, "can't load block from disk");
+                return Err(err.into());
+            },
+        };
+
+        Ok(BlockAndBlockOutcome {
+            block: block_to_index.block.clone(),
+            block_outcome: block_to_index.block_outcome.clone(),
+        })
+    }
 }
 
 // ------------------------------- DB Related ----------------------------------
+
+pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
+    let database_url = "sqlite::memory:";
+
+    connect_db_with_url(database_url).await
+}
+
+pub async fn connect_db_with_url(database_url: &str) -> Result<DatabaseConnection, sea_orm::DbErr> {
+    let mut opt = ConnectOptions::new(database_url.to_owned());
+    opt.max_connections(10)
+    // .min_connections(5)
+    //.connect_timeout(Duration::from_secs(settings.timeout))
+    //.idle_timeout(Duration::from_secs(8))
+    //.max_lifetime(Duration::from_secs(20))
+    .sqlx_logging(false);
+
+    match Database::connect(opt).await {
+        Ok(db) => {
+            #[cfg(feature = "tracing")]
+            tracing::info!("Connected to database: {}", database_url);
+
+            Ok(db)
+        },
+        Err(e) => {
+            #[cfg(feature = "tracing")]
+            tracing::error!("Failed to connect to database {}: {:?}", database_url, e);
+
+            Err(e)
+        },
+    }
+}
 
 impl<H> NonBlockingIndexer<H>
 where
@@ -416,7 +499,7 @@ where
         S: Storage,
     {
         self.handle.block_on(async {
-            self.context.migrate_db().await?;
+            self.migrate_db().await?;
             self.hooks
                 .start(self.context.clone())
                 .await
