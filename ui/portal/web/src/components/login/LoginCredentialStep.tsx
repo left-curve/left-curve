@@ -13,13 +13,14 @@ import { AuthMobile } from "../auth/AuthMobile";
 
 export const LoginCredentialStep: React.FC = () => {
   const navigate = useNavigate();
-  const { data, previousStep } = useWizard<{ username: string }>();
+  const { data, previousStep } = useWizard<{ username: string; sessionKey: boolean }>();
   const { isMd } = useMediaQuery();
 
-  const { username } = data;
+  const { username, sessionKey } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useLogin({
     username,
+    sessionKey,
     mutation: {
       onSuccess: () => navigate({ to: "/" }),
       onError: (err) => {

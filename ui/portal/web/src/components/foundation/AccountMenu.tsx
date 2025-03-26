@@ -1,4 +1,4 @@
-import { useAccount, useBalances, usePrices } from "@left-curve/store";
+import { useAccount, useBalances, usePrices, useSessionKey } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
@@ -153,6 +153,7 @@ function Assets() {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector, account } = useAccount();
+  const { deleteSessionkey } = useSessionKey();
   const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -191,6 +192,7 @@ function Assets() {
           onClick={() => {
             setSidebarVisibility(false);
             connector?.disconnect();
+            deleteSessionkey();
           }}
         >
           <IconLogOut />

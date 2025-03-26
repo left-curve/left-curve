@@ -1,18 +1,24 @@
-import { useInputs, useWizard } from "@left-curve/applets-kit";
-import { usePublicClient } from "@left-curve/store";
+import { Checkbox, useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import { usePublicClient, useStorage } from "@left-curve/store";
+import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { Button, Input } from "@left-curve/applets-kit";
+import { Button, ExpandOptions, Input } from "@left-curve/applets-kit";
 
-import { useMutation } from "@tanstack/react-query";
-import type React from "react";
-import type { FormEvent } from "react";
 import { m } from "~/paraglide/messages";
 
+import type React from "react";
+import type { FormEvent } from "react";
+
 export const LoginUsernameStep: React.FC = () => {
+  const [advancedOptions, setAdvancedOptions] = useStorage("advancedOptions", {
+    initialValue: { useSessionKey: true },
+  });
+
   const navigate = useNavigate();
-  const { nextStep, setData, data } = useWizard<{ username: string }>();
+  const { nextStep, setData } = useWizard<{ username: string; sessionKey: boolean }>();
   const { register, inputs, setError } = useInputs();
+  const { isMd } = useMediaQuery();
 
   const { value: username, error } = inputs.username || {};
 
@@ -27,7 +33,7 @@ export const LoginUsernameStep: React.FC = () => {
       if (numberOfAccounts === 0) {
         setError("username", m["signin.errors.usernameNotExist"]());
       } else {
-        setData({ username });
+        setData({ username, sessionKey: advancedOptions.useSessionKey });
         nextStep();
       }
     },
@@ -67,6 +73,18 @@ export const LoginUsernameStep: React.FC = () => {
         <Button as={Link} fullWidth variant="secondary" to="/">
           {m["signin.continueWithoutLogin"]()}
         </Button>
+        {isMd ? (
+          <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+            <div className="flex items-center gap-2 flex-col">
+              <Checkbox
+                size="md"
+                label="Allow use session key"
+                checked={advancedOptions.useSessionKey}
+                onChange={(v) => setAdvancedOptions({ ...advancedOptions, useSessionKey: v })}
+              />
+            </div>
+          </ExpandOptions>
+        ) : null}
       </form>
       <div className="flex items-center">
         <p>{m["signin.noAccount"]()}</p>
