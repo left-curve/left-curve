@@ -3,7 +3,7 @@ use {
         account_factory::{
             Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, Username,
         },
-        auth::Key,
+        auth::{Key, Signature},
     },
     grug::{Addr, Coins, Hash256, Op},
     std::collections::BTreeMap,
@@ -16,6 +16,14 @@ pub struct User {
     pub keys: BTreeMap<Hash256, Key>,
     /// Accounts associated with this user, indexes by addresses.
     pub accounts: BTreeMap<Addr, Account>,
+}
+
+#[grug::derive(Serde)]
+pub struct RegisterUserData {
+    pub username: Username,
+    pub key: Key,
+    pub key_hash: Hash256,
+    pub seed: u32,
 }
 
 #[grug::derive(Serde)]
@@ -36,10 +44,8 @@ pub enum ExecuteMsg {
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
-        username: Username,
-        secret: u32,
-        key: Key,
-        key_hash: Hash256,
+        data: RegisterUserData,
+        signature: Signature,
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
