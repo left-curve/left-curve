@@ -334,13 +334,15 @@ where
         let all_executor_migrations = ExecuteMigrator::migrations();
 
         for migration in pending_migrations {
+            // NOTE: I would rather be able to call `Migrator::up` with a specific migration `migration`
+            // to avoid moving 1 step with another migration but sea-orm doesn't allow this
             Migrator::up(&self.context.db, Some(1)).await?;
 
             let migration_name = migration.name().to_string();
 
             if let Some(executor_migration) = all_executor_migrations.get(&migration_name) {
                 executor_migration
-                    .execute(&self.context.db, self)
+                    .post_execute(&self.context.db, self)
                     .await
                     .map_err(|e| {
                         #[cfg(feature = "tracing")]

@@ -26,8 +26,8 @@ impl MigratorExecuteTrait for ExecuteMigrator {
 
 #[async_trait::async_trait]
 pub trait MigrationExecuteTrait: MigrationName + Send + Sync {
-    /// Define actions to perform when applying the migration
-    async fn execute(
+    /// Define actions to perform after applying the migration
+    async fn post_execute(
         &self,
         db: &DatabaseConnection,
         indexer: &(dyn IndexerBatch + Sync),

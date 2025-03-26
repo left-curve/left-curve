@@ -15,7 +15,7 @@ pub struct Migration;
 
 #[async_trait::async_trait]
 impl MigrationExecuteTrait for Migration {
-    async fn execute(
+    async fn post_execute(
         &self,
         db: &DatabaseConnection,
         indexer: &(dyn IndexerBatch + Sync),
