@@ -1,9 +1,10 @@
 use {
     crate::{
         account_factory::{
-            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, Username,
+            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, NewUserSalt,
+            Username,
         },
-        auth::Key,
+        auth::{Key, Signature},
     },
     grug::{Addr, Coins, Hash256, Op},
     std::collections::BTreeMap,
@@ -36,10 +37,8 @@ pub enum ExecuteMsg {
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
-        username: Username,
-        secret: u32,
-        key: Key,
-        key_hash: Hash256,
+        data: NewUserSalt,
+        signature: Signature,
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },

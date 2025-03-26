@@ -1,65 +1,90 @@
 use {
-    crate::{account_factory::AccountIndex, auth::Key},
-    grug::{Binary, Hash256},
+    crate::{
+        account_factory::{AccountIndex, Username},
+        auth::Key,
+    },
+    grug::{Binary, Hash256, Inner, JsonSerExt, SignData, StdError, StdResult},
+    sha2::Sha256,
 };
 
 // ------------------------------- new user salt -------------------------------
 
-/// The salt that account factory uses to create a new user's first ever account,
-/// during the onboarding flow.
+/// Necessary data for registering a new username.
 ///
-/// For any subsequent account, the salt is simply the account ID; that is, a
-/// string in the format: `{username}/account/{index}`.
+/// During onboarding, the account factory uses this data as salt to derive the
+/// address of the user's first account. The user must make a deposit to this
+/// address, then submit this data along with a signature over it.
+///
+/// For any subsequent account, the salt is simply the account index (in 32-bit
+/// unsigned big-endian encoding).
 ///
 /// The first ever account of a user needs a special salt, because it must
 /// encode the user's username, key, and key hash, such that these cannot be
 /// tempered with via frontrunning by a malicious block builder. Check the docs
 /// on the user onboarding flow for more details.
-#[derive(Debug, Clone, Copy)]
+#[grug::derive(Serde)]
 pub struct NewUserSalt {
-    pub secret: u32,
+    pub username: Username,
     pub key: Key,
+    /// An arbitrary hash used to identify the key.
+    ///
+    /// This is chosen by the client, without restriction on which hash algorithm
+    /// to use.
     pub key_hash: Hash256,
+}
+
+impl SignData for NewUserSalt {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> StdResult<Vec<u8>> {
+        // Convert to JSON value first, to ensure the structure fields are
+        // sorted alphabetically.
+        self.to_json_value()?.to_json_vec()
+    }
 }
 
 impl NewUserSalt {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain
-    /// bytes := secret (in big endian) || key_hash || key_tag || key
+    /// bytes := len(username) || username || key_hash || key_tag || key
     /// ```
     ///
-    /// `secret` is provided externally.
+    /// The `username` has a maximum length of 15 characters. It is prefixed
+    /// with a single byte indicating its length.
     ///
     /// `key_hash` doesn't need a length prefix because it's of fixed length.
     ///
     /// `key_tag` is a single byte identifying the key's type:
-    /// - `0` for Secp256r1
-    /// - `1` for Secp256k1
-    /// - `2` for Ethereum address
-    pub fn into_bytes(self) -> [u8; 70] {
+    ///
+    /// - `0` for Secp256r1;
+    /// - `1` for Secp256k1;
+    /// - `2` for Ethereum address.
+    pub fn to_bytes(&self) -> Vec<u8> {
         // Maximum possible length for the bytes:
-        // - secret: 4
+        // - len(username): 1
+        // - username: 15
         // - key_hash: 32
         // - key_tag: 1
         // - key: 33
-        // Total: 70 bytes.
-        let mut bytes = [0; 70];
-        bytes[0..4].copy_from_slice(&self.secret.to_be_bytes());
-        bytes[4..36].copy_from_slice(&self.key_hash);
+        // Total: 82 bytes.
+        let mut bytes = Vec::with_capacity(82);
+        bytes.push(self.username.len() as u8);
+        bytes.extend(self.username.inner().as_bytes());
+        bytes.extend(self.key_hash.inner());
         match self.key {
             Key::Secp256r1(pk) => {
-                bytes[36] = 0;
-                bytes[37..70].copy_from_slice(&pk);
+                bytes.push(0);
+                bytes.extend(pk.inner());
             },
             Key::Secp256k1(pk) => {
-                bytes[36] = 1;
-                bytes[37..70].copy_from_slice(&pk);
+                bytes.push(1);
+                bytes.extend(pk.inner());
             },
             Key::Ethereum(addr) => {
-                bytes[36] = 2;
-                // Front-pad the address with zeros.
-                bytes[50..70].copy_from_slice(&addr);
+                bytes.push(2);
+                bytes.extend(addr.inner());
             },
         }
         bytes
@@ -70,7 +95,7 @@ impl NewUserSalt {
 // `Message::instantiate` method.
 impl From<NewUserSalt> for Binary {
     fn from(salt: NewUserSalt) -> Self {
-        salt.into_bytes().into()
+        salt.to_bytes().into()
     }
 }
 

@@ -314,14 +314,13 @@ where
     // Derive the addresses of the genesis accounts that were just created.
     let addresses = genesis_users
         .iter()
-        .enumerate()
-        .map(|(secret, (username, user))| {
+        .map(|(username, user)| {
             let salt = NewUserSalt {
-                secret: secret as u32,
+                username: username.clone(),
                 key: user.key,
                 key_hash: user.key_hash,
             }
-            .into_bytes();
+            .to_bytes();
             let address = Addr::derive(account_factory, account_spot_code_hash, &salt);
             Ok((username.clone(), address))
         })
