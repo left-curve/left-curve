@@ -1155,4 +1155,17 @@ pub fn log10_i256(x: I256) -> anyhow::Result<Dec256> {
     Ok(log2_x.checked_div(LOG2_OF_TEN)?)
 }
 
+/// Computes the base-10 logarithm of a Dec256 value
+/// 
+/// ## Inputs
+/// * `x` - The Dec256 value to compute the logarithm of
+/// 
+/// ## Outputs
+/// * `Ok(Dec256)` - The base-10 logarithm of x
+pub fn log10_dec256(x: Dec256) -> anyhow::Result<Dec256> {
+    let inner_log = log10_i256(x.into_inner())?;
+    let precision_log = Dec256::new(Dec256::DECIMAL_PLACES as i128);
+    Ok(inner_log.checked_sub(precision_log)?)
+}
+
 }
