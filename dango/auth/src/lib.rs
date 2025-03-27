@@ -257,7 +257,7 @@ pub fn verify_signature(
                     sign_doc.to_json_value()?,
                 ),
                 VerifyData::Session(session_info) => (None, session_info.to_json_value()?),
-                VerifyData::Onboard(salt) => (None, salt.to_json_value()?),
+                VerifyData::Onboard(data) => (None, data.to_json_value()?),
             };
 
             // EIP-712 hash used in the signature.
