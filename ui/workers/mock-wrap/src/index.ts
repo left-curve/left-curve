@@ -63,54 +63,54 @@ export default {
       env.MOCK_VALIDATORS,
     ).map((v) => ({ ...v, secret: new Secp256k1(v.secret) }));
 
-    const route = await client.queryWasmSmart<{ address: Address; fee: string }>({
-      contract: addresses.warp,
-      msg: {
-        route: {
-          denom: "hyp/eth/usdc",
-          destinationDomain: MOCK_REMOTE_DOMAIN,
-        },
-      },
-    });
-
     const { address: userAddr } = await request.json<{ address: Address }>();
 
     if (!isValidAddress(userAddr)) {
       return new Response("error: invalid address", { headers, status: 400 });
     }
 
-    const currentNonce = Number((await env.WARP_KV.get("nonce")) || "0");
-    const nextNonce = currentNonce + 1;
-    await env.WARP_KV.put("nonce", nextNonce.toString());
-
     const merkleeTreeConfig = await env.WARP_KV.get("merkle_tree", "text");
-
-    const message = Message.from({
-      version: MAILBOX_VERSION,
-      originDomain: MOCK_REMOTE_DOMAIN,
-      destinationDomain: DANGO_DOMAIN,
-      nonce: currentNonce,
-      sender: Addr32.decode(decodeHex(route.address)),
-      recipient: Addr32.from(addresses.warp),
-      body: TokenMessage.from({
-        recipient: Addr32.from(userAddr),
-        amount: env.MINT_AMOUNT.toString(),
-        metadata: new Uint8Array(0),
-      }).encode(),
-    }).encode();
-
-    const messageId = keccak256(message);
-
     const merkleTree = merkleeTreeConfig
       ? IncrementalMerkleTree.from(deserializeJson(merkleeTreeConfig))
       : IncrementalMerkleTree.create();
 
-    const metadata = mockValidatorSign(
-      validators,
-      merkleTree,
-      messageId,
-      MOCK_REMOTE_DOMAIN,
-    ).encode();
+    let currentNonce = Number((await env.WARP_KV.get("nonce")) || "0");
+
+    const messages = Array.from({ length: 4 }, (_, i) => {
+      const message = Message.from({
+        version: MAILBOX_VERSION,
+        originDomain: MOCK_REMOTE_DOMAIN,
+        destinationDomain: DANGO_DOMAIN,
+        nonce: currentNonce,
+        sender: Addr32.decode(
+          decodeHex(`000000000000000000000000000000000000000000000000000000000000000${i}`),
+        ),
+        recipient: Addr32.from(addresses.warp),
+        body: TokenMessage.from({
+          recipient: Addr32.from(userAddr),
+          amount: env.MINT_AMOUNT.toString(),
+          metadata: new Uint8Array(0),
+        }).encode(),
+      }).encode();
+
+      const messageId = keccak256(message);
+      const metadata = mockValidatorSign(
+        validators,
+        merkleTree,
+        messageId,
+        MOCK_REMOTE_DOMAIN,
+      ).encode();
+      currentNonce += 1;
+      return {
+        contract: addresses.hyperlane.mailbox,
+        msg: {
+          process: {
+            raw_message: encodeHex(message),
+            raw_metadata: encodeHex(metadata),
+          },
+        },
+      };
+    });
 
     await env.WARP_KV.put("merkle_tree", serializeJson(merkleTree.save()));
 
@@ -119,14 +119,10 @@ export default {
 
     const response = await client.execute({
       sender,
-      contract: addresses.hyperlane.mailbox,
-      msg: {
-        process: {
-          raw_message: encodeHex(message),
-          raw_metadata: encodeHex(metadata),
-        },
-      },
+      execute: messages,
     });
+
+    await env.WARP_KV.put("nonce", (currentNonce + 1).toString());
 
     if (response.code !== 0)
       return new Response("error: the tx went wrong", { headers, status: 500 });

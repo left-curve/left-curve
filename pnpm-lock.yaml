@@ -566,6 +566,9 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
