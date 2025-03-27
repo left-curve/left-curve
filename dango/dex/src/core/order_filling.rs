@@ -23,6 +23,8 @@ pub struct FillingOutcome {
     pub fee_base: Uint128,
     /// Fee charged in quote asset
     pub fee_quote: Uint128,
+    /// Whether the order is a maker (if not, it's a taker)
+    pub is_maker: bool,
 }
 
 /// Clear the orders given a clearing price and volume.
@@ -97,6 +99,7 @@ fn fill_bids(
             refund_quote: filled.checked_mul_dec_floor(order_price - clearing_price)?,
             fee_base,
             fee_quote: Uint128::ZERO,
+            is_maker,
         });
 
         if volume.is_zero() {
@@ -146,6 +149,7 @@ fn fill_asks(
             refund_quote: quote_amount.checked_sub(fee_quote)?,
             fee_base: Uint128::ZERO,
             fee_quote,
+            is_maker,
         });
 
         if volume.is_zero() {
