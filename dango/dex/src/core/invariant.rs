@@ -1,15 +1,16 @@
 use {
+    crate::{secant_method, solidly_log_invariant},
     anyhow::ensure,
     dango_types::dex::CurveInvariant,
     grug::{
-        Coin, CoinPair, Denom, Int, MultiplyFraction, MultiplyRatio, Number, NumberConst, Udec128,
-        Uint128,
+        Coin, CoinPair, Dec256, Decimal, Denom, Int, MultiplyFraction, MultiplyRatio, NextNumber,
+        Number, NumberConst, PrevNumber, Signed, Udec128, Uint128, Uint256, Unsigned,
     },
 };
 
 pub trait TradingFunction {
     /// Calculate the value of the trading invariant.
-    fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128>;
+    fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint256>;
 
     fn normalized_invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128>;
 
@@ -31,13 +32,31 @@ pub trait TradingFunction {
 }
 
 impl TradingFunction for CurveInvariant {
-    fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
+    fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint256> {
         match self {
             // k = x * y
             CurveInvariant::Xyk => {
-                let first = *reserve.first().amount;
-                let second = *reserve.second().amount;
+                let first = reserve.first().amount.into_next();
+                let second = reserve.second().amount.into_next();
                 Ok(first.checked_mul(second)?)
+            },
+            CurveInvariant::Solidly => {
+                let first = reserve.first().amount.clone();
+                let second = reserve.second().amount.clone();
+
+                Ok(solidly_log_invariant(
+                    first
+                        .into_next()
+                        .checked_into_dec()?
+                        .checked_into_signed()?,
+                    second
+                        .into_next()
+                        .checked_into_dec()?
+                        .checked_into_signed()?,
+                )?
+                .checked_floor()?
+                .checked_into_unsigned()?
+                .into_int())
             },
         }
     }
