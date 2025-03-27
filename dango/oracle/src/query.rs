@@ -1,10 +1,10 @@
 use {
     crate::{GUARDIAN_SETS, OracleQuerier, PRICE_SOURCES},
-    dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
-    grug::{
-        Addressable, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
-        StdResult,
+    dango_types::{
+        DangoQuerier,
+        oracle::{PrecisionedPrice, PriceSource, QueryMsg},
     },
+    grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
 };
@@ -40,8 +40,9 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    ctx.querier
-        .query_price(ctx.contract.address(), &denom, None)
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+    oracle_querier.query_price(&ctx.querier, &denom, None)
 }
 
 fn query_prices(
@@ -52,14 +53,15 @@ fn query_prices(
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+
     PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| {
             let (denom, price_source) = res?;
-            let price =
-                ctx.querier
-                    .query_price(ctx.contract.address(), &denom, Some(price_source))?;
+            let price = oracle_querier.query_price(&ctx.querier, &denom, Some(price_source))?;
             Ok((denom, price))
         })
         .collect()
