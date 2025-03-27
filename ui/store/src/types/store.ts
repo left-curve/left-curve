@@ -24,6 +24,7 @@ export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof Connec
 
 export type State = {
   chainId: ChainId;
+  isMipdLoaded: boolean;
   current: UID | null;
   username: string | undefined;
   connectors: Map<UID, Connection>;
