@@ -10,13 +10,13 @@ export const config: Config = createConfig({
   transport: graphql(dango.urls.indexer, { batch: true }),
   coins: {
     [dango.id]: {
-      ubtc: {
+      "hyp/all/wbtc": {
         type: "native",
         name: "Bitcoin",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
         symbol: "BTC",
-        denom: "ubtc",
+        denom: "hyp/all/wbtc",
         decimals: 18,
         coingeckoId: "bitcoin",
       },
@@ -30,18 +30,18 @@ export const config: Config = createConfig({
         decimals: 18,
         coingeckoId: "ethereum",
       },
-      uripple: {
+      "hyp/all/xrp": {
         type: "native",
         name: "Ripple",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/xrpl/images/xrp.svg",
         symbol: "XRP",
-        denom: "uripple",
+        denom: "hyp/all/xrp",
         decimals: 18,
         coingeckoId: "ripple",
       },
       "hyp/eth/usdc": {
-        type: "native",
+        type: "alloyed",
         name: "Ethereum USD Circle",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
@@ -50,25 +50,15 @@ export const config: Config = createConfig({
         decimals: 6,
         coingeckoId: "usd-coin",
       },
-      usol: {
+      "hyp/all/sol": {
         type: "native",
         name: "Solana",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
         symbol: "SOL",
-        denom: "usol",
+        denom: "hyp/all/usdc",
         decimals: 18,
         coingeckoId: "solana",
-      },
-      uusdc: {
-        type: "native",
-        name: "USD Circle",
-        logoURI:
-          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-        symbol: "USDC",
-        denom: "uusdc",
-        decimals: 6,
-        coingeckoId: "usd-coin",
       },
     },
   },
