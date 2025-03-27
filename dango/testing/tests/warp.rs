@@ -6,6 +6,7 @@ use {
     },
     dango_types::{
         constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
+        oracle::{self, PriceSource},
         warp::{self, RateLimit, Route, TokenMessage},
     },
     dango_warp::ROUTES,
@@ -35,6 +36,18 @@ fn send_escrowing_collateral() {
     setup_tracing_subscriber(tracing::Level::INFO);
 
     let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
+
+    // Register price source in oracle for DANGO_DENOM (Needed to pay fees).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                DANGO_DENOM.clone() => PriceSource::Fixed { humanized_price: Udec128::ONE, precision: 6, timestamp:  1730802926, },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
 
     let metadata = HexBinary::from_inner(b"hello".to_vec());
 
@@ -132,7 +145,7 @@ fn send_escrowing_collateral() {
             .await
             .expect("Can't fetch blocks");
 
-        assert_that!(blocks).has_length(3);
+        assert_that!(blocks).has_length(4);
 
         let transfers = dango_indexer_sql::entity::transfers::Entity::find()
             .all(&suite.app.indexer.context.db)
@@ -159,6 +172,18 @@ fn send_burning_synth() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
     let metadata = HexBinary::from_inner(b"foo".to_vec());
+
+    // Register price source in oracle for ETH_DENOM (Needed to pay fees).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                ETH_DENOM.clone() => PriceSource::Fixed { humanized_price: Udec128::ONE, precision: 6, timestamp:  1730802926, },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Set the route for the synth token.
     suite
@@ -230,7 +255,20 @@ fn send_burning_synth() {
 
 #[test]
 fn receive_release_collateral() {
-    let (suite, mut accounts, _, contracts) = setup_test();
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    // Register price source in oracle for DANGO_DENOM (Needed to pay fees).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                DANGO_DENOM.clone() => PriceSource::Fixed { humanized_price: Udec128::ONE, precision: 6, timestamp:  1730802926, },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
     let (mut suite, ..) = HyperlaneTestSuite::new(
         suite,
         accounts.owner,
