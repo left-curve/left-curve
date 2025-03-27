@@ -1934,7 +1934,8 @@ fn swap_with_route(
         17  => (Udec128::new_percent(20800), 46451),
         19  => (Udec128::new_percent(20900), 46007),
         21  => (Udec128::new_percent(21000), 45568),
-    } ; "xyk pool balance 1:200 no spread")]
+    },
+    1 ; "xyk pool balance 1:200 no spread")]
 #[test_case(
     CurveInvariant::Xyk,
     Udec128::new_percent(1),
@@ -1965,7 +1966,43 @@ fn swap_with_route(
         17  => (Udec128::new_percent(108), 86535),
         19  => (Udec128::new_percent(109), 84947),
         21  => (Udec128::new_percent(110), 83403),
-    } ; "xyk pool balance 1:1 no spread")]
+    },
+    1 ; "xyk pool balance 1:1 no spread")]
+#[test_case(
+    CurveInvariant::Solidly,
+    Udec128::new_percent(1),
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        // Bid orders
+        !0  => (Udec128::new_percent(99), 2734488),
+        !2  => (Udec128::new_percent(98), 737622),
+        !4  => (Udec128::new_percent(97), 534464),
+        !6  => (Udec128::new_percent(96), 439651),
+        !8  => (Udec128::new_percent(95), 383769),
+        !10 => (Udec128::new_percent(94), 346862),
+        !12 => (Udec128::new_percent(93), 320802),
+        !14 => (Udec128::new_percent(92), 301597),
+        !16 => (Udec128::new_percent(91), 287040),
+        !18 => (Udec128::new_percent(90), 275805),
+
+        // Ask orders
+        1   => (Udec128::new_percent(101), 2698246),
+        3   => (Udec128::new_percent(102), 682341),
+        5   => (Udec128::new_percent(103), 468421),
+        7   => (Udec128::new_percent(104), 365292),
+        9   => (Udec128::new_percent(105), 302365),
+        11  => (Udec128::new_percent(106), 259195), 
+        13  => (Udec128::new_percent(107), 227393),
+        15  => (Udec128::new_percent(108), 202811),
+        17  => (Udec128::new_percent(109), 183137),
+        19  => (Udec128::new_percent(110), 166973),
+    },
+    3 ; "solidly pool balance 1:1 no spread")]
 fn curve_on_orderbook(
     curve_invariant: CurveInvariant,
     tick_size: Udec128,
@@ -1973,6 +2010,7 @@ fn curve_on_orderbook(
     swap_fee_rate: Udec128,
     pool_liquidity: Coins,
     expected_orders: BTreeMap<OrderId, (Udec128, u128)>,
+    order_size_tolerance: u128,
 ) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
@@ -1991,10 +2029,10 @@ fn curve_on_orderbook(
                 quote_denom: USDC_DENOM.clone(),
                 params: PairParams {
                     lp_denom: pair_params.lp_denom.clone(),
-                    curve_invariant: curve_invariant,
+                    curve_invariant,
                     swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                     order_depth,
-                    tick_size: tick_size,
+                    tick_size,
                 },
             }]),
             pool_liquidity.clone(),
@@ -2023,15 +2061,14 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            println!("orders: {:?}", orders);
-            for (i, order) in orders.iter().enumerate() {
-                println!("order {} : {:?}", i, order);
-            }
             assert_eq!(orders.len(), 2 * order_depth as usize);
             for (order_id, (price, amount)) in expected_orders {
                 let order = orders.get(&order_id).unwrap();
                 assert_eq!(order.price, price);
-                assert!(order.amount.into_inner().abs_diff(amount) <= 1);
+                println!("price: {}", price);
+                println!("order.amount: {}", order.amount);
+                println!("amount: {}", amount);
+                assert!(order.amount.into_inner().abs_diff(amount) <= order_size_tolerance);
             }
             true
         });
