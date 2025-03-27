@@ -7,13 +7,15 @@ use {
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
     dango_types::{
         DangoQuerier,
+        account_factory::NewUserSalt,
         auth::{
-            ClientData, Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential,
+            ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
+            StandardCredential,
         },
     },
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, Item, Json, JsonDeExt, JsonSerExt, QuerierExt,
-        SignData, StdError, StdResult, Storage, StorageQuerier, Tx, json,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, SignData,
+        StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -204,15 +206,15 @@ pub fn verify_nonce_and_signature(
                     session.session_info.expire_at
                 );
 
-                // Verify the `SessionInfo` signatures.
+                // Verify the `SessionInfo` signature.
+                //
+                // TODO: we can consider saving authorized session keys in the
+                // contract, so it's not necessary to verify them again.
                 verify_signature(
                     ctx.api,
                     key,
                     signature,
-                    &VerifyData::Arbitrary(&json!({
-                        "session_key": session.session_info.session_key,
-                        "expire_at": session.session_info.expire_at,
-                    })),
+                    VerifyData::Session(session.session_info.clone()),
                 )?;
 
                 // Verify the `SignDoc` signature.
@@ -220,19 +222,11 @@ pub fn verify_nonce_and_signature(
                     ctx.api,
                     Key::Secp256k1(session.session_info.session_key),
                     Signature::Secp256k1(session.session_signature),
-                    &VerifyData::Standard {
-                        chain_id: ctx.chain_id,
-                        sign_doc,
-                        nonce: metadata.nonce,
-                    },
+                    VerifyData::Transaction(sign_doc),
                 )?;
             } else {
-                // Verify the `SignDoc` signatures.
-                verify_signature(ctx.api, key, signature, &VerifyData::Standard {
-                    chain_id: ctx.chain_id,
-                    sign_doc,
-                    nonce: metadata.nonce,
-                })?;
+                // Verify the `SignDoc` signature.
+                verify_signature(ctx.api, key, signature, VerifyData::Transaction(sign_doc))?;
             }
         },
         // No need to verify nonce neither signature in simulation mode.
@@ -246,7 +240,7 @@ pub fn verify_signature(
     api: &dyn Api,
     key: Key,
     signature: Signature,
-    data: &VerifyData,
+    data: VerifyData,
 ) -> anyhow::Result<()> {
     match (key, signature) {
         (Key::Ethereum(addr), Signature::Eip712(cred)) => {
@@ -258,24 +252,12 @@ pub fn verify_signature(
             // Verify that the critical values in the transaction such as
             // the message and the verifying contract (sender).
             let (verifying_contract, message) = match data {
-                VerifyData::Standard {
-                    sign_doc,
-                    chain_id,
-                    nonce,
-                } => (
+                VerifyData::Transaction(sign_doc) => (
                     Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
-                    json!({
-                        "gas_limit": sign_doc.gas_limit,
-                        "metadata": {
-                            "username": sign_doc.data.username,
-                            "chain_id": chain_id,
-                            "nonce": nonce,
-                            "expiry": sign_doc.data.expiry,
-                        },
-                        "messages": sign_doc.messages,
-                    }),
+                    sign_doc.to_json_value()?,
                 ),
-                VerifyData::Arbitrary(json) => (None, json.to_owned().clone()),
+                VerifyData::Session(session_info) => (None, session_info.to_json_value()?),
+                VerifyData::Onboard(salt) => (None, salt.to_json_value()?),
             };
 
             // EIP-712 hash used in the signature.
@@ -355,23 +337,33 @@ pub fn verify_signature(
     Ok(())
 }
 
-pub enum VerifyData<'a> {
-    Standard {
-        sign_doc: SignDoc,
-        chain_id: String,
-        nonce: Nonce,
-    },
-    Arbitrary(&'a Json),
+/// The type of data that was signed.
+pub enum VerifyData {
+    /// The signature is for sending a transaction.
+    ///
+    /// To do this, the user must sign a `SignDoc` using either their primary
+    /// key or a session key that has been authorized.
+    Transaction(SignDoc),
+    /// The signature is for authorizing a session key to send transactions
+    /// on behalf on the primary key.
+    ///
+    /// To do this, the user must sign a `SessionInfo`.
+    Session(SessionInfo),
+    /// The signature is for onboarding a new user.
+    ///
+    /// To do this, the user must sign a `NewUserSalt`.
+    Onboard(NewUserSalt),
 }
 
-impl SignData for VerifyData<'_> {
+impl SignData for VerifyData {
     type Error = StdError;
     type Hasher = Sha256;
 
     fn to_prehash_sign_data(&self) -> StdResult<Vec<u8>> {
         match self {
-            VerifyData::Standard { sign_doc, .. } => sign_doc.to_prehash_sign_data(),
-            VerifyData::Arbitrary(json) => json.to_json_vec(),
+            VerifyData::Transaction(sign_doc) => sign_doc.to_prehash_sign_data(),
+            VerifyData::Session(session_info) => session_info.to_prehash_sign_data(),
+            VerifyData::Onboard(salt) => salt.to_prehash_sign_data(),
         }
     }
 }

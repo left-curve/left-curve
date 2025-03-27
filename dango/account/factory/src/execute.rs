@@ -12,7 +12,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx, json,
+        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -132,9 +132,7 @@ fn register_user(
         ctx.api,
         data.key,
         signature,
-        &VerifyData::Arbitrary(&json!({
-            "username": data.username,
-        })),
+        VerifyData::Onboard(data.clone()),
     )?;
 
     // The username must not already exist.
