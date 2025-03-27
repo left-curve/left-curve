@@ -44,7 +44,12 @@ export function rehydrate(config: Config, parameters: HydrateParameters) {
       }
 
       if (reconnectOnMount) {
-        reconnect(config);
+        config.subscribe(
+          (x) => x.isMipdLoaded,
+          (isMipdLoaded) => {
+            if (isMipdLoaded) reconnect(config);
+          },
+        );
       } else if (config.storage)
         // Reset connections that may have been hydrated from storage.
         config.setState((x) => ({
