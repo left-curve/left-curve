@@ -8,11 +8,11 @@ use {
         },
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
-    digest::{Digest, consts::U32, generic_array::GenericArray},
+    digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdResult, Tx,
-        Undefined, UnsignedTx, btree_map,
+        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdError,
+        StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
@@ -182,8 +182,13 @@ where
         }
     }
 
-    pub fn sign_arbitrary(&self, data: Json) -> StdResult<Signature> {
-        let bytes = Sha256::digest(data.to_json_vec()?);
+    // TODO: currently only support sign data that use SHA256 hasher.
+    pub fn sign_arbitrary<D>(&self, data: D) -> StdResult<Signature>
+    where
+        D: SignData<Hasher = Sha256>,
+        StdError: From<D::Error>,
+    {
+        let bytes = data.to_sign_data()?;
         let standard_credential = self.create_standard_credential(bytes);
 
         Ok(standard_credential.signature)

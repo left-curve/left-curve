@@ -3,14 +3,17 @@ use {
     dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_naive},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, NewUserSalt},
+        account_factory::{
+            self, Account, AccountParams, QueryAccountRequest, RegisterUserData, Username,
+        },
         bank,
         constants::USDC_DENOM,
     },
     grug::{
         Addressable, Coin, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
-        ResultExt, StdError, Tx, Uint128, VerificationError, btree_map, coins, json,
+        ResultExt, StdError, Tx, Uint128, VerificationError, btree_map, coins,
     },
+    std::str::FromStr,
 };
 
 #[test]
@@ -18,9 +21,12 @@ fn user_onboarding() {
     let (suite, accounts, codes, contracts) = setup_test_naive();
     let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
+    let chain_id = suite.chain_id.clone();
+
     // Create a new key offchain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        0,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -53,15 +59,15 @@ fn user_onboarding() {
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                data: NewUserSalt {
-                    username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
-                },
+                username: user.username.clone(),
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 0,
                 signature: user
-                    .sign_arbitrary(json!({
-                        "username": user.username,
-                    }))
+                    .sign_arbitrary(RegisterUserData {
+                        username: user.username.clone(),
+                        chain_id: chain_id.clone(),
+                    })
                     .unwrap(),
             },
             Coins::new(),
@@ -109,11 +115,14 @@ fn onboarding_existing_user() {
     let (suite, accounts, codes, contracts) = setup_test_naive();
     let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
+    let chain_id = suite.chain_id.clone();
+
     // First, we onboard a user normally.
     let tx = {
         // Generate the key and derive address for the user.
         let user = TestAccount::new_random("user").predict_address(
             contracts.account_factory,
+            10,
             codes.account_spot.to_bytes().hash256(),
             true,
         );
@@ -132,15 +141,15 @@ fn onboarding_existing_user() {
                 Message::execute(
                     contracts.account_factory,
                     &account_factory::ExecuteMsg::RegisterUser {
-                        data: NewUserSalt {
-                            username: user.username.clone(),
-                            key: user.first_key(),
-                            key_hash: user.first_key_hash(),
-                        },
+                        username: user.username.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        seed: 10,
                         signature: user
-                            .sign_arbitrary(json!({
-                                "username": user.username,
-                            }))
+                            .sign_arbitrary(RegisterUserData {
+                                username: user.username.clone(),
+                                chain_id: chain_id.clone(),
+                            })
                             .unwrap(),
                     },
                     Coins::new(),
@@ -169,8 +178,11 @@ fn onboarding_without_deposit() {
     let (suite, accounts, codes, contracts) = setup_test_naive();
     let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
+    let chain_id = suite.chain_id.clone();
+
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        3,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -184,15 +196,15 @@ fn onboarding_without_deposit() {
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    data: NewUserSalt {
-                        username: user.username.clone(),
-                        key: user.first_key(),
-                        key_hash: user.first_key_hash(),
-                    },
+                    username: user.username.clone(),
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                    seed: 3,
                     signature: user
-                        .sign_arbitrary(json!({
-                            "username": user.username,
-                        }))
+                        .sign_arbitrary(RegisterUserData {
+                            username: user.username.clone(),
+                            chain_id: chain_id.clone(),
+                        })
                         .unwrap(),
                 },
                 Coins::new(),
@@ -237,9 +249,12 @@ fn update_key() {
     let (suite, accounts, codes, contracts) = setup_test_naive();
     let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
+    let chain_id = suite.chain_id.clone();
+
     // Create a new key offchain; then, predict what its address would be.
     let mut user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        0,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -258,15 +273,15 @@ fn update_key() {
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                data: NewUserSalt {
-                    username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
-                },
+                username: user.username.clone(),
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 0,
                 signature: user
-                    .sign_arbitrary(json!({
-                        "username": user.username,
-                    }))
+                    .sign_arbitrary(RegisterUserData {
+                        username: user.username.clone(),
+                        chain_id: chain_id.clone(),
+                    })
                     .unwrap(),
             },
             Coins::new(),
@@ -357,46 +372,148 @@ fn update_key() {
 /// Should fail because the signature won't be valid.
 #[test]
 fn malicious_register_user() {
-    let (mut suite, _, codes, contracts) = setup_test_naive();
+    let (suite, accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let chain_id = suite.chain_id.clone();
 
-    // User makes the deposit normally.
+    // ------------------------------ User setup -------------------------------
+
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        2,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
+
+    // User makes deposit.
+    suite.hyperlane().receive_transfer(
+        user.address(),
+        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
+    );
+
+    // The frontend instructs the user to sign this.
+    let user_signature = user
+        .sign_arbitrary(RegisterUserData {
+            username: user.username.clone(),
+            chain_id: chain_id.clone(),
+        })
+        .unwrap();
+
+    // ---------------------------- Attacker setup -----------------------------
+
+    // The attacker attempts to register this username using the user's deposit.
+    let false_username = Username::from_str("random_username").unwrap();
 
     let attacker = TestAccount::new_random("attacker").predict_address(
         contracts.account_factory,
+        2,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
 
-    // A malicious block builder sends a register user tx with falsified
-    // username signature.
-    //
-    // Should fail with "unauthentiec" error, because it signing with the wrong
-    // key for the username.
+    let false_signature = attacker
+        .sign_arbitrary(RegisterUserData {
+            username: false_username.clone(),
+            chain_id: chain_id.clone(),
+        })
+        .unwrap();
+
+    // --------------------------- Attack commences ----------------------------
+
+    // The attacker first tries to substitute the `username` field in the
+    // `ExecuteMsg::RegisterUser`, but does not change the user signature.
     suite
         .send_message(
             &mut Factory::new(contracts.account_factory),
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    data: NewUserSalt {
-                        username: user.username.clone(),
-                        key: user.first_key(),
-                        key_hash: user.first_key_hash(),
-                    },
-                    signature: attacker
-                        .sign_arbitrary(json!({
-                            "username": "random_username",
-                        }))
-                        .unwrap(),
+                    username: false_username.clone(),  // attacker falsified this
+                    signature: user_signature.clone(), // attacker keeps this unchaged
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                    seed: 2,
                 },
                 Coins::new(),
             )
             .unwrap(),
         )
         .should_fail_with_error(VerificationError::Unauthentic);
+
+    // The attacker can also try falsify a signature. Since the attacker doesn't
+    // know the user's private key, he signs with a different private key.
+    suite
+        .send_message(
+            &mut Factory::new(contracts.account_factory),
+            Message::execute(
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    username: false_username.clone(),   // attacker falsified this
+                    signature: false_signature.clone(), // this time, attacker also falsifies this
+                    key: user.first_key(),              // but attacker keeps this unchanged
+                    key_hash: user.first_key_hash(),
+                    seed: 2,
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        )
+        .should_fail_with_error(VerificationError::Unauthentic);
+
+    // What if attacker also changes the `key` in the instantiate message?
+    // Signature verification should pass, but the derived deposit address would
+    // be different. Instantiation of the spot account should fail as no deposit
+    // is found.
+    suite
+        .send_message(
+            &mut Factory::new(contracts.account_factory),
+            Message::execute(
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    username: false_username.clone(), // attacker falsified this
+                    signature: false_signature,       // attacker falsifies this
+                    key: attacker.first_key(),        // this time, attacker also falsifies these
+                    key_hash: attacker.first_key_hash(),
+                    seed: 2,
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        )
+        .should_fail_with_error(
+            // The derived deposit address would be the attacker's address.
+            // No orphaned transfer from the Warp contract to the attacker
+            // is found.
+            StdError::data_not_found::<Coins>(
+                dango_bank::ORPHANED_TRANSFERS
+                    .path((contracts.warp, attacker.address()))
+                    .storage_key(),
+            ),
+        );
+
+    // Finally, user properly registers the username.
+    suite
+        .send_message(
+            &mut Factory::new(contracts.account_factory),
+            Message::execute(
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    username: user.username.clone(),
+                    signature: user_signature,
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                    seed: 2,
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        )
+        .should_succeed();
+
+    // User's account should have been created under the correct username.
+    suite
+        .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
+            address: user.address(),
+        })
+        .should_succeed_and(|account| account.params.clone().as_spot().owner == user.username);
 }
