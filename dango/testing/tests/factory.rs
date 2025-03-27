@@ -3,17 +3,14 @@ use {
     dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_naive},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, NewUserSalt, Username},
-        auth::Key,
+        account_factory::{self, Account, AccountParams, NewUserSalt},
         bank,
         constants::USDC_DENOM,
     },
     grug::{
-        Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, JsonSerExt, Message,
-        NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128, btree_map, coins, json,
+        Addressable, Coin, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
+        ResultExt, StdError, Tx, Uint128, VerificationError, btree_map, coins, json,
     },
-    std::str::FromStr,
-    test_case::test_case,
 };
 
 #[test]
@@ -355,32 +352,11 @@ fn update_key() {
         .should_succeed_and_equal(btree_map! { key_hash => pk });
 }
 
-/// A malicious block builder detects a register user transaction, inserts a new,
-/// false transaction that substitutes the legitimate transaction's username,
-/// key, or key hash. Should fail because the derived deposit address won't match.
-#[test_case(
-    Some(String::from("false_username")),
-    None,
-    None;
-    "false username"
-)]
-#[test_case(
-    None,
-    Some(Key::Secp256k1(ByteArray::from([0; 33]))),
-    None;
-    "false key"
-)]
-#[test_case(
-    None,
-    None,
-    Some(Hash256::from_inner([0; 32]));
-    "false key hash"
-)]
-fn false_factory_tx(
-    false_username: Option<String>,
-    false_key: Option<Key>,
-    false_key_hash: Option<Hash256>,
-) {
+/// A malicious block builder detects a register user transaction, could try to,
+/// false transaction that substitutes the legitimate transaction's username.
+/// Should fail because the signature won't be valid.
+#[test]
+fn malicious_register_user() {
     let (mut suite, _, codes, contracts) = setup_test_naive();
 
     // User makes the deposit normally.
@@ -390,18 +366,17 @@ fn false_factory_tx(
         true,
     );
 
-    let username = Username::from_str(&false_username.unwrap()).unwrap_or(user.username.clone());
-    let key = false_key.unwrap_or(user.first_key());
-    let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
+    let attacker = TestAccount::new_random("attacker").predict_address(
+        contracts.account_factory,
+        codes.account_spot.to_bytes().hash256(),
+        true,
+    );
 
     // A malicious block builder sends a register user tx with falsified
-    // secret, key, or key hash.
+    // username signature.
     //
-    // Should fail with "data not found" error, because it be different deposit
-    // address for which no deposit is found.
-    //
-    // We test with `FinalizedBlock` here instead of with `CheckTx`, because a
-    // malicious block builder can bypass mempool check.
+    // Should fail with "unauthentiec" error, because it signing with the wrong
+    // key for the username.
     suite
         .send_message(
             &mut Factory::new(contracts.account_factory),
@@ -409,13 +384,13 @@ fn false_factory_tx(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     data: NewUserSalt {
-                        username: username.clone(),
+                        username: user.username.clone(),
                         key: user.first_key(),
                         key_hash: user.first_key_hash(),
                     },
-                    signature: user
+                    signature: attacker
                         .sign_arbitrary(json!({
-                            "username": user.username,
+                            "username": "random_username",
                         }))
                         .unwrap(),
                 },
@@ -423,22 +398,5 @@ fn false_factory_tx(
             )
             .unwrap(),
         )
-        .should_fail_with_error({
-            let false_address = Addr::derive(
-                contracts.account_factory,
-                codes.account_spot.to_bytes().hash256(),
-                &NewUserSalt {
-                    username: user.username.clone(),
-                    key,
-                    key_hash,
-                }
-                .to_bytes(),
-            );
-
-            StdError::data_not_found::<Coins>(
-                ORPHANED_TRANSFERS
-                    .path((contracts.warp, false_address))
-                    .storage_key(),
-            )
-        });
+        .should_fail_with_error(VerificationError::Unauthentic);
 }
