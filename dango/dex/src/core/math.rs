@@ -1168,4 +1168,64 @@ pub fn log10_dec256(x: Dec256) -> anyhow::Result<Dec256> {
     Ok(inner_log.checked_sub(precision_log)?)
 }
 
+/// Implements Newton's method for finding roots of equations
+///
+/// ## Inputs
+/// * `f` - Function to find root of
+/// * `df` - Derivative of the function
+/// * `x0` - Initial guess
+/// * `tol` - Tolerance for convergence
+/// * `max_iter` - Maximum number of iterations
+///
+/// ## Outputs
+/// * `Ok(Dec256)` - Solution found within tolerance
+/// * `Err` - If no solution found within max iterations or numerical error occurs
+pub fn newton_method<F, DF>(
+    f: F,
+    df: DF,
+    x0: Dec256,
+    tol: Dec256,
+    max_iter: u32,
+) -> anyhow::Result<Dec256>
+where
+    F: Fn(Dec256) -> anyhow::Result<Dec256>,
+    DF: Fn(Dec256) -> anyhow::Result<Dec256>,
+{
+    let mut x = x0;
+    let tolerance = tol;
+
+    for i in 0..max_iter {
+        println!("x_{}: {}", i, x);
+
+        // Calculate f(x) and f'(x)
+        let fx = f(x)?;
+        let dfx = df(x)?;
+
+        // Check if derivative is zero to avoid division by zero
+        anyhow::ensure!(
+            !dfx.is_zero(),
+            "Derivative is zero - cannot continue iteration"
+        );
+
+        println!("fx: {}", fx);
+        println!("dfx: {}", dfx);
+
+        // Calculate next iteration: x = x - f(x)/f'(x)
+        let quotient = fx.checked_div(dfx)?;
+
+        println!("quotient: {}", quotient);
+        let step = quotient.checked_mul(Dec256::new_percent(50))?; // Add 50% damping
+        x = x.checked_sub(step)?;
+
+        println!("tolerance: {}", tolerance);
+        println!("fx.checked_abs(): {}", fx.checked_abs()?);
+
+        // Check for convergence using absolute value
+        if fx.checked_abs()? <= tolerance {
+            return Ok(x);
+        }
+    }
+
+    anyhow::bail!("Failed to converge within {} iterations", max_iter)
+}
 }
