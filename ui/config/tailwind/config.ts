@@ -147,6 +147,8 @@ export const tailwindConfig: Partial<Config> = {
       "account-card-blue": "linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%)",
       "account-card-green":
         "linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%)",
+      "account-card-contract":
+        "linear-gradient(98.89deg,#fff5e6 18.66%,#fce5c4 46.73%,#fff5e6 86%)",
       "borrow-bar-green": "linear-gradient(321.22deg, #D2D184 26.16%, #F9F8EC 111.55%)",
       "borrow-bar-red": "linear-gradient(321.25deg, #F57589 26.85%, #FFF2E2 111.56%)",
       "margin-header":
@@ -307,6 +309,12 @@ export const tailwindConfig: Partial<Config> = {
           fontWeight: "700",
           fontSize: "20px",
           lineHeight: "24px",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".h4-heavy": {
+          fontWeight: "800",
+          fontSize: "20px",
+          lineHeight: "140%",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
         ".diatype-lg-regular": {
