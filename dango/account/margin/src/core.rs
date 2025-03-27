@@ -24,6 +24,7 @@ use {
 ///   that should not be included in the total collateral value.
 pub fn query_health(
     querier: &QuerierWrapper,
+    oracle_querier: &mut OracleQuerier,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
@@ -54,7 +55,7 @@ pub fn query_health(
         debts.insert(Coin::new(denom.clone(), debt)?)?;
 
         // Calculate the value of the debt.
-        let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+        let price = oracle_querier.query_price(querier, denom, None)?;
         let value = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
@@ -83,7 +84,7 @@ pub fn query_health(
             continue;
         }
 
-        let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+        let price = oracle_querier.query_price(querier, denom, None)?;
         let value = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(power.into_inner())?;
 
@@ -133,7 +134,7 @@ pub fn query_health(
             ),
         };
 
-        let offer_price = querier.query_price(app_cfg.addresses.oracle, &offer.denom, None)?;
+        let offer_price = oracle_querier.query_price(querier, &offer.denom, None)?;
         let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
         let offer_collateral_power = app_cfg
             .collateral_powers
@@ -142,7 +143,7 @@ pub fn query_health(
             .unwrap_or(Udec128::ZERO);
         let offer_adjusted_value = offer_value.checked_mul(offer_collateral_power)?;
 
-        let ask_price = querier.query_price(app_cfg.addresses.oracle, &ask.denom, None)?;
+        let ask_price = oracle_querier.query_price(querier, &ask.denom, None)?;
         let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
         let ask_collateral_power = app_cfg
             .collateral_powers

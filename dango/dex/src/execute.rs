@@ -564,7 +564,7 @@ fn clear_orders_of_pair(
     })?;
 
     let dango_config = querier.query_dango_config()?;
-    let oracle = dango_config.addresses.oracle;
+    let mut oracle_querier = OracleQuerier::new(dango_config.addresses.oracle);
     let account_factory = dango_config.addresses.account_factory;
 
     // Fill orders
@@ -673,7 +673,7 @@ fn clear_orders_of_pair(
         }
 
         // Calculate the volume in USD for the filled order
-        let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
+        let base_asset_price = oracle_querier.query_price(querier, &base_denom, None)?;
         let volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
 
         // Get the previous volume for the user's address
