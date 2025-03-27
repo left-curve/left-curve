@@ -1228,4 +1228,101 @@ where
 
     anyhow::bail!("Failed to converge within {} iterations", max_iter)
 }
+
+/// Implements the secant method for finding roots of equations
+///
+/// The secant method approximates the derivative using two points instead of requiring
+/// an explicit derivative function. This makes it useful when derivatives are difficult
+/// to compute or expensive.
+///
+/// ## Inputs
+/// * `f` - Function to find root of
+/// * `x0` - First initial guess
+/// * `x1` - Second initial guess
+/// * `tol` - Tolerance for convergence
+/// * `max_iter` - Maximum number of iterations
+///
+/// ## Outputs
+/// * `Ok(Dec256)` - Solution found within tolerance
+/// * `Err` - If no solution found within max iterations or numerical error occurs
+pub fn secant_method<F>(
+    f: F,
+    x0: Dec256,
+    x1: Dec256,
+    tol: Dec256,
+    max_iter: u32,
+) -> anyhow::Result<Dec256>
+where
+    F: Fn(Dec256) -> anyhow::Result<Dec256>,
+{
+    let mut x_prev = x0;
+    let mut x_curr = x1;
+    let tolerance = tol;
+
+    println!("pre calc f(x0)");
+
+    // Calculate f(x0)
+    let mut f_prev = f(x_prev)?;
+    
+    println!("f({}) = {}", x_prev, f_prev);
+    for i in 0..max_iter {
+        println!("x_{}: {}", i, x_curr);
+
+        // Calculate f(x_curr)
+        let f_curr = f(x_curr)?;
+
+        println!("x_prev: {}", x_prev);
+        println!("x_curr: {}", x_curr);
+
+        println!("f(x_prev) = {}", f_prev);
+        println!("f(x_curr) = {}", f_curr);
+
+        // Check for convergence using absolute value
+        if f_curr.checked_abs()? <= tolerance {
+            return Ok(x_curr);
+        }
+
+        // Calculate the difference between current and previous x values
+        let dx = x_curr.checked_sub(x_prev)?;
+
+        // Check if the difference is too small to avoid division by zero
+        anyhow::ensure!(
+            !dx.is_zero(),
+            "Difference between iterations is zero - cannot continue"
+        );
+
+        // Calculate the difference between current and previous function values
+        let df = f_curr.checked_sub(f_prev)?;
+
+        // Check if the difference is too small to avoid division by zero
+        anyhow::ensure!(
+            !df.is_zero(),
+            "Difference between function values is zero - cannot continue"
+        );
+
+        // Calculate the approximation of the derivative
+        let approx_derivative = df.checked_div(dx)?;
+
+        // Calculate next iteration: x_next = x_curr - f(x_curr)/approx_derivative
+        let quotient = f_curr.checked_div(approx_derivative)?;
+
+        println!("approx_derivative: {}", approx_derivative);
+        println!("quotient: {}", quotient);
+
+        // Apply damping factor for stability (optional)
+        let step = quotient.checked_mul(Dec256::new_percent(80))?; // 80% damping
+
+        println!("step: {}", step);
+
+        // Update values for next iteration
+        x_prev = x_curr;
+        f_prev = f_curr;
+        x_curr = x_curr.checked_sub(step)?;
+
+        println!("tolerance: {}", tolerance);
+        println!("f_curr.checked_abs(): {}", f_curr.checked_abs()?);
+    }
+
+    anyhow::bail!("Failed to converge within {} iterations", max_iter)
+}
 }
