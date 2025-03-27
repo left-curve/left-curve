@@ -1,6 +1,9 @@
 use {
-    crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, CoinPair, Denom, Udec128, Uint128},
+    crate::{
+        account_factory::Username,
+        dex::{Direction, OrderId, PairParams, PairUpdate},
+    },
+    grug::{Addr, CoinPair, Denom, Timestamp, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -122,6 +125,24 @@ pub enum QueryMsg {
         user: Addr,
         start_after: Option<OrderId>,
         limit: Option<u32>,
+    },
+    /// Returns the trading volume of a user address since the specified timestamp.
+    #[returns(Uint128)]
+    Volume {
+        /// The user's address to query trading volume for.
+        user: Addr,
+        /// The start timestamp to query trading volume for. If not provided,
+        /// user's total trading volume will be returned.
+        since: Option<Timestamp>,
+    },
+    /// Returns the trading volume of a username since the specified timestamp.
+    #[returns(Uint128)]
+    VolumeByUser {
+        /// The username to query trading volume for.
+        user: Username,
+        /// The start timestamp to query trading volume for. If not provided,
+        /// username's total trading volume will be returned.
+        since: Option<Timestamp>,
     },
 }
 
