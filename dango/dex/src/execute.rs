@@ -464,6 +464,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .map(|((pair, ..), _)| pair)
         .collect::<BTreeSet<_>>();
 
+    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
@@ -472,7 +474,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             ctx.storage,
             ctx.querier,
             ctx.block.height,
-            app_cfg.addresses.oracle,
+            &mut oracle_querier,
             app_cfg.addresses.account_factory,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
@@ -524,7 +526,7 @@ fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     querier: QuerierWrapper,
     current_block_height: u64,
-    oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
+    oracle_querier: &mut OracleQuerier,
     account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
@@ -679,7 +681,7 @@ fn clear_orders_of_pair(
         }
 
         // Calculate the volume in USD for the filled order
-        let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
+        let base_asset_price = oracle_querier.query_price(&querier, &base_denom, None)?;
         let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
 
         // Record trading volume for the user's address.

@@ -810,8 +810,9 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .unwrap();
 
     // Ensure liquidator received the liquidated collateral and bonus
-    let wbtc_price = suite
-        .query_price(contracts.oracle.address(), &WBTC_DENOM, None)
+    let mut oracle_querier = OracleQuerier::new(contracts.oracle.address());
+    let wbtc_price = oracle_querier
+        .query_price(&suite, &WBTC_DENOM, None)
         .unwrap();
     let liquidator_usdc_increase = usdc_balance_after.checked_sub(usdc_balance_before).unwrap();
     let liquidator_wbtc_decrease = wbtc_balance_before.checked_sub(wbtc_balance_after).unwrap();
@@ -1254,12 +1255,14 @@ proptest! {
             .query_wasm_smart(margin_account.address(), QueryHealthRequest { })
             .unwrap();
 
+        let mut oracle_querier = OracleQuerier::new(contracts.oracle.address());
+
         // Get liquidators total account value before liquidation
         let liquidator_balances_before = suite.query_balances(&liquidator).unwrap();
         let liquidator_worth_before = liquidator_balances_before
             .clone()
             .into_iter().map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
+                let price = oracle_querier.query_price(&suite, &coin.denom, None).unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1282,7 +1285,7 @@ proptest! {
         let liquidator_worth_after = liquidator_balances_after
             .into_iter()
             .map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
+                let price = oracle_querier.query_price(&suite, &coin.denom, None).unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1307,8 +1310,8 @@ proptest! {
             .unwrap();
         let repaid_debt_value = liquidation_event.repaid_debt_value;
         let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
-        let claimed_collateral_value = suite
-            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom, None)
+        let claimed_collateral_value = oracle_querier
+            .query_price(&suite, &scenario.collaterals[0].denom.denom, None)
             .unwrap()
             .value_of_unit_amount(claimed_collateral_amount)
             .unwrap();

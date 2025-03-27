@@ -6,46 +6,53 @@ use {
         lending::{NAMESPACE, SUBNAMESPACE},
         oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
-    grug::{Addr, Denom, Number, Querier, QuerierExt, StorageQuerier},
+    grug::{Addr, Denom, Number, QuerierExt, StorageQuerier},
+    std::collections::HashMap,
 };
 
-/// A trait for querying prices from the oracle.
-pub trait OracleQuerier: Querier {
-    /// Queries the price for a given denom from the oracle.
-    fn query_price(
-        &self,
-        oracle: Addr,
-        denom: &Denom,
-        price_source: Option<PriceSource>,
-    ) -> anyhow::Result<PrecisionedPrice>;
+pub struct OracleQuerier {
+    oracle: Addr,
+    cache: HashMap<Denom, PrecisionedPrice>,
 }
 
-impl<Q> OracleQuerier for Q
-where
-    Q: Querier,
-{
-    fn query_price(
-        &self,
-        oracle: Addr,
+impl OracleQuerier {
+    pub fn new(oracle: Addr) -> Self {
+        Self {
+            oracle,
+            cache: HashMap::new(),
+        }
+    }
+
+    pub fn query_price<Q>(
+        &mut self,
+        querier: &Q,
         denom: &Denom,
         price_source: Option<PriceSource>,
-    ) -> anyhow::Result<PrecisionedPrice> {
+    ) -> anyhow::Result<PrecisionedPrice>
+    where
+        Q: QuerierExt,
+    {
+        let price = self.cache.get(denom);
+        if let Some(price) = price {
+            return Ok(price.clone());
+        }
+
         let price_source = match price_source {
             Some(source) => source,
-            None => self.query_wasm_path(oracle, &PRICE_SOURCES.path(denom))?,
+            None => querier.query_wasm_path(self.oracle, &PRICE_SOURCES.path(denom))?,
         };
 
-        match price_source {
+        let price = match price_source {
             PriceSource::Fixed {
                 humanized_price,
                 precision,
                 timestamp,
             } => {
                 let price = PrecisionlessPrice::new(humanized_price, humanized_price, timestamp);
-                Ok(price.with_precision(precision))
+                Ok::<_, anyhow::Error>(price.with_precision(precision))
             },
             PriceSource::Pyth { id, precision } => {
-                let price = self.query_wasm_path(oracle, &PRICES.path(id))?.0;
+                let price = querier.query_wasm_path(self.oracle, &PRICES.path(id))?.0;
                 Ok(price.with_precision(precision))
             },
             PriceSource::LendingLiquidity => {
@@ -53,11 +60,11 @@ where
                 let underlying_denom = denom
                     .strip(&[&NAMESPACE, &SUBNAMESPACE])
                     .ok_or_else(|| anyhow!("not a lending pool token: {denom}"))?;
-                let underlying_price = self.query_price(oracle, &underlying_denom, None)?;
+                let underlying_price = self.query_price(querier, &underlying_denom, None)?;
 
                 // Get supply index of the LP token
-                let app_cfg: AppConfig = self.query_app_config()?;
-                let supply_index = self
+                let app_cfg: AppConfig = querier.query_app_config()?;
+                let supply_index = querier
                     .query_wasm_path(
                         app_cfg.addresses.lending,
                         &dango_lending::MARKETS.path(&underlying_denom),
@@ -72,6 +79,10 @@ where
                     underlying_price.precision(),
                 ))
             },
-        }
+        }?;
+
+        self.cache.insert(denom.clone(), price.clone());
+
+        Ok(price)
     }
 }
