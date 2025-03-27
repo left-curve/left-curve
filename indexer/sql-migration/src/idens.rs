@@ -10,6 +10,7 @@ pub enum Block {
     CreatedAt,
     Hash,
     AppHash,
+    ProposerAddress,
 }
 
 #[derive(DeriveIden)]

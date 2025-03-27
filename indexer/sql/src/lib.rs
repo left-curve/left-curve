@@ -6,6 +6,7 @@ pub mod entity;
 pub mod error;
 pub mod hooks;
 pub mod indexer_path;
+mod migration_executes;
 pub mod non_blocking_indexer;
 pub mod pubsub;
 

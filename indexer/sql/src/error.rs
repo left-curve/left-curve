@@ -49,6 +49,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+
+    #[error("migration error: {0}")]
+    Migration(String),
 }
 
 impl From<IndexerError> for AppError {

@@ -125,6 +125,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
+    ID::Error: std::fmt::Display,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     /// Create a new test suite with the given DB and VM.
@@ -158,10 +159,7 @@ where
             });
 
         id.start(&state_storage).unwrap_or_else(|err| {
-            panic!(
-                "fatal error while running indexer start: {}",
-                err.to_string()
-            );
+            panic!("fatal error while running indexer start: {}", err);
         });
 
         // 2. Creating the app instance
