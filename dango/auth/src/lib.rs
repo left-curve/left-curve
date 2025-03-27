@@ -498,8 +498,8 @@ mod tests {
               "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
               "signature": {
                 "eip712": {
-                  "sig": "qhvraAO/AnyJO621ig38y8Rc4k12UtuKurqTjMOCHogR5UpyptvZ2lTl0gH0wjFiUTNp3uFe+WAh760HWq2Mnxs=",
-                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJkYW5nbyIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhiNjYyMjdjZjRlYTgwMGI2YjE5YWVkMTk4Mzk1ZmQwYTJkODBlZTFkIn0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
+                  "sig": "4h1wRoW6SJ1ZbVEp8DIwnJ5OV24QUdyGDOrney+Qbc0/PoTTi5wXRvN/LjB+iuGliyK08DGwu1udd8W3m385NRw=",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoibm9uY2UiLCJ0eXBlIjoidWludDMyIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiLCJ0eXBlIjoiQ29pbjAifV0sIkNvaW4wIjpbeyJuYW1lIjoiaHlwL2V0aC91c2RjIiwidHlwZSI6InN0cmluZyJ9XX0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsImRvbWFpbiI6eyJuYW1lIjoiZGFuZ28iLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4YjY2MjI3Y2Y0ZWE4MDBiNmIxOWFlZDE5ODM5NWZkMGEyZDgwZWUxZCJ9LCJtZXNzYWdlIjp7InNlbmRlciI6IjB4YjY2MjI3Y2Y0ZWE4MDBiNmIxOWFlZDE5ODM5NWZkMGEyZDgwZWUxZCIsImRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
                 }
               }
             }
@@ -729,16 +729,16 @@ mod tests {
                 "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
                 "signature": {
                   "eip712": {
-                    "sig": "2JSrtr1cB6bEVxio6xNCb4z3G7JZo3cF2FF3h6GRSTZVI3Qrqme4wyNUseKrG8J/Mo/DxwzYcj6IlcQnWENtNRs=",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQThiWDVhbU4yNGlXMDV4b2c2SGVLWXJ3THA5NU9qWStZcW1iUlQ3U0twZVgiLCJleHBpcmVfYXQiOiIxNzQzMTA5NjkzNjM3In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                    "sig": "kEVvbKJZnU1hqRX/WTVXcn3v8pxvximpJKBFMS9/ZnRyauGuCdzs4AJy5t44KJ5ShWitebYI/fGTyZBxr+1ZYBs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQW9MYWdid29Ldlc1djMrWWF6YnZlbXFtMk1HRVVDSTI0SkprWFo5MWZrTVMiLCJleHBpcmVfYXQiOiIxNzQzMTk5OTAyOTk2In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
                   }
                 }
               },
               "session_info": {
-                "expire_at": "1743109693637",
-                "session_key": "A8bX5amN24iW05xog6HeKYrwLp95OjY+YqmbRT7SKpeX"
+                "expire_at": "1743199902996",
+                "session_key": "AoLagbwoKvW5v3+Yazbvemqm2MGEUCI24JJkXZ91fkMS"
               },
-              "session_signature": "510PITf+ZKexzi+g+5J5SS1JkvKBeMoUvBNh7h9viTcGCMvdkgNvdJsdOGpJcG19XYsgPIaMSKZyHEQkVUK2DQ=="
+              "session_signature": "VWS5LFu4yKZaaMD4Svf8DdXdVKzgj785f7DsZUfoXqMI9wzerv+H1YswlXiF/Mf9rvmmbdfAZvdigUze5SXQRQ=="
             }
           },
           "data": {
