@@ -1357,4 +1357,267 @@ pub fn solidly_log_invariant(a: Dec256, b: Dec256) -> anyhow::Result<Dec256> {
     // Combine the terms
     Ok(three.checked_mul(log_a)?.checked_add(log_b)?.checked_add(log10_dec256(one_plus_b_over_a_squared)?)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        grug::{Int256, Number, NumberConst, Unsigned},
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    #[test_case(
+        I256::ONE
+        => Dec256::ZERO
+        ; "log2_of_1"
+    )]
+    #[test_case(
+        I256::THREE
+        => Dec256::from_str("1.584962500721156181").unwrap()
+        ; "log2_of_3"
+    )]
+    #[test_case(
+        I256::TEN
+        => Dec256::from_str("3.321928094887362348").unwrap()
+        ; "log2_of_10"
+    )]
+    #[test_case(
+        I256::from_str("32").unwrap()
+        => Dec256::from_str("5").unwrap()
+        ; "log2_of_32"
+    )]
+    #[test_case(
+        I256::from_str("33").unwrap()
+        => Dec256::from_str("5.044394119358453438").unwrap()
+        ; "log2_of_33"
+    )]
+    fn test_log2_i256(x: I256) -> Dec256 {
+        log2_i256(x).unwrap()  
+    }
+
+    #[test_case(
+        I256::ONE
+        => Dec256::ZERO
+        ; "log10_of_1"
+    )]
+    #[test_case(
+        I256::TEN
+        => Dec256::ONE
+        ; "log10_of_10"
+    )]
+    #[test_case(
+        I256::from_str("100").unwrap()
+        => Dec256::from_str("2").unwrap()
+        ; "log10_of_100"
+    )]
+    #[test_case(
+        I256::from_str("33").unwrap()
+        => Dec256::from_str("1.518513939877887478").unwrap()
+        ; "log10_of_33"
+    )]
+    fn test_log10_i256(x: I256) -> Dec256 {
+        log10_i256(x).unwrap()
+    }
+
+    #[test_case(
+        Dec256::ONE
+        => Dec256::ZERO
+        ; "log10_of_1"
+    )]
+    #[test_case(
+        Dec256::from_str("10").unwrap()
+        => Dec256::ONE
+        ; "log10_of_10"
+    )]
+    #[test_case(
+        Dec256::from_str("100").unwrap()
+        => Dec256::from_str("2").unwrap()
+        ; "log10_of_100"
+    )]
+    #[test_case(
+        Dec256::from_str("123.12").unwrap()
+        => Dec256::from_str("2.090328606823422312").unwrap()
+        ; "log10_of_123_12"
+    )]
+    fn test_log10_dec256(x: Dec256) -> Dec256 {
+        log10_dec256(x).unwrap()
+    }
+
+    #[test_case(
+        |x: Dec256| Ok(x.checked_sub(Dec256::new(4))?),
+        |_| Ok(Dec256::new(1)),
+        Dec256::new(1),
+        Dec256::new_bps(1),
+        Dec256::new(4)
+        ; "linear_function_f_x_4"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_mul(x)?.checked_sub(Dec256::new(16))?),
+        |x: Dec256| Ok(Dec256::new(2).checked_mul(x)?),
+        Dec256::new(5),
+        Dec256::new_bps(1),
+        Dec256::new(4)
+        ; "quadratic_function_f_x_16"
+    )]
+    #[test_case(
+        // f(x) = x³ - 8
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(Dec256::new(8))?),
+        // Derivative: f'(x) = 3x²
+        |x: Dec256| Ok(Dec256::new(3).checked_mul(x.checked_pow(2)?)?),
+        Dec256::new(3),
+        Dec256::new_bps(1),
+        Dec256::new(2)
+        ; "cubic_function_f_x_8"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(x)?),
+        |x: Dec256| Ok(Dec256::new(3).checked_mul(x.checked_pow(2)?)?.checked_sub(Dec256::new(1))?),
+        Dec256::new(2),
+        Dec256::new_bps(1),
+        Dec256::new(1)
+        ; "x3_minus_x_has_three_roots_converge_to_1"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(x)?),
+        |x: Dec256| Ok(Dec256::new(3).checked_mul(x.checked_pow(2)?)?.checked_sub(Dec256::new(1))?),
+        Dec256::new(-2),
+        Dec256::new_bps(1),
+        Dec256::new(-1)
+        ; "x3_minus_x_has_three_roots_converge_to_neg_1"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(x)?),
+        |x: Dec256| Ok(Dec256::new(3).checked_mul(x.checked_pow(2)?)?.checked_sub(Dec256::new(1))?),
+        Dec256::checked_from_ratio(Int256::new_from_i128(1), Int256::new_from_i128(10))?,
+        Dec256::new_bps(1),
+        Dec256::new(0)
+        ; "x3_minus_x_has_three_roots_converge_to_0"
+    )]
+    fn test_newton_method(
+        f: impl Fn(Dec256) -> anyhow::Result<Dec256>,
+        df: impl Fn(Dec256) -> anyhow::Result<Dec256>,
+        x0: Dec256,
+        tolerance: Dec256,
+        expected: Dec256,
+    ) -> anyhow::Result<()> {
+        let result = newton_method(f, df, x0, tolerance, 100)?;
+
+        let diff = if result > expected {
+            result.checked_sub(expected)?
+        } else {
+            expected.checked_sub(result)?
+        };
+
+        assert!(
+            diff < tolerance,
+            "Result not within tolerance of expected value"
+        );
+        Ok(())
+    }
+
+    #[test_case(
+        |x: Dec256| Ok(x.checked_sub(Dec256::new(4))?),
+        Dec256::new(1),
+        Dec256::new(2),
+        Dec256::new_bps(1),
+        Dec256::new(4)
+        ; "secant_linear_function_f_x_4"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_mul(x)?.checked_sub(Dec256::new(16))?),
+        Dec256::new(3),
+        Dec256::new(5),
+        Dec256::new_bps(1),
+        Dec256::new(4)
+        ; "secant_quadratic_function_f_x_16"
+    )]
+    #[test_case(
+        // f(x) = x³ - 8
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(Dec256::new(8))?),
+        Dec256::new(1),
+        Dec256::new(3),
+        Dec256::new_bps(1),
+        Dec256::new(2)
+        ; "secant_cubic_function_f_x_8"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(x)?),
+        Dec256::from_str("0.5")?,
+        Dec256::new(2),
+        Dec256::new_bps(1),
+        Dec256::new(1)
+        ; "secant_x3_minus_x_converge_to_1"
+    )]
+    #[test_case(
+        |x: Dec256| Ok(x.checked_pow(3)?.checked_sub(x)?),
+        Dec256::new(-2),
+        Dec256::from_str("-0.6")?,
+        Dec256::new_bps(1),
+        Dec256::new(-1)
+        ; "secant_x3_minus_x_converge_to_neg_1"
+    )]
+    fn test_secant_method(
+        f: impl Fn(Dec256) -> anyhow::Result<Dec256>,
+        x0: Dec256,
+        x1: Dec256,
+        tolerance: Dec256,
+        expected: Dec256,
+    ) -> anyhow::Result<()> {
+        let result = secant_method(f, x0, x1, tolerance, 100)?;
+
+        let diff = if result > expected {
+            result.checked_sub(expected)?
+        } else {
+            expected.checked_sub(result)?
+        };
+
+        println!("expected: {}", expected);
+        println!("result: {}", result);
+
+        assert!(
+            diff < tolerance,
+            "Result not within tolerance of expected value"
+        );
+        Ok(())
+    }
+    
+    #[test_case(
+        Uint128::from(100), 
+        Uint128::from(200),
+        Dec256::new_bps(10)
+        ; "solidly_log_invariant_100_200"
+    )]
+    #[test_case(
+        Uint128::from(1000), 
+        Uint128::from(500),
+        Dec256::new_bps(10)
+        ; "solidly_log_invariant_1000_500"
+    )]
+    fn test_solidly_log_invariant_eq_log_of_solidly_invariant(
+        a: Uint128, 
+        b: Uint128, 
+        tolerance: Dec256
+    ) -> anyhow::Result<()> {
+        fn solidly_invariant(a: Uint128, b: Uint128) -> anyhow::Result<Uint256> {
+            let a = a.into_next();
+            let b = b.into_next();
+        
+            Ok(a.checked_mul(b.checked_pow(3)?)?
+                .checked_add(a.checked_pow(3)?.checked_mul(b)?)?)
+        }
+
+        let invariant = solidly_invariant(a, b)?;
+        let log_invariant = log10_i256(invariant.checked_into_signed()?.into_inner())?;
+        let log_solidly_invariant = solidly_log_invariant(Dec256::from_str(&a.to_string())?, Dec256::from_str(&b.to_string())?)?;
+
+        println!("log_invariant: {}", log_invariant);
+        println!("log_solidly_invariant: {}", log_solidly_invariant);
+
+        assert!(
+            log_invariant.checked_sub(log_solidly_invariant)?.checked_abs()? < tolerance,
+            "Logarithm of invariant not within tolerance of logarithm of solidly invariant"
+        );
+        Ok(())
+    }
 }
