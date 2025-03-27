@@ -1325,4 +1325,36 @@ where
 
     anyhow::bail!("Failed to converge within {} iterations", max_iter)
 }
+
+/// Computes the 10-logarithm of the solidly invariant. This is used to avoid overflows
+/// when solving the invariant equation using Newton's method. Since B/A is only large
+/// when the reserves are extremely imbalanced using this invariant instead the solidly
+/// invariant avoids computing large powers of the reserves. The solution to the invariant
+/// equation is the same as the solution to the solidly invariant equation.
+/// 
+/// log(A³B + B³A) = log(A³B) + log(1 + (B/A)²)
+/// = 3log(A) + log(B) + log(1 + (B/A)²)
+/// 
+/// ## Inputs
+/// * `a` - The first reserve
+/// * `b` - The second reserve
+/// 
+/// ## Outputs
+/// * `Ok(Dec256)` - The 10-logarithm of the solidly invariant
+pub fn solidly_log_invariant(a: Dec256, b: Dec256) -> anyhow::Result<Dec256> {
+    anyhow::ensure!(!a.is_zero() && !b.is_zero(), "Reserves cannot be zero");
+    
+    let three = Dec256::new(3);
+    let log_a = log10_dec256(a)?;
+    let log_b = log10_dec256(b)?;
+    
+    // Calculate (B/A)²
+    let b_div_a_squared = b.checked_div(a)?.checked_pow(2)?;
+    
+    // Calculate log(1 + (B/A)²)
+    let one_plus_b_over_a_squared = Dec256::ONE.checked_add(b_div_a_squared)?;
+    
+    // Combine the terms
+    Ok(three.checked_mul(log_a)?.checked_add(log_b)?.checked_add(log10_dec256(one_plus_b_over_a_squared)?)?)
+}
 }
