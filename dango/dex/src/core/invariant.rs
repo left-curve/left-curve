@@ -256,5 +256,85 @@ where
         .checked_into_prev()?)
 }
 
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use test_case::test_case;
+
+    use crate::solidly_log_invariant;
+
+    use super::*;
+
+    #[test_case(
+        100_000u128,  // reserve_a
+        100_000u128,  // reserve_b
+        50_000u128,   // amount_in
+        47_260u128    // expected_amount_out
+        ; "balanced reserves with 50% swap"
+    )]
+    #[test_case(
+        100_000_000_000_000_000u128,  // reserve_a
+        100_000_000_000_000_000u128,  // reserve_b
+        50_000_000_000_000_000u128,   // amount_in
+        47_260_433_708_134_015u128    // expected_amount_out
+        ; "balanced massive reserves with 50% swap"
+    )]
+    #[test_case(
+        1_000_000_000_000_000_000_000_000u128,  // reserve_a
+        1_000_000_000_000_000_000_000_000u128,  // reserve_b
+        1_000_000_000_000_000_000_000u128,   // amount_in
+        900_000_000_000_000_000_000u128    // expected_amount_out
+        ; "massive reserves with 10% swap"
+    )]
+    fn test_solidly_curve_solve_amount_out(
+        reserve_a: u128,
+        reserve_b: u128,
+        amount_in: u128,
+        expected_amount_out: u128,
+    ) {
+        let amount_out = CurveInvariant::Solidly
+            .solve_amount_out(
+                Coin::new(Denom::from_str("uatom").unwrap(), amount_in).unwrap(),
+                &Denom::from_str("uosmo").unwrap(),
+                Udec128::ZERO,
+                &CoinPair::new(
+                    Coin::new(Denom::from_str("uatom").unwrap(), reserve_a).unwrap(),
+                    Coin::new(Denom::from_str("uosmo").unwrap(), reserve_b).unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+
+        assert_eq!(amount_out.amount, Uint128::from(expected_amount_out));
+    }
+
+    #[test_case(
+        100_000u128,  // reserve_a
+        100_000u128,  // reserve_b
+        47_260u128,   // amount_out
+        50_000u128    // expected_amount_in
+        ; "balanced reserves with 50% swap"
+    )]
+    fn test_xyk_curve_solve_amount_in(
+        reserve_a: u128,
+        reserve_b: u128,
+        amount_out: u128,
+        expected_amount_in: u128,
+    ) {
+        let amount_in = CurveInvariant::Xyk
+            .solve_amount_in(
+                Coin::new(Denom::from_str("uosmo").unwrap(), amount_out).unwrap(),
+                &Denom::from_str("uatom").unwrap(),
+                Udec128::ZERO,
+                &CoinPair::new(
+                    Coin::new(Denom::from_str("uatom").unwrap(), reserve_a).unwrap(),
+                    Coin::new(Denom::from_str("uosmo").unwrap(), reserve_b).unwrap(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+
+        assert_eq!(amount_in.amount, Uint128::from(expected_amount_in));
     }
 }
