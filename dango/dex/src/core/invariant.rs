@@ -64,7 +64,16 @@ impl TradingFunction for CurveInvariant {
     fn normalized_invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
         match self {
             // sqrt(k)
-            CurveInvariant::Xyk => Ok(self.invariant(reserve)?.checked_sqrt()?),
+            CurveInvariant::Xyk => Ok(self
+                .invariant(reserve)?
+                .checked_sqrt()?
+                .checked_into_prev()?),
+            // sqrt(sqrt(k))
+            CurveInvariant::Solidly => Ok(self
+                .invariant(reserve)?
+                .checked_sqrt()?
+                .checked_sqrt()?
+                .checked_into_prev()?),
         }
     }
 
