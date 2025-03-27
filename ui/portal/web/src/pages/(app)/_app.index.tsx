@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
+import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
 import { AppletsSection } from "~/components/overview/AppletsSection";
 import { DotsIndicator } from "~/components/overview/SwippeableAccountCard";
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/(app)/_app/")({
 });
 
 function OverviewComponent() {
+  const { isConnected } = useAccount();
   const [cardMobileVisible, setCardMobileVisible] = useState(0);
 
   const topYieldsRef = useRef<HTMLDivElement>(null);
@@ -75,7 +77,9 @@ function OverviewComponent() {
           setCardMobileVisible={setCardMobileVisible}
         />
 
-        <DotsIndicator cardVisible={cardMobileVisible} setCardVisible={setCardMobileVisible} />
+        {isConnected && (
+          <DotsIndicator cardVisible={cardMobileVisible} setCardVisible={setCardMobileVisible} />
+        )}
 
         <AppletsSection />
         <IconButton
