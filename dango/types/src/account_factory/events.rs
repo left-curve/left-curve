@@ -1,17 +1,18 @@
 use {
     crate::{
-        account_factory::{AccountParams, NewUserSalt, Username},
+        account_factory::{AccountParams, Username},
         auth::Key,
     },
-    grug::{Addr, Op},
+    grug::{Addr, Hash256, Op},
 };
 
 /// An event indicating a new user has registered.
 #[grug::derive(Serde)]
 #[grug::event("user_registered")]
 pub struct UserRegistered {
-    pub address: Addr,
-    pub data: NewUserSalt,
+    pub username: Username,
+    pub key: Key,
+    pub key_hash: Hash256,
 }
 
 /// An event indicating a new address has been created.

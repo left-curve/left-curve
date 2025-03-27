@@ -7,7 +7,7 @@ use {
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
     dango_types::{
         DangoQuerier,
-        account_factory::NewUserSalt,
+        account_factory::RegisterUserData,
         auth::{
             ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
@@ -351,8 +351,8 @@ pub enum VerifyData {
     Session(SessionInfo),
     /// The signature is for onboarding a new user.
     ///
-    /// To do this, the user must sign a `NewUserSalt`.
-    Onboard(NewUserSalt),
+    /// To do this, the user must sign a `RegisterUserData`.
+    Onboard(RegisterUserData),
 }
 
 impl SignData for VerifyData {
@@ -363,7 +363,7 @@ impl SignData for VerifyData {
         match self {
             VerifyData::Transaction(sign_doc) => sign_doc.to_prehash_sign_data(),
             VerifyData::Session(session_info) => session_info.to_prehash_sign_data(),
-            VerifyData::Onboard(salt) => salt.to_prehash_sign_data(),
+            VerifyData::Onboard(data) => data.to_prehash_sign_data(),
         }
     }
 }
