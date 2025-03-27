@@ -4,6 +4,7 @@ use bnum::types::I256;
 use grug::{Dec256,  Inner, Int256, IsZero, MultiplyFraction, NextNumber, Number, NumberConst, PrevNumber, Sign, Uint128, Uint256};
 
 pub const NATURAL_LOG_OF_TWO: Dec256 = Dec256::new(693147180559945309);
+pub const LOG2_OF_TEN: Dec256 = Dec256::new(3321928094887362348);
 pub const ZERO_POINT_FIVE: Dec256 = Dec256::new_percent(50);
 pub const TABLE_SIZE: u128 = 1024;
 pub const LOG2_LUT_ONE_TO_TWO: [&str; TABLE_SIZE as usize] = [
@@ -1137,4 +1138,21 @@ pub fn log2_i256(x: I256) -> anyhow::Result<Dec256> {
 
     // Combine integer and fractional parts
     Ok(i_dec.checked_add(f)?)
+}
+
+/// Computes the base-10 logarithm of an I256 value
+/// 
+/// Uses the change of base formula: log10(x) = log2(x) / log2(10)
+/// 
+/// ## Inputs
+/// * `x` - The I256 value to compute the logarithm of (must be positive)
+/// 
+/// ## Outputs
+/// * `Ok(Dec256)` - The base-10 logarithm of x
+/// * `Err` - If x is not positive or numerical error occurs
+pub fn log10_i256(x: I256) -> anyhow::Result<Dec256> {
+    let log2_x = log2_i256(x)?;
+    Ok(log2_x.checked_div(LOG2_OF_TEN)?)
+}
+
 }
