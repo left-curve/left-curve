@@ -159,19 +159,9 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         };
       },
       async signTx(signDoc) {
-        const { domain, message } = signDoc;
-        const sender = domain.verifyingContract;
-        const { messages, gas_limit, metadata } = message;
-        const { username, chain_id, nonce } = metadata;
+        const { message } = signDoc;
 
-        const tx = sha256(
-          serialize({
-            sender,
-            gasLimit: gas_limit,
-            messages,
-            data: { username, chainId: chain_id, nonce },
-          }),
-        );
+        const tx = sha256(serialize(message));
 
         const {
           webauthn,

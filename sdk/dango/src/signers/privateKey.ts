@@ -29,22 +29,8 @@ export class PrivateKeySigner implements Signer {
   }
 
   async signTx(signDoc: SignDoc) {
-    const { message, domain } = signDoc;
-    const sender = domain.verifyingContract;
-    const { messages, metadata, gas_limit: gasLimit } = message;
-    const tx = sha256(
-      serialize({
-        sender,
-        gasLimit,
-        messages,
-        data: {
-          username: metadata.username,
-          chainId: metadata.chain_id,
-          nonce: metadata.nonce,
-          expiry: metadata.expiry,
-        },
-      }),
-    );
+    const { message } = signDoc;
+    const tx = sha256(serialize(message));
 
     const signature = await this.signBytes(tx);
 

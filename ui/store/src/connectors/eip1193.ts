@@ -88,7 +88,6 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       },
       async getKeyHash() {
         const provider = await this.getProvider();
-        const challenge = encodeHex(crypto.getRandomValues(new Uint8Array(32)));
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
         return createKeyHash(controllerAddress);
