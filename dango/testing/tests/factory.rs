@@ -3,15 +3,16 @@ use {
     dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_naive},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, NewUserSalt},
+        account_factory::{self, Account, AccountParams, NewUserSalt, Username},
         auth::Key,
         bank,
         constants::USDC_DENOM,
     },
     grug::{
         Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, JsonSerExt, Message,
-        NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128, btree_map, coins,
+        NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128, btree_map, coins, json,
     },
+    std::str::FromStr,
     test_case::test_case,
 };
 
@@ -49,16 +50,22 @@ fn user_onboarding() {
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
-    // an account and claim the funds held in IBC transfer contract.
+    // an account and claim the funds held in orphaned transfer in bank.
     suite
         .execute(
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                secret: 0,
-                username: user.username.clone(),
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
+                data: NewUserSalt {
+                    username: user.username.clone(),
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                },
+                signature: user
+                    .sign_arbitrary(json!({
+                        "username": user.username,
+                    }))
+                    .unwrap(),
             },
             Coins::new(),
         )
@@ -110,7 +117,6 @@ fn onboarding_existing_user() {
         // Generate the key and derive address for the user.
         let user = TestAccount::new_random("user").predict_address(
             contracts.account_factory,
-            10,
             codes.account_spot.to_bytes().hash256(),
             true,
         );
@@ -129,10 +135,16 @@ fn onboarding_existing_user() {
                 Message::execute(
                     contracts.account_factory,
                     &account_factory::ExecuteMsg::RegisterUser {
-                        username: user.username.clone(),
-                        key: user.first_key(),
-                        key_hash: user.first_key_hash(),
-                        secret: 10,
+                        data: NewUserSalt {
+                            username: user.username.clone(),
+                            key: user.first_key(),
+                            key_hash: user.first_key_hash(),
+                        },
+                        signature: user
+                            .sign_arbitrary(json!({
+                                "username": user.username,
+                            }))
+                            .unwrap(),
                     },
                     Coins::new(),
                 )
@@ -162,7 +174,6 @@ fn onboarding_without_deposit() {
 
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
-        3,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -176,10 +187,16 @@ fn onboarding_without_deposit() {
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    secret: 3,
-                    username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
+                    data: NewUserSalt {
+                        username: user.username.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                    },
+                    signature: user
+                        .sign_arbitrary(json!({
+                            "username": user.username,
+                        }))
+                        .unwrap(),
                 },
                 Coins::new(),
             )
@@ -226,7 +243,6 @@ fn update_key() {
     // Create a new key offchain; then, predict what its address would be.
     let mut user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
-        0,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -239,16 +255,22 @@ fn update_key() {
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
-    // an account and claim the funds held in IBC transfer contract.
+    // an account and claim the funds held in orphaned transfer in bank.
     suite
         .execute(
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                secret: 0,
-                username: user.username.clone(),
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
+                data: NewUserSalt {
+                    username: user.username.clone(),
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                },
+                signature: user
+                    .sign_arbitrary(json!({
+                        "username": user.username,
+                    }))
+                    .unwrap(),
             },
             Coins::new(),
         )
@@ -334,13 +356,13 @@ fn update_key() {
 }
 
 /// A malicious block builder detects a register user transaction, inserts a new,
-/// false transaction that substitutes the legitimate transaction's secret,
+/// false transaction that substitutes the legitimate transaction's username,
 /// key, or key hash. Should fail because the derived deposit address won't match.
 #[test_case(
-    Some(5),
+    Some(String::from("false_username")),
     None,
     None;
-    "false secret"
+    "false username"
 )]
 #[test_case(
     None,
@@ -355,7 +377,7 @@ fn update_key() {
     "false key hash"
 )]
 fn false_factory_tx(
-    false_secret: Option<u32>,
+    false_username: Option<String>,
     false_key: Option<Key>,
     false_key_hash: Option<Hash256>,
 ) {
@@ -364,12 +386,11 @@ fn false_factory_tx(
     // User makes the deposit normally.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
-        2,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
 
-    let secret = false_secret.unwrap_or(2);
+    let username = Username::from_str(&false_username.unwrap()).unwrap_or(user.username.clone());
     let key = false_key.unwrap_or(user.first_key());
     let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
 
@@ -387,10 +408,16 @@ fn false_factory_tx(
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    username: user.username.clone(),
-                    secret,
-                    key,
-                    key_hash,
+                    data: NewUserSalt {
+                        username: username.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                    },
+                    signature: user
+                        .sign_arbitrary(json!({
+                            "username": user.username,
+                        }))
+                        .unwrap(),
                 },
                 Coins::new(),
             )
@@ -401,11 +428,11 @@ fn false_factory_tx(
                 contracts.account_factory,
                 codes.account_spot.to_bytes().hash256(),
                 &NewUserSalt {
-                    secret,
+                    username: user.username.clone(),
                     key,
                     key_hash,
                 }
-                .into_bytes(),
+                .to_bytes(),
             );
 
             StdError::data_not_found::<Coins>(

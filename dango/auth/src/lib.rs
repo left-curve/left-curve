@@ -8,13 +8,12 @@ use {
     dango_types::{
         DangoQuerier,
         auth::{
-            ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
-            StandardCredential,
+            ClientData, Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential,
         },
     },
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, QuerierExt, SignData, StdError,
-        StdResult, Storage, StorageQuerier, Tx, json,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, Json, JsonDeExt, JsonSerExt, QuerierExt,
+        SignData, StdError, StdResult, Storage, StorageQuerier, Tx, json,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
@@ -210,7 +209,10 @@ pub fn verify_nonce_and_signature(
                     ctx.api,
                     key,
                     signature,
-                    &VerifyData::Session(&session.session_info),
+                    &VerifyData::Arbitrary(&json!({
+                        "session_key": session.session_info.session_key,
+                        "expire_at": session.session_info.expire_at,
+                    })),
                 )?;
 
                 // Verify the `SignDoc` signature.
@@ -240,7 +242,7 @@ pub fn verify_nonce_and_signature(
     Ok(())
 }
 
-fn verify_signature(
+pub fn verify_signature(
     api: &dyn Api,
     key: Key,
     signature: Signature,
@@ -273,13 +275,7 @@ fn verify_signature(
                         "messages": sign_doc.messages,
                     }),
                 ),
-                VerifyData::Session(session_info) => (
-                    None,
-                    json!({
-                        "session_key": session_info.session_key,
-                        "expire_at": session_info.expire_at,
-                    }),
-                ),
+                VerifyData::Arbitrary(json) => (None, json.to_owned().clone()),
             };
 
             // EIP-712 hash used in the signature.
@@ -359,13 +355,13 @@ fn verify_signature(
     Ok(())
 }
 
-enum VerifyData<'a> {
+pub enum VerifyData<'a> {
     Standard {
         sign_doc: SignDoc,
         chain_id: String,
         nonce: Nonce,
     },
-    Session(&'a SessionInfo),
+    Arbitrary(&'a Json),
 }
 
 impl SignData for VerifyData<'_> {
@@ -375,7 +371,7 @@ impl SignData for VerifyData<'_> {
     fn to_prehash_sign_data(&self) -> StdResult<Vec<u8>> {
         match self {
             VerifyData::Standard { sign_doc, .. } => sign_doc.to_prehash_sign_data(),
-            VerifyData::Session(session_info) => session_info.to_prehash_sign_data(),
+            VerifyData::Arbitrary(json) => json.to_json_vec(),
         }
     }
 }

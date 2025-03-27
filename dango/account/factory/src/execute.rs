@@ -1,6 +1,7 @@
 use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
+    dango_auth::{VerifyData, verify_signature},
     dango_types::{
         account::{self, single},
         account_factory::{
@@ -11,7 +12,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx, json,
     },
 };
 
@@ -127,7 +128,14 @@ fn register_user(
     signature: Signature,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
-    // TODO!!!!
+    verify_signature(
+        ctx.api,
+        data.key,
+        signature,
+        &VerifyData::Arbitrary(&json!({
+            "username": data.username,
+        })),
+    )?;
 
     // The username must not already exist.
     // We ensure this by asserting there isn't any key already associated with

@@ -8,7 +8,7 @@ use {
         },
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
-    digest::{consts::U32, generic_array::GenericArray},
+    digest::{Digest, consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdResult, Tx,
@@ -16,6 +16,7 @@ use {
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
+    sha2::Sha256,
     std::{array, collections::BTreeMap, str::FromStr},
 };
 
@@ -178,6 +179,13 @@ where
             expiry,
             nonce,
         }
+    }
+
+    pub fn sign_arbitrary(&self, data: Json) -> StdResult<Signature> {
+        let bytes = Sha256::digest(data.to_json_vec()?);
+        let standard_credential = self.create_standard_credential(bytes);
+
+        Ok(standard_credential.signature)
     }
 
     pub fn sign_transaction_with_nonce(
