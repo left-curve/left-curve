@@ -3418,6 +3418,7 @@ name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-oracle",
  "dango-types",
  "grug",
 ]
