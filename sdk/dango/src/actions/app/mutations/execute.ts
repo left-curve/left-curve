@@ -45,7 +45,7 @@ export async function execute<transport extends Transport>(
       const { extraTypes = {}, type = [] } = typedData || {};
 
       acc.typedData.type.push({
-        name: `execute${index}`,
+        name: "execute",
         type: `Execute${index}`,
       } as unknown as TxMessageType);
       acc.typedData.extraTypes[`Execute${index}`] = [
