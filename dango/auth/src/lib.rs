@@ -36,7 +36,7 @@ pub mod account_factory {
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
 
-/// The maximum difference betwen an incoming nonce and the maximum seen nonce.
+/// The maximum difference between an incoming nonce and the maximum seen nonce.
 ///
 /// This is to prevent a specific DoS attack. A rogue member of a multisig can
 /// submit a batch of transactions with the maximum possible nonce, such that
