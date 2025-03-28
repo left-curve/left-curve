@@ -329,6 +329,16 @@ impl Hooks {
                 .map(|a| (a.address.clone(), a))
                 .collect::<HashMap<_, _>>();
 
+            tracing::info!(
+                "Existing accounts: {:#?}",
+                existing_accounts
+                    .iter()
+                    .map(|a| a.username.clone())
+                    .collect::<Vec<_>>()
+            );
+
+            tracing::info!("Inserting accounts: {:#?}", accounts);
+
             entity::accounts::Entity::insert_many(accounts)
             // TODO: choose what I should do when there is a conflict, what to overwrite?
                 // .on_conflict(
