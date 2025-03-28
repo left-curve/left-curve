@@ -44,6 +44,7 @@ anyhow                = { workspace = true }
 assertor              = { workspace = true }
 criterion             = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
+dango-auth            = { workspace = true }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-httpd           = { workspace = true }
 dango-oracle          = { workspace = true, features = ["library"] }

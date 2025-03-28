@@ -36,6 +36,25 @@ pub mod account_factory {
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
 
+/// The maximum difference betwen the nonce of an incoming transaction, and the
+/// biggest seen nonce so far.
+///
+/// This is to prevent a specific DoS attack. A rogue member of a multisig can
+/// submit a batch of transactions, such that the `SEEN_NONCES` set is fully
+/// filled with the following nonces:
+///
+/// ```plain
+/// (u32::MAX - MAX_SEEN_NONCES + 1)..=u32::MAX
+/// ```
+///
+/// This prevents the multisig from being able to submit any more transactions,
+/// because a new tx must come with a nonce bigger than `u32::MAX`, which is
+/// impossible.
+///
+/// We prevent this attack by requiring the nonce of a new tx must not be too
+/// much bigger than the biggest nonce seen so far.
+pub const MAX_NONCE_INCREASE: Nonce = 100;
+
 /// The most recent nonces that have been used to send transactions.
 ///
 /// All three account types (spot, margin, multi) stores their nonces in this
@@ -166,6 +185,20 @@ pub fn verify_nonce_and_signature(
                         // Ensure the first nonce is zero.
                         ensure!(metadata.nonce == 0, "first nonce must be 0");
                     },
+                }
+
+                // The nonce must not be too much bigger than the biggest nonce
+                // seen so far.
+                //
+                // See the documentation for `MAX_NONCE_INCREASE` for the rationale.
+                if let Some(max) = nonces.last() {
+                    ensure!(
+                        metadata.nonce <= max + MAX_NONCE_INCREASE,
+                        "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
+                        metadata.nonce,
+                        max,
+                        MAX_NONCE_INCREASE
+                    );
                 }
 
                 nonces.insert(metadata.nonce);
