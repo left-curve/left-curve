@@ -1,7 +1,6 @@
 use {
-    super::AccountIndex,
     crate::{
-        account_factory::{AccountParams, Username},
+        account_factory::{AccountIndex, AccountParams, Username},
         auth::Key,
     },
     grug::{Addr, Hash256, Op},
