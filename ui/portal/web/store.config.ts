@@ -17,17 +17,17 @@ export const config: Config = createConfig({
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
         symbol: "BTC",
         denom: "hyp/all/wbtc",
-        decimals: 18,
+        decimals: 6,
         coingeckoId: "bitcoin",
       },
-      ueth: {
+      "hyp/all/eth": {
         type: "native",
         name: "Ether",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
         symbol: "ETH",
-        denom: "ueth",
-        decimals: 18,
+        denom: "hyp/all/eth",
+        decimals: 6,
         coingeckoId: "ethereum",
       },
       "hyp/all/xrp": {
@@ -37,7 +37,7 @@ export const config: Config = createConfig({
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/xrpl/images/xrp.svg",
         symbol: "XRP",
         denom: "hyp/all/xrp",
-        decimals: 18,
+        decimals: 6,
         coingeckoId: "ripple",
       },
       "hyp/eth/usdc": {
@@ -57,7 +57,7 @@ export const config: Config = createConfig({
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
         symbol: "SOL",
         denom: "hyp/all/usdc",
-        decimals: 18,
+        decimals: 6,
         coingeckoId: "solana",
       },
     },
