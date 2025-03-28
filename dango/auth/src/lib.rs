@@ -36,11 +36,12 @@ pub mod account_factory {
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
 
-/// The maximum difference between an incoming nonce and the maximum seen nonce.
+/// The maximum difference betwen the nonce of an incoming transaction, and the
+/// biggest seen nonce so far.
 ///
 /// This is to prevent a specific DoS attack. A rogue member of a multisig can
-/// submit a batch of transactions with the maximum possible nonce, such that
-/// the `SEEN_NONCES` set is fully filled with the numbers:
+/// submit a batch of transactions, such that the `SEEN_NONCES` set is fully
+/// filled with the following nonces:
 ///
 /// ```plain
 /// (u32::MAX - MAX_SEEN_NONCES + 1)..=u32::MAX
@@ -52,8 +53,6 @@ pub const MAX_SEEN_NONCES: usize = 20;
 ///
 /// We prevent this attack by requiring the nonce of a new tx must not be too
 /// much bigger than the biggest nonce seen so far.
-///
-/// TODO: link to Zellic audit report that discovered this issue.
 pub const MAX_NONCE_INCREASE: Nonce = 100;
 
 /// The most recent nonces that have been used to send transactions.
