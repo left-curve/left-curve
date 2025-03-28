@@ -108,6 +108,10 @@ migrate-dev-db:
 refresh-dev-db:
   sea-orm-cli migrate refresh
 
-# Generate entity from the datatabase
+# Generate entity from the datatabase for Grug
 generate-entity:
-  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' --ignore-tables 'transfers'
+  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' --ignore-tables 'transfers,accounts,dango_seaql_migrations,grug_seaql_migrations,seaql_migrations'
+
+# Generate entity from the datatabase for Dango
+generate-entity:
+  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' --ignore-tables 'blocks,messages,transactions,events,dango_seaql_migrations,grug_seaql_migrations,seaql_migrations'

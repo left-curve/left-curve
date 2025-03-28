@@ -15,10 +15,10 @@ impl MigrationTrait for Migration {
                     .table(Account::Table)
                     .if_not_exists()
                     .col(pk_uuid(Account::Id))
-                    .col(string(Account::Username))
+                    .col(string_uniq(Account::Username))
                     .col(integer(Account::Index))
-                    .col(string(Account::Address))
-                    .col(string(Account::EthAddress))
+                    .col(string_uniq(Account::Address))
+                    .col(string_null(Account::EthAddress))
                     .col(small_integer(Account::AccountType))
                     .col(date_time(Account::CreatedAt))
                     .col(

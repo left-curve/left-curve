@@ -3358,6 +3358,7 @@ dependencies = [
  "grug-types",
  "indexer-disk-saver",
  "indexer-sql",
+ "itertools 0.10.5",
  "sea-orm",
  "serde",
  "serde_json",

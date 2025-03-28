@@ -1,17 +1,24 @@
 use {
-    crate::{entity, error::Error},
+    crate::{
+        entity::{self, accounts::AccountType},
+        error::Error,
+    },
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     dango_types::{
         account_factory::{self, AccountParams},
         auth::Key,
     },
-    grug::{Addr, ByteArray, EventName, JsonDeExt, Op},
+    grug::{Addr, ByteArray, EventName, Inner, JsonDeExt, Op},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer, SearchEvent},
     indexer_sql::{
         Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
     },
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
+    itertools::Itertools,
+    sea_orm::{
+        ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait, sea_query,
+        sqlx::types::chrono::TimeZone,
+    },
     std::collections::HashMap,
     uuid::Uuid,
 };
@@ -33,12 +40,6 @@ struct AccountDetails {
     eth_address: Option<ByteArray<33>>,
     params: Option<AccountParams>,
     account_type: Option<AccountType>,
-}
-
-#[derive(Debug)]
-enum AccountType {
-    Spot,
-    Margin,
 }
 
 #[async_trait]
@@ -243,7 +244,109 @@ impl Hooks {
             }
         }
 
+        if detected_accounts.is_empty() {
+            return Ok(());
+        }
+
         tracing::info!("Detected accounts: {:?}", detected_accounts);
+
+        let epoch_millis = block.block.info.timestamp.into_millis();
+        let seconds = (epoch_millis / 1_000) as i64;
+        let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
+
+        let created_at = sea_orm::sqlx::types::chrono::Utc
+            .timestamp_opt(seconds, nanoseconds)
+            .single()
+            .unwrap_or_default()
+            .naive_utc();
+
+        let accounts = detected_accounts
+            .into_iter()
+            .flat_map(|(_, account)| {
+                let Some(account_type) = account.account_type else {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        block_height = block.block.info.height,
+                        "Found no account_type, shouldn't happen"
+                    );
+                    return None;
+                };
+
+                Some(entity::accounts::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                    username: Set(account.username.into_inner()),
+                    // TODO: get the index value
+                    index: Set(0),
+                    address: Set(account
+                        .address
+                        .map(|address| address.to_string())
+                        .unwrap_or_default()),
+                    eth_address: Set(account.eth_address.map(|address| address.to_string())),
+                    account_type: Set(account_type),
+                    created_block_height: Set(block.block.info.height as i64),
+                    created_at: Set(created_at),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        // I have to do with chunks to avoid psql errors with too many items
+        let chunk_size = 1000;
+
+        let txn = context.db.begin().await?;
+
+        let chunked_accounts = accounts
+            .into_iter()
+            .chunks(chunk_size)
+            .into_iter()
+            .map(|chunk| chunk.collect())
+            .collect::<Vec<Vec<_>>>();
+
+        for accounts in chunked_accounts {
+            let existing_accounts = entity::accounts::Entity::find()
+                .filter(
+                    entity::accounts::Column::Username
+                        .is_in(
+                            accounts
+                                .iter()
+                                .map(|a| a.username.as_ref())
+                                .collect::<Vec<_>>(),
+                        )
+                        .or(entity::accounts::Column::Address.is_in(
+                            accounts
+                                .iter()
+                                .map(|a| a.address.as_ref())
+                                .collect::<Vec<_>>(),
+                        )),
+                )
+                .all(&txn)
+                .await?;
+
+            let existing_accounts_by_username = existing_accounts
+                .iter()
+                .map(|a| (a.username.clone(), a))
+                .collect::<HashMap<_, _>>();
+            let existing_accounts_by_address = existing_accounts
+                .iter()
+                .map(|a| (a.address.clone(), a))
+                .collect::<HashMap<_, _>>();
+
+            entity::accounts::Entity::insert_many(accounts)
+            // TODO: choose what I should do when there is a conflict, what to overwrite?
+                // .on_conflict(
+                //     sea_query::OnConflict::columns(vec![entity::accounts::Column::Address])
+                //         .update_columns(vec![entity::accounts::Column::Username])
+                //         .to_owned(),
+                // )
+                // .on_conflict(
+                //     sea_query::OnConflict::columns(vec![entity::accounts::Column::Username])
+                //         .update_columns(vec![entity::accounts::Column::Address])
+                //         .to_owned(),
+                // )
+                .exec_without_returning(&txn)
+                .await?;
+        }
+
+        txn.commit().await?;
 
         Ok(())
     }
