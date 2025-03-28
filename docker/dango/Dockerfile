@@ -4,7 +4,7 @@ FROM rust:1.85.0-slim
 RUN apt update && apt install -y clang git libssl-dev pkg-config
 
 # Version of the left-curve monorepo.
-ARG LEFT_CURVE_GIT_COMMIT="76e80c5"
+ARG LEFT_CURVE_GIT_COMMIT="9279371"
 
 # Download dango source code, build, then delete.
 RUN git clone https://github.com/left-curve/left-curve.git \
