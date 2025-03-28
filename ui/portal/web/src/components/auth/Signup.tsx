@@ -310,6 +310,7 @@ const Username: React.FC = () => {
           </p>
         }
         {...register("username", {
+          strategy: "onChange",
           validate: (value) => {
             if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
               return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";

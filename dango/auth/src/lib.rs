@@ -5,24 +5,55 @@ use {
     },
     anyhow::{bail, ensure},
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
-    dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
         DangoQuerier,
+        account_factory::RegisterUserData,
         auth::{
             ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
     },
     grug::{
-        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, QuerierExt, SignData, StdError,
-        StdResult, Storage, StorageQuerier, Tx, json,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, SignData,
+        StdError, StdResult, Storage, StorageQuerier, Tx,
     },
     sha2::Sha256,
     std::collections::BTreeSet,
 };
 
+/// The expected storage layout of the account factory contract.
+pub mod account_factory {
+    use {
+        dango_types::{account_factory::Username, auth::Key},
+        grug::{Addr, Hash256, Map, Set},
+    };
+
+    pub const KEYS: Map<(&Username, Hash256), Key> = Map::new("key");
+
+    pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
+}
+
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
+
+/// The maximum difference betwen the nonce of an incoming transaction, and the
+/// biggest seen nonce so far.
+///
+/// This is to prevent a specific DoS attack. A rogue member of a multisig can
+/// submit a batch of transactions, such that the `SEEN_NONCES` set is fully
+/// filled with the following nonces:
+///
+/// ```plain
+/// (u32::MAX - MAX_SEEN_NONCES + 1)..=u32::MAX
+/// ```
+///
+/// This prevents the multisig from being able to submit any more transactions,
+/// because a new tx must come with a nonce bigger than `u32::MAX`, which is
+/// impossible.
+///
+/// We prevent this attack by requiring the nonce of a new tx must not be too
+/// much bigger than the biggest nonce seen so far.
+pub const MAX_NONCE_INCREASE: Nonce = 100;
 
 /// The most recent nonces that have been used to send transactions.
 ///
@@ -67,7 +98,7 @@ pub fn authenticate_tx(
         ctx.querier
             .query_wasm_raw(
                 factory,
-                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+                account_factory::ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
             )?
             .is_some_and(|bytes| bytes.is_empty()),
         "account {} isn't associated with user `{}`",
@@ -156,6 +187,20 @@ pub fn verify_nonce_and_signature(
                     },
                 }
 
+                // The nonce must not be too much bigger than the biggest nonce
+                // seen so far.
+                //
+                // See the documentation for `MAX_NONCE_INCREASE` for the rationale.
+                if let Some(max) = nonces.last() {
+                    ensure!(
+                        metadata.nonce <= max + MAX_NONCE_INCREASE,
+                        "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
+                        metadata.nonce,
+                        max,
+                        MAX_NONCE_INCREASE
+                    );
+                }
+
                 nonces.insert(metadata.nonce);
 
                 Ok(nonces)
@@ -182,9 +227,10 @@ pub fn verify_nonce_and_signature(
             };
 
             // Query the key by key hash and username.
-            let key = ctx
-                .querier
-                .query_wasm_path(factory, &KEYS.path((&metadata.username, key_hash)))?;
+            let key = ctx.querier.query_wasm_path(
+                factory,
+                &account_factory::KEYS.path((&metadata.username, key_hash)),
+            )?;
 
             if let Some(session) = session_credential {
                 ensure!(
@@ -193,12 +239,15 @@ pub fn verify_nonce_and_signature(
                     session.session_info.expire_at
                 );
 
-                // Verify the `SessionInfo` signatures.
+                // Verify the `SessionInfo` signature.
+                //
+                // TODO: we can consider saving authorized session keys in the
+                // contract, so it's not necessary to verify them again.
                 verify_signature(
                     ctx.api,
                     key,
                     signature,
-                    &VerifyData::Session(&session.session_info),
+                    VerifyData::Session(session.session_info.clone()),
                 )?;
 
                 // Verify the `SignDoc` signature.
@@ -206,19 +255,11 @@ pub fn verify_nonce_and_signature(
                     ctx.api,
                     Key::Secp256k1(session.session_info.session_key),
                     Signature::Secp256k1(session.session_signature),
-                    &VerifyData::Standard {
-                        chain_id: ctx.chain_id,
-                        sign_doc,
-                        nonce: metadata.nonce,
-                    },
+                    VerifyData::Transaction(sign_doc),
                 )?;
             } else {
-                // Verify the `SignDoc` signatures.
-                verify_signature(ctx.api, key, signature, &VerifyData::Standard {
-                    chain_id: ctx.chain_id,
-                    sign_doc,
-                    nonce: metadata.nonce,
-                })?;
+                // Verify the `SignDoc` signature.
+                verify_signature(ctx.api, key, signature, VerifyData::Transaction(sign_doc))?;
             }
         },
         // No need to verify nonce neither signature in simulation mode.
@@ -228,11 +269,11 @@ pub fn verify_nonce_and_signature(
     Ok(())
 }
 
-fn verify_signature(
+pub fn verify_signature(
     api: &dyn Api,
     key: Key,
     signature: Signature,
-    data: &VerifyData,
+    data: VerifyData,
 ) -> anyhow::Result<()> {
     match (key, signature) {
         (Key::Ethereum(addr), Signature::Eip712(cred)) => {
@@ -244,30 +285,12 @@ fn verify_signature(
             // Verify that the critical values in the transaction such as
             // the message and the verifying contract (sender).
             let (verifying_contract, message) = match data {
-                VerifyData::Standard {
-                    sign_doc,
-                    chain_id,
-                    nonce,
-                } => (
+                VerifyData::Transaction(sign_doc) => (
                     Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
-                    json!({
-                        "gas_limit": sign_doc.gas_limit,
-                        "metadata": {
-                            "username": sign_doc.data.username,
-                            "chain_id": chain_id,
-                            "nonce": nonce,
-                            "expiry": sign_doc.data.expiry,
-                        },
-                        "messages": sign_doc.messages,
-                    }),
+                    sign_doc.to_json_value()?,
                 ),
-                VerifyData::Session(session_info) => (
-                    None,
-                    json!({
-                        "session_key": session_info.session_key,
-                        "expire_at": session_info.expire_at,
-                    }),
-                ),
+                VerifyData::Session(session_info) => (None, session_info.to_json_value()?),
+                VerifyData::Onboard(data) => (None, data.to_json_value()?),
             };
 
             // EIP-712 hash used in the signature.
@@ -347,23 +370,33 @@ fn verify_signature(
     Ok(())
 }
 
-enum VerifyData<'a> {
-    Standard {
-        sign_doc: SignDoc,
-        chain_id: String,
-        nonce: Nonce,
-    },
-    Session(&'a SessionInfo),
+/// The type of data that was signed.
+pub enum VerifyData {
+    /// The signature is for sending a transaction.
+    ///
+    /// To do this, the user must sign a `SignDoc` using either their primary
+    /// key or a session key that has been authorized.
+    Transaction(SignDoc),
+    /// The signature is for authorizing a session key to send transactions
+    /// on behalf on the primary key.
+    ///
+    /// To do this, the user must sign a `SessionInfo`.
+    Session(SessionInfo),
+    /// The signature is for onboarding a new user.
+    ///
+    /// To do this, the user must sign a `RegisterUserData`.
+    Onboard(RegisterUserData),
 }
 
-impl SignData for VerifyData<'_> {
+impl SignData for VerifyData {
     type Error = StdError;
     type Hasher = Sha256;
 
     fn to_prehash_sign_data(&self) -> StdResult<Vec<u8>> {
         match self {
-            VerifyData::Standard { sign_doc, .. } => sign_doc.to_prehash_sign_data(),
+            VerifyData::Transaction(sign_doc) => sign_doc.to_prehash_sign_data(),
             VerifyData::Session(session_info) => session_info.to_prehash_sign_data(),
+            VerifyData::Onboard(data) => data.to_prehash_sign_data(),
         }
     }
 }
@@ -441,10 +474,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -477,10 +511,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -496,8 +531,8 @@ mod tests {
               "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
               "signature": {
                 "eip712": {
-                  "sig": "qhvraAO/AnyJO621ig38y8Rc4k12UtuKurqTjMOCHogR5UpyptvZ2lTl0gH0wjFiUTNp3uFe+WAh760HWq2Mnxs=",
-                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MzMzNjFkZTQyNTcxZDZhYTIwYzM3ZGFhNmRhNGI1YWI2N2JmYWFkOSIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJkYW5nbyIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhiNjYyMjdjZjRlYTgwMGI2YjE5YWVkMTk4Mzk1ZmQwYTJkODBlZTFkIn0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
+                  "sig": "4h1wRoW6SJ1ZbVEp8DIwnJ5OV24QUdyGDOrney+Qbc0/PoTTi5wXRvN/LjB+iuGliyK08DGwu1udd8W3m385NRw=",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoibm9uY2UiLCJ0eXBlIjoidWludDMyIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiLCJ0eXBlIjoiQ29pbjAifV0sIkNvaW4wIjpbeyJuYW1lIjoiaHlwL2V0aC91c2RjIiwidHlwZSI6InN0cmluZyJ9XX0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsImRvbWFpbiI6eyJuYW1lIjoiZGFuZ28iLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4YjY2MjI3Y2Y0ZWE4MDBiNmIxOWFlZDE5ODM5NWZkMGEyZDgwZWUxZCJ9LCJtZXNzYWdlIjp7InNlbmRlciI6IjB4YjY2MjI3Y2Y0ZWE4MDBiNmIxOWFlZDE5ODM5NWZkMGEyZDgwZWUxZCIsImRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
                 }
               }
             }
@@ -576,10 +611,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -629,10 +665,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -704,10 +741,11 @@ mod tests {
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
-                ACCOUNTS_BY_USER
+                account_factory::ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                account_factory::KEYS
+                    .save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
             });
 
@@ -724,16 +762,16 @@ mod tests {
                 "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
                 "signature": {
                   "eip712": {
-                    "sig": "2JSrtr1cB6bEVxio6xNCb4z3G7JZo3cF2FF3h6GRSTZVI3Qrqme4wyNUseKrG8J/Mo/DxwzYcj6IlcQnWENtNRs=",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQThiWDVhbU4yNGlXMDV4b2c2SGVLWXJ3THA5NU9qWStZcW1iUlQ3U0twZVgiLCJleHBpcmVfYXQiOiIxNzQzMTA5NjkzNjM3In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                    "sig": "kEVvbKJZnU1hqRX/WTVXcn3v8pxvximpJKBFMS9/ZnRyauGuCdzs4AJy5t44KJ5ShWitebYI/fGTyZBxr+1ZYBs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQW9MYWdid29Ldlc1djMrWWF6YnZlbXFtMk1HRVVDSTI0SkprWFo5MWZrTVMiLCJleHBpcmVfYXQiOiIxNzQzMTk5OTAyOTk2In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
                   }
                 }
               },
               "session_info": {
-                "expire_at": "1743109693637",
-                "session_key": "A8bX5amN24iW05xog6HeKYrwLp95OjY+YqmbRT7SKpeX"
+                "expire_at": "1743199902996",
+                "session_key": "AoLagbwoKvW5v3+Yazbvemqm2MGEUCI24JJkXZ91fkMS"
               },
-              "session_signature": "510PITf+ZKexzi+g+5J5SS1JkvKBeMoUvBNh7h9viTcGCMvdkgNvdJsdOGpJcG19XYsgPIaMSKZyHEQkVUK2DQ=="
+              "session_signature": "VWS5LFu4yKZaaMD4Svf8DdXdVKzgj785f7DsZUfoXqMI9wzerv+H1YswlXiF/Mf9rvmmbdfAZvdigUze5SXQRQ=="
             }
           },
           "data": {

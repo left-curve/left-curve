@@ -1,7 +1,9 @@
 use {
-    super::{AccountParams, Username},
-    crate::auth::Key,
-    grug::{Addr, Op},
+    crate::{
+        account_factory::{AccountParams, Username},
+        auth::Key,
+    },
+    grug::{Addr, Hash256, Op},
 };
 
 /// An event indicating a new user has registered.
@@ -9,8 +11,8 @@ use {
 #[grug::event("user_registered")]
 pub struct UserRegistered {
     pub username: Username,
-    pub address: Addr,
     pub key: Key,
+    pub key_hash: Hash256,
 }
 
 /// An event indicating a new address has been created.
