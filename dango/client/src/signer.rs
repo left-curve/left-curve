@@ -7,8 +7,8 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        Addr, Addressable, ByteArray, Defined, Hash256, HashExt, Inner, JsonSerExt, MaybeDefined,
-        Message, NonEmpty, QueryAppClient, QueryClientExt, Signer, StdResult, Tx, Undefined,
+        Addr, Addressable, ByteArray, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined, Message,
+        NonEmpty, QueryAppClient, QueryClientExt, SignData, Signer, StdResult, Tx, Undefined,
         UnsignedTx,
     },
     std::str::FromStr,
