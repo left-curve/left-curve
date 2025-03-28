@@ -938,7 +938,8 @@ fn max_nonce_dos_attack() {
     }
 
     // Member 3 (bad guy) attempts to DoS attack. He attempts to vote with a
-    // very big nonce. Should fail.
+    // very big nonce. Should fail. Specifically, it should fail at the `CheckTx`
+    // stage, meaning the tx won't enter the mempool at all.
     {
         let msgs = NonEmpty::new_unchecked(vec![
             Message::execute(
@@ -974,7 +975,7 @@ fn max_nonce_dos_attack() {
             credential: credential.to_json_value().unwrap(),
         };
 
-        suite.send_transaction(tx).should_fail_with_error(format!(
+        suite.check_tx(tx).should_fail_with_error(format!(
             "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
             123456, 5, MAX_NONCE_INCREASE
         ));
