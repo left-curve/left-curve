@@ -80,7 +80,7 @@ export type {
   AnyCoin,
   BaseCoin,
   CoinFee,
-  IBCCoin,
+  AlloyCoin,
   NativeCoin,
   ContractCoin,
   CoinGeckoId,
