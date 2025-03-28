@@ -7,13 +7,13 @@ import { wait } from "@left-curve/dango/utils";
 
 const main = async () => {
   try {
+    if (!process.env.OWNER_KEY) throw new Error("error: owner key not found as env variable");
+
     const client = createSignerClient({
       transport: graphql(),
       username: "owner",
       chain: devnet,
-      signer: PrivateKeySigner.fromMnemonic(
-        "success away current amateur choose crystal busy labor cost genius industry cement rhythm refuse whale admit meadow truck edge tiger melt flavor weapon august",
-      ),
+      signer: PrivateKeySigner.fromMnemonic(process.env.OWNER_KEY),
     });
 
     const accounts = await client.getAccountsByUsername({ username: "owner" });
