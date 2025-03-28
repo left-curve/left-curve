@@ -1,4 +1,5 @@
 use {
+    super::AccountIndex,
     crate::{
         account_factory::{AccountParams, Username},
         auth::Key,
@@ -21,6 +22,7 @@ pub struct UserRegistered {
 pub struct AccountRegistered {
     pub address: Addr,
     pub params: AccountParams,
+    pub index: AccountIndex,
 }
 
 /// An event indicating a key has been updated.
