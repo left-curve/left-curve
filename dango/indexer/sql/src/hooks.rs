@@ -136,8 +136,11 @@ impl Hooks {
         Ok(())
     }
 
-    async fn save_accounts(&self, _context: &Context, block: &BlockToIndex) -> Result<(), Error> {
+    async fn save_accounts(&self, context: &Context, block: &BlockToIndex) -> Result<(), Error> {
         // Using code from https://github.com/left-curve/galxe-bot/blob/main/quest-1/src/quest.rs
+
+        // TODO: when `events.method` is added to the event, use it to filter out events before going
+        // through all events here (slower)
 
         let mut detected_accounts: HashMap<account_factory::Username, AccountDetails> =
             HashMap::new();
@@ -169,13 +172,9 @@ impl Hooks {
                             continue;
                         };
 
-                        tracing::info!(
-                            username = event.username.to_string(),
-                            address = event.address.to_string(),
-                            "user registered detected"
-                        );
+                        // TODO: can the eth address be in the event data?
 
-                        let account = detected_accounts.entry(event.username.clone()).or_insert(
+                        let _account = detected_accounts.entry(event.username.clone()).or_insert(
                             AccountDetails {
                                 address: None,
                                 username: event.username,
@@ -184,22 +183,15 @@ impl Hooks {
                                 account_type: None,
                             },
                         );
-
-                        account.address = Some(event.address);
                     },
                     // Quest: Create a new account
                     account_factory::AccountRegistered::EVENT_NAME => {
-                        tracing::info!("FOO");
-
                         let Ok(event) = event
                             .data
                             .deserialize_json::<account_factory::AccountRegistered>()
                         else {
                             continue;
                         };
-
-                        dbg!(&event.params);
-                        tracing::info!("BAR");
 
                         if let AccountParams::Spot(params) | AccountParams::Margin(params) =
                             &event.params

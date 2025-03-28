@@ -3,7 +3,7 @@ use {
     dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_with_indexer},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams},
+        account_factory::{self, Account, AccountParams, RegisterUserData},
         bank,
         constants::USDC_DENOM,
     },
@@ -165,10 +165,16 @@ fn index_account_creations() {
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                secret: 0,
+                seed: 0,
                 username: user.username.clone(),
                 key: user.first_key(),
                 key_hash: user.first_key_hash(),
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        username: user.username.clone(),
+                        chain_id: chain_id.clone(),
+                    })
+                    .unwrap(),
             },
             Coins::new(),
         )
