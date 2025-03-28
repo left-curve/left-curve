@@ -41,7 +41,6 @@ pub struct TransferQuery {}
 
 #[Object]
 impl TransferQuery {
-    /// Get a transfer
     async fn transfers(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -156,17 +155,17 @@ fn apply_filter(
 ) -> Select<Transfers> {
     query.filter(match sort_by {
         SortBy::BlockHeightAsc => Condition::any()
-            .add(entity::transfers::Column::BlockHeight.lt(after.block_height))
+            .add(entity::transfers::Column::BlockHeight.lt(after.block_height as i64))
             .add(
                 entity::transfers::Column::BlockHeight
-                    .eq(after.block_height)
+                    .eq(after.block_height as i64)
                     .and(entity::transfers::Column::Idx.lt(after.idx)),
             ),
         SortBy::BlockHeightDesc => Condition::any()
-            .add(entity::transfers::Column::BlockHeight.gt(after.block_height))
+            .add(entity::transfers::Column::BlockHeight.gt(after.block_height as i64))
             .add(
                 entity::transfers::Column::BlockHeight
-                    .eq(after.block_height)
+                    .eq(after.block_height as i64)
                     .and(entity::transfers::Column::Idx.gt(after.idx)),
             ),
     })

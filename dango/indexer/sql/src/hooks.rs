@@ -16,8 +16,7 @@ use {
     },
     itertools::Itertools,
     sea_orm::{
-        ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait, sea_query,
-        sqlx::types::chrono::TimeZone,
+        ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait, sqlx::types::chrono::TimeZone,
     },
     std::collections::HashMap,
     uuid::Uuid,
@@ -321,11 +320,11 @@ impl Hooks {
                 .all(&txn)
                 .await?;
 
-            let existing_accounts_by_username = existing_accounts
+            let _existing_accounts_by_username = existing_accounts
                 .iter()
                 .map(|a| (a.username.clone(), a))
                 .collect::<HashMap<_, _>>();
-            let existing_accounts_by_address = existing_accounts
+            let _existing_accounts_by_address = existing_accounts
                 .iter()
                 .map(|a| (a.address.clone(), a))
                 .collect::<HashMap<_, _>>();
