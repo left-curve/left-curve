@@ -1,51 +1,85 @@
-import { Table } from '@left-curve/applets-kit'
-import { useQuery } from '@tanstack/react-query'
-import { createLazyFileRoute } from '@tanstack/react-router'
+import {
+  IconCopy,
+  Table,
+  type TableColumn,
+  TruncateText,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
+import type { IndexedTransaction } from "@left-curve/dango/types";
+import { usePublicClient } from "@left-curve/store";
+import { useQuery } from "@tanstack/react-query";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { BlockPageSkeleton } from "~/components/skeletons/block-page";
 
-const mockData = {
-  block: {
-    height: 123456,
-    timestamp: new Date(),
-    hash: '5AE2D3C26F327C9AB4A5EB1151DF3358988C5AC5899252EC9251271A20CF0148',
-  },
-  proposer: '',
-  txCount: 0,
-}
-
-export const Route = createLazyFileRoute('/(app)/_app/block/$block')({
+export const Route = createLazyFileRoute("/(app)/_app/block/$block")({
   component: RouteComponent,
-})
+});
 
 function RouteComponent() {
-  const { block } = Route.useParams()
+  const { block } = Route.useParams();
+  const client = usePublicClient();
+  const { isMd } = useMediaQuery();
 
-  const { data: blockDetails } = useQuery({
-    queryKey: ['block', block],
-    queryFn: () => {
+  const { data: blockDetails, isLoading } = useQuery({
+    queryKey: ["block", block],
+    queryFn: async () => {
+      const height = +block;
+      const blockInfo = await client.queryBlock({ height });
       return {
-        proposer: 'Faucet',
-        height: 123456,
-        timestamp: new Date(),
-        txs: [],
-      }
+        ...blockInfo,
+        proposer: "Leftcurve Validator",
+      };
     },
-  })
+  });
+
+  if (isLoading) return <BlockPageSkeleton />;
 
   if (!blockDetails) {
-    return <div>Not found</div>
+    return <div>Not found</div>;
   }
 
-  const { proposer, txs, timestamp, height } = blockDetails
+  const { proposer, transactions, createdAt, blockHeight, hash } = blockDetails;
+
+  const columns: TableColumn<IndexedTransaction> = [
+    {
+      header: "Type",
+      cell: ({ row }) => <p>{row.original.transactionType}</p>,
+    },
+    {
+      header: "Hash",
+      cell: ({ row }) => <TruncateText text={row.original.hash} />,
+    },
+    {
+      header: "Account",
+      cell: ({ row }) => <p>{row.original.sender}</p>,
+    },
+    {
+      header: "Result",
+      cell: ({ row }) => {
+        const { hasSucceeded } = row.original;
+        return (
+          <p className={hasSucceeded ? "text-status-success" : "text-status-fail"}>
+            {hasSucceeded ? "Success" : "Fail"}
+          </p>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
-      <div className="w-full shadow-card-shadow bg-rice-50 rounded-3xl p-4">
-        <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+      <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+        <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
           <h1 className="h4-bold">Block Detail</h1>
-          <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="col-span-1 md:col-span-2 flex items-center gap-1">
+              <p className="diatype-md-medium text-gray-500">Block Hash:</p>
+              {isMd ? <p>{hash}</p> : <TruncateText text={hash} />}
+              <IconCopy className="w-4 h-4 cursor-pointer" copyText={hash} />
+            </div>
             <div className="flex items-center gap-1">
               <p className="diatype-md-medium text-gray-500">Block Height:</p>
-              <p>{height}</p>
+              <p>{blockHeight}</p>
             </div>
             <div className="flex items-center gap-1">
               <p className="diatype-md-medium text-gray-500">Proposer:</p>
@@ -53,23 +87,24 @@ function RouteComponent() {
             </div>
             <div className="flex items-center gap-1">
               <p className="diatype-md-medium text-gray-500">Number of Tx:</p>
-              <p>{txs.length}</p>
+              <p>{transactions.length}</p>
             </div>
             <div className="flex items-center gap-1">
               <p className="diatype-md-medium text-gray-500">Time:</p>
-              <p>{timestamp.toISOString()}</p>
+              <p>{new Date(createdAt).toISOString()}</p>
             </div>
           </div>
-          <img
-            src="/images/emojis/map-no-simple.svg"
-            alt="map-emoji"
-            className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply"
-          />
+          {isMd ? (
+            <img
+              src="/images/emojis/detailed/map-explorer.svg"
+              alt="map-emoji"
+              className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply"
+            />
+          ) : null}
         </div>
       </div>
-      <div className="w-full shadow-card-shadow bg-rice-25 rounded-3xl p-4 flex flex-col gap-4">
-        {/* <Table /> */}
-      </div>
+
+      {transactions.length ? <Table data={transactions} columns={columns} /> : null}
     </div>
-  )
+  );
 }

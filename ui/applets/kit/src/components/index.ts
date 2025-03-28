@@ -10,7 +10,7 @@ export { QRCode } from "./foundation/QRCode";
 export { Select, Item as SelectItem } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
-export { Table } from "./foundation/table/Table";
+export { Table, type TableColumn } from "./foundation/table/Table";
 export { Tabs, Tab } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
 export { Input } from "./foundation/Input";
@@ -24,6 +24,8 @@ export { TextLoop } from "./foundation/TextLoop";
 export { AccordionItem } from "./foundation/AccordionItem";
 export { BorrowBar } from "./foundation/BorrowBar";
 export { Skeleton } from "./foundation/Skeleton";
+export { ExpandOptions } from "./foundation/ExpandOptions";
+export { Checkbox } from "./foundation/Checkbox";
 
 /* ---------------------------------- Icons --------------------------------- */
 

@@ -1,5 +1,5 @@
 import { Button } from "@left-curve/applets-kit";
-import { useAccount, useBalances } from "@left-curve/store-react";
+import { useAccount, useBalances } from "@left-curve/store";
 import { Link } from "@tanstack/react-router";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
@@ -21,15 +21,14 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
   if (!isConnected) {
     return (
       <div className="rounded-3xl relative shadow-card-shadow flex gap-4 w-full p-4 items-center flex-col lg:flex-row justify-end overflow-hidden min-h-[20rem] lg:min-h-[14.5rem] bg-[linear-gradient(236.46deg,_#FFF9F0_21.76%,_#E7D1B9_77.58%)]">
-        <img
-          rel="preload"
-          src="/images/characters/group.svg"
-          alt="group"
-          className="absolute left-0 top-[-1rem] lg:top-auto max-h-44 lg:max-h-80 right-0 mx-auto lg:right-auto"
-        />
+        <picture className="absolute left-0 lg:left-4 top-[-1rem] lg:top-auto max-h-44 lg:max-h-80 right-0 mx-auto lg:right-auto flex items-center justify-center">
+          <source media="(min-width:1024px)" srcSet="/images/characters/group.svg" />
+          <img rel="preload" src="/images/characters/group-mobile.svg" alt="group" />
+        </picture>
+
         <div className=" lg:pr-[4.75rem]">
           <div className="flex flex-col gap-4 items-center max-w-[19.5rem] text-center">
-            <p className="text-rice-800 exposure-h3-italic lg:exposure-h2-italic">
+            <p className="text-rice-800 exposure-h3-italic lg:exposure-h2-italic lg:!leading-normal">
               {m["common.motto"]()}
             </p>
             <div className="flex items-center justify-center gap-4 w-full lg:px-6">
@@ -71,7 +70,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
         {isConnected ? (
           <div className="lg:self-end flex gap-4 items-center justify-center w-full lg:max-w-[256px]">
             <ButtonLink fullWidth size="md" to="/send-and-receive" search={{ action: "receive" }}>
-              {m["common.funds"]()}
+              {m["common.fund"]()}
             </ButtonLink>
             <ButtonLink
               fullWidth

@@ -1,5 +1,5 @@
 import { capitalize } from "@left-curve/dango/utils";
-import { usePublicClient } from "@left-curve/store-react";
+import { usePublicClient } from "@left-curve/store";
 import { forwardRef, useDOMRef } from "../../utils";
 import { SearchInput, type SearchInputProps } from "./SearchInput";
 

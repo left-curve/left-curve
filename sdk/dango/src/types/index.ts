@@ -240,6 +240,8 @@ export type {
   SignatureOutcome,
 } from "./signature.js";
 
+export type { IndexedBlock, IndexedTransaction, IndexedTransactionType } from "./indexer.js";
+
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 
 export { AccountType } from "./account.js";

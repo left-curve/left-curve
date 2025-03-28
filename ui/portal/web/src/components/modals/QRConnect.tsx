@@ -1,24 +1,22 @@
-import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconMobile, QRCode, forwardRef } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
-import { useConnectorClient, useDataChannel } from "@left-curve/store-react";
-import type React from "react";
+import { useConnectorClient, useDataChannel } from "@left-curve/store";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { useToast } from "../foundation/Toast";
+import { toast } from "../foundation/Toast";
 
-export const QRConnect: React.FC = () => {
+export const QRConnect = forwardRef((_props, _ref) => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
     url: import.meta.env.PUBLIC_WEBRTC_URI,
   });
   const { data: signingClient } = useConnectorClient();
   const { hideModal } = useApp();
-  const { toast } = useToast();
 
   dataChannel?.subscribe(async (m) => {
-    if (!signingClient) return;
+    if (!signingClient || isLoadingCredential) return;
 
     try {
       const { id, type, message } = m;
@@ -62,10 +60,11 @@ export const QRConnect: React.FC = () => {
       <span className="w-full h-[1px] bg-gray-100 my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
+          className="bg-white-100"
           isLoading={isLoadingDataChannel || isLoadingCredential}
           data={dataChannel?.getSocketId()}
         />
       </div>
     </div>
   );
-};
+});

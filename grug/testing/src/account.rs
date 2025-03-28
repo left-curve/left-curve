@@ -1,9 +1,9 @@
 use {
-    grug_crypto::{Identity256, sha2_256},
-    grug_mock_account::{Credential, PublicKey},
+    grug_crypto::Identity256,
+    grug_mock_account::{Credential, PublicKey, SignDoc},
     grug_types::{
         Addr, Addressable, ByteArray, GENESIS_SENDER, Hash256, Json, JsonSerExt, Message, NonEmpty,
-        Signer, StdResult, Tx, UnsignedTx,
+        SignData, Signer, StdResult, Tx, UnsignedTx,
     },
     k256::ecdsa::{Signature, SigningKey, signature::DigestSigner},
     rand::rngs::OsRng,
@@ -58,15 +58,15 @@ impl TestAccount {
         sequence: u32,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let sign_bytes = Identity256::from(grug_mock_account::make_sign_bytes(
-            sha2_256,
-            &msgs,
-            self.address,
+        let sign_doc = SignDoc {
+            sender: self.address,
+            msgs: &msgs,
             chain_id,
             sequence,
-        )?);
+        };
 
-        let signature: Signature = self.sk.sign_digest(sign_bytes);
+        let sign_data = Identity256::from_inner(sign_doc.to_sign_data()?);
+        let signature: Signature = self.sk.sign_digest(sign_data);
 
         let credential = Credential {
             signature: ByteArray::from_inner(signature.to_vec().as_slice().try_into()?),

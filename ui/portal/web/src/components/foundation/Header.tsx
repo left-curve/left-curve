@@ -7,7 +7,7 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
-import { useAccount } from "@left-curve/store-react";
+import { useAccount } from "@left-curve/store";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -97,9 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             {isConnected ? (
               <>
                 <ProfileIcon className="w-6 h-6" />
-                <span className="italic font-exposure font-bold capitalize">
-                  {account?.type} #{account?.index}
-                </span>
+                <span className="italic font-exposure font-bold">{account?.username}</span>
               </>
             ) : (
               <span>{m["common.signin"]()}</span>

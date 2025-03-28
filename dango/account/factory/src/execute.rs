@@ -1,13 +1,15 @@
 use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
+    dango_auth::{VerifyData, verify_signature},
     dango_types::{
         account::{self, single},
         account_factory::{
             Account, AccountParamUpdates, AccountParams, AccountRegistered, AccountType,
-            ExecuteMsg, InstantiateMsg, KeyUpdated, NewUserSalt, Salt, UserRegistered, Username,
+            ExecuteMsg, InstantiateMsg, KeyUpdated, NewUserSalt, RegisterUserData, Salt,
+            UserRegistered, Username,
         },
-        auth::Key,
+        auth::{Key, Signature},
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
@@ -30,29 +32,32 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .users
         .into_iter()
         .enumerate()
-        .map(|(secret, (username, (key_hash, key)))| {
+        .map(|(seed, (username, (key_hash, key)))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
 
-            onboard_new_user(
+            let (msg, user_registered, account_registered) = onboard_new_user(
                 ctx.storage,
                 ctx.contract,
                 username,
-                secret as u32,
                 key,
                 key_hash,
+                seed as u32,
                 Coins::default(),
-            )
+            )?;
+
+            Ok((msg, (user_registered, account_registered)))
         })
         .collect::<StdResult<Vec<_>>>()?;
 
-    let (instantiate_msgs, instantiate_events): (Vec<_>, Vec<_>) =
+    let (instantiate_msgs, (users_registered, accounts_registered)): (Vec<_>, (Vec<_>, Vec<_>)) =
         instantiate_data.into_iter().unzip();
 
     MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
 
     Response::new()
         .add_messages(instantiate_msgs)
-        .add_events(instantiate_events)
+        .add_events(users_registered)?
+        .add_events(accounts_registered)
 }
 
 // A new user who wishes to be onboarded must first make an initial deposit,
@@ -118,8 +123,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             key,
             key_hash,
-            secret,
-        } => register_user(ctx, username, secret, key, key_hash),
+            seed,
+            signature,
+        } => register_user(ctx, username, key, key_hash, seed, signature),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
         ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
@@ -129,52 +135,72 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn register_user(
     ctx: MutableCtx,
     username: Username,
-    secret: u32,
     key: Key,
     key_hash: Hash256,
+    seed: u32,
+    signature: Signature,
 ) -> anyhow::Result<Response> {
+    // Verify the signature is valid.
+    verify_signature(
+        ctx.api,
+        key,
+        signature,
+        VerifyData::Onboard(RegisterUserData {
+            username: username.clone(),
+            chain_id: ctx.chain_id,
+        }),
+    )?;
+
     // The username must not already exist.
     // We ensure this by asserting there isn't any key already associated with
     // this username, since any existing username necessarily has at least one
     // key associated with it. (However, this key isn't necessarily index 1.)
-    if KEYS
-        .prefix(&username)
-        .keys(ctx.storage, None, None, Order::Ascending)
-        .next()
-        .is_some()
-    {
-        bail!("username `{}` already exists", username);
-    }
+    ensure!(
+        KEYS.prefix(&username)
+            .keys(ctx.storage, None, None, Order::Ascending)
+            .next()
+            .is_none(),
+        "username `{username}` already exists"
+    );
 
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;
 
     let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
 
-    let (msg, event) = onboard_new_user(
+    let (msg, user_registered, account_registered) = onboard_new_user(
         ctx.storage,
         ctx.contract,
         username,
-        secret,
         key,
         key_hash,
+        seed,
         minimum_deposit,
     )?;
 
-    Ok(Response::new().add_message(msg).add_event(event)?)
+    Ok(Response::new()
+        .add_message(msg)
+        .add_event(user_registered)?
+        .add_event(account_registered)?)
 }
 
-// Onboarding a new user involves saving an initial key, and intantiate an
-// initial account, under the username.
+/// Onboarding a new user involves saving the initial key, and instantiate an
+/// initial account, under the username.
+///
+/// ## Returns
+///
+/// - The message to instantiate the account.
+/// - The event indicating a new user has registered.
+/// - The event indicating a new account has been created.
 fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
     username: Username,
-    secret: u32,
     key: Key,
     key_hash: Hash256,
+    seed: u32,
     minimum_deposit: Coins,
-) -> StdResult<(Message, UserRegistered)> {
+) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
 
@@ -182,14 +208,13 @@ fn onboard_new_user(
     // account info under the username.
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
 
+    // Derive the account address.
     let salt = NewUserSalt {
         key,
         key_hash,
-        secret,
-    }
-    .into_bytes();
-
-    let address = Addr::derive(factory, code_hash, &salt);
+        seed,
+    };
+    let address = Addr::derive(factory, code_hash, &salt.to_bytes());
 
     let account = Account {
         index,
@@ -199,24 +224,25 @@ fn onboard_new_user(
     ACCOUNTS.save(storage, address, &account)?;
     ACCOUNTS_BY_USER.insert(storage, (&username, address))?;
 
-    // Create the message to instantiate this account.
-    let msg = Message::instantiate(
-        code_hash,
-        &account::spot::InstantiateMsg { minimum_deposit },
-        salt,
-        Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
-        Some(factory),
-        Coins::default(),
-    )?;
-
-    // Create the event indicating a new user has registered.
-    let event = UserRegistered {
-        username,
-        address,
-        key,
-    };
-
-    Ok((msg, event))
+    Ok((
+        Message::instantiate(
+            code_hash,
+            &account::spot::InstantiateMsg { minimum_deposit },
+            salt,
+            Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
+            Some(factory),
+            Coins::default(),
+        )?,
+        UserRegistered {
+            username,
+            key,
+            key_hash,
+        },
+        AccountRegistered {
+            address,
+            params: account.params,
+        },
+    ))
 }
 
 fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Response> {

@@ -2,7 +2,7 @@
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
     "assets": "Assets",
-    "funds": "Funds",
+    "fund": "Fund",
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
@@ -19,7 +19,9 @@
     "to": "To",
     "error": "Error",
     "signinWithDesktop": "Sign in with Desktop",
-    "motto": "Bringing back the good things of the last cycle",
+    "signinWithSession": "Sign in with session key",
+    "motto": "Dango–the one app for everything DeFi",
+    "notWalletDetected": "No wallet detected",
     "signWithWallet": [
       {
         "declarations": ["input action"],
@@ -65,6 +67,7 @@
     }
   },
   "signin": {
+    "advancedOptions": "Advanced Options",
     "continueWithoutLogin": "Continue without login",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
@@ -83,9 +86,37 @@
     "description": "We’re delighted to have you with us and look forward to seeing what you do next."
   },
   "signup": {
+    "mobileModal": {
+      "title": "Sign Up Not Available!",
+      "description": "Unfortunately, sign-up is not supported on mobile devices. Please use a desktop to complete your sign-up."
+    },
     "createAccount": "Create Account",
     "doThisLater": "Do this later",
     "alreadyHaveAccount": "Already have an account?",
+    "carousel": {
+      "title": [
+        {
+          "declarations": ["input step"],
+          "selectors": ["step"],
+          "match": {
+            "step=0": "Trade",
+            "step=1": "Leverage up",
+            "step=2": "Earn"
+          }
+        }
+      ],
+      "description": [
+        {
+          "declarations": ["input step"],
+          "selectors": ["step"],
+          "match": {
+            "step=0": "crypto assets, real world assets, and derivatives in Dango's blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
+            "step=1": "with Dango's unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
+            "step=2": "passive yields on your idle assets by depositing in Dango's vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
+          }
+        }
+      ]
+    },
     "stepper": {
       "steps": [
         {
@@ -93,7 +124,8 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Credential",
-            "step=1": "Username"
+            "step=1": "Username",
+            "step=2": "Sign in"
           }
         }
       ],
@@ -113,12 +145,14 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Choose a sign in credential. You can add or remove credentials afterwards.",
-            "step=1": "Your username will be public on-chain and cannot be changed afterwards."
+            "step=1": "Your username will be public on-chain and cannot be changed afterwards.",
+            "step=2": "Your user was created and now you can sign in with your new account."
           }
         }
       ]
     },
     "errors": {
+      "couldntCompleteRequest": "Couldn't complete request",
       "usernameTaken": "Username is already taken",
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
@@ -235,7 +269,7 @@
     }
   },
   "commadBar": {
-    "noResult": "No results found",
+    "noResult": "No results found.",
     "placeholder": {
       "title": "Search for",
       "transactions": "transactions",

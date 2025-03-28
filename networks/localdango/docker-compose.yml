@@ -3,7 +3,7 @@ services:
     image: postgres:17
     shm_size: 1gb
     ports:
-      - 127.0.0.1:5432:5432
+      - 0.0.0.0:5432:5432
     volumes:
       - ./data/db:/var/lib/postgresql/data
       # For when we'll need an init script ran at initialization
@@ -19,7 +19,7 @@ services:
     depends_on:
       - db
     ports:
-      - 127.0.0.1:8080:8080
+      - 0.0.0.0:8080:8080
     volumes:
       - ./configs/dango/config:/root/.dango/config
       - ./data/dango/data:/root/.dango/data
@@ -37,7 +37,7 @@ services:
     depends_on:
       - dango
     ports:
-      - 127.0.0.1:26657:26657
+      - 0.0.0.0:26657:26657
     volumes:
       - ./configs/cometbft/config:/root/.cometbft/config
       - ./data/cometbft/data:/root/.cometbft/data

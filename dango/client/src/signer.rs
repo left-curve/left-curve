@@ -179,14 +179,12 @@ impl Signer for SingleSigner<Defined<u32>> {
             sender: self.address,
             messages: msgs.clone(),
             data: metadata.clone(),
-        }
-        .to_json_vec()?
-        .hash256()
-        .into_inner();
+        };
+        let sign_data = sign_doc.to_sign_data()?;
 
         let credential = Credential::Standard(StandardCredential {
             key_hash: self.key_hash,
-            signature: Signature::Secp256k1(self.sk.sign_digest(sign_doc).into()),
+            signature: Signature::Secp256k1(self.sk.sign_digest(sign_data.into()).into()),
         });
 
         Ok(Tx {

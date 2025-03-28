@@ -3,9 +3,10 @@ use {
         account_factory::{
             Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, Username,
         },
-        auth::Key,
+        auth::{Key, Signature},
     },
-    grug::{Addr, Coins, Hash256, Op},
+    grug::{Addr, Coins, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
+    sha2::Sha256,
     std::collections::BTreeMap,
 };
 
@@ -16,6 +17,22 @@ pub struct User {
     pub keys: BTreeMap<Hash256, Key>,
     /// Accounts associated with this user, indexes by addresses.
     pub accounts: BTreeMap<Addr, Account>,
+}
+
+/// Data the user must sign when onboarding.
+#[grug::derive(Serde)]
+pub struct RegisterUserData {
+    pub username: Username,
+    pub chain_id: String,
+}
+
+impl SignData for RegisterUserData {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> StdResult<Vec<u8>> {
+        self.to_json_value()?.to_json_vec()
+    }
 }
 
 #[grug::derive(Serde)]
@@ -37,9 +54,11 @@ pub enum ExecuteMsg {
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
         username: Username,
-        secret: u32,
         key: Key,
         key_hash: Hash256,
+        seed: u32,
+        /// A signature over the `RegisterUserData`.
+        signature: Signature,
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },

@@ -1,19 +1,20 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
 import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store-react";
+import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
+import toast from "react-hot-toast";
 import { useApp } from "~/hooks/useApp";
 import { Modals } from "../foundation/Modal";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
-  const { register, inputs } = useInputs();
+  const { register, inputs } = useInputs({ initialValues: { amount: "0" } });
 
-  const { value: fundsAmount } = inputs.amount || {};
+  const { value: fundsAmount, error } = inputs.amount || {};
 
   const { showModal } = useApp();
   const { coins, state } = useConfig();
@@ -21,7 +22,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { formatNumberOptions } = useApp();
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {} } = useBalances({
+  const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
   });
 
@@ -58,7 +59,11 @@ export const CreateAccountDepositStep: React.FC = () => {
     onSuccess: async (data) => {
       showModal(Modals.ConfirmAccount, data);
       await refreshAccounts?.();
+      await refreshBalances();
       done();
+    },
+    onError: () => {
+      toast.error(m["signup.errors.couldntCompleteRequest"]());
     },
   });
 
@@ -74,6 +79,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         isDisabled={isPending}
         placeholder="0"
         {...register("amount", {
+          strategy: "onChange",
           validate: (v) => {
             if (Number(v) > Number(humanBalance))
               return m["validations.errors.insufficientFunds"]();
@@ -102,7 +108,12 @@ export const CreateAccountDepositStep: React.FC = () => {
         }
       />
       <div className="flex gap-4">
-        <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
+        <Button
+          type="button"
+          fullWidth
+          onClick={() => previousStep()}
+          isDisabled={isPending || !!error}
+        >
           {m["common.back"]()}
         </Button>
         <Button type="submit" fullWidth isLoading={isPending}>

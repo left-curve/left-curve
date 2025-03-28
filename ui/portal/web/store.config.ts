@@ -1,15 +1,13 @@
-import { createConfig, devnet, graphql, passkey, session } from "@left-curve/store-react";
+import { createConfig, devnet, graphql, passkey, session } from "@left-curve/store";
 
-import type { Config } from "@left-curve/store-react/types";
+import type { Config } from "@left-curve/store/types";
 
 const dango = devnet;
 
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
-  chains: [dango],
-  transports: {
-    [dango.id]: graphql(dango.urls.indexer, { batch: true }),
-  },
+  chain: dango,
+  transport: graphql(dango.urls.indexer, { batch: true }),
   coins: {
     [dango.id]: {
       ubtc: {

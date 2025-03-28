@@ -133,7 +133,7 @@ export type AccountFactoryMutationActions = {
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, Signer>,
+  client: Client<transport>,
 ): AccountFactoryQueryActions {
   return {
     getAccountInfo: (args) => getAccountInfo(client, args),
