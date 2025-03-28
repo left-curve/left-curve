@@ -5,47 +5,51 @@ use {
 
 // ------------------------------- new user salt -------------------------------
 
-/// The salt that account factory uses to create a new user's first ever account,
-/// during the onboarding flow.
+/// Salt used by the account factory to derive the deposit address for a user
+/// user who is to be unobarded. The user must make a deposit to this address.
 ///
-/// For any subsequent account, the salt is simply the account ID; that is, a
-/// string in the format: `{username}/account/{index}`.
+/// For any subsequent account, the salt is simply the account index (in 32-bit
+/// unsigned big-endian encoding).
 ///
 /// The first ever account of a user needs a special salt, because it must
-/// encode the user's username, key, and key hash, such that these cannot be
-/// tempered with via frontrunning by a malicious block builder. Check the docs
-/// on the user onboarding flow for more details.
-#[derive(Debug, Clone, Copy)]
+/// encode the user's key and key hash, such that these cannot be tempered with
+/// via frontrunning by a malicious block builder. Check the docs on the user
+/// onboarding flow for more details.
+#[grug::derive(Serde)]
 pub struct NewUserSalt {
-    pub secret: u32,
     pub key: Key,
+    /// An arbitrary hash used to identify the key.
+    ///
+    /// This is chosen by the client, without restriction on which hash algorithm
+    /// to use.
     pub key_hash: Hash256,
+    /// An arbitrary number chosen by the user, to give more variety to the
+    /// derived deposit address.
+    pub seed: u32,
 }
 
 impl NewUserSalt {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain
-    /// bytes := secret (in big endian) || key_hash || key_tag || key
+    /// bytes := seed (in big endian) || key_hash || key_tag || key
     /// ```
     ///
-    /// `secret` is provided externally.
-    ///
-    /// `key_hash` doesn't need a length prefix because it's of fixed length.
-    ///
-    /// `key_tag` is a single byte identifying the key's type:
-    /// - `0` for Secp256r1
-    /// - `1` for Secp256k1
-    /// - `2` for Ethereum address
-    pub fn into_bytes(self) -> [u8; 70] {
+    /// - `seed` is a 4-byte integer, in big-endian encoding.
+    /// - `key_hash` doesn't need a length prefix because it's of fixed length.
+    /// - `key_tag` is a single byte identifying the key's type:
+    ///   - `0` for Secp256r1;
+    ///   - `1` for Secp256k1;
+    ///   - `2` for Ethereum address.
+    pub fn to_bytes(&self) -> [u8; 70] {
         // Maximum possible length for the bytes:
-        // - secret: 4
+        // - seed: 4
         // - key_hash: 32
         // - key_tag: 1
         // - key: 33
         // Total: 70 bytes.
         let mut bytes = [0; 70];
-        bytes[0..4].copy_from_slice(&self.secret.to_be_bytes());
+        bytes[0..4].copy_from_slice(&self.seed.to_be_bytes());
         bytes[4..36].copy_from_slice(&self.key_hash);
         match self.key {
             Key::Secp256r1(pk) => {
@@ -70,7 +74,7 @@ impl NewUserSalt {
 // `Message::instantiate` method.
 impl From<NewUserSalt> for Binary {
     fn from(salt: NewUserSalt) -> Self {
-        salt.into_bytes().into()
+        salt.to_bytes().into()
     }
 }
 

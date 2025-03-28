@@ -11,11 +11,12 @@ use {
     digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdResult, Tx,
-        Undefined, UnsignedTx, btree_map,
+        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdError,
+        StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
+    sha2::Sha256,
     std::{array, collections::BTreeMap, str::FromStr},
 };
 
@@ -131,17 +132,17 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn predict_address(
         self,
         factory: Addr,
-        secret: u32,
+        seed: u32,
         spot_code_hash: Hash256,
         new_user_salt: bool,
     ) -> TestAccount {
         let salt = if new_user_salt {
             NewUserSalt {
-                secret,
                 key: self.keys.1,
                 key_hash: self.sign_with,
+                seed,
             }
-            .into_bytes()
+            .to_bytes()
         } else {
             todo!("implement address prediction for not new users");
         };
@@ -179,6 +180,18 @@ where
             expiry,
             nonce,
         }
+    }
+
+    // TODO: currently only support sign data that use SHA256 hasher.
+    pub fn sign_arbitrary<D>(&self, data: D) -> StdResult<Signature>
+    where
+        D: SignData<Hasher = Sha256>,
+        StdError: From<D::Error>,
+    {
+        let bytes = data.to_sign_data()?;
+        let standard_credential = self.create_standard_credential(bytes);
+
+        Ok(standard_credential.signature)
     }
 
     pub fn sign_transaction_with_nonce(
