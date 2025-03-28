@@ -39,7 +39,8 @@ export type DomainType = [
 ];
 
 export type MessageType = [
-  { name: "metadata"; type: "Metadata" },
+  { name: "sender"; type: "address" },
+  { name: "data"; type: "Metadata" },
   { name: "gas_limit"; type: "uint32" },
   { name: "messages"; type: "TxMessage[]" },
 ];
@@ -72,7 +73,8 @@ export type EIP712Types<TMessage extends TxMessageType | unknown = TxMessageType
     Record<"EIP712Domain", DomainType>;
 
 export type EIP712Message = {
-  metadata: Json;
+  sender: Address;
+  data: Json;
   gas_limit: number;
   messages: Message[];
 };

@@ -64,8 +64,8 @@ export function composeTxTypedData(
   typeData?: Partial<TypedDataParameter<TxMessageType>>,
 ): TypedData<TxMessageType> {
   const { type = [], extraTypes = {} } = typeData || {};
-  const { messages, metadata, gas_limit } = message;
-  const { expiry } = metadata;
+  const { messages, data, gas_limit, sender } = message;
+  const { expiry } = data;
 
   return {
     types: {
@@ -74,7 +74,8 @@ export function composeTxTypedData(
         { name: "verifyingContract", type: "address" },
       ],
       Message: [
-        { name: "metadata", type: "Metadata" },
+        { name: "sender", type: "address" },
+        { name: "data", type: "Metadata" },
         { name: "gas_limit", type: "uint32" },
         { name: "messages", type: "TxMessage[]" },
       ],
@@ -82,7 +83,7 @@ export function composeTxTypedData(
         { name: "username", type: "string" },
         { name: "chain_id", type: "string" },
         { name: "nonce", type: "uint32" },
-        ...(metadata.expiry ? [{ name: "expiry", type: "string" }] : []),
+        ...(data.expiry ? [{ name: "expiry", type: "string" }] : []),
       ],
       TxMessage: type,
       ...extraTypes,
@@ -90,10 +91,8 @@ export function composeTxTypedData(
     primaryType: "Message",
     domain,
     message: {
-      metadata: recursiveTransform(
-        { ...metadata, ...(expiry ? { expiry } : {}) },
-        camelToSnake,
-      ) as Json,
+      sender,
+      data: recursiveTransform({ ...data, ...(expiry ? { expiry } : {}) }, camelToSnake) as Json,
       gas_limit,
       messages: recursiveTransform(messages, camelToSnake) as Message[],
     },

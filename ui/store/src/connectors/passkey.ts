@@ -48,7 +48,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
             userVerification: "preferred",
           });
 
-          return createKeyHash({ credentialId });
+          return createKeyHash(credentialId);
         })();
 
         const keys = await getKeysByUsername(client, { username });
@@ -96,7 +96,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         const publicKey = await getPublicKey();
         const key = { secp256r1: encodeBase64(publicKey) };
-        const keyHash = createKeyHash({ credentialId: id });
+        const keyHash = createKeyHash(id);
 
         return { key, keyHash };
       },
@@ -106,7 +106,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
-        return createKeyHash({ credentialId });
+        return createKeyHash(credentialId);
       },
       async getAccounts() {
         const client = await this.getClient();
@@ -151,7 +151,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const keyHash = createKeyHash({ credentialId });
+        const keyHash = createKeyHash(credentialId);
 
         return {
           credential: { standard: { keyHash, signature: { passkey } } },
@@ -159,19 +159,9 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         };
       },
       async signTx(signDoc) {
-        const { domain, message } = signDoc;
-        const sender = domain.verifyingContract;
-        const { messages, gas_limit, metadata } = message;
-        const { username, chain_id, nonce } = metadata;
+        const { message } = signDoc;
 
-        const tx = sha256(
-          serialize({
-            sender,
-            gasLimit: gas_limit,
-            messages,
-            data: { username, chainId: chain_id, nonce },
-          }),
-        );
+        const tx = sha256(serialize(message));
 
         const {
           webauthn,
@@ -193,7 +183,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const keyHash = createKeyHash({ credentialId });
+        const keyHash = createKeyHash(credentialId);
         const standard = { signature: { passkey }, keyHash };
 
         return { credential: { standard }, signed: signDoc };

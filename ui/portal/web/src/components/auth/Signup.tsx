@@ -9,6 +9,7 @@ import {
 } from "@left-curve/applets-kit";
 import {
   useAccount,
+  useConfig,
   useConnectors,
   useLogin,
   usePublicClient,
@@ -20,11 +21,7 @@ import { useEffect } from "react";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
-import {
-  createWebAuthnCredential,
-  ethHashMessage,
-  secp256k1RecoverPubKey,
-} from "@left-curve/dango/crypto";
+import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
@@ -192,7 +189,7 @@ const Credential: React.FC = () => {
 
             const publicKey = await getPublicKey();
             const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash({ credentialId: id });
+            const keyHash = createKeyHash(id);
 
             return { key, keyHash };
           }
@@ -202,19 +199,13 @@ const Credential: React.FC = () => {
           ).getProvider();
 
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
-          const signature = await provider.request({
-            method: "personal_sign",
-            params: [challenge, controllerAddress],
-          });
 
-          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
-
-          const key: Key = { secp256k1: encodeBase64(pubKey) };
-          const keyHash = createKeyHash({ pubKey });
+          const key: Key = { ethereum: controllerAddress };
+          const keyHash = createKeyHash(controllerAddress);
 
           return { key, keyHash };
         })();
-        setData({ key, keyHash, connectorId });
+        setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
       } catch (err) {
         toast.error({ title: "Couldn't complete the request" });
@@ -231,14 +222,17 @@ const Username: React.FC = () => {
     key: Key;
     keyHash: Hex;
     connectorId: string;
+    seed: number;
     username: string;
   }>();
+
   const { register, inputs } = useInputs();
 
   const { value: username, error } = inputs.username || {};
 
-  const { key, keyHash, connectorId } = data;
+  const { key, keyHash, connectorId, seed } = data;
 
+  const config = useConfig();
   const client = usePublicClient();
   const connectors = useConnectors();
 
@@ -272,23 +266,42 @@ const Username: React.FC = () => {
           accountType: AccountType.Spot,
         });
 
-        const secret = Math.floor(Math.random() * 0x100000000);
-
-        const salt = createAccountSalt({ key, keyHash, secret });
+        const salt = createAccountSalt({ key, keyHash, seed });
         const address = computeAddress({
           deployer: addresses.accountFactory,
           codeHash: accountCodeHash,
           salt,
         });
 
+        const { credential } = await connector.signArbitrary({
+          primaryType: "Message" as const,
+          message: {
+            username,
+            chain_id: config.chain.id,
+          },
+          types: {
+            Message: [
+              { name: "username", type: "string" },
+              { name: "chain_id", type: "string" },
+            ],
+          },
+        });
+        if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
+
         const response = await fetch("https://mock-warp.left-curve.workers.dev", {
           method: "POST",
           body: JSON.stringify({ address }),
         });
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
-        await registerUser(client, { key, keyHash, username, secret });
 
-        await wait(1000);
+        await registerUser(client, {
+          key,
+          keyHash,
+          username,
+          seed,
+          signature: credential.standard.signature,
+        });
+
         setData({ ...data, username });
         nextStep();
       } catch (err) {

@@ -57,7 +57,11 @@ export async function signAndBroadcastTx<transport extends Transport>(
     verifyingContract: sender,
   };
 
-  const signDoc = composeTxTypedData({ messages, gas_limit: gasUsed, metadata }, domain, typedData);
+  const signDoc = composeTxTypedData(
+    { messages, gas_limit: gasUsed, data: metadata, sender },
+    domain,
+    typedData,
+  );
 
   const { credential } = await client.signer.signTx(signDoc);
 
