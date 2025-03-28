@@ -1,6 +1,7 @@
 import { decodeBase64, decodeHex, encodeEndian32 } from "@left-curve/sdk/encoding";
 import type { Key, KeyHash } from "../types/key.js";
 import { KeyTag } from "../types/key.js";
+import { isValidAddress } from "./address.js";
 
 type CreateAccountSaltParameters = {
   key: Key;
@@ -21,12 +22,14 @@ type CreateAccountSaltParameters = {
 
 export function createAccountSalt(parameters: CreateAccountSaltParameters): Uint8Array {
   const { key, keyHash, seed } = parameters;
-  const [keyTag, publicKey] = Object.entries(key)[0];
-  const publicKeyBytes = decodeBase64(publicKey);
+  const [keyTag, keyOrAddress] = Object.entries(key)[0];
+  const keyByes = isValidAddress(keyOrAddress)
+    ? [...new Uint8Array(13), ...decodeHex(keyOrAddress)]
+    : decodeBase64(keyOrAddress);
   const bytes: number[] = [];
   bytes.push(...encodeEndian32(seed));
   bytes.push(...decodeHex(keyHash));
   bytes.push(KeyTag[keyTag as keyof typeof KeyTag]);
-  bytes.push(...publicKeyBytes);
+  bytes.push(...keyByes);
   return new Uint8Array(bytes);
 }

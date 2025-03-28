@@ -12,7 +12,8 @@
     "set-validators": "tsx ./src/mock-validators.ts"
   },
   "dependencies": {
-    "@left-curve/dango": "workspace:^"
+    "@left-curve/dango": "workspace:^",
+    "dotenv": "^16.4.7"
   },
   "sideEffects": false,
   "devDependencies": {

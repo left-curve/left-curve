@@ -53,7 +53,7 @@ function SendAndReceiveComponent() {
   const navigate = useNavigate({ from: "/send-and-receive" });
   const { formatNumberOptions, showModal } = useApp();
 
-  const [selectedDenom, setSelectedDenom] = useState("uusdc");
+  const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({ strategy: "onSubmit" });
 
   const { account, isConnected } = useAccount();

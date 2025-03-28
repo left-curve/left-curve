@@ -60,10 +60,12 @@ export async function registerAccount<transport extends Transport>(
   };
 
   return await execute(client, {
-    contract: addresses.accountFactory,
+    execute: {
+      contract: addresses.accountFactory,
+      msg,
+      typedData,
+    },
     sender,
-    msg,
-    typedData,
     ...txParameters,
   });
 }

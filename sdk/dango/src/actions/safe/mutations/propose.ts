@@ -57,10 +57,12 @@ export async function safeAccountPropose<transport extends Transport>(
 
   return await execute(client, {
     sender,
-    contract: account,
-    msg,
-    funds,
+    execute: {
+      contract: account,
+      msg,
+      funds,
+      typedData,
+    },
     gasLimit,
-    typedData,
   });
 }
