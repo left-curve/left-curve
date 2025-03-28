@@ -3433,6 +3433,7 @@ dependencies = [
  "async-graphql",
  "criterion",
  "dango-account-factory",
+ "dango-auth",
  "dango-bank",
  "dango-genesis",
  "dango-httpd",

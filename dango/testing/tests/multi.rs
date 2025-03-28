@@ -1,5 +1,6 @@
 use {
     dango_account_factory::KEYS,
+    dango_auth::MAX_NONCE_INCREASE,
     dango_genesis::Contracts,
     dango_testing::{Multi, TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
@@ -16,8 +17,8 @@ use {
     },
     grug::{
         Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256, HashExt, Inner, JsonSerExt,
-        Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer, StdError, Uint128, btree_map,
-        btree_set,
+        Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer, StdError, Tx, Uint128,
+        btree_map, btree_set,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -871,4 +872,111 @@ fn non_member_cannot_create_proposal() {
             "account {} isn't associated with user `{}`",
             multi_address, accounts.user4.username
         ));
+}
+
+/// Test whether the auth implementation can deter a specific DoS attack
+/// involving nonces.
+///
+/// See the comments of `dango_auth::MAX_NONCE_INCREASE` for more details.
+#[test]
+fn max_nonce_dos_attack() {
+    let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
+
+    // Member 1 makes a proposal. This should come with nonce 0.
+    suite
+        .execute(
+            multi.with_signer(&accounts.user1),
+            multi_address,
+            &multi::ExecuteMsg::Propose {
+                title: "empty proposal".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Member 2 attempts to vote, with a nonce that "jumps", but not too much
+    // bigger than the biggest seen nonce. This should work.
+    {
+        let msgs = NonEmpty::new_unchecked(vec![
+            Message::execute(
+                multi_address,
+                &multi::ExecuteMsg::Vote {
+                    proposal_id: 1,
+                    voter: accounts.user2.username.clone(),
+                    vote: Vote::Yes,
+                    execute: false,
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        ]);
+
+        let (metadata, credential) = accounts
+            .user2
+            .sign_transaction_with_nonce(
+                multi_address,
+                msgs.clone(),
+                &suite.chain_id,
+                100_000,
+                5, // should be 1, but we jump to 5
+                None,
+            )
+            .unwrap();
+
+        let tx = Tx {
+            sender: multi_address,
+            gas_limit: 100_000,
+            msgs,
+            data: metadata.to_json_value().unwrap(),
+            credential: credential.to_json_value().unwrap(),
+        };
+
+        suite.send_transaction(tx).should_succeed();
+    }
+
+    // Member 3 (bad guy) attempts to DoS attack. He attempts to vote with a
+    // very big nonce. Should fail.
+    {
+        let msgs = NonEmpty::new_unchecked(vec![
+            Message::execute(
+                multi_address,
+                &multi::ExecuteMsg::Vote {
+                    proposal_id: 1,
+                    voter: accounts.user3.username.clone(),
+                    vote: Vote::Yes,
+                    execute: false,
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        ]);
+
+        let (metadata, credential) = accounts
+            .user3
+            .sign_transaction_with_nonce(
+                multi_address,
+                msgs.clone(),
+                &suite.chain_id,
+                100_000,
+                123456, // maximum allowed is 5 + 100 = 105
+                None,
+            )
+            .unwrap();
+
+        let tx = Tx {
+            sender: multi_address,
+            gas_limit: 100_000,
+            msgs,
+            data: metadata.to_json_value().unwrap(),
+            credential: credential.to_json_value().unwrap(),
+        };
+
+        suite.send_transaction(tx).should_fail_with_error(format!(
+            "nonce is too far ahead: {} > {} + MAX_NONCE_INCREASE ({})",
+            123456, 5, MAX_NONCE_INCREASE
+        ));
+    }
 }
