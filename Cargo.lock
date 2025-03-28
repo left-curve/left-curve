@@ -3350,6 +3350,8 @@ dependencies = [
  "async-trait",
  "borsh 1.5.6",
  "dango-indexer-sql-migration",
+ "dango-types",
+ "grug",
  "grug-app",
  "grug-math",
  "grug-types",

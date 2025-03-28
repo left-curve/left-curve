@@ -53,9 +53,9 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
         URL: ToString,
     {
         IndexerBuilder {
+            db_url: Defined::new(db_url.to_string()),
             handle: self.handle,
             indexer_path: self.indexer_path,
-            db_url: Defined::new(db_url.to_string()),
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -97,25 +97,23 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
         I: Hooks + Clone + Send + 'static,
     {
         IndexerBuilder {
+            hooks,
             handle: self.handle,
             db_url: self.db_url,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
-            hooks,
             pubsub: self.pubsub,
         }
     }
-}
 
-impl<DB, P, H> IndexerBuilder<DB, P, H> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
+            pubsub: PubSubType::Postgres,
             handle: self.handle,
             db_url: self.db_url,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
-            pubsub: PubSubType::Postgres,
         }
     }
 }

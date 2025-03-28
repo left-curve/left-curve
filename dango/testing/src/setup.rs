@@ -4,6 +4,7 @@ use {
         Codes, Contracts, GenesisConfig, GenesisUser, build_genesis, build_rust_codes,
         read_wasm_files,
     },
+    dango_indexer_sql::hooks::ContractAddrs,
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
         constants::{
@@ -16,7 +17,8 @@ use {
     },
     grug::{
         Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128, btree_map, coins,
+        GENESIS_BLOCK_HEIGHT, GenesisState, HashExt, NumberConst, Timestamp, Udec128, btree_map,
+        coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -101,24 +103,33 @@ pub fn setup_test_with_indexer() -> (
 ) {
     let codes = build_rust_codes();
 
+    let (genesis_state, accounts, codes, contracts) = build_accounts_and_genesis(codes);
+
+    let db = MemDb::new();
+    let vm = RustVm::new();
+
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
-        .with_hooks(dango_indexer_sql::hooks::Hooks)
+        .with_hooks(dango_indexer_sql::hooks::Hooks {
+            contract_addrs: ContractAddrs {
+                account_factory: contracts.account_factory,
+            },
+        })
         .build()
         .unwrap();
 
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
-    let db = MemDb::new();
-    let vm = RustVm::new();
-
-    let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
+    let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm_with_genesis(
         db.clone(),
         vm.clone(),
         codes,
         ProposalPreparer::new_with_cache(),
         indexer,
+        genesis_state,
+        accounts,
+        contracts,
     );
 
     let httpd_context = Context::new(
@@ -204,20 +215,11 @@ pub fn setup_benchmark_wasm(
     setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
 }
 
-fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
-    db: DB,
-    vm: VM,
+fn build_accounts_and_genesis<T>(
     codes: Codes<T>,
-    pp: PP,
-    indexer: ID,
-) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
+) -> (GenesisState, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
-    DB: Db,
-    VM: Vm + Clone + 'static,
-    ID: Indexer,
-    PP: grug_app::ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     let owner = TestAccount::new_from_private_key("owner", OWNER_PRIVATE_KEY);
     let user1 = TestAccount::new_from_private_key("user1", USER1_PRIVATE_KEY);
@@ -381,6 +383,39 @@ where
     })
     .unwrap();
 
+    let accounts = TestAccounts {
+        owner: owner.set_address(&addresses),
+        user1: user1.set_address(&addresses),
+        user2: user2.set_address(&addresses),
+        user3: user3.set_address(&addresses),
+        user4: user4.set_address(&addresses),
+        user5: user5.set_address(&addresses),
+        user6: user6.set_address(&addresses),
+        user7: user7.set_address(&addresses),
+        user8: user8.set_address(&addresses),
+        user9: user9.set_address(&addresses),
+    };
+
+    (genesis_state, accounts, codes, contracts)
+}
+
+fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
+    db: DB,
+    vm: VM,
+    codes: Codes<T>,
+    pp: PP,
+    indexer: ID,
+) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
+where
+    T: Clone + Into<Binary>,
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    ID: Indexer,
+    PP: grug_app::ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    let (genesis_state, accounts, codes, contracts) = build_accounts_and_genesis(codes);
+
     let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
         vm,
@@ -397,18 +432,42 @@ where
         genesis_state,
     );
 
-    let accounts = TestAccounts {
-        owner: owner.set_address(&addresses),
-        user1: user1.set_address(&addresses),
-        user2: user2.set_address(&addresses),
-        user3: user3.set_address(&addresses),
-        user4: user4.set_address(&addresses),
-        user5: user5.set_address(&addresses),
-        user6: user6.set_address(&addresses),
-        user7: user7.set_address(&addresses),
-        user8: user8.set_address(&addresses),
-        user9: user9.set_address(&addresses),
-    };
+    (suite, accounts, codes, contracts)
+}
+
+fn setup_suite_with_db_and_vm_with_genesis<DB, VM, T, PP, ID>(
+    db: DB,
+    vm: VM,
+    codes: Codes<T>,
+    pp: PP,
+    indexer: ID,
+    genesis_state: GenesisState,
+    accounts: TestAccounts,
+    contracts: Contracts,
+) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
+where
+    T: Clone + Into<Binary>,
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    ID: Indexer,
+    PP: grug_app::ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
+        db,
+        vm,
+        pp,
+        indexer,
+        MOCK_CHAIN_ID.to_string(),
+        Duration::from_millis(250),
+        1_000_000,
+        BlockInfo {
+            hash: GENESIS_BLOCK_HASH,
+            height: GENESIS_BLOCK_HEIGHT,
+            timestamp: MOCK_GENESIS_TIMESTAMP,
+        },
+        genesis_state,
+    );
 
     (suite, accounts, codes, contracts)
 }

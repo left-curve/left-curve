@@ -17,6 +17,8 @@ anyhow                      = { workspace = true }
 async-trait                 = { workspace = true }
 borsh                       = { workspace = true }
 dango-indexer-sql-migration = { workspace = true }
+dango-types                 = { workspace = true }
+grug                        = { workspace = true }
 grug-app                    = { workspace = true }
 grug-math                   = { workspace = true }
 grug-types                  = { workspace = true }

@@ -2,16 +2,44 @@ use {
     crate::{entity, error::Error},
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
-    grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
+    dango_types::{
+        account_factory::{self, AccountParams},
+        auth::Key,
+    },
+    grug::{Addr, ByteArray, EventName, JsonDeExt, Op},
+    grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer, SearchEvent},
     indexer_sql::{
         Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
     },
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
+    std::collections::HashMap,
     uuid::Uuid,
 };
 
 #[derive(Clone)]
-pub struct Hooks;
+pub struct ContractAddrs {
+    pub account_factory: Addr,
+}
+
+#[derive(Clone)]
+pub struct Hooks {
+    pub contract_addrs: ContractAddrs,
+}
+
+#[derive(Debug)]
+struct AccountDetails {
+    username: account_factory::Username,
+    address: Option<Addr>,
+    eth_address: Option<ByteArray<33>>,
+    params: Option<AccountParams>,
+    account_type: Option<AccountType>,
+}
+
+#[derive(Debug)]
+enum AccountType {
+    Spot,
+    Margin,
+}
 
 #[async_trait]
 impl HooksTrait for Hooks {
@@ -28,6 +56,7 @@ impl HooksTrait for Hooks {
         block: BlockToIndex,
     ) -> Result<(), Self::Error> {
         self.save_transfers(&context, &block).await?;
+        self.save_accounts(&context, &block).await?;
 
         Ok(())
     }
@@ -106,6 +135,126 @@ impl Hooks {
 
         Ok(())
     }
+
+    async fn save_accounts(&self, _context: &Context, block: &BlockToIndex) -> Result<(), Error> {
+        // Using code from https://github.com/left-curve/galxe-bot/blob/main/quest-1/src/quest.rs
+
+        let mut detected_accounts: HashMap<account_factory::Username, AccountDetails> =
+            HashMap::new();
+
+        for tx in block.block_outcome.tx_outcomes.iter() {
+            if tx.result.is_err() {
+                tracing::debug!("tx failed");
+                continue;
+            }
+
+            let flat = tx.events.clone().flat();
+
+            for event in flat {
+                if event.commitment_status != FlatCommitmentStatus::Committed {
+                    continue;
+                }
+
+                let FlatEvent::ContractEvent(event) = event.event else {
+                    continue;
+                };
+
+                match event.ty.as_str() {
+                    // Search for new user registration
+                    account_factory::UserRegistered::EVENT_NAME => {
+                        let Ok(event) = event
+                            .data
+                            .deserialize_json::<account_factory::UserRegistered>()
+                        else {
+                            continue;
+                        };
+
+                        tracing::info!(
+                            username = event.username.to_string(),
+                            address = event.address.to_string(),
+                            "user registered detected"
+                        );
+
+                        let account = detected_accounts.entry(event.username.clone()).or_insert(
+                            AccountDetails {
+                                address: None,
+                                username: event.username,
+                                eth_address: None,
+                                params: None,
+                                account_type: None,
+                            },
+                        );
+
+                        account.address = Some(event.address);
+                    },
+                    // Quest: Create a new account
+                    account_factory::AccountRegistered::EVENT_NAME => {
+                        tracing::info!("FOO");
+
+                        let Ok(event) = event
+                            .data
+                            .deserialize_json::<account_factory::AccountRegistered>()
+                        else {
+                            continue;
+                        };
+
+                        dbg!(&event.params);
+                        tracing::info!("BAR");
+
+                        if let AccountParams::Spot(params) | AccountParams::Margin(params) =
+                            &event.params
+                        {
+                            let account = detected_accounts.entry(params.owner.clone()).or_insert(
+                                AccountDetails {
+                                    address: None,
+                                    username: params.owner.clone(),
+                                    eth_address: None,
+                                    params: None,
+                                    account_type: None,
+                                },
+                            );
+
+                            if let AccountParams::Spot(_) = event.params {
+                                account.account_type = Some(AccountType::Spot)
+                            };
+                            if let AccountParams::Margin(_) = event.params {
+                                account.account_type = Some(AccountType::Margin)
+                            };
+                            account.address = Some(event.address);
+                            account.params = Some(event.params);
+                        }
+                    },
+                    // Detect Sepck256k1 key update
+                    account_factory::KeyUpdated::EVENT_NAME => {
+                        let Ok(event) =
+                            event.data.deserialize_json::<account_factory::KeyUpdated>()
+                        else {
+                            continue;
+                        };
+
+                        if let Op::Insert(Key::Secp256k1(key)) = event.key {
+                            let account = detected_accounts
+                                .entry(event.username.clone())
+                                .or_insert(AccountDetails {
+                                    address: None,
+                                    username: event.username,
+                                    eth_address: None,
+                                    params: None,
+                                    account_type: None,
+                                });
+
+                            account.eth_address = Some(key);
+                        }
+                    },
+                    _ => {},
+                }
+            }
+        }
+
+        tracing::info!("Detected accounts: {:?}", detected_accounts);
+
+        Ok(())
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -122,7 +271,11 @@ mod tests {
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
-            .with_hooks(Hooks)
+            .with_hooks(Hooks {
+                contract_addrs: ContractAddrs {
+                    account_factory: Addr::mock(0),
+                },
+            })
             .build()?;
 
         let storage = MockStorage::new();
