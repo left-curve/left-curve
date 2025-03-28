@@ -129,36 +129,34 @@ where
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         let res = match self.do_check_tx_raw(&req.tx) {
             Ok(CheckTxOutcome {
-                result: GenericResult::Ok(events),
+                result: GenericResult::Ok(_),
                 gas_limit,
-                ..
+                events,
+                gas_used,
             }) => response::CheckTx {
                 code: Code::Ok,
-                gas_wanted: gas_limit.unwrap() as i64,
-                info: events.to_json_string()?,
-                // Note: Return `Outcome::gas_limited` instead of `gas_used here.
-                // This is because in `CheckTx` we don't run the entire tx, just
-                // the authentication part. As such, the gas consumption is
-                // underestimated. Instead, the tx gas limit represents the max
-                // amount of gas this tx can possibly consume.
-                gas_used: gas_limit.unwrap() as i64,
+                data: events.to_json_vec()?.into(),
+                gas_wanted: gas_limit as i64,
+                gas_used: gas_used as i64,
                 ..Default::default()
             },
             Ok(CheckTxOutcome {
                 result: GenericResult::Err(err),
                 gas_limit,
-                ..
+                events,
+                gas_used,
             }) => response::CheckTx {
                 code: into_tm_code_error(1),
-                codespace: "tx".into(),
+                codespace: "check_tx".into(),
+                data: events.to_json_vec()?.into(),
+                gas_wanted: gas_limit as i64,
+                gas_used: gas_used as i64,
                 log: err,
-                gas_wanted: gas_limit.unwrap() as i64,
-                gas_used: gas_limit.unwrap() as i64,
                 ..Default::default()
             },
             Err(err) => response::CheckTx {
                 code: into_tm_code_error(1),
-                codespace: "simulate".into(),
+                codespace: "check_tx".into(),
                 log: err.to_string(),
                 ..Default::default()
             },

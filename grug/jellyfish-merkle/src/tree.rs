@@ -1,10 +1,10 @@
 use {
-    crate::{
-        BitArray, Child, InternalNode, LeafNode, MembershipProof, Node, NonMembershipProof, Proof,
-        ProofNode,
-    },
+    crate::{BitArray, Child, InternalNode, LeafNode, Node},
     grug_storage::{Map, PrefixBound, Set},
-    grug_types::{Batch, Hash256, HashExt, Op, Order, StdResult, Storage},
+    grug_types::{
+        Batch, Hash256, HashExt, MembershipProof, NonMembershipProof, Op, Order, Proof, ProofNode,
+        StdResult, Storage,
+    },
 };
 
 // Default storage namespaces

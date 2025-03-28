@@ -7,8 +7,9 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined,
-        Message, NonEmpty, SignData, Signer, StdResult, Tx, Undefined, UnsignedTx,
+        Addr, Addressable, ByteArray, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined, Message,
+        NonEmpty, QueryAppClient, QueryClientExt, SignData, Signer, StdResult, Tx, Undefined,
+        UnsignedTx,
     },
     std::str::FromStr,
 };
@@ -34,7 +35,11 @@ impl<T> SingleSigner<T>
 where
     T: MaybeDefined<u32>,
 {
-    pub async fn query_next_nonce(&self, client: &Client) -> anyhow::Result<Nonce> {
+    pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
+    where
+        C: QueryAppClient,
+        anyhow::Error: From<C::Error>,
+    {
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
@@ -93,7 +98,11 @@ impl SingleSigner<Undefined<u32>> {
         }
     }
 
-    pub async fn query_nonce(self, client: &Client) -> anyhow::Result<SingleSigner<Defined<u32>>> {
+    pub async fn query_nonce<C>(self, client: &C) -> anyhow::Result<SingleSigner<Defined<u32>>>
+    where
+        C: QueryAppClient,
+        anyhow::Error: From<C::Error>,
+    {
         let nonce = self.query_next_nonce(client).await?;
 
         Ok(SingleSigner {
@@ -108,7 +117,11 @@ impl SingleSigner<Undefined<u32>> {
 }
 
 impl SingleSigner<Defined<u32>> {
-    pub async fn update_nonce(&mut self, client: &Client) -> anyhow::Result<()> {
+    pub async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
+    where
+        C: QueryAppClient,
+        anyhow::Error: From<C::Error>,
+    {
         let nonce = self.query_next_nonce(client).await?;
 
         self.nonce = Defined::new(nonce);
