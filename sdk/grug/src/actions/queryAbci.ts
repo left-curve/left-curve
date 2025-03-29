@@ -1,4 +1,4 @@
-import { encodeHex } from "@left-curve/sdk/encoding";
+import { encodeHex } from "../encoding/hex.js";
 
 import type { Chain, Client, QueryAbciResponse, Signer, Transport } from "../types/index.js";
 
