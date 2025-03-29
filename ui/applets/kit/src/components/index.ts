@@ -73,6 +73,7 @@ export { IconPasskey } from "./foundation/icons/IconPasskey";
 export { IconMobile } from "./foundation/icons/IconMobile";
 export { IconFormatNumber } from "./foundation/icons/IconFormatNumber";
 export { IconLanguage } from "./foundation/icons/IconLanguage";
+export { IconSwitch } from "./foundation/icons/IconSwitch";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

@@ -53,14 +53,14 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
   }
 
   return (
-    <div className="rounded-3xl bg-rice-50 shadow-card-shadow flex flex-col lg:flex-row gap-4 w-full p-4 items-center lg:items-start">
+    <div className="rounded-3xl flex flex-col lg:flex-row gap-4 w-full items-center lg:items-start">
       <SwippeableAccountCard
         cardVisible={cardMobileVisible}
         setCardVisible={setCardMobileVisible}
       />
 
-      <div className="w-full flex flex-col lg:gap-4 items-center">
-        <div className="hidden lg:flex w-full">
+      <div className="w-full flex flex-col lg:gap-4 items-center h-full">
+        <div className="hidden lg:flex w-full h-full">
           <AssetsSection
             balances={balances}
             showAllAssets={isConnected ? () => setSidebarVisibility(true) : undefined}
@@ -68,7 +68,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
         </div>
 
         {isConnected ? (
-          <div className="lg:self-end flex gap-4 items-center justify-center w-full lg:max-w-[256px]">
+          <div className="lg:self-end gap-4 items-center justify-center w-full lg:max-w-[256px] flex lg:hidden">
             <ButtonLink fullWidth size="md" to="/send-and-receive" search={{ action: "receive" }}>
               {m["common.fund"]()}
             </ButtonLink>

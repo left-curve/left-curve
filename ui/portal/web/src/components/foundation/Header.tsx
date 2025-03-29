@@ -29,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
     isSearchBarVisible,
+    isSidebarVisible,
   } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
@@ -90,9 +91,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             </Button>
           ) : null}
           <Button
+            dng-connect-button="true"
             variant="utility"
             size="lg"
-            onClick={() => (isConnected ? setSidebarVisibility(true) : navigate({ to: "/login" }))}
+            onClick={() =>
+              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/login" })
+            }
           >
             {isConnected ? (
               <>
