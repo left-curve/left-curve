@@ -17,6 +17,7 @@ export type IndexedTransaction = {
   errorMessage: string;
   gasWanted: number;
   gasUsed: number;
+  nestedEvents: string;
 };
 
 export type IndexedTransactionType = "CRON" | "TX";

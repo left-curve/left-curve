@@ -31,6 +31,12 @@ export async function queryTx<
           transactionIdx
           hasSucceeded
           sender
+          nestedEvents
+          transactionType
+          createdAt
+          gasWanted
+          gasUsed
+          errorMessage
         }
       }
     }

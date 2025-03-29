@@ -97,6 +97,8 @@ export {
   getContractsInfo,
 } from "./getContractsInfo.js";
 
+export { getAction } from "./getAction.js";
+
 /* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
