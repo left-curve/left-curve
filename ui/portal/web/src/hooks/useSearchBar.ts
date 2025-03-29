@@ -9,7 +9,13 @@ import { applets as AppletsMetadata } from "../../applets";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
 import { getAppConfig } from "@left-curve/dango/actions";
-import type { Address, AppConfig, ContractInfo, IndexedBlock } from "@left-curve/dango/types";
+import type {
+  Address,
+  AppConfig,
+  ContractInfo,
+  IndexedBlock,
+  IndexedTransaction,
+} from "@left-curve/dango/types";
 
 type UseSearchBarParameters = {
   debounceMs?: number;
@@ -19,7 +25,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const { debounceMs = 300 } = parameters;
   const [searchText, setSearchText] = useState("");
   const [block, setBlock] = useState<IndexedBlock>();
-  const [txs, setTxs] = useState<[]>();
+  const [txs, setTxs] = useState<IndexedTransaction[]>([]);
   const [applets, setApplets] = useState<AppletMetadata[]>(AppletsMetadata.slice(0, 4));
   const [contractInfo, setContractInfo] = useState();
 
@@ -61,6 +67,15 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
         promises.push(
           (async () => {
             const contractInfo = await client.getContractInfo({ address: searchText as Address });
+          })(),
+        );
+      } else if (searchText.length === 64) {
+        // search for tx hash
+        promises.push(
+          (async () => {
+            const tx = await client.searchTx({ hash: searchText });
+            if (tx) setTxs([tx]);
+            queryClient.setQueryData(["tx", searchText], tx);
           })(),
         );
       } else if (!Number.isNaN(Number(searchText))) {
