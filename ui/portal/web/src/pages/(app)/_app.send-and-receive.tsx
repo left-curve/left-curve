@@ -3,7 +3,6 @@ import {
   formatNumber,
   formatUnits,
   parseUnits,
-  wait,
   withResolvers,
 } from "@left-curve/dango/utils";
 import {
@@ -29,6 +28,7 @@ import {
   Tabs,
   TruncateText,
   useInputs,
+  useWatchEffect,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
@@ -53,6 +53,7 @@ function SendAndReceiveComponent() {
   const navigate = useNavigate({ from: "/send-and-receive" });
   const { formatNumberOptions, showModal } = useApp();
 
+  const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
   const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({ strategy: "onSubmit" });
 
@@ -64,6 +65,8 @@ function SendAndReceiveComponent() {
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
   });
+
+  useWatchEffect(isConnected, (v) => !v && setAction("send"));
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
@@ -134,7 +137,7 @@ function SendAndReceiveComponent() {
             selectedTab={isConnected ? action : "send"}
             keys={isConnected ? ["send", "receive"] : ["send"]}
             fullWidth
-            onTabChange={(v) => navigate({ search: { action: v }, replace: false })}
+            onTabChange={setAction}
           />
 
           {action === "send" ? (
@@ -224,7 +227,7 @@ function SendAndReceiveComponent() {
           ) : (
             <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-3xl shadow-card-shadow p-4">
               <div className="flex flex-col gap-1 items-center">
-                <p className="exposure-h3-italic">{`${capitalize(account?.type as string)} Account #${account?.index}`}</p>
+                <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">
                   <TruncateText
                     className="diatype-sm-medium text-gray-500"
