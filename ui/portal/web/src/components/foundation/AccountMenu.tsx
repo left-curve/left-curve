@@ -16,7 +16,6 @@ import {
   IconAddCross,
   IconButton,
   IconChevronDown,
-  IconDoubleChevronRight,
   IconLogOut,
   IconMobile,
   twMerge,
@@ -114,7 +113,10 @@ export function Desktop() {
   const menuRef = useRef<HTMLDivElement>(null);
   const { setSidebarVisibility, isSidebarVisible } = useApp();
 
-  useClickAway(menuRef, () => setSidebarVisibility(false));
+  useClickAway(menuRef, (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) return;
+    setSidebarVisibility(false);
+  });
 
   return (
     <div

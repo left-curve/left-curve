@@ -161,7 +161,7 @@ export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
                 start={4}
                 end={4}
               />
-              {/* <IconCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" /> */}
+              <IconCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
             </div>
           </div>
         </div>
