@@ -158,33 +158,35 @@ pub fn verify_nonce_and_signature(
             SEEN_NONCES.may_update(ctx.storage, |maybe_nonces| {
                 let mut nonces = maybe_nonces.unwrap_or_default();
 
-                match nonces.first() {
-                    Some(&first) => {
-                        // If there are nonces, we verify the nonce is not yet
-                        // included as seen nonce and it is bigger than the
-                        // oldest nonce.
-                        ensure!(
-                            !nonces.contains(&metadata.nonce),
-                            "nonce is already seen: {}",
-                            metadata.nonce
-                        );
+                if let Some(&first) = nonces.first() {
+                    // If there are nonces, we verify the nonce is not yet
+                    // included as seen nonce and it is bigger than the
+                    // oldest nonce.
+                    ensure!(
+                        !nonces.contains(&metadata.nonce),
+                        "nonce is already seen: {}",
+                        metadata.nonce
+                    );
 
-                        ensure!(
-                            metadata.nonce > first,
-                            "nonce is too old: {} < {}",
-                            metadata.nonce,
-                            first
-                        );
+                    ensure!(
+                        metadata.nonce > first,
+                        "nonce is too old: {} < {}",
+                        metadata.nonce,
+                        first
+                    );
 
-                        // Remove the oldest nonce if max capacity is reached.
-                        if nonces.len() == MAX_SEEN_NONCES {
-                            nonces.pop_first();
-                        }
-                    },
-                    None => {
-                        // Ensure the first nonce is zero.
-                        ensure!(metadata.nonce == 0, "first nonce must be 0");
-                    },
+                    // Remove the oldest nonce if max capacity is reached.
+                    if nonces.len() == MAX_SEEN_NONCES {
+                        nonces.pop_first();
+                    }
+                } else {
+                    // Ensure the first nonce is close to zero.
+                    ensure!(
+                        metadata.nonce < MAX_NONCE_INCREASE,
+                        "first nonce is too big: {} >= MAX_NONCE_INCREASE ({})",
+                        metadata.nonce,
+                        MAX_NONCE_INCREASE
+                    );
                 }
 
                 // The nonce must not be too much bigger than the biggest nonce
