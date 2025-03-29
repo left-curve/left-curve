@@ -9,16 +9,16 @@ import {
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
-import type { ExactPartial, Prettify } from "@left-curve/dango/types";
+import type { Prettify } from "@left-curve/dango/types";
 import type { Config } from "../types/store.js";
 
 export type { GetBlockErrorType };
 
-export type GetBlockOptions = Prettify<ExactPartial<GetBlockParameters> & ScopeKeyParameter>;
+export type GetBlockOptions = Prettify<GetBlockParameters> & ScopeKeyParameter;
 
 export function getBlockQueryOptions<config extends Config>(
   config: config,
-  options: GetBlockOptions = {},
+  options: GetBlockOptions,
 ) {
   return {
     async queryFn({ queryKey }) {
@@ -38,7 +38,7 @@ export type GetBlockQueryFnData = GetBlockReturnType;
 
 export type GetBlockData = GetBlockQueryFnData;
 
-export function getBlockQueryKey(options: GetBlockOptions = {}) {
+export function getBlockQueryKey(options: GetBlockOptions) {
   return ["GetBlock", filterQueryOptions(options)] as const;
 }
 

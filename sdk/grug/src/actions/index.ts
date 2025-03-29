@@ -39,15 +39,27 @@ export {
 } from "./getCodes.js";
 
 export {
-  type GetChainInfoReturnType,
-  getChainInfo,
-} from "./getChainInfo.js";
+  type QueryStatusReturnType,
+  queryStatus,
+} from "./queryStatus.js";
 
 export {
   type QueryAppParameters,
   type QueryAppReturnType,
   queryApp,
 } from "./queryApp.js";
+
+export {
+  type QueryAbciParameters,
+  type QueryAbciReturnType,
+  queryAbci,
+} from "./queryAbci.js";
+
+export {
+  type QueryTxParameters,
+  type QueryTxReturnType,
+  queryTx,
+} from "./queryTx.js";
 
 export {
   type QueryWasmRawParameters,

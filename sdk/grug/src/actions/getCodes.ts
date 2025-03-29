@@ -1,4 +1,5 @@
 import type { Chain, Client, CodesResponse, Signer, Transport } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetCodesParameters =
@@ -27,7 +28,11 @@ export async function getCodes<chain extends Chain | undefined, signer extends S
   const query = {
     codes: { startAfter, limit },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
+
   if ("codes" in res) return res.codes;
   throw new Error(`expecting codes response, got ${JSON.stringify(res)}`);
 }

@@ -92,11 +92,6 @@ export type QueryResponse =
   | { wasmSmart: WasmSmartResponse }
   | { multi: QueryResponse[] };
 
-export type ChainStatusResponse = {
-  chainId: string;
-  block: BlockInfo;
-};
-
 export type CodeResponse = Code;
 
 export type CodesResponse = Record<Hex, Code>;
@@ -104,6 +99,8 @@ export type CodesResponse = Record<Hex, Code>;
 export type ChainConfigResponse<R = Json> = R;
 
 export type AppConfigResponse<R = Json> = R;
+
+export type ChainStatusResponse<R = JsonValue> = R;
 
 export type WasmRawResponse = Base64 | undefined;
 

@@ -130,7 +130,6 @@ export type {
   RawSignature,
   TransportSchema,
   DerivedTransportSchema,
-  IndexerSchema,
   RequestOptions,
   WithPrice,
 } from "@left-curve/sdk/types";
