@@ -21,6 +21,8 @@ import {
   AccountSearchInput,
   Button,
   CoinSelector,
+  IconButton,
+  IconChevronDown,
   IconCopy,
   Input,
   QRCode,
@@ -28,6 +30,7 @@ import {
   Tabs,
   TruncateText,
   useInputs,
+  useMediaQuery,
   useWatchEffect,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
@@ -61,6 +64,8 @@ function SendAndReceiveComponent() {
   const chainId = useChainId();
   const config = useConfig();
   const { data: signingClient } = useSigningClient();
+
+  const { isMd } = useMediaQuery();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
@@ -126,11 +131,21 @@ function SendAndReceiveComponent() {
   });
 
   return (
-    <div className="flex w-full justify-center items-center">
-      <div className="w-full md:max-w-[50rem] flex flex-col gap-4 p-4 md:pt-28 items-center justify-start ">
+    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4">
+      {isMd ? null : (
+        <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
+          <IconButton variant="link">
+            <IconChevronDown className="rotate-90" />
+          </IconButton>
+
+          <span className="h3-bold text-gray-900">{m["sendAndReceive.title"]()}</span>
+        </h2>
+      )}
+
+      <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer
           layoutId="send-and-receive"
-          className="p-6 max-w-[400px] flex flex-col gap-8 rounded-3xl w-full"
+          className="max-w-[400px] flex flex-col gap-8 rounded-3xl w-full"
         >
           <Tabs
             layoutId="tabs-send-and-receive"

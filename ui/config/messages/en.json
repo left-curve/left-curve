@@ -220,6 +220,7 @@
     }
   },
   "sendAndReceive": {
+    "title": "Transfer",
     "to": "To",
     "sending": "You're sending",
     "sendSuccessfully": "Sent Successfully",
