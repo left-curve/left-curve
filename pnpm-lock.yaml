@@ -124,6 +124,12 @@ importers:
       '@left-curve/sdk':
         specifier: workspace:^
         version: link:../grug
+      graphql:
+        specifier: ^16.10.0
+        version: 16.10.0
+      graphql-request:
+        specifier: ^7.1.2
+        version: 7.1.2(graphql@16.10.0)
       ox:
         specifier: ^0.6.10
         version: 0.6.10(typescript@5.6.3)(zod@3.24.1)
@@ -152,12 +158,6 @@ importers:
       cbor-x:
         specifier: ^1.6.0
         version: 1.6.0
-      graphql:
-        specifier: ^16.10.0
-        version: 16.10.0
-      graphql-request:
-        specifier: ^7.1.2
-        version: 7.1.2(graphql@16.10.0)
       superjson:
         specifier: ^2.2.1
         version: 2.2.2
