@@ -184,6 +184,7 @@ impl Models {
             created_at: Set(created_at),
             hash: Set(block.info.hash.to_string()),
             app_hash: Set(block_outcome.app_hash.to_string()),
+            transactions_count: Set(transactions.len() as i32),
         };
 
         Ok(Self {

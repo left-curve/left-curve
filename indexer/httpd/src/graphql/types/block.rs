@@ -16,6 +16,7 @@ pub struct Block {
     pub created_at: DateTime<Utc>,
     pub hash: String,
     pub app_hash: String,
+    pub transactions_count: i32,
 }
 
 impl From<entity::blocks::Model> for Block {
@@ -25,6 +26,7 @@ impl From<entity::blocks::Model> for Block {
             created_at: Utc.from_utc_datetime(&item.created_at),
             hash: item.hash,
             app_hash: item.app_hash,
+            transactions_count: item.transactions_count,
         }
     }
 }
