@@ -37,17 +37,13 @@ export const CreateAccountDepositStep: React.FC = () => {
 
       const nextIndex = await signingClient.getNextAccountIndex({ username: account!.username });
 
-      await signingClient.registerAccount(
-        {
-          sender: account!.address,
-          config: { [accountType as "spot"]: { owner: account!.username } },
+      await signingClient.registerAccount({
+        sender: account!.address,
+        config: { [accountType as "spot"]: { owner: account!.username } },
+        funds: {
+          "hyp/eth/usdc": parsedAmount,
         },
-        {
-          funds: {
-            "hyp/eth/usdc": parsedAmount,
-          },
-        },
-      );
+      });
 
       return {
         amount: parsedAmount,

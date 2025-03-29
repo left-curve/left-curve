@@ -1,4 +1,4 @@
-import type { Address, Transport, TxParameters } from "@left-curve/sdk/types";
+import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 import type { DangoClient } from "../../../types/clients.js";
@@ -12,6 +12,7 @@ export type SafeAccountVoteParameters = {
   account: Address;
   username: string;
   vote: Vote;
+  funds?: Funds;
   execute: boolean;
 };
 
@@ -35,8 +36,8 @@ export async function safeAccountVote<transport extends Transport>(
   parameters: SafeAccountVoteParameters,
   txParameters: TxParameters,
 ): SafeAccountVoteReturnType {
-  const { sender, account, ...voteMsg } = parameters;
-  const { gasLimit, funds } = txParameters;
+  const { sender, account, funds = {}, ...voteMsg } = parameters;
+  const { gasLimit } = txParameters;
   const msg = { vote: voteMsg };
 
   const typedData: TypedDataParameter = {
