@@ -10,7 +10,7 @@ use {
 /// A valid username must contain only lowercase ASCII letters (a-z), numbers
 /// (0-9), or the underscore (_) and be between 1-15 characters.
 #[grug::derive(Borsh)]
-#[derive(Serialize, PartialOrd, Ord)]
+#[derive(Serialize, PartialOrd, Ord, Hash)]
 pub struct Username(String);
 
 impl Username {
