@@ -28,7 +28,6 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         sender: account.address,
         action: "delete",
       });
-      await wait(1500);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });

@@ -109,7 +109,6 @@ function SendAndReceiveComponent() {
         sender: account!.address as Address,
       });
 
-      await wait(1000);
       reset();
       toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
       refreshBalances();
