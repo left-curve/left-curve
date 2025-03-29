@@ -2,6 +2,7 @@ import { getAppConfig, simulate } from "@left-curve/sdk";
 import type { Hex, Transport } from "@left-curve/sdk/types";
 import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
 
+import { getAction } from "@left-curve/sdk/actions";
 import type {
   AppConfig,
   DangoClient,
@@ -59,7 +60,9 @@ export async function registerUser<transport extends Transport>(
     },
   };
 
-  const { gasUsed } = await simulate(client, {
+  const action = getAction(client, simulate, "simulate");
+
+  const { gasUsed } = await action({
     simulate: { sender: addresses.accountFactory, msgs: [executeMsg], data: null },
   });
 

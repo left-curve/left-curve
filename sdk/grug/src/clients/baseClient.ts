@@ -34,7 +34,7 @@ export function createBaseClient<
     return (extendFn: ExtendFn) => {
       const extended = extendFn(base) as ClientExtend;
       for (const key in client) delete extended[key];
-      const combined = { ...base, ...extended };
+      const combined = Object.assign(base, extended);
       return Object.assign(combined, { extend: extendClient(combined) });
     };
   }

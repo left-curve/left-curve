@@ -52,8 +52,6 @@ export async function queryStatus<
     document,
   });
 
-  console.log(response);
-
   return {
     chainId: response.chainId,
     block: {
