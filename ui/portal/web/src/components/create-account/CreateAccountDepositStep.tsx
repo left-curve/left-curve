@@ -48,7 +48,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           },
         },
       );
-      await wait(3000);
+
       return {
         amount: parsedAmount,
         accountType,

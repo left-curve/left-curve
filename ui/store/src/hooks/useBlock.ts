@@ -27,7 +27,7 @@ export type UseBlockReturnType<selectData = GetBlockData> = UseQueryReturnType<
   GetBlockErrorType
 >;
 
-export function useBlock(parameters: UseBlockParameters = {}): UseBlockReturnType {
+export function useBlock(parameters: UseBlockParameters): UseBlockReturnType {
   const { query = {} } = parameters;
 
   // TODO: Use watch block

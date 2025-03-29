@@ -1,3 +1,8 @@
+export { BaseError } from "../errors/base.js";
+export { HttpRequestError } from "../errors/request.js";
+export { TimeoutError } from "../errors/timeout.js";
+export { UrlRequiredError } from "../errors/transports.js";
+
 export {
   camelToSnake,
   snakeToCamel,

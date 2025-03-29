@@ -1,6 +1,5 @@
+import type { Json, JsonValue, MaybePromise, TransportSchemaOverride } from "@left-curve/sdk/types";
 import type { GraphQLError } from "graphql";
-import type { Json } from "./encoding.js";
-import type { MaybePromise } from "./utils.js";
 
 export type GraphqlClient = {
   readonly request: <response = unknown, variables = Json>(
@@ -8,6 +7,12 @@ export type GraphqlClient = {
     variables?: variables,
   ) => Promise<response>;
 };
+
+export interface GraphQLSchemaOverride<T = JsonValue> extends TransportSchemaOverride {
+  Method: string;
+  Parameters?: Record<string, unknown>;
+  ReturnType: T;
+}
 
 export type GraphQLClientResponse<data = unknown> = {
   status: number;

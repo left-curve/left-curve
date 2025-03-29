@@ -1,9 +1,8 @@
+import { HttpRequestError, TimeoutError, withTimeout } from "@left-curve/sdk/utils";
 import { GraphQLClient } from "graphql-request";
-import { HttpRequestError } from "../errors/request.js";
-import { TimeoutError } from "../errors/timeout.js";
-import type { Json } from "../types/encoding.js";
-import type { GraphqlClient, GraphqlClientOptions } from "../types/index.js";
-import { withTimeout } from "../utils/promises.js";
+
+import type { Json } from "@left-curve/sdk/types";
+import type { GraphqlClient, GraphqlClientOptions } from "../types/graphql.js";
 
 export function graphqlClient(url: string, options: GraphqlClientOptions = {}): GraphqlClient {
   const { fetchOptions, onRequest, onResponse, timeout = 10_000 } = options;

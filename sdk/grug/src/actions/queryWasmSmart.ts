@@ -8,6 +8,7 @@ import type {
   Transport,
   WasmSmartResponse,
 } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type QueryWasmSmartParameters = {
@@ -38,7 +39,10 @@ export async function queryWasmSmart<
   const query = {
     wasmSmart: { contract, msg },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
 
   if (!("wasmSmart" in res)) {
     throw new Error(`expecting wasm smart response, got ${JSON.stringify(res)}`);

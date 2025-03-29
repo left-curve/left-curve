@@ -3,7 +3,6 @@ import { deserializeJson } from "@left-curve/dango/encoding";
 import "dotenv/config";
 
 import type { Address, AppConfig } from "@left-curve/dango/types";
-import { wait } from "@left-curve/dango/utils";
 
 const main = async () => {
   try {
@@ -123,8 +122,6 @@ const main = async () => {
         },
       ],
     });
-
-    await wait(3000);
 
     const route = await client.queryWasmSmart<{ address: Address; fee: string }>({
       contract: addresses.warp,

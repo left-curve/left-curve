@@ -29,7 +29,6 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
           insert: key,
         },
       });
-      await wait(1500);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });

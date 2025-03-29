@@ -1,4 +1,7 @@
 import superjson from "superjson";
+import type { JsonValue } from "../types/encoding.js";
+import { recursiveTransform } from "../utils/mappers.js";
+import { camelToSnake, snakeToCamel } from "../utils/strings.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
 
 superjson.registerCustom(
@@ -18,7 +21,7 @@ export function deserializeJson<T>(value: string): T {
   return superjson.parse<T>(value);
 }
 
-export function sortedObject(obj: any): any {
+export function sortedObject(obj: JsonValue): JsonValue {
   if (typeof obj !== "object" || obj === null) {
     return obj;
   }
@@ -33,6 +36,14 @@ export function sortedObject(obj: any): any {
   return result;
 }
 
-export function sortedJsonStringify(obj: any): string {
+export function sortedJsonStringify(obj: JsonValue): string {
   return JSON.stringify(sortedObject(obj));
+}
+
+export function snakeCaseJsonSerialization(obj: JsonValue): string {
+  return JSON.stringify(recursiveTransform(obj, camelToSnake));
+}
+
+export function camelCaseJsonDeserialization<T = JsonValue>(s: string): T {
+  return recursiveTransform(JSON.parse(s), snakeToCamel);
 }

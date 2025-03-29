@@ -60,6 +60,7 @@ export type {
   RequestFnParameters,
   RequestOptions,
   TransportSchema,
+  TransportSchemaOverride,
 } from "./transports.js";
 
 export type {
@@ -148,14 +149,6 @@ export type {
   HttpRequestParameters,
   HttpRpcClientOptions,
 } from "./http.js";
-
-export type { IndexerSchema } from "./indexer.js";
-
-export type {
-  GraphQLClientResponse,
-  GraphqlClient,
-  GraphqlClientOptions,
-} from "./graphql.js";
 
 export {
   Block,
