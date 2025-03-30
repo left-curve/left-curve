@@ -50,7 +50,7 @@ export const QuestBanner: React.FC = () => {
   if (!showGalxeQuestBanner) return null;
 
   return (
-    <div className="max-w-[76rem] mx-auto p-4 z-10 w-full">
+    <div className="max-w-[76rem] mx-auto pt-4 px-4 z-10 w-full">
       <div className="w-full rounded-lg shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
         <p className="exposure-l-italic min-w-fit">{m["quests.galxeQuest.title"]()}</p>
         <div className="flex w-full justify-between">
