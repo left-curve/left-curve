@@ -10,7 +10,7 @@ import { Actions } from "@left-curve/dango/utils";
 import type { SessionResponse } from "@left-curve/dango/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 
-export type UseLoginWithDesktopParameters = {
+export type UseSigninWithDesktopParameters = {
   url: string;
   username: string;
   expiresAt?: number;
@@ -18,13 +18,13 @@ export type UseLoginWithDesktopParameters = {
   mutation?: UseMutationParameters<void, Error, { socketId: string }>;
 };
 
-export type UseLoginWithDesktopReturnType = UseMutationReturnType<
+export type UseSigninWithDesktopReturnType = UseMutationReturnType<
   void,
   Error,
   { socketId: string }
 >;
 
-export function useLoginWithDesktop(parameters: UseLoginWithDesktopParameters) {
+export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters) {
   const {
     url,
     username,

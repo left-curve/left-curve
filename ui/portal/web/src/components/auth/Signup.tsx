@@ -11,8 +11,8 @@ import {
   useAccount,
   useConfig,
   useConnectors,
-  useLogin,
   usePublicClient,
+  useSignin,
   useStorage,
 } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -101,7 +101,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                   <Button
                     variant="link"
                     autoFocus={false}
-                    onClick={() => navigate({ to: "/login" })}
+                    onClick={() => navigate({ to: "/signin" })}
                   >
                     {m["common.signin"]()}
                   </Button>
@@ -317,7 +317,7 @@ const Username: React.FC = () => {
         placeholder={
           <p className="flex gap-1 items-center justify-start">
             <span>{m["signin.placeholder"]()}</span>
-            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500 group-data-[focus=true]:diatype-m-regular group-data-[focus=true]:not-italic">
+            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500">
               {m["common.username"]().toLowerCase()}
             </span>
           </p>
@@ -357,7 +357,7 @@ const Username: React.FC = () => {
   );
 };
 
-const Login: React.FC = () => {
+const Signin: React.FC = () => {
   const navigate = useNavigate();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
   const [advancedOptions, setAdvancedOptions] = useStorage("advancedOptions", {
@@ -366,7 +366,7 @@ const Login: React.FC = () => {
 
   const { username, connectorId } = data;
 
-  const { mutateAsync: connectWithConnector, isPending } = useLogin({
+  const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
     sessionKey: advancedOptions.useSessionKey,
     mutation: {
@@ -406,5 +406,5 @@ const Login: React.FC = () => {
 export const Signup = Object.assign(Container, {
   Credential,
   Username,
-  Login,
+  Signin,
 });

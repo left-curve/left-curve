@@ -95,16 +95,16 @@ export {
 } from "./hooks/useDataChannel.js";
 
 export {
-  type UseLoginWithDesktopParameters,
-  type UseLoginWithDesktopReturnType,
-  useLoginWithDesktop,
-} from "./hooks/useLoginWithDesktop.js";
+  type UseSigninWithDesktopParameters,
+  type UseSigninWithDesktopReturnType,
+  useSigninWithDesktop,
+} from "./hooks/useSigninWithDesktop.js";
 
 export {
-  type UseLoginParameters,
-  type UseLoginReturnType,
-  useLogin,
-} from "./hooks/useLogin.js";
+  type UseSigninParameters,
+  type UseSigninReturnType,
+  useSignin,
+} from "./hooks/useSignin.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
