@@ -149,7 +149,7 @@ function SendAndReceiveComponent() {
       <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer
           layoutId="send-and-receive"
-          className="max-w-[400px] flex flex-col gap-8 rounded-3xl w-full"
+          className="max-w-[400px] flex flex-col gap-8 rounded-xl w-full"
         >
           <Tabs
             layoutId="tabs-send-and-receive"
@@ -244,7 +244,7 @@ function SendAndReceiveComponent() {
               </Button>
             </form>
           ) : (
-            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-3xl shadow-card-shadow p-4">
+            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-xl shadow-card-shadow p-4">
               <div className="flex flex-col gap-1 items-center">
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">

@@ -25,8 +25,8 @@
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
     "testnet": {
-      "title": "Welcome to Dango Testnet",
-      "description": "This is a test environment where you can explore and experiment with Dango without using real assets. Please note that any assets or transactions in this environment are not real and have no value."
+      "title": "Message from the founder",
+      "description": "Thank you for trying out Dango's first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that's it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
     },
     "signWithWallet": [
       {
@@ -145,7 +145,7 @@
   },
   "signin": {
     "advancedOptions": "Advanced Options",
-    "continueWithoutSignin": "Continue without signin",
+    "continueWithoutSignin": "Continue without sign in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don't have an account?",
@@ -296,6 +296,22 @@
     "sending": "You're sending",
     "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
+  },
+  "quests": {
+    "galxeQuest": {
+      "title": "Galxe Quest",
+      "quest": [
+        {
+          "declarations": ["input quest"],
+          "selectors": ["quest"],
+          "match": {
+            "quest=0": "Connect your Ethereum wallet",
+            "quest=1": "Create a subaccount",
+            "quest=2": "Make a transfer of tokens"
+          }
+        }
+      ]
+    }
   },
   "settings": {
     "title": "Settings",

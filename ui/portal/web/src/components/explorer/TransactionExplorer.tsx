@@ -97,7 +97,7 @@ const Messages: React.FC = () => {
 
   const { nestedEvents } = tx;
   return (
-    <div className="w-full shadow-card-shadow bg-rice-25 rounded-3xl p-4 flex flex-col gap-4">
+    <div className="w-full shadow-card-shadow bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold">Message</p>
       <AccordionItem text="Nested Events">
         <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md text-white-100">

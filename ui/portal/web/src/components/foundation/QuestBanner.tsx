@@ -1,7 +1,9 @@
 import { twMerge } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { useAccount, useStorage } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
+
+import { m } from "~/paraglide/messages";
 
 const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text }) => {
   return (
@@ -23,10 +25,13 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
   );
 };
 
-export const Quests: React.FC = () => {
+export const QuestBanner: React.FC = () => {
   const { account, isConnected } = useAccount();
+  const [showGalxeQuestBanner, setShowGalxeQuestBanner] = useStorage("showGalxeQuestBanner", {
+    initialValue: true,
+  });
 
-  const { data: quests, isLoading } = useQuery({
+  const { data: quests } = useQuery({
     queryKey: ["quests", account],
     enabled: isConnected,
     queryFn: () =>
@@ -42,13 +47,21 @@ export const Quests: React.FC = () => {
 
   const { eth_address, quest_account, quest_transfer } = quests;
 
+  if (!showGalxeQuestBanner) return null;
+
   return (
-    <div className="w-full rounded-lg shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between">
-      <p className="exposure-l-italic">Quests</p>
-      <div className="flex lg:items-center gap-3 lg:gap-6 flex-col lg:flex-row">
-        <Quest text="Add ethereum key" completed={!!eth_address} />
-        <Quest text="Create a sub account" completed={quest_account} />
-        <Quest text="Make your first transfer" completed={quest_transfer} />
+    <div className="z-10 w-full shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
+      <p className="exposure-l-italic min-w-fit">{m["quests.galxeQuest.title"]()}</p>
+      <div className="flex w-full justify-between">
+        <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 0 })} completed={!!eth_address} />
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
+        </div>
+        <IconClose
+          className="absolute top-4 right-4 lg:static h-6 w-6 text-gray-400 cursor-pointer"
+          onClick={() => setShowGalxeQuestBanner(false)}
+        />
       </div>
     </div>
   );
