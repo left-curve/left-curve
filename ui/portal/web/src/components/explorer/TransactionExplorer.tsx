@@ -3,7 +3,7 @@ import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import React from "react";
 
 import { AccordionItem, IconCopy, twMerge } from "@left-curve/applets-kit";
-import { ExplorerHeader } from "./ExplorerHeader";
+import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
 
@@ -19,10 +19,10 @@ const TransactionContext = React.createContext<
   (UseQueryResult<IndexedTransaction | null> & { txHash: string }) | null
 >(null);
 
-const useTransaction = () => {
+const useTransactionExplorer = () => {
   const context = React.useContext(TransactionContext);
   if (!context) {
-    throw new Error("useTransaction must be used within a TransactionProvider");
+    throw new Error("useTransactionExplorer must be used within a TransactionProvider");
   }
   return context;
 };
@@ -50,7 +50,7 @@ const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
 };
 
 const Details: React.FC = () => {
-  const { data: tx } = useTransaction();
+  const { data: tx } = useTransactionExplorer();
 
   if (!tx) return null;
 
@@ -91,7 +91,7 @@ const Details: React.FC = () => {
 };
 
 const Messages: React.FC = () => {
-  const { data: tx } = useTransaction();
+  const { data: tx } = useTransactionExplorer();
 
   if (!tx) return null;
 
@@ -117,13 +117,13 @@ const Messages: React.FC = () => {
 };
 
 const NotFound: React.FC = () => {
-  const { txHash, data: tx, isLoading } = useTransaction();
+  const { txHash, data: tx, isLoading } = useTransactionExplorer();
 
   if (isLoading || tx) return null;
 
   return (
     <div className="w-full md:max-w-[76rem] p-4">
-      <ExplorerHeader>
+      <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center border border-red-bean-50">
           <h3 className="exposure-m-italic text-gray-700">{m["explorer.txs.notFound.title"]()}</h3>
           <p className="diatype-m-medium max-w-[42.5rem] text-center text-gray-500 ">
@@ -132,12 +132,12 @@ const NotFound: React.FC = () => {
             {m["explorer.txs.notFound.description"]()}
           </p>
         </div>
-      </ExplorerHeader>
+      </HeaderExplorer>
     </div>
   );
 };
 
-export const Transaction = Object.assign(Container, {
+export const TransactionExplorer = Object.assign(Container, {
   NotFound,
   Details,
   Container,
