@@ -29,7 +29,7 @@ type BlockExplorerProps = {
 };
 
 const BlockExplorerContext = createContext<
-  (UseQueryResult<IndexedBlock | null> & { height: string }) | null
+  (UseQueryResult<IndexedBlock | null> & { height: number }) | null
 >(null);
 
 const useBlockExplorer = () => {
@@ -45,14 +45,15 @@ const BlockContainer: React.FC<PropsWithChildren<BlockExplorerProps>> = ({
   children,
   className,
 }) => {
+  const parsedHeight = Number(height);
   const client = usePublicClient();
 
   const query = useQuery({
     queryKey: ["block", height],
-    queryFn: () => client.queryBlock({ height: +height }),
+    queryFn: () => (Number.isNaN(parsedHeight) ? null : client.queryBlock({ height: +height })),
   });
   return (
-    <BlockExplorerContext.Provider value={{ ...query, height }}>
+    <BlockExplorerContext.Provider value={{ ...query, height: parsedHeight }}>
       <div
         className={twMerge("w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16", className)}
       >
@@ -88,7 +89,7 @@ const FutureBlock: React.FC = () => {
   const { height, data, isLoading } = useBlockExplorer();
   const { days, hours, minutes, seconds } = useCountdown(fakeDate);
 
-  if (isLoading || data || Number.isNaN(Number(height))) return null;
+  if (isLoading || data || Number.isNaN(height)) return null;
 
   return (
     <div className="w-full md:max-w-[76rem] p-4 flex flex-col gap-6">
@@ -189,8 +190,6 @@ const BlockDetails: React.FC = () => {
   const { data: blockInfo } = useBlockExplorer();
   if (!blockInfo) return null;
 
-  console.log(blockInfo);
-
   const { transactions, createdAt, blockHeight, hash } = blockInfo;
   return (
     <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
@@ -244,7 +243,7 @@ const BlockDetails: React.FC = () => {
 const BlockNotFound: React.FC = () => {
   const { isLoading, data, height } = useBlockExplorer();
 
-  if (!isLoading && !data && Number.isNaN(Number(height))) {
+  if (!isLoading && !data && Number.isNaN(height)) {
     return (
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center border border-red-bean-50">
