@@ -1,18 +1,18 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Transaction } from "~/components/explorer/Transaction";
+import { TransactionExplorer } from "~/components/explorer/TransactionExplorer";
 
 export const Route = createLazyFileRoute("/(app)/_app/tx/$txHash")({
-  component: TransactionExplorer,
+  component: TransactionExplorerApplet,
 });
 
-function TransactionExplorer() {
+function TransactionExplorerApplet() {
   const { txHash } = Route.useParams();
 
   return (
-    <Transaction txHash={txHash}>
-      <Transaction.NotFound />
-      <Transaction.Details />
-      <Transaction.Messages />
-    </Transaction>
+    <TransactionExplorer txHash={txHash}>
+      <TransactionExplorer.NotFound />
+      <TransactionExplorer.Details />
+      <TransactionExplorer.Messages />
+    </TransactionExplorer>
   );
 }

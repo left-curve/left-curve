@@ -32,6 +32,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
       hideModal();
     },
   });

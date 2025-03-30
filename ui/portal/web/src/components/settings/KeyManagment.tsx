@@ -18,6 +18,7 @@ import { Modals } from "../foundation/Modal";
 const KeyTranslation = {
   secp256r1: "Passkey",
   secp256k1: "Wallet",
+  ethereum: "Wallet",
 };
 
 export const KeyManagment: React.FC = () => {

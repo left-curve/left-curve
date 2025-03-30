@@ -3,7 +3,6 @@ import {
   formatNumber,
   formatUnits,
   parseUnits,
-  wait,
   withResolvers,
 } from "@left-curve/dango/utils";
 import {
@@ -22,6 +21,8 @@ import {
   AccountSearchInput,
   Button,
   CoinSelector,
+  IconButton,
+  IconChevronDown,
   IconCopy,
   Input,
   QRCode,
@@ -29,10 +30,12 @@ import {
   Tabs,
   TruncateText,
   useInputs,
+  useMediaQuery,
+  useWatchEffect,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { z } from "zod";
 import { Modals } from "~/components/foundation/Modal";
@@ -53,6 +56,8 @@ function SendAndReceiveComponent() {
   const navigate = useNavigate({ from: "/send-and-receive" });
   const { formatNumberOptions, showModal } = useApp();
 
+  const queryClient = useQueryClient();
+  const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
   const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({ strategy: "onSubmit" });
 
@@ -61,9 +66,13 @@ function SendAndReceiveComponent() {
   const config = useConfig();
   const { data: signingClient } = useSigningClient();
 
+  const { isMd } = useMediaQuery();
+
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
   });
+
+  useWatchEffect(isConnected, (v) => !v && setAction("send"));
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
@@ -120,21 +129,34 @@ function SendAndReceiveComponent() {
         description: e.message,
       });
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
+    },
   });
 
   return (
-    <div className="flex w-full justify-center items-center">
-      <div className="w-full md:max-w-[50rem] flex flex-col gap-4 p-4 md:pt-28 items-center justify-start ">
+    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4">
+      {isMd ? null : (
+        <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
+          <IconButton variant="link">
+            <IconChevronDown className="rotate-90" />
+          </IconButton>
+
+          <span className="h3-bold text-gray-900">{m["sendAndReceive.title"]()}</span>
+        </h2>
+      )}
+
+      <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer
           layoutId="send-and-receive"
-          className="p-6 max-w-[400px] flex flex-col gap-8 rounded-3xl w-full"
+          className="max-w-[400px] flex flex-col gap-8 rounded-3xl w-full"
         >
           <Tabs
             layoutId="tabs-send-and-receive"
             selectedTab={isConnected ? action : "send"}
             keys={isConnected ? ["send", "receive"] : ["send"]}
             fullWidth
-            onTabChange={(v) => navigate({ search: { action: v }, replace: false })}
+            onTabChange={setAction}
           />
 
           {action === "send" ? (
@@ -224,7 +246,7 @@ function SendAndReceiveComponent() {
           ) : (
             <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-3xl shadow-card-shadow p-4">
               <div className="flex flex-col gap-1 items-center">
-                <p className="exposure-h3-italic">{`${capitalize(account?.type as string)} Account #${account?.index}`}</p>
+                <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">
                   <TruncateText
                     className="diatype-sm-medium text-gray-500"
