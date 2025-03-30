@@ -1,7 +1,7 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
 import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
@@ -16,6 +16,7 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
+  const queryClient = useQueryClient();
   const { showModal } = useApp();
   const { coins, state } = useConfig();
   const { account, refreshAccounts } = useAccount();
@@ -57,6 +58,7 @@ export const CreateAccountDepositStep: React.FC = () => {
       await refreshAccounts?.();
       await refreshBalances();
       done();
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
     },
     onError: () => {
       toast.error(m["signup.errors.couldntCompleteRequest"]());

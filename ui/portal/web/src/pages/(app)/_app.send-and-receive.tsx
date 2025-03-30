@@ -35,7 +35,7 @@ import {
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { z } from "zod";
 import { Modals } from "~/components/foundation/Modal";
@@ -56,6 +56,7 @@ function SendAndReceiveComponent() {
   const navigate = useNavigate({ from: "/send-and-receive" });
   const { formatNumberOptions, showModal } = useApp();
 
+  const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
   const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({ strategy: "onSubmit" });
@@ -127,6 +128,9 @@ function SendAndReceiveComponent() {
         title: m["common.error"](),
         description: e.message,
       });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
     },
   });
 

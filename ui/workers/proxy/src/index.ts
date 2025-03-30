@@ -25,47 +25,60 @@ export default {
     }
 
     const url = new URL(request.url);
-    if (!["/rpc", "/graphql", "/quests"].includes(url.pathname)) {
-      const [questsStatus, graphqlStatus, rpcStatus] = await Promise.all([
-        fetch(`${env.SERVER_URI}:8081/check_username/none`),
-        fetch(`${env.SERVER_URI}:8080`),
-        fetch(`${env.SERVER_URI}:26657`),
-      ]);
+    if (
+      url.pathname.includes("/rpc") ||
+      url.pathname.includes("/quests") ||
+      url.pathname.includes("/graphql")
+    ) {
+      const PORT = getPort(url.pathname);
 
-      return new Response(
-        JSON.stringify({
-          health: {
-            quests: questsStatus.ok ? "up" : "down",
-            graphql: graphqlStatus.ok ? "up" : "down",
-            rpc: rpcStatus.ok ? "up" : "down",
-          },
-        }),
-        { status: 200 },
+      const newRequest = new Request(
+        `${env.SERVER_URI}:${PORT}${url.pathname.replace("/rpc", "").replace("/quests", "")}${url.search}`,
+        {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+          redirect: "follow",
+        },
       );
+
+      const response = await fetch(newRequest);
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          "Content-Type": response.headers.get("Content-Type") ?? "application/json",
+          "Access-Control-Allow-Origin": request.headers.get("Origin") ?? "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        },
+      });
     }
 
-    const PORT = getPort(url.pathname);
+    const [questsStatus, graphqlStatus, rpcStatus] = await Promise.all([
+      fetch(`${env.SERVER_URI}:8081/check_username/none`),
+      fetch(`${env.SERVER_URI}:8080`),
+      fetch(`${env.SERVER_URI}:26657`),
+    ]);
 
-    const newRequest = new Request(
-      `${env.SERVER_URI}:${PORT}${url.pathname.replace("/rpc", "").replace("/quests", "")}${url.search}`,
+    return new Response(
+      JSON.stringify({
+        health: {
+          quests: questsStatus.ok ? "up" : "down",
+          graphql: graphqlStatus.ok ? "up" : "down",
+          rpc: rpcStatus.ok ? "up" : "down",
+        },
+      }),
       {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        redirect: "follow",
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers":
+            request.headers.get("Access-Control-Request-Headers") || "*",
+          "Access-Control-Max-Age": "86400",
+        },
+        status: 200,
       },
     );
-
-    const response = await fetch(newRequest);
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: {
-        ...Object.fromEntries(response.headers),
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      },
-    });
   },
 };
