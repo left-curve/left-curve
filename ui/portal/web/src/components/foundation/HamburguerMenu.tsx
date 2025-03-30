@@ -40,7 +40,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
           })}
           onClick={() => [
             setShowOptions(!showOptions),
-            isConnected ? setSidebarVisibility(true) : navigate({ to: "/login" }),
+            isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" }),
           ]}
         >
           <span className={twMerge("hidden exposure-m-italic text-white", { block: showOptions })}>

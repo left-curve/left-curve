@@ -1,5 +1,5 @@
 import { useWizard } from "@left-curve/applets-kit";
-import { useLogin, useLoginWithDesktop } from "@left-curve/store";
+import { useSignin, useSigninWithDesktop } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "../foundation/Toast";
@@ -18,7 +18,7 @@ export const AuthMobile: React.FC = () => {
 
   const { username } = data;
 
-  const { mutateAsync: connectWithPasskey, isPending } = useLogin({
+  const { mutateAsync: connectWithPasskey, isPending } = useSignin({
     username,
     mutation: {
       onSuccess: () => navigate({ to: "/" }),
@@ -32,7 +32,7 @@ export const AuthMobile: React.FC = () => {
     },
   });
 
-  const { mutateAsync: connectWithDesktop } = useLoginWithDesktop({
+  const { mutateAsync: connectWithDesktop } = useSigninWithDesktop({
     url: import.meta.env.PUBLIC_WEBRTC_URI,
     username,
     mutation: {

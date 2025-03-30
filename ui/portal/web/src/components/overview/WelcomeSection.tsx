@@ -32,7 +32,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
               {m["common.motto"]()}
             </p>
             <div className="flex items-center justify-center gap-4 w-full lg:px-6">
-              <Button as={Link} fullWidth to="/login">
+              <Button as={Link} fullWidth to="/signin">
                 {m["common.signin"]()}
               </Button>
 

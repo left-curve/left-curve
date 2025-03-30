@@ -1,5 +1,5 @@
 import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useLogin, usePublicClient, useStorage } from "@left-curve/store";
+import { useAccount, usePublicClient, useSignin, useStorage } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -147,7 +147,7 @@ const CredentialStep: React.FC = () => {
 
   const { username, sessionKey } = data;
 
-  const { mutateAsync: connectWithConnector, isPending } = useLogin({
+  const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
     sessionKey,
     mutation: {
@@ -199,7 +199,7 @@ const CredentialStep: React.FC = () => {
   );
 };
 
-export const Login = Object.assign(Container, {
+export const Signin = Object.assign(Container, {
   Username: UsernameStep,
   Credential: CredentialStep,
 });
