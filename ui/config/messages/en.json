@@ -44,7 +44,73 @@
       }
     ]
   },
+  "countdown": {
+    "days": [
+      {
+        "declarations": ["input days", "local countDays = days: plural"],
+        "selectors": ["countDays"],
+        "match": {
+          "countDays=one": "Day",
+          "countDays=other": "Days"
+        }
+      }
+    ],
+    "hours": [
+      {
+        "declarations": ["input hours", "local countHours = hours: plural"],
+        "selectors": ["countHours"],
+        "match": {
+          "countHours=one": "Hour",
+          "countHours=other": "Hours"
+        }
+      }
+    ],
+    "minutes": [
+      {
+        "declarations": ["input minutes", "local countMinutes = minutes: plural"],
+        "selectors": ["countMinutes"],
+        "match": {
+          "countMinutes=one": "Minute",
+          "countMinutes=other": "Minutes"
+        }
+      }
+    ],
+    "seconds": [
+      {
+        "declarations": ["input seconds", "local countSeconds = seconds: plural"],
+        "selectors": ["countSeconds"],
+        "match": {
+          "countSeconds=one": "Second",
+          "countSeconds=other": "Seconds"
+        }
+      }
+    ]
+  },
   "explorer": {
+    "block": {
+      "notFound": {
+        "title": "Block not found",
+        "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
+      },
+      "details": {
+        "blockDetails": "Block Details",
+        "blockHash": "Block Hash:",
+        "blockHeight": "Block Height:",
+        "blockTime": "Time:",
+        "transactions": "Transactions",
+        "proposer": "Proposer:",
+        "numberOfTx": "Number of Tx:"
+      },
+      "futureBlock": {
+        "targetBlock": "Target Block",
+        "description": " The estimated time for a block to be created and added to the blockchain.",
+        "estimateTimeISO": "Estimated Time (ISO)",
+        "estimateTimeUTC": "Estimated Time (UTC)",
+        "hasNotBeenCreated": "Block {height} has not been created yet.",
+        "remainingBlocks": "Remaining Blocks",
+        "currentBlock": "Current Block"
+      }
+    },
     "txs": {
       "txDetails": "Transaction Details",
       "notFound": {

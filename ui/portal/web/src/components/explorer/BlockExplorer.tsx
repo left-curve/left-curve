@@ -9,11 +9,16 @@ import {
   Table,
   type TableColumn,
   TruncateText,
+  twMerge,
+  useCountdown,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
+import { m } from "~/paraglide/messages";
+
 import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { HeaderExplorer } from "./HeaderExplorer";
@@ -44,17 +49,15 @@ const BlockContainer: React.FC<PropsWithChildren<BlockExplorerProps>> = ({
 
   const query = useQuery({
     queryKey: ["block", height],
-    queryFn: async () => {
-      const blockInfo = await client.queryBlock({ height: +height });
-      return {
-        ...blockInfo,
-        proposer: "Leftcurve Validator",
-      };
-    },
+    queryFn: () => client.queryBlock({ height: +height }),
   });
   return (
     <BlockExplorerContext.Provider value={{ ...query, height }}>
-      <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">{children}</div>
+      <div
+        className={twMerge("w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16", className)}
+      >
+        {children}
+      </div>
     </BlockExplorerContext.Provider>
   );
 };
@@ -67,7 +70,7 @@ const BlockSkeleton: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
       <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[147.22px] min-h-[208.5px]">
-        <h1 className="h4-bold">Block Detail</h1>
+        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
         <img
           src="/images/emojis/detailed/map-explorer.svg"
@@ -79,8 +82,11 @@ const BlockSkeleton: React.FC = () => {
   );
 };
 
+const fakeDate = +new Date() * 1 + 1000 * 60 * 60 * 24;
+
 const FutureBlock: React.FC = () => {
   const { height, data, isLoading } = useBlockExplorer();
+  const { days, hours, minutes, seconds } = useCountdown(fakeDate);
 
   if (isLoading || data || Number.isNaN(Number(height))) return null;
 
@@ -88,41 +94,55 @@ const FutureBlock: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4 flex flex-col gap-6">
       <div className="flex flex-col gap-6 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow relative overflow-hidden text-gray-700">
         <div className="flex flex-col gap-1">
-          <h3 className="h4-heavy text-gray-900">Target Block: #{height}</h3>
+          <h3 className="h4-heavy text-gray-900">
+            {m["explorer.block.futureBlock.targetBlock"]()} {height}
+          </h3>
           <p className="diatype-m-medium text-gray-500">
-            The estimated time for a block to be created and added to the blockchain
+            {m["explorer.block.futureBlock.description"]()}
           </p>
         </div>
         <div className="w-full lg:max-w-[45.5rem] flex gap-4 flex-col lg:flex-row lg:items-center justify-between">
           <div className="flex flex-col gap-1">
-            <p className="diatype-m-medium text-gray-500">Estimated Time (WET)</p>
-            <p className="diatype-m-bold text-gray-700">Nov 14th 6653, 21:15:36</p>
+            <p className="diatype-m-medium text-gray-500">
+              {m["explorer.block.futureBlock.estimateTimeISO"]()}
+            </p>
+            <p className="diatype-m-bold text-gray-700">{new Date(fakeDate).toISOString()}</p>
           </div>
           <div className="flex flex-col gap-1">
-            <p className="diatype-m-medium text-gray-500">Estimated Time (UTC)</p>
-            <p className="diatype-m-bold text-gray-700">Nov 14th 6653, 21:15:36</p>
+            <p className="diatype-m-medium text-gray-500">
+              {m["explorer.block.futureBlock.estimateTimeUTC"]()}
+            </p>
+            <p className="diatype-m-bold text-gray-700">{new Date(fakeDate).toUTCString()}</p>
           </div>
         </div>
         <span className="w-full h-[1px] bg-gray-200 lg:max-w-[45.5rem]" />
         <div className="grid grid-cols-3 lg:grid-cols-7 gap-3 items-center text-center lg:max-w-[45.5rem]">
           <div>
-            <p className="h1-bold text-gray-900">3</p>
-            <span className="diatype-m-medium uppercase text-gray-500">Days</span>
+            <p className="h1-bold text-gray-900">{days}</p>
+            <span className="diatype-m-medium uppercase text-gray-500">
+              {m["countdown.days"]({ days })}
+            </span>
           </div>
           <span className="h1-bold text-gray-900">:</span>
           <div>
-            <p className="h1-bold text-gray-900">03</p>
-            <span className="diatype-m-medium uppercase text-gray-500">Hours</span>
+            <p className="h1-bold text-gray-900">{hours}</p>
+            <span className="diatype-m-medium uppercase text-gray-500">
+              {m["countdown.hours"]({ hours })}
+            </span>
           </div>
           <span className="hidden lg:flex h1-bold text-gray-900">:</span>
           <div>
-            <p className="h1-bold text-gray-900">18</p>
-            <span className="diatype-m-medium uppercase text-gray-500">Minutes</span>
+            <p className="h1-bold text-gray-900">{minutes}</p>
+            <span className="diatype-m-medium uppercase text-gray-500">
+              {m["countdown.minutes"]({ minutes })}
+            </span>
           </div>
           <span className="h1-bold text-gray-900">:</span>
           <div>
-            <p className="h1-bold text-gray-900">34</p>
-            <span className="diatype-m-medium uppercase text-gray-500">Seconds</span>
+            <p className="h1-bold text-gray-900">{seconds}</p>
+            <span className="diatype-m-medium uppercase text-gray-500">
+              {m["countdown.seconds"]({ seconds })}
+            </span>
           </div>
         </div>
         <img
@@ -134,22 +154,28 @@ const FutureBlock: React.FC = () => {
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center w-full">
           <h3 className="exposure-m-italic text-gray-700">
-            Block #{height} has not yet been created
+            {m["explorer.block.futureBlock.hasNotBeenCreated"]({ height })}
           </h3>
           <div className="flex items-center justify-around gap-4 flex-col lg:flex-row w-full">
             <div className="flex flex-col gap-1 items-center">
-              <p className="diatype-m-medium text-gray-500">Target Block</p>
+              <p className="diatype-m-medium text-gray-500">
+                {m["explorer.block.futureBlock.targetBlock"]()}
+              </p>
               <p className="diatype-m-bold text-gray-700">#{height}</p>
             </div>
             <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-gray-200" />
             <div className="flex flex-col gap-1 items-center">
-              <p className="diatype-m-medium text-gray-500">Current Block</p>
-              <p className="diatype-m-bold text-gray-700">#{height}</p>
+              <p className="diatype-m-medium text-gray-500">
+                {m["explorer.block.futureBlock.currentBlock"]()}
+              </p>
+              <p className="diatype-m-bold text-gray-700">#-</p>
             </div>
             <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-gray-200" />
             <div className="flex flex-col gap-1 items-center">
-              <p className="diatype-m-medium text-gray-500">Remaining Block</p>
-              <p className="diatype-m-bold text-gray-700">#1</p>
+              <p className="diatype-m-medium text-gray-500">
+                {m["explorer.block.futureBlock.remainingBlocks"]()}
+              </p>
+              <p className="diatype-m-bold text-gray-700">#-</p>
             </div>
           </div>
         </div>
@@ -163,31 +189,43 @@ const BlockDetails: React.FC = () => {
   const { data: blockInfo } = useBlockExplorer();
   if (!blockInfo) return null;
 
+  console.log(blockInfo);
+
   const { transactions, createdAt, blockHeight, hash } = blockInfo;
   return (
     <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
-        <h1 className="h4-bold">Block Detail</h1>
+        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="col-span-1 md:col-span-2 flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">Block Hash:</p>
+            <p className="diatype-md-medium text-gray-500">
+              {m["explorer.block.details.blockHash"]()}
+            </p>
             {isMd ? <p>{hash}</p> : <TruncateText text={hash} />}
             <IconCopy className="w-4 h-4 cursor-pointer" copyText={hash} />
           </div>
           <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">Block Height:</p>
+            <p className="diatype-md-medium text-gray-500">
+              {m["explorer.block.details.blockHeight"]()}
+            </p>
             <p>{blockHeight}</p>
           </div>
           <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">Proposer:</p>
+            <p className="diatype-md-medium text-gray-500">
+              {m["explorer.block.details.proposer"]()}
+            </p>
             <p>Leftcurve Validator</p>
           </div>
           <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">Number of Tx:</p>
+            <p className="diatype-md-medium text-gray-500">
+              {m["explorer.block.details.numberOfTx"]()}
+            </p>
             <p>{transactions.length}</p>
           </div>
           <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">Time:</p>
+            <p className="diatype-md-medium text-gray-500">
+              {m["explorer.block.details.blockTime"]()}
+            </p>
             <p>{new Date(createdAt).toISOString()}</p>
           </div>
         </div>
@@ -210,9 +248,11 @@ const BlockNotFound: React.FC = () => {
     return (
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center border border-red-bean-50">
-          <h3 className="exposure-m-italic text-gray-700">Block not found</h3>
+          <h3 className="exposure-m-italic text-gray-700">
+            {m["explorer.block.notFound.title"]()}
+          </h3>
           <p className="diatype-m-medium max-w-[42.5rem] text-center text-gray-500 ">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+            {m["explorer.block.notFound.description"]()}
           </p>
         </div>
       </HeaderExplorer>
@@ -223,6 +263,7 @@ const BlockNotFound: React.FC = () => {
 };
 
 const BlockTable: React.FC = () => {
+  const navigate = useNavigate();
   const { data: blockInfo } = useBlockExplorer();
   if (!blockInfo) return null;
 
@@ -235,7 +276,13 @@ const BlockTable: React.FC = () => {
     },
     {
       header: "Hash",
-      cell: ({ row }) => <TruncateText text={row.original.hash} />,
+      cell: ({ row }) => (
+        <TruncateText
+          className="cursor-pointer"
+          text={row.original.hash}
+          onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
+        />
+      ),
     },
     {
       header: "Account",
