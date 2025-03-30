@@ -50,20 +50,18 @@ export const QuestBanner: React.FC = () => {
   if (!showGalxeQuestBanner) return null;
 
   return (
-    <div className="max-w-[76rem] mx-auto pt-4 px-4 z-10 w-full">
-      <div className="w-full rounded-xl shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
-        <p className="exposure-l-italic min-w-fit">{m["quests.galxeQuest.title"]()}</p>
-        <div className="flex w-full justify-between">
-          <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
-            <Quest text={m["quests.galxeQuest.quest"]({ quest: 0 })} completed={!!eth_address} />
-            <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
-            <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
-          </div>
-          <IconClose
-            className="absolute top-4 right-4 lg:static h-6 w-6 text-gray-400 cursor-pointer"
-            onClick={() => setShowGalxeQuestBanner(false)}
-          />
+    <div className="z-10 w-full shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
+      <p className="exposure-l-italic min-w-fit">{m["quests.galxeQuest.title"]()}</p>
+      <div className="flex w-full justify-between">
+        <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 0 })} completed={!!eth_address} />
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
         </div>
+        <IconClose
+          className="absolute top-4 right-4 lg:static h-6 w-6 text-gray-400 cursor-pointer"
+          onClick={() => setShowGalxeQuestBanner(false)}
+        />
       </div>
     </div>
   );
