@@ -29,7 +29,6 @@ export const Quests: React.FC = () => {
   const { data: quests, isLoading } = useQuery({
     queryKey: ["quests", account],
     enabled: isConnected,
-    staleTime: 1000 * 60,
     queryFn: () =>
       fetch(`https://devnet.dango.exchange/quests/check_username/${account?.username}`).then(
         (res) => res.json(),
