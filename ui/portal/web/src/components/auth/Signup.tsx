@@ -246,7 +246,8 @@ const Username: React.FC = () => {
     queryFn: async ({ signal }) => {
       await wait(450);
       if (signal.aborted) return null;
-      if (!username || error) return null;
+      if (!username) return new Error(m["signin.errors.usernameRequired"]());
+      if (error) throw error;
       const { accounts } = await client.getUser({ username });
       const isUsernameAvailable = !Object.keys(accounts).length;
 
