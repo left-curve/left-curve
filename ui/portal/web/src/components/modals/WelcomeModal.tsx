@@ -2,16 +2,15 @@ import { Button } from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
 
-import { useAccount, useStorage } from "@left-curve/store";
+import { useStorage } from "@left-curve/store";
 import type React from "react";
 
-export const Welcome: React.FC = () => {
-  const { isConnected } = useAccount();
+export const WelcomeModal: React.FC = () => {
   const [showWelcome, setShowWelcome] = useStorage("showWelcome", {
     initialValue: true,
   });
 
-  if (!isConnected || !showWelcome) return null;
+  if (!showWelcome) return null;
 
   return (
     <div className="w-screen h-screen bg-gray-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4">

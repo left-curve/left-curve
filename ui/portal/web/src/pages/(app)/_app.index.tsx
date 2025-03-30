@@ -4,7 +4,6 @@ import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
 import { AppletsSection } from "~/components/overview/AppletsSection";
-import { Quests } from "~/components/overview/Quests";
 import { DotsIndicator } from "~/components/overview/SwippeableAccountCard";
 import { WelcomeSection } from "~/components/overview/WelcomeSection";
 
@@ -73,7 +72,6 @@ function OverviewComponent() {
   return (
     <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-8 p-4 pb-32">
       <div className="w-full flex flex-col gap-8 min-h-[100dvh] lg:min-h-fit relative">
-        <Quests />
         <WelcomeSection
           cardMobileVisible={cardMobileVisible}
           setCardMobileVisible={setCardMobileVisible}

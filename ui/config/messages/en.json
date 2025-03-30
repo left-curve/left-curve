@@ -297,6 +297,22 @@
     "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
   },
+  "quests": {
+    "galxeQuest": {
+      "title": "Galxe Quest",
+      "quest": [
+        {
+          "declarations": ["input quest"],
+          "selectors": ["quest"],
+          "match": {
+            "quest=0": "Connect your Ethereum wallet",
+            "quest=1": "Create a subaccount",
+            "quest=2": "Make a transfer of tokens"
+          }
+        }
+      ]
+    }
+  },
   "settings": {
     "title": "Settings",
     "display": "Display",
