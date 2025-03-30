@@ -145,7 +145,7 @@
   },
   "signin": {
     "advancedOptions": "Advanced Options",
-    "continueWithoutSignin": "Continue without signin",
+    "continueWithoutSignin": "Continue without sign in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don't have an account?",

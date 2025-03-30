@@ -30,7 +30,7 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
   });
 
   return (
-    <div className="bg-rice-25 shadow-card-shadow grid rounded-3xl w-full p-4 gap-4 overflow-hidden">
+    <div className="bg-rice-25 shadow-card-shadow grid rounded-xl w-full p-4 gap-4 overflow-hidden">
       {topContent}
       <div
         style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
