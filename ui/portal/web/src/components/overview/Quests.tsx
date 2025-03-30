@@ -34,7 +34,7 @@ export const Quests: React.FC = () => {
         (res) => res.json(),
       ),
     initialData: () => ({
-      eth_address: "",
+      eth_address: null,
       quest_account: false,
       quest_transfer: false,
     }),
@@ -46,7 +46,7 @@ export const Quests: React.FC = () => {
     <div className="w-full rounded-lg shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between">
       <p className="exposure-l-italic">Quests</p>
       <div className="flex lg:items-center gap-3 lg:gap-6 flex-col lg:flex-row">
-        <Quest text="Add ethereum key" completed={eth_address.length} />
+        <Quest text="Add ethereum key" completed={!!eth_address} />
         <Quest text="Create a sub account" completed={quest_account} />
         <Quest text="Make your first transfer" completed={quest_transfer} />
       </div>
