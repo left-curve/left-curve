@@ -2,6 +2,7 @@ import { twMerge } from "@left-curve/applets-kit";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Header } from "~/components/foundation/Header";
+import { Welcome } from "~/components/modals/Welcome";
 
 export const Route = createFileRoute("/(app)/_app")({
   component: function Layout() {
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/(app)/_app")({
             isScrolled ? "z-40 lg:z-0" : "z-20 lg:z-0",
           )}
         />
-
+        <Welcome />
         <Header isScrolled={isScrolled} />
         <div className="flex items-center justify-start w-full z-30 h-full relative flex-col">
           <Outlet />

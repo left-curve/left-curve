@@ -8,6 +8,7 @@
     "max": "Max",
     "signin": "Sign In",
     "signup": "Sign Up",
+    "dismiss": "Dismiss",
     "continue": "Continue",
     "back": "Back",
     "cancel": "Cancel",
@@ -23,6 +24,10 @@
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
+    "testnet": {
+      "title": "Welcome to Dango Testnet",
+      "description": "This is a test environment where you can explore and experiment with Dango without using real assets. Please note that any assets or transactions in this environment are not real and have no value."
+    },
     "signWithWallet": [
       {
         "declarations": ["input action"],
