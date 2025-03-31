@@ -67,7 +67,7 @@ export async function broadcastTxSync<transport extends Transport>(
       if (!tx) throw new Error("Transaction not found");
       return tx;
     },
-    { delay: 2500, retryCount: 30 },
+    { delay: 500, retryCount: 30 },
   );
 
   const { code, codespace, log } = result;
