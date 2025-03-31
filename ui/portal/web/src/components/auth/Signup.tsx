@@ -289,7 +289,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch("https://mock-warp.left-curve.workers.dev", {
+        const response = await fetch("https://mock-warp.dango.exchange", {
           method: "POST",
           body: JSON.stringify({ address }),
         });
