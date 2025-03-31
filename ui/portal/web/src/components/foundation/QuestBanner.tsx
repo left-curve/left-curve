@@ -50,7 +50,14 @@ export const QuestBanner: React.FC = () => {
 
   return (
     <div className="z-10 w-full shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
-      <p className="exposure-l-italic min-w-fit">{m["quests.galxeQuest.title"]()}</p>
+      <a
+        className="exposure-l-italic min-w-fit"
+        href="https://app.galxe.com/quest/dango/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {m["quests.galxeQuest.title"]()}
+      </a>
       <div className="flex w-full justify-between">
         <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
           <Quest text={m["quests.galxeQuest.quest"]({ quest: 0 })} completed={!!eth_address} />
