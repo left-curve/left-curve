@@ -5,40 +5,32 @@ import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js"
 import { useDataChannel } from "./useDataChannel.js";
 
 import { Secp256k1 } from "@left-curve/dango/crypto";
-import { Actions } from "@left-curve/dango/utils";
+import { Actions, DataChannel } from "@left-curve/dango/utils";
 
 import type { SessionResponse } from "@left-curve/dango/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 
-export type UseLoginWithDesktopParameters = {
+export type UseSigninWithDesktopParameters = {
   url: string;
-  username: string;
   expiresAt?: number;
   connectors?: UseConnectorsReturnType;
   mutation?: UseMutationParameters<void, Error, { socketId: string }>;
 };
 
-export type UseLoginWithDesktopReturnType = UseMutationReturnType<
+export type UseSigninWithDesktopReturnType = UseMutationReturnType<
   void,
   Error,
   { socketId: string }
 >;
 
-export function useLoginWithDesktop(parameters: UseLoginWithDesktopParameters) {
-  const {
-    url,
-    username,
-    expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000),
-    mutation,
-  } = parameters;
+export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters) {
+  const { url, expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000), mutation } = parameters;
   const connectors = parameters?.connectors ?? useConnectors();
   const chainId = useChainId();
 
-  const { data: dataChannel } = useDataChannel({ url });
-
   return useMutation({
     mutationFn: async ({ socketId }) => {
-      if (!dataChannel) throw new Error("error: missing dataChannel");
+      const dataChannel = await DataChannel.create(url);
       const connector = connectors.find((connector) => connector.id === "session");
       if (!connector) throw new Error("error: missing connector");
 
@@ -47,7 +39,7 @@ export function useLoginWithDesktop(parameters: UseLoginWithDesktopParameters) {
       const keyPair = Secp256k1.makeKeyPair();
       const publicKey = keyPair.getPublicKey();
 
-      const response = await dataChannel.sendAsyncMessage<SessionResponse>({
+      const response = await dataChannel.sendAsyncMessage<SessionResponse & { username: string }>({
         type: Actions.GenerateSession,
         message: {
           expireAt: +expiresAt,
@@ -55,7 +47,7 @@ export function useLoginWithDesktop(parameters: UseLoginWithDesktopParameters) {
         },
       });
 
-      const { authorization, keyHash, sessionInfo } = response;
+      const { authorization, keyHash, sessionInfo, username } = response;
 
       await connector.connect({
         username,

@@ -17,7 +17,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import type { IndexedBlock } from "@left-curve/dango/types";
+import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchBar } from "~/hooks/useSearchBar";
@@ -141,6 +141,7 @@ function SearchMenu() {
             hideMenu={hideMenu}
             applets={applets}
             block={block}
+            txs={txs}
             isLoading={isLoading || isRefetching}
           />
         </div>
@@ -153,11 +154,12 @@ type SearchMenuBodyProps = {
   isVisible: boolean;
   hideMenu: () => void;
   applets: AppletMetadata[];
+  txs: IndexedTransaction[];
   block?: IndexedBlock;
   isLoading: boolean;
 };
 
-export function Body({ isVisible, hideMenu, applets, block, isLoading }: SearchMenuBodyProps) {
+export function Body({ isVisible, hideMenu, applets, txs, block, isLoading }: SearchMenuBodyProps) {
   const navigate = useNavigate();
 
   return (
@@ -223,6 +225,20 @@ export function Body({ isVisible, hideMenu, applets, block, isLoading }: SearchM
                   </Command.Item>
                 </Command.Group>
               ) : null}
+              {txs.length
+                ? txs.map((tx) => (
+                    <Command.Group heading="Transactions" key={tx.hash}>
+                      <Command.Item
+                        key={tx.hash}
+                        value={tx.hash}
+                        className="group"
+                        onSelect={() => [navigate({ to: `/tx/${tx.hash}` }), hideMenu()]}
+                      >
+                        <SearchItem.Transaction height={tx.blockHeight} hash={tx.hash} />
+                      </Command.Item>
+                    </Command.Group>
+                  ))
+                : null}
               {/*    <Command.Group value="Assets">
                 {[].map((token) => (
                   <Command.Item

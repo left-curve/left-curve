@@ -1,5 +1,5 @@
 import { useWizard } from "@left-curve/applets-kit";
-import { useLogin, useLoginWithDesktop } from "@left-curve/store";
+import { useSignin, useSigninWithDesktop } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "../foundation/Toast";
@@ -10,15 +10,18 @@ import { QRScan } from "./QRScan";
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
+type AuthMobileProps = {
+  showPasskeyButton?: boolean;
+};
 
-export const AuthMobile: React.FC = () => {
+export const AuthMobile: React.FC<AuthMobileProps> = ({ showPasskeyButton = true }) => {
   const navigate = useNavigate();
-  const { data } = useWizard<{ username: string }>();
+  const { data } = useWizard();
   const [isScannerVisible, setScannerVisibility] = useState(false);
 
   const { username } = data;
 
-  const { mutateAsync: connectWithPasskey, isPending } = useLogin({
+  const { mutateAsync: connectWithPasskey, isPending } = useSignin({
     username,
     mutation: {
       onSuccess: () => navigate({ to: "/" }),
@@ -32,9 +35,8 @@ export const AuthMobile: React.FC = () => {
     },
   });
 
-  const { mutateAsync: connectWithDesktop } = useLoginWithDesktop({
+  const { mutateAsync: connectWithDesktop } = useSigninWithDesktop({
     url: import.meta.env.PUBLIC_WEBRTC_URI,
-    username,
     mutation: {
       onSuccess: () => navigate({ to: "/" }),
       onError: (err) => {
@@ -51,21 +53,27 @@ export const AuthMobile: React.FC = () => {
     <>
       {isScannerVisible ? (
         <QRScan
-          onScan={(socketId) => connectWithDesktop({ socketId })}
+          onScan={(link) => {
+            const socketId = link.split("socketId=")[1];
+            if (!socketId) return;
+            connectWithDesktop({ socketId });
+          }}
           isVisisble={isScannerVisible}
           onClose={() => setScannerVisibility(false)}
         />
       ) : null}
       <div className="flex flex-col gap-4 w-full">
-        <Button
-          fullWidth
-          onClick={() => connectWithPasskey({ connectorId: "passkey" })}
-          isLoading={isPending}
-          className="gap-2"
-        >
-          <IconPasskey className="w-6 h-6" />
-          <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
-        </Button>
+        {showPasskeyButton ? (
+          <Button
+            fullWidth
+            onClick={() => connectWithPasskey({ connectorId: "passkey" })}
+            isLoading={isPending}
+            className="gap-2"
+          >
+            <IconPasskey className="w-6 h-6" />
+            <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
+          </Button>
+        ) : null}
         <Button
           fullWidth
           onClick={() => setScannerVisibility(true)}

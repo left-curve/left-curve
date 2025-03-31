@@ -1,4 +1,5 @@
 import type { Chain, Client, CodeResponse, Hex, Signer, Transport } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetCodeParameters = {
@@ -23,7 +24,11 @@ export async function getCode<chain extends Chain | undefined, signer extends Si
   const query = {
     code: { hash },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
+
   if ("code" in res) return res.code;
   throw new Error(`expecting code response, got ${JSON.stringify(res)}`);
 }

@@ -36,12 +36,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   });
 
   return (
-    <Field className="flex items-center gap-2">
-      <HCheckBox
-        checked={inputValue}
-        onChange={setInputValue}
-        className={twMerge(styles, className)}
-      >
+    <Field className={twMerge("flex items-center gap-2", className)}>
+      <HCheckBox checked={inputValue} onChange={setInputValue} className={twMerge(styles)}>
         <svg
           className="stroke-white opacity-0 group-data-[checked]:opacity-100 transition-all"
           viewBox="0 0 14 14"

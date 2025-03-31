@@ -41,12 +41,19 @@ const Icon = {
 
 export const Toast: React.FC<Props> = ({ title, description, type, close }) => {
   return (
-    <div className="w-fit min-w-[12rem] max-w-[20rem] p-4 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex items-center gap-2">
+    <div className="w-fit min-w-[12rem] max-w-[20rem] p-4 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex flex-wrap items-center gap-2 relative">
       {Icon[type]}
       <div className="flex flex-col">
         <p className="text-gray-900 diatype-sm-medium">{title}</p>
         {description && <p className="text-gray-500 diatype-xs-medium">{description}</p>}
       </div>
+      <button
+        className="absolute top-4 right-4 transition-all duration-200"
+        onClick={close}
+        type="button"
+      >
+        <IconClose className="w-6 h-6 text-gray-500 hover:text-gray-900" />
+      </button>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import type { Transport } from "@left-curve/sdk/types";
+import type { Client, Transport } from "@left-curve/sdk/types";
 import {
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -32,7 +32,26 @@ import {
   transfer,
 } from "./mutations/transfer.js";
 
+import type {
+  QueryAppParameters,
+  QueryAppReturnType,
+  QueryTxParameters,
+  QueryTxReturnType,
+  SimulateParameters,
+  SimulateReturnType,
+} from "@left-curve/sdk/actions";
 import type { DangoClient, Signer } from "../../types/index.js";
+import { queryApp } from "./queries/queryApp.js";
+import { type QueryStatusReturnType, queryStatus } from "./queries/queryStatus.js";
+import { queryTx } from "./queries/queryTx.js";
+import { simulate } from "./queries/simulate.js";
+
+export type AppQueryActions = {
+  queryTx(args: QueryTxParameters): QueryTxReturnType;
+  queryApp(args: QueryAppParameters): QueryAppReturnType;
+  queryStatus(): QueryStatusReturnType;
+  simulate(args: SimulateParameters): SimulateReturnType;
+};
 
 export type AppMutationActions = {
   broadcastTxSync(args: BroadcastTxSyncParameters): BroadcastTxSyncReturnType;
@@ -46,6 +65,17 @@ export type AppMutationActions = {
   ): StoreCodeAndInstantiateReturnType;
   transfer(args: TransferParameters): TransferReturnType;
 };
+
+export function appQueryActions<transport extends Transport = Transport>(
+  client: Client<transport>,
+): AppQueryActions {
+  return {
+    queryTx: (args) => queryTx(client, args),
+    queryApp: (args) => queryApp(client, args),
+    queryStatus: () => queryStatus(client),
+    simulate: (args) => simulate(client, args),
+  };
+}
 
 export function appMutationActions<transport extends Transport = Transport>(
   client: DangoClient<transport, Signer>,

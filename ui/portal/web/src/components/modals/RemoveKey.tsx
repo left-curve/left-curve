@@ -28,7 +28,6 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         sender: account.address,
         action: "delete",
       });
-      await wait(1500);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
@@ -37,7 +36,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-3xl relative max-w-[400px]">
+    <div className="flex flex-col bg-white-100 rounded-xl relative max-w-[400px]">
       <IconButton
         className="hidden lg:block absolute right-2 top-2"
         variant="link"

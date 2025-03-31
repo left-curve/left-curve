@@ -2,7 +2,7 @@ import { getAppConfig } from "@left-curve/sdk";
 import { getMembersTypedData } from "../../../utils/typedData.js";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
-import type { Address, Transport, TxParameters } from "@left-curve/sdk/types";
+import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
 import type {
   AccountConfig,
   AppConfig,
@@ -14,6 +14,7 @@ import type {
 export type RegisterAccountParameters = {
   sender: Address;
   config: AccountConfig;
+  funds?: Funds;
 };
 
 export type RegisterAccountReturnType = ExecuteReturnType;
@@ -23,7 +24,8 @@ export async function registerAccount<transport extends Transport>(
   parameters: RegisterAccountParameters,
   txParameters: TxParameters = {},
 ): RegisterAccountReturnType {
-  const { sender, config } = parameters;
+  const { sender, config, funds = {} } = parameters;
+  const { gasLimit } = txParameters;
   const msg = { registerAccount: { params: config } };
 
   const { addresses } = await getAppConfig<AppConfig>(client);
@@ -60,10 +62,13 @@ export async function registerAccount<transport extends Transport>(
   };
 
   return await execute(client, {
-    contract: addresses.accountFactory,
+    execute: {
+      contract: addresses.accountFactory,
+      msg,
+      typedData,
+      funds,
+    },
     sender,
-    msg,
-    typedData,
-    ...txParameters,
+    gasLimit,
   });
 }

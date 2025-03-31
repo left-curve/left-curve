@@ -27,7 +27,7 @@ function NotificationComponent() {
           <span className="h3-bold">Notifcations</span>
         </h2>
       </div>
-      <div className={twMerge("bg-rice-25 w-full shadow-card-shadow rounded-3xl")}>
+      <div className={twMerge("bg-rice-25 w-full shadow-card-shadow rounded-xl")}>
         <NotificationsList notifications={[]} />
       </div>
     </div>

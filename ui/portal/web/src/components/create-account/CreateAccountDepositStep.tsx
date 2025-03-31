@@ -1,14 +1,16 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
-import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import { capitalize, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
-import toast from "react-hot-toast";
+
 import { useApp } from "~/hooks/useApp";
 import { Modals } from "../foundation/Modal";
+import { toast } from "../foundation/Toast";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
@@ -16,9 +18,11 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { showModal } = useApp();
   const { coins, state } = useConfig();
-  const { account, refreshAccounts } = useAccount();
+  const { account, refreshAccounts, changeAccount } = useAccount();
   const { formatNumberOptions } = useApp();
   const { data: signingClient } = useSigningClient();
 
@@ -35,20 +39,18 @@ export const CreateAccountDepositStep: React.FC = () => {
       if (!signingClient) throw new Error("error: no signing client");
       const parsedAmount = parseUnits(fundsAmount, coinInfo.decimals).toString();
 
-      const nextIndex = await signingClient.getNextAccountIndex({ username: account!.username });
+      const [nextIndex] = await Promise.all([
+        signingClient.getNextAccountIndex({ username: account!.username }),
+      ]);
 
-      await signingClient.registerAccount(
-        {
-          sender: account!.address,
-          config: { [accountType as "spot"]: { owner: account!.username } },
+      await signingClient.registerAccount({
+        sender: account!.address,
+        config: { [accountType as "spot"]: { owner: account!.username } },
+        funds: {
+          "hyp/eth/usdc": parsedAmount,
         },
-        {
-          funds: {
-            "hyp/eth/usdc": parsedAmount,
-          },
-        },
-      );
-      await wait(3000);
+      });
+
       return {
         amount: parsedAmount,
         accountType,
@@ -60,10 +62,20 @@ export const CreateAccountDepositStep: React.FC = () => {
       showModal(Modals.ConfirmAccount, data);
       await refreshAccounts?.();
       await refreshBalances();
-      done();
+      // changeAccount?.(data.address);
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
+      navigate({ to: "/" });
     },
-    onError: () => {
-      toast.error(m["signup.errors.couldntCompleteRequest"]());
+    onError: (e) => {
+      toast.error(
+        {
+          title: m["signup.errors.couldntCompleteRequest"]() as string,
+          description: e instanceof Error ? e.message : e,
+        },
+        {
+          duration: Number.POSITIVE_INFINITY,
+        },
+      );
     },
   });
 
@@ -108,15 +120,10 @@ export const CreateAccountDepositStep: React.FC = () => {
         }
       />
       <div className="flex gap-4">
-        <Button
-          type="button"
-          fullWidth
-          onClick={() => previousStep()}
-          isDisabled={isPending || !!error}
-        >
+        <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
           {m["common.back"]()}
         </Button>
-        <Button type="submit" fullWidth isLoading={isPending}>
+        <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
           {m["common.continue"]()}
         </Button>
       </div>

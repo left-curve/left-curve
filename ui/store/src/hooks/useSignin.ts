@@ -5,16 +5,16 @@ import { useChainId } from "./useChainId.js";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
 import { useSessionKey } from "./useSessionKey.js";
 
-export type UseLoginParameters = {
+export type UseSigninParameters = {
   username: string;
   connectors?: UseConnectorsReturnType;
   sessionKey?: boolean;
   mutation?: UseMutationParameters<void, Error, { connectorId: string }>;
 };
 
-export type UseLoginReturnType = UseMutationReturnType<void, Error, { connectorId: string }>;
+export type UseSigninReturnType = UseMutationReturnType<void, Error, { connectorId: string }>;
 
-export function useLogin(parameters: UseLoginParameters) {
+export function useSignin(parameters: UseSigninParameters) {
   const { username, mutation, sessionKey = false } = parameters;
   const connectors = parameters?.connectors ?? useConnectors();
   const chainId = useChainId();

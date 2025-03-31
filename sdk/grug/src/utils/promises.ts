@@ -68,7 +68,7 @@ export type WithRetryParameters = {
 export type WithRetryErrorType = Error;
 
 export function withRetry<data>(
-  fn: () => Promise<data>,
+  fn: ({ abort }: { abort: (reason: string) => void }) => () => Promise<data>,
   { delay: delay_ = 100, retryCount = 2, shouldRetry = () => true }: WithRetryParameters = {},
 ) {
   return new Promise<data>((resolve, reject) => {
@@ -80,7 +80,7 @@ export function withRetry<data>(
       };
 
       try {
-        const data = await fn();
+        const data = await fn({ abort: (s) => reject(s) })();
         resolve(data);
       } catch (err) {
         if (count < retryCount && (await shouldRetry({ count, error: err as Error })))

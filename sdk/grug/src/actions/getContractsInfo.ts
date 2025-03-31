@@ -6,6 +6,7 @@ import type {
   Signer,
   Transport,
 } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetContractsInfoParameters = {
@@ -35,7 +36,10 @@ export async function getContractsInfo<
   const query = {
     contracts: { startAfter, limit },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
 
   if (!("contracts" in res)) {
     throw new Error(`expecting contracts response, got ${JSON.stringify(res)}`);

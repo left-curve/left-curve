@@ -87,6 +87,8 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "graphql": "^16.10.0",
+    "graphql-request": "^7.1.2",
     "@left-curve/sdk": "workspace:^",
     "ox": "^0.6.10"
   },

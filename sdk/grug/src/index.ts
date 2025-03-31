@@ -2,7 +2,7 @@ export { createBaseClient } from "./clients/baseClient.js";
 export { createGrugClient } from "./clients/grugClient.js";
 
 export { http } from "./transports/http.js";
-export { graphql } from "./transports/graphql.js";
+export { createTransport } from "./transports/createTransport.js";
 
 /* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */
@@ -54,9 +54,9 @@ export {
 } from "./actions/getCodes.js";
 
 export {
-  type GetChainInfoReturnType,
-  getChainInfo,
-} from "./actions/getChainInfo.js";
+  type QueryStatusReturnType,
+  queryStatus,
+} from "./actions/queryStatus.js";
 
 export {
   type QueryAppParameters,

@@ -1,5 +1,17 @@
-import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useLogin, usePublicClient, useStorage } from "@left-curve/store";
+import {
+  Spinner,
+  useInputs,
+  useMediaQuery,
+  useWatchEffect,
+  useWizard,
+} from "@left-curve/applets-kit";
+import {
+  useAccount,
+  usePublicClient,
+  useSignin,
+  useSigninWithDesktop,
+  useStorage,
+} from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -23,11 +35,11 @@ import { m } from "~/paraglide/messages";
 import type React from "react";
 import type { FormEvent, PropsWithChildren } from "react";
 
-type LoginContainerProps = {
+type SigninContainerProps = {
   isFirstVisit: boolean;
 };
 
-const Container: React.FC<PropsWithChildren<LoginContainerProps>> = ({
+const Container: React.FC<PropsWithChildren<SigninContainerProps>> = ({
   children,
   isFirstVisit: firstVisit,
 }) => {
@@ -41,7 +53,7 @@ const Container: React.FC<PropsWithChildren<LoginContainerProps>> = ({
   return (
     <div className="h-svh xl:h-screen w-screen flex items-center justify-center">
       <div className="flex items-center justify-center flex-1">
-        <ResizerContainer layoutId="login" className="w-full max-w-[22.5rem]">
+        <ResizerContainer layoutId="sigin" className="w-full max-w-[22.5rem]">
           {children}
         </ResizerContainer>
       </div>
@@ -94,7 +106,7 @@ const UsernameStep: React.FC = () => {
           placeholder={
             <p className="flex gap-1 items-center justify-start">
               <span>{m["signin.placeholder"]()}</span>
-              <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500 group-data-[focus=true]:diatype-m-regular group-data-[focus=true]:not-italic">
+              <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500">
                 {m["common.username"]().toLowerCase()}
               </span>
             </p>
@@ -114,9 +126,13 @@ const UsernameStep: React.FC = () => {
         <Button fullWidth type="submit" isDisabled={!!error} isLoading={isPending}>
           {m["common.signin"]()}
         </Button>
-        <Button as={Link} fullWidth variant="secondary" to="/">
-          {m["signin.continueWithoutLogin"]()}
-        </Button>
+        {isMd ? (
+          <Button as={Link} fullWidth variant="secondary" to="/">
+            {m["signin.continueWithoutSignin"]()}
+          </Button>
+        ) : (
+          <AuthMobile showPasskeyButton={false} />
+        )}
         {isMd ? (
           <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
             <div className="flex items-center gap-2 flex-col">
@@ -130,11 +146,19 @@ const UsernameStep: React.FC = () => {
           </ExpandOptions>
         ) : null}
       </form>
-      <div className="flex items-center">
-        <p>{m["signin.noAccount"]()}</p>
-        <Button variant="link" onClick={() => navigate({ to: "/signup" })}>
-          {m["common.signup"]()}
-        </Button>
+      <div className="flex flex-col items-center">
+        {isMd ? (
+          <div className="flex justify-center items-center">
+            <p>{m["signin.noAccount"]()}</p>
+            <Button variant="link" onClick={() => navigate({ to: "/signup" })}>
+              {m["common.signup"]()}
+            </Button>
+          </div>
+        ) : (
+          <Button as={Link} fullWidth variant="link" to="/">
+            {m["signin.continueWithoutSignin"]()}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -147,7 +171,7 @@ const CredentialStep: React.FC = () => {
 
   const { username, sessionKey } = data;
 
-  const { mutateAsync: connectWithConnector, isPending } = useLogin({
+  const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
     sessionKey,
     mutation: {
@@ -199,7 +223,42 @@ const CredentialStep: React.FC = () => {
   );
 };
 
-export const Login = Object.assign(Container, {
+export const MobileStep: React.FC = () => {
+  const navigate = useNavigate();
+  const { data } = useWizard<{ socketId: string }>();
+  const { socketId } = data;
+  const { mutateAsync: connectWithDesktop, isSuccess } = useSigninWithDesktop({
+    url: import.meta.env.PUBLIC_WEBRTC_URI,
+    mutation: {
+      onSuccess: () => navigate({ to: "/" }),
+      onError: (err) => {
+        console.error(err);
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigingIn"](),
+        });
+      },
+    },
+  });
+
+  useEffect(() => {
+    if (socketId) {
+      connectWithDesktop({ socketId });
+    }
+  }, []);
+
+  useWatchEffect(isSuccess, (p) => p && navigate({ to: "/" }));
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-2">
+      <Spinner size="lg" color="pink" />
+      <p className="diatype-m-bold">Loading crendetial</p>
+    </div>
+  );
+};
+
+export const Signin = Object.assign(Container, {
   Username: UsernameStep,
   Credential: CredentialStep,
+  Mobile: MobileStep,
 });

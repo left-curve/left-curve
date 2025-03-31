@@ -12,7 +12,8 @@ export const IconCopy: React.FC<React.SVGAttributes<HTMLOrSVGElement> & { copyTe
   return (
     <button
       type="button"
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation();
         if (copyText) navigator.clipboard.writeText(copyText);
         setCopyIcon(<IconCopyCheck {...props} />);
         setTimeout(() => setCopyIcon(<IconCopyNoCheck {...props} />), 1000);

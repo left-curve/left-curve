@@ -7,11 +7,11 @@ use {
     std::{collections::HashMap, sync::Arc},
 };
 
-pub struct TransactionDataLoader {
+pub struct BlockTransactionsDataLoader {
     pub db: DatabaseConnection,
 }
 
-impl Loader<Block> for TransactionDataLoader {
+impl Loader<Block> for BlockTransactionsDataLoader {
     type Error = Arc<sea_orm::DbErr>;
     type Value = Vec<Transaction>;
 

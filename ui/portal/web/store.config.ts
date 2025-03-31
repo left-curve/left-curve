@@ -10,65 +10,55 @@ export const config: Config = createConfig({
   transport: graphql(dango.urls.indexer, { batch: true }),
   coins: {
     [dango.id]: {
-      ubtc: {
+      "hyp/all/wbtc": {
         type: "native",
         name: "Bitcoin",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
         symbol: "BTC",
-        denom: "ubtc",
-        decimals: 18,
+        denom: "hyp/all/wbtc",
+        decimals: 6,
         coingeckoId: "bitcoin",
       },
-      ueth: {
+      "hyp/all/eth": {
         type: "native",
         name: "Ether",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
         symbol: "ETH",
-        denom: "ueth",
-        decimals: 18,
+        denom: "hyp/all/eth",
+        decimals: 6,
         coingeckoId: "ethereum",
       },
-      uripple: {
+      "hyp/all/xrp": {
         type: "native",
         name: "Ripple",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/xrpl/images/xrp.svg",
         symbol: "XRP",
-        denom: "uripple",
-        decimals: 18,
+        denom: "hyp/all/xrp",
+        decimals: 6,
         coingeckoId: "ripple",
       },
       "hyp/eth/usdc": {
-        type: "native",
+        type: "alloyed",
         name: "Ethereum USD Circle",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-        symbol: "EUSDC",
+        symbol: "USDC",
         denom: "hyp/eth/usdc",
         decimals: 6,
         coingeckoId: "usd-coin",
       },
-      usol: {
+      "hyp/all/sol": {
         type: "native",
         name: "Solana",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
         symbol: "SOL",
-        denom: "usol",
-        decimals: 18,
-        coingeckoId: "solana",
-      },
-      uusdc: {
-        type: "native",
-        name: "USD Circle",
-        logoURI:
-          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-        symbol: "USDC",
-        denom: "uusdc",
+        denom: "hyp/all/usdc",
         decimals: 6,
-        coingeckoId: "usd-coin",
+        coingeckoId: "solana",
       },
     },
   },

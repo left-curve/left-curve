@@ -53,7 +53,7 @@ export type {
   AnyCoin,
   BaseCoin,
   CoinFee,
-  IBCCoin,
+  AlloyCoin,
   NativeCoin,
   ContractCoin,
   CoinGeckoId,
@@ -130,7 +130,6 @@ export type {
   RawSignature,
   TransportSchema,
   DerivedTransportSchema,
-  IndexerSchema,
   RequestOptions,
   WithPrice,
 } from "@left-curve/sdk/types";

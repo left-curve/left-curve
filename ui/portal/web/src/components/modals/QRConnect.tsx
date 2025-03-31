@@ -1,7 +1,7 @@
 import { IconButton, IconClose, IconMobile, QRCode, forwardRef } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
-import { useConnectorClient, useDataChannel } from "@left-curve/store";
+import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
@@ -13,6 +13,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
     url: import.meta.env.PUBLIC_WEBRTC_URI,
   });
   const { data: signingClient } = useConnectorClient();
+  const { username } = useAccount();
   const { hideModal } = useApp();
 
   dataChannel?.subscribe(async (m) => {
@@ -30,7 +31,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
         pubKey: decodeBase64(publicKey),
       });
 
-      dataChannel.sendMessage({ id, message: response });
+      dataChannel.sendMessage({ id, message: { ...response, username } });
       toast.success({ title: "Connection established" });
       hideModal();
     } catch (error) {
@@ -40,7 +41,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-3xl relative">
+    <div className="flex flex-col bg-white-100 rounded-xl relative">
       <IconButton
         className="hidden md:block absolute right-2 top-2"
         variant="link"
@@ -62,7 +63,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
         <QRCode
           className="bg-white-100"
           isLoading={isLoadingDataChannel || isLoadingCredential}
-          data={dataChannel?.getSocketId()}
+          data={`${document.location.origin}/signin?socketId=${dataChannel?.getSocketId()}`}
         />
       </div>
     </div>

@@ -29,16 +29,16 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
           insert: key,
         },
       });
-      await wait(1500);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
       hideModal();
     },
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-3xl relative">
+    <div className="flex flex-col bg-white-100 rounded-xl relative">
       <IconButton
         className="hidden md:block absolute right-2 top-2"
         variant="link"

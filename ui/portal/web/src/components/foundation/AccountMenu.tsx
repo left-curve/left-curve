@@ -16,24 +16,16 @@ import {
   IconAddCross,
   IconButton,
   IconChevronDown,
-  IconDoubleChevronRight,
+  IconLeft,
   IconLogOut,
   IconMobile,
+  IconSwitch,
   twMerge,
   useClickAway,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { AnimatePresence } from "framer-motion";
 import { AssetCard } from "./AssetCard";
-
-const ExportComponent = Object.assign(AccountMenu, {
-  Desktop,
-  Mobile,
-  Assets,
-  Selector,
-});
-
-export { ExportComponent as AccountMenu };
 
 type AccountMenuProps = {
   backAllowed?: boolean;
@@ -87,7 +79,6 @@ function AccountMenu({ backAllowed }: AccountMenuProps) {
                 account={account}
                 balance={totalBalance}
                 isSelectorActive={isAccountSelectorActive}
-                onTriggerAction={() => setAccountSelectorActive(!isAccountSelectorActive)}
               />
             </motion.div>
           </AnimatePresence>
@@ -102,7 +93,11 @@ function AccountMenu({ backAllowed }: AccountMenuProps) {
             transition={{ duration: 0.2 }}
             exit={{ opacity: 0 }}
           >
-            {isAccountSelectorActive ? <Selector /> : <Assets />}
+            {isAccountSelectorActive ? (
+              <Selector onBack={() => setAccountSelectorActive(!isAccountSelectorActive)} />
+            ) : (
+              <Assets onSwitch={() => setAccountSelectorActive(!isAccountSelectorActive)} />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -114,7 +109,10 @@ export function Desktop() {
   const menuRef = useRef<HTMLDivElement>(null);
   const { setSidebarVisibility, isSidebarVisible } = useApp();
 
-  useClickAway(menuRef, () => setSidebarVisibility(false));
+  useClickAway(menuRef, (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) return;
+    setSidebarVisibility(false);
+  });
 
   return (
     <div
@@ -149,7 +147,11 @@ export function Mobile() {
   );
 }
 
-function Assets() {
+type AssetsProps = {
+  onSwitch: () => void;
+};
+
+export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector, account } = useAccount();
@@ -169,18 +171,10 @@ function Assets() {
             setSidebarVisibility(false),
           ]}
         >
-          {m["common.fund"]()}
+          <IconAddCross className="w-5 h-5" /> <span> {m["common.fund"]()}</span>
         </Button>
-        <Button
-          fullWidth
-          variant="secondary"
-          size="md"
-          onClick={() => [
-            navigate({ to: "/send-and-receive", search: { action: "send" } }),
-            setSidebarVisibility(false),
-          ]}
-        >
-          {m["common.send"]()}
+        <Button fullWidth variant="secondary" size="md" onClick={onSwitch}>
+          <IconSwitch className="w-5 h-5" /> <span> {m["common.switch"]()}</span>
         </Button>
         {isMd ? (
           <IconButton variant="secondary" onClick={() => showModal(Modals.QRConnect)}>
@@ -205,9 +199,13 @@ function Assets() {
       </div>
     </div>
   );
-}
+};
 
-function Selector() {
+type SelectorProps = {
+  onBack: () => void;
+};
+
+export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
   const { setSidebarVisibility } = useApp();
   const navigate = useNavigate();
   const { account, accounts, changeAccount } = useAccount();
@@ -217,7 +215,15 @@ function Selector() {
   return (
     <div className="flex flex-col w-full gap-4 items-center">
       <div className="flex items-center justify-between gap-4 w-full max-w-[22.5rem] md:max-w-[20.5rem]">
-        <p className="diatype-m-bold text-gray-500">{m["accountMenu.accounts.otherAccounts"]()}</p>
+        <Button
+          size="sm"
+          variant="link"
+          className="flex justify-center items-center"
+          onClick={onBack}
+        >
+          <IconLeft className="w-[22px] h-[22px]" />
+          <span>{m["common.back"]()}</span>
+        </Button>
         <Button onClick={() => [setSidebarVisibility(false), navigate({ to: "/create-account" })]}>
           <IconAddCross className="w-5 h-5" /> <span>{m["accountMenu.accounts.addAccount"]()}</span>
         </Button>
@@ -235,4 +241,13 @@ function Selector() {
       </div>
     </div>
   );
-}
+};
+
+const ExportComponent = Object.assign(AccountMenu, {
+  Desktop,
+  Mobile,
+  Assets,
+  Selector,
+});
+
+export { ExportComponent as AccountMenu };

@@ -36,6 +36,8 @@ export {
   grugActions,
 } from "@left-curve/sdk";
 
+export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                 App Actions                                */
 /* -------------------------------------------------------------------------- */
@@ -162,6 +164,21 @@ export {
 } from "./safe/index.js";
 
 /* -------------------------------------------------------------------------- */
+/*                               Indexer Actions                              */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type QueryBlockParameters,
+  type QueryBlockReturnType,
+  queryBlock,
+} from "./indexer/queryBlock.js";
+
+export {
+  type QueryIndexerParameters,
+  queryIndexer,
+} from "./indexer/queryIndexer.js";
+
+/* -------------------------------------------------------------------------- */
 /*                           Re-export Grug Actions                           */
 /* -------------------------------------------------------------------------- */
 
@@ -175,8 +192,8 @@ export {
   type GetBalancesParameters,
   type GetBalancesReturnType,
   getBalances,
-  type GetChainInfoReturnType,
-  getChainInfo,
+  type QueryStatusReturnType,
+  queryStatus,
   type GetCodeParameters,
   type GetCodeReturnType,
   getCode,
@@ -207,4 +224,10 @@ export {
   type SimulateParameters,
   type SimulateReturnType,
   simulate,
-} from "@left-curve/sdk";
+  type QueryAbciParameters,
+  type QueryAbciReturnType,
+  queryAbci,
+  type QueryTxParameters,
+  type QueryTxReturnType,
+  queryTx,
+} from "@left-curve/sdk/actions";
