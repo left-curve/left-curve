@@ -252,7 +252,7 @@ export const MobileStep: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center gap-2">
       <Spinner size="lg" color="pink" />
-      <p className="diatype-m-bold">Loading crendetial</p>
+      <p className="diatype-m-bold">{m["signin.loadingCredential"]()}</p>
     </div>
   );
 };

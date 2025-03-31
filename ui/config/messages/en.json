@@ -144,6 +144,7 @@
     }
   },
   "signin": {
+    "loadingCredential": "Loading credential",
     "advancedOptions": "Advanced Options",
     "continueWithoutSignin": "Continue without sign in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
