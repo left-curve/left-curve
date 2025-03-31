@@ -76,7 +76,7 @@ export default {
 
     let currentNonce = Number((await env.WARP_KV.get("nonce")) || "0");
 
-    const messages = Array.from({ length: 4 }, (_, i) => {
+    const messages = Array.from({ length: 5 }, (_, i) => {
       const message = Message.from({
         version: MAILBOX_VERSION,
         originDomain: MOCK_REMOTE_DOMAIN,
@@ -126,9 +126,6 @@ export default {
 
     if (response.code !== 0)
       return new Response("error: the tx went wrong", { headers, status: 500 });
-
-    // Wait for the transaction to be processed
-    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     return new Response("success", { headers, status: 200 });
   },

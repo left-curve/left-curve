@@ -120,6 +120,29 @@ const main = async () => {
             },
           },
         },
+        {
+          contract: addresses.warp as Address,
+          msg: {
+            set_route: {
+              denom: "hyp/eth/eth",
+              destination_domain: 123,
+              route: {
+                address: "0000000000000000000000000000000000000000000000000000000000000004",
+                fee: "0",
+              },
+            },
+          },
+        },
+        {
+          contract: addresses.warp as Address,
+          msg: {
+            set_alloy: {
+              underlying_denom: "hyp/eth/eth",
+              alloyed_denom: "hyp/all/eth",
+              destination_domain: 123,
+            },
+          },
+        },
       ],
     });
 
