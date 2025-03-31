@@ -26,5 +26,12 @@
       "outputs": [".next/**", "!.next/cache/**", "build/**"]
     }
   },
-  "globalEnv": ["NEXT_PUBLIC_FULLPAGE_KEY", "PUBLIC_WEBRTC_URI"]
+  "globalEnv": [
+    "NEXT_PUBLIC_FULLPAGE_KEY",
+    "PUBLIC_WEBRTC_URI",
+    "PUBLIC_SENTRY_DSN",
+    "SENTRY_ORG",
+    "SENTRY_PROJECT",
+    "SENTRY_AUTH_TOKEN"
+  ]
 }
