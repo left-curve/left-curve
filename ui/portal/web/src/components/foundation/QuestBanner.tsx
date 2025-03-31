@@ -1,4 +1,4 @@
-import { twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
@@ -52,18 +52,31 @@ export const QuestBanner: React.FC = () => {
     <div className="z-10 w-full shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
-        href="https://app.galxe.com/quest/dango/"
+        href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
         target="_blank"
         rel="noreferrer"
       >
         {m["quests.galxeQuest.title"]()}
       </a>
-      <div className="flex w-full justify-between">
+      <div className="flex flex-col lg:flex-row w-full justify-between gap-2">
         <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
-          <Quest text={m["quests.galxeQuest.quest"]({ quest: 0 })} completed={!!eth_address} />
+          <Quest
+            text={`${m["quests.galxeQuest.quest"]({ quest: 0 })} ${eth_address ? `(${quests.eth_address})` : ""}`}
+            completed={!!eth_address}
+          />
           <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
           <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
         </div>
+        {eth_address.length && quest_account && quest_transfer ? (
+          <Button
+            as="a"
+            href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Claim NFT
+          </Button>
+        ) : null}
         <IconClose
           className="absolute top-4 right-4 lg:static h-6 w-6 text-gray-400 cursor-pointer"
           onClick={() => setShowGalxeQuestBanner(false)}
