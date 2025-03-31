@@ -125,8 +125,7 @@ function SendAndReceiveComponent() {
 
     onError: (e) => {
       toast.error({
-        title: m["common.error"](),
-        description: e.message,
+        title: "Transfer failed",
       });
     },
     onSuccess: () => {
@@ -209,6 +208,7 @@ function SendAndReceiveComponent() {
                           })}
                         </span>
                         <Button
+                          type="button"
                           isDisabled={isPending}
                           variant="secondary"
                           size="xs"
