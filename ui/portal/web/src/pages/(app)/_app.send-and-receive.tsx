@@ -124,9 +124,15 @@ function SendAndReceiveComponent() {
     },
 
     onError: (e) => {
-      toast.error({
-        title: "Transfer failed",
-      });
+      toast.error(
+        {
+          title: "Transfer failed",
+          description: e instanceof Error ? e.message : e,
+        },
+        {
+          duration: Number.POSITIVE_INFINITY,
+        },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quests", account] });
