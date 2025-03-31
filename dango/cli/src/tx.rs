@@ -171,7 +171,7 @@ impl TxCmd {
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
-            let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
+            let password = read_password("🔑 Enter the password to decrypt the key".bold())?;
             let sk = SigningKey::from_file(&key_path, &password)?;
             let signer = SingleSigner::new(&self.username, self.address, sk)?;
             if let Some(nonce) = self.nonce {
