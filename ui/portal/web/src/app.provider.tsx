@@ -1,11 +1,13 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { useStorage } from "@left-curve/store";
+import { useAccount, useStorage } from "@left-curve/store";
+import * as Sentry from "@sentry/react";
 import {
   type Dispatch,
   type PropsWithChildren,
   type SetStateAction,
   createContext,
   useCallback,
+  useEffect,
   useState,
 } from "react";
 
@@ -28,6 +30,7 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const { username } = useAccount();
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
@@ -51,6 +54,11 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     setSelectedModal(modalName);
     setIsModalVisible(true);
   }, []);
+
+  useEffect(() => {
+    if (!username) Sentry.setUser(null);
+    else Sentry.setUser({ username });
+  }, [username]);
 
   const hideModal = useCallback(() => setIsModalVisible(false), [setIsModalVisible]);
 
