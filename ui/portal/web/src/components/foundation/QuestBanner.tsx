@@ -1,7 +1,8 @@
 import { twMerge } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
-import { useAccount, useStorage } from "@left-curve/store";
+import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { m } from "~/paraglide/messages";
 
@@ -27,9 +28,7 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
 
 export const QuestBanner: React.FC = () => {
   const { account, isConnected } = useAccount();
-  const [showGalxeQuestBanner, setShowGalxeQuestBanner] = useStorage("showGalxeQuestBanner", {
-    initialValue: true,
-  });
+  const [showGalxeQuestBanner, setShowGalxeQuestBanner] = useState(true);
 
   const { data: quests } = useQuery({
     queryKey: ["quests", account],
