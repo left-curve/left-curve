@@ -70,7 +70,7 @@ export async function broadcastTxSync<transport extends Transport>(
 
           if (tx.tx_result.code === 1) {
             const { codespace, code, log } = tx.tx_result;
-            abort(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+            abort(tx.tx_result.data || "Transaction failed");
           }
           return tx;
         }

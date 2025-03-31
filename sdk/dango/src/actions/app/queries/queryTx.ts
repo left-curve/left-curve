@@ -54,6 +54,7 @@ export async function queryTx<
         transactionType: string;
         gasUsed: string;
         gasWanted: string;
+        errorMessage: string;
       }[];
     };
   };
@@ -77,6 +78,7 @@ export async function queryTx<
       gas_used: indexedTx.gasUsed,
       gas_wanted: indexedTx.gasWanted,
       log: indexedTx.nestedEvents,
+      data: indexedTx.errorMessage,
     },
   };
 }
