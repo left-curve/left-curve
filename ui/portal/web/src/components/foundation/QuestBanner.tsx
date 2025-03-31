@@ -67,7 +67,7 @@ export const QuestBanner: React.FC = () => {
           <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
           <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
         </div>
-        {eth_address.length && quest_account && quest_transfer ? (
+        {eth_address?.length && quest_account && quest_transfer ? (
           <Button
             as="a"
             href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
