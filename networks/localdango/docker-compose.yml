@@ -16,11 +16,11 @@ services:
     tty: true
 
   dango:
-    image: leftcurve/dango:0.0.0-alpha.6
+    image: leftcurve/dango:0.0.0-alpha.7
     depends_on:
       - db
     ports:
-      - 0.0.0.0:8080:8080
+      - 127.0.0.1:8080:8080
     volumes:
       - ./configs/dango/config:/root/.dango/config
       - ./data/dango/data:/root/.dango/data
@@ -38,7 +38,7 @@ services:
     depends_on:
       - dango
     ports:
-      - 0.0.0.0:26657:26657
+      - 127.0.0.1:26657:26657
     volumes:
       - ./configs/cometbft/config:/root/.cometbft/config
       - ./data/cometbft/data:/root/.cometbft/data
