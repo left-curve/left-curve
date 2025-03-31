@@ -60,19 +60,23 @@ export async function broadcastTxSync<transport extends Transport>(
   })();
 
   await withRetry(
-    async () => {
-      const tx = await queryTx(client, {
-        hash: typeof result.hash === "string" ? result.hash : encodeBase64(result.hash),
-      });
-      if (!tx) throw new Error("Transaction not found");
-      return tx;
-    },
+    ({ abort }) =>
+      async () => {
+        {
+          const tx = await queryTx(client, {
+            hash: typeof result.hash === "string" ? result.hash : encodeBase64(result.hash),
+          });
+          if (!tx) throw new Error("Transaction not found");
+
+          if (tx.tx_result.code === 1) {
+            const { codespace, code, log } = tx.tx_result;
+            abort(tx.tx_result.data || "Transaction failed");
+          }
+          return tx;
+        }
+      },
     { delay: 500, retryCount: 30 },
   );
 
-  const { code, codespace, log } = result;
-
-  if (code === 0) return result;
-
-  throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+  return result;
 }

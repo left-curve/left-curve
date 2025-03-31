@@ -86,13 +86,24 @@ interface Props {
   startIndex?: number;
   /** Persist key */
   persistKey?: string;
+  /** Load data when mounting */
+  defaultData?: unknown;
 }
 
 export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
-  ({ children, onStepChange, wrapper: Wrapper, startIndex = 0, persistKey, onReset, onFinish }) => {
+  ({
+    children,
+    onStepChange,
+    wrapper: Wrapper,
+    startIndex = 0,
+    persistKey,
+    defaultData,
+    onReset,
+    onFinish,
+  }) => {
     const [activeStep, setActiveStep] = useState(startIndex);
     const [isLoading, setIsLoading] = useState(false);
-    const [data, setData] = useState<unknown>({});
+    const [data, setData] = useState<unknown>(defaultData ?? {});
     const hasNextStep = useRef(true);
     const hasPreviousStep = useRef(false);
     const nextStepHandler = useRef<Handler>(() => {});

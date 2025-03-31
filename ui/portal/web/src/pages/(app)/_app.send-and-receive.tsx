@@ -124,10 +124,15 @@ function SendAndReceiveComponent() {
     },
 
     onError: (e) => {
-      toast.error({
-        title: m["common.error"](),
-        description: e.message,
-      });
+      toast.error(
+        {
+          title: "Transfer failed",
+          description: e instanceof Error ? e.message : e,
+        },
+        {
+          duration: Number.POSITIVE_INFINITY,
+        },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quests", account] });
@@ -209,6 +214,7 @@ function SendAndReceiveComponent() {
                           })}
                         </span>
                         <Button
+                          type="button"
                           isDisabled={isPending}
                           variant="secondary"
                           size="xs"
