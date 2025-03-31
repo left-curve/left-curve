@@ -59,6 +59,12 @@ export async function broadcastTxSync<transport extends Transport>(
     return result;
   })();
 
+  const { code, codespace, log } = result;
+
+  if (code === 1) {
+    throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+  }
+
   await withRetry(
     ({ abort }) =>
       async () => {

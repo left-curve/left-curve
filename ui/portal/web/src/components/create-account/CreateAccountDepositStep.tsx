@@ -123,7 +123,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
           {m["common.back"]()}
         </Button>
-        <Button type="submit" fullWidth isLoading={isPending || !!error}>
+        <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
           {m["common.continue"]()}
         </Button>
       </div>

@@ -53,7 +53,11 @@ export const AuthMobile: React.FC<AuthMobileProps> = ({ showPasskeyButton = true
     <>
       {isScannerVisible ? (
         <QRScan
-          onScan={(socketId) => connectWithDesktop({ socketId })}
+          onScan={(link) => {
+            const socketId = link.split("socketId=")[1];
+            if (!socketId) return;
+            connectWithDesktop({ socketId });
+          }}
           isVisisble={isScannerVisible}
           onClose={() => setScannerVisibility(false)}
         />
