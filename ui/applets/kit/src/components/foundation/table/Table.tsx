@@ -61,7 +61,7 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
             <React.Fragment key={row.id}>
               {row.getVisibleCells().map((cell) => {
                 return (
-                  <div key={cell.id} className="px-6 py-4 last:text-end diatype-sm-medium">
+                  <div key={cell.id} className="px-6 py-4 text-end diatype-sm-medium">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>
                 );
