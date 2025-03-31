@@ -7,6 +7,7 @@ import {
   TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
+import { uid } from "@left-curve/dango/utils";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
@@ -55,7 +56,7 @@ export const KeyManagment: React.FC = () => {
           const isActive = keyHash === currentKeyHash;
           return (
             <div
-              key={crypto.randomUUID()}
+              key={uid()}
               className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-rice-50 transition-all p-4"
             >
               <div className="flex items-start justify-between w-full gap-8">

@@ -41,7 +41,7 @@ const Icon = {
 
 export const Toast: React.FC<Props> = ({ title, description, type, close }) => {
   return (
-    <div className="w-fit min-w-[12rem] max-w-[20rem] p-4 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex flex-wrap items-center gap-2 relative">
+    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex flex-wrap items-center gap-2 relative">
       {Icon[type]}
       <div className="flex flex-col">
         <p className="text-gray-900 diatype-sm-medium">{title}</p>
