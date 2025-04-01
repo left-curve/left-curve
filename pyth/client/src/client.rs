@@ -97,12 +97,14 @@ impl PythClientTrait for PythClient {
                     // but there are no more events incoming.
                     _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
                         if !keep_running.load(Ordering::Relaxed) {
+                            es.close();
                             return;
                         }
                     }
 
                     data = es.next() => {
                         if !keep_running.load(Ordering::Acquire) {
+                            es.close();
                             return;
                         }
 
@@ -127,7 +129,6 @@ impl PythClientTrait for PythClient {
                                         err = err.to_string(),
                                         "Error while receiving the events from Pyth"
                                     );
-                                    es.close();
                                 },
                             }
                         }
