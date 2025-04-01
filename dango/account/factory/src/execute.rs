@@ -1,5 +1,8 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
+    crate::{
+        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, LOWERCASE_USERNAMES, MINIMUM_DEPOSIT,
+        NEXT_ACCOUNT_INDEX,
+    },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
     dango_types::{
@@ -22,6 +25,11 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     // Save the code hashes associated with the account types.
     for (account_type, code_hash) in &msg.code_hashes {
         CODE_HASHES.save(ctx.storage, *account_type, code_hash)?;
+    }
+
+    // Save the usernames.
+    for username in msg.users.keys() {
+        LOWERCASE_USERNAMES.insert(ctx.storage, username.inner().to_ascii_lowercase())?;
     }
 
     // During genesis:
@@ -151,17 +159,14 @@ fn register_user(
         }),
     )?;
 
-    // The username must not already exist.
-    // We ensure this by asserting there isn't any key already associated with
-    // this username, since any existing username necessarily has at least one
-    // key associated with it. (However, this key isn't necessarily index 1.)
+    // Ensure the username must not already exist.
     ensure!(
-        KEYS.prefix(&username)
-            .keys(ctx.storage, None, None, Order::Ascending)
-            .next()
-            .is_none(),
+        !LOWERCASE_USERNAMES.has(ctx.storage, username.inner().to_ascii_lowercase()),
         "username `{username}` already exists"
     );
+
+    // Save the username.
+    LOWERCASE_USERNAMES.insert(ctx.storage, username.inner().to_ascii_lowercase())?;
 
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;

@@ -12,6 +12,8 @@ pub const CODE_HASHES: Map<AccountType, Hash256> = Map::new("hash");
 
 pub const NEXT_ACCOUNT_INDEX: Counter<AccountIndex> = Counter::new("index", 0, 1);
 
+pub const LOWERCASE_USERNAMES: Set<String> = Set::new("lowercase_username");
+
 pub const KEYS: Map<(&Username, Hash256), Key> = dango_auth::account_factory::KEYS;
 
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");

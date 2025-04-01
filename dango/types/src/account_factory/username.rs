@@ -7,8 +7,8 @@ use {
 
 /// A name that uniquely identifies a user.
 ///
-/// A valid username must contain only lowercase ASCII letters (a-z), numbers
-/// (0-9), or the underscore (_) and be between 1-15 characters.
+/// A valid username must contain only ASCII letters (`A-Z|a-z`), numbers (`0-9`),
+/// or the underscore (`_`) and be between 1-15 characters.
 #[grug::derive(Borsh)]
 #[derive(Serialize, PartialOrd, Ord)]
 pub struct Username(String);
@@ -100,13 +100,10 @@ impl FromStr for Username {
             ));
         }
 
-        if !s
-            .chars()
-            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
-        {
+        if !s.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_') {
             return Err(StdError::deserialize::<Self, _>(
                 "str",
-                "username can only contain lowercase alphanumeric characters (a-z|0-9) or underscore",
+                "username can only contain alphanumeric characters (A-Z|a-z|0-9) or underscore",
             ));
         }
 
@@ -129,7 +126,7 @@ impl de::Visitor<'_> for Visitor {
     type Value = Username;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("A string containing between 1 to 15 lowercase alphanumeric characters (a-z|0-9) or underscore")
+        formatter.write_str("A string containing between 1 to 15 alphanumeric characters (A-Z|a-z|0-9) or underscore")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
