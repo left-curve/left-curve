@@ -7,6 +7,7 @@ import {
   TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
+import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
 import { uid } from "@left-curve/dango/utils";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { ConnectionStatus } from "@left-curve/store/types";
@@ -19,7 +20,7 @@ import { Modals } from "../foundation/Modal";
 const KeyTranslation = {
   secp256r1: "Passkey",
   secp256k1: "Wallet",
-  ethereum: "Wallet",
+  ethereum: "Ethereum Wallet",
 };
 
 export const KeyManagment: React.FC = () => {
@@ -54,6 +55,12 @@ export const KeyManagment: React.FC = () => {
       ) : (
         Object.entries(keys).map(([keyHash, key]) => {
           const isActive = keyHash === currentKeyHash;
+          const [[keyType, keyValue]] = Object.entries(key);
+          const keyRepresentation =
+            keyType === "ethereum"
+              ? keyValue
+              : `0x${encodeHex(decodeBase64(keyValue)).toUpperCase()}`;
+
           return (
             <div
               key={uid()}
@@ -62,16 +69,19 @@ export const KeyManagment: React.FC = () => {
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
                   <div className="flex gap-[6px] items-center">
-                    <TruncateText className="text-gray-700 diatype-m-bold" text={keyHash} />
+                    <TruncateText
+                      className="text-gray-700 diatype-m-bold"
+                      text={keyRepresentation}
+                    />
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
                   <p className="text-gray-500 diatype-sm-medium">
-                    {KeyTranslation[Object.keys(key).at(0) as keyof typeof KeyTranslation]}
+                    {KeyTranslation[keyType as keyof typeof KeyTranslation]}
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyHash} />
+                  <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyRepresentation} />
                   <IconTrash
                     onClick={() => (isActive ? null : showModal(Modals.RemoveKey, { keyHash }))}
                     className={twMerge("w-5 h-5 cursor-pointer", {
