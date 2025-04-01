@@ -43,7 +43,7 @@ import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-import type { AppConfig, Hex, Key } from "@left-curve/dango/types";
+import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 import { AuthCarousel } from "./AuthCarousel";
@@ -200,8 +200,10 @@ const Credential: React.FC = () => {
 
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-          const key: Key = { ethereum: controllerAddress };
-          const keyHash = createKeyHash(controllerAddress);
+          const addressLowerCase = controllerAddress.toLowerCase() as Address;
+
+          const key: Key = { ethereum: addressLowerCase };
+          const keyHash = createKeyHash(addressLowerCase);
 
           return { key, keyHash };
         })();
