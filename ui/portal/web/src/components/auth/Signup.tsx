@@ -291,10 +291,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch("https://mock-warp.dango.exchange", {
-          method: "POST",
-          body: JSON.stringify({ address }),
-        });
+        const response = await fetch(`https://devnet.dango.exchange/faucet/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
