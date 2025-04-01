@@ -52,7 +52,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           if (_keyHash_) return _keyHash_;
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-          return createKeyHash(controllerAddress);
+          return createKeyHash(controllerAddress.toLowerCase());
         })();
 
         const keys = await getKeysByUsername(client, { username });
