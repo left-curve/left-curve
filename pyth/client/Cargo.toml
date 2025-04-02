@@ -25,4 +25,9 @@ tracing             = { workspace = true }
 url                 = { workspace = true }
 
 [dev-dependencies]
+axum        = "0.8.3"
 dango-types = { workspace = true }
+futures     = "0.3"
+hyper       = { version = "1", features = ["full"] }
+tokio       = { workspace = true, features = ["full"] }
+tower       = { workspace = true }

@@ -15,7 +15,7 @@ use {
         time::Duration,
     },
     tokio_stream::StreamExt,
-    tracing::{debug, error},
+    tracing::{debug, error, info},
 };
 
 /// PythClient is a client to interact with the Pyth network.
@@ -110,7 +110,7 @@ impl PythClientTrait for PythClient {
 
                         if let Some(event) = data{
                             match event {
-                                Ok(Event::Open) => debug!("Pyth SSE connection open"),
+                                Ok(Event::Open) => info!("Pyth SSE connection open"),
                                 Ok(Event::Message(message)) => {
                                     match message.data.deserialize_json::<LatestVaaResponse>() {
                                         Ok(vaas) => {
