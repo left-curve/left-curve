@@ -422,8 +422,6 @@ impl PassiveLiquidityPool for PairParams {
         }
     }
 }
-    }
-}
 
 fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
     if a > b {
