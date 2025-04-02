@@ -7,7 +7,7 @@ export { Badge } from "./foundation/Badge";
 export { IconButton, type IconButtonProps } from "./foundation/IconButton";
 export { Spinner } from "./foundation/Spinner";
 export { QRCode } from "./foundation/QRCode";
-export { Select, Item as SelectItem } from "./foundation/Select";
+export { Select } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
 export { Table, type TableColumn } from "./foundation/table/Table";
@@ -90,10 +90,6 @@ export { Pig2 } from "./foundation/icons/emoji/Pig2";
 export { Temple } from "./foundation/icons/emoji/Temple";
 export { Wizard } from "./foundation/icons/emoji/Wizard";
 export { type EmojiName, Emoji } from "./foundation/Emoji";
-
-/* ---------------------------------- Chars --------------------------------- */
-
-export { Birdo } from "./foundation/chars/Birdo";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Dashboard                                 */
