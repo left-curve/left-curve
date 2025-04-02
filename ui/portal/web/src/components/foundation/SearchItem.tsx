@@ -58,7 +58,7 @@ export function Asset({ logoURI, name, symbol, price }: WithPrice<AnyCoin>) {
       key={name}
     >
       <div className="flex items-start gap-4">
-        <img src={logoURI} alt={name} className="w-8 h-8 rounded-full" />
+        <img src={logoURI} alt={name} className="w-8 h-8" />
         <div className="flex flex-col gap-1">
           <p className="diatype-m-bold">{name}</p>
           <p className="diatype-m-regular text-gray-500">{symbol}</p>

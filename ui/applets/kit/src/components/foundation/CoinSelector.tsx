@@ -30,7 +30,7 @@ export const CoinSelector: React.FC<Props> = ({
       {coins.map((coin) => (
         <Item key={coin.denom} textValue={coin.denom}>
           <div className="flex gap-2 items-center font-semibold">
-            <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8 rounded-full" />
+            <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
             <p>{coin.symbol}</p>
           </div>
         </Item>
