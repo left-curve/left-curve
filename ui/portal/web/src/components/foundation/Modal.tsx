@@ -42,15 +42,22 @@ const modals = {
     component: ConfirmAccount,
     initialSnap: 0.5,
   },
+} as unknown as {
+  [key in keyof typeof Modals]: {
+    component: React.ForwardRefExoticComponent<Record<string, unknown>>;
+    initialSnap: number;
+  };
 };
 
 export const Modal: React.FC = () => {
-  const { activeModal, isModalVisible, hideModal, modalProps } = useApp();
+  const { modal, hideModal } = useApp();
   const { isMd } = useMediaQuery();
 
   const sheetRef = useRef<SheetRef>();
   const overlayRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<{ triggerOnClose: () => void }>();
+  const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
+
+  const { modal: activeModal, props: modalProps } = modal;
 
   const { component: ModalContainer, initialSnap } =
     useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
@@ -60,14 +67,14 @@ export const Modal: React.FC = () => {
     modalRef.current?.triggerOnClose();
   };
 
-  if (!isModalVisible || !activeModal)
+  if (!activeModal)
     return <AnimatePresence initial={false} mode="wait" onExitComplete={() => null} />;
 
   if (!isMd) {
     return (
       <Sheet
         ref={sheetRef}
-        isOpen={isModalVisible}
+        isOpen={!!activeModal}
         onClose={closeModal}
         initialSnap={0}
         snapPoints={[initialSnap]}

@@ -13,7 +13,6 @@ import {
   useConnectors,
   usePublicClient,
   useSignin,
-  useStorage,
 } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -46,6 +45,7 @@ import { m } from "~/paraglide/messages";
 import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -131,7 +131,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             </div>
           </ResizerContainer>
         </div>
-        <AuthCarousel firstVisit={false} />
+        <AuthCarousel />
       </div>
     </>
   );
@@ -360,15 +360,14 @@ const Username: React.FC = () => {
 const Signin: React.FC = () => {
   const navigate = useNavigate();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
-  const [advancedOptions, setAdvancedOptions] = useStorage("advancedOptions", {
-    initialValue: { useSessionKey: true },
-  });
+  const { settings, changeSettings } = useApp();
+  const { useSessionKey } = settings;
 
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey: advancedOptions.useSessionKey,
+    sessionKey: useSessionKey,
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
@@ -394,8 +393,8 @@ const Signin: React.FC = () => {
           <Checkbox
             size="md"
             label={m["common.signinWithSession"]()}
-            checked={advancedOptions.useSessionKey}
-            onChange={(v) => setAdvancedOptions({ ...advancedOptions, useSessionKey: v })}
+            checked={useSessionKey}
+            onChange={(v) => changeSettings({ useSessionKey: v })}
           />
         </div>
       </ExpandOptions>

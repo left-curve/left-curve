@@ -1,20 +1,16 @@
 import { twMerge } from "@left-curve/applets-kit";
-import { useStorage } from "@left-curve/store";
 
 import { Button, Carousel } from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 
-type AuthCarouselProps = {
-  firstVisit: boolean;
-};
+export const AuthCarousel: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { isFirstVisit } = settings;
 
-export const AuthCarousel: React.FC<AuthCarouselProps> = ({ firstVisit }) => {
-  const [isFirstVisit, setIsFirstVisit] = useStorage<boolean>("firstVisit", {
-    initialValue: firstVisit,
-  });
   return (
     <div
       className={twMerge(
@@ -73,7 +69,11 @@ export const AuthCarousel: React.FC<AuthCarouselProps> = ({ firstVisit }) => {
       </Carousel>
       <div className="h-[40px]" />
       <div className=" absolute w-full bottom-20 md:bottom-24 px-8 xl:hidden max-w-[25rem]">
-        <Button variant="secondary" fullWidth onClick={() => setIsFirstVisit(false)}>
+        <Button
+          variant="secondary"
+          fullWidth
+          onClick={() => changeSettings({ isFirstVisit: false })}
+        >
           Continue
         </Button>
       </div>

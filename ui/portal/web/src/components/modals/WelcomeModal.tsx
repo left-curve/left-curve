@@ -2,13 +2,13 @@ import { Button, twMerge } from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
 
-import { useStorage } from "@left-curve/store";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 
 export const WelcomeModal: React.FC = () => {
-  const [showWelcome, setShowWelcome] = useStorage("showWelcome", {
-    initialValue: true,
-  });
+  const { settings, changeSettings } = useApp();
+
+  const { showWelcome } = settings;
 
   if (!showWelcome) return null;
 
@@ -77,7 +77,11 @@ export const WelcomeModal: React.FC = () => {
           </div>
         </div>
         <div className="p-4 w-full">
-          <Button variant="secondary" fullWidth onClick={() => setShowWelcome(false)}>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => changeSettings({ showWelcome: false })}
+          >
             {m["common.dismiss"]()}
           </Button>
         </div>
