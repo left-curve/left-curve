@@ -48,7 +48,7 @@ import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
-import Sentry from "@sentry/react";
+import { captureException } from "@sentry/react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -309,7 +309,7 @@ const Username: React.FC = () => {
       } catch (err) {
         toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
-        Sentry.captureException(err, {
+        captureException(err, {
           data: {
             key,
             keyHash,
