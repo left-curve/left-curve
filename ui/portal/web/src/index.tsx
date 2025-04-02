@@ -11,9 +11,9 @@ Sentry.init({
     Sentry.replayIntegration(),
     Sentry.tanstackRouterBrowserTracingIntegration(router),
   ],
-  tracesSampleRate: 1.0,
-  tracePropagationTargets: ["devnet.dango.exchange"],
-  replaysOnErrorSampleRate: 1.0,
+  tracesSampleRate: 0.5,
+  tracePropagationTargets: [/^https:\/\/devnet\.dango\.exchange\//],
+  replaysOnErrorSampleRate: 0.5,
 });
 
 const container = document.getElementById("root");
