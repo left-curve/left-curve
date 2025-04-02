@@ -292,7 +292,12 @@ const BlockTable: React.FC = () => {
       cell: ({ row }) => {
         const { hasSucceeded } = row.original;
         return (
-          <p className={hasSucceeded ? "text-status-success" : "text-status-fail"}>
+          <p
+            className={twMerge(
+              hasSucceeded ? "text-status-success" : "text-status-fail",
+              "text-end",
+            )}
+          >
             {hasSucceeded ? "Success" : "Fail"}
           </p>
         );
