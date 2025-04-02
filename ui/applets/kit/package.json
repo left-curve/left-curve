@@ -25,6 +25,10 @@
     "!typedoc.json",
     "!tsup.config.ts"
   ],
+  "imports": {
+    "#hooks/*": "./src/hooks/*",
+    "#utils/*": "./src/utils/*"
+  },
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -45,25 +49,12 @@
     }
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.0",
+    "@headlessui/react": "^2.1.10",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
     "@left-curve/ui-config": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
-    "@react-aria/button": "^3.9.8",
-    "@react-aria/focus": "^3.18.2",
-    "@react-aria/listbox": "^3.13.3",
-    "@react-aria/overlays": "^3.23.2",
-    "@react-aria/select": "^3.14.9",
-    "@react-aria/tabs": "^3.9.5",
-    "@react-aria/utils": "^3.25.3",
-    "@react-stately/collections": "^3.10.9",
-    "@react-stately/list": "^3.10.8",
-    "@react-stately/overlays": "^3.6.10",
-    "@react-stately/select": "^3.6.7",
-    "@react-stately/tabs": "^3.6.9",
-    "@react-types/shared": "^3.24.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "framer-motion": "catalog:",
@@ -76,7 +67,6 @@
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
-    "@react-types/select": "^3.9.6",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.3.2",
     "@storybook/addon-links": "^8.3.2",

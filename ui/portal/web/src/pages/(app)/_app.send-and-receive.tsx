@@ -195,12 +195,10 @@ function SendAndReceiveComponent() {
                   startText="right"
                   startContent={
                     <CoinSelector
-                      label="coins"
-                      classNames={{ trigger: "p-0" }}
                       coins={Object.values(coins)}
-                      selectedKey={selectedDenom}
+                      value={selectedDenom}
                       isDisabled={isPending}
-                      onSelectionChange={(k) => [setSelectedDenom(k.toString())]}
+                      onChange={(k) => [setSelectedDenom(k)]}
                     />
                   }
                   insideBottomComponent={
