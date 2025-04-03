@@ -11,7 +11,10 @@ import {
   useState,
 } from "react";
 
+import { router } from "./app.router";
+
 type AppState = {
+  router: typeof router;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isNotificationMenuVisible: boolean;
@@ -82,6 +85,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
+        router,
         formatNumberOptions,
         setFormatNumberOptions,
         isSidebarVisible,

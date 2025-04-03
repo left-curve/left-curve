@@ -7,7 +7,7 @@ import { useApp } from "~/hooks/useApp";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
-import { Modals } from "./Modal";
+import { Modals } from "./RootModal";
 
 import { AccountCard } from "./AccountCard";
 

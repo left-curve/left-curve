@@ -120,6 +120,9 @@ export type {
   StrictOmit,
   UnionStrictOmit,
   MaybePromise,
+  Failure,
+  Success,
+  Result,
 } from "./utils.js";
 
 export type {

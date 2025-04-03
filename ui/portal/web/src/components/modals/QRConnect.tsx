@@ -7,6 +7,8 @@ import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { toast } from "../foundation/Toast";
 
+import type { JsonValue } from "@left-curve/dango/types";
+
 export const QRConnect = forwardRef((_props, _ref) => {
   const id = useId();
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
@@ -19,11 +21,11 @@ export const QRConnect = forwardRef((_props, _ref) => {
   const { username } = useAccount();
   const { hideModal } = useApp();
 
-  dataChannel?.subscribe(async (m) => {
+  dataChannel?.subscribe(async (msg) => {
     if (!signingClient || isLoadingCredential) return;
 
+    const { id, type, message } = msg;
     try {
-      const { id, type, message } = m;
       if (type !== Actions.GenerateSession || isLoadingCredential) return;
       setIsLoadingCredential(true);
 
@@ -34,10 +36,19 @@ export const QRConnect = forwardRef((_props, _ref) => {
         pubKey: decodeBase64(publicKey),
       });
 
-      dataChannel.sendMessage({ id, message: { ...response, username } });
+      dataChannel.sendMessage({ id, message: { data: { ...response, username } } });
       toast.success({ title: "Connection established" });
       hideModal();
     } catch (error) {
+      toast.error({
+        title: m["common.error"](),
+        description: m["signin.errors.mobileSessionAborted"](),
+      });
+      hideModal();
+      dataChannel.sendMessage({
+        id,
+        message: { error: error instanceof Error ? error.message : (error as JsonValue) },
+      });
     } finally {
       setIsLoadingCredential(false);
     }

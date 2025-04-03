@@ -9,6 +9,7 @@ export class DataChannel {
   #socketId: string;
   #connection: RTCPeerConnection;
   #dataChannel: RTCDataChannel;
+  #iceCandidates: Set<RTCIceCandidate>;
   #resolver: Map<string, { resolve: (value: unknown) => void; reject: (reason?: unknown) => void }>;
   #metadata: { promiseId: string; socketId: string } | undefined;
   #listeners: Set<(message: DataChannelMessage) => void>;
@@ -29,6 +30,7 @@ export class DataChannel {
     this.#resolver = new Map();
     this.#connection = new RTCPeerConnection(this.#cfg.rtcConfiguration);
     this.#dataChannel = this.#connection.createDataChannel(this.#cfg.channelName);
+    this.#iceCandidates = new Set();
     // websockets bindings
     this.#ws.onclose = this.#onWebSocketClose.bind(this);
     this.#ws.onerror = this.#onWebSocketError.bind(this);
@@ -116,10 +118,18 @@ export class DataChannel {
   async #onAnswer(answer: RTCSessionDescriptionInit) {
     if (this.#connection.currentRemoteDescription) return;
     await this.#connection.setRemoteDescription(answer);
+    for (const candidate of this.#iceCandidates) {
+      await this.#connection.addIceCandidate(candidate);
+    }
+    this.#iceCandidates.clear();
   }
 
   async #onCandidate(candidate: RTCIceCandidate) {
-    await this.#connection.addIceCandidate(new RTCIceCandidate(candidate));
+    if (this.#connection.currentRemoteDescription) {
+      await this.#connection.addIceCandidate(new RTCIceCandidate(candidate));
+    } else {
+      this.#iceCandidates.add(new RTCIceCandidate(candidate));
+    }
   }
 
   #onWebSocketMessage(event: MessageEvent) {
@@ -188,6 +198,5 @@ export class DataChannel {
   close() {
     this.#dataChannel.close();
     this.#connection.close();
-    this.close();
   }
 }

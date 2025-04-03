@@ -2,12 +2,11 @@ import { encodeBase64, encodeUtf8, serializeJson } from "@left-curve/dango/encod
 
 import { useChainId } from "./useChainId.js";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
-import { useDataChannel } from "./useDataChannel.js";
 
 import { Secp256k1 } from "@left-curve/dango/crypto";
 import { Actions, DataChannel } from "@left-curve/dango/utils";
 
-import type { SessionResponse } from "@left-curve/dango/types";
+import type { Result, SessionResponse } from "@left-curve/dango/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 
 export type UseSigninWithDesktopParameters = {
@@ -39,7 +38,9 @@ export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters)
       const keyPair = Secp256k1.makeKeyPair();
       const publicKey = keyPair.getPublicKey();
 
-      const response = await dataChannel.sendAsyncMessage<SessionResponse & { username: string }>({
+      const { error, data } = await dataChannel.sendAsyncMessage<
+        Result<SessionResponse & { username: string }>
+      >({
         type: Actions.GenerateSession,
         message: {
           expireAt: +expiresAt,
@@ -47,7 +48,9 @@ export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters)
         },
       });
 
-      const { authorization, keyHash, sessionInfo, username } = response;
+      if (error) throw error;
+
+      const { authorization, keyHash, sessionInfo, username } = data;
 
       await connector.connect({
         username,
