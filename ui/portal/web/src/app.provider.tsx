@@ -1,15 +1,7 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import { useAccount, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
-import {
-  type Dispatch,
-  type PropsWithChildren,
-  type SetStateAction,
-  createContext,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
 import { router } from "./app.router";
 
@@ -23,14 +15,13 @@ type AppState = {
   setSearchBarVisibility: (visibility: boolean) => void;
   showModal: (modalName: string, props?: Record<string, unknown>) => void;
   hideModal: () => void;
-  formatNumberOptions: FormatNumberOptions;
-  setFormatNumberOptions: Dispatch<SetStateAction<FormatNumberOptions>>;
   modal: { modal: string | undefined; props: Record<string, unknown> };
   changeSettings: (settings: Partial<AppState["settings"]>) => void;
   settings: {
     showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
+    formatNumberOptions: FormatNumberOptions;
   };
 };
 
@@ -42,24 +33,20 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
 
-  const [formatNumberOptions, setFormatNumberOptions] = useStorage<FormatNumberOptions>(
-    "formatNumber",
-    {
-      initialValue: {
+  // App settings
+  const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
+    version: 1.1,
+    initialValue: {
+      showWelcome: true,
+      isFirstVisit: true,
+      useSessionKey: true,
+      formatNumberOptions: {
+        mask: 1,
         language: "en-US",
         maxFractionDigits: 2,
         minFractionDigits: 2,
         notation: "standard",
       },
-    },
-  );
-
-  // App settings
-  const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    initialValue: {
-      showWelcome: true,
-      isFirstVisit: true,
-      useSessionKey: true,
     },
   });
   const changeSettings = useCallback(
@@ -86,8 +73,6 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     <AppContext.Provider
       value={{
         router,
-        formatNumberOptions,
-        setFormatNumberOptions,
         isSidebarVisible,
         setSidebarVisibility,
         isNotificationMenuVisible,

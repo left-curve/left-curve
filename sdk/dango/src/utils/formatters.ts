@@ -34,7 +34,41 @@ export type FormatNumberOptions = {
   notation?: "standard" | "scientific" | "engineering" | "compact";
   maxFractionDigits?: number;
   minFractionDigits?: number;
-  useGrouping?: boolean;
+  mask: keyof typeof formatNumberMask;
+};
+
+const formatNumberMask = {
+  // 1,234.00
+  1: {
+    useGrouping: true,
+    format: {
+      group: ",",
+      decimal: ".",
+    },
+  },
+  // 1.234,00
+  2: {
+    useGrouping: true,
+    format: {
+      group: ".",
+      decimal: ",",
+    },
+  },
+  // 1234,00
+  3: {
+    useGrouping: false,
+    format: {
+      decimal: ",",
+    },
+  },
+  // 1 234,00
+  4: {
+    useGrouping: true,
+    format: {
+      group: " ",
+      decimal: ",",
+    },
+  },
 };
 
 /**
@@ -54,7 +88,7 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
     maxFractionDigits = 2,
     minFractionDigits = 2,
     notation = "standard",
-    useGrouping = true,
+    mask = 1,
   } = options;
   const amount = typeof _amount_ === "string" ? Number(_amount_) : _amount_;
 
@@ -69,11 +103,20 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
 
   return new Intl.NumberFormat(language, {
     notation,
+    // @ts-ignore: For some reason roundingMode is not in the type definition but it is supported.
+    roundingMode: "floor",
     minimumFractionDigits: minFractionDigits,
     maximumFractionDigits: maxFractionDigits,
-    useGrouping,
+    useGrouping: formatNumberMask[mask].useGrouping,
     ...currencyOptions,
-  }).format(amount);
+  })
+    .formatToParts(amount)
+    .map((part) => {
+      const partType =
+        formatNumberMask[mask].format[part.type as keyof (typeof formatNumberMask)[3]["format"]];
+      return partType || part.value;
+    })
+    .join("");
 }
 
 /**

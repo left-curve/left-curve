@@ -32,7 +32,8 @@ type AccountMenuProps = {
 };
 
 function AccountMenu({ backAllowed }: AccountMenuProps) {
-  const { formatNumberOptions, isSidebarVisible } = useApp();
+  const { settings, isSidebarVisible } = useApp();
+  const { formatNumberOptions } = settings;
   const { account } = useAccount();
   const { history } = useRouter();
   const [isAccountSelectorActive, setAccountSelectorActive] = useState(false);
