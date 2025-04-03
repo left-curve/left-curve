@@ -1,4 +1,3 @@
-import { useState } from "react";
 import hotToast from "react-hot-toast";
 
 import { IconChecked, IconClose, Spinner } from "@left-curve/applets-kit";
@@ -41,11 +40,11 @@ const Icon = {
 
 export const Toast: React.FC<Props> = ({ title, description, type, close }) => {
   return (
-    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex flex-wrap items-center gap-2 relative">
+    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex items-start gap-2 relative">
       {Icon[type]}
-      <div className="flex flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <p className="text-gray-900 diatype-sm-medium">{title}</p>
-        {description && <p className="text-gray-500 diatype-xs-medium">{description}</p>}
+        {description && <p className="text-gray-500 diatype-xs-medium break-all">{description}</p>}
       </div>
       <button
         className="absolute top-4 right-4 transition-all duration-200"
@@ -72,20 +71,23 @@ const success = (toastMsg?: ToastMsg, options?: ToastOptions) =>
   }, options);
 
 const error = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-  hotToast.custom((t) => {
-    const msg = Object.assign(
-      { title: "Error", description: "Something went wrong. Please try again later." },
-      toastMsg,
-    );
-    return (
-      <Toast
-        close={() => hotToast.dismiss(t.id)}
-        title={msg.title}
-        description={msg.description}
-        type="error"
-      />
-    );
-  }, options);
+  hotToast.custom(
+    (t) => {
+      const msg = Object.assign(
+        { title: "Error", description: "Something went wrong. Please try again later." },
+        toastMsg,
+      );
+      return (
+        <Toast
+          close={() => hotToast.dismiss(t.id)}
+          title={msg.title}
+          description={msg.description}
+          type="error"
+        />
+      );
+    },
+    { ...options, duration: Number.POSITIVE_INFINITY },
+  );
 
 const loading = (toastMsg?: ToastMsg, options?: ToastOptions) =>
   hotToast.custom((t) => {

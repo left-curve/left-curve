@@ -15,7 +15,8 @@ interface Props {
 export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   const config = useConfig();
   const chainId = useChainId();
-  const { formatNumberOptions } = useApp();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
 
   const coins = config.coins[chainId];
 

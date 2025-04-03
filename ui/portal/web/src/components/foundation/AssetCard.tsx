@@ -10,7 +10,8 @@ interface Props {
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
   const { coins, state } = useConfig();
-  const { formatNumberOptions } = useApp();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const coinInfo = coins[state.chainId][coin.denom];
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 

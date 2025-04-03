@@ -7,7 +7,7 @@ import { useApp } from "~/hooks/useApp";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
-import { Modals } from "./Modal";
+import { Modals } from "./RootModal";
 
 import { AccountCard } from "./AccountCard";
 
@@ -32,7 +32,8 @@ type AccountMenuProps = {
 };
 
 function AccountMenu({ backAllowed }: AccountMenuProps) {
-  const { formatNumberOptions, isSidebarVisible } = useApp();
+  const { settings, isSidebarVisible } = useApp();
+  const { formatNumberOptions } = settings;
   const { account } = useAccount();
   const { history } = useRouter();
   const [isAccountSelectorActive, setAccountSelectorActive] = useState(false);
@@ -228,7 +229,7 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
           <IconAddCross className="w-5 h-5" /> <span>{m["accountMenu.accounts.addAccount"]()}</span>
         </Button>
       </div>
-      <div className="flex flex-col items-center w-full overflow-y-auto gap-4 scrollbar-none pb-[7rem] relative">
+      <div className="flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 relative max-h-[42rem]">
         {accounts
           ?.filter((acc) => acc.address !== account.address)
           .map((account) => (

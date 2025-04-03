@@ -9,7 +9,7 @@ import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
 
 import { useApp } from "~/hooks/useApp";
-import { Modals } from "../foundation/Modal";
+import { Modals } from "../foundation/RootModal";
 import { toast } from "../foundation/Toast";
 
 export const CreateAccountDepositStep: React.FC = () => {
@@ -23,7 +23,8 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { showModal } = useApp();
   const { coins, state } = useConfig();
   const { account, refreshAccounts, changeAccount } = useAccount();
-  const { formatNumberOptions } = useApp();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({

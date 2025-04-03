@@ -145,7 +145,8 @@ export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
     <div
       className={twMerge(
         "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-md flex flex-col justify-between p-4 cursor-pointer",
-        "mb-[-6.5rem]",
+        "mb-[-6.2rem]",
+        "flex-shrink-0",
         bgColor,
       )}
       onClick={() => onAccountSelect(account)}
@@ -165,7 +166,7 @@ export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
             </div>
           </div>
         </div>
-        <div>
+        <div className="flex flex-col gap-1 items-end">
           <p className="diatype-m-bold text-gray-400">{totalBalance}</p>
           <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
         </div>

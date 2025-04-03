@@ -38,7 +38,7 @@ import type { Address } from "@left-curve/dango/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { z } from "zod";
-import { Modals } from "~/components/foundation/Modal";
+import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
@@ -54,7 +54,8 @@ export const Route = createFileRoute("/(app)/_app/send-and-receive")({
 function SendAndReceiveComponent() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/send-and-receive" });
-  const { formatNumberOptions, showModal } = useApp();
+  const { settings, showModal } = useApp();
+  const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: false });

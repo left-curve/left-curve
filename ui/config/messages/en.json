@@ -151,6 +151,8 @@
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
     "errors": {
+      "failedSingInWithDesktop": "Failed to sign in with desktop",
+      "mobileSessionAborted": "Mobile session was aborted",
       "usernameRequired": "Username is required",
       "usernameNotExist": "Username doesn’t exist",
       "failedSigingIn": "Failed to connect with the selected credential."

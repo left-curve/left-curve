@@ -132,6 +132,9 @@ export type {
   DerivedTransportSchema,
   RequestOptions,
   WithPrice,
+  Failure,
+  Success,
+  Result,
 } from "@left-curve/sdk/types";
 
 export type {

@@ -1,6 +1,6 @@
 import type React from "react";
 import { Toaster } from "react-hot-toast";
-import { Modal } from "./components/foundation/Modal";
+import { RootModal } from "./components/foundation/RootModal";
 
 import { DangoStoreProvider } from "@left-curve/store";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -36,8 +36,8 @@ export const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <AppProvider>
           <AppRouter />
-          <Toaster position="bottom-center" />
-          <Modal />
+          <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
+          <RootModal />
         </AppProvider>
       </QueryClientProvider>
     </DangoStoreProvider>
