@@ -55,13 +55,16 @@ const BlockContainer: React.FC<PropsWithChildren<BlockExplorerProps>> = ({
   const query = useQuery({
     queryKey: ["block", height],
     queryFn: async () => {
+      const isLatest = height === "latest";
       const parsedHeight = Number(height);
       const [searchBlock, currentBlock] = await Promise.all([
-        Number.isNaN(parsedHeight) ? null : client.queryBlock({ height: parsedHeight }),
+        Number.isNaN(parsedHeight) && !isLatest
+          ? null
+          : client.queryBlock(isLatest ? undefined : { height: parsedHeight }),
         client.queryBlock(),
       ]);
       const isFutureBlock = parsedHeight > 0 && parsedHeight > currentBlock?.blockHeight;
-      const isInvalidBlock = Number.isNaN(parsedHeight) || parsedHeight < 0;
+      const isInvalidBlock = (!isLatest && Number.isNaN(parsedHeight)) || parsedHeight < 0;
       return { searchBlock, currentBlock, height: parsedHeight, isFutureBlock, isInvalidBlock };
     },
   });
