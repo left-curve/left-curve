@@ -152,6 +152,7 @@ impl Environment {
         S: AsStoreMut,
     {
         let ret = self.call_function(store, name, args)?;
+
         if ret.len() != 1 {
             return Err(VmError::ReturnCount {
                 name: name.into(),
@@ -159,6 +160,7 @@ impl Environment {
                 actual: ret.len(),
             });
         }
+
         Ok(ret[0].clone())
     }
 
@@ -172,13 +174,15 @@ impl Environment {
         S: AsStoreMut,
     {
         let ret = self.call_function(store, name, args)?;
-        if ret.len() != 0 {
+
+        if !ret.is_empty() {
             return Err(VmError::ReturnCount {
                 name: name.into(),
                 expect: 0,
                 actual: ret.len(),
             });
         }
+
         Ok(())
     }
 
