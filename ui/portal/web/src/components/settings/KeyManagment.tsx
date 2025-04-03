@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { Modals } from "../foundation/Modal";
+import { Modals } from "../foundation/RootModal";
 
 const KeyTranslation = {
   secp256r1: "Passkey",

@@ -38,7 +38,7 @@ import type { Address } from "@left-curve/dango/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { z } from "zod";
-import { Modals } from "~/components/foundation/Modal";
+import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 

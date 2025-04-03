@@ -1,34 +1,30 @@
-import {
-  Spinner,
-  useInputs,
-  useMediaQuery,
-  useWatchEffect,
-  useWizard,
-} from "@left-curve/applets-kit";
-import { useAccount, usePublicClient, useSignin, useSigninWithDesktop } from "@left-curve/store";
+import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import { useAccount, usePublicClient, useSignin } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { toast } from "../foundation/Toast";
+import { useApp } from "~/hooks/useApp";
 
 import {
   Button,
   Checkbox,
   ExpandOptions,
   IconLeft,
+  IconPasskey,
+  IconQR,
   Input,
   ResizerContainer,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
+import { Modals } from "../foundation/RootModal";
+import { toast } from "../foundation/Toast";
 import { AuthCarousel } from "./AuthCarousel";
-import { AuthMobile } from "./AuthMobile";
 import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
 import type { FormEvent, PropsWithChildren } from "react";
-import { useApp } from "~/hooks/useApp";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();
@@ -58,6 +54,7 @@ const UsernameStep: React.FC = () => {
   const { nextStep, setData } = useWizard<{ username: string; sessionKey: boolean }>();
   const { register, inputs, setError } = useInputs();
   const { isMd } = useMediaQuery();
+  const { showModal } = useApp();
 
   const { value: username, error } = inputs.username || {};
 
@@ -118,7 +115,15 @@ const UsernameStep: React.FC = () => {
             {m["signin.continueWithoutSignin"]()}
           </Button>
         ) : (
-          <AuthMobile showPasskeyButton={false} />
+          <Button
+            fullWidth
+            onClick={() => showModal(Modals.SignWithDesktop)}
+            className="gap-2"
+            variant="secondary"
+          >
+            <IconQR className="w-6 h-6" />
+            <p className="min-w-20"> {m["common.signinWithDesktop"]()}</p>
+          </Button>
         )}
         {isMd ? (
           <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
@@ -197,7 +202,15 @@ const CredentialStep: React.FC = () => {
             mode="signin"
           />
         ) : (
-          <AuthMobile />
+          <Button
+            fullWidth
+            onClick={() => connectWithConnector({ connectorId: "passkey" })}
+            isLoading={isPending}
+            className="gap-2"
+          >
+            <IconPasskey className="w-6 h-6" />
+            <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
+          </Button>
         )}
         <div className="flex items-center">
           <Button variant="link" onClick={() => previousStep()}>
@@ -210,42 +223,7 @@ const CredentialStep: React.FC = () => {
   );
 };
 
-export const MobileStep: React.FC = () => {
-  const navigate = useNavigate();
-  const { data } = useWizard<{ socketId: string }>();
-  const { socketId } = data;
-  const { mutateAsync: connectWithDesktop, isSuccess } = useSigninWithDesktop({
-    url: import.meta.env.PUBLIC_WEBRTC_URI,
-    mutation: {
-      onSuccess: () => navigate({ to: "/" }),
-      onError: (err) => {
-        console.error(err);
-        toast.error({
-          title: m["common.error"](),
-          description: m["signin.errors.failedSigingIn"](),
-        });
-      },
-    },
-  });
-
-  useEffect(() => {
-    if (socketId) {
-      connectWithDesktop({ socketId });
-    }
-  }, []);
-
-  useWatchEffect(isSuccess, (p) => p && navigate({ to: "/" }));
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-2">
-      <Spinner size="lg" color="pink" />
-      <p className="diatype-m-bold">{m["signin.authorizeInDesktop"]()}</p>
-    </div>
-  );
-};
-
 export const Signin = Object.assign(Container, {
   Username: UsernameStep,
   Credential: CredentialStep,
-  Mobile: MobileStep,
 });
