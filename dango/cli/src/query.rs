@@ -142,7 +142,7 @@ impl QueryCmd {
         let client = Client::connect(cfg.tendermint.rpc_addr.as_str())?;
 
         let req = match self.subcmd {
-            SubCmd::Status {} => {
+            SubCmd::Status => {
                 let res = client.query_status().await?;
                 return print_json_pretty(res);
             },

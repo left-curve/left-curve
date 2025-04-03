@@ -19,9 +19,9 @@ use {
 ///
 /// - `account`: The margin account to query.
 /// - `discount_collateral`: If set, does not include the value of these
-///    coins in the total collateral value. Used when liquidating the
-///    account as the liquidator has sent additional funds to the account
-///    that should not be included in the total collateral value.
+///   coins in the total collateral value. Used when liquidating the
+///   account as the liquidator has sent additional funds to the account
+///   that should not be included in the total collateral value.
 pub fn query_health(
     querier: &QuerierWrapper,
     account: Addr,

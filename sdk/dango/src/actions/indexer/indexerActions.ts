@@ -4,7 +4,7 @@ import type { Client, Transport } from "@left-curve/sdk/types";
 import { type SearchTxParameters, type SearchTxReturnType, searchTx } from "./searchTx.js";
 
 export type IndexerActions = {
-  queryBlock: (args: QueryBlockParameters) => QueryBlockReturnType;
+  queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
   searchTx: (args: SearchTxParameters) => SearchTxReturnType;
 };
 
