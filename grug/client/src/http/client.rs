@@ -1,17 +1,19 @@
 use {
-    super::query::{query_app, query_store, simulate},
+    super::types::{broadcast_tx_sync, query_app, query_store, simulate},
+    crate::parse_tm_tx_response,
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_math::Inner,
     grug_types::{
-        Binary, Block, BlockClient, BlockOutcome, BorshDeExt, JsonDeExt, JsonSerExt, Proof, Query,
-        QueryAppClient, QueryResponse, TxOutcome, UnsignedTx,
+        Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
+        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Proof, Query,
+        QueryAppClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
     std::str::FromStr,
 };
 
-use super::query::Variables;
+use super::types::Variables;
 
 pub struct HttpClient {
     inner: reqwest::Client,
@@ -131,6 +133,47 @@ impl BlockClient for HttpClient {
     }
 }
 
+#[async_trait]
+impl BroadcastClient for HttpClient {
+    type Error = anyhow::Error;
+
+    async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
+        let response = self
+            .post_graphql(broadcast_tx_sync::Variables {
+                tx: tx.to_json_string()?,
+            })
+            .await?;
+
+        Ok(BroadcastTxOutcome {
+            tx_hash: Hash256::from_str(&response.broadcast_tx_sync.hash)?,
+            check_tx: CheckTxOutcome {
+                gas_limit: 0,
+                gas_used: 0,
+                result: into_generic_result(
+                    response.broadcast_tx_sync.code,
+                    response.broadcast_tx_sync.log,
+                ),
+                events: Binary::from_str(&response.broadcast_tx_sync.data)?
+                    .into_inner()
+                    .deserialize_json()?,
+            },
+        })
+    }
+}
+
+#[async_trait]
+impl SearchTxClient for HttpClient {
+    type Error = anyhow::Error;
+
+    async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
+        let path = format!("api/tendermint/search_tx/{}", hash);
+        let response: tendermint_rpc::endpoint::tx::Response =
+            self.get(&path).await?.json().await?;
+
+        parse_tm_tx_response(response)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -152,5 +195,13 @@ mod tests {
 
         let response = client.query_config(None).await.unwrap();
         println!("{:?}", response);
+    }
+}
+
+fn into_generic_result(code: i64, log: String) -> GenericResult<()> {
+    if code == 0 {
+        Ok(())
+    } else {
+        Err(log)
     }
 }

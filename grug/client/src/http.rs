@@ -1,4 +1,4 @@
 mod client;
-pub mod query;
+pub mod types;
 
 pub use client::*;

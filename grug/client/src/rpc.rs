@@ -211,17 +211,11 @@ impl SearchTxClient for RpcClient {
             .tx(tendermint::Hash::Sha256(hash.into_inner()), false)
             .await?;
 
-        Ok(SearchTxOutcome {
-            hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
-            height: response.height.into(),
-            index: response.index,
-            tx: from_base64_bytes(response.tx)?,
-            outcome: from_tm_tx_result(response.tx_result)?,
-        })
+        parse_tm_tx_response(response)
     }
 }
 
-fn into_generic_result(code: Code, log: String) -> GenericResult<()> {
+pub fn into_generic_result(code: Code, log: String) -> GenericResult<()> {
     if code == Code::Ok {
         Ok(())
     } else {
@@ -229,7 +223,7 @@ fn into_generic_result(code: Code, log: String) -> GenericResult<()> {
     }
 }
 
-fn from_base64_bytes<R, B>(bytes: B) -> StdResult<R>
+pub fn from_base64_bytes<R, B>(bytes: B) -> StdResult<R>
 where
     R: DeserializeOwned,
     B: AsRef<[u8]>,
@@ -257,4 +251,16 @@ fn from_tm_cron_result(tm_cron_result: tendermint::abci::Event) -> anyhow::Resul
         .unwrap()
         .value_bytes()
         .deserialize_json()?)
+}
+
+pub(crate) fn parse_tm_tx_response(
+    response: tendermint_rpc::endpoint::tx::Response,
+) -> Result<SearchTxOutcome, anyhow::Error> {
+    Ok(SearchTxOutcome {
+        hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+        height: response.height.into(),
+        index: response.index,
+        tx: from_base64_bytes(response.tx)?,
+        outcome: from_tm_tx_result(response.tx_result)?,
+    })
 }

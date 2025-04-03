@@ -5,8 +5,8 @@ pub trait Variables {
     type Query: graphql_client::GraphQLQuery<Variables = Self>;
 }
 
-macro_rules! generate_queries {
-    ($({name: $name:ident, path: $path:literal, test_with: $var:expr}), * $(,)? ) => {
+macro_rules! generate_types {
+    ($({name: $name:ident, path: $path:literal, $(test_with: $var:expr)?}), * $(,)? ) => {
         $(
             #[derive(graphql_client::GraphQLQuery)]
             #[graphql(
@@ -26,8 +26,7 @@ macro_rules! generate_queries {
         #[cfg(test)]
         mod tests {
             use {super::*, graphql_client::{GraphQLQuery, Response}};
-
-            $(
+            $($(
                 paste::paste! {
                     #[tokio::test]
                     async fn [<test_ $name:snake>]() {
@@ -40,16 +39,16 @@ macro_rules! generate_queries {
                             .unwrap();
                     }
                 }
-            )*
+            )*)?
         }
     };
 }
 
-generate_queries! {
+generate_types! {
     {
         name: QueryApp,
         path: "src/http/schemas/queries/queryApp.graphql",
-        test_with: crate::query::query_app::Variables {
+        test_with: crate::types::query_app::Variables {
             request: r#"{"config":{}}"#.to_string(),
             height: None
         }
@@ -57,7 +56,7 @@ generate_queries! {
     {
         name: QueryStore,
         path: "src/http/schemas/queries/queryStore.graphql",
-        test_with: crate::query::query_store::Variables {
+        test_with: crate::types::query_store::Variables {
             key: "Y2hhaW5faWQ=".to_string(),
             height: None,
             prove: true
@@ -66,7 +65,7 @@ generate_queries! {
     {
         name: Simulate,
         path: "src/http/schemas/queries/Simulate.graphql",
-        test_with: crate::query::simulate::Variables {
+        test_with: crate::types::simulate::Variables {
             tx: r#"{
                     "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
                     "msgs": [
@@ -85,5 +84,9 @@ generate_queries! {
                     }
                 }"#.to_string(),
         }
+    },
+    {
+        name: BroadcastTxSync,
+        path: "src/http/schemas/mutations/broadcastTxSync.graphql",
     }
 }
