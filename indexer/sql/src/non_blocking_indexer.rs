@@ -561,6 +561,7 @@ where
                 break;
             }
 
+            // NOTE: we don't raise error here to prevent node crashes
             hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");

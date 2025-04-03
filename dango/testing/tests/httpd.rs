@@ -15,7 +15,7 @@ use {
         account_factory::{self, AccountParams},
         constants::USDC_DENOM,
     },
-    grug::{Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
+    grug::{Addressable, Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
     indexer_httpd::context::Context,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, build_actix_app_with_config, call_graphql,
@@ -164,16 +164,13 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
-            // Copied from benchmarks.rs
-            let msgs = vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(
-                        accounts.user1.username.clone(),
-                    )),
-                },
-                Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
-            )?];
+            let msgs = vec![
+                Message::transfer(
+                    accounts.user2.address(),
+                    Coins::one(USDC_DENOM.clone(), 123).unwrap(),
+                )
+                .unwrap(),
+            ];
 
             suite
                 .send_messages_with_gas(
@@ -222,7 +219,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                         .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![2, 2]);
+                .is_equal_to(vec![2]);
 
                 crate_block_tx.send(3).await.unwrap();
 
@@ -237,7 +234,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                         .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![3, 3]);
+                .is_equal_to(vec![3]);
 
                 Ok::<(), anyhow::Error>(())
             })

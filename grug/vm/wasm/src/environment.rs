@@ -172,7 +172,7 @@ impl Environment {
         S: AsStoreMut,
     {
         let ret = self.call_function(store, name, args)?;
-        if ret.len() != 0 {
+        if !ret.is_empty() {
             return Err(VmError::ReturnCount {
                 name: name.into(),
                 expect: 0,
