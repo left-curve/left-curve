@@ -1,7 +1,7 @@
 use {
     super::{BroadcastTxOutcome, SearchTxOutcome},
     crate::{
-        Block, BlockResult, Hash256, HexBinary, Proof, Query, QueryResponse, StdError, Tx,
+        Block, BlockOutcome, Hash256, HexBinary, Proof, Query, QueryResponse, StdError, Tx,
         TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
@@ -36,7 +36,7 @@ pub trait BlockClient {
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error>;
 
-    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockResult, Self::Error>;
+    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error>;
 }
 
 #[async_trait]

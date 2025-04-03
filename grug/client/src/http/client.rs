@@ -1,14 +1,12 @@
 use {
-    super::query::{get_block, query_app},
-    anyhow::anyhow,
+    super::query::query_app,
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
-        Block, BlockClient, BlockInfo, BlockResult, Duration, Hash256, HexBinary, JsonDeExt,
-        JsonSerExt, Proof, Query, QueryAppClient, QueryResponse, TxOutcome, UnsignedTx,
+        Block, BlockClient, BlockOutcome, HexBinary, JsonDeExt, JsonSerExt, Proof, Query,
+        QueryAppClient, QueryResponse, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
-    std::str::FromStr,
 };
 
 use super::query::Variables;
@@ -26,7 +24,15 @@ impl HttpClient {
         }
     }
 
-    async fn perform<V>(
+    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+        Ok(self
+            .inner
+            .get(format!("{}/{}", self.endpoint, path))
+            .send()
+            .await?)
+    }
+
+    async fn post_graphql<V>(
         &self,
         variables: V,
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
@@ -58,7 +64,7 @@ impl QueryAppClient for HttpClient {
         height: Option<u64>,
     ) -> Result<QueryResponse, Self::Error> {
         let response = self
-            .perform(query_app::Variables {
+            .post_graphql(query_app::Variables {
                 request: query.to_json_string()?,
                 height: height.unwrap_or_default() as i64,
             })
@@ -86,29 +92,21 @@ impl BlockClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
-        let response = self
-            .perform(get_block::Variables {
-                height: height.unwrap_or_default() as i64,
-            })
-            .await?
-            .block
-            .ok_or(anyhow!("No block returned from query"))?;
+        let path = match height {
+            Some(height) => format!("api/block/info/{}", height),
+            None => "api/block/info".to_string(),
+        };
 
-        Ok(Block {
-            info: BlockInfo {
-                height: response.block_height as u64,
-                timestamp: Duration::from_nanos(
-                    response.created_at.timestamp_nanos_opt().unwrap() as u128
-                ),
-                hash: Hash256::from_str(&response.hash)?,
-            },
-            // TODO
-            txs: vec![],
-        })
+        Ok(self.get(&path).await?.json().await?)
     }
 
-    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockResult, Self::Error> {
-        todo!()
+    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
+        let path = match height {
+            Some(height) => format!("api/block/result/{}", height),
+            None => "api/block/result".to_string(),
+        };
+
+        Ok(self.get(&path).await?.json().await?)
     }
 }
 

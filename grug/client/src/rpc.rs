@@ -3,7 +3,7 @@ use {
     async_trait::async_trait,
     grug_math::Inner,
     grug_types::{
-        Base64Encoder, Block, BlockClient, BlockInfo, BlockResult, BroadcastClient,
+        Base64Encoder, Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient,
         BroadcastTxOutcome, CheckTxOutcome, CronOutcome, Encoder, GenericResult, Hash256,
         HexBinary, JsonDeExt, JsonSerExt, Proof, Query, QueryAppClient, QueryResponse,
         SearchTxClient, SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
@@ -159,22 +159,21 @@ impl BlockClient for RpcClient {
         })
     }
 
-    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockResult, Self::Error> {
+    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
         let response = match height {
             Some(height) => self.inner.block_results(Height::try_from(height)?).await?,
             None => self.inner.latest_block_results().await?,
         };
 
-        Ok(BlockResult {
-            hash: Hash256::from_inner(response.app_hash.as_bytes().try_into()?),
-            height: response.height.into(),
-            txs_results: response
+        Ok(BlockOutcome {
+            app_hash: Hash256::from_inner(response.app_hash.as_bytes().try_into()?),
+            tx_outcomes: response
                 .txs_results
                 .unwrap_or_default()
                 .into_iter()
                 .map(from_tm_tx_result)
                 .collect::<anyhow::Result<Vec<TxOutcome>>>()?,
-            cron_results: response
+            cron_outcomes: response
                 .finalize_block_events
                 .into_iter()
                 .map(from_tm_cron_result)
