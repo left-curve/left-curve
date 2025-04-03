@@ -3242,6 +3242,7 @@ name = "dango-dex"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "bnum",
  "dango-types",
  "grug",
  "test-case",

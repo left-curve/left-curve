@@ -21,6 +21,7 @@ library = []
 anyhow      = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
+bnum        = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }
