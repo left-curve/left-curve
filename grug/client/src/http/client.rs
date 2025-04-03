@@ -1,12 +1,14 @@
 use {
-    super::query::query_app,
+    super::query::{query_app, query_store, simulate},
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
+    grug_math::Inner,
     grug_types::{
-        Block, BlockClient, BlockOutcome, HexBinary, JsonDeExt, JsonSerExt, Proof, Query,
+        Binary, Block, BlockClient, BlockOutcome, BorshDeExt, JsonDeExt, JsonSerExt, Proof, Query,
         QueryAppClient, QueryResponse, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
+    std::str::FromStr,
 };
 
 use super::query::Variables;
@@ -66,7 +68,7 @@ impl QueryAppClient for HttpClient {
         let response = self
             .post_graphql(query_app::Variables {
                 request: query.to_json_string()?,
-                height: height.unwrap_or_default() as i64,
+                height: height.map(|h| h as i64),
             })
             .await?;
 
@@ -75,15 +77,34 @@ impl QueryAppClient for HttpClient {
 
     async fn query_store(
         &self,
-        key: HexBinary,
+        key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error> {
-        todo!()
+    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error> {
+        let response = self
+            .post_graphql(query_store::Variables {
+                key: key.to_string(),
+                height: height.map(|h| h as i64),
+                prove,
+            })
+            .await?;
+
+        let proof = match response.query_store.proof {
+            Some(proof) => Binary::from_str(&proof)?.into_inner().deserialize_borsh()?,
+            None => None,
+        };
+
+        Ok((Some(Binary::from_str(&response.query_store.value)?), proof))
     }
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        todo!()
+        let response = self
+            .post_graphql(simulate::Variables {
+                tx: tx.to_json_string()?,
+            })
+            .await?;
+
+        Ok(response.simulate.deserialize_json()?)
     }
 }
 

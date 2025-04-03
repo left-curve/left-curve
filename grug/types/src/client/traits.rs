@@ -1,8 +1,8 @@
 use {
     super::{BroadcastTxOutcome, SearchTxOutcome},
     crate::{
-        Block, BlockOutcome, Hash256, HexBinary, Proof, Query, QueryResponse, StdError, Tx,
-        TxOutcome, UnsignedTx,
+        Binary, Block, BlockOutcome, Hash256, Proof, Query, QueryResponse, StdError, Tx, TxOutcome,
+        UnsignedTx,
     },
     async_trait::async_trait,
 };
@@ -22,10 +22,10 @@ where
 
     async fn query_store(
         &self,
-        key: HexBinary,
+        key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error>;
+    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error>;
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }

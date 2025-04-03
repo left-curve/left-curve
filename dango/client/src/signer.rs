@@ -257,4 +257,29 @@ mod tests {
 
         authenticate_tx(mock_ctx.as_auth(), tx, None).should_succeed();
     }
+
+    #[test]
+    fn unsigned_tx() {
+        let username = Username::from_str("owner").unwrap();
+        let address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
+
+        let tx = SingleSigner::new_random(username.as_ref(), address)
+            .unwrap()
+            .with_nonce(1);
+
+        let tx = tx
+            .unsigned_transaction(
+                NonEmpty::new_unchecked(vec![
+                    Message::transfer(
+                        Addr::from_str("0x01bba610cbbfe9df0c99b8862f3ad41b2f646553").unwrap(),
+                        Coins::one("hyp/all/btc", 100).unwrap(),
+                    )
+                    .unwrap(),
+                ]),
+                "dev-6",
+            )
+            .unwrap();
+
+        println!("{}", tx.to_json_string_pretty().unwrap());
+    }
 }

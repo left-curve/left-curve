@@ -3,10 +3,10 @@ use {
     async_trait::async_trait,
     grug_math::Inner,
     grug_types::{
-        Base64Encoder, Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient,
+        Base64Encoder, Binary, Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient,
         BroadcastTxOutcome, CheckTxOutcome, CronOutcome, Encoder, GenericResult, Hash256,
-        HexBinary, JsonDeExt, JsonSerExt, Proof, Query, QueryAppClient, QueryResponse,
-        SearchTxClient, SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
+        JsonDeExt, JsonSerExt, Proof, Query, QueryAppClient, QueryResponse, SearchTxClient,
+        SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     serde::de::DeserializeOwned,
     std::any::type_name,
@@ -75,10 +75,10 @@ impl QueryAppClient for RpcClient {
 
     async fn query_store(
         &self,
-        key: HexBinary,
+        key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error> {
+    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error> {
         let res = self
             .query("/store", key.clone().into_inner(), height, prove)
             .await?;
@@ -98,7 +98,7 @@ impl QueryAppClient for RpcClient {
         let value = if res.value.is_empty() {
             None
         } else {
-            Some(res.value)
+            Some(Binary::from_inner(res.value))
         };
 
         // Do some basic sanity checks of the Merkle proof returned, and

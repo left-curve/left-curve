@@ -2,7 +2,7 @@ use {
     crate::HttpClient,
     async_trait::async_trait,
     grug_types::{
-        BroadcastClient, BroadcastTxOutcome, Defined, HexBinary, MaybeDefined, Proof, Query,
+        Binary, BroadcastClient, BroadcastTxOutcome, Defined, MaybeDefined, Proof, Query,
         QueryAppClient, QueryResponse, Tx, TxOutcome, Undefined, UnsignedTx, WithChainId,
     },
     std::ops::Deref,
@@ -73,10 +73,10 @@ where
 
     async fn query_store(
         &self,
-        key: HexBinary,
+        key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error> {
+    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error> {
         self.inner.query_store(key, height, prove).await
     }
 

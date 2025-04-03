@@ -5,8 +5,8 @@ use {
     config_parser::parse_config,
     grug_client::RpcClient,
     grug_types::{
-        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, HexBinary, JsonDeExt, JsonSerExt,
-        Proof, Query, QueryAppClient, QueryWasmSmartRequest, SearchTxClient,
+        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Proof,
+        Query, QueryAppClient, QueryWasmSmartRequest, SearchTxClient,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -122,7 +122,7 @@ enum SubCmd {
     },
     /// Query a raw key in the store
     Store {
-        /// Key in hex encoding
+        /// Key in b64 encoding
         key: String,
         /// Whether to request Merkle proof for raw store queries [default: false]
         #[arg(long, default_value_t = false)]
@@ -257,15 +257,15 @@ struct PrintableQueryStoreResponse {
 
 async fn query_store(
     client: &RpcClient,
-    key_hex: String,
+    key_b64: String,
     height: Option<u64>,
     prove: bool,
 ) -> anyhow::Result<()> {
-    let key = HexBinary::from_str(&key_hex)?;
+    let key = Binary::from_str(&key_b64)?;
     let (value, proof) = client.query_store(key, height, prove).await?;
 
     print_json_pretty(PrintableQueryStoreResponse {
-        key: key_hex,
+        key: key_b64,
         value: value.map(hex::encode),
         proof,
     })
