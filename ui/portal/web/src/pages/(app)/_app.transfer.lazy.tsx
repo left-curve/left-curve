@@ -13,7 +13,7 @@ import {
   usePrices,
   useSigningClient,
 } from "@left-curve/store";
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -42,25 +42,22 @@ import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
-const searchParamsSchema = z.object({
-  action: z.enum(["send", "receive"]).catch("send"),
+export const Route = createLazyFileRoute("/(app)/_app/transfer")({
+  component: TransferApplet,
 });
 
-export const Route = createFileRoute("/(app)/_app/send-and-receive")({
-  component: SendAndReceiveComponent,
-  validateSearch: searchParamsSchema,
-});
-
-function SendAndReceiveComponent() {
+function TransferApplet() {
   const { action } = useSearch({ strict: false });
-  const navigate = useNavigate({ from: "/send-and-receive" });
+  const navigate = useNavigate({ from: "/transfer" });
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
   const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
-  const { register, setValue, reset, handleSubmit, inputs } = useInputs({ strategy: "onSubmit" });
+  const { register, setValue, reset, handleSubmit, inputs } = useInputs({
+    strategy: "onSubmit",
+  });
 
   const { account, isConnected } = useAccount();
   const chainId = useChainId();
@@ -230,7 +227,7 @@ function SendAndReceiveComponent() {
                 <AccountSearchInput
                   {...register("address", {
                     validate: (v) => isValidAddress(v) || m["validations.errors.invalidAddress"](),
-                    mask: (v) => v.toLowerCase(),
+                    mask: (v) => v.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                   })}
                   label="To"
                   placeholder="Wallet address or name"
