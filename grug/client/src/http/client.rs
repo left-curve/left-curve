@@ -174,30 +174,6 @@ impl SearchTxClient for HttpClient {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use {
-        super::*,
-        grug_types::{QueryAppClient, QueryClientExt},
-    };
-
-    const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";
-
-    #[tokio::test]
-    async fn test_query_app() {
-        let client = HttpClient::new(GRAPHQL_URL);
-
-        let response = client.query_chain(Query::config(), None).await.unwrap();
-        println!("{:?}", response);
-
-        let response = client.query_block(Some(1)).await.unwrap();
-        println!("{:?}", response);
-
-        let response = client.query_config(None).await.unwrap();
-        println!("{:?}", response);
-    }
-}
-
 fn into_generic_result(code: i64, log: String) -> GenericResult<()> {
     if code == 0 {
         Ok(())
