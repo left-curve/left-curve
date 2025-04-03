@@ -16,7 +16,8 @@ use {
     },
     itertools::Itertools,
     sea_orm::{
-        ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait, sqlx::types::chrono::TimeZone,
+        ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait,
+        sqlx::types::chrono::TimeZone,
     },
     std::collections::HashMap,
     uuid::Uuid,
@@ -147,7 +148,8 @@ impl Hooks {
 
         for tx in block.block_outcome.tx_outcomes.iter() {
             if tx.result.is_err() {
-                tracing::debug!("tx failed");
+                #[cfg(feature = "tracing")]
+                tracing::debug!("tx failed, skipping");
                 continue;
             }
 
@@ -247,6 +249,7 @@ impl Hooks {
             return Ok(());
         }
 
+        #[cfg(feature = "tracing")]
         tracing::info!("Detected accounts: {:?}", detected_accounts);
 
         let epoch_millis = block.block.info.timestamp.into_millis();
@@ -259,100 +262,131 @@ impl Hooks {
             .unwrap_or_default()
             .naive_utc();
 
-        let accounts = detected_accounts
-            .into_iter()
-            .flat_map(|(_, account)| {
-                let Some(account_type) = account.account_type else {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        block_height = block.block.info.height,
-                        "Found no account_type, shouldn't happen"
-                    );
-                    return None;
-                };
-
-                Some(entity::accounts::ActiveModel {
-                    id: Set(Uuid::new_v4()),
-                    username: Set(account.username.into_inner()),
-                    // TODO: get the index value
-                    index: Set(0),
-                    address: Set(account
-                        .address
-                        .map(|address| address.to_string())
-                        .unwrap_or_default()),
-                    eth_address: Set(account.eth_address.map(|address| address.to_string())),
-                    account_type: Set(account_type),
-                    created_block_height: Set(block.block.info.height as i64),
-                    created_at: Set(created_at),
-                })
-            })
-            .collect::<Vec<_>>();
-
         // I have to do with chunks to avoid psql errors with too many items
         let chunk_size = 1000;
 
-        let txn = context.db.begin().await?;
-
-        let chunked_accounts = accounts
-            .into_iter()
+        let chunked_detected_accounts_accounts = detected_accounts
+            .values()
             .chunks(chunk_size)
             .into_iter()
             .map(|chunk| chunk.collect())
             .collect::<Vec<Vec<_>>>();
 
-        for accounts in chunked_accounts {
+        let txn = context.db.begin().await?;
+
+        // I have to go through the accounts again to avoid psql errors with too
+        // many items when doing multiple selects or inserts
+        for chunk in chunked_detected_accounts_accounts {
+            // psql doesn't support multiple `on_conflict` for multiple columnes.
+            // Instead, we preselect all existing accounts
             let existing_accounts = entity::accounts::Entity::find()
                 .filter(
                     entity::accounts::Column::Username
-                        .is_in(
-                            accounts
-                                .iter()
-                                .map(|a| a.username.as_ref())
-                                .collect::<Vec<_>>(),
-                        )
+                        .is_in(chunk.iter().map(|a| a.username.inner()).collect::<Vec<_>>())
                         .or(entity::accounts::Column::Address.is_in(
-                            accounts
+                            chunk
                                 .iter()
-                                .map(|a| a.address.as_ref())
+                                .flat_map(|a| a.address.map(|s| s.to_string()))
                                 .collect::<Vec<_>>(),
                         )),
                 )
                 .all(&txn)
                 .await?;
 
-            let _existing_accounts_by_username = existing_accounts
+            let existing_accounts_by_username = existing_accounts
                 .iter()
                 .map(|a| (a.username.clone(), a))
                 .collect::<HashMap<_, _>>();
-            let _existing_accounts_by_address = existing_accounts
+            let existing_accounts_by_address = existing_accounts
                 .iter()
                 .map(|a| (a.address.clone(), a))
                 .collect::<HashMap<_, _>>();
 
-            tracing::info!(
-                "Existing accounts: {:#?}",
-                existing_accounts
-                    .iter()
-                    .map(|a| a.username.clone())
-                    .collect::<Vec<_>>()
-            );
+            // NOTE: usually I would try to batch the inserts using `insert_many`
+            // but here we might have non-existing accounts, and existing ones meaning
+            // we'd have to do some more complex code. This is already executed once
+            // per block, we can only batch all account creations per single block. Since I
+            // don't expect *tons* of account creation per block, I'll just use one
+            // insert or update per account, which will be done within a single database
+            // transaction to speed things up, and will make the code easier to read.
+            // I'll still leave the outer loop if we ever need to batch the inserts.
 
-            tracing::info!("Inserting accounts: {:#?}", accounts);
+            for account in chunk.into_iter() {
+                let existing_account_by_username =
+                    existing_accounts_by_username.get(account.username.inner());
+                let existing_account_by_address = account
+                    .address
+                    .and_then(|address| existing_accounts_by_address.get(&address.to_string()));
 
-            entity::accounts::Entity::insert_many(accounts)
-            // TODO: choose what I should do when there is a conflict, what to overwrite?
-                // .on_conflict(
-                //     sea_query::OnConflict::columns(vec![entity::accounts::Column::Address])
-                //         .update_columns(vec![entity::accounts::Column::Username])
-                //         .to_owned(),
-                // )
-                // .on_conflict(
-                //     sea_query::OnConflict::columns(vec![entity::accounts::Column::Username])
-                //         .update_columns(vec![entity::accounts::Column::Address])
-                //         .to_owned(),
-                // )
-                .exec_without_returning(&txn)
-                .await?;
+                match (existing_account_by_username, existing_account_by_address) {
+                    // We found existing account with this username, updating address
+                    (Some(existing_account_by_username), None) => {
+                        let mut model: entity::accounts::ActiveModel =
+                            (*existing_account_by_username).clone().into();
+                        if let Some(address) = account.address {
+                            model.address = Set(address.to_string());
+                        }
+                        if let Some(eth_address) = account.eth_address {
+                            model.eth_address = Set(Some(eth_address.to_string()));
+                        }
+                        model.save(&txn).await?;
+                    },
+                    // We found existing account with this address, updating username
+                    (None, Some(existing_account_by_address)) => {
+                        let mut model: entity::accounts::ActiveModel =
+                            (*existing_account_by_address).clone().into();
+                        model.username = Set(account.username.inner().clone());
+
+                        if let Some(eth_address) = account.eth_address {
+                            model.eth_address = Set(Some(eth_address.to_string()));
+                        }
+                        model.save(&txn).await?;
+                    },
+                    // We found no existing account
+                    (None, None) => {
+                        if let Some(account_type) = &account.account_type {
+                            let model = entity::accounts::ActiveModel {
+                                id: Set(Uuid::new_v4()),
+                                username: Set(account.username.inner().clone()),
+                                // TODO: get the index value
+                                index: Set(0),
+                                address: Set(account
+                                    .address
+                                    .map(|address| address.to_string())
+                                    .unwrap_or_default()),
+                                eth_address: Set(account
+                                    .eth_address
+                                    .map(|address| address.to_string())),
+                                account_type: Set(account_type.clone()),
+                                created_block_height: Set(block.block.info.height as i64),
+                                created_at: Set(created_at),
+                            };
+                            model.insert(&txn).await?;
+                        }
+                    },
+                    // We found existing account with the same address and same username, which shouldn't happen
+                    (Some(existing_account_by_username), Some(existing_account_by_address)) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(
+                            block_height = block.block.info.height,
+                            existing_account_by_username_id =
+                                existing_account_by_username.id.to_string(),
+                            existing_account_by_address_id =
+                                existing_account_by_address.id.to_string(),
+                            "Found 2 existing accounts with the same address and same username"
+                        );
+                        if existing_account_by_username.id == existing_account_by_address.id {
+                            let mut model: entity::accounts::ActiveModel =
+                                (*existing_account_by_address).clone().into();
+
+                            if let Some(eth_address) = account.eth_address {
+                                model.eth_address = Set(Some(eth_address.to_string()));
+                            }
+                            model.save(&txn).await?;
+                        }
+                    },
+                }
+            }
         }
 
         txn.commit().await?;
