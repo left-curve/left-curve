@@ -2,7 +2,7 @@ import { createStorage } from "../storages/createStorage.js";
 
 import { useQuery } from "../query.js";
 
-import { type Dispatch, type SetStateAction, useCallback, useRef } from "react";
+import { type Dispatch, type SetStateAction, useRef } from "react";
 import type { Storage } from "../types/storage.js";
 
 export type UseStorageOptions<T = undefined> = {
@@ -42,7 +42,10 @@ export function useStorage<T = undefined>(
       const { version, value } = item as { version: number; value: T };
 
       if (__version__ > version) {
-        storage.setItem(key, { version: __version__, value });
+        storage.setItem(key, {
+          version: __version__,
+          value: initialValue,
+        });
         return value as T;
       }
 
