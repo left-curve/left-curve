@@ -168,7 +168,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           fullWidth
           size="md"
           onClick={() => [
-            navigate({ to: "/send-and-receive", search: { action: "receive" } }),
+            navigate({ to: "/transfer", search: { action: "receive" } }),
             setSidebarVisibility(false),
           ]}
         >
