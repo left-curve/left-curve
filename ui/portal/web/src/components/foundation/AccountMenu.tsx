@@ -236,7 +236,7 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
             <AccountCard.Preview
               key={account.address}
               account={account}
-              onAccountSelect={(acc) => changeAccount?.(acc.address)}
+              onAccountSelect={(acc) => changeAccount?.(acc)}
             />
           ))}
       </div>
