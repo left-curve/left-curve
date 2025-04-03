@@ -20,6 +20,7 @@ pub struct BroadcastTxSuccess {
 }
 
 impl BroadcastTxOutcome {
+    #[allow(clippy::result_large_err)]
     pub fn into_result(self) -> Result<BroadcastTxSuccess, BroadcastTxError> {
         match &self.check_tx.result {
             Ok(_) => Ok(BroadcastTxSuccess {

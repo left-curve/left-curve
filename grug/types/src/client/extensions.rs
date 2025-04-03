@@ -330,7 +330,7 @@ where
             GasOption::Predefined { gas_limit } => gas_limit,
         };
 
-        let tx = signer.sign_transaction(msgs, &self.chain_id(), gas_limit)?;
+        let tx = signer.sign_transaction(msgs, self.chain_id(), gas_limit)?;
 
         self.broadcast_tx_with_confirmation(tx, confirm_fn).await
     }
