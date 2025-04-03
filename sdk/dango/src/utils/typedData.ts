@@ -41,11 +41,15 @@ export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
   return {
     domain: {
       name: "DangoArbitraryMessage",
+      verifyingContract: "0x0000000000000000000000000000000000000000",
     },
     message: recursiveTransform(message, camelToSnake) as Record<string, unknown>,
     primaryType,
     types: {
-      EIP712Domain: [{ name: "name", type: "string" }],
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "verifyingContract", type: "address" },
+      ],
       ...types,
     },
   };
