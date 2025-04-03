@@ -366,21 +366,27 @@ impl PassiveLiquidityPool for PairParams {
                 },
             };
 
-            orders.push(CreateLimitOrderRequest {
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: Direction::Bid,
-                amount: amount_bid.checked_sub(a_bid_prev)?,
-                price: price_bid,
-            });
+            let amount_bid_diff = amount_bid.checked_sub(a_bid_prev)?;
+            if amount_bid_diff > Uint128::ZERO {
+                orders.push(CreateLimitOrderRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    direction: Direction::Bid,
+                    amount: amount_bid_diff,
+                    price: price_bid,
+                });
+            }
 
-            orders.push(CreateLimitOrderRequest {
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: Direction::Ask,
-                amount: amount_ask.checked_sub(a_ask_prev)?,
-                price: price_ask,
-            });
+            let amount_ask_diff = amount_ask.checked_sub(a_ask_prev)?;
+            if amount_ask_diff > Uint128::ZERO {
+                orders.push(CreateLimitOrderRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    direction: Direction::Ask,
+                    amount: amount_ask_diff,
+                    price: price_ask,
+                });
+            }
 
             a_bid_prev = amount_bid;
             a_ask_prev = amount_ask;
