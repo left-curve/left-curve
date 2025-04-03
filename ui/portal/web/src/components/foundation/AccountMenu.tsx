@@ -229,14 +229,14 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
           <IconAddCross className="w-5 h-5" /> <span>{m["accountMenu.accounts.addAccount"]()}</span>
         </Button>
       </div>
-      <div className="flex flex-col items-center w-full overflow-y-auto gap-4 scrollbar-none pb-[7rem] relative">
+      <div className="flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 relative max-h-[42rem]">
         {accounts
           ?.filter((acc) => acc.address !== account.address)
           .map((account) => (
             <AccountCard.Preview
               key={account.address}
               account={account}
-              onAccountSelect={(acc) => changeAccount?.(acc)}
+              onAccountSelect={(acc) => changeAccount?.(acc.address)}
             />
           ))}
       </div>
