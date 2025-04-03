@@ -2,16 +2,19 @@ import { IconButton, IconClose, IconMobile, QRCode, forwardRef } from "@left-cur
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
 import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { toast } from "../foundation/Toast";
 
 export const QRConnect = forwardRef((_props, _ref) => {
+  const id = useId();
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
     url: import.meta.env.PUBLIC_WEBRTC_URI,
+    key: id,
   });
+
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
   const { hideModal } = useApp();

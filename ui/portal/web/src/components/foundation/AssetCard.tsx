@@ -21,7 +21,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
     <div className="flex items-center justify-between p-4 hover:bg-rice-50">
       <div className="flex gap-2 items-center">
         {coinInfo.logoURI ? (
-          <img src={coinInfo.logoURI} className="h-8 w-8 rounded-full" alt={coinInfo.denom} />
+          <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
         ) : (
           <div className="h-8 w-8 rounded-full bg-gray-200" />
         )}

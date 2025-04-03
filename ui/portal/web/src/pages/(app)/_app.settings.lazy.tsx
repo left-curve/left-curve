@@ -7,7 +7,6 @@ import {
   IconLanguage,
   IconMobile,
   Select,
-  SelectItem,
   Tab,
   Tabs,
   useMediaQuery,
@@ -45,13 +44,11 @@ function SettingsComponent() {
             <IconLanguage className="text-gray-500" />
             <span className="diatype-m-bold text-gray-700">{m["settings.language"]()}</span>
           </p>
-          <Select
-            defaultSelectedKey={getLocale()}
-            label="Language"
-            onSelectionChange={(key) => setLocale(key.toString() as any)}
-          >
+          <Select value={getLocale()} onChange={(key) => setLocale(key as "en")}>
             {locales.map((locale) => (
-              <SelectItem key={locale}>{m["settings.languages"]({ language: locale })}</SelectItem>
+              <Select.Item key={locale} value={locale}>
+                {m["settings.languages"]({ language: locale })}
+              </Select.Item>
             ))}
           </Select>
         </div>
@@ -62,9 +59,8 @@ function SettingsComponent() {
           </p>
 
           <Select
-            defaultSelectedKey={formatNumberOptions.language}
-            label="Format Number Options"
-            onSelectionChange={(key) => [
+            defaultValue={formatNumberOptions.language}
+            onChange={(key) => [
               setFormatNumberOptions((prev) => ({
                 ...prev,
                 language: key.toString(),
@@ -72,10 +68,10 @@ function SettingsComponent() {
               })),
             ]}
           >
-            <SelectItem key="en-US">1,234.00</SelectItem>
-            <SelectItem key="es-ES">1.234,00</SelectItem>
-            <SelectItem key="de-DE">1234,00</SelectItem>
-            <SelectItem key="fr-FR">1 234,00</SelectItem>
+            <Select.Item value="en-US">1,234.00</Select.Item>
+            <Select.Item value="es-ES">1.234,00</Select.Item>
+            <Select.Item value="de-DE">1234,00</Select.Item>
+            <Select.Item value="fr-FR">1 234,00</Select.Item>
           </Select>
         </div>
         {isConnected && isLg ? (

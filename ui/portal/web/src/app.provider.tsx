@@ -1,11 +1,13 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { useStorage } from "@left-curve/store";
+import { useAccount, useStorage } from "@left-curve/store";
+import * as Sentry from "@sentry/react";
 import {
   type Dispatch,
   type PropsWithChildren,
   type SetStateAction,
   createContext,
   useCallback,
+  useEffect,
   useState,
 } from "react";
 
@@ -16,24 +18,27 @@ type AppState = {
   setNotificationMenuVisibility: (visibility: boolean) => void;
   isSearchBarVisible: boolean;
   setSearchBarVisibility: (visibility: boolean) => void;
-  showModal: (modalName: string, modalProps?: any) => void;
+  showModal: (modalName: string, props?: Record<string, unknown>) => void;
   hideModal: () => void;
   formatNumberOptions: FormatNumberOptions;
   setFormatNumberOptions: Dispatch<SetStateAction<FormatNumberOptions>>;
-  isModalVisible: boolean;
-  activeModal?: string;
-  modalProps: any;
+  modal: { modal: string | undefined; props: Record<string, unknown> };
+  changeSettings: (settings: Partial<AppState["settings"]>) => void;
+  settings: {
+    showWelcome: boolean;
+    isFirstVisit: boolean;
+    useSessionKey: boolean;
+  };
 };
 
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
-  const [activeModal, setSelectedModal] = useState<string>();
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [modalProps, setModalProps] = useState<Record<string, any>>({});
+
   const [formatNumberOptions, setFormatNumberOptions] = useStorage<FormatNumberOptions>(
     "formatNumber",
     {
@@ -46,13 +51,33 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     },
   );
 
-  const showModal = useCallback((modalName: string, modalProps?: any) => {
-    setModalProps(modalProps || {});
-    setSelectedModal(modalName);
-    setIsModalVisible(true);
-  }, []);
+  // App settings
+  const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
+    initialValue: {
+      showWelcome: true,
+      isFirstVisit: true,
+      useSessionKey: true,
+    },
+  });
+  const changeSettings = useCallback(
+    (s: Partial<AppState["settings"]>) => setSettings((prev) => ({ ...prev, ...s })),
+    [],
+  );
 
-  const hideModal = useCallback(() => setIsModalVisible(false), [setIsModalVisible]);
+  // Modal State
+  const [modal, setModal] = useState<{
+    modal: string | undefined;
+    props: Record<string, unknown>;
+  }>({ modal: undefined, props: {} });
+  const hideModal = useCallback(() => setModal({ modal: undefined, props: {} }), []);
+  const showModal = useCallback((modal: string, props = {}) => setModal({ modal, props }), []);
+
+  // Track user errors
+  const { username } = useAccount();
+  useEffect(() => {
+    if (!username) Sentry.setUser(null);
+    else Sentry.setUser({ username });
+  }, [username]);
 
   return (
     <AppContext.Provider
@@ -67,9 +92,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         setSearchBarVisibility,
         showModal,
         hideModal,
-        isModalVisible,
-        activeModal,
-        modalProps,
+        modal,
+        settings,
+        changeSettings,
       }}
     >
       {children}

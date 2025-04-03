@@ -69,10 +69,11 @@ export async function broadcastTxSync<transport extends Transport>(
     ({ abort }) =>
       async () => {
         {
+          const hash = typeof result.hash === "string" ? result.hash : encodeBase64(result.hash);
           const tx = await queryTx(client, {
-            hash: typeof result.hash === "string" ? result.hash : encodeBase64(result.hash),
+            hash,
           });
-          if (!tx) throw new Error("Transaction not found");
+          if (!tx) throw new Error(`Transaction not found: ${hash}`);
 
           if (tx.tx_result.code === 1) {
             const { codespace, code, log } = tx.tx_result;

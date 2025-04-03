@@ -1,6 +1,6 @@
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
-import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/dango/encoding";
+import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { composeArbitraryTypedData } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
@@ -52,7 +52,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           if (_keyHash_) return _keyHash_;
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-          return createKeyHash(controllerAddress);
+          return createKeyHash(controllerAddress.toLowerCase());
         })();
 
         const keys = await getKeysByUsername(client, { username });
@@ -83,14 +83,16 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           method: "eth_requestAccounts",
         });
 
-        const keyHash = createKeyHash(controllerAddress);
-        return { key: { ethereum: controllerAddress }, keyHash };
+        const addressLowerCase = controllerAddress.toLowerCase();
+
+        const keyHash = createKeyHash(addressLowerCase);
+        return { key: { ethereum: addressLowerCase as Address }, keyHash };
       },
       async getKeyHash() {
         const provider = await this.getProvider();
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
-
-        return createKeyHash(controllerAddress);
+        const addressLowerCase = controllerAddress.toLowerCase();
+        return createKeyHash(addressLowerCase);
       },
       async getProvider() {
         const provider = _provider_();
@@ -129,7 +131,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           typed_data: encodeBase64(encodeUtf8(signData)),
         };
 
-        const keyHash = createKeyHash(controllerAddress);
+        const keyHash = createKeyHash(controllerAddress.toLowerCase());
 
         return {
           credential: { standard: { keyHash, signature: { eip712 } } },
@@ -153,7 +155,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             typed_data: encodeBase64(encodeUtf8(signData)),
           };
 
-          const keyHash = createKeyHash(controllerAddress);
+          const keyHash = createKeyHash(controllerAddress.toLowerCase());
 
           const standard = { signature: { eip712 }, keyHash };
 

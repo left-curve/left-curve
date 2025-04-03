@@ -56,7 +56,7 @@ export const config: Config = createConfig({
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
         symbol: "SOL",
-        denom: "hyp/all/usdc",
+        denom: "hyp/all/sol",
         decimals: 6,
         coingeckoId: "solana",
       },

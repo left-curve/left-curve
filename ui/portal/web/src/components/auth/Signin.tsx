@@ -5,13 +5,7 @@ import {
   useWatchEffect,
   useWizard,
 } from "@left-curve/applets-kit";
-import {
-  useAccount,
-  usePublicClient,
-  useSignin,
-  useSigninWithDesktop,
-  useStorage,
-} from "@left-curve/store";
+import { useAccount, usePublicClient, useSignin, useSigninWithDesktop } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -34,15 +28,9 @@ import { m } from "~/paraglide/messages";
 
 import type React from "react";
 import type { FormEvent, PropsWithChildren } from "react";
+import { useApp } from "~/hooks/useApp";
 
-type SigninContainerProps = {
-  isFirstVisit: boolean;
-};
-
-const Container: React.FC<PropsWithChildren<SigninContainerProps>> = ({
-  children,
-  isFirstVisit: firstVisit,
-}) => {
+const Container: React.FC<PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();
   const navigate = useNavigate();
 
@@ -57,15 +45,14 @@ const Container: React.FC<PropsWithChildren<SigninContainerProps>> = ({
           {children}
         </ResizerContainer>
       </div>
-      <AuthCarousel firstVisit={firstVisit} />
+      <AuthCarousel />
     </div>
   );
 };
 
 const UsernameStep: React.FC = () => {
-  const [advancedOptions, setAdvancedOptions] = useStorage("advancedOptions", {
-    initialValue: { useSessionKey: true },
-  });
+  const { settings, changeSettings } = useApp();
+  const { useSessionKey } = settings;
 
   const navigate = useNavigate();
   const { nextStep, setData } = useWizard<{ username: string; sessionKey: boolean }>();
@@ -85,7 +72,7 @@ const UsernameStep: React.FC = () => {
       if (numberOfAccounts === 0) {
         setError("username", m["signin.errors.usernameNotExist"]());
       } else {
-        setData({ username, sessionKey: advancedOptions.useSessionKey });
+        setData({ username, sessionKey: useSessionKey });
         nextStep();
       }
     },
@@ -139,8 +126,8 @@ const UsernameStep: React.FC = () => {
               <Checkbox
                 size="md"
                 label={m["common.signinWithSession"]()}
-                checked={advancedOptions.useSessionKey}
-                onChange={(v) => setAdvancedOptions({ ...advancedOptions, useSessionKey: v })}
+                checked={useSessionKey}
+                onChange={(v) => changeSettings({ useSessionKey: v })}
               />
             </div>
           </ExpandOptions>
@@ -252,7 +239,7 @@ export const MobileStep: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center gap-2">
       <Spinner size="lg" color="pink" />
-      <p className="diatype-m-bold">Loading crendetial</p>
+      <p className="diatype-m-bold">{m["signin.authorizeInDesktop"]()}</p>
     </div>
   );
 };

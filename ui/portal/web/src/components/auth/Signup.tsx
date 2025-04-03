@@ -13,7 +13,6 @@ import {
   useConnectors,
   usePublicClient,
   useSignin,
-  useStorage,
 } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -43,10 +42,13 @@ import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-import type { AppConfig, Hex, Key } from "@left-curve/dango/types";
+import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
+
+import { captureException } from "@sentry/react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -131,7 +133,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             </div>
           </ResizerContainer>
         </div>
-        <AuthCarousel firstVisit={false} />
+        <AuthCarousel />
       </div>
     </>
   );
@@ -200,8 +202,10 @@ const Credential: React.FC = () => {
 
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-          const key: Key = { ethereum: controllerAddress };
-          const keyHash = createKeyHash(controllerAddress);
+          const addressLowerCase = controllerAddress.toLowerCase() as Address;
+
+          const key: Key = { ethereum: addressLowerCase };
+          const keyHash = createKeyHash(addressLowerCase);
 
           return { key, keyHash };
         })();
@@ -289,10 +293,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch("https://mock-warp.left-curve.workers.dev", {
-          method: "POST",
-          body: JSON.stringify({ address }),
-        });
+        const response = await fetch(`https://devnet.dango.exchange/faucet/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
@@ -308,6 +309,15 @@ const Username: React.FC = () => {
       } catch (err) {
         toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
+        captureException(err, {
+          data: {
+            key,
+            keyHash,
+            username,
+            connectorId,
+            seed,
+          },
+        });
       }
     },
   });
@@ -361,15 +371,14 @@ const Username: React.FC = () => {
 const Signin: React.FC = () => {
   const navigate = useNavigate();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
-  const [advancedOptions, setAdvancedOptions] = useStorage("advancedOptions", {
-    initialValue: { useSessionKey: true },
-  });
+  const { settings, changeSettings } = useApp();
+  const { useSessionKey } = settings;
 
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey: advancedOptions.useSessionKey,
+    sessionKey: useSessionKey,
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
@@ -395,8 +404,8 @@ const Signin: React.FC = () => {
           <Checkbox
             size="md"
             label={m["common.signinWithSession"]()}
-            checked={advancedOptions.useSessionKey}
-            onChange={(v) => setAdvancedOptions({ ...advancedOptions, useSessionKey: v })}
+            checked={useSessionKey}
+            onChange={(v) => changeSettings({ useSessionKey: v })}
           />
         </div>
       </ExpandOptions>

@@ -26,7 +26,7 @@
     "notWalletDetected": "No wallet detected",
     "testnet": {
       "title": "Message from the founder",
-      "description": "Thank you for trying out Dango's first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that's it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
+      "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
     },
     "signWithWallet": [
       {
@@ -144,14 +144,15 @@
     }
   },
   "signin": {
+    "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
     "advancedOptions": "Advanced Options",
     "continueWithoutSignin": "Continue without sign in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
-    "noAccount": "Don't have an account?",
+    "noAccount": "Don’t have an account?",
     "errors": {
       "usernameRequired": "Username is required",
-      "usernameNotExist": "Username doesn't exist",
+      "usernameNotExist": "Username doesn’t exist",
       "failedSigingIn": "Failed to connect with the selected credential."
     },
     "credential": {
@@ -187,9 +188,9 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "crypto assets, real world assets, and derivatives in Dango's blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
-            "step=1": "with Dango's unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
-            "step=2": "passive yields on your idle assets by depositing in Dango's vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
+            "step=0": "crypto assets, real world assets, and derivatives in Dango’s blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
+            "step=1": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
+            "step=2": "passive yields on your idle assets by depositing in Dango’s vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
           }
         }
       ]
@@ -229,7 +230,7 @@
       ]
     },
     "errors": {
-      "couldntCompleteRequest": "Couldn't complete request",
+      "couldntCompleteRequest": "Couldn’t complete request",
       "usernameTaken": "Username is already taken",
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
@@ -255,7 +256,7 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Select your account type to interact within the entire ecosystem",
-            "step=1": "Fund your first spot account, you'll be able to create another account later."
+            "step=1": "Fund your first spot account, you’ll be able to create another account later."
           }
         }
       ]
@@ -293,7 +294,7 @@
   "sendAndReceive": {
     "title": "Transfer",
     "to": "To",
-    "sending": "You're sending",
+    "sending": "You’re sending",
     "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
   },
