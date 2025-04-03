@@ -323,32 +323,38 @@ impl PassiveLiquidityPool for PairParams {
             let price_bid = starting_price_bid.checked_sub(delta_p)?;
 
             // Calculate the amount of base that can be bought at the price
-            let (a_ask, a_bid) = match self.curve_invariant {
+            let (amount_ask, amount_bid) = match self.curve_invariant {
                 CurveInvariant::Xyk => {
-                    let a_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
-                    let a_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
-                    (a_ask, a_bid)
+                    let amount_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
+                    let amount_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
+                    (amount_ask, amount_bid)
                 },
             };
 
-            orders.push(CreateLimitOrderRequest {
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: Direction::Bid,
-                amount: a_bid.checked_sub(a_bid_prev)?,
-                price: price_bid,
-            });
+            let amount_bid_diff = amount_bid.checked_sub(a_bid_prev)?;
+            if amount_bid_diff > Uint128::ZERO {
+                orders.push(CreateLimitOrderRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    direction: Direction::Bid,
+                    amount: amount_bid_diff,
+                    price: price_bid,
+                });
+            }
 
-            orders.push(CreateLimitOrderRequest {
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: Direction::Ask,
-                amount: a_ask.checked_sub(a_ask_prev)?,
-                price: price_ask,
-            });
+            let amount_ask_diff = amount_ask.checked_sub(a_ask_prev)?;
+            if amount_ask_diff > Uint128::ZERO {
+                orders.push(CreateLimitOrderRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    direction: Direction::Ask,
+                    amount: amount_ask_diff,
+                    price: price_ask,
+                });
+            }
 
-            a_bid_prev = a_bid;
-            a_ask_prev = a_ask;
+            a_bid_prev = amount_bid;
+            a_ask_prev = amount_ask;
         }
 
         Ok(orders)
