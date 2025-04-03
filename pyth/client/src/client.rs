@@ -108,9 +108,11 @@ impl PythClientTrait for PythClient {
                             return;
                         }
 
-                        if let Some(event) = data{
+                        if let Some(event) = data {
                             match event {
-                                Ok(Event::Open) => info!("Pyth SSE connection open"),
+                                Ok(Event::Open) => {
+                                    info!("Pyth SSE connection open");
+                                },
                                 Ok(Event::Message(message)) => {
                                     match message.data.deserialize_json::<LatestVaaResponse>() {
                                         Ok(vaas) => {
@@ -119,7 +121,7 @@ impl PythClientTrait for PythClient {
                                         Err(err) => {
                                             error!(
                                                 err = err.to_string(),
-                                                "Failed to deserialize Pyth event into LatestVaaResponse"
+                                                "Failed to deserialize Pyth event into `LatestVaaResponse`"
                                             );
                                         },
                                     }
@@ -131,13 +133,10 @@ impl PythClientTrait for PythClient {
                                     );
                                 },
                             }
-                        }
-                        else {
+                        } else {
                             error!("Pyth SSE connection close");
                         }
-
                     }
-
                 }
             }
         };
