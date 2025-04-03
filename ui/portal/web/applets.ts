@@ -3,7 +3,7 @@ export const applets = [
     img: "/images/applets/send-and-receive.svg",
     title: "Transfer",
     description: "Send and receive crypto.",
-    path: "/send-and-receive",
+    path: "/transfer",
     keywords: ["transfer", "send", "receive"],
   },
   {

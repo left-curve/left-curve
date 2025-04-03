@@ -69,14 +69,14 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
 
         {isConnected ? (
           <div className="lg:self-end gap-4 items-center justify-center w-full lg:max-w-[256px] flex lg:hidden">
-            <ButtonLink fullWidth size="md" to="/send-and-receive" search={{ action: "receive" }}>
+            <ButtonLink fullWidth size="md" to="/transfer" search={{ action: "receive" }}>
               {m["common.fund"]()}
             </ButtonLink>
             <ButtonLink
               fullWidth
               variant="secondary"
               size="md"
-              to="/send-and-receive"
+              to="/transfer"
               search={{ action: "send" }}
             >
               {m["common.send"]()}
