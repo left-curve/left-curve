@@ -54,7 +54,8 @@ export const Route = createFileRoute("/(app)/_app/send-and-receive")({
 function SendAndReceiveComponent() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/send-and-receive" });
-  const { formatNumberOptions, showModal } = useApp();
+  const { settings, showModal } = useApp();
+  const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: false });

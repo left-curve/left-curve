@@ -28,7 +28,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
     icon,
   } = parameters;
 
-  return createConnector<EIP1193Provider>(({ transport, getUsername, emitter }) => {
+  return createConnector<EIP1193Provider>(({ transport, getUsername, emitter, chain }) => {
     return {
       id,
       name,
@@ -72,6 +72,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         return createSignerClient({
           signer: this,
           type: "eip1193",
+          chain,
           username,
           transport,
         });

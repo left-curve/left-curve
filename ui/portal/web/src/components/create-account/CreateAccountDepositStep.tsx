@@ -23,7 +23,8 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { showModal } = useApp();
   const { coins, state } = useConfig();
   const { account, refreshAccounts, changeAccount } = useAccount();
-  const { formatNumberOptions } = useApp();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({

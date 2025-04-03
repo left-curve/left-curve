@@ -25,7 +25,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
   const { icon } = parameters;
 
-  return createConnector<undefined>(({ transport, emitter, getUsername }) => {
+  return createConnector<undefined>(({ transport, emitter, getUsername, chain }) => {
     return {
       id: "passkey",
       name: "Passkey",
@@ -74,6 +74,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           signer: this,
           type: "passkey",
           username,
+          chain,
           transport,
         });
       },

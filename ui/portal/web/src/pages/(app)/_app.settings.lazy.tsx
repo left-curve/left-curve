@@ -26,7 +26,9 @@ function SettingsComponent() {
   const { isMd, isLg } = useMediaQuery();
   const { history } = useRouter();
   const { isConnected } = useAccount();
-  const { showModal, setFormatNumberOptions, formatNumberOptions } = useApp();
+  const { showModal, changeSettings, settings } = useApp();
+  const { formatNumberOptions } = settings;
+
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
       <h2 className="flex gap-2 items-center">
@@ -59,19 +61,17 @@ function SettingsComponent() {
           </p>
 
           <Select
-            defaultValue={formatNumberOptions.language}
+            defaultValue={formatNumberOptions.mask.toString()}
             onChange={(key) => [
-              setFormatNumberOptions((prev) => ({
-                ...prev,
-                language: key.toString(),
-                useGrouping: key !== "de-DE",
-              })),
+              changeSettings({
+                formatNumberOptions: { ...formatNumberOptions, mask: Number(key) as 1 },
+              }),
             ]}
           >
-            <Select.Item value="en-US">1,234.00</Select.Item>
-            <Select.Item value="es-ES">1.234,00</Select.Item>
-            <Select.Item value="de-DE">1234,00</Select.Item>
-            <Select.Item value="fr-FR">1 234,00</Select.Item>
+            <Select.Item value="1">1,234.00</Select.Item>
+            <Select.Item value="2">1.234,00</Select.Item>
+            <Select.Item value="3">1234,00</Select.Item>
+            <Select.Item value="4">1 234,00</Select.Item>
           </Select>
         </div>
         {isConnected && isLg ? (

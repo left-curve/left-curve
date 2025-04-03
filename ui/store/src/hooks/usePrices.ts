@@ -34,6 +34,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
       maximumFractionDigits: 2,
       minFractionDigits: 2,
       language: navigator.language,
+      mask: 1,
     },
     storage = createStorage<{ prices: Prices }>({
       key: "cache_query",

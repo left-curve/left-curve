@@ -26,7 +26,8 @@ type ConfirmSendProps = {
 
 export const ConfirmSend = forwardRef(
   ({ amount, denom, to, confirmSend, rejectSend }: ConfirmSendProps, ref) => {
-    const { hideModal, formatNumberOptions } = useApp();
+    const { hideModal, settings } = useApp();
+    const { formatNumberOptions } = settings;
     const { coins, state } = useConfig();
     const client = usePublicClient();
     const coin = coins[state.chainId][denom];
