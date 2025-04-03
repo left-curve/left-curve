@@ -26,6 +26,7 @@ impl PubSub for PostgresPubSub {
         listener.listen("blocks").await?;
 
         let stream = stream! {
+            #[allow(clippy::while_let_loop)]
             loop {
                 match listener.recv().await {
                     Ok(notification) => {
@@ -37,9 +38,9 @@ impl PubSub for PostgresPubSub {
                             }
                         }
                     },
-                    Err(e) => {
+                    Err(_e) => {
                         #[cfg(feature = "tracing")]
-                        tracing::error!("Error receiving notification: {e:?}");
+                        tracing::error!("Error receiving notification: {_e:?}");
 
                         break;
                     },
