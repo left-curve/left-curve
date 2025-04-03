@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import {
   twMerge,
   useCountdown,
   useMediaQuery,
+  useWatchEffect,
 } from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
@@ -28,9 +29,13 @@ type BlockExplorerProps = {
   className?: string;
 };
 
-const BlockExplorerContext = createContext<
-  (UseQueryResult<IndexedBlock | null> & { height: number }) | null
->(null);
+const BlockExplorerContext = createContext<UseQueryResult<{
+  searchBlock: IndexedBlock | null;
+  currentBlock: IndexedBlock;
+  height: number;
+  isFutureBlock: boolean;
+  isInvalidBlock: boolean;
+}> | null>(null);
 
 const useBlockExplorer = () => {
   const context = useContext(BlockExplorerContext);
@@ -45,15 +50,24 @@ const BlockContainer: React.FC<PropsWithChildren<BlockExplorerProps>> = ({
   children,
   className,
 }) => {
-  const parsedHeight = Number(height);
   const client = usePublicClient();
 
   const query = useQuery({
     queryKey: ["block", height],
-    queryFn: () => (Number.isNaN(parsedHeight) ? null : client.queryBlock({ height: +height })),
+    queryFn: async () => {
+      const parsedHeight = Number(height);
+      const [searchBlock, currentBlock] = await Promise.all([
+        Number.isNaN(parsedHeight) ? null : client.queryBlock({ height: parsedHeight }),
+        client.queryBlock(),
+      ]);
+      const isFutureBlock = parsedHeight > 0 && parsedHeight > currentBlock?.blockHeight;
+      const isInvalidBlock = Number.isNaN(parsedHeight) || parsedHeight < 0;
+      return { searchBlock, currentBlock, height: parsedHeight, isFutureBlock, isInvalidBlock };
+    },
   });
+
   return (
-    <BlockExplorerContext.Provider value={{ ...query, height: parsedHeight }}>
+    <BlockExplorerContext.Provider value={query}>
       <div
         className={twMerge("w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16", className)}
       >
@@ -83,13 +97,31 @@ const BlockSkeleton: React.FC = () => {
   );
 };
 
-const fakeDate = +new Date() * 1 + 1000 * 60 * 60 * 24;
-
 const FutureBlock: React.FC = () => {
-  const { height, data, isLoading } = useBlockExplorer();
-  const { days, hours, minutes, seconds } = useCountdown(fakeDate);
+  const { data } = useBlockExplorer();
+  const [countdown, setCountdown] = useState<number>(0);
+  const [blockData, setBlockData] = useState<number>();
+  const { days, hours, minutes, seconds } = useCountdown(blockData);
 
-  if (isLoading || data || Number.isNaN(height)) return null;
+  useWatchEffect(seconds, () => setCountdown((v) => v + 2));
+
+  useEffect(() => {
+    if (!data || !data.isFutureBlock) return;
+    const { currentBlock, height } = data;
+    const blockDiff = height - currentBlock.blockHeight;
+    setBlockData(Date.now() + blockDiff * 500); // Assuming 500ms per block
+  }, [data]);
+
+  if (!data?.isFutureBlock || !blockData) return null;
+
+  const { height, currentBlock } = data;
+  const blockDiff = height - currentBlock.blockHeight;
+
+  const getRemainingBlocks = () => {
+    if (!blockDiff) return "-";
+    const diff = blockDiff - countdown;
+    return diff < 0 ? 0 : diff;
+  };
 
   return (
     <div className="w-full md:max-w-[76rem] p-4 flex flex-col gap-6">
@@ -107,13 +139,17 @@ const FutureBlock: React.FC = () => {
             <p className="diatype-m-medium text-gray-500">
               {m["explorer.block.futureBlock.estimateTimeISO"]()}
             </p>
-            <p className="diatype-m-bold text-gray-700">{new Date(fakeDate).toISOString()}</p>
+            <p className="diatype-m-bold text-gray-700">
+              {blockData ? new Date(blockData).toISOString() : "-"}
+            </p>
           </div>
           <div className="flex flex-col gap-1">
             <p className="diatype-m-medium text-gray-500">
               {m["explorer.block.futureBlock.estimateTimeUTC"]()}
             </p>
-            <p className="diatype-m-bold text-gray-700">{new Date(fakeDate).toUTCString()}</p>
+            <p className="diatype-m-bold text-gray-700">
+              {blockData ? new Date(blockData).toUTCString() : "-"}
+            </p>
           </div>
         </div>
         <span className="w-full h-[1px] bg-gray-200 lg:max-w-[45.5rem]" />
@@ -169,14 +205,16 @@ const FutureBlock: React.FC = () => {
               <p className="diatype-m-medium text-gray-500">
                 {m["explorer.block.futureBlock.currentBlock"]()}
               </p>
-              <p className="diatype-m-bold text-gray-700">#-</p>
+              <p className="diatype-m-bold text-gray-700">
+                #{currentBlock.blockHeight ? currentBlock.blockHeight + countdown : "-"}
+              </p>
             </div>
             <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-gray-200" />
             <div className="flex flex-col gap-1 items-center">
               <p className="diatype-m-medium text-gray-500">
                 {m["explorer.block.futureBlock.remainingBlocks"]()}
               </p>
-              <p className="diatype-m-bold text-gray-700">#-</p>
+              <p className="diatype-m-bold text-gray-700">#{getRemainingBlocks()}</p>
             </div>
           </div>
         </div>
@@ -187,10 +225,12 @@ const FutureBlock: React.FC = () => {
 
 const BlockDetails: React.FC = () => {
   const { isMd } = useMediaQuery();
-  const { data: blockInfo } = useBlockExplorer();
-  if (!blockInfo) return null;
+  const { data } = useBlockExplorer();
 
-  const { transactions, createdAt, blockHeight, hash } = blockInfo;
+  if (!data?.searchBlock) return null;
+
+  const { transactions, createdAt, blockHeight, hash } = data.searchBlock;
+
   return (
     <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
@@ -241,9 +281,9 @@ const BlockDetails: React.FC = () => {
 };
 
 const BlockNotFound: React.FC = () => {
-  const { isLoading, data, height } = useBlockExplorer();
+  const { data } = useBlockExplorer();
 
-  if (!isLoading && !data && Number.isNaN(height)) {
+  if (data?.isInvalidBlock) {
     return (
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center border border-red-bean-50">
@@ -263,10 +303,11 @@ const BlockNotFound: React.FC = () => {
 
 const BlockTable: React.FC = () => {
   const navigate = useNavigate();
-  const { data: blockInfo } = useBlockExplorer();
-  if (!blockInfo) return null;
+  const { data } = useBlockExplorer();
 
-  const { transactions } = blockInfo;
+  if (!data?.searchBlock) return null;
+
+  const { transactions } = data.searchBlock;
 
   const columns: TableColumn<IndexedTransaction> = [
     {
