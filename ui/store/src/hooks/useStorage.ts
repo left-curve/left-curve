@@ -2,7 +2,7 @@ import { createStorage } from "../storages/createStorage.js";
 
 import { useQuery } from "../query.js";
 
-import type { Dispatch, SetStateAction } from "react";
+import { type Dispatch, type SetStateAction, useCallback, useRef } from "react";
 import type { Storage } from "../types/storage.js";
 
 export type UseStorageOptions<T = undefined> = {
@@ -14,6 +14,7 @@ export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
+  const dataRef = useRef<T | null>(null);
   const { initialValue: _initialValue_, storage: _storage_, version: __version__ = 1 } = options;
 
   const storage = (() => {
@@ -45,15 +46,20 @@ export function useStorage<T = undefined>(
         return value as T;
       }
 
-      return value ?? null;
+      const returnValue = value ?? null;
+      dataRef.current = returnValue;
+      return returnValue;
     },
-    initialData: initialValue,
+    initialData: () => {
+      dataRef.current = initialValue as T;
+      return initialValue;
+    },
   });
 
   const setValue = (valOrFunc: T | ((t: T) => void)) => {
     const newState = (() => {
       if (typeof valOrFunc !== "function") return valOrFunc as T;
-      return (valOrFunc as (prevState: T) => T)(data as T);
+      return (valOrFunc as (prevState: T) => T)(dataRef.current as T);
     })();
 
     storage.setItem(key, { version: __version__, value: newState });
