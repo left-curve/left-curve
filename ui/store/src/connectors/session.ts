@@ -28,7 +28,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 
-  return createConnector<SigningSession>(({ transport, emitter, getUsername }) => {
+  return createConnector<SigningSession>(({ transport, emitter, getUsername, chain }) => {
     return {
       id,
       name,
@@ -70,6 +70,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
         if (!username) throw new Error("session: username not found");
         return createSignerClient({
           signer: this,
+          chain,
           type: "session",
           username,
           transport: transport,
