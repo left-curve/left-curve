@@ -2,6 +2,7 @@ import { getAppConfig } from "@left-curve/sdk";
 import type { Address, Hex, Transport } from "@left-curve/sdk/types";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
+import { getAction } from "@left-curve/sdk/actions";
 import type {
   AppConfig,
   DangoClient,
@@ -32,7 +33,9 @@ export async function updateKey<transport extends Transport>(
 ): UpdateKeyReturnType {
   const { keyHash, action, sender } = parameters;
 
-  const { addresses } = await getAppConfig<AppConfig>(client);
+  const getter = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await getter<AppConfig>({});
 
   const UpdateKeyMsg = {
     updateKey: {

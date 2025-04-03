@@ -1,4 +1,5 @@
 import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import { getAction } from "@left-curve/sdk/actions";
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 import type { AccountInfo, AppConfig } from "../../../types/index.js";
 
@@ -28,7 +29,9 @@ export async function getAllAccountInfo<
   const { startAfter, limit, height = 0 } = parameters;
   const msg = { accounts: { startAfter, limit } };
 
-  const { addresses } = await getAppConfig<AppConfig>(client);
+  const action = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await action<AppConfig>({});
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

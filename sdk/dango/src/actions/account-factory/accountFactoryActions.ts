@@ -42,18 +42,6 @@ import {
   getAllAccountInfo,
 } from "./queries/getAllAccountInfo.js";
 
-import {
-  type GetDepositParameters,
-  type GetDepositReturnType,
-  getDeposit,
-} from "./queries/getDeposit.js";
-
-import {
-  type GetDepositsParameters,
-  type GetDepositsReturnType,
-  getDeposits,
-} from "./queries/getDeposits.js";
-
 import { type GetKeyParameters, type GetKeyReturnType, getKey } from "./queries/getKey.js";
 
 import { type GetKeysParameters, type GetKeysReturnType, getKeys } from "./queries/getKeys.js";
@@ -63,12 +51,6 @@ import {
   type GetKeysByUsernameReturnType,
   getKeysByUsername,
 } from "./queries/getKeysByUsername.js";
-
-import {
-  type GetNextAccountAddressParameters,
-  type GetNextAccountAddressReturnType,
-  getNextAccountAddress,
-} from "./queries/getNextAccountAddress.js";
 
 import {
   type GetNextAccountIndexParameters,
@@ -111,12 +93,9 @@ export type AccountFactoryQueryActions = {
     args: GetAccountTypeCodeHashesParameters,
   ) => GetAccountTypeCodeHashesReturnType;
   getAllAccountInfo: (args: GetAllAccountInfoParameters) => GetAllAccountInfoReturnType;
-  getDeposit: (args: GetDepositParameters) => GetDepositReturnType;
-  getDeposits: (args: GetDepositsParameters) => GetDepositsReturnType;
   getKey: (args: GetKeyParameters) => GetKeyReturnType;
   getKeys: (args: GetKeysParameters) => GetKeysReturnType;
   getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
-  getNextAccountAddress: (args: GetNextAccountAddressParameters) => GetNextAccountAddressReturnType;
   getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
   getUser: (args: GetUserParameters) => GetUserReturnType;
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
@@ -142,12 +121,9 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
     getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
     getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
     getAllAccountInfo: (args) => getAllAccountInfo(client, args),
-    getDeposit: (args) => getDeposit(client, args),
-    getDeposits: (args) => getDeposits(client, args),
     getKey: (args) => getKey(client, args),
     getKeys: (args) => getKeys(client, args),
     getKeysByUsername: (args) => getKeysByUsername(client, args),
-    getNextAccountAddress: (args) => getNextAccountAddress(client, args),
     getNextAccountIndex: (args) => getNextAccountIndex(client, args),
     getUser: (args) => getUser(client, args),
     getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
