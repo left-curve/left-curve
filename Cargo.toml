@@ -134,7 +134,7 @@ strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
 tendermint              = "0.40"
-tendermint-rpc          = { version = "0.40", features = ["http-client"] }
+tendermint-rpc          = "0.40"
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
