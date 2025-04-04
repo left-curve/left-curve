@@ -7,15 +7,6 @@ use {
     serde::Serialize,
 };
 
-/// Skip the CLI prompt confirmation, always consider it as if the user accepted.
-fn no_confirmation<E>(_tx: &Tx) -> Result<bool, E> {
-    Ok(true)
-}
-
-#[derive(Debug, Clone, thiserror::Error)]
-#[error("failed to estimate gas consumption: {0}")]
-pub struct GasEstimateError(String);
-
 #[async_trait]
 pub trait BroadcastClient {
     type Error;
@@ -322,4 +313,13 @@ where
     <C as BroadcastClient>::Error:
         From<GasEstimateError> + From<StdError> + From<<C as QueryClient>::Error>,
 {
+}
+
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("failed to estimate gas consumption: {0}")]
+pub struct GasEstimateError(String);
+
+/// Skip the CLI prompt confirmation, always consider it as if the user accepted.
+fn no_confirmation<E>(_tx: &Tx) -> Result<bool, E> {
+    Ok(true)
 }
