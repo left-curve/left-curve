@@ -78,12 +78,12 @@ impl CronOutcome {
 #[cfg(feature = "tendermint")]
 impl CronOutcome {
     pub fn from_tm_event(tm_event: tendermint::abci::Event) -> StdResult<Self> {
-        Ok(tm_event
+        tm_event
             .attributes
             .first()
             .unwrap()
             .value_bytes()
-            .deserialize_json()?)
+            .deserialize_json()
     }
 }
 
