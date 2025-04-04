@@ -1,7 +1,7 @@
 use {
     alloy::{
         dyn_abi::{Eip712Domain, TypedData},
-        primitives::U160,
+        primitives::{U160, address},
     },
     anyhow::{bail, ensure},
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
@@ -291,8 +291,18 @@ pub fn verify_signature(
                     Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
                     sign_doc.to_json_value()?,
                 ),
-                VerifyData::Session(session_info) => (None, session_info.to_json_value()?),
-                VerifyData::Onboard(data) => (None, data.to_json_value()?),
+                // The EIP-712 standard requires the `verifyingContract` field
+                // in the domain. Some wallets enforce this requirement.
+                // We use the zero address (0x00...00) as a placeholder for
+                // these cases, indicating the signature's 'arbitrary' nature.
+                VerifyData::Session(session_info) => (
+                    Some(address!("0x0000000000000000000000000000000000000000")),
+                    session_info.to_json_value()?,
+                ),
+                VerifyData::Onboard(data) => (
+                    Some(address!("0x0000000000000000000000000000000000000000")),
+                    data.to_json_value()?,
+                ),
             };
 
             // EIP-712 hash used in the signature.
@@ -724,7 +734,7 @@ mod tests {
 
     #[test]
     fn session_key_with_eip712_authentication() {
-        let user_address = Addr::from_str("0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d").unwrap();
+        let user_address = Addr::from_str("0x632b2917552dc07fca89d285d6108ae1d1229771").unwrap();
         let user_username = Username::from_str("javier").unwrap();
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
@@ -764,16 +774,16 @@ mod tests {
                 "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
                 "signature": {
                   "eip712": {
-                    "sig": "kEVvbKJZnU1hqRX/WTVXcn3v8pxvximpJKBFMS9/ZnRyauGuCdzs4AJy5t44KJ5ShWitebYI/fGTyZBxr+1ZYBs=",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQW9MYWdid29Ldlc1djMrWWF6YnZlbXFtMk1HRVVDSTI0SkprWFo5MWZrTVMiLCJleHBpcmVfYXQiOiIxNzQzMTk5OTAyOTk2In0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                    "sig": "6P23dAiy3wW/c3c89cuNX7W86M0o33HKo/XE/2R03Okr/+dZmClCh6COg4Jt+lGRo0dJyN48LgSpobP9O9vm6xs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBMW51SWtwOXB6R0RaQXFBL1Z4S1U2a2tyNXpvWmNrZzRVL2FtVW9EUGVsaCIsImV4cGlyZV9hdCI6IjE3NDM3OTc5NjU1MjMifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
                   }
                 }
               },
               "session_info": {
-                "expire_at": "1743199902996",
-                "session_key": "AoLagbwoKvW5v3+Yazbvemqm2MGEUCI24JJkXZ91fkMS"
+                "expire_at": "1743797965523",
+                "session_key": "A1nuIkp9pzGDZAqA/VxKU6kkr5zoZckg4U/amUoDPelh"
               },
-              "session_signature": "VWS5LFu4yKZaaMD4Svf8DdXdVKzgj785f7DsZUfoXqMI9wzerv+H1YswlXiF/Mf9rvmmbdfAZvdigUze5SXQRQ=="
+              "session_signature": "s8ogzBV5zMy+zR742gYfykg8x1IfAavliQE3DlnOgRoIzSNhyItHXcL2TDzOV+v9YnLMHYnDlHVMyruNEDjT3g=="
             }
           },
           "data": {
@@ -791,9 +801,37 @@ mod tests {
               }
             }
           ],
-          "sender": "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d"
+          "sender": "0x632b2917552dc07fca89d285d6108ae1d1229771"
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
+    }
+
+    #[test]
+    fn authenticate_onboarding_eip712() {
+        let user_key =
+            Key::Ethereum(Addr::from_str("0x4c9d879264227583f49af3c99eb396fe4735a935").unwrap());
+
+        let ctx = MockContext::new()
+            .with_chain_id("dev-6")
+            .with_mode(AuthMode::Finalize);
+
+        let signature = r#"{
+          "eip712": {
+            "sig": "S+o4kpODT5h+ZDIf9w52j0UzaWASEdel7loxoWR5iWUM7SIAXAJXKEQAjZHeoerKESImMkhgYD4AIvlf4H/5pRw=",
+            "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsidXNlcm5hbWUiOiJqYXZpZXJfdGVzdCIsImNoYWluX2lkIjoiZGV2LTYifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn1dfX0="
+          }
+        }"#.deserialize_json::<Signature>().unwrap();
+
+        verify_signature(
+            &ctx.api,
+            user_key,
+            signature,
+            VerifyData::Onboard(RegisterUserData {
+                chain_id: "dev-6".into(),
+                username: Username::from_str("javier_test").unwrap(),
+            }),
+        )
+        .should_succeed();
     }
 }
