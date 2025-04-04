@@ -9,27 +9,37 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+# Include methods to cast Tendermint types to Grug types. These include:
+# - tendermint::abci::types::ExecTxResult -> TxOutcome
+# - tendermint::abci::Event -> CronOutcome
+# - tendermint_rpc::endpoint::tx::Response -> SearchTxOutcome
+tendermint = ["dep:tendermint", "tendermint-rpc"]
+
 [dependencies]
-bnum          = { workspace = true, features = ["borsh"] }
-borsh         = { workspace = true, features = ["de_strict_order", "derive"] }
-data-encoding = { workspace = true }
-digest        = { workspace = true }
-dyn-clone     = { workspace = true }
-grug-math     = { workspace = true }
-hex-literal   = { workspace = true }
-paste         = { workspace = true }
-prost         = { workspace = true }
-ripemd        = { workspace = true }
-serde         = { workspace = true, features = ["derive"] }
-serde_json    = { workspace = true }
-serde_with    = { workspace = true }
-sha2          = { workspace = true }
-sha3          = { workspace = true }
-strum         = { workspace = true }
-strum_macros  = { workspace = true }
-thiserror     = { workspace = true }
+bnum           = { workspace = true, features = ["borsh"] }
+borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
+data-encoding  = { workspace = true }
+digest         = { workspace = true }
+dyn-clone      = { workspace = true }
+grug-math      = { workspace = true }
+hex-literal    = { workspace = true }
+paste          = { workspace = true }
+prost          = { workspace = true }
+ripemd         = { workspace = true }
+serde          = { workspace = true, features = ["derive"] }
+serde_json     = { workspace = true }
+serde_with     = { workspace = true }
+sha2           = { workspace = true }
+sha3           = { workspace = true }
+strum          = { workspace = true }
+strum_macros   = { workspace = true }
+tendermint     = { workspace = true, optional = true }
+tendermint-rpc = { workspace = true, optional = true }
+thiserror      = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+async-trait = { workspace = true }
 grug-crypto = { workspace = true }
 
 [dev-dependencies]

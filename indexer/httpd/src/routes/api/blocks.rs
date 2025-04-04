@@ -1,16 +1,29 @@
 use {
     crate::context::Context,
-    actix_web::{Error, HttpResponse, get, web},
+    actix_web::{Error, HttpResponse, error::ErrorInternalServerError, get, web},
     indexer_sql::block_to_index::BlockToIndex,
 };
 
-#[get("/api/blocks/{block_height}")]
-pub async fn block_by_height(
+#[get("/info")]
+pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
+    let block_height = app_ctx
+        .grug_app
+        .last_finalized_block()
+        .map_err(ErrorInternalServerError)?
+        .height;
+
+    _block_by_height(block_height, &app_ctx)
+}
+
+#[get("/info/{block_height}")]
+pub async fn block_info_by_height(
     path: web::Path<u64>,
     app_ctx: web::Data<Context>,
 ) -> Result<HttpResponse, Error> {
-    let block_height: u64 = path.into_inner();
+    _block_by_height(path.into_inner(), &app_ctx)
+}
 
+fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
     if !BlockToIndex::exists(block_filename.clone()) {
@@ -24,13 +37,26 @@ pub async fn block_by_height(
     }
 }
 
-#[get("/api/block_results/{block_height}")]
-pub async fn block_results_by_height(
+#[get("/result")]
+pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
+    let block_height = app_ctx
+        .grug_app
+        .last_finalized_block()
+        .map_err(ErrorInternalServerError)?
+        .height;
+
+    _block_results_by_height(block_height, &app_ctx)
+}
+
+#[get("/result/{block_height}")]
+pub async fn block_result_by_height(
     path: web::Path<u64>,
     app_ctx: web::Data<Context>,
 ) -> Result<HttpResponse, Error> {
-    let block_height: u64 = path.into_inner();
+    _block_results_by_height(path.into_inner(), &app_ctx)
+}
 
+fn _block_results_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
     match BlockToIndex::load_from_disk(block_filename) {

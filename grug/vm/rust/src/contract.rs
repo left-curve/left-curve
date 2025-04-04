@@ -36,7 +36,7 @@ pub struct ContractWrapper {
 impl ContractWrapper {
     pub fn from_bytes(bytes: &[u8]) -> Self {
         Self {
-            index: usize::from_le_bytes(bytes.as_ref().try_into().unwrap()),
+            index: usize::from_le_bytes(bytes.try_into().unwrap()),
         }
     }
 

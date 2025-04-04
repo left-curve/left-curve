@@ -30,9 +30,9 @@ impl PostgresPubSub {
 
         tokio::spawn(async move {
             loop {
-                if let Err(e) = listener.listen("blocks").await {
+                if let Err(_e) = listener.listen("blocks").await {
                     #[cfg(feature = "tracing")]
-                    tracing::error!("Listen error: {e:?}");
+                    tracing::error!("Listen error: {_e:?}");
 
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
@@ -42,6 +42,7 @@ impl PostgresPubSub {
                 #[cfg(feature = "tracing")]
                 tracing::info!("Connected to PostgreSQL notifications");
 
+                #[allow(clippy::while_let_loop)]
                 loop {
                     match listener.recv().await {
                         Ok(notification) => {
@@ -55,9 +56,9 @@ impl PostgresPubSub {
                                 }
                             }
                         },
-                        Err(e) => {
+                        Err(_e) => {
                             #[cfg(feature = "tracing")]
-                            tracing::error!("Notification error: {e:?}");
+                            tracing::error!("Notification error: {_e:?}");
 
                             break;
                         },

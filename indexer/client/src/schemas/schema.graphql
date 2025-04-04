@@ -1,0 +1,398 @@
+type AbciQuery {
+	code: Int!
+	log: String!
+	info: String!
+	index: Int!
+	"""
+	The base64 encoded key
+	"""
+	key: String!
+	"""
+	The base64 encoded value
+	"""
+	value: String!
+	height: Int!
+	codespace: String!
+}
+
+type Block {
+	blockHeight: Int!
+	createdAt: DateTime!
+	hash: String!
+	appHash: String!
+	transactionsCount: Int!
+	"""
+	Transactions order isn't guaranteed, check `transactionIdx`
+	"""
+	transactions: [Transaction!]!
+	flattenEvents: [Event!]!
+}
+
+type BlockConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [BlockEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Block!]!
+}
+
+"""
+An edge in a connection.
+"""
+type BlockEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Block!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+type BlockInfo {
+	blockHeight: Int!
+	timestamp: DateTime!
+	hash: String!
+}
+
+enum BlockSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+
+enum Category {
+	CRON
+	TX
+}
+
+enum CommitmentStatus {
+	COMMITTED
+	FAILED
+	REVERTED
+}
+
+"""
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
+
+type Event {
+	blockHeight: Int!
+	createdAt: DateTime!
+	eventIdx: Int!
+	type: String!
+	method: String
+	eventStatus: EventStatus!
+	commitmentStatus: CommitmentStatus!
+	data: JSON!
+}
+
+type EventConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [EventEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Event!]!
+}
+
+"""
+An edge in a connection.
+"""
+type EventEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Event!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum EventSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+enum EventStatus {
+	OK
+	FAILED
+	NESTED_FAILED
+	HANDLED
+}
+
+
+
+
+"""
+A scalar that can represent any JSON value.
+"""
+scalar JSON
+
+type Message {
+	blockHeight: Int!
+	createdAt: DateTime!
+	orderIdx: Int!
+	methodName: String!
+	contractAddr: String
+	senderAddr: String!
+}
+
+type MessageConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [MessageEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Message!]!
+}
+
+"""
+An edge in a connection.
+"""
+type MessageEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Message!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum MessageSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+type Mutation {
+	broadcastTxSync(
+		"""
+		The base64 encoded transaction to broadcast
+		"""
+		tx: String!
+	): TxSyncResponse!
+	broadcastTxAsync(
+		"""
+		The base64 encoded transaction to broadcast
+		"""
+		tx: String!
+	): TxAsyncResponse!
+	broadcastTxCommit(
+		"""
+		The base64 encoded transaction to broadcast
+		"""
+		tx: String!
+	): TxCommitResponse!
+}
+
+"""
+Information about pagination in a connection
+"""
+type PageInfo {
+	"""
+	When paginating backwards, are there more items?
+	"""
+	hasPreviousPage: Boolean!
+	"""
+	When paginating forwards, are there more items?
+	"""
+	hasNextPage: Boolean!
+	"""
+	When paginating backwards, the cursor to continue.
+	"""
+	startCursor: String
+	"""
+	When paginating forwards, the cursor to continue.
+	"""
+	endCursor: String
+}
+
+type Query {
+	"""
+	Get a block
+	"""
+	block(height: Int): Block
+	"""
+	Get a block
+	"""
+	blocks(after: String, before: String, first: Int, last: Int, sortBy: BlockSortBy): BlockConnection!
+	"""
+	Get transactions
+	"""
+	transactions(hash: String, blockHeight: Int, after: String, before: String, first: Int, last: Int, sortBy: TransactionSortBy): TransactionConnection!
+	"""
+	Get messages
+	"""
+	messages(blockHeight: Int, methodName: String, contractAddr: String, senderAddr: String, after: String, before: String, first: Int, last: Int, sortBy: MessageSortBy): MessageConnection!
+	"""
+	Get events
+	"""
+	events(after: String, before: String, first: Int, last: Int, sortBy: EventSortBy): EventConnection!
+	abciQuery(		path: String,
+		"""
+		The base64 encoded data
+		"""
+		data: String!,		height: Int,		prove: Boolean! = false
+	): AbciQuery!
+	queryApp(
+		"""
+		Request as JSON string
+		"""
+		request: String!,		height: Int
+	): String!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		height: Int,		prove: Boolean! = false
+	): Store!
+	queryStatus: Status!
+	simulate(
+		"""
+		Transaction as Json string
+		"""
+		tx: String!
+	): String!
+}
+
+type Status {
+	block: BlockInfo!
+	chainId: String!
+}
+
+type Store {
+	"""
+	The base64 encoded value
+	"""
+	value: String!
+	"""
+	The base64 encoded proof
+	"""
+	proof: String
+}
+
+
+type Subscription {
+	block: Block!
+	transactions: [Transaction!]!
+	messages: [Message!]!
+	events: [Event!]!
+}
+
+type Transaction {
+	blockHeight: Int!
+	createdAt: DateTime!
+	transactionType: Category!
+	transactionIdx: Int!
+	sender: String!
+	hash: String!
+	hasSucceeded: Boolean!
+	errorMessage: String
+	gasWanted: Int!
+	gasUsed: Int!
+	"""
+	Nested Events from this transaction, from block on-disk caching
+	"""
+	nestedEvents: String
+	"""
+	Flatten events from the indexer
+	"""
+	flattenEvents: [Event!]!
+	messages: [Message!]!
+}
+
+type TransactionConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TransactionEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Transaction!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TransactionEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Transaction!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum TransactionSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+type TxAsyncResponse {
+	codespace: String!
+	code: Int!
+	"""
+	The base64 encoded data
+	"""
+	data: String!
+	log: String!
+	hash: String!
+}
+
+type TxCommitResponse {
+	hash: String!
+	blockHeight: Int!
+}
+
+type TxSyncResponse {
+	codespace: String!
+	code: Int!
+	"""
+	The base64 encoded data
+	"""
+	data: String!
+	log: String!
+	hash: String!
+}
+
+directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+directive @specifiedBy(url: String!) on SCALAR
+schema {
+	query: Query
+	mutation: Mutation
+	subscription: Subscription
+}

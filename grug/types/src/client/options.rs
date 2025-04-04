@@ -1,4 +1,4 @@
-use grug_types::Addr;
+use crate::Addr;
 
 /// Options on how to set a gas limit on the transaction.
 #[derive(Clone, Copy)]

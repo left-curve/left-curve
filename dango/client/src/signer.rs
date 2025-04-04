@@ -7,8 +7,9 @@ use {
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined,
-        Message, NonEmpty, SignData, Signer, StdResult, Tx, Undefined, UnsignedTx,
+        Addr, Addressable, ByteArray, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined, Message,
+        NonEmpty, QueryClient, QueryClientExt, SignData, Signer, StdResult, Tx, Undefined,
+        UnsignedTx,
     },
     std::str::FromStr,
 };
@@ -34,7 +35,11 @@ impl<T> SingleSigner<T>
 where
     T: MaybeDefined<u32>,
 {
-    pub async fn query_next_nonce(&self, client: &Client) -> anyhow::Result<Nonce> {
+    pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
         // If the account hasn't sent any transaction yet, use 0 as nonce.
         // Otherwise, use the latest seen nonce + 1.
         let nonce = client
@@ -93,7 +98,11 @@ impl SingleSigner<Undefined<u32>> {
         }
     }
 
-    pub async fn query_nonce(self, client: &Client) -> anyhow::Result<SingleSigner<Defined<u32>>> {
+    pub async fn query_nonce<C>(self, client: &C) -> anyhow::Result<SingleSigner<Defined<u32>>>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
         let nonce = self.query_next_nonce(client).await?;
 
         Ok(SingleSigner {
@@ -108,7 +117,11 @@ impl SingleSigner<Undefined<u32>> {
 }
 
 impl SingleSigner<Defined<u32>> {
-    pub async fn update_nonce(&mut self, client: &Client) -> anyhow::Result<()> {
+    pub async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
         let nonce = self.query_next_nonce(client).await?;
 
         self.nonce = Defined::new(nonce);
@@ -243,5 +256,30 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(mock_ctx.as_auth(), tx, None).should_succeed();
+    }
+
+    #[test]
+    fn unsigned_tx() {
+        let username = Username::from_str("owner").unwrap();
+        let address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
+
+        let signer = SingleSigner::new_random(username.as_ref(), address)
+            .unwrap()
+            .with_nonce(1);
+
+        let tx = signer
+            .unsigned_transaction(
+                NonEmpty::new_unchecked(vec![
+                    Message::transfer(
+                        Addr::from_str("0x01bba610cbbfe9df0c99b8862f3ad41b2f646553").unwrap(),
+                        Coins::one("hyp/all/btc", 100).unwrap(),
+                    )
+                    .unwrap(),
+                ]),
+                "dev-6",
+            )
+            .unwrap();
+
+        println!("{}", tx.to_json_string_pretty().unwrap());
     }
 }

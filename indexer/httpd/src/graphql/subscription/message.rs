@@ -16,7 +16,10 @@ impl MessageSubscription {
             .filter(entity::messages::Column::BlockHeight.eq(block_height))
             .all(&app_ctx.db)
             .await
-            .inspect_err(|e| tracing::error!("get_messages error: {:?}", e))
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!("get_messages error: {_e:?}");
+            })
             .unwrap_or_default()
             .into_iter()
             .map(Into::into)
