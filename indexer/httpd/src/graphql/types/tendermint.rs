@@ -1,9 +1,6 @@
 use {
     async_graphql::SimpleObject,
     base64::{Engine, engine::general_purpose::STANDARD},
-    grug_math::Inner,
-    grug_types::Binary,
-    std::str::FromStr,
     tendermint_rpc::endpoint::{
         abci_query,
         broadcast::{tx_async, tx_commit, tx_sync},
@@ -12,34 +9,22 @@ use {
 
 #[derive(SimpleObject)]
 pub struct TxSyncResponse {
+    pub codespace: String,
     pub code: u32,
     /// The base64 encoded data
     pub data: String,
     pub log: String,
     pub hash: String,
-    pub codespace: String,
 }
 
 impl From<tx_sync::Response> for TxSyncResponse {
     fn from(resp: tx_sync::Response) -> Self {
         TxSyncResponse {
+            codespace: resp.codespace,
             code: resp.code.value(),
             data: STANDARD.encode(resp.data),
             log: resp.log,
             hash: resp.hash.to_string(),
-            codespace: resp.codespace,
-        }
-    }
-}
-
-impl From<TxSyncResponse> for tx_sync::Response {
-    fn from(resp: TxSyncResponse) -> Self {
-        tx_sync::Response {
-            code: tendermint::abci::Code::from(resp.code),
-            codespace: resp.codespace,
-            data: Binary::from_str(&resp.data).unwrap().into_inner().into(),
-            log: resp.log,
-            hash: tendermint::hash::Hash::from_str(&resp.hash).unwrap(),
         }
     }
 }
