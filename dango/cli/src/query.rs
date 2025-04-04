@@ -228,8 +228,6 @@ impl QueryCmd {
     }
 }
 
-// ------------------------------------ tx -------------------------------------
-
 async fn query_tx(client: &TendermintRpcClient, hash: &str) -> anyhow::Result<()> {
     // Cast the hex string to uppercase, so that users can use either upper or
     // lowercase on the CLI.
@@ -239,15 +237,11 @@ async fn query_tx(client: &TendermintRpcClient, hash: &str) -> anyhow::Result<()
     print_json_pretty(res)
 }
 
-// ----------------------------------- block -----------------------------------
-
 async fn query_block(client: &TendermintRpcClient, height: Option<u64>) -> anyhow::Result<()> {
     let res = client.query_block_outcome(height).await?;
 
     print_json_pretty(res)
 }
-
-// ----------------------------------- store -----------------------------------
 
 #[derive(Serialize)]
 struct PrintableQueryStoreResponse {
