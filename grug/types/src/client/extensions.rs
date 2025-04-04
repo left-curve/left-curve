@@ -321,7 +321,6 @@ where
                     TxOutcome {
                         result: GenericResult::Err(err),
                         ..
-                    // } => return Err(format!("Failed to estimate gas consumption: {err}").into()),
                     } => return Err(GasEstimateError(err).into()),
                 }
             },
