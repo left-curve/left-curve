@@ -33,8 +33,9 @@ macro_rules! generate_types {
             $($(
                 paste::paste! {
                     #[tokio::test]
+                    #[ignore = "this test requires interactions with an external server"]
                     async fn [<test_ $name:snake>]() {
-                        reqwest::Client::builder()
+                        let result = reqwest::Client::builder()
                             .build()
                             .unwrap()
                             .post(GRAPHQL_URL)
@@ -43,8 +44,8 @@ macro_rules! generate_types {
                             .await
                             .unwrap()
                             .json::<Response<[<$name:snake>]::ResponseData>>()
-                            .await
-                            .unwrap();
+                            .await;
+                        assert!(result.is_ok());
                     }
                 }
             )*)?
