@@ -5,7 +5,7 @@ use {
     grug_types::{
         Base64Encoder, Binary, Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient,
         BroadcastTxOutcome, CheckTxOutcome, CronOutcome, Encoder, GenericResult, Hash256,
-        JsonDeExt, JsonSerExt, Proof, Query, QueryAppClient, QueryResponse, SearchTxClient,
+        JsonDeExt, JsonSerExt, Proof, Query, QueryClient, QueryResponse, SearchTxClient,
         SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     serde::de::DeserializeOwned,
@@ -58,7 +58,7 @@ impl RpcClient {
 }
 
 #[async_trait]
-impl QueryAppClient for RpcClient {
+impl QueryClient for RpcClient {
     type Error = anyhow::Error;
 
     async fn query_chain(

@@ -1,6 +1,6 @@
 use {
     super::{
-        AdminOption, BroadcastClient, BroadcastTxOutcome, GasOption, QueryAppClient, WithChainId,
+        AdminOption, BroadcastClient, BroadcastTxOutcome, GasOption, QueryClient, WithChainId,
     },
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt,
@@ -16,7 +16,7 @@ use {
 // ----------------------------- Extension traits ------------------------------
 
 #[async_trait]
-pub trait QueryClientExt: QueryAppClient
+pub trait QueryClientExt: QueryClient
 where
     Self::Error: From<StdError>,
 {
@@ -201,7 +201,7 @@ where
 
 impl<C> QueryClientExt for C
 where
-    C: QueryAppClient,
+    C: QueryClient,
     C::Error: From<StdError>,
 {
 }
@@ -213,10 +213,10 @@ pub enum GasEstimateError {
 }
 
 #[async_trait]
-pub trait BroadcastClientExt: BroadcastClient + QueryAppClient + WithChainId
+pub trait BroadcastClientExt: BroadcastClient + QueryClient + WithChainId
 where
     <Self as BroadcastClient>::Error:
-        From<GasEstimateError> + From<StdError> + From<<Self as QueryAppClient>::Error>,
+        From<GasEstimateError> + From<StdError> + From<<Self as QueryClient>::Error>,
 {
     async fn broadcast_tx_with_confirmation<F>(
         &self,
@@ -491,9 +491,9 @@ where
 
 impl<C> BroadcastClientExt for C
 where
-    C: BroadcastClient + QueryAppClient + WithChainId + Send + Sync,
+    C: BroadcastClient + QueryClient + WithChainId + Send + Sync,
     <C as BroadcastClient>::Error:
-        From<GasEstimateError> + From<StdError> + From<<C as QueryAppClient>::Error>,
+        From<GasEstimateError> + From<StdError> + From<<C as QueryClient>::Error>,
 {
 }
 

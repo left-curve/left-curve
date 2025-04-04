@@ -13,7 +13,7 @@ use {
     grug_client::{Client, RpcClient},
     grug_types::{
         Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
-        QueryAppClient, Signer, WithChainId,
+        QueryClient, Signer, WithChainId,
     },
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };

@@ -6,8 +6,8 @@ use {
     grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Proof, Query,
-        QueryAppClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
+        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Proof, Query, QueryClient,
+        QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -59,7 +59,7 @@ impl HttpClient {
 }
 
 #[async_trait]
-impl QueryAppClient for HttpClient {
+impl QueryClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn query_chain(

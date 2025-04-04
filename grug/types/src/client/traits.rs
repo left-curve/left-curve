@@ -8,7 +8,7 @@ use {
 };
 
 #[async_trait]
-pub trait QueryAppClient: Send + Sync
+pub trait QueryClient: Send + Sync
 where
     Self::Error: From<StdError>,
 {

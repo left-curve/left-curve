@@ -3,7 +3,7 @@ use {
     async_trait::async_trait,
     grug_types::{
         Binary, BroadcastClient, BroadcastTxOutcome, Defined, MaybeDefined, Proof, Query,
-        QueryAppClient, QueryResponse, Tx, TxOutcome, Undefined, UnsignedTx, WithChainId,
+        QueryClient, QueryResponse, Tx, TxOutcome, Undefined, UnsignedTx, WithChainId,
     },
     std::ops::Deref,
 };
@@ -56,9 +56,9 @@ where
 }
 
 #[async_trait]
-impl<C, ID> QueryAppClient for Client<C, ID>
+impl<C, ID> QueryClient for Client<C, ID>
 where
-    C: QueryAppClient,
+    C: QueryClient,
     ID: MaybeDefined<String> + Send + Sync,
 {
     type Error = C::Error;
