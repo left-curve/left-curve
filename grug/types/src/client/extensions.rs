@@ -3,7 +3,6 @@ use {
         Addr, AdminOption, Binary, BroadcastClient, BroadcastTxOutcome, Code, Coins, Config,
         ContractInfo, Denom, GasOption, GenericResult, Hash256, HashExt, JsonDeExt, Message,
         NonEmpty, Query, QueryClient, QueryRequest, QueryResponse, Signer, StdError, Tx, TxOutcome,
-        WithChainId,
     },
     async_trait::async_trait,
     grug_math::Uint128,
@@ -209,7 +208,7 @@ where
 pub struct GasEstimateError(String);
 
 #[async_trait]
-pub trait BroadcastClientExt: BroadcastClient + QueryClient + WithChainId
+pub trait BroadcastClientExt: BroadcastClient + QueryClient
 where
     <Self as BroadcastClient>::Error:
         From<GasEstimateError> + From<StdError> + From<<Self as QueryClient>::Error>,
@@ -238,12 +237,18 @@ where
         signer: &mut S,
         msg: Message,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
     {
-        self.send_messages(signer, NonEmpty::new_unchecked(vec![msg]), gas_opt)
-            .await
+        self.send_messages(
+            signer,
+            NonEmpty::new_unchecked(vec![msg]),
+            gas_opt,
+            chain_id,
+        )
+        .await
     }
 
     /// Create, sign, and broadcast a transaction with a single message, with
@@ -255,6 +260,7 @@ where
         signer: &mut S,
         msg: Message,
         gas_opt: GasOption,
+        chain_id: &str,
         confirm_fn: F,
     ) -> Result<Option<BroadcastTxOutcome>, <Self as BroadcastClient>::Error>
     where
@@ -265,6 +271,7 @@ where
             signer,
             NonEmpty::new_unchecked(vec![msg]),
             gas_opt,
+            chain_id,
             confirm_fn,
         )
         .await
@@ -279,11 +286,12 @@ where
         signer: &mut S,
         msgs: NonEmpty<Vec<Message>>,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
     {
-        self.send_messages_with_confirmation(signer, msgs, gas_opt, no_confirmation)
+        self.send_messages_with_confirmation(signer, msgs, gas_opt, chain_id, no_confirmation)
             .await
             .map(Option::unwrap)
     }
@@ -297,6 +305,7 @@ where
         signer: &mut S,
         msgs: NonEmpty<Vec<Message>>,
         gas_opt: GasOption,
+        chain_id: &str,
         confirm_fn: F,
     ) -> Result<Option<BroadcastTxOutcome>, <Self as BroadcastClient>::Error>
     where
@@ -309,7 +318,7 @@ where
                 flat_increase,
                 scale,
             } => {
-                let unsigned_tx = signer.unsigned_transaction(msgs.clone(), self.chain_id())?;
+                let unsigned_tx = signer.unsigned_transaction(msgs.clone(), chain_id)?;
                 match self.simulate(unsigned_tx).await? {
                     TxOutcome {
                         result: GenericResult::Ok(_),
@@ -325,7 +334,7 @@ where
             GasOption::Predefined { gas_limit } => gas_limit,
         };
 
-        let tx = signer.sign_transaction(msgs, self.chain_id(), gas_limit)?;
+        let tx = signer.sign_transaction(msgs, chain_id, gas_limit)?;
 
         self.broadcast_tx_with_confirmation(tx, confirm_fn).await
     }
@@ -337,13 +346,14 @@ where
         new_cfg: Option<Config>,
         new_app_cfg: Option<T>,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
         T: Serialize + Send,
     {
         let msg = Message::configure(new_cfg, new_app_cfg)?;
-        self.send_message(signer, msg, gas_opt).await
+        self.send_message(signer, msg, gas_opt, chain_id).await
     }
 
     /// Send a transaction with a single [`Message::Transfer`](grug_types::Message::Transfer).
@@ -353,6 +363,7 @@ where
         to: Addr,
         coins: C,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
@@ -360,7 +371,7 @@ where
         StdError: From<C::Error>,
     {
         let msg = Message::transfer(to, coins)?;
-        self.send_message(signer, msg, gas_opt).await
+        self.send_message(signer, msg, gas_opt, chain_id).await
     }
 
     /// Send a transaction with a single [`Message::Upload`](grug_types::Message::Upload).
@@ -369,13 +380,14 @@ where
         signer: &mut S,
         code: B,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
         B: Into<Binary> + Send,
     {
         let msg = Message::upload(code);
-        self.send_message(signer, msg, gas_opt).await
+        self.send_message(signer, msg, gas_opt, chain_id).await
     }
 
     /// Send a transaction with a single [`Message::Instantiate`](grug_types::Message::Instantiate).
@@ -391,6 +403,7 @@ where
         funds: C,
         gas_opt: GasOption,
         admin_opt: AdminOption,
+        chain_id: &str,
     ) -> Result<(Addr, BroadcastTxOutcome), <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
@@ -404,7 +417,7 @@ where
         let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, label, admin, funds)?;
-        let res = self.send_message(signer, msg, gas_opt).await?;
+        let res = self.send_message(signer, msg, gas_opt, chain_id).await?;
 
         Ok((address, res))
     }
@@ -423,6 +436,7 @@ where
         funds: C,
         gas_opt: GasOption,
         admin_opt: AdminOption,
+        chain_id: &str,
     ) -> Result<(Hash256, Addr, BroadcastTxOutcome), <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
@@ -442,7 +456,7 @@ where
             Message::upload(code),
             Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
         ]);
-        let res = self.send_messages(signer, msgs, gas_opt).await?;
+        let res = self.send_messages(signer, msgs, gas_opt, chain_id).await?;
 
         Ok((code_hash, address, res))
     }
@@ -455,6 +469,7 @@ where
         msg: &M,
         funds: C,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
@@ -463,7 +478,7 @@ where
         StdError: From<C::Error>,
     {
         let msg = Message::execute(contract, msg, funds)?;
-        self.send_message(signer, msg, gas_opt).await
+        self.send_message(signer, msg, gas_opt, chain_id).await
     }
 
     /// Send a transaction with a single [`Message::Migrate`](grug_types::Message::Migrate).
@@ -474,19 +489,20 @@ where
         new_code_hash: Hash256,
         msg: &M,
         gas_opt: GasOption,
+        chain_id: &str,
     ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
     where
         S: Signer + Send + Sync,
         M: Serialize + Send + Sync,
     {
         let msg = Message::migrate(contract, new_code_hash, msg)?;
-        self.send_message(signer, msg, gas_opt).await
+        self.send_message(signer, msg, gas_opt, chain_id).await
     }
 }
 
 impl<C> BroadcastClientExt for C
 where
-    C: BroadcastClient + QueryClient + WithChainId + Send + Sync,
+    C: BroadcastClient + QueryClient + Send + Sync,
     <C as BroadcastClient>::Error:
         From<GasEstimateError> + From<StdError> + From<<C as QueryClient>::Error>,
 {

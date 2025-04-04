@@ -2,52 +2,29 @@ use {
     crate::HttpClient,
     async_trait::async_trait,
     grug_types::{
-        Binary, BroadcastClient, BroadcastTxOutcome, Defined, MaybeDefined, Proof, Query,
-        QueryClient, QueryResponse, Tx, TxOutcome, Undefined, UnsignedTx, WithChainId,
+        Binary, BroadcastClient, BroadcastTxOutcome, Proof, Query, QueryClient, QueryResponse, Tx,
+        TxOutcome, UnsignedTx,
     },
     std::ops::Deref,
 };
 
-pub struct Client<C, ID = Undefined<String>>
-where
-    ID: MaybeDefined<String>,
-{
+pub struct Client<C> {
     inner: C,
-    chain_id: ID,
 }
 
-impl Client<HttpClient, Undefined<String>> {
-    pub fn new(endpoint: &str) -> Client<HttpClient, Undefined<String>> {
+impl Client<HttpClient> {
+    pub fn new(endpoint: &str) -> Client<HttpClient> {
         Self {
             inner: HttpClient::new(endpoint),
-            chain_id: Undefined::new(),
         }
     }
 
-    pub fn from_inner<C>(inner: C) -> Client<C, Undefined<String>> {
-        Client {
-            inner,
-            chain_id: Undefined::new(),
-        }
+    pub fn from_inner<C>(inner: C) -> Client<C> {
+        Client { inner }
     }
 }
 
-impl<C> Client<C, Undefined<String>> {
-    pub fn enable_broadcasting<CI>(self, chain_id: CI) -> Client<C, Defined<String>>
-    where
-        CI: Into<String>,
-    {
-        Client {
-            inner: self.inner,
-            chain_id: Defined::new(chain_id.into()),
-        }
-    }
-}
-
-impl<C, ID> Deref for Client<C, ID>
-where
-    ID: MaybeDefined<String>,
-{
+impl<C> Deref for Client<C> {
     type Target = C;
 
     fn deref(&self) -> &Self::Target {
@@ -56,10 +33,9 @@ where
 }
 
 #[async_trait]
-impl<C, ID> QueryClient for Client<C, ID>
+impl<C> QueryClient for Client<C>
 where
     C: QueryClient,
-    ID: MaybeDefined<String> + Send + Sync,
 {
     type Error = C::Error;
 
@@ -86,7 +62,7 @@ where
 }
 
 #[async_trait]
-impl<C> BroadcastClient for Client<C, Defined<String>>
+impl<C> BroadcastClient for Client<C>
 where
     C: BroadcastClient + Send + Sync,
 {
@@ -94,12 +70,6 @@ where
 
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
         self.inner.broadcast_tx(tx).await
-    }
-}
-
-impl<C> WithChainId for Client<C, Defined<String>> {
-    fn chain_id(&self) -> &str {
-        self.chain_id.inner()
     }
 }
 

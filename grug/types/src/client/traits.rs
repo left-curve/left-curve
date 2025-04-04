@@ -51,7 +51,3 @@ pub trait SearchTxClient {
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error>;
 }
-
-pub trait WithChainId {
-    fn chain_id(&self) -> &str;
-}

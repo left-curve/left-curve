@@ -13,7 +13,7 @@ use {
     grug_client::{Client, RpcClient},
     grug_types::{
         Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
-        QueryClient, Signer, WithChainId,
+        QueryClient, Signer,
     },
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
@@ -167,8 +167,7 @@ impl TxCmd {
             },
         };
 
-        let client = Client::from_inner(RpcClient::new(cfg.tendermint.rpc_addr.as_str())?)
-            .enable_broadcasting(cfg.transactions.chain_id);
+        let client = Client::from_inner(RpcClient::new(cfg.tendermint.rpc_addr.as_str())?);
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
@@ -184,7 +183,7 @@ impl TxCmd {
 
         if self.simulate {
             let msgs = NonEmpty::new_unchecked(vec![msg]);
-            let unsigned_tx = signer.unsigned_transaction(msgs, client.chain_id())?;
+            let unsigned_tx = signer.unsigned_transaction(msgs, &cfg.transactions.chain_id)?;
             let outcome = client.simulate(unsigned_tx).await?;
             print_json_pretty(outcome)?;
         } else {
@@ -201,10 +200,16 @@ impl TxCmd {
             };
 
             let maybe_res = client
-                .send_message_with_confirmation(&mut signer, msg, gas_opt, |tx| {
-                    print_json_pretty(tx)?;
-                    Ok(confirm("🤔 Broadcast transaction?".bold())?)
-                })
+                .send_message_with_confirmation(
+                    &mut signer,
+                    msg,
+                    gas_opt,
+                    &cfg.transactions.chain_id,
+                    |tx| {
+                        print_json_pretty(tx)?;
+                        Ok(confirm("🤔 Broadcast transaction?".bold())?)
+                    },
+                )
                 .await?;
 
             if let Some(res) = maybe_res {
