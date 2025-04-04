@@ -207,7 +207,7 @@ where
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
-#[error("Failed to estimate gas consumption: {0}")]
+#[error("failed to estimate gas consumption: {0}")]
 pub struct GasEstimateError(String);
 
 #[async_trait]
