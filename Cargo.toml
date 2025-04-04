@@ -200,8 +200,8 @@ hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
-indexer-http-client         = { path = "indexer/http-client" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
