@@ -13,7 +13,6 @@ version       = { workspace = true }
 [dependencies]
 anyhow         = { workspace = true }
 async-trait    = { workspace = true }
-graphql_client = { workspace = true }
 grug-jmt       = { workspace = true }
 grug-math      = { workspace = true }
 grug-types     = { workspace = true }
