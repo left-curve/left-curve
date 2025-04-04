@@ -263,11 +263,11 @@ mod tests {
         let username = Username::from_str("owner").unwrap();
         let address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
 
-        let tx = SingleSigner::new_random(username.as_ref(), address)
+        let signer = SingleSigner::new_random(username.as_ref(), address)
             .unwrap()
             .with_nonce(1);
 
-        let tx = tx
+        let tx = signer
             .unsigned_transaction(
                 NonEmpty::new_unchecked(vec![
                     Message::transfer(
