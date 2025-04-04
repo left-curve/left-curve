@@ -30,26 +30,24 @@ macro_rules! generate_types {
                 graphql_client::{GraphQLQuery, Response},
             };
 
-            $(
-                $(
-                    paste::paste! {
-                        #[tokio::test]
-                        async fn [<test_ $name:snake>]() {
-                            reqwest::Client::builder()
-                                .build()
-                                .unwrap()
-                                .post(GRAPHQL_URL)
-                                .json(&$name::build_query($var))
-                                .send()
-                                .await
-                                .unwrap()
-                                .json::<Response<[<$name:snake>]::ResponseData>>()
-                                .await
-                                .unwrap();
-                        }
+            $($(
+                paste::paste! {
+                    #[tokio::test]
+                    async fn [<test_ $name:snake>]() {
+                        reqwest::Client::builder()
+                            .build()
+                            .unwrap()
+                            .post(GRAPHQL_URL)
+                            .json(&$name::build_query($var))
+                            .send()
+                            .await
+                            .unwrap()
+                            .json::<Response<[<$name:snake>]::ResponseData>>()
+                            .await
+                            .unwrap();
                     }
-                )*
-            )?
+                }
+            )*)?
         }
     };
 }
