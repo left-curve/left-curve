@@ -8,7 +8,8 @@ use {
     },
     grug::{
         Addr, Addressable, ByteArray, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined, Message,
-        NonEmpty, QueryClient, SignData, Signer, StdResult, Tx, Undefined, UnsignedTx,
+        NonEmpty, QueryClient, QueryClientExt, SignData, Signer, StdResult, Tx, Undefined,
+        UnsignedTx,
     },
     std::str::FromStr,
 };

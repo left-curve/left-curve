@@ -20,6 +20,18 @@ pub trait QueryClient: Send + Sync {
         height: Option<u64>,
     ) -> Result<QueryResponse, Self::Error>;
 
+    async fn query_store(
+        &self,
+        key: Binary,
+        height: Option<u64>,
+        prove: bool,
+    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>;
+
+    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
+}
+
+#[async_trait]
+pub trait QueryClientExt: QueryClient {
     async fn query_config(&self, height: Option<u64>) -> Result<Config, Self::Error> {
         self.query_app(Query::config(), height)
             .await
@@ -191,19 +203,12 @@ pub trait QueryClient: Send + Sync {
 
                 std::array::from_fn(|_| {
                     iter.next()
-                    .unwrap() // unwrap is safe because we've checked the length.
-                    .map_err(StdError::host)
-                    .map_err(Into::into)
+                        .unwrap() // unwrap is safe because we've checked the length.
+                        .map_err(StdError::host)
+                        .map_err(Into::into)
                 })
             })
     }
-
-    async fn query_store(
-        &self,
-        key: Binary,
-        height: Option<u64>,
-        prove: bool,
-    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>;
-
-    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }
+
+impl<C> QueryClientExt for C where C: QueryClient {}
