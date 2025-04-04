@@ -1,12 +1,16 @@
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256, JsonDeExt, ResultExt, StdResult, Tx,
+        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    data_encoding::BASE64,
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
+};
+#[cfg(feature = "tendermint")]
+use {
+    crate::{JsonDeExt, StdResult},
+    data_encoding::BASE64,
 };
 
 /// Outcome of performing an operation that is not a full tx. These include:

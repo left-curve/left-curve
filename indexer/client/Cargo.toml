@@ -16,7 +16,7 @@ async-trait    = { workspace = true }
 graphql_client = { workspace = true }
 grug-jmt       = { workspace = true }
 grug-math      = { workspace = true }
-grug-types     = { workspace = true }
+grug-types     = { workspace = true, features = ["tendermint"] }
 paste          = { workspace = true }
 reqwest        = { workspace = true, features = ["json"] }
 serde          = { workspace = true }

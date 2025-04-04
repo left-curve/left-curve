@@ -10,7 +10,6 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-default = ["tendermint"]
 # Include methods to cast Tendermint types to Grug types. These include:
 # - tendermint::abci::types::ExecTxResult -> TxOutcome
 # - tendermint::abci::Event -> CronOutcome
