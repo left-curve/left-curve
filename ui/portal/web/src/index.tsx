@@ -14,7 +14,7 @@ Sentry.init({
   tracesSampleRate: 0.5,
   tracePropagationTargets: [/^https:\/\/devnet\.dango\.exchange\//],
   replaysOnErrorSampleRate: 0.5,
-  maxValueLength: 1000,
+  maxValueLength: 5000,
 });
 
 const container = document.getElementById("root");
