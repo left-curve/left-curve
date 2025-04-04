@@ -10,7 +10,7 @@ use {
     dango_client::{SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
-    grug_client::RpcClient,
+    grug_client::TendermintRpcClient,
     grug_types::{
         Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
         QueryClient, Signer,
@@ -167,7 +167,7 @@ impl TxCmd {
             },
         };
 
-        let client = RpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
+        let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));

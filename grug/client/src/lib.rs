@@ -15,11 +15,11 @@ use {
     },
 };
 
-pub struct RpcClient {
+pub struct TendermintRpcClient {
     inner: HttpClient,
 }
 
-impl RpcClient {
+impl TendermintRpcClient {
     pub fn new(endpoint: &str) -> anyhow::Result<Self> {
         let inner = HttpClient::new(endpoint)?;
         Ok(Self { inner })
@@ -56,7 +56,7 @@ impl RpcClient {
 }
 
 #[async_trait]
-impl QueryClient for RpcClient {
+impl QueryClient for TendermintRpcClient {
     type Error = anyhow::Error;
 
     async fn query_app(
@@ -127,7 +127,7 @@ impl QueryClient for RpcClient {
 }
 
 #[async_trait]
-impl BlockClient for RpcClient {
+impl BlockClient for TendermintRpcClient {
     type Error = anyhow::Error;
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
@@ -181,7 +181,7 @@ impl BlockClient for RpcClient {
 }
 
 #[async_trait]
-impl BroadcastClient for RpcClient {
+impl BroadcastClient for TendermintRpcClient {
     type Error = anyhow::Error;
 
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
@@ -193,7 +193,7 @@ impl BroadcastClient for RpcClient {
 }
 
 #[async_trait]
-impl SearchTxClient for RpcClient {
+impl SearchTxClient for TendermintRpcClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {

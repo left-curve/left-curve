@@ -3,7 +3,7 @@ use {
     clap::{Parser, Subcommand},
     colored_json::ToColoredJson,
     config_parser::parse_config,
-    grug_client::RpcClient,
+    grug_client::TendermintRpcClient,
     grug_types::{
         Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Proof,
         Query, QueryClient, QueryWasmSmartRequest, SearchTxClient,
@@ -136,7 +136,7 @@ impl QueryCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Create Grug client via Tendermint RPC.
-        let client = RpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
+        let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
 
         let req = match self.subcmd {
             SubCmd::Status => {
@@ -229,7 +229,7 @@ impl QueryCmd {
 
 // ------------------------------------ tx -------------------------------------
 
-async fn query_tx(client: &RpcClient, hash: &str) -> anyhow::Result<()> {
+async fn query_tx(client: &TendermintRpcClient, hash: &str) -> anyhow::Result<()> {
     // Cast the hex string to uppercase, so that users can use either upper or
     // lowercase on the CLI.
     let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
@@ -240,7 +240,7 @@ async fn query_tx(client: &RpcClient, hash: &str) -> anyhow::Result<()> {
 
 // ----------------------------------- block -----------------------------------
 
-async fn query_block(client: &RpcClient, height: Option<u64>) -> anyhow::Result<()> {
+async fn query_block(client: &TendermintRpcClient, height: Option<u64>) -> anyhow::Result<()> {
     let res = client.query_block_outcome(height).await?;
 
     print_json_pretty(res)
@@ -256,7 +256,7 @@ struct PrintableQueryStoreResponse {
 }
 
 async fn query_store(
-    client: &RpcClient,
+    client: &TendermintRpcClient,
     key_b64: String,
     height: Option<u64>,
     prove: bool,
