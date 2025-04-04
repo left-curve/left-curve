@@ -1,4 +1,5 @@
 import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import { getAction } from "@left-curve/sdk/actions";
 import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 import type { AppConfig, Key, KeyHash } from "../../../types/index.js";
 
@@ -25,7 +26,9 @@ export async function getKeys<chain extends Chain | undefined, signer extends Si
   const { startAfter, limit, height = 0 } = parameters;
   const msg = { keys: { startAfter, limit } };
 
-  const { addresses } = await getAppConfig<AppConfig>(client);
+  const action = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await action<AppConfig>({});
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

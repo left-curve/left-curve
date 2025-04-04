@@ -39,18 +39,6 @@ export {
 } from "./queries/getAllAccountInfo.js";
 
 export {
-  type GetDepositParameters,
-  type GetDepositReturnType,
-  getDeposit,
-} from "./queries/getDeposit.js";
-
-export {
-  type GetDepositsParameters,
-  type GetDepositsReturnType,
-  getDeposits,
-} from "./queries/getDeposits.js";
-
-export {
   type GetKeyParameters,
   type GetKeyReturnType,
   getKey,
@@ -67,12 +55,6 @@ export {
   type GetKeysByUsernameReturnType,
   getKeysByUsername,
 } from "./queries/getKeysByUsername.js";
-
-export {
-  type GetNextAccountAddressParameters,
-  type GetNextAccountAddressReturnType,
-  getNextAccountAddress,
-} from "./queries/getNextAccountAddress.js";
 
 export {
   type GetNextAccountIndexParameters,
