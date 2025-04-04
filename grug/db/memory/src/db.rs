@@ -1,8 +1,8 @@
 use {
     crate::{DbError, DbResult, VersionedMap},
     grug_app::{Buffer, Db},
-    grug_jmt::MerkleTree,
-    grug_types::{Batch, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_jmt::{MerkleTree, Proof},
+    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
     std::{
         collections::HashMap,
         ops::Bound,

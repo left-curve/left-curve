@@ -4,7 +4,7 @@ use {
     grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient, BroadcastTxOutcome,
-        CronOutcome, Hash256, JsonDeExt, JsonSerExt, Proof, Query, QueryClient, QueryResponse,
+        CronOutcome, Hash256, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse,
         SearchTxClient, SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     std::any::type_name,
@@ -58,6 +58,7 @@ impl TendermintRpcClient {
 #[async_trait]
 impl QueryClient for TendermintRpcClient {
     type Error = anyhow::Error;
+    type Proof = grug_jmt::Proof;
 
     async fn query_app(
         &self,
@@ -76,7 +77,7 @@ impl QueryClient for TendermintRpcClient {
         key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error> {
+    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
         let res = self
             .query("/store", key.clone().into_inner(), height, prove)
             .await?;
@@ -106,7 +107,7 @@ impl QueryClient for TendermintRpcClient {
             ensure!(res.proof.is_some());
             let proof = res.proof.unwrap();
             ensure!(proof.ops.len() == 1);
-            ensure!(proof.ops[0].field_type == type_name::<Proof>());
+            ensure!(proof.ops[0].field_type == type_name::<Self::Proof>());
             ensure!(proof.ops[0].key == key.into_inner());
             Some(proof.ops[0].data.deserialize_json()?)
         } else {

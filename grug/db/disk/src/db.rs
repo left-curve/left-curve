@@ -1,8 +1,8 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Buffer, Db, PrunableDb},
-    grug_jmt::MerkleTree,
-    grug_types::{Batch, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_jmt::{MerkleTree, Proof},
+    grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -625,11 +625,8 @@ mod tests {
     use {
         crate::{DiskDb, TempDataDir},
         grug_app::{Db, PrunableDb},
-        grug_jmt::verify_proof,
-        grug_types::{
-            Batch, Hash256, HashExt, MembershipProof, NonMembershipProof, Op, Order, Proof,
-            ProofNode, Storage,
-        },
+        grug_jmt::{MembershipProof, NonMembershipProof, Proof, ProofNode, verify_proof},
+        grug_types::{Batch, Hash256, HashExt, Op, Order, Storage},
         hex_literal::hex,
     };
 

@@ -5,7 +5,7 @@ use {
     grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Proof, Query, QueryClient,
+        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Query, QueryClient,
         QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
@@ -61,6 +61,7 @@ impl HttpClient {
 #[async_trait]
 impl QueryClient for HttpClient {
     type Error = anyhow::Error;
+    type Proof = grug_jmt::Proof;
 
     async fn query_app(
         &self,
@@ -82,7 +83,7 @@ impl QueryClient for HttpClient {
         key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error> {
+    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
         let response = self
             .post_graphql(query_store::Variables {
                 key: key.to_string(),

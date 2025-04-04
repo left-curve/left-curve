@@ -4,9 +4,10 @@ use {
     colored_json::ToColoredJson,
     config_parser::parse_config,
     grug_client::TendermintRpcClient,
+    grug_jmt::Proof,
     grug_types::{
-        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Proof,
-        Query, QueryClient, QueryWasmSmartRequest, SearchTxClient,
+        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query,
+        QueryClient, QueryWasmSmartRequest, SearchTxClient,
     },
     serde::Serialize,
     std::str::FromStr,

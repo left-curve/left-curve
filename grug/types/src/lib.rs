@@ -28,7 +28,6 @@ mod lengthy;
 mod macros;
 mod non_zero;
 mod outcome;
-mod proof;
 mod query;
 mod response;
 mod result;
@@ -48,9 +47,8 @@ pub use {
     serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
-pub use proof::*;
-
 // ---------------------------------- testing ----------------------------------
+
 #[cfg(not(target_arch = "wasm32"))]
 mod client;
 #[cfg(not(target_arch = "wasm32"))]

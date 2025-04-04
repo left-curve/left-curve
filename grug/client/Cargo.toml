@@ -14,6 +14,7 @@ version       = { workspace = true }
 anyhow         = { workspace = true }
 async-trait    = { workspace = true }
 graphql_client = { workspace = true }
+grug-jmt       = { workspace = true }
 grug-math      = { workspace = true }
 grug-types     = { workspace = true }
 serde          = { workspace = true }

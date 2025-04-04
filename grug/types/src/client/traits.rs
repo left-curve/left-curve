@@ -1,17 +1,16 @@
 use {
     crate::{
-        Binary, Block, BlockOutcome, BroadcastTxOutcome, Hash256, Proof, Query, QueryResponse,
+        Binary, Block, BlockOutcome, BroadcastTxOutcome, Hash256, Query, QueryResponse,
         SearchTxOutcome, StdError, Tx, TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
+    serde::de::DeserializeOwned,
 };
 
 #[async_trait]
-pub trait QueryClient: Send + Sync
-where
-    Self::Error: From<StdError>,
-{
-    type Error;
+pub trait QueryClient: Send + Sync {
+    type Error: From<StdError>;
+    type Proof: DeserializeOwned;
 
     async fn query_app(
         &self,
@@ -24,7 +23,7 @@ where
         key: Binary,
         height: Option<u64>,
         prove: bool,
-    ) -> Result<(Option<Binary>, Option<Proof>), Self::Error>;
+    ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error>;
 
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }
