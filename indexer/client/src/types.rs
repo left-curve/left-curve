@@ -10,7 +10,7 @@ macro_rules! generate_types {
         $(
             #[derive(graphql_client::GraphQLQuery)]
             #[graphql(
-                schema_path = "src/http/schemas/schema.graphql",
+                schema_path = "src/schemas/schema.graphql",
                 query_path = $path,
                 response_derives = "Debug"
             )]
@@ -57,7 +57,7 @@ macro_rules! generate_types {
 generate_types! {
     {
         name: QueryApp,
-        path: "src/http/schemas/queries/queryApp.graphql",
+        path: "src/schemas/queries/queryApp.graphql",
         test_with: crate::types::query_app::Variables {
             request: r#"{"config":{}}"#.to_string(),
             height: None
@@ -65,7 +65,7 @@ generate_types! {
     },
     {
         name: QueryStore,
-        path: "src/http/schemas/queries/queryStore.graphql",
+        path: "src/schemas/queries/queryStore.graphql",
         test_with: crate::types::query_store::Variables {
             key: "Y2hhaW5faWQ=".to_string(),
             height: None,
@@ -74,10 +74,14 @@ generate_types! {
     },
     {
         name: Simulate,
-        path: "src/http/schemas/queries/Simulate.graphql",
+        path: "src/schemas/queries/Simulate.graphql",
         test_with: crate::types::simulate::Variables {
             tx: r#"{
-              "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
+              "data": {
+                "chain_id": "dev-6",
+                "nonce": 1,
+                "username": "owner"
+              },
               "msgs": [
                 {
                   "transfer": {
@@ -87,17 +91,13 @@ generate_types! {
                   }
                 }
               ],
-              "data": {
-                "chain_id": "dev-6",
-                "nonce": 1,
-                "username": "owner"
-              }
+              "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9"
             }"#
             .to_string(),
         }
     },
     {
         name: BroadcastTxSync,
-        path: "src/http/schemas/mutations/broadcastTxSync.graphql",
+        path: "src/schemas/mutations/broadcastTxSync.graphql",
     }
 }

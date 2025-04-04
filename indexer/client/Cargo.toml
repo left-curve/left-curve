@@ -1,11 +1,11 @@
 [package]
 authors       = { workspace = true }
 categories    = { workspace = true }
-description   = "Rust client for interacting with Grug via Tendermint RPC"
+description   = "Rust client for interacting with Grug via the indexer GraphQL server"
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-client"
+name          = "indexer-client"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -16,6 +16,14 @@ async-trait    = { workspace = true }
 graphql_client = { workspace = true }
 grug-math      = { workspace = true }
 grug-types     = { workspace = true }
+paste          = { workspace = true }
+reqwest        = { workspace = true, features = ["json"] }
 serde          = { workspace = true }
-tendermint     = { workspace = true }
-tendermint-rpc = { workspace = true, features = ["http-client"] }
+tendermint-rpc = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[build-dependencies]
+async-graphql = { workspace = true }
+indexer-httpd = { workspace = true }

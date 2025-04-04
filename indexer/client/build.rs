@@ -3,7 +3,7 @@ use {
     indexer_httpd::graphql::{mutation, query, subscription},
 };
 
-const SCHEMA_PATH: &str = "src/http/schemas/schema.graphql";
+const SCHEMA_PATH: &str = "src/schemas/schema.graphql";
 
 fn main() {
     let schema = Schema::build(
@@ -12,6 +12,7 @@ fn main() {
         subscription::Subscription::default(),
     )
     .finish();
+
     let sdl = schema.sdl();
     std::fs::write(SCHEMA_PATH, sdl).unwrap();
 

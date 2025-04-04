@@ -1,8 +1,5 @@
 use {
-    crate::{
-        parse_tm_tx_response,
-        types::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
-    },
+    crate::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_math::Inner,
@@ -12,7 +9,7 @@ use {
         QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
-    std::str::FromStr,
+    std::{fmt::Display, str::FromStr},
 };
 
 pub struct HttpClient {
@@ -28,7 +25,10 @@ impl HttpClient {
         }
     }
 
-    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+    async fn get<P>(&self, path: P) -> Result<reqwest::Response, anyhow::Error>
+    where
+        P: Display,
+    {
         Ok(self
             .inner
             .get(format!("{}/{}", self.endpoint, path))
@@ -166,11 +166,14 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let path = format!("api/tendermint/search_tx/{}", hash);
-        let response: tendermint_rpc::endpoint::tx::Response =
-            self.get(&path).await?.json().await?;
+        let response: tendermint_rpc::endpoint::tx::Response = self
+            .get(format!("api/tendermint/search_tx/{hash}"))
+            .await?
+            .json()
+            .await?;
+        let outcome = SearchTxOutcome::from_tm_query_tx_response(response)?;
 
-        parse_tm_tx_response(response)
+        Ok(outcome)
     }
 }
 

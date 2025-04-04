@@ -1,9 +1,10 @@
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256,
+        EvtWithhold, GenericResult, Hash256, JsonDeExt, ResultExt, StdResult, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    data_encoding::BASE64,
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
 };
@@ -74,6 +75,18 @@ impl CronOutcome {
     }
 }
 
+#[cfg(feature = "tendermint")]
+impl CronOutcome {
+    pub fn from_tm_event(tm_event: tendermint::abci::Event) -> StdResult<Self> {
+        Ok(tm_event
+            .attributes
+            .first()
+            .unwrap()
+            .value_bytes()
+            .deserialize_json()?)
+    }
+}
+
 /// Outcome of processing a transaction.
 ///
 /// Different from `Outcome`, which can either succeed or fail, a transaction
@@ -96,6 +109,20 @@ pub struct TxOutcome {
     pub gas_used: u64,
     pub result: GenericResult<()>,
     pub events: TxEvents,
+}
+
+#[cfg(feature = "tendermint")]
+impl TxOutcome {
+    pub fn from_tm_tx_result(
+        tm_tx_result: tendermint::abci::types::ExecTxResult,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            gas_limit: tm_tx_result.gas_wanted as u64,
+            gas_used: tm_tx_result.gas_used as u64,
+            result: into_generic_result(tm_tx_result.code, tm_tx_result.log),
+            events: BASE64.decode(&tm_tx_result.data)?.deserialize_json()?,
+        })
+    }
 }
 
 /// The success case of [`TxOutcome`](crate::TxOutcome).
@@ -215,4 +242,86 @@ pub struct BlockOutcome {
     pub cron_outcomes: Vec<CronOutcome>,
     /// Results of executing the transactions.
     pub tx_outcomes: Vec<TxOutcome>,
+}
+
+#[derive(Serialize)]
+pub struct BroadcastTxOutcome {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxOutcome,
+}
+
+impl BroadcastTxOutcome {
+    #[allow(clippy::result_large_err)]
+    pub fn into_result(self) -> Result<BroadcastTxSuccess, BroadcastTxError> {
+        match &self.check_tx.result {
+            Ok(_) => Ok(BroadcastTxSuccess {
+                tx_hash: self.tx_hash,
+                check_tx: self.check_tx.should_succeed(),
+            }),
+            Err(_) => Err(BroadcastTxError {
+                tx_hash: self.tx_hash,
+                check_tx: self.check_tx.should_fail(),
+            }),
+        }
+    }
+}
+
+#[cfg(feature = "tendermint")]
+impl BroadcastTxOutcome {
+    pub fn from_tm_broadcast_response(
+        response: tendermint_rpc::endpoint::broadcast::tx_sync::Response,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            tx_hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+            check_tx: CheckTxOutcome {
+                gas_limit: 0,
+                gas_used: 0,
+                result: into_generic_result(response.code, response.log),
+                events: BASE64.decode(&response.data)?.deserialize_json()?,
+            },
+        })
+    }
+}
+
+pub struct BroadcastTxError {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxError,
+}
+
+pub struct BroadcastTxSuccess {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxSuccess,
+}
+
+#[derive(Serialize)]
+pub struct SearchTxOutcome {
+    pub hash: Hash256,
+    pub height: u64,
+    pub index: u32,
+    pub tx: Tx,
+    pub outcome: TxOutcome,
+}
+
+#[cfg(feature = "tendermint")]
+impl SearchTxOutcome {
+    pub fn from_tm_query_tx_response(
+        response: tendermint_rpc::endpoint::tx::Response,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+            height: response.height.into(),
+            index: response.index,
+            tx: BASE64.decode(&response.tx)?.deserialize_json()?,
+            outcome: TxOutcome::from_tm_tx_result(response.tx_result)?,
+        })
+    }
+}
+
+#[cfg(feature = "tendermint")]
+fn into_generic_result(code: tendermint::abci::Code, log: String) -> GenericResult<()> {
+    if code == tendermint::abci::Code::Ok {
+        Ok(())
+    } else {
+        Err(log)
+    }
 }

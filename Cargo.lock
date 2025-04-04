@@ -4511,20 +4511,13 @@ name = "grug-client"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-graphql",
  "async-trait",
- "chrono",
  "graphql_client",
- "grug-jmt",
  "grug-math",
  "grug-types",
- "indexer-httpd",
- "paste",
- "reqwest 0.12.15",
  "serde",
  "tendermint",
  "tendermint-rpc",
- "tokio",
 ]
 
 [[package]]
@@ -4730,6 +4723,8 @@ dependencies = [
  "sha3",
  "strum 0.27.1",
  "strum_macros 0.27.1",
+ "tendermint",
+ "tendermint-rpc",
  "test-case",
  "thiserror 2.0.12",
 ]
@@ -5466,6 +5461,24 @@ name = "indenter"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
+
+[[package]]
+name = "indexer-client"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-graphql",
+ "async-trait",
+ "graphql_client",
+ "grug-math",
+ "grug-types",
+ "indexer-httpd",
+ "paste",
+ "reqwest 0.12.15",
+ "serde",
+ "tendermint-rpc",
+ "tokio",
+]
 
 [[package]]
 name = "indexer-disk-saver"
