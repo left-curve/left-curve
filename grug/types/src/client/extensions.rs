@@ -207,10 +207,8 @@ where
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
-pub enum GasEstimateError {
-    #[error("Failed to estimate gas consumption: {0}")]
-    GasEstimate(String),
-}
+#[error("Failed to estimate gas consumption: {0}")]
+pub struct GasEstimateError(String);
 
 #[async_trait]
 pub trait BroadcastClientExt: BroadcastClient + QueryClient + WithChainId
@@ -324,7 +322,7 @@ where
                         result: GenericResult::Err(err),
                         ..
                     // } => return Err(format!("Failed to estimate gas consumption: {err}").into()),
-                    } => return Err(GasEstimateError::GasEstimate(err).into()),
+                    } => return Err(GasEstimateError(err).into()),
                 }
             },
             GasOption::Predefined { gas_limit } => gas_limit,
