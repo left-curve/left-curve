@@ -1,5 +1,7 @@
-mod extensions;
+mod block;
+mod broadcast;
 mod options;
-mod traits;
+mod query;
+mod search_tx;
 
-pub use {extensions::*, options::*, traits::*};
+pub use {block::*, broadcast::*, options::*, query::*, search_tx::*};
