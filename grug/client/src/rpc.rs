@@ -61,7 +61,7 @@ impl RpcClient {
 impl QueryClient for RpcClient {
     type Error = anyhow::Error;
 
-    async fn query_chain(
+    async fn query_app(
         &self,
         query: Query,
         height: Option<u64>,

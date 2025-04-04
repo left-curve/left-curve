@@ -63,12 +63,12 @@ where
 {
     type Error = C::Error;
 
-    async fn query_chain(
+    async fn query_app(
         &self,
         query: Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Self::Error> {
-        self.inner.query_chain(query, height).await
+        self.inner.query_app(query, height).await
     }
 
     async fn query_store(

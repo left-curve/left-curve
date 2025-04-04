@@ -21,7 +21,7 @@ where
     Self::Error: From<StdError>,
 {
     async fn query_config(&self, height: Option<u64>) -> Result<Config, Self::Error> {
-        self.query_chain(Query::config(), height)
+        self.query_app(Query::config(), height)
             .await
             .map(|res| res.as_config())
     }
@@ -42,7 +42,7 @@ where
     where
         T: DeserializeOwned,
     {
-        self.query_chain(Query::app_config(), height)
+        self.query_app(Query::app_config(), height)
             .await
             .and_then(|res| res.as_app_config().deserialize_json().map_err(Into::into))
     }
@@ -53,7 +53,7 @@ where
         denom: Denom,
         height: Option<u64>,
     ) -> Result<Uint128, Self::Error> {
-        self.query_chain(Query::balance(address, denom), height)
+        self.query_app(Query::balance(address, denom), height)
             .await
             .map(|res| res.as_balance().amount)
     }
@@ -65,7 +65,7 @@ where
         limit: Option<u32>,
         height: Option<u64>,
     ) -> Result<Coins, Self::Error> {
-        self.query_chain(Query::balances(address, start_after, limit), height)
+        self.query_app(Query::balances(address, start_after, limit), height)
             .await
             .map(|res| res.as_balances())
     }
@@ -75,7 +75,7 @@ where
         denom: Denom,
         height: Option<u64>,
     ) -> Result<Uint128, Self::Error> {
-        self.query_chain(Query::supply(denom), height)
+        self.query_app(Query::supply(denom), height)
             .await
             .map(|res| res.as_supply().amount)
     }
@@ -86,13 +86,13 @@ where
         limit: Option<u32>,
         height: Option<u64>,
     ) -> Result<Coins, Self::Error> {
-        self.query_chain(Query::supplies(start_after, limit), height)
+        self.query_app(Query::supplies(start_after, limit), height)
             .await
             .map(|res| res.as_supplies())
     }
 
     async fn query_code(&self, hash: Hash256, height: Option<u64>) -> Result<Code, Self::Error> {
-        self.query_chain(Query::code(hash), height)
+        self.query_app(Query::code(hash), height)
             .await
             .map(|res| res.as_code())
     }
@@ -103,7 +103,7 @@ where
         limit: Option<u32>,
         height: Option<u64>,
     ) -> Result<BTreeMap<Hash256, Code>, Self::Error> {
-        self.query_chain(Query::codes(start_after, limit), height)
+        self.query_app(Query::codes(start_after, limit), height)
             .await
             .map(|res| res.as_codes())
     }
@@ -113,7 +113,7 @@ where
         address: Addr,
         height: Option<u64>,
     ) -> Result<ContractInfo, Self::Error> {
-        self.query_chain(Query::contract(address), height)
+        self.query_app(Query::contract(address), height)
             .await
             .map(|res| res.as_contract())
     }
@@ -124,7 +124,7 @@ where
         limit: Option<u32>,
         height: Option<u64>,
     ) -> Result<BTreeMap<Addr, ContractInfo>, Self::Error> {
-        self.query_chain(Query::contracts(start_after, limit), height)
+        self.query_app(Query::contracts(start_after, limit), height)
             .await
             .map(|res| res.as_contracts())
     }
@@ -143,7 +143,7 @@ where
     where
         B: Into<Binary> + Send,
     {
-        self.query_chain(Query::wasm_raw(contract, key), height)
+        self.query_app(Query::wasm_raw(contract, key), height)
             .await
             .map(|res| res.as_wasm_raw())
     }
@@ -161,7 +161,7 @@ where
     {
         let msg = R::Message::from(req);
 
-        self.query_chain(Query::wasm_smart(contract, &msg)?, height)
+        self.query_app(Query::wasm_smart(contract, &msg)?, height)
             .await
             .and_then(|res| res.as_wasm_smart().deserialize_json().map_err(Into::into))
     }
@@ -171,7 +171,7 @@ where
         requests: [Query; N],
         height: Option<u64>,
     ) -> Result<[Result<QueryResponse, Self::Error>; N], Self::Error> {
-        self.query_chain(Query::Multi(requests.into()), height)
+        self.query_app(Query::Multi(requests.into()), height)
             .await
             .map(|res| {
                 // We trust that the host has properly implemented the multi

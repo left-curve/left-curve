@@ -221,7 +221,7 @@ impl QueryCmd {
         };
 
         client
-            .query_chain(req, self.height)
+            .query_app(req, self.height)
             .await
             .and_then(print_json_pretty)
     }

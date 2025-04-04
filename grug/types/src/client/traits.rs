@@ -14,7 +14,7 @@ where
 {
     type Error;
 
-    async fn query_chain(
+    async fn query_app(
         &self,
         query: Query,
         height: Option<u64>,
