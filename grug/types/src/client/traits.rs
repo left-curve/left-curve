@@ -1,8 +1,7 @@
 use {
-    super::{BroadcastTxOutcome, SearchTxOutcome},
     crate::{
-        Binary, Block, BlockOutcome, Hash256, Proof, Query, QueryResponse, StdError, Tx, TxOutcome,
-        UnsignedTx,
+        Binary, Block, BlockOutcome, BroadcastTxOutcome, Hash256, Proof, Query, QueryResponse,
+        SearchTxOutcome, StdError, Tx, TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
 };

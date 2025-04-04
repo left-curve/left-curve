@@ -103,6 +103,8 @@ impl<C> WithChainId for Client<C, Defined<String>> {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {super::*, grug_types::QueryClientExt};
