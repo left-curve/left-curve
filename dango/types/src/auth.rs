@@ -155,6 +155,6 @@ pub struct ClientData {
     // Should be the `SignDoc` in base64 `URL_SAFE_NO_PAD` encoding.
     pub challenge: String,
     pub origin: String,
-    #[serde(rename = "crossOrigin")]
-    pub cross_origin: bool,
+    #[serde(default, rename = "crossOrigin")]
+    pub cross_origin: Option<bool>,
 }
