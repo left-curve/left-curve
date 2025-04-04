@@ -26,7 +26,8 @@ type ConfirmSendProps = {
 
 export const ConfirmSend = forwardRef(
   ({ amount, denom, to, confirmSend, rejectSend }: ConfirmSendProps, ref) => {
-    const { hideModal, formatNumberOptions } = useApp();
+    const { hideModal, settings } = useApp();
+    const { formatNumberOptions } = settings;
     const { coins, state } = useConfig();
     const client = usePublicClient();
     const coin = coins[state.chainId][denom];
@@ -51,7 +52,7 @@ export const ConfirmSend = forwardRef(
     const humanAmount = formatUnits(amount, coin.decimals);
 
     return (
-      <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-3xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
         <p className="text-gray-900 diatype-lg-medium w-full text-center">
           {m["modals.confirmSend.title"]()}
         </p>

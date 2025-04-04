@@ -2,11 +2,13 @@ import { getAppConfig, simulate } from "@left-curve/sdk";
 import type { Hex, Transport } from "@left-curve/sdk/types";
 import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
 
+import { getAction } from "@left-curve/sdk/actions";
 import type {
   AppConfig,
   DangoClient,
   Key,
   KeyHash,
+  Signature,
   Signer,
   Username,
 } from "../../../types/index.js";
@@ -16,7 +18,8 @@ export type RegisterUserParameters = {
   username: Username;
   key: Key;
   keyHash: KeyHash;
-  secret: number;
+  seed: number;
+  signature: Signature;
 };
 
 export type RegisterUserReturnType = BroadcastTxSyncReturnType;
@@ -25,7 +28,9 @@ export type MsgRegisterUser = {
   registerUser: {
     username: string;
     KeyHash: Hex;
-    key: Credential;
+    key: Key;
+    seed: number;
+    signature: Signature;
   };
 };
 
@@ -33,7 +38,7 @@ export async function registerUser<transport extends Transport>(
   client: DangoClient<transport, undefined | Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {
-  const { username, keyHash, key, secret } = parameters;
+  const { username, keyHash, key, seed, signature } = parameters;
 
   const { addresses } = await getAppConfig<AppConfig>(client);
 
@@ -42,7 +47,8 @@ export async function registerUser<transport extends Transport>(
       username,
       keyHash,
       key,
-      secret,
+      seed,
+      signature,
     },
   };
 
@@ -54,7 +60,9 @@ export async function registerUser<transport extends Transport>(
     },
   };
 
-  const { gasUsed } = await simulate(client, {
+  const action = getAction(client, simulate, "simulate");
+
+  const { gasUsed } = await action({
     simulate: { sender: addresses.accountFactory, msgs: [executeMsg], data: null },
   });
 

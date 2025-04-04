@@ -79,7 +79,7 @@ pub struct TestAccount<
     pub nonce: u32,
     keys: K,
     sign_with: Hash256,
-    address: T,
+    pub address: T,
 }
 
 impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {

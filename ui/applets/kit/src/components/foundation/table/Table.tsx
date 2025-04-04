@@ -30,7 +30,7 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
   });
 
   return (
-    <div className="bg-rice-25 shadow-card-shadow grid rounded-3xl w-full p-4 gap-4 overflow-hidden">
+    <div className="bg-rice-25 shadow-card-shadow grid rounded-xl w-full p-4 gap-4 overflow-hidden">
       {topContent}
       <div
         style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
@@ -61,7 +61,7 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
             <React.Fragment key={row.id}>
               {row.getVisibleCells().map((cell) => {
                 return (
-                  <div key={cell.id} className="px-6 py-4 last:text-end diatype-sm-medium">
+                  <div key={cell.id} className="px-6 py-4 diatype-sm-medium">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>
                 );

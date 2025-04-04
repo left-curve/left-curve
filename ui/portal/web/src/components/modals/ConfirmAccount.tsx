@@ -21,7 +21,8 @@ type ConfirmAccountProps = {
 
 export const ConfirmAccount = forwardRef(
   ({ amount, accountName, accountType, denom }: ConfirmAccountProps, _ref) => {
-    const { hideModal, formatNumberOptions } = useApp();
+    const { hideModal, settings } = useApp();
+    const { formatNumberOptions } = settings;
 
     const { coins, state } = useConfig();
     const coin = coins[state.chainId][denom];
@@ -31,7 +32,7 @@ export const ConfirmAccount = forwardRef(
     const humanAmount = formatUnits(amount, coin.decimals);
 
     return (
-      <div className="flex flex-col bg-white-100 md:border border-gray-100 rounded-3xl relative gap-4 w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-white-100 md:border border-gray-100 rounded-xl relative gap-4 w-full md:max-w-[25rem]">
         <IconButton
           className="hidden md:block absolute right-5 top-5"
           variant="link"

@@ -241,6 +241,7 @@ fn onboard_new_user(
         AccountRegistered {
             address,
             params: account.params,
+            index,
         },
     ))
 }
@@ -307,6 +308,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         .add_event(AccountRegistered {
             address,
             params: account.params,
+            index,
         })?)
 }
 

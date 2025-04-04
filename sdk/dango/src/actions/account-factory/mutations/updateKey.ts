@@ -63,9 +63,11 @@ export async function updateKey<transport extends Transport>(
   };
 
   return await execute(client, {
-    contract: addresses.accountFactory,
+    execute: {
+      contract: addresses.accountFactory,
+      msg: UpdateKeyMsg,
+      typedData,
+    },
     sender,
-    msg: UpdateKeyMsg,
-    typedData,
   });
 }

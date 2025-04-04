@@ -1,18 +1,18 @@
 import { gql } from "graphql-request";
-import { queryIndexer } from "./queryIndexer.js";
 
 import type { Client, Transport } from "@left-curve/sdk/types";
 import type { IndexedBlock } from "../../types/indexer.js";
+import { queryIndexer } from "./queryIndexer.js";
 
 export type QueryBlockParameters = {
-  height: number;
+  height?: number;
 };
 
 export type QueryBlockReturnType = Promise<IndexedBlock>;
 
 export async function queryBlock<transport extends Transport>(
   client: Client<transport>,
-  parameters: QueryBlockParameters,
+  parameters: QueryBlockParameters = {},
 ): QueryBlockReturnType {
   const document = gql`
     query block($height: Int){

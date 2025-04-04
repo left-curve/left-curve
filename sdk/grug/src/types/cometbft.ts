@@ -256,7 +256,7 @@ export type TxProof = {
     readonly total: string;
     readonly index: string;
     readonly leaf_hash: Base64;
-    readonly aunts: readonly Base64[];
+    readonly aunts: Base64[];
   };
 };
 
@@ -265,7 +265,7 @@ export type TxData = {
   readonly code?: number;
   readonly log?: string;
   readonly data?: Base64;
-  readonly events?: readonly TxEvent[];
+  readonly events?: TxEvent[];
   readonly gas_wanted?: string;
   readonly gas_used?: string;
 };
@@ -450,7 +450,7 @@ export type ValidatorPubkey = ValidatorEd25519Pubkey | ValidatorSecp256k1Pubkey;
 export type TxEvent = {
   readonly type: string;
   /** Can be omitted (see https://github.com/cosmos/cosmjs/pull/1198) */
-  readonly attributes?: readonly TxEventAttribute[];
+  readonly attributes?: TxEventAttribute[];
 };
 
 export type TxEventAttribute = {

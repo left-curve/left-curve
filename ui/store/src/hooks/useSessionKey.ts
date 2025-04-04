@@ -39,6 +39,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
       if (!session || !username) return null;
       return createSignerClient({
         username,
+        chain: config.chain,
         signer: createSessionSigner(session),
         transport: config._internal.transport,
       });

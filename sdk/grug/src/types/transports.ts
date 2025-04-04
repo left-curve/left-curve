@@ -1,5 +1,5 @@
 import type { Chain } from "./chain.js";
-import type { IndexerSchema } from "./indexer.js";
+import type { CometBftRpcSchema } from "./cometbft.js";
 import type { Prettify } from "./utils.js";
 
 export type TransportSchema = readonly {
@@ -8,7 +8,7 @@ export type TransportSchema = readonly {
   ReturnType?: unknown;
 }[];
 
-type TransportSchemaOverride = Omit<TransportSchema[number], "Method">;
+export type TransportSchemaOverride = Omit<TransportSchema[number], "Method">;
 
 export type RequestFnParameters<transportSchema extends TransportSchema | undefined = undefined> =
   transportSchema extends TransportSchema
@@ -69,7 +69,7 @@ export type RequestOptions = {
 
 export type TransportConfig<
   type extends string = string,
-  transportSchema extends TransportSchema = IndexerSchema,
+  transportSchema extends TransportSchema = CometBftRpcSchema,
 > = {
   /** The name of the transport. */
   name: string;
@@ -84,7 +84,7 @@ export type TransportConfig<
 
 export type Transport<
   type extends string = string,
-  transportSchema extends TransportSchema = IndexerSchema,
+  transportSchema extends TransportSchema = CometBftRpcSchema,
 > = <chain extends Chain | undefined = Chain>(
   parameters: { chain?: chain | undefined } | undefined,
 ) => {

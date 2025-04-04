@@ -12,7 +12,7 @@ import type {
 
 import { routeTree } from "./app.pages";
 
-const router = createRouter({
+export const router = createRouter({
   routeTree,
   defaultPreload: "intent",
   defaultStaleTime: 5000,

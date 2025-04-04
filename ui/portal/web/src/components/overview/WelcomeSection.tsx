@@ -20,7 +20,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
 
   if (!isConnected) {
     return (
-      <div className="rounded-3xl relative shadow-card-shadow flex gap-4 w-full p-4 items-center flex-col lg:flex-row justify-end overflow-hidden min-h-[20rem] lg:min-h-[14.5rem] bg-[linear-gradient(236.46deg,_#FFF9F0_21.76%,_#E7D1B9_77.58%)]">
+      <div className="rounded-xl relative shadow-card-shadow flex gap-4 w-full p-4 items-center flex-col lg:flex-row justify-end overflow-hidden min-h-[20rem] lg:min-h-[14.5rem] bg-[linear-gradient(236.46deg,_#FFF9F0_21.76%,_#E7D1B9_77.58%)]">
         <picture className="absolute left-0 lg:left-4 top-[-1rem] lg:top-auto max-h-44 lg:max-h-80 right-0 mx-auto lg:right-auto flex items-center justify-center">
           <source media="(min-width:1024px)" srcSet="/images/characters/group.svg" />
           <img rel="preload" src="/images/characters/group-mobile.svg" alt="group" />
@@ -32,7 +32,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
               {m["common.motto"]()}
             </p>
             <div className="flex items-center justify-center gap-4 w-full lg:px-6">
-              <Button as={Link} fullWidth to="/login">
+              <Button as={Link} fullWidth to="/signin">
                 {m["common.signin"]()}
               </Button>
 
@@ -53,14 +53,14 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
   }
 
   return (
-    <div className="rounded-3xl bg-rice-50 shadow-card-shadow flex flex-col lg:flex-row gap-4 w-full p-4 items-center lg:items-start">
+    <div className="rounded-xl flex flex-col lg:flex-row gap-4 w-full items-center lg:items-start">
       <SwippeableAccountCard
         cardVisible={cardMobileVisible}
         setCardVisible={setCardMobileVisible}
       />
 
-      <div className="w-full flex flex-col lg:gap-4 items-center">
-        <div className="hidden lg:flex w-full">
+      <div className="w-full flex flex-col lg:gap-4 items-center h-full">
+        <div className="hidden lg:flex w-full h-full">
           <AssetsSection
             balances={balances}
             showAllAssets={isConnected ? () => setSidebarVisibility(true) : undefined}
@@ -68,15 +68,15 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
         </div>
 
         {isConnected ? (
-          <div className="lg:self-end flex gap-4 items-center justify-center w-full lg:max-w-[256px]">
-            <ButtonLink fullWidth size="md" to="/send-and-receive" search={{ action: "receive" }}>
+          <div className="lg:self-end gap-4 items-center justify-center w-full lg:max-w-[256px] flex lg:hidden">
+            <ButtonLink fullWidth size="md" to="/transfer" search={{ action: "receive" }}>
               {m["common.fund"]()}
             </ButtonLink>
             <ButtonLink
               fullWidth
               variant="secondary"
               size="md"
-              to="/send-and-receive"
+              to="/transfer"
               search={{ action: "send" }}
             >
               {m["common.send"]()}

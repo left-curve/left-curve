@@ -46,6 +46,10 @@ jobs:
         run: pnpm build:portal-web
         env:
           PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}
+          PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1

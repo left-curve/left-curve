@@ -1,5 +1,10 @@
 use {
-    async_graphql::*,
+    super::{event::Event, message::Message},
+    crate::graphql::dataloader::{
+        transaction_events::TransactionEventsDataLoader,
+        transaction_messages::TransactionMessagesDataLoader,
+    },
+    async_graphql::{dataloader::DataLoader, *},
     chrono::{DateTime, TimeZone, Utc},
     indexer_sql::{block_to_index::BlockToIndex, entity},
     serde::Deserialize,
@@ -10,6 +15,8 @@ use {
 #[graphql(complex)]
 #[serde(default)]
 pub struct Transaction {
+    #[graphql(skip)]
+    pub id: uuid::Uuid,
     pub block_height: u64,
     pub created_at: DateTime<Utc>,
     pub transaction_type: Category,
@@ -42,6 +49,7 @@ impl From<entity::events::TransactionType> for Category {
 impl From<entity::transactions::Model> for Transaction {
     fn from(item: entity::transactions::Model) -> Self {
         Self {
+            id: item.id,
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
             transaction_type: item.transaction_type.into(),
@@ -58,6 +66,7 @@ impl From<entity::transactions::Model> for Transaction {
 
 #[ComplexObject]
 impl Transaction {
+    /// Nested Events from this transaction, from block on-disk caching
     async fn nested_events(&self, ctx: &Context<'_>) -> Result<Option<String>> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let block_filename = app_ctx.indexer_path.block_path(self.block_height);
@@ -80,5 +89,16 @@ impl Transaction {
             .get(tx_idx)
             .map(|tx| Ok(serde_json::to_string(&tx.events)?))
             .transpose()
+    }
+
+    /// Flatten events from the indexer
+    async fn flatten_events(&self, ctx: &Context<'_>) -> Result<Vec<Event>> {
+        let loader = ctx.data_unchecked::<DataLoader<TransactionEventsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
+
+    async fn messages(&self, ctx: &Context<'_>) -> Result<Vec<Message>> {
+        let loader = ctx.data_unchecked::<DataLoader<TransactionMessagesDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
     }
 }

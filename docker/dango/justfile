@@ -1,9 +1,5 @@
-VERSION := "0.0.0-alpha.5"
+VERSION := "0.0.0-alpha.8"
 
 # TODO: allow specifying version, platform, and build args via CLI arguments.
 build:
-  docker buildx build \
-    --load \
-    --platform linux/arm64 \
-    --tag leftcurve/dango:{{VERSION}} \
-    .
+  docker buildx build --load --tag leftcurve/dango:{{VERSION}} .

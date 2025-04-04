@@ -1,6 +1,6 @@
 use {
     crate::{
-        account_factory::{AccountParams, Username},
+        account_factory::{AccountIndex, AccountParams, Username},
         auth::Key,
     },
     grug::{Addr, Hash256, Op},
@@ -21,6 +21,7 @@ pub struct UserRegistered {
 pub struct AccountRegistered {
     pub address: Addr,
     pub params: AccountParams,
+    pub index: AccountIndex,
 }
 
 /// An event indicating a key has been updated.

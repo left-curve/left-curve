@@ -11,11 +11,15 @@ import type {
 
 export type ExecuteParameters = {
   sender: Address;
+  execute: ExecuteMsg | ExecuteMsg[];
+  gasLimit?: number;
+};
+
+export type ExecuteMsg = {
   contract: Address;
   msg: Json;
-  funds?: Funds;
-  gasLimit?: number;
   typedData?: TypedDataParameter;
+  funds?: Funds;
 };
 
 export type ExecuteReturnType = SignAndBroadcastTxReturnType;
@@ -24,30 +28,48 @@ export async function execute<transport extends Transport>(
   client: DangoClient<transport, Signer>,
   parameters: ExecuteParameters,
 ): ExecuteReturnType {
-  const { sender, contract, msg, gasLimit, funds = {} } = parameters;
-  const executeMsg = {
-    execute: {
-      contract,
-      msg,
-      funds,
-    },
-  };
+  const { sender, gasLimit, execute } = parameters;
 
-  const { extraTypes = {}, type = [] } = parameters.typedData || {};
+  const executeMsgs = Array.isArray(execute) ? execute : [execute];
 
-  const typedData: TypedDataParameter<TxMessageType> = {
-    type: [{ name: "execute", type: "Execute" }],
-    extraTypes: {
-      Execute: [
+  const { messages, typedData } = executeMsgs.reduce(
+    (acc, { contract, msg, funds = {}, typedData }, index) => {
+      acc.messages.push({
+        execute: {
+          contract,
+          msg,
+          funds,
+        },
+      });
+
+      const { extraTypes = {}, type = [] } = typedData || {};
+
+      acc.typedData.type.push({
+        name: "execute",
+        type: `Execute${index}`,
+      } as unknown as TxMessageType);
+      acc.typedData.extraTypes[`Execute${index}`] = [
         { name: "contract", type: "address" },
-        { name: "msg", type: "ExecuteMessage" },
-        { name: "funds", type: "Funds" },
-      ],
-      Funds: [...getCoinsTypedData(funds)],
-      ExecuteMessage: type,
-      ...extraTypes,
-    },
-  };
+        { name: "msg", type: `ExecuteMessage${index}` },
+        { name: "funds", type: `Funds${index}` },
+      ];
+      acc.typedData.extraTypes[`ExecuteMessage${index}`] = type;
+      acc.typedData.extraTypes[`Funds${index}`] = [...getCoinsTypedData(funds)];
+      acc.typedData.extraTypes = { ...acc.typedData.extraTypes, ...extraTypes };
 
-  return await signAndBroadcastTx(client, { sender, messages: [executeMsg], typedData, gasLimit });
+      return acc;
+    },
+    {
+      messages: [],
+      typedData: {
+        type: [],
+        extraTypes: {},
+      },
+    } as {
+      messages: { execute: Omit<ExecuteMsg, "typedData"> }[];
+      typedData: TypedDataParameter<TxMessageType>;
+    },
+  );
+
+  return await signAndBroadcastTx(client, { sender, messages, typedData, gasLimit });
 }

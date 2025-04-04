@@ -9,10 +9,10 @@ import {
 } from "@left-curve/applets-kit";
 import {
   useAccount,
+  useConfig,
   useConnectors,
-  useLogin,
   usePublicClient,
-  useStorage,
+  useSignin,
 } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -20,11 +20,7 @@ import { useEffect } from "react";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
-import {
-  createWebAuthnCredential,
-  ethHashMessage,
-  secp256k1RecoverPubKey,
-} from "@left-curve/dango/crypto";
+import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
@@ -46,10 +42,13 @@ import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-import type { AppConfig, Hex, Key } from "@left-curve/dango/types";
+import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
+
+import { captureException } from "@sentry/react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -104,7 +103,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                   <Button
                     variant="link"
                     autoFocus={false}
-                    onClick={() => navigate({ to: "/login" })}
+                    onClick={() => navigate({ to: "/signin" })}
                   >
                     {m["common.signin"]()}
                   </Button>
@@ -134,7 +133,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             </div>
           </ResizerContainer>
         </div>
-        <AuthCarousel firstVisit={false} />
+        <AuthCarousel />
       </div>
     </>
   );
@@ -144,7 +143,7 @@ const Mobile: React.FC = () => {
   const { history } = useRouter();
   return (
     <div className="md:hidden w-screen h-screen bg-gray-900/50 fixed top-0 left-0 z-50 flex items-center justify-center p-4">
-      <div className="w-full flex flex-col items-center justify-start bg-white-100 rounded-3xl border border-gray-100 max-w-96">
+      <div className="w-full flex flex-col items-center justify-start bg-white-100 rounded-xl border border-gray-100 max-w-96">
         <div className="flex flex-col gap-4 p-4 border-b border-b-gray-100">
           <div className="w-12 h-12 bg-error-100 rounded-full flex items-center justify-center">
             <IconAlert className="w-6 h-6 text-error-500" />
@@ -192,7 +191,7 @@ const Credential: React.FC = () => {
 
             const publicKey = await getPublicKey();
             const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash({ credentialId: id });
+            const keyHash = createKeyHash(id);
 
             return { key, keyHash };
           }
@@ -202,19 +201,15 @@ const Credential: React.FC = () => {
           ).getProvider();
 
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
-          const signature = await provider.request({
-            method: "personal_sign",
-            params: [challenge, controllerAddress],
-          });
 
-          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
+          const addressLowerCase = controllerAddress.toLowerCase() as Address;
 
-          const key: Key = { secp256k1: encodeBase64(pubKey) };
-          const keyHash = createKeyHash({ pubKey });
+          const key: Key = { ethereum: addressLowerCase };
+          const keyHash = createKeyHash(addressLowerCase);
 
           return { key, keyHash };
         })();
-        setData({ key, keyHash, connectorId });
+        setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
       } catch (err) {
         toast.error({ title: "Couldn't complete the request" });
@@ -231,14 +226,17 @@ const Username: React.FC = () => {
     key: Key;
     keyHash: Hex;
     connectorId: string;
+    seed: number;
     username: string;
   }>();
+
   const { register, inputs } = useInputs();
 
   const { value: username, error } = inputs.username || {};
 
-  const { key, keyHash, connectorId } = data;
+  const { key, keyHash, connectorId, seed } = data;
 
+  const config = useConfig();
   const client = usePublicClient();
   const connectors = useConnectors();
 
@@ -252,7 +250,8 @@ const Username: React.FC = () => {
     queryFn: async ({ signal }) => {
       await wait(450);
       if (signal.aborted) return null;
-      if (!username || error) return null;
+      if (!username) return new Error(m["signin.errors.usernameRequired"]());
+      if (error) throw error;
       const { accounts } = await client.getUser({ username });
       const isUsernameAvailable = !Object.keys(accounts).length;
 
@@ -272,28 +271,53 @@ const Username: React.FC = () => {
           accountType: AccountType.Spot,
         });
 
-        const secret = Math.floor(Math.random() * 0x100000000);
-
-        const salt = createAccountSalt({ key, keyHash, secret });
+        const salt = createAccountSalt({ key, keyHash, seed });
         const address = computeAddress({
           deployer: addresses.accountFactory,
           codeHash: accountCodeHash,
           salt,
         });
 
-        const response = await fetch("https://mock-warp.left-curve.workers.dev", {
-          method: "POST",
-          body: JSON.stringify({ address }),
+        const { credential } = await connector.signArbitrary({
+          primaryType: "Message" as const,
+          message: {
+            username,
+            chain_id: config.chain.id,
+          },
+          types: {
+            Message: [
+              { name: "username", type: "string" },
+              { name: "chain_id", type: "string" },
+            ],
+          },
         });
-        if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
-        await registerUser(client, { key, keyHash, username, secret });
+        if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        await wait(1000);
+        const response = await fetch(`https://devnet.dango.exchange/faucet/mint/${address}`);
+        if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
+
+        await registerUser(client, {
+          key,
+          keyHash,
+          username,
+          seed,
+          signature: credential.standard.signature,
+        });
+
         setData({ ...data, username });
         nextStep();
       } catch (err) {
         toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
+        captureException(err, {
+          data: {
+            key,
+            keyHash,
+            username,
+            connectorId,
+            seed,
+          },
+        });
       }
     },
   });
@@ -304,7 +328,7 @@ const Username: React.FC = () => {
         placeholder={
           <p className="flex gap-1 items-center justify-start">
             <span>{m["signin.placeholder"]()}</span>
-            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500 group-data-[focus=true]:diatype-m-regular group-data-[focus=true]:not-italic">
+            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500">
               {m["common.username"]().toLowerCase()}
             </span>
           </p>
@@ -344,18 +368,17 @@ const Username: React.FC = () => {
   );
 };
 
-const Login: React.FC = () => {
+const Signin: React.FC = () => {
   const navigate = useNavigate();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
-  const [advancedOptions, setAdvancedOptions] = useStorage("advancedOptions", {
-    initialValue: { useSessionKey: true },
-  });
+  const { settings, changeSettings } = useApp();
+  const { useSessionKey } = settings;
 
   const { username, connectorId } = data;
 
-  const { mutateAsync: connectWithConnector, isPending } = useLogin({
+  const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey: advancedOptions.useSessionKey,
+    sessionKey: useSessionKey,
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
@@ -381,8 +404,8 @@ const Login: React.FC = () => {
           <Checkbox
             size="md"
             label={m["common.signinWithSession"]()}
-            checked={advancedOptions.useSessionKey}
-            onChange={(v) => setAdvancedOptions({ ...advancedOptions, useSessionKey: v })}
+            checked={useSessionKey}
+            onChange={(v) => changeSettings({ useSessionKey: v })}
           />
         </div>
       </ExpandOptions>
@@ -393,5 +416,5 @@ const Login: React.FC = () => {
 export const Signup = Object.assign(Container, {
   Credential,
   Username,
-  Login,
+  Signin,
 });

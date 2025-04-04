@@ -11,7 +11,7 @@ function SignupComponent() {
     <WizardProvider wrapper={<Signup />} persistKey="dango.signup">
       <Signup.Credential />
       <Signup.Username />
-      <Signup.Login />
+      <Signup.Signin />
     </WizardProvider>
   );
 }

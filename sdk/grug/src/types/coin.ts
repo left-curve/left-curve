@@ -57,19 +57,12 @@ export type ContractCoin = Prettify<
   }
 >;
 
-export type IBCCoin = Prettify<
+export type AlloyCoin = Prettify<
   BaseCoin & {
-    readonly type: "ibc";
-    readonly portId: string;
-    readonly channelId: string;
-    readonly origin: {
-      readonly portId: string;
-      readonly channelId: string;
-      readonly asset: AnyCoin;
-    };
+    readonly type: "alloyed";
   }
 >;
 
 export type CoinFee = WithGasPriceStep<NativeCoin>;
 
-export type AnyCoin = NativeCoin | IBCCoin | ContractCoin;
+export type AnyCoin = NativeCoin | AlloyCoin | ContractCoin;

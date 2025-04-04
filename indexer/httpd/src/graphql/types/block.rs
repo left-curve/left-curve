@@ -1,6 +1,8 @@
 use {
-    super::transaction::Transaction,
-    crate::graphql::dataloader::transaction::TransactionDataLoader,
+    super::{event::Event, transaction::Transaction},
+    crate::graphql::dataloader::{
+        block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+    },
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     chrono::{DateTime, TimeZone, Utc},
     indexer_sql::entity,
@@ -16,6 +18,7 @@ pub struct Block {
     pub created_at: DateTime<Utc>,
     pub hash: String,
     pub app_hash: String,
+    pub transactions_count: i32,
 }
 
 impl From<entity::blocks::Model> for Block {
@@ -25,6 +28,7 @@ impl From<entity::blocks::Model> for Block {
             created_at: Utc.from_utc_datetime(&item.created_at),
             hash: item.hash,
             app_hash: item.app_hash,
+            transactions_count: item.transactions_count,
         }
     }
 }
@@ -32,9 +36,14 @@ impl From<entity::blocks::Model> for Block {
 #[ComplexObject]
 impl Block {
     /// Transactions order isn't guaranteed, check `transactionIdx`
-    async fn transactions(&self, ctx: &Context<'_>) -> Result<Option<Vec<Transaction>>> {
-        let loader = ctx.data_unchecked::<DataLoader<TransactionDataLoader>>();
-        Ok(loader.load_one(self.clone()).await?)
+    async fn transactions(&self, ctx: &Context<'_>) -> Result<Vec<Transaction>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockTransactionsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
+
+    async fn flatten_events(&self, ctx: &Context<'_>) -> Result<Vec<Event>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockEventsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
     }
 }
 
