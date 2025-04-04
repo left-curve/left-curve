@@ -1,6 +1,8 @@
 use {
-    super::types::{broadcast_tx_sync, query_app, query_store, simulate},
-    crate::parse_tm_tx_response,
+    crate::{
+        parse_tm_tx_response,
+        types::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
+    },
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_math::Inner,
@@ -12,8 +14,6 @@ use {
     serde::Serialize,
     std::str::FromStr,
 };
-
-use super::types::Variables;
 
 pub struct HttpClient {
     inner: reqwest::Client,

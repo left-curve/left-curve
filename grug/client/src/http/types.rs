@@ -25,21 +25,31 @@ macro_rules! generate_types {
 
         #[cfg(test)]
         mod tests {
-            use {super::*, graphql_client::{GraphQLQuery, Response}};
-            $($(
-                paste::paste! {
-                    #[tokio::test]
-                    async fn [<test_ $name:snake>]() {
-                        let client = reqwest::Client::builder().build().unwrap();
-                        let query = $name::build_query($var);
-                        let response = client.post(GRAPHQL_URL).json(&query).send().await.unwrap();
-                        response
-                            .json::<Response<[<$name:snake>]::ResponseData>>()
-                            .await
-                            .unwrap();
+            use {
+                super::*,
+                graphql_client::{GraphQLQuery, Response},
+            };
+
+            $(
+                $(
+                    paste::paste! {
+                        #[tokio::test]
+                        async fn [<test_ $name:snake>]() {
+                            reqwest::Client::builder()
+                                .build()
+                                .unwrap()
+                                .post(GRAPHQL_URL)
+                                .json(&$name::build_query($var))
+                                .send()
+                                .await
+                                .unwrap()
+                                .json::<Response<[<$name:snake>]::ResponseData>>()
+                                .await
+                                .unwrap();
+                        }
                     }
-                }
-            )*)?
+                )*
+            )?
         }
     };
 }
@@ -67,22 +77,23 @@ generate_types! {
         path: "src/http/schemas/queries/Simulate.graphql",
         test_with: crate::types::simulate::Variables {
             tx: r#"{
-                    "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
-                    "msgs": [
-                        {
-                        "transfer": {
-                            "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
-                            "hyp/all/btc": "100"
-                            }
-                        }
-                        }
-                    ],
-                    "data": {
-                        "chain_id": "dev-6",
-                        "nonce": 1,
-                        "username": "owner"
+              "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
+              "msgs": [
+                {
+                  "transfer": {
+                    "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
+                      "hyp/all/btc": "100"
                     }
-                }"#.to_string(),
+                  }
+                }
+              ],
+              "data": {
+                "chain_id": "dev-6",
+                "nonce": 1,
+                "username": "owner"
+              }
+            }"#
+            .to_string(),
         }
     },
     {
