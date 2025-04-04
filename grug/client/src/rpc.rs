@@ -159,7 +159,7 @@ impl BlockClient for RpcClient {
         })
     }
 
-    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
+    async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
         let response = match height {
             Some(height) => self.inner.block_results(Height::try_from(height)?).await?,
             None => self.inner.latest_block_results().await?,

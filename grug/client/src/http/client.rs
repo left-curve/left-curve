@@ -123,7 +123,7 @@ impl BlockClient for HttpClient {
         Ok(self.get(&path).await?.json().await?)
     }
 
-    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
+    async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
         let path = match height {
             Some(height) => format!("api/block/result/{}", height),
             None => "api/block/result".to_string(),

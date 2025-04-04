@@ -35,7 +35,7 @@ pub trait BlockClient {
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error>;
 
-    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error>;
+    async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error>;
 }
 
 #[async_trait]

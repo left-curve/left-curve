@@ -241,7 +241,7 @@ async fn query_tx(client: &RpcClient, hash: &str) -> anyhow::Result<()> {
 // ----------------------------------- block -----------------------------------
 
 async fn query_block(client: &RpcClient, height: Option<u64>) -> anyhow::Result<()> {
-    let res = client.query_block_result(height).await?;
+    let res = client.query_block_outcome(height).await?;
 
     print_json_pretty(res)
 }
