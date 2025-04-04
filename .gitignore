@@ -14,9 +14,6 @@ target/
 # Upload the testdata for the pyth
 !pyth/client/testdata/
 
-# Schemas
-grug/client/src/http/schemas/schema.graphql
-
 # macOS
 **/.DS_Store
 
