@@ -316,8 +316,8 @@ mod tests {
 
         // ----------------------- 3. Verify signatures ------------------------
 
-        // 1 signature. Should fail.
-        {
+        // 2 or 3 signatures. Shouls succeed.
+        for num in [2, 3] {
             verify(
                 ctx.as_immutable(),
                 &raw_message,
@@ -325,33 +325,15 @@ mod tests {
                     origin_merkle_tree: ZERO_ADDRESS,
                     merkle_root,
                     merkle_index,
-                    signatures: signatures[..1].iter().cloned().collect(),
-                }
-                .encode(),
-            )
-            .should_fail_with_error(
-                "invalid number of signatures! expecting between 2 and 3, got 1",
-            );
-        }
-
-        // 2 signatures. Shouls succeed.
-        {
-            verify(
-                ctx.as_immutable(),
-                &raw_message,
-                &Metadata {
-                    origin_merkle_tree: ZERO_ADDRESS,
-                    merkle_root,
-                    merkle_index,
-                    signatures: signatures[..2].iter().cloned().collect(),
+                    signatures: signatures[..num].iter().cloned().collect(),
                 }
                 .encode(),
             )
             .should_succeed();
         }
 
-        // 3 signatures. Shouls succeed.
-        {
+        // 1 or 4 signatures. Should fail.
+        for num in [1, 4] {
             verify(
                 ctx.as_immutable(),
                 &raw_message,
@@ -359,14 +341,16 @@ mod tests {
                     origin_merkle_tree: ZERO_ADDRESS,
                     merkle_root,
                     merkle_index,
-                    signatures: signatures[..3].iter().cloned().collect(),
+                    signatures: signatures[..num].iter().cloned().collect(),
                 }
                 .encode(),
             )
-            .should_succeed();
+            .should_fail_with_error(format!(
+                "invalid number of signatures! expecting between 2 and 3, got {num}"
+            ));
         }
 
-        // 4 signatures. Should fail.
+        // 3 signatures, but one of which is from an unknown signer.
         {
             verify(
                 ctx.as_immutable(),
@@ -375,12 +359,16 @@ mod tests {
                     origin_merkle_tree: ZERO_ADDRESS,
                     merkle_root,
                     merkle_index,
-                    signatures: signatures.into_iter().collect(),
+                    signatures: btree_set! {
+                        signatures[0],
+                        signatures[1],
+                        signatures[3], // unknown signer
+                    },
                 }
                 .encode(),
             )
             .should_fail_with_error(
-                "invalid number of signatures! expecting between 2 and 3, got 4",
+                "recovered addresses is not a strict subset of the validator set",
             );
         }
     }
