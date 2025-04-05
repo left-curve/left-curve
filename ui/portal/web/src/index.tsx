@@ -8,7 +8,6 @@ Sentry.init({
   dsn: import.meta.env.PUBLIC_SENTRY_DSN,
   integrations: [
     Sentry.httpClientIntegration(),
-    Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
     Sentry.tanstackRouterBrowserTracingIntegration(router),
   ],
