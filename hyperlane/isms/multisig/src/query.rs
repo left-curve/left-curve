@@ -317,7 +317,7 @@ mod tests {
 
         // ----------------------- 3. Verify signatures ------------------------
 
-        // 2 or 3 signatures. Shouls succeed.
+        // 2 or 3 signatures. Should succeed.
         for num in [2, 3] {
             verify(
                 ctx.as_immutable(),
