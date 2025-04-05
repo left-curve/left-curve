@@ -65,13 +65,14 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
 
     // Ensure the message contains the appropriate number of signatures.
     //
-    // On the one hand, the number must be greater than equal than the threshold,
-    // for the message to be considered valid.
+    // On the one hand, the number must be no less than the threshold, for the
+    // message to be considered valid.
     //
-    // On the other hand, the number can't be too many, otherwise an attackrt
-    // can DoS attack the chain by fabricating a message with a great amount of
-    // signatures. The contract would need to verify them all. Here, we use the
-    // size of the validator set as a reasonble upper bound.
+    // On the other hand, the number can't be too big, otherwise an attackr can
+    // DoS the chain by fabricating a message with a great amount of signatures.
+    // The contract would need to verify them all, consuming onchain computing
+    // resources. Here, we use the size of the validator set as a reasonble
+    // upper bound.
     let validator_set = VALIDATOR_SETS.load(ctx.storage, message.origin_domain)?;
     let min = validator_set.threshold as usize;
     let max = validator_set.validators.len();
