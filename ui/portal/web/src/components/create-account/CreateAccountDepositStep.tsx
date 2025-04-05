@@ -68,6 +68,7 @@ export const CreateAccountDepositStep: React.FC = () => {
       navigate({ to: "/" });
     },
     onError: (e) => {
+      console.error(e);
       toast.error(
         {
           title: m["signup.errors.couldntCompleteRequest"]() as string,

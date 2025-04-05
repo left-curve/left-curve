@@ -122,6 +122,7 @@ function TransferApplet() {
     },
 
     onError: (e) => {
+      console.error(e);
       toast.error(
         {
           title: "Transfer failed",

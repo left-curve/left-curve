@@ -40,6 +40,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
       toast.success({ title: "Connection established" });
       hideModal();
     } catch (error) {
+      console.error("Error creating session: ", error);
       toast.error({
         title: m["common.error"](),
         description: m["signin.errors.mobileSessionAborted"](),

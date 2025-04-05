@@ -7,6 +7,8 @@ import * as Sentry from "@sentry/react";
 Sentry.init({
   dsn: import.meta.env.PUBLIC_SENTRY_DSN,
   integrations: [
+    Sentry.httpClientIntegration(),
+    Sentry.captureConsoleIntegration(),
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
     Sentry.tanstackRouterBrowserTracingIntegration(router),

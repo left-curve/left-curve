@@ -63,10 +63,17 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const showModal = useCallback((modal: string, props = {}) => setModal({ modal, props }), []);
 
   // Track user errors
-  const { username } = useAccount();
+  const { username, connector } = useAccount();
   useEffect(() => {
     if (!username) Sentry.setUser(null);
-    else Sentry.setUser({ username });
+    else {
+      Sentry.setUser({ username });
+      Sentry.setContext("connector", {
+        id: connector?.id,
+        name: connector?.name,
+        type: connector?.type,
+      });
+    }
   }, [username]);
 
   return (
