@@ -43,6 +43,7 @@ export function graphqlClient(url: string, options: GraphqlClientOptions = {}): 
         if (err instanceof TimeoutError) throw err;
         throw new HttpRequestError({
           cause: err as Error,
+          status: (err as HttpRequestError).status,
           body: { body },
           url,
         });
