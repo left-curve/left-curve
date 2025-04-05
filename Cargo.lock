@@ -5255,8 +5255,11 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug",
+ "grug-crypto",
  "hex-literal",
  "hyperlane-types",
+ "k256",
+ "rand 0.8.5",
  "test-case",
 ]
 
