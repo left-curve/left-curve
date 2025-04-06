@@ -20,7 +20,10 @@ services:
     depends_on:
       - db
     ports:
-      - 127.0.0.1:8080:8080
+      # Only listen on `0.0.0.0` for the purpose of testnet-1. For any other
+      # purpose, we should only listen on `127.0.0.1`.
+      # Do not commit this to `main`.
+      - 0.0.0.0:8080:8080
     volumes:
       - ./configs/dango/config:/root/.dango/config
       - ./data/dango/data:/root/.dango/data
@@ -38,7 +41,10 @@ services:
     depends_on:
       - dango
     ports:
-      - 127.0.0.1:26657:26657
+      # Only listen on `0.0.0.0` for the purpose of testnet-1. For any other
+      # purpose, we should only listen on `127.0.0.1`.
+      # Do not commit this to `main`.
+      - 0.0.0.0:26657:26657
     volumes:
       - ./configs/cometbft/config:/root/.cometbft/config
       - ./data/cometbft/data:/root/.cometbft/data
