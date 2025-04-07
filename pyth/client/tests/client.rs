@@ -24,7 +24,10 @@ use {
         },
         time::Duration,
     },
-    tokio::{net::TcpListener, time::interval},
+    tokio::{
+        net::TcpListener,
+        time::{interval, sleep},
+    },
     tokio_stream::StreamExt,
     tracing::{info, warn},
 };
@@ -58,7 +61,7 @@ async fn test_client_reconnection() {
 
     // Start client before the server to ensure that the client in able to reconnect.
     tokio::select! {
-        _ = tokio::time::sleep(Duration::from_secs(3)) => (),
+        _ = tokio::time::sleep(Duration::from_secs(6)) => (),
         _ = stream.next() => {
             panic!("Stream should be empty")
         },
@@ -97,7 +100,7 @@ async fn sse_handler(
 
     // Create the data to send to the client.
     let mut values = vec![];
-    for _ in 0..4 {
+    for _ in 0..3 {
         let latest_vaas = pyth_client_cache
             .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
             .unwrap();
@@ -117,12 +120,12 @@ async fn sse_handler(
     let request_index = counter.clone().fetch_add(1, Ordering::SeqCst);
 
     // Add invalid string in the values.
-    values.insert(2, "{}".to_json_value().unwrap());
+    values.insert(1, "{}".to_json_value().unwrap());
 
     let stream = stream::unfold(
         (
             0u32,
-            interval(Duration::from_secs(1)),
+            interval(Duration::from_millis(700)),
             values,
             request_index,
         ),
@@ -134,12 +137,15 @@ async fn sse_handler(
                 count += 1;
                 json.clone()
             } else {
+                // Wait some times to trigger the reconnect from client.
                 if request_index == 0 {
+                    sleep(Duration::from_secs(10)).await;
+                } else if request_index == 1 {
                     // Panic to simulate an unexpected disconnection.
                     warn!("Panic inside the server");
                     panic!("BOOM 💥");
                 }
-                // None ti simulate a connection close.
+                // None to simulate a connection close.
                 warn!("Closing server connection");
                 return None;
             };

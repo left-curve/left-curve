@@ -7,6 +7,7 @@ use {
     reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
     std::{
+        cmp::min,
         pin::Pin,
         sync::{
             Arc,
@@ -14,9 +15,12 @@ use {
         },
         time::Duration,
     },
+    tokio::time::sleep,
     tokio_stream::StreamExt,
-    tracing::{error, info},
+    tracing::{error, info, warn},
 };
+
+const MAX_DELAY: Duration = Duration::from_secs(10);
 
 /// PythClient is a client to interact with the Pyth network.
 #[derive(Debug, Clone)]
@@ -76,65 +80,93 @@ impl PythClientTrait for PythClient {
             .get(self.base_url.join("v2/updates/price/stream")?)
             .query(&params);
 
-        // Connect to EventSource.
-        let mut es = EventSource::new(builder)?;
-
-        // Set the exponential backoff for reconnect.
-        es.set_retry_policy(Box::new(ExponentialBackoff::new(
-            Duration::from_secs(1),
-            1.5,
-            Some(Duration::from_secs(30)),
-            None,
-        )));
-
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running = self.keep_running.clone();
 
         let stream = stream! {
-            loop {
-                tokio::select! {
-                    // Safety check if, for some reason, the stream needs to be closed
-                    // but there are no more events incoming.
-                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
-                        if !keep_running.load(Ordering::Relaxed) {
-                            es.close();
-                            return;
-                        }
-                    }
+            let mut retry_attemps = 0;
 
-                    data = es.next() => {
-                        if !keep_running.load(Ordering::Acquire) {
-                            es.close();
-                            return;
-                        }
+            loop{
+                // Create an EventSource.
+                let mut es = EventSource::new(builder.try_clone().unwrap()).unwrap();
 
-                        if let Some(event) = data {
-                            match event {
-                                Ok(Event::Open) => {
-                                    info!("Pyth SSE connection open");
-                                },
-                                Ok(Event::Message(message)) => {
-                                    match message.data.deserialize_json::<LatestVaaResponse>() {
-                                        Ok(vaas) => {
-                                            yield vaas.binary.data;
-                                        },
-                                        Err(err) => {
-                                            error!(
-                                                err = err.to_string(),
-                                                "Failed to deserialize Pyth event into `LatestVaaResponse`"
-                                            );
-                                        },
-                                    }
-                                },
-                                Err(err) => {
-                                    error!(
-                                        err = err.to_string(),
-                                        "Error while receiving the events from Pyth"
-                                    );
-                                },
+                // Set the exponential backoff for reconnect.
+                es.set_retry_policy(Box::new(ExponentialBackoff::new(
+                    Duration::from_secs(1),
+                    1.5,
+                    Some(Duration::from_secs(30)),
+                    None,
+                )));
+
+                loop {
+                    tokio::select! {
+                        // The server is not sending any more data. Drop connection and
+                        // establish a new one.
+                        _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
+                            es.close();
+
+                            // Check if the streaming has to be closed.
+                            if !keep_running.load(Ordering::Relaxed) {
+                                return;
                             }
-                        } else {
-                            error!("Pyth SSE connection close");
+
+                            // Exponential backoff before try to reconnect.
+                            let delay = if retry_attemps > 6 {
+                                MAX_DELAY
+                            } else {
+                                min(
+                                    MAX_DELAY,
+                                    Duration::from_secs((u32::pow(2, retry_attemps)) as u64),
+                                )
+                            };
+                            retry_attemps += 1;
+
+                            warn!("No new data received. Reconnecting in {} seconds", delay.as_secs());
+
+                            sleep(delay).await;
+
+                            break;
+                        }
+
+                        data = es.next() => {
+                            if !keep_running.load(Ordering::Acquire) {
+                                es.close();
+                                return;
+                            }
+
+                            if let Some(event) = data {
+
+                                match event {
+                                    Ok(Event::Open) => {
+                                        info!("Pyth SSE connection open");
+                                    },
+                                    Ok(Event::Message(message)) => {
+                                        retry_attemps = 0;
+
+                                        match message.data.deserialize_json::<LatestVaaResponse>() {
+                                            Ok(vaas) => {
+                                                yield vaas.binary.data;
+                                            },
+                                            Err(err) => {
+                                                error!(
+                                                    err = err.to_string(),
+                                                    "Failed to deserialize Pyth event into `LatestVaaResponse`"
+                                                );
+                                            },
+                                        }
+                                    },
+                                    Err(err) => {
+                                        error!(
+                                            err = err.to_string(),
+                                            "Error while receiving the events from Pyth"
+                                        );
+                                    },
+                                }
+                            } else {
+                                error!("Pyth SSE connection close");
+                                es.close();
+                                break;
+                            }
                         }
                     }
                 }
