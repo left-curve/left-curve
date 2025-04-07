@@ -25,6 +25,9 @@ impl TendermintMutation {
         match http_client.broadcast_tx_sync(tx_bytes).await {
             Ok(response) => Ok(response.into()),
             Err(e) => {
+                tracing::error!("broadcast_tx_sync failed: {e:?}");
+                tracing::error!("transaction: {:?}", &tx);
+
                 configure_scope(|scope| {
                     // NOTE: sentry might truncate data if too large
                     scope.set_extra("transaction", tx.into());
@@ -49,6 +52,9 @@ impl TendermintMutation {
         match http_client.broadcast_tx_async(tx_bytes).await {
             Ok(response) => Ok(response.into()),
             Err(e) => {
+                tracing::error!("broadcast_tx_async failed: {e:?}");
+                tracing::error!("transaction: {:?}", &tx);
+
                 configure_scope(|scope| {
                     // NOTE: sentry might truncate data if too large
                     scope.set_extra("transaction", tx.into());
@@ -73,6 +79,9 @@ impl TendermintMutation {
         match http_client.broadcast_tx_commit(tx_bytes).await {
             Ok(response) => Ok(response.into()),
             Err(e) => {
+                tracing::error!("broadcast_tx_commit failed: {e:?}");
+                tracing::error!("transaction: {:?}", &tx);
+
                 configure_scope(|scope| {
                     // NOTE: sentry might truncate data if too large
                     scope.set_extra("transaction", tx.into());
