@@ -17,16 +17,16 @@ impl Extension for SentryExtension {
         operation_name: Option<&str>,
         next: NextExecute<'_>,
     ) -> Response {
-        let res = next.run(ctx, operation_name).await;
+        let resp = next.run(ctx, operation_name).await;
 
-        if res.is_err() {
-            for err in &res.errors {
+        if resp.is_err() {
+            for err in &resp.errors {
                 let msg = format!("GraphQL error: {} | path: {:?}", err.message, err.path);
                 sentry::capture_message(&msg, sentry::Level::Error);
             }
         }
 
-        res
+        resp
     }
 }
 
