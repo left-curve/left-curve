@@ -76,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
             traces_sample_rate: cfg.sentry.traces_sample_rate,
             ..Default::default()
         }));
+
         tracing::info!("Sentry initialized");
     }
 
