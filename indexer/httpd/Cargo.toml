@@ -33,6 +33,7 @@ indexer-sql             = { workspace = true }
 itertools               = { workspace = true }
 num_cpus                = { workspace = true }
 sea-orm                 = { workspace = true }
+sentry-actix            = { workspace = true }
 serde                   = { workspace = true }
 serde_json              = { workspace = true }
 tempfile                = { workspace = true }
