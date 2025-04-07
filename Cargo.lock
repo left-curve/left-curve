@@ -5618,6 +5618,7 @@ dependencies = [
  "itertools 0.14.0",
  "num_cpus",
  "sea-orm",
+ "sentry",
  "sentry-actix",
  "serde",
  "serde_json",
