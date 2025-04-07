@@ -5,7 +5,7 @@ use {
     grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     pyth_types::LatestVaaResponse,
     reqwest::{Client, IntoUrl, Url},
-    reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
+    reqwest_eventsource::{CannotCloneRequestError, Event, EventSource, retry::ExponentialBackoff},
     std::{
         cmp::min,
         pin::Pin,
@@ -82,6 +82,11 @@ impl PythClientTrait for PythClient {
 
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running = self.keep_running.clone();
+
+        // EventSource::new() return an Error only if the builder is not Cloneable.
+        // Instead of returning a result inside of the stream, clone the builder
+        // here and return the error if it fails.
+        let _ = builder.try_clone().ok_or(CannotCloneRequestError)?;
 
         let stream = stream! {
             let mut retry_attempts = 0;
