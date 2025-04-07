@@ -6,6 +6,8 @@ pub struct Config {
     pub indexer: IndexerConfig,
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
+    pub sentry: SentryConfig,
+    pub log_level: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -21,6 +23,15 @@ impl Default for GrugConfig {
             query_gas_limit: 100_000_000,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct SentryConfig {
+    pub enabled: bool,
+    pub dsn: String,
+    pub environment: String,
+    pub sample_rate: f32,
+    pub traces_sample_rate: f32,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -2,6 +2,7 @@ use {
     crate::graphql::types::tendermint::{TxAsyncResponse, TxCommitResponse, TxSyncResponse},
     async_graphql::*,
     base64::{Engine, engine::general_purpose::STANDARD},
+    sentry::configure_scope,
     tendermint_rpc::Client,
 };
 
@@ -19,9 +20,22 @@ impl TendermintMutation {
 
         let http_client = tendermint_rpc::HttpClient::new(app_ctx.tendermint_endpoint.as_str())?;
 
-        let tx_bytes = STANDARD.decode(tx)?;
+        let tx_bytes = STANDARD.decode(tx.clone())?;
 
-        Ok(http_client.broadcast_tx_sync(tx_bytes).await?.into())
+        match http_client.broadcast_tx_sync(tx_bytes).await {
+            Ok(response) => Ok(response.into()),
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = ?e, tx = ?tx, "broadcast_tx_sync failed");
+
+                configure_scope(|scope| {
+                    // NOTE: Sentry might truncate data if too large.
+                    scope.set_extra("transaction", tx.into());
+                });
+
+                Err(e.into())
+            },
+        }
     }
 
     async fn broadcast_tx_async(
@@ -33,9 +47,22 @@ impl TendermintMutation {
 
         let http_client = tendermint_rpc::HttpClient::new(app_ctx.tendermint_endpoint.as_str())?;
 
-        let tx_bytes = STANDARD.decode(tx)?;
+        let tx_bytes = STANDARD.decode(tx.clone())?;
 
-        Ok(http_client.broadcast_tx_async(tx_bytes).await?.into())
+        match http_client.broadcast_tx_async(tx_bytes).await {
+            Ok(response) => Ok(response.into()),
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!("error = ?e, tx = ?tx,  broadcast_tx_async failed");
+
+                configure_scope(|scope| {
+                    // NOTE: Sentry might truncate data if too large.
+                    scope.set_extra("transaction", tx.into());
+                });
+
+                Err(e.into())
+            },
+        }
     }
 
     async fn broadcast_tx_commit(
@@ -47,8 +74,21 @@ impl TendermintMutation {
 
         let http_client = tendermint_rpc::HttpClient::new(app_ctx.tendermint_endpoint.as_str())?;
 
-        let tx_bytes = STANDARD.decode(tx)?;
+        let tx_bytes = STANDARD.decode(tx.clone())?;
 
-        Ok(http_client.broadcast_tx_commit(tx_bytes).await?.into())
+        match http_client.broadcast_tx_commit(tx_bytes).await {
+            Ok(response) => Ok(response.into()),
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = ?e, tx = ?tx,  "broadcast_tx_commit failed");
+
+                configure_scope(|scope| {
+                    // NOTE: Sentry might truncate data if too large.
+                    scope.set_extra("transaction", tx.into());
+                });
+
+                Err(e.into())
+            },
+        }
     }
 }

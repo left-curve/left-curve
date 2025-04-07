@@ -13,6 +13,8 @@ use {
         tx::TxCmd,
     },
     clap::Parser,
+    config::Config,
+    config_parser::parse_config,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -23,10 +25,6 @@ struct Cli {
     /// Directory for the physical database [default: ~/.dango]
     #[arg(long, global = true)]
     home: Option<PathBuf>,
-
-    /// Logging verbosity: error|warn|info|debug|trace
-    #[arg(long, global = true, default_value = "info")]
-    tracing_level: LevelFilter,
 
     #[command(subcommand)]
     command: Command,
@@ -62,10 +60,25 @@ async fn main() -> anyhow::Result<()> {
     // Find the home directory from the CLI `--home` flag.
     let app_dir = HomeDirectory::new_or_default(cli.home)?;
 
+    // Parse the config file.
+    let cfg: Config = parse_config(app_dir.config_file())?;
+
     // Set up tracing.
     tracing_subscriber::fmt()
-        .with_max_level(cli.tracing_level)
+        .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
         .init();
+
+    if cfg.sentry.enabled {
+        let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
+            environment: Some(cfg.sentry.environment.into()),
+            release: sentry::release_name!(),
+            sample_rate: cfg.sentry.sample_rate,
+            traces_sample_rate: cfg.sentry.traces_sample_rate,
+            ..Default::default()
+        }));
+
+        tracing::info!("Sentry initialized");
+    }
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),

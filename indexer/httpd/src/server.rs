@@ -7,6 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    sentry_actix::Sentry,
     std::fmt::Display,
 };
 
@@ -42,6 +43,7 @@ where
         };
 
         let app = App::new()
+            .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
             .wrap(cors);
