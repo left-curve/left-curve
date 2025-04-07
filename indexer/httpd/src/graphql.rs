@@ -1,12 +1,14 @@
 use {
     crate::context::Context,
     async_graphql::{Schema, dataloader::DataLoader, extensions},
+    telemetry::SentryExtension,
 };
 
 pub mod dataloader;
 pub mod mutation;
 pub mod query;
 pub mod subscription;
+pub mod telemetry;
 pub mod types;
 
 pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscription::Subscription>;
@@ -46,6 +48,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         subscription::Subscription::default(),
     )
     .extension(extensions::Logger)
+    .extension(SentryExtension)
     .data(app_ctx)
     .data(block_transactions_loader)
     .data(block_events_loader)

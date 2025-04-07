@@ -5608,6 +5608,7 @@ dependencies = [
  "assertor",
  "async-graphql",
  "async-graphql-actix-web",
+ "async-trait",
  "base64 0.22.1",
  "chrono",
  "clap",
