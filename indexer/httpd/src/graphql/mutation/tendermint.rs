@@ -26,13 +26,10 @@ impl TendermintMutation {
             Ok(response) => Ok(response.into()),
             Err(e) => {
                 #[cfg(feature = "tracing")]
-                {
-                    tracing::error!("broadcast_tx_sync failed: {e:?}");
-                    tracing::error!("transaction: {:?}", &tx);
-                }
+                tracing::error!(error = ?e, tx = ?tx, "broadcast_tx_sync failed");
 
                 configure_scope(|scope| {
-                    // NOTE: sentry might truncate data if too large
+                    // NOTE: Sentry might truncate data if too large.
                     scope.set_extra("transaction", tx.into());
                 });
 
@@ -56,13 +53,10 @@ impl TendermintMutation {
             Ok(response) => Ok(response.into()),
             Err(e) => {
                 #[cfg(feature = "tracing")]
-                {
-                    tracing::error!("broadcast_tx_async failed: {e:?}");
-                    tracing::error!("transaction: {:?}", &tx);
-                }
+                tracing::error!("error = ?e, tx = ?tx,  broadcast_tx_async failed");
 
                 configure_scope(|scope| {
-                    // NOTE: sentry might truncate data if too large
+                    // NOTE: Sentry might truncate data if too large.
                     scope.set_extra("transaction", tx.into());
                 });
 
@@ -86,13 +80,10 @@ impl TendermintMutation {
             Ok(response) => Ok(response.into()),
             Err(e) => {
                 #[cfg(feature = "tracing")]
-                {
-                    tracing::error!("broadcast_tx_commit failed: {e:?}");
-                    tracing::error!("transaction: {:?}", &tx);
-                }
+                tracing::error!(error = ?e, tx = ?tx,  "broadcast_tx_commit failed");
 
                 configure_scope(|scope| {
-                    // NOTE: sentry might truncate data if too large
+                    // NOTE: Sentry might truncate data if too large.
                     scope.set_extra("transaction", tx.into());
                 });
 
