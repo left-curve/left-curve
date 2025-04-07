@@ -36,8 +36,8 @@ fmt:
   cargo +nightly fmt --all
 
 # Build schema
-graphql_schema:
-  cargo run -p graphql-schema-build -- \
+build_graphql_schema:
+  cargo run -p indexer-httpd build_graphql_schema -- \
     ./indexer/client/src/schemas/schema.graphql
 
 # Update wasm artifacts used in tests
