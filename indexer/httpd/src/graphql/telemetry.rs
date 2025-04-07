@@ -1,6 +1,9 @@
-use async_graphql::{
-    Response,
-    extensions::{Extension, ExtensionContext, NextExecute},
+use {
+    async_graphql::{
+        Response,
+        extensions::{Extension, ExtensionContext, ExtensionFactory, NextExecute},
+    },
+    std::sync::Arc,
 };
 
 #[derive(Default)]
@@ -24,5 +27,11 @@ impl Extension for SentryExtension {
         }
 
         res
+    }
+}
+
+impl ExtensionFactory for SentryExtension {
+    fn create(&self) -> Arc<dyn Extension> {
+        Arc::new(SentryExtension)
     }
 }
