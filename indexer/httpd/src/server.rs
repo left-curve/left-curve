@@ -31,16 +31,20 @@ where
     tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
     HttpServer::new(move || {
-        let cors = if let Some(origin) = cors_allowed_origin.as_deref() {
-            Cors::default()
-                .allowed_origin(origin)
-                .allowed_methods(vec!["POST"])
-                .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
-                .allowed_header(http::header::CONTENT_TYPE)
-                .max_age(3600)
-        } else {
-            Cors::default()
-        };
+        let mut cors = Cors::default()
+            .allowed_methods(vec!["POST", "GET", "OPTIONS"])
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                http::header::CONTENT_TYPE,
+                http::header::HeaderName::from_static("sentry-trace"),
+                http::header::HeaderName::from_static("baggage"),
+            ])
+            .max_age(3600);
+
+        if let Some(origin) = cors_allowed_origin.as_deref() {
+            cors = cors.allowed_origin(origin);
+        }
 
         let app = App::new()
             .wrap(Sentry::new())
