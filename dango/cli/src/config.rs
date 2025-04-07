@@ -23,12 +23,22 @@ impl Default for GrugConfig {
     }
 }
 
+#[derive(Serialize, Deserialize, Default)]
+pub struct SentryConfig {
+    pub enabled: bool,
+    pub dsn: String,
+    pub environment: String,
+    pub sample_rate: f64,
+    pub traces_sample_rate: f64,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
     pub database_url: String,
     pub httpd: IndexerHttpdConfig,
+    pub sentry: Option<SentryConfig>,
 }
 
 impl Default for IndexerConfig {
@@ -38,6 +48,7 @@ impl Default for IndexerConfig {
             keep_blocks: false,
             database_url: "postgres://localhost".to_string(),
             httpd: IndexerHttpdConfig::default(),
+            sentry: None,
         }
     }
 }
