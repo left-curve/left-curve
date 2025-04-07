@@ -378,6 +378,7 @@ type TxCommitResponse {
 }
 
 type TxSyncResponse {
+	codespace: String!
 	code: Int!
 	"""
 	The base64 encoded data
@@ -385,7 +386,6 @@ type TxSyncResponse {
 	data: String!
 	log: String!
 	hash: String!
-	codespace: String!
 }
 
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT

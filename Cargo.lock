@@ -4498,6 +4498,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "graphql-schema-build"
+version = "0.0.0"
+dependencies = [
+ "async-graphql",
+ "indexer-httpd",
+]
+
+[[package]]
 name = "graphql_client"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5558,13 +5566,11 @@ name = "indexer-client"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-graphql",
  "async-trait",
  "graphql_client",
  "grug-jmt",
  "grug-math",
  "grug-types",
- "indexer-httpd",
  "paste",
  "reqwest 0.12.15",
  "serde",
