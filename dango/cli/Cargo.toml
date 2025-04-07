@@ -39,6 +39,7 @@ home                    = { workspace = true }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true, features = ["tracing"] }
 rand                    = { workspace = true }
+sentry                  = { workspace = true }
 serde                   = { workspace = true }
 tendermint              = { workspace = true }
 tokio                   = { workspace = true }
