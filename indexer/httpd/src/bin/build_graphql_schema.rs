@@ -12,7 +12,7 @@ fn main() {
     .finish();
 
     let filename = std::env::args()
-        .last()
+        .next_back()
         .expect("No argument given. Please provide the path to the schema file.");
 
     let sdl = schema.sdl();
