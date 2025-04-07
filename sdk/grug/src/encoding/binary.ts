@@ -1,5 +1,6 @@
 import type { Binary, Json, JsonValue } from "../types/index.js";
 import { camelToSnake, recursiveTransform, snakeToCamel } from "../utils/index.js";
+import { sortedJsonStringify } from "./json.js";
 import { decodeUtf8, encodeUtf8 } from "./utf8.js";
 
 /**
@@ -9,7 +10,7 @@ import { decodeUtf8, encodeUtf8 } from "./utf8.js";
  * to UTF8 bytes.
  */
 export function serialize(payload: Json | JsonValue): Binary {
-  return encodeUtf8(JSON.stringify(recursiveTransform(payload, camelToSnake)));
+  return encodeUtf8(sortedJsonStringify(recursiveTransform(payload, camelToSnake)));
 }
 
 /**

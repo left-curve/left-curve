@@ -1,11 +1,16 @@
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256,
+        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
+};
+#[cfg(feature = "tendermint")]
+use {
+    crate::{JsonDeExt, StdResult},
+    data_encoding::BASE64,
 };
 
 /// Outcome of performing an operation that is not a full tx. These include:
@@ -19,10 +24,35 @@ use {
 #[serde(deny_unknown_fields)]
 #[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
 pub struct CheckTxOutcome {
-    // `None` means the call was done with unlimited gas, such as cronjobs.
-    pub gas_limit: Option<u64>,
+    pub gas_limit: u64,
     pub gas_used: u64,
     pub result: GenericResult<()>,
+    pub events: CheckTxEvents,
+}
+
+/// The success case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct CheckTxSuccess {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub events: CheckTxEvents,
+}
+
+/// The error case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct CheckTxError {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub error: String,
+    pub events: CheckTxEvents,
+}
+
+// `TxError` must implement `ToString`, such that it satisfies that trait bound
+// required by `ResultExt::should_fail_with_error`.
+impl Display for CheckTxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}",)
+    }
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -49,6 +79,18 @@ impl CronOutcome {
     }
 }
 
+#[cfg(feature = "tendermint")]
+impl CronOutcome {
+    pub fn from_tm_event(tm_event: tendermint::abci::Event) -> StdResult<Self> {
+        tm_event
+            .attributes
+            .first()
+            .unwrap()
+            .value_bytes()
+            .deserialize_json()
+    }
+}
+
 /// Outcome of processing a transaction.
 ///
 /// Different from `Outcome`, which can either succeed or fail, a transaction
@@ -71,6 +113,20 @@ pub struct TxOutcome {
     pub gas_used: u64,
     pub result: GenericResult<()>,
     pub events: TxEvents,
+}
+
+#[cfg(feature = "tendermint")]
+impl TxOutcome {
+    pub fn from_tm_tx_result(
+        tm_tx_result: tendermint::abci::types::ExecTxResult,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            gas_limit: tm_tx_result.gas_wanted as u64,
+            gas_used: tm_tx_result.gas_used as u64,
+            result: into_generic_result(tm_tx_result.code, tm_tx_result.log),
+            events: BASE64.decode(&tm_tx_result.data)?.deserialize_json()?,
+        })
+    }
 }
 
 /// The success case of [`TxOutcome`](crate::TxOutcome).
@@ -142,6 +198,20 @@ impl TxEvents {
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CheckTxEvents {
+    pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
+    pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
+}
+
+impl CheckTxEvents {
+    pub fn new(withhold: CommitmentStatus<EventStatus<EvtWithhold>>) -> Self {
+        Self {
+            withhold,
+            authenticate: CommitmentStatus::NotReached,
+        }
+    }
+}
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
     pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
     pub backrun: EventStatus<EvtBackrun>,
@@ -176,4 +246,86 @@ pub struct BlockOutcome {
     pub cron_outcomes: Vec<CronOutcome>,
     /// Results of executing the transactions.
     pub tx_outcomes: Vec<TxOutcome>,
+}
+
+#[derive(Serialize)]
+pub struct BroadcastTxOutcome {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxOutcome,
+}
+
+impl BroadcastTxOutcome {
+    #[allow(clippy::result_large_err)]
+    pub fn into_result(self) -> Result<BroadcastTxSuccess, BroadcastTxError> {
+        match &self.check_tx.result {
+            Ok(_) => Ok(BroadcastTxSuccess {
+                tx_hash: self.tx_hash,
+                check_tx: self.check_tx.should_succeed(),
+            }),
+            Err(_) => Err(BroadcastTxError {
+                tx_hash: self.tx_hash,
+                check_tx: self.check_tx.should_fail(),
+            }),
+        }
+    }
+}
+
+#[cfg(feature = "tendermint")]
+impl BroadcastTxOutcome {
+    pub fn from_tm_broadcast_response(
+        response: tendermint_rpc::endpoint::broadcast::tx_sync::Response,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            tx_hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+            check_tx: CheckTxOutcome {
+                gas_limit: 0,
+                gas_used: 0,
+                result: into_generic_result(response.code, response.log),
+                events: BASE64.decode(&response.data)?.deserialize_json()?,
+            },
+        })
+    }
+}
+
+pub struct BroadcastTxError {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxError,
+}
+
+pub struct BroadcastTxSuccess {
+    pub tx_hash: Hash256,
+    pub check_tx: CheckTxSuccess,
+}
+
+#[derive(Serialize)]
+pub struct SearchTxOutcome {
+    pub hash: Hash256,
+    pub height: u64,
+    pub index: u32,
+    pub tx: Tx,
+    pub outcome: TxOutcome,
+}
+
+#[cfg(feature = "tendermint")]
+impl SearchTxOutcome {
+    pub fn from_tm_query_tx_response(
+        response: tendermint_rpc::endpoint::tx::Response,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
+            height: response.height.into(),
+            index: response.index,
+            tx: BASE64.decode(&response.tx)?.deserialize_json()?,
+            outcome: TxOutcome::from_tm_tx_result(response.tx_result)?,
+        })
+    }
+}
+
+#[cfg(feature = "tendermint")]
+fn into_generic_result(code: tendermint::abci::Code, log: String) -> GenericResult<()> {
+    if code == tendermint::abci::Code::Ok {
+        Ok(())
+    } else {
+        Err(log)
+    }
 }

@@ -7,6 +7,7 @@ import type {
   Transport,
   WasmRawResponse,
 } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type QueryWasmRawParameters = {
@@ -36,7 +37,10 @@ export async function queryWasmRaw<
   const query = {
     wasmRaw: { contract, key },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
 
   if (!("wasmRaw" in res)) {
     throw new Error(`expecting wasm raw response, got ${JSON.stringify(res)}`);

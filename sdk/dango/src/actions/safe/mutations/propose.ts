@@ -1,6 +1,6 @@
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
-import type { Address, Message, Transport, TxParameters } from "@left-curve/sdk/types";
+import type { Address, Funds, Message, Transport, TxParameters } from "@left-curve/sdk/types";
 
 import type { DangoClient } from "../../../types/clients.js";
 import type { Signer } from "../../../types/signer.js";
@@ -12,6 +12,7 @@ export type SafeAccountProposeParameters = {
   title: string;
   description?: string;
   messages: Message[];
+  funds?: Funds;
   typedData?: TypedDataParameter<TxMessageType>;
 };
 
@@ -35,8 +36,8 @@ export async function safeAccountPropose<transport extends Transport>(
   parameters: SafeAccountProposeParameters,
   txParameters: TxParameters,
 ): SafeAccountProposeReturnType {
-  const { sender, account, typedData: providedTypedData, ...proposeMsg } = parameters;
-  const { gasLimit, funds } = txParameters;
+  const { sender, account, funds = {}, typedData: providedTypedData, ...proposeMsg } = parameters;
+  const { gasLimit } = txParameters;
 
   const msg = { propose: proposeMsg };
 
@@ -57,10 +58,12 @@ export async function safeAccountPropose<transport extends Transport>(
 
   return await execute(client, {
     sender,
-    contract: account,
-    msg,
-    funds,
+    execute: {
+      contract: account,
+      msg,
+      funds,
+      typedData,
+    },
     gasLimit,
-    typedData,
   });
 }

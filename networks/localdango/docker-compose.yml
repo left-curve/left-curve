@@ -3,6 +3,7 @@ services:
     image: postgres:17
     shm_size: 1gb
     ports:
+      # For security reasons, postgres should only accept connections from localhost.
       - 127.0.0.1:5432:5432
     volumes:
       - ./data/db:/var/lib/postgresql/data
@@ -15,7 +16,7 @@ services:
     tty: true
 
   dango:
-    image: leftcurve/dango:0.0.0-alpha.5
+    image: leftcurve/dango:0.0.0-alpha.8
     depends_on:
       - db
     ports:

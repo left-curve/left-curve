@@ -1,4 +1,4 @@
-import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
+import { useAccount, useBalances, usePrices, useSessionKey } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
@@ -7,7 +7,7 @@ import { useApp } from "~/hooks/useApp";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
-import { Modals } from "./Modal";
+import { Modals } from "./RootModal";
 
 import { AccountCard } from "./AccountCard";
 
@@ -16,9 +16,10 @@ import {
   IconAddCross,
   IconButton,
   IconChevronDown,
-  IconDoubleChevronRight,
+  IconLeft,
   IconLogOut,
   IconMobile,
+  IconSwitch,
   twMerge,
   useClickAway,
   useMediaQuery,
@@ -26,21 +27,13 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AssetCard } from "./AssetCard";
 
-const ExportComponent = Object.assign(AccountMenu, {
-  Desktop,
-  Mobile,
-  Assets,
-  Selector,
-});
-
-export { ExportComponent as AccountMenu };
-
 type AccountMenuProps = {
   backAllowed?: boolean;
 };
 
 function AccountMenu({ backAllowed }: AccountMenuProps) {
-  const { formatNumberOptions, isSidebarVisible } = useApp();
+  const { settings, isSidebarVisible } = useApp();
+  const { formatNumberOptions } = settings;
   const { account } = useAccount();
   const { history } = useRouter();
   const [isAccountSelectorActive, setAccountSelectorActive] = useState(false);
@@ -87,7 +80,6 @@ function AccountMenu({ backAllowed }: AccountMenuProps) {
                 account={account}
                 balance={totalBalance}
                 isSelectorActive={isAccountSelectorActive}
-                onTriggerAction={() => setAccountSelectorActive(!isAccountSelectorActive)}
               />
             </motion.div>
           </AnimatePresence>
@@ -102,7 +94,11 @@ function AccountMenu({ backAllowed }: AccountMenuProps) {
             transition={{ duration: 0.2 }}
             exit={{ opacity: 0 }}
           >
-            {isAccountSelectorActive ? <Selector /> : <Assets />}
+            {isAccountSelectorActive ? (
+              <Selector onBack={() => setAccountSelectorActive(!isAccountSelectorActive)} />
+            ) : (
+              <Assets onSwitch={() => setAccountSelectorActive(!isAccountSelectorActive)} />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -114,24 +110,19 @@ export function Desktop() {
   const menuRef = useRef<HTMLDivElement>(null);
   const { setSidebarVisibility, isSidebarVisible } = useApp();
 
-  useClickAway(menuRef, () => setSidebarVisibility(false));
+  useClickAway(menuRef, (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) return;
+    setSidebarVisibility(false);
+  });
 
   return (
     <div
       ref={menuRef}
       className={twMerge(
-        "transition-all lg:absolute fixed top-0 flex h-[100vh] justify-end z-50 duration-300 delay-100 w-full lg:max-w-[422px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
-        isSidebarVisible ? "right-0" : "right-[-100vw]",
+        "transition-all lg:absolute fixed top-0 flex h-[100vh] justify-end z-50 duration-300 w-full lg:max-w-[360px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
+        isSidebarVisible ? "right-0" : "right-[-50vw]",
       )}
     >
-      <div
-        className="hidden group h-full py-4 lg:flex justify-end w-[84px] mr-[-20px]"
-        onClick={() => setSidebarVisibility(false)}
-      >
-        <div className="h-full py-2 pr-8 group-hover:translate-x-2 pl-2 text-gray-500 cursor-pointer group-hover:bg-gray-300/20 rounded-tl-lg rounded-bl-lg transition-all">
-          <IconDoubleChevronRight className="transition-all group-hover:scale-90" />
-        </div>
-      </div>
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
         <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-gray-100">
           <AccountMenu />
@@ -157,10 +148,15 @@ export function Mobile() {
   );
 }
 
-function Assets() {
+type AssetsProps = {
+  onSwitch: () => void;
+};
+
+export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector, account } = useAccount();
+  const { deleteSessionkey } = useSessionKey();
   const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -172,22 +168,14 @@ function Assets() {
           fullWidth
           size="md"
           onClick={() => [
-            navigate({ to: "/send-and-receive", search: { action: "receive" } }),
+            navigate({ to: "/transfer", search: { action: "receive" } }),
             setSidebarVisibility(false),
           ]}
         >
-          {m["common.funds"]()}
+          <IconAddCross className="w-5 h-5" /> <span> {m["common.fund"]()}</span>
         </Button>
-        <Button
-          fullWidth
-          variant="secondary"
-          size="md"
-          onClick={() => [
-            navigate({ to: "/send-and-receive", search: { action: "send" } }),
-            setSidebarVisibility(false),
-          ]}
-        >
-          {m["common.send"]()}
+        <Button fullWidth variant="secondary" size="md" onClick={onSwitch}>
+          <IconSwitch className="w-5 h-5" /> <span> {m["common.switch"]()}</span>
         </Button>
         {isMd ? (
           <IconButton variant="secondary" onClick={() => showModal(Modals.QRConnect)}>
@@ -199,6 +187,7 @@ function Assets() {
           onClick={() => {
             setSidebarVisibility(false);
             connector?.disconnect();
+            deleteSessionkey();
           }}
         >
           <IconLogOut />
@@ -211,9 +200,13 @@ function Assets() {
       </div>
     </div>
   );
-}
+};
 
-function Selector() {
+type SelectorProps = {
+  onBack: () => void;
+};
+
+export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
   const { setSidebarVisibility } = useApp();
   const navigate = useNavigate();
   const { account, accounts, changeAccount } = useAccount();
@@ -223,12 +216,20 @@ function Selector() {
   return (
     <div className="flex flex-col w-full gap-4 items-center">
       <div className="flex items-center justify-between gap-4 w-full max-w-[22.5rem] md:max-w-[20.5rem]">
-        <p className="diatype-m-bold text-gray-500">{m["accountMenu.accounts.otherAccounts"]()}</p>
+        <Button
+          size="sm"
+          variant="link"
+          className="flex justify-center items-center"
+          onClick={onBack}
+        >
+          <IconLeft className="w-[22px] h-[22px]" />
+          <span>{m["common.back"]()}</span>
+        </Button>
         <Button onClick={() => [setSidebarVisibility(false), navigate({ to: "/create-account" })]}>
           <IconAddCross className="w-5 h-5" /> <span>{m["accountMenu.accounts.addAccount"]()}</span>
         </Button>
       </div>
-      <div className="flex flex-col items-center w-full overflow-y-auto gap-4 scrollbar-none pb-[7rem] relative">
+      <div className="flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 relative max-h-[42rem]">
         {accounts
           ?.filter((acc) => acc.address !== account.address)
           .map((account) => (
@@ -241,4 +242,13 @@ function Selector() {
       </div>
     </div>
   );
-}
+};
+
+const ExportComponent = Object.assign(AccountMenu, {
+  Desktop,
+  Mobile,
+  Assets,
+  Selector,
+});
+
+export { ExportComponent as AccountMenu };

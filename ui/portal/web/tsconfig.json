@@ -7,10 +7,13 @@
     },
     "noEmit": true
   },
-  "buildOptions": {
-    "incremental": false
-  },
-  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide/**/*.js"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "env.d.ts",
+    ".paraglide/**/*.js",
+    "../../config/tailwind/config.ts"
+  ],
   "exclude": ["node_modules"],
   "references": [
     {
@@ -20,7 +23,7 @@
       "path": "../../../sdk/dango"
     },
     {
-      "path": "../../store/react"
+      "path": "../../store"
     }
   ]
 }

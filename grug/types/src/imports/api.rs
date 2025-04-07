@@ -29,10 +29,7 @@ pub trait Api {
     /// Note: this function takes the hash of the message, not the prehash.
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 
-    /// Recover the compressed byte of the `public key` from the `signature` and `message hash`.
-    /// - **r**: the first `32 bytes` of the signature;
-    /// - **s**: the last `32 bytes` of the signature;
-    /// - **v**: the `recovery id`.
+    /// Recover the Secp256k1 public key from the signature over a message.
     ///
     /// Note: this function takes the hash of the message, not the prehash.
     fn secp256k1_pubkey_recover(

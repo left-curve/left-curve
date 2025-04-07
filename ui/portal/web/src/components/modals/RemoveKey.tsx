@@ -1,19 +1,19 @@
 import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
-import { useAccount, useSigningClient } from "@left-curve/store-react";
+import { useAccount, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { KeyHash } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
-import type React from "react";
 import { useApp } from "~/hooks/useApp";
 
+import { forwardRef } from "react";
 import { m } from "~/paraglide/messages";
 
 interface Props {
   keyHash: KeyHash;
 }
 
-export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
+export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
@@ -28,7 +28,6 @@ export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
         sender: account.address,
         action: "delete",
       });
-      await wait(1500);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
@@ -37,7 +36,7 @@ export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-3xl relative max-w-[400px]">
+    <div className="flex flex-col bg-white-100 rounded-xl relative max-w-[400px]">
       <IconButton
         className="hidden lg:block absolute right-2 top-2"
         variant="link"
@@ -70,4 +69,4 @@ export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
       </div>
     </div>
   );
-};
+});

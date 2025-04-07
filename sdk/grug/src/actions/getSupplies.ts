@@ -1,4 +1,5 @@
 import type { Chain, Client, Coins, Denom, Signer, Transport } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetSuppliesParameters =
@@ -30,7 +31,10 @@ export async function getSupplies<
   const query = {
     supplies: { startAfter, limit },
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
 
   if ("supplies" in res) return res.supplies;
   throw new Error(`expecting supplies response, got ${JSON.stringify(res)}`);

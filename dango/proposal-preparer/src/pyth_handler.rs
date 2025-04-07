@@ -15,6 +15,7 @@ use {
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
+    tracing::error,
 };
 
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
@@ -67,7 +68,7 @@ where
 
     pub fn close_stream(&mut self) {
         if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
-            keep_running.store(false, Ordering::Relaxed);
+            keep_running.store(false, Ordering::SeqCst);
         }
 
         // Closing any potentially connected earlier stream.
@@ -115,9 +116,24 @@ where
         self.stoppable_thread = Some((
             keep_running.clone(),
             thread::spawn(move || {
-                let rt = Runtime::new().unwrap();
+                let rt = match Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(err) => {
+                        error!(error = err.to_string(), "Failed to create Tokio runtime");
+                        keep_running.store(false, Ordering::SeqCst);
+                        return;
+                    },
+                };
+
                 rt.block_on(async {
-                    let mut stream = client.stream(ids).await.unwrap();
+                    let mut stream = match client.stream(ids).await {
+                        Ok(stream) => stream,
+                        Err(err) => {
+                            error!(error = err.to_string(), "Failed to create Pyth stream");
+                            keep_running.store(false, Ordering::SeqCst);
+                            return;
+                        },
+                    };
 
                     loop {
                         tokio::select! {
@@ -128,7 +144,7 @@ where
                             }
 
                             data = stream.next() => {
-                                if !keep_running.load(Ordering::Relaxed) {
+                                if !keep_running.load(Ordering::Acquire) {
                                     return;
                                 }
 
@@ -148,12 +164,24 @@ where
         // Retrieve the Pyth ids from the Oracle contract.
         let pyth_ids = Self::pyth_ids(querier, oracle)?;
 
-        // If the ids are the same, do nothing.
-        if pyth_ids == self.current_ids {
+        // Load the state of streaming.
+        let is_stream_running = if let Some((keep_running, _)) = self.stoppable_thread.as_ref() {
+            keep_running.load(Ordering::Acquire)
+        } else {
+            false
+        };
+
+        // If stream is closed and there are no PythIds, we can return early.
+        if !is_stream_running && pyth_ids.is_empty() {
             return Ok(());
         }
 
-        // The PythIds have changed; close the previous stream and establish a new one.
+        // If the stream is running and the PythIds are the same, we can return early.
+        if is_stream_running && self.current_ids == pyth_ids {
+            return Ok(());
+        }
+
+        // The PythIds have changed or the streaming is closed unexpectedly.
         self.current_ids = pyth_ids.clone();
 
         self.close_stream();

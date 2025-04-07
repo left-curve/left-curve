@@ -1,10 +1,11 @@
 import { Button } from "@left-curve/applets-kit";
 import type { Coins } from "@left-curve/dango/types";
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { useChainId, useConfig } from "@left-curve/store-react";
+import { useChainId, useConfig } from "@left-curve/store";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { ButtonLink } from "../foundation/ButtonLink";
 
 interface Props {
   balances: Coins;
@@ -14,7 +15,8 @@ interface Props {
 export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   const config = useConfig();
   const chainId = useChainId();
-  const { formatNumberOptions } = useApp();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
 
   const coins = config.coins[chainId];
 
@@ -25,7 +27,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   });
 
   return (
-    <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] rounded-md p-4 gap-4 w-full">
+    <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] lg:flex rounded-md p-4 gap-2 w-full h-full">
       <div className="flex items-center justify-between w-full">
         <p className="text-md font-bold">{m["common.assets"]()}</p>
         {showAllAssets ? (
@@ -51,6 +53,20 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
             </div>
           );
         })}
+      </div>
+      <div className="lg:self-end gap-4 items-center justify-center w-full lg:max-w-[256px] hidden lg:flex lg:mt-1">
+        <ButtonLink fullWidth size="md" to="/transfer" search={{ action: "receive" }}>
+          {m["common.fund"]()}
+        </ButtonLink>
+        <ButtonLink
+          fullWidth
+          variant="secondary"
+          size="md"
+          to="/transfer"
+          search={{ action: "send" }}
+        >
+          {m["common.send"]()}
+        </ButtonLink>
       </div>
     </div>
   );

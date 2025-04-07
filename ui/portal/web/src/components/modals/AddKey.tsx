@@ -1,14 +1,13 @@
-import { IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconKey, forwardRef } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
-import { useAccount, useConnectors, useSigningClient } from "@left-curve/store-react";
+import { useAccount, useConnectors, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { AuthOptions } from "../auth/AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-export const AddKeyModal: React.FC = () => {
+export const AddKeyModal = forwardRef((_props, _ref) => {
   const connectors = useConnectors();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
@@ -30,16 +29,16 @@ export const AddKeyModal: React.FC = () => {
           insert: key,
         },
       });
-      await wait(1500);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
       hideModal();
     },
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-3xl relative">
+    <div className="flex flex-col bg-white-100 rounded-xl relative">
       <IconButton
         className="hidden md:block absolute right-2 top-2"
         variant="link"
@@ -64,4 +63,4 @@ export const AddKeyModal: React.FC = () => {
       </div>
     </div>
   );
-};
+});

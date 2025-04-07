@@ -9,7 +9,6 @@ export type TxOutcome = {
 };
 
 export type TxParameters = {
-  funds?: Funds;
   gasLimit?: number;
 };
 

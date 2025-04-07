@@ -10,6 +10,7 @@ pub enum Block {
     CreatedAt,
     Hash,
     AppHash,
+    TransactionsCount,
 }
 
 #[derive(DeriveIden)]

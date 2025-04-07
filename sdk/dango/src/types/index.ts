@@ -53,7 +53,7 @@ export type {
   AnyCoin,
   BaseCoin,
   CoinFee,
-  IBCCoin,
+  AlloyCoin,
   NativeCoin,
   ContractCoin,
   CoinGeckoId,
@@ -130,9 +130,11 @@ export type {
   RawSignature,
   TransportSchema,
   DerivedTransportSchema,
-  IndexerSchema,
   RequestOptions,
   WithPrice,
+  Failure,
+  Success,
+  Result,
 } from "@left-curve/sdk/types";
 
 export type {
@@ -239,6 +241,8 @@ export type {
   Signature,
   SignatureOutcome,
 } from "./signature.js";
+
+export type { IndexedBlock, IndexedTransaction, IndexedTransactionType } from "./indexer.js";
 
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 

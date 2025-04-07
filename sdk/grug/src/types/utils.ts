@@ -75,3 +75,15 @@ export type Range<
       : Range<start, stop, [...result, current], padding>;
 
 export type MaybePromise<T> = T | Promise<T>;
+
+export type Success<T> = {
+  data: T;
+  error?: never;
+};
+
+export type Failure<E> = {
+  data?: never;
+  error: E;
+};
+
+export type Result<T, E = Error> = Success<T> | Failure<E>;

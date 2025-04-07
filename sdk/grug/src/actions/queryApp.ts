@@ -1,3 +1,5 @@
+import { decodeBase64, deserialize, serialize } from "../encoding/index.js";
+
 import type {
   Chain,
   Client,
@@ -6,6 +8,7 @@ import type {
   Signer,
   Transport,
 } from "../types/index.js";
+import { queryAbci } from "./queryAbci.js";
 
 export type QueryAppParameters = {
   query: QueryRequest;
@@ -27,12 +30,12 @@ export async function queryApp<
 >(client: Client<Transport, chain, signer>, parameters: QueryAppParameters): QueryAppReturnType {
   const { query, height = 0 } = parameters;
 
-  return await client.request({
-    method: "query_app",
-    params: {
-      height,
-      prove: false,
-      query,
-    },
+  const { value } = await queryAbci(client, {
+    data: serialize(query),
+    height,
+    path: "/app",
+    prove: false,
   });
+
+  return deserialize<QueryResponse>(decodeBase64(value ?? ""));
 }

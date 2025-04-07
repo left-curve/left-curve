@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Item, Select, type SelectProps } from "./Select";
+import { Select, type SelectProps } from "./Select";
 
 const meta: Meta<typeof Select> = {
   title: "Design System/Foundation/Select",
@@ -7,16 +7,10 @@ const meta: Meta<typeof Select> = {
   argTypes: {
     isDisabled: {
       control: { type: "boolean" },
-    },
-    placeholder: {
-      control: { type: "text" },
-      description: "This is the placeholder in the Select",
+      description: "Disabled state of the select",
     },
   },
-  args: {
-    placeholder: "Select placeholder",
-    label: "demo-select",
-  },
+
   parameters: {
     layout: "centered",
   },
@@ -27,17 +21,17 @@ export default meta;
 
 type Store = StoryObj<typeof Select>;
 
-export const Default: Store = {
-  render: (args) => <Template {...args} />,
-};
-
-const Template: React.FC<SelectProps<object>> = (args) => {
+const Template: React.FC<SelectProps> = (args) => {
   return (
     <>
       <Select {...args}>
-        <Item>1st Option</Item>
-        <Item>2nd Option</Item>
+        <Select.Item value="1">1st Option</Select.Item>
+        <Select.Item value="2">2nd Option</Select.Item>
       </Select>
     </>
   );
+};
+
+export const Default: Store = {
+  render: (args) => <Template {...args} />,
 };

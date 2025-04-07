@@ -125,14 +125,28 @@ async fn api_returns_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context.clone());
 
-                let block: grug_types::Block = call_api(app, "/api/blocks/1").await?;
+                let block: grug_types::Block = call_api(app, "/api/block/info/1").await?;
+
+                assert_that!(block.info.height).is_equal_to(1);
+
+                let app = build_app_service(httpd_context.clone());
+
+                let block: grug_types::Block = call_api(app, "/api/block/info").await?;
 
                 assert_that!(block.info.height).is_equal_to(1);
 
                 let app = build_app_service(httpd_context.clone());
 
                 let block_outcome: grug_types::BlockOutcome =
-                    call_api(app, "/api/block_results/1").await?;
+                    call_api(app, "/api/block/result/1").await?;
+
+                assert_that!(block_outcome.cron_outcomes).is_empty();
+                assert_that!(block_outcome.tx_outcomes).has_length(1);
+
+                let app = build_app_service(httpd_context.clone());
+
+                let block_outcome: grug_types::BlockOutcome =
+                    call_api(app, "/api/block/result").await?;
 
                 assert_that!(block_outcome.cron_outcomes).is_empty();
                 assert_that!(block_outcome.tx_outcomes).has_length(1);
@@ -140,7 +154,7 @@ async fn api_returns_block() -> anyhow::Result<()> {
                 let app = build_app_service(httpd_context);
 
                 let block_outcome: Result<grug_types::BlockOutcome, _> =
-                    call_api(app, "/api/block_results/2").await;
+                    call_api(app, "/api/block/result/2").await;
 
                 assert_that!(block_outcome).is_err();
 

@@ -1,6 +1,6 @@
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 
-import { useAccount, useConfig, usePublicClient } from "@left-curve/store-react";
+import { useAccount, useConfig, usePublicClient } from "@left-curve/store";
 
 import { Spinner } from "@left-curve/applets-kit";
 
@@ -8,11 +8,11 @@ import type {
   UseAccountReturnType,
   UseConfigReturnType,
   UsePublicClientReturnType,
-} from "@left-curve/store-react";
+} from "@left-curve/store";
 
 import { routeTree } from "./app.pages";
 
-const router = createRouter({
+export const router = createRouter({
   routeTree,
   defaultPreload: "intent",
   defaultStaleTime: 5000,

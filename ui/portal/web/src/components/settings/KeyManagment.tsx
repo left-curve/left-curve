@@ -6,24 +6,29 @@ import {
   Spinner,
   TruncateText,
   twMerge,
+  useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAccount, useSigningClient } from "@left-curve/store-react";
-import { ConnectionStatus } from "@left-curve/store-react/types";
+import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
+import { uid } from "@left-curve/dango/utils";
+import { useAccount, useSigningClient } from "@left-curve/store";
+import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { Modals } from "../foundation/Modal";
+import { Modals } from "../foundation/RootModal";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
   secp256k1: "Wallet",
+  ethereum: "Ethereum Wallet",
 };
 
 export const KeyManagment: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { showModal } = useApp();
+  const { isMd } = useMediaQuery();
 
   const { data: keys = [], isPending } = useQuery({
     enabled: !!signingClient && !!username,
@@ -52,24 +57,30 @@ export const KeyManagment: React.FC = () => {
       ) : (
         Object.entries(keys).map(([keyHash, key]) => {
           const isActive = keyHash === currentKeyHash;
+          const [[keyType, keyValue]] = Object.entries(key);
+          const isEthereumKey = keyType === "ethereum";
+          const keyRepresentation = isEthereumKey
+            ? keyValue
+            : `0x${encodeHex(decodeBase64(keyValue))}`;
+
           return (
             <div
-              key={crypto.randomUUID()}
+              key={uid()}
               className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-rice-50 transition-all p-4"
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
-                  <div className="flex gap-[6px] items-center">
-                    <TruncateText className="text-gray-700 diatype-m-bold" text={keyHash} />
+                  <div className="flex gap-[6px] items-center text-gray-700 diatype-m-bold">
+                    {isMd ? <p>{keyRepresentation}</p> : <TruncateText text={keyRepresentation} />}
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
                   <p className="text-gray-500 diatype-sm-medium">
-                    {KeyTranslation[Object.keys(key).at(0) as keyof typeof KeyTranslation]}
+                    {KeyTranslation[keyType as keyof typeof KeyTranslation]}
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyHash} />
+                  <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyRepresentation} />
                   <IconTrash
                     onClick={() => (isActive ? null : showModal(Modals.RemoveKey, { keyHash }))}
                     className={twMerge("w-5 h-5 cursor-pointer", {

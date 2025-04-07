@@ -1,7 +1,7 @@
 import { defineChain } from "../defineChain.js";
 
 export const devnet = /*#__PURE__*/ defineChain({
-  id: "dev-5",
+  id: "dev-6",
   name: "Devnet",
   nativeCoin: {
     decimals: 6,
@@ -18,6 +18,6 @@ export const devnet = /*#__PURE__*/ defineChain({
     },
   },
   urls: {
-    indexer: "https://devnet-graphql.dango.exchange/",
+    indexer: "https://devnet.dango.exchange/graphql",
   },
 });

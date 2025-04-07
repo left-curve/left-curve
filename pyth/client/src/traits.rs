@@ -1,12 +1,12 @@
 use {
     async_trait::async_trait,
     grug::{Binary, Lengthy, NonEmpty},
-    std::pin::Pin,
+    std::{fmt::Display, pin::Pin},
 };
 
 #[async_trait]
 pub trait PythClientTrait: Clone {
-    type Error;
+    type Error: Display;
 
     async fn stream<I>(
         &mut self,

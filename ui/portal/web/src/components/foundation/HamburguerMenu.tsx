@@ -10,7 +10,7 @@ import {
   useClickAway,
 } from "@left-curve/applets-kit";
 import { capitalize } from "@left-curve/dango/utils";
-import { useAccount } from "@left-curve/store-react";
+import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { forwardRef, useRef, useState } from "react";
@@ -40,7 +40,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
           })}
           onClick={() => [
             setShowOptions(!showOptions),
-            isConnected ? setSidebarVisibility(true) : navigate({ to: "/login" }),
+            isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" }),
           ]}
         >
           <span className={twMerge("hidden exposure-m-italic text-white", { block: showOptions })}>

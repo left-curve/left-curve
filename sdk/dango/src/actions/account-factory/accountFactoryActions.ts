@@ -98,7 +98,7 @@ import {
   createSession,
 } from "./mutations/createSession.js";
 
-import type { Chain, DangoClient, Signer } from "../../types/index.js";
+import type { DangoClient, Signer } from "../../types/index.js";
 
 export type AccountFactoryQueryActions = {
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
@@ -127,13 +127,13 @@ export type AccountFactoryMutationActions = {
   updateKey: (args: UpdateKeyParameters) => UpdateKeyReturnType;
   registerAccount: (
     args: RegisterAccountParameters,
-    txArgs: TxParameters,
+    txArgs?: TxParameters,
   ) => RegisterUserReturnType;
   createSession: (args: CreateSessionParameters) => CreateSessionReturnType;
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, Signer>,
+  client: Client<transport>,
 ): AccountFactoryQueryActions {
   return {
     getAccountInfo: (args) => getAccountInfo(client, args),

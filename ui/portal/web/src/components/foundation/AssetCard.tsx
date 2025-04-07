@@ -1,5 +1,5 @@
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { useConfig, usePrices } from "@left-curve/store-react";
+import { useConfig, usePrices } from "@left-curve/store";
 
 import type { Coin } from "@left-curve/dango/types";
 import { useApp } from "~/hooks/useApp";
@@ -10,7 +10,8 @@ interface Props {
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
   const { coins, state } = useConfig();
-  const { formatNumberOptions } = useApp();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const coinInfo = coins[state.chainId][coin.denom];
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
@@ -21,7 +22,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
     <div className="flex items-center justify-between p-4 hover:bg-rice-50">
       <div className="flex gap-2 items-center">
         {coinInfo.logoURI ? (
-          <img src={coinInfo.logoURI} className="h-8 w-8 rounded-full" alt={coinInfo.denom} />
+          <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
         ) : (
           <div className="h-8 w-8 rounded-full bg-gray-200" />
         )}

@@ -10,8 +10,11 @@ use {
     dango_client::{SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
-    grug_client::{GasOption, SigningClient},
-    grug_types::{Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer, json},
+    grug_client::TendermintRpcClient,
+    grug_types::{
+        Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
+        QueryClient, Signer,
+    },
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
 
@@ -164,14 +167,11 @@ impl TxCmd {
             },
         };
 
-        let client = SigningClient::connect(
-            cfg.transactions.chain_id.clone(),
-            cfg.tendermint.rpc_addr.as_str(),
-        )?;
+        let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
-            let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
+            let password = read_password("🔑 Enter the password to decrypt the key".bold())?;
             let sk = SigningKey::from_file(&key_path, &password)?;
             let signer = SingleSigner::new(&self.username, self.address, sk)?;
             if let Some(nonce) = self.nonce {
@@ -184,7 +184,7 @@ impl TxCmd {
         if self.simulate {
             let msgs = NonEmpty::new_unchecked(vec![msg]);
             let unsigned_tx = signer.unsigned_transaction(msgs, &cfg.transactions.chain_id)?;
-            let outcome = client.simulate(&unsigned_tx).await?;
+            let outcome = client.simulate(unsigned_tx).await?;
             print_json_pretty(outcome)?;
         } else {
             let gas_opt = if let Some(gas_limit) = self.gas_limit {
@@ -200,19 +200,20 @@ impl TxCmd {
             };
 
             let maybe_res = client
-                .send_message_with_confirmation(&mut signer, msg, gas_opt, |tx| {
-                    print_json_pretty(tx)?;
-                    Ok(confirm("🤔 Broadcast transaction?".bold())?)
-                })
+                .send_message_with_confirmation(
+                    &mut signer,
+                    msg,
+                    gas_opt,
+                    &cfg.transactions.chain_id,
+                    |tx| {
+                        print_json_pretty(tx)?;
+                        Ok(confirm("🤔 Broadcast transaction?".bold())?)
+                    },
+                )
                 .await?;
 
             if let Some(res) = maybe_res {
-                print_json_pretty(json!({
-                    "code": res.code.value(),
-                    "data": Binary::from(res.data.to_vec()),
-                    "log":  res.log,
-                    "hash": res.hash.to_string(),
-                }))?;
+                print_json_pretty(res)?;
             } else {
                 println!("🤷 User aborted");
             }

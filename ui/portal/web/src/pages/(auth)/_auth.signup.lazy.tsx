@@ -1,25 +1,17 @@
-import { Button, IconAlert, WizardProvider } from '@left-curve/applets-kit'
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { WizardProvider } from "@left-curve/applets-kit";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { Signup } from "~/components/auth/Signup";
 
-import {
-  SignupCredentialStep,
-  SignupUsernameStep,
-  SignupWrapper,
-} from '~/components/signup'
-import { SignupMobile } from '~/components/signup/SignupMobile'
-
-export const Route = createLazyFileRoute('/(auth)/_auth/signup')({
+export const Route = createLazyFileRoute("/(auth)/_auth/signup")({
   component: SignupComponent,
-})
+});
 
 function SignupComponent() {
   return (
-    <div>
-      <SignupMobile />
-      <WizardProvider wrapper={<SignupWrapper />} persistKey="signup-form">
-        <SignupCredentialStep />
-        <SignupUsernameStep />
-      </WizardProvider>
-    </div>
-  )
+    <WizardProvider wrapper={<Signup />} persistKey="dango.signup">
+      <Signup.Credential />
+      <Signup.Username />
+      <Signup.Signin />
+    </WizardProvider>
+  );
 }

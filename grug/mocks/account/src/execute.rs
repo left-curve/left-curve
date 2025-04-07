@@ -1,50 +1,10 @@
 use {
-    crate::{Credential, InstantiateMsg, PUBLIC_KEY, PublicKey, SEQUENCE},
+    crate::{Credential, InstantiateMsg, PUBLIC_KEY, PublicKey, SEQUENCE, SignDoc},
     anyhow::ensure,
     grug_types::{
-        Addr, AuthCtx, AuthMode, AuthResponse, JsonDeExt, JsonSerExt, Message, MutableCtx,
-        Response, StdResult, Tx,
+        AuthCtx, AuthMode, AuthResponse, JsonDeExt, MutableCtx, Response, SignData, StdResult, Tx,
     },
 };
-
-/// Generate the bytes that the sender of a transaction needs to sign.
-///
-/// The bytes are defined as:
-///
-/// ```plain
-/// bytes := hash(json(msgs) | sender | chain_id | sequence)
-/// ```
-///
-/// Parameters:
-///
-/// - `hash` is a hash function; this account implementation uses SHA2-256;
-/// - `msgs` is the list of messages in the transaction;
-/// - `sender` is a 32 bytes address of the sender;
-/// - `chain_id` is the chain ID in UTF-8 encoding;
-/// - `sequence` is the sender account's sequence in 32-bit big endian encoding.
-///
-/// Chain ID and sequence are included in the sign bytes, as they are necessary
-/// for preventing replat attacks (e.g. user signs a transaction for chain A;
-/// attacker uses the signature to broadcast another transaction on chain B.)
-pub fn make_sign_bytes<Hasher, const HASH_LEN: usize>(
-    hasher: Hasher,
-    msgs: &[Message],
-    sender: Addr,
-    chain_id: &str,
-    sequence: u32,
-) -> StdResult<[u8; HASH_LEN]>
-where
-    Hasher: Fn(&[u8]) -> [u8; HASH_LEN],
-{
-    let mut prehash = Vec::new();
-    // That there are multiple valid ways that the messages can be serialized
-    // into JSON. Here we use `grug::to_json_vec` as the source of truth.
-    prehash.extend(msgs.to_json_vec()?);
-    prehash.extend(sender.as_ref());
-    prehash.extend(chain_id.as_bytes());
-    prehash.extend(sequence.to_be_bytes());
-    Ok(hasher(&prehash))
-}
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     // Save the public key in contract store
@@ -96,15 +56,13 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     };
 
     // Prepare the hash that is expected to have been signed.
-    let hash = make_sign_bytes(
-        // Note: We can't use a trait method as a function pointer. Need to use
-        // a closure instead.
-        |prehash| ctx.api.sha2_256(prehash),
-        &tx.msgs,
-        tx.sender,
-        &ctx.chain_id,
-        credential.sequence,
-    )?;
+    let sign_doc = SignDoc {
+        sender: tx.sender,
+        msgs: &tx.msgs,
+        chain_id: &ctx.chain_id,
+        sequence: credential.sequence,
+    };
+    let sign_data = sign_doc.to_sign_data()?;
 
     // Verify the signature.
     //
@@ -115,7 +73,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // It may be a good idea to manually add these to your simulation result.
     if let AuthMode::Check | AuthMode::Finalize = ctx.mode {
         ctx.api
-            .secp256k1_verify(&hash, &credential.signature, &public_key)?;
+            .secp256k1_verify(&sign_data, &credential.signature, &public_key)?;
     }
 
     // This account implementation doesn't make use of the transaction

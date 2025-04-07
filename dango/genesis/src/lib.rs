@@ -315,13 +315,13 @@ where
     let addresses = genesis_users
         .iter()
         .enumerate()
-        .map(|(secret, (username, user))| {
+        .map(|(seed, (username, user))| {
             let salt = NewUserSalt {
-                secret: secret as u32,
                 key: user.key,
                 key_hash: user.key_hash,
+                seed: seed as u32,
             }
-            .into_bytes();
+            .to_bytes();
             let address = Addr::derive(account_factory, account_spot_code_hash, &salt);
             Ok((username.clone(), address))
         })

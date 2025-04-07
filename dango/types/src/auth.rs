@@ -1,6 +1,10 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash256, Message, NonEmpty, Timestamp},
+    grug::{
+        Addr, Binary, ByteArray, Hash256, JsonSerExt, Message, NonEmpty, SignData, StdError,
+        Timestamp,
+    },
+    sha2::Sha256,
 };
 
 /// A number that included in each transaction's sign doc for the purpose of
@@ -15,6 +19,17 @@ pub enum Key {
     Secp256r1(ByteArray<33>),
     /// An Secp256k1 public key in compressed form.
     Secp256k1(ByteArray<33>),
+    /// An Ethereum address.
+    ///
+    /// Ethereum uses Secp256k1 public keys, so why don't just use that? This is
+    /// because Ethereum wallets typically don't expose an API that allows a
+    /// webapp to know the public key. However, they do allow webapps to know the
+    /// address.
+    ///
+    /// A webapp can technically still know the pubkey by prompting the user to
+    /// sign a message, and extracting the pubkey from the signature. This would
+    /// however be a bad UX, and deter the more security-minded users.
+    Ethereum(Addr),
 }
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
@@ -61,6 +76,17 @@ pub struct SessionInfo {
     pub expire_at: Timestamp,
 }
 
+impl SignData for SessionInfo {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        // Convert to JSON value first, then to bytes, such that the struct fields
+        // are ordered alphabetically.
+        self.to_json_value()?.to_json_vec()
+    }
+}
+
 /// Data that a transaction's sender must sign with their private key.
 ///
 /// This includes the messages to be included in the transaction, as well as
@@ -71,6 +97,17 @@ pub struct SignDoc {
     pub gas_limit: u64,
     pub messages: NonEmpty<Vec<Message>>,
     pub data: Metadata,
+}
+
+impl SignData for SignDoc {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        // Convert to JSON value first, then to bytes, such that the struct fields
+        // are ordered alphabetically.
+        self.to_json_value()?.to_json_vec()
+    }
 }
 
 /// Data that the account expects for the transaction's [`data`](grug::Tx::data)
@@ -99,10 +136,14 @@ pub struct PasskeySignature {
 /// An EIP712 signature signed with a compatible eth wallet.
 #[grug::derive(Serde)]
 pub struct Eip712Signature {
-    /// The EIP712 typed data object containing type information,
-    /// domain and the message object.
+    /// The EIP712 typed data object containing type information, domain, and
+    /// the message object.
     pub typed_data: Binary,
-    pub sig: ByteArray<64>,
+    /// Ethereum signature.
+    ///
+    /// The first 64 bytes are the typical Secp256k1 signature. The last byte
+    /// is the recovery id, which can take on the values: 0, 1, 27, 28.
+    pub sig: ByteArray<65>,
 }
 
 /// Passkey client data.
@@ -114,6 +155,6 @@ pub struct ClientData {
     // Should be the `SignDoc` in base64 `URL_SAFE_NO_PAD` encoding.
     pub challenge: String,
     pub origin: String,
-    #[serde(rename = "crossOrigin")]
-    pub cross_origin: bool,
+    #[serde(default, rename = "crossOrigin")]
+    pub cross_origin: Option<bool>,
 }

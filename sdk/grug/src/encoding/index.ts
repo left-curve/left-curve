@@ -12,6 +12,13 @@ export { decodeHex, encodeHex, isHex, hexToBigInt } from "./hex.js";
 export { decodeUtf8, encodeUtf8 } from "./utf8.js";
 export { deserialize, serialize } from "./binary.js";
 
-export { serializeJson, deserializeJson } from "./json.js";
+export {
+  serializeJson,
+  deserializeJson,
+  sortedJsonStringify,
+  sortedObject,
+  snakeCaseJsonSerialization,
+  camelCaseJsonDeserialization,
+} from "./json.js";
 
 export { encodeUint } from "./uint.js";

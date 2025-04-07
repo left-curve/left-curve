@@ -1,4 +1,5 @@
 import type { AppConfigResponse, Chain, Client, Signer, Transport } from "../types/index.js";
+import { getAction } from "./getAction.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetAppConfigParameters = {
@@ -25,7 +26,10 @@ export async function getAppConfig<
   const query = {
     appConfig: {},
   };
-  const res = await queryApp<chain, signer>(client, { query, height });
+
+  const action = getAction(client, queryApp, "queryApp");
+
+  const res = await action({ query, height });
 
   if ("appConfig" in res) return res.appConfig as config;
 

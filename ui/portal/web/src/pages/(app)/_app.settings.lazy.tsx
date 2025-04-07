@@ -7,13 +7,12 @@ import {
   IconLanguage,
   IconMobile,
   Select,
-  SelectItem,
   Tab,
   Tabs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store-react";
-import { Modals } from "~/components/foundation/Modal";
+import { useAccount } from "@left-curve/store";
+import { Modals } from "~/components/foundation/RootModal";
 import { KeyManagment } from "~/components/settings/KeyManagment";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
@@ -27,7 +26,9 @@ function SettingsComponent() {
   const { isMd, isLg } = useMediaQuery();
   const { history } = useRouter();
   const { isConnected } = useAccount();
-  const { showModal, setFormatNumberOptions, formatNumberOptions } = useApp();
+  const { showModal, changeSettings, settings } = useApp();
+  const { formatNumberOptions } = settings;
+
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
       <h2 className="flex gap-2 items-center">
@@ -45,13 +46,11 @@ function SettingsComponent() {
             <IconLanguage className="text-gray-500" />
             <span className="diatype-m-bold text-gray-700">{m["settings.language"]()}</span>
           </p>
-          <Select
-            defaultSelectedKey={getLocale()}
-            label="Language"
-            onSelectionChange={(key) => setLocale(key.toString() as any)}
-          >
+          <Select value={getLocale()} onChange={(key) => setLocale(key as "en")}>
             {locales.map((locale) => (
-              <SelectItem key={locale}>{m["settings.languages"]({ language: locale })}</SelectItem>
+              <Select.Item key={locale} value={locale}>
+                {m["settings.languages"]({ language: locale })}
+              </Select.Item>
             ))}
           </Select>
         </div>
@@ -62,20 +61,17 @@ function SettingsComponent() {
           </p>
 
           <Select
-            defaultSelectedKey={formatNumberOptions.language}
-            label="Format Number Options"
-            onSelectionChange={(key) => [
-              setFormatNumberOptions((prev) => ({
-                ...prev,
-                language: key.toString(),
-                useGrouping: key !== "de-DE",
-              })),
+            defaultValue={formatNumberOptions.mask.toString()}
+            onChange={(key) => [
+              changeSettings({
+                formatNumberOptions: { ...formatNumberOptions, mask: Number(key) as 1 },
+              }),
             ]}
           >
-            <SelectItem key="en-US">1,234.00</SelectItem>
-            <SelectItem key="es-ES">1.234,00</SelectItem>
-            <SelectItem key="de-DE">1234,00</SelectItem>
-            <SelectItem key="fr-FR">1 234,00</SelectItem>
+            <Select.Item value="1">1,234.00</Select.Item>
+            <Select.Item value="2">1.234,00</Select.Item>
+            <Select.Item value="3">1234,00</Select.Item>
+            <Select.Item value="4">1 234,00</Select.Item>
           </Select>
         </div>
         {isConnected && isLg ? (

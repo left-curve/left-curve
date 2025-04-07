@@ -2,7 +2,8 @@
 /*                                 Transports                                 */
 /* -------------------------------------------------------------------------- */
 
-export { http, graphql } from "@left-curve/sdk";
+export { http } from "@left-curve/sdk";
+export { graphql } from "./transports/graphql.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Account                                  */
@@ -14,6 +15,7 @@ export {
   createKeyHash,
   createSignBytes,
   isValidAddress,
+  toAccount,
 } from "./account/index.js";
 
 /* -------------------------------------------------------------------------- */

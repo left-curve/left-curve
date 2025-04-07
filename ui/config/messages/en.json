@@ -2,12 +2,13 @@
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common": {
     "assets": "Assets",
-    "funds": "Funds",
+    "fund": "Fund",
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
     "signin": "Sign In",
     "signup": "Sign Up",
+    "dismiss": "Dismiss",
     "continue": "Continue",
     "back": "Back",
     "cancel": "Cancel",
@@ -15,11 +16,18 @@
     "available": "Available",
     "username": "Username",
     "accounts": "Accounts",
+    "switch": "Switch",
     "hi": "Hi",
     "to": "To",
     "error": "Error",
     "signinWithDesktop": "Sign in with Desktop",
-    "motto": "Bringing back the good things of the last cycle",
+    "signinWithSession": "Sign in with session key",
+    "motto": "Dango–the one app for everything DeFi",
+    "notWalletDetected": "No wallet detected",
+    "testnet": {
+      "title": "Message from the founder",
+      "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
+    },
     "signWithWallet": [
       {
         "declarations": ["input action"],
@@ -41,9 +49,80 @@
       }
     ]
   },
+  "countdown": {
+    "days": [
+      {
+        "declarations": ["input days", "local countDays = days: plural"],
+        "selectors": ["countDays"],
+        "match": {
+          "countDays=one": "Day",
+          "countDays=other": "Days"
+        }
+      }
+    ],
+    "hours": [
+      {
+        "declarations": ["input hours", "local countHours = hours: plural"],
+        "selectors": ["countHours"],
+        "match": {
+          "countHours=one": "Hour",
+          "countHours=other": "Hours"
+        }
+      }
+    ],
+    "minutes": [
+      {
+        "declarations": ["input minutes", "local countMinutes = minutes: plural"],
+        "selectors": ["countMinutes"],
+        "match": {
+          "countMinutes=one": "Minute",
+          "countMinutes=other": "Minutes"
+        }
+      }
+    ],
+    "seconds": [
+      {
+        "declarations": ["input seconds", "local countSeconds = seconds: plural"],
+        "selectors": ["countSeconds"],
+        "match": {
+          "countSeconds=one": "Second",
+          "countSeconds=other": "Seconds"
+        }
+      }
+    ]
+  },
   "explorer": {
+    "block": {
+      "notFound": {
+        "title": "Block not found",
+        "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
+      },
+      "details": {
+        "blockDetails": "Block Details",
+        "blockHash": "Block Hash:",
+        "blockHeight": "Block Height:",
+        "blockTime": "Time:",
+        "transactions": "Transactions",
+        "proposer": "Proposer:",
+        "numberOfTx": "Number of Tx:"
+      },
+      "futureBlock": {
+        "targetBlock": "Target Block",
+        "description": " The estimated time for a block to be created and added to the blockchain.",
+        "estimateTimeISO": "Estimated Time (ISO)",
+        "estimateTimeUTC": "Estimated Time (UTC)",
+        "hasNotBeenCreated": "Block {height} has not been created yet.",
+        "remainingBlocks": "Remaining Blocks",
+        "currentBlock": "Current Block"
+      }
+    },
     "txs": {
-      "txDetails": "Transaction Details"
+      "txDetails": "Transaction Details",
+      "notFound": {
+        "pre": "We couldn’t find",
+        "title": "Transaction not found",
+        "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
+      }
     }
   },
   "modals": {
@@ -65,13 +144,17 @@
     }
   },
   "signin": {
-    "continueWithoutLogin": "Continue without login",
+    "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
+    "advancedOptions": "Advanced Options",
+    "continueWithoutSignin": "Continue without sign in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
-    "noAccount": "Don't have an account?",
+    "noAccount": "Don’t have an account?",
     "errors": {
+      "failedSingInWithDesktop": "Failed to sign in with desktop",
+      "mobileSessionAborted": "Mobile session was aborted",
       "usernameRequired": "Username is required",
-      "usernameNotExist": "Username doesn't exist",
+      "usernameNotExist": "Username doesn’t exist",
       "failedSigingIn": "Failed to connect with the selected credential."
     },
     "credential": {
@@ -83,9 +166,37 @@
     "description": "We’re delighted to have you with us and look forward to seeing what you do next."
   },
   "signup": {
+    "mobileModal": {
+      "title": "Sign Up Not Available!",
+      "description": "Unfortunately, sign-up is not supported on mobile devices. Please use a desktop to complete your sign-up."
+    },
     "createAccount": "Create Account",
     "doThisLater": "Do this later",
     "alreadyHaveAccount": "Already have an account?",
+    "carousel": {
+      "title": [
+        {
+          "declarations": ["input step"],
+          "selectors": ["step"],
+          "match": {
+            "step=0": "Trade",
+            "step=1": "Leverage up",
+            "step=2": "Earn"
+          }
+        }
+      ],
+      "description": [
+        {
+          "declarations": ["input step"],
+          "selectors": ["step"],
+          "match": {
+            "step=0": "crypto assets, real world assets, and derivatives in Dango’s blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
+            "step=1": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
+            "step=2": "passive yields on your idle assets by depositing in Dango’s vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
+          }
+        }
+      ]
+    },
     "stepper": {
       "steps": [
         {
@@ -93,7 +204,8 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Credential",
-            "step=1": "Username"
+            "step=1": "Username",
+            "step=2": "Sign in"
           }
         }
       ],
@@ -113,12 +225,14 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Choose a sign in credential. You can add or remove credentials afterwards.",
-            "step=1": "Your username will be public on-chain and cannot be changed afterwards."
+            "step=1": "Your username will be public on-chain and cannot be changed afterwards.",
+            "step=2": "Your user was created and now you can sign in with your new account."
           }
         }
       ]
     },
     "errors": {
+      "couldntCompleteRequest": "Couldn’t complete request",
       "usernameTaken": "Username is already taken",
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
@@ -144,7 +258,7 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Select your account type to interact within the entire ecosystem",
-            "step=1": "Fund your first spot account, you'll be able to create another account later."
+            "step=1": "Fund your first spot account, you’ll be able to create another account later."
           }
         }
       ]
@@ -180,10 +294,27 @@
     }
   },
   "sendAndReceive": {
+    "title": "Transfer",
     "to": "To",
-    "sending": "You're sending",
+    "sending": "You’re sending",
     "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
+  },
+  "quests": {
+    "galxeQuest": {
+      "title": "Galxe Quest",
+      "quest": [
+        {
+          "declarations": ["input quest"],
+          "selectors": ["quest"],
+          "match": {
+            "quest=0": "Connect your Ethereum wallet",
+            "quest=1": "Create a subaccount",
+            "quest=2": "Make a transfer of tokens"
+          }
+        }
+      ]
+    }
   },
   "settings": {
     "title": "Settings",
@@ -235,7 +366,7 @@
     }
   },
   "commadBar": {
-    "noResult": "No results found",
+    "noResult": "No results found.",
     "placeholder": {
       "title": "Search for",
       "transactions": "transactions",

@@ -1,4 +1,3 @@
-import { getChainInfo, simulate } from "@left-curve/sdk";
 import type { Address, Message, Transport } from "@left-curve/sdk/types";
 
 import { composeTxTypedData } from "../../../utils/typedData.js";
@@ -11,6 +10,9 @@ import type {
   TxMessageType,
   TypedDataParameter,
 } from "../../../types/index.js";
+
+import { queryStatus } from "../queries/queryStatus.js";
+import { simulate } from "../queries/simulate.js";
 
 export type SignAndBroadcastTxParameters = {
   sender: Address;
@@ -30,7 +32,7 @@ export async function signAndBroadcastTx<transport extends Transport>(
 
   const chainId = await (async () => {
     if (client.chain?.id) return client.chain.id;
-    const { chainId } = await getChainInfo(client);
+    const { chainId } = await queryStatus(client);
     return chainId;
   })();
 
@@ -57,7 +59,11 @@ export async function signAndBroadcastTx<transport extends Transport>(
     verifyingContract: sender,
   };
 
-  const signDoc = composeTxTypedData({ messages, gas_limit: gasUsed, metadata }, domain, typedData);
+  const signDoc = composeTxTypedData(
+    { messages, gas_limit: gasUsed, data: metadata, sender },
+    domain,
+    typedData,
+  );
 
   const { credential } = await client.signer.signTx(signDoc);
 

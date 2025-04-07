@@ -1,27 +1,33 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
-import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store-react";
-import { useMutation } from "@tanstack/react-query";
+import { capitalize, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
+
 import { useApp } from "~/hooks/useApp";
-import { Modals } from "../foundation/Modal";
+import { Modals } from "../foundation/RootModal";
+import { toast } from "../foundation/Toast";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
-  const { register, inputs } = useInputs();
+  const { register, inputs } = useInputs({ initialValues: { amount: "0" } });
 
-  const { value: fundsAmount } = inputs.amount || {};
+  const { value: fundsAmount, error } = inputs.amount || {};
 
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { showModal } = useApp();
   const { coins, state } = useConfig();
-  const { account, refreshAccounts } = useAccount();
-  const { formatNumberOptions } = useApp();
+  const { account, refreshAccounts, changeAccount } = useAccount();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {} } = useBalances({
+  const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
   });
 
@@ -34,20 +40,18 @@ export const CreateAccountDepositStep: React.FC = () => {
       if (!signingClient) throw new Error("error: no signing client");
       const parsedAmount = parseUnits(fundsAmount, coinInfo.decimals).toString();
 
-      const nextIndex = await signingClient.getNextAccountIndex({ username: account!.username });
+      const [nextIndex] = await Promise.all([
+        signingClient.getNextAccountIndex({ username: account!.username }),
+      ]);
 
-      await signingClient.registerAccount(
-        {
-          sender: account!.address,
-          config: { [accountType as "spot"]: { owner: account!.username } },
+      await signingClient.registerAccount({
+        sender: account!.address,
+        config: { [accountType as "spot"]: { owner: account!.username } },
+        funds: {
+          "hyp/eth/usdc": parsedAmount,
         },
-        {
-          funds: {
-            "hyp/eth/usdc": parsedAmount,
-          },
-        },
-      );
-      await wait(3000);
+      });
+
       return {
         amount: parsedAmount,
         accountType,
@@ -58,7 +62,22 @@ export const CreateAccountDepositStep: React.FC = () => {
     onSuccess: async (data) => {
       showModal(Modals.ConfirmAccount, data);
       await refreshAccounts?.();
-      done();
+      await refreshBalances();
+      // changeAccount?.(data.address);
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
+      navigate({ to: "/" });
+    },
+    onError: (e) => {
+      console.error(e);
+      toast.error(
+        {
+          title: m["signup.errors.couldntCompleteRequest"]() as string,
+          description: e instanceof Error ? e.message : e,
+        },
+        {
+          duration: Number.POSITIVE_INFINITY,
+        },
+      );
     },
   });
 
@@ -74,6 +93,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         isDisabled={isPending}
         placeholder="0"
         {...register("amount", {
+          strategy: "onChange",
           validate: (v) => {
             if (Number(v) > Number(humanBalance))
               return m["validations.errors.insufficientFunds"]();
@@ -87,7 +107,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         })}
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
-            <img src={coinInfo.logoURI} className="w-5 h-5 rounded-full" alt={coinInfo.name} />
+            <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.name} />
             <span className="diatype-m-regular text-gray-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }
@@ -105,7 +125,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
           {m["common.back"]()}
         </Button>
-        <Button type="submit" fullWidth isLoading={isPending}>
+        <Button type="submit" fullWidth isLoading={isPending} isDisabled={!!error}>
           {m["common.continue"]()}
         </Button>
       </div>

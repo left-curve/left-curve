@@ -4,6 +4,7 @@ import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -13,7 +14,7 @@ const { publicVars } = loadEnv();
 export default defineConfig({
   source: {
     entry: {
-      index: "./src/app.tsx",
+      index: "./src/index.tsx",
     },
     alias: {
       "~": "./src",
@@ -22,7 +23,6 @@ export default defineConfig({
     define: publicVars,
   },
   server: { port: 5080 },
-
   html: { template: "public/index.html" },
   performance: {
     prefetch: {
@@ -34,10 +34,19 @@ export default defineConfig({
   plugins: [pluginReact()],
   tools: {
     rspack: {
+      devtool: "source-map",
       plugins: [
+        sentryWebpackPlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          telemetry: false,
+          sourcemaps: {
+            filesToDeleteAfterUpload: ["build/**/*.map"],
+          },
+        }),
         paraglideRspackPlugin({
           outdir: "./.paraglide",
-          cleanOutdir: true,
           emitGitIgnore: false,
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,

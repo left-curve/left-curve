@@ -7,10 +7,10 @@ export { Badge } from "./foundation/Badge";
 export { IconButton, type IconButtonProps } from "./foundation/IconButton";
 export { Spinner } from "./foundation/Spinner";
 export { QRCode } from "./foundation/QRCode";
-export { Select, Item as SelectItem } from "./foundation/Select";
+export { Select } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
-export { Table } from "./foundation/table/Table";
+export { Table, type TableColumn } from "./foundation/table/Table";
 export { Tabs, Tab } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
 export { Input } from "./foundation/Input";
@@ -24,6 +24,8 @@ export { TextLoop } from "./foundation/TextLoop";
 export { AccordionItem } from "./foundation/AccordionItem";
 export { BorrowBar } from "./foundation/BorrowBar";
 export { Skeleton } from "./foundation/Skeleton";
+export { ExpandOptions } from "./foundation/ExpandOptions";
+export { Checkbox } from "./foundation/Checkbox";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -71,6 +73,7 @@ export { IconPasskey } from "./foundation/icons/IconPasskey";
 export { IconMobile } from "./foundation/icons/IconMobile";
 export { IconFormatNumber } from "./foundation/icons/IconFormatNumber";
 export { IconLanguage } from "./foundation/icons/IconLanguage";
+export { IconSwitch } from "./foundation/icons/IconSwitch";
 
 /* ---------------------------------- Emojis -------------------------------- */
 
@@ -87,10 +90,6 @@ export { Pig2 } from "./foundation/icons/emoji/Pig2";
 export { Temple } from "./foundation/icons/emoji/Temple";
 export { Wizard } from "./foundation/icons/emoji/Wizard";
 export { type EmojiName, Emoji } from "./foundation/Emoji";
-
-/* ---------------------------------- Chars --------------------------------- */
-
-export { Birdo } from "./foundation/chars/Birdo";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Dashboard                                 */

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import hotToast from "react-hot-toast";
 
 import { IconChecked, IconClose, Spinner } from "@left-curve/applets-kit";
@@ -41,34 +40,39 @@ const Icon = {
 
 export const Toast: React.FC<Props> = ({ title, description, type, close }) => {
   return (
-    <div className="w-fit min-w-[12rem] max-w-[20rem] p-4 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex items-center gap-2">
+    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex items-start gap-2 relative">
       {Icon[type]}
-      <div className="flex flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <p className="text-gray-900 diatype-sm-medium">{title}</p>
-        {description && <p className="text-gray-500 diatype-xs-medium">{description}</p>}
+        {description && <p className="text-gray-500 diatype-xs-medium break-all">{description}</p>}
       </div>
+      <button
+        className="absolute top-4 right-4 transition-all duration-200"
+        onClick={close}
+        type="button"
+      >
+        <IconClose className="w-6 h-6 text-gray-500 hover:text-gray-900" />
+      </button>
     </div>
   );
 };
 
-export const useToast = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+const success = (toastMsg?: ToastMsg, options?: ToastOptions) =>
+  hotToast.custom((t) => {
+    const msg = Object.assign({ title: "Operation Sucessful" }, toastMsg);
+    return (
+      <Toast
+        close={() => hotToast.dismiss(t.id)}
+        title={msg.title}
+        description={msg.description}
+        type="success"
+      />
+    );
+  }, options);
 
-  const success = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-    hotToast.custom((t) => {
-      const msg = Object.assign({ title: "Operation Sucessful" }, toastMsg);
-      return (
-        <Toast
-          close={() => hotToast.dismiss(t.id)}
-          title={msg.title}
-          description={msg.description}
-          type="success"
-        />
-      );
-    }, options);
-
-  const error = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-    hotToast.custom((t) => {
+const error = (toastMsg?: ToastMsg, options?: ToastOptions) =>
+  hotToast.custom(
+    (t) => {
       const msg = Object.assign(
         { title: "Error", description: "Something went wrong. Please try again later." },
         toastMsg,
@@ -81,50 +85,45 @@ export const useToast = () => {
           type="error"
         />
       );
-    }, options);
-
-  const loading = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-    hotToast.custom((t) => {
-      const msg = Object.assign({ title: "Loading..." }, toastMsg);
-      return (
-        <Toast
-          close={() => hotToast.dismiss(t.id)}
-          title={msg.title}
-          description={msg.description}
-          type="loading"
-        />
-      );
-    }, options);
-
-  const promise = async <T,>(
-    promise: Promise<T>,
-    toastMsgs?: { loading?: ToastMsg; success?: ToastMsg; error?: ToastMsg },
-    delay?: number,
-  ) => {
-    const id = loading(toastMsgs?.loading, { duration: Number.POSITIVE_INFINITY });
-
-    return promise
-      .then(async (result) => {
-        if (delay) await wait(delay);
-        success(toastMsgs?.success, { id, duration: 2000 });
-        return result;
-      })
-      .catch((e) => {
-        error(toastMsgs?.error, { id, duration: 2000 });
-        console.log(e);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  };
-
-  return {
-    isLoading,
-    toast: {
-      promise,
-      success,
-      error,
-      loading,
     },
-  };
+    { ...options, duration: Number.POSITIVE_INFINITY },
+  );
+
+const loading = (toastMsg?: ToastMsg, options?: ToastOptions) =>
+  hotToast.custom((t) => {
+    const msg = Object.assign({ title: "Loading..." }, toastMsg);
+    return (
+      <Toast
+        close={() => hotToast.dismiss(t.id)}
+        title={msg.title}
+        description={msg.description}
+        type="loading"
+      />
+    );
+  }, options);
+
+const promise = async <T,>(
+  promise: Promise<T>,
+  toastMsgs?: { loading?: ToastMsg; success?: ToastMsg; error?: ToastMsg },
+  delay?: number,
+) => {
+  const id = loading(toastMsgs?.loading, { duration: Number.POSITIVE_INFINITY });
+
+  return promise
+    .then(async (result) => {
+      if (delay) await wait(delay);
+      success(toastMsgs?.success, { id, duration: 2000 });
+      return result;
+    })
+    .catch((e) => {
+      error(toastMsgs?.error, { id, duration: 2000 });
+      console.log(e);
+    });
+};
+
+export const toast = {
+  promise,
+  success,
+  error,
+  loading,
 };

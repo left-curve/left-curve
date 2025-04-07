@@ -1,6 +1,5 @@
 import {
   type ColumnDef,
-  PaginationState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -8,17 +7,20 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type React from "react";
+import React from "react";
+import { twMerge } from "../../../utils";
 
-interface TableProps<T = any> {
+export type TableColumn<T> = ColumnDef<T>[];
+
+type TableProps<T> = {
   bottomContent?: React.ReactNode;
   topContent?: React.ReactNode;
-  columns: ColumnDef<T>[];
+  columns: TableColumn<T>;
   data: T[];
-}
+};
 
-export const Table: React.FC<TableProps> = ({ topContent, bottomContent, columns, data }) => {
-  const table = useReactTable({
+export const Table = <T,>({ topContent, bottomContent, columns, data }: TableProps<T>) => {
+  const table = useReactTable<T>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -28,43 +30,45 @@ export const Table: React.FC<TableProps> = ({ topContent, bottomContent, columns
   });
 
   return (
-    <div className="bg-rice-25 shadow-card-shadow flex flex-col rounded-3xl w-full p-4 gap-4">
+    <div className="bg-rice-25 shadow-card-shadow grid rounded-xl w-full p-4 gap-4 overflow-hidden">
       {topContent}
-      <div className="overflow-y-auto scrollbar-none w-full">
-        <table className="table-auto w-full">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className=" text-[#717680] font-semibold text-xs">
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <th
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className="text-end p-4 bg-green-bean-100 first:text-start first:rounded-l-xl last:rounded-r-xl"
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => {
+      <div
+        style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
+        className={twMerge("overflow-y-auto scrollbar-none w-full grid relative")}
+      >
+        {table.getHeaderGroups().map((headerGroup) => (
+          <React.Fragment key={headerGroup.id}>
+            {headerGroup.headers.map((header, index) => {
               return (
-                <tr key={row.id} className="p-4 border-b border-b-gray-100">
-                  {row.getVisibleCells().map((cell) => {
-                    return (
-                      <td key={cell.id} className="p-4">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    );
-                  })}
-                </tr>
+                <div
+                  key={header.id}
+                  className="p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold"
+                  style={
+                    headerGroup.headers.length - 1 === index
+                      ? { borderRadius: "0 16px 16px 0", textAlign: "end" }
+                      : {}
+                  }
+                >
+                  {flexRender(header.column.columnDef.header, header.getContext())}
+                </div>
               );
             })}
-          </tbody>
-        </table>
+          </React.Fragment>
+        ))}
+
+        {table.getRowModel().rows.map((row) => {
+          return (
+            <React.Fragment key={row.id}>
+              {row.getVisibleCells().map((cell) => {
+                return (
+                  <div key={cell.id} className="px-6 py-4 diatype-sm-medium">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          );
+        })}
       </div>
       {bottomContent}
     </div>

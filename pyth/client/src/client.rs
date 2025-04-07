@@ -15,7 +15,7 @@ use {
         time::Duration,
     },
     tokio_stream::StreamExt,
-    tracing::{debug, error},
+    tracing::{error, info},
 };
 
 /// PythClient is a client to interact with the Pyth network.
@@ -97,18 +97,22 @@ impl PythClientTrait for PythClient {
                     // but there are no more events incoming.
                     _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
                         if !keep_running.load(Ordering::Relaxed) {
+                            es.close();
                             return;
                         }
                     }
 
                     data = es.next() => {
                         if !keep_running.load(Ordering::Acquire) {
+                            es.close();
                             return;
                         }
 
-                        if let Some(event) = data{
+                        if let Some(event) = data {
                             match event {
-                                Ok(Event::Open) => debug!("Pyth SSE connection open"),
+                                Ok(Event::Open) => {
+                                    info!("Pyth SSE connection open");
+                                },
                                 Ok(Event::Message(message)) => {
                                     match message.data.deserialize_json::<LatestVaaResponse>() {
                                         Ok(vaas) => {
@@ -117,7 +121,7 @@ impl PythClientTrait for PythClient {
                                         Err(err) => {
                                             error!(
                                                 err = err.to_string(),
-                                                "Failed to deserialize Pyth event into LatestVaaResponse"
+                                                "Failed to deserialize Pyth event into `LatestVaaResponse`"
                                             );
                                         },
                                     }
@@ -127,13 +131,12 @@ impl PythClientTrait for PythClient {
                                         err = err.to_string(),
                                         "Error while receiving the events from Pyth"
                                     );
-                                    es.close();
                                 },
                             }
+                        } else {
+                            error!("Pyth SSE connection close");
                         }
-
                     }
-
                 }
             }
         };

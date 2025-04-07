@@ -43,4 +43,16 @@ body {
     justify-content: center;
     align-items: center;
   }
+
+  .max-h-available {
+    max-height: 100vh;
+    max-height: -moz-available;
+    max-height: -webkit-fill-available;
+    max-height: -webkit-stretch;
+  }
+}
+
+[cmdk-group-heading] {
+  @apply diatype-sm-medium text-gray-500;
+  padding: 0 11px;
 }

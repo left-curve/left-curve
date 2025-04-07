@@ -50,10 +50,12 @@ pub use {
 // ---------------------------------- testing ----------------------------------
 
 #[cfg(not(target_arch = "wasm32"))]
+mod client;
+#[cfg(not(target_arch = "wasm32"))]
 mod testing;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use testing::*;
+pub use {client::*, testing::*};
 
 // ---------------------------------- prelude ----------------------------------
 

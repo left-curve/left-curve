@@ -60,6 +60,7 @@ export type {
   RequestFnParameters,
   RequestOptions,
   TransportSchema,
+  TransportSchemaOverride,
 } from "./transports.js";
 
 export type {
@@ -80,7 +81,7 @@ export type {
   AnyCoin,
   BaseCoin,
   CoinFee,
-  IBCCoin,
+  AlloyCoin,
   NativeCoin,
   ContractCoin,
   CoinGeckoId,
@@ -119,6 +120,9 @@ export type {
   StrictOmit,
   UnionStrictOmit,
   MaybePromise,
+  Failure,
+  Success,
+  Result,
 } from "./utils.js";
 
 export type {
@@ -148,14 +152,6 @@ export type {
   HttpRequestParameters,
   HttpRpcClientOptions,
 } from "./http.js";
-
-export type { IndexerSchema } from "./indexer.js";
-
-export type {
-  GraphQLClientResponse,
-  GraphqlClient,
-  GraphqlClientOptions,
-} from "./graphql.js";
 
 export {
   Block,

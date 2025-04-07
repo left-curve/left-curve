@@ -1,4 +1,4 @@
-import { useBalances, usePrices } from "@left-curve/store-react";
+import { useBalances, usePrices } from "@left-curve/store";
 
 import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
 
@@ -62,7 +62,7 @@ function AccountCard({
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-md flex flex-col justify-between p-4",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4",
         bgColor,
       )}
     >
@@ -145,7 +145,8 @@ export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
     <div
       className={twMerge(
         "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-md flex flex-col justify-between p-4 cursor-pointer",
-        "mb-[-6.5rem]",
+        "mb-[-6.2rem]",
+        "flex-shrink-0",
         bgColor,
       )}
       onClick={() => onAccountSelect(account)}
@@ -161,11 +162,11 @@ export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
                 start={4}
                 end={4}
               />
-              {/* <IconCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" /> */}
+              <IconCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
             </div>
           </div>
         </div>
-        <div>
+        <div className="flex flex-col gap-1 items-end">
           <p className="diatype-m-bold text-gray-400">{totalBalance}</p>
           <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
         </div>
