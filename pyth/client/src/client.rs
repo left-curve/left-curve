@@ -84,7 +84,7 @@ impl PythClientTrait for PythClient {
         let keep_running = self.keep_running.clone();
 
         let stream = stream! {
-            let mut retry_attemps = 0;
+            let mut retry_attempts = 0;
 
             loop{
                 // Create an EventSource.
@@ -111,15 +111,15 @@ impl PythClientTrait for PythClient {
                             }
 
                             // Exponential backoff before try to reconnect.
-                            let delay = if retry_attemps > 6 {
+                            let delay = if retry_attempts > 6 {
                                 MAX_DELAY
                             } else {
                                 min(
                                     MAX_DELAY,
-                                    Duration::from_secs((u32::pow(2, retry_attemps)) as u64),
+                                    Duration::from_secs((u32::pow(2, retry_attempts)) as u64),
                                 )
                             };
-                            retry_attemps += 1;
+                            retry_attempts += 1;
 
                             warn!("No new data received. Reconnecting in {} seconds", delay.as_secs());
 
@@ -141,7 +141,7 @@ impl PythClientTrait for PythClient {
                                         info!("Pyth SSE connection open");
                                     },
                                     Ok(Event::Message(message)) => {
-                                        retry_attemps = 0;
+                                        retry_attempts = 0;
 
                                         match message.data.deserialize_json::<LatestVaaResponse>() {
                                             Ok(vaas) => {
