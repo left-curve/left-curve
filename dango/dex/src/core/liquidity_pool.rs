@@ -31,13 +31,13 @@ pub trait PassiveLiquidityPool {
 
     /// Remove a portion of the liquidity from the pool. This function mutates the pool reserves.
     ///
-    /// ## Inputs:
+    /// ## Inputs
     ///
     /// - `reserve`: The current pool reserves, before the withdrawal is made.
     /// - `lp_token_supply`: The current total supply of LP tokens.
     /// - `lp_burn_amount`: The amount of LP tokens to burn.
     ///
-    /// ## Outputs:
+    /// ## Outputs
     ///
     /// - The updated pool reserves.
     /// - The funds withdrawn from the pool.
@@ -53,13 +53,16 @@ pub trait PassiveLiquidityPool {
     /// ## Inputs
     ///
     /// - `reserve`: The current pool reserves, before the swap is performed.
-    /// - `input`: The amount of input asset to swap. Must be one of the reserve
-    ///   assets, otherwise error.
+    /// - `input`: The amount of input asset to swap.
     ///
     /// ## Outputs
     ///
     /// - The updated pool reserves.
     /// - The amount of output asset received from the swap.
+    ///
+    /// ## Notable errors
+    ///
+    /// The input asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_in(
         &self,
         reserve: CoinPair,
@@ -71,13 +74,16 @@ pub trait PassiveLiquidityPool {
     /// ## Inputs
     ///
     /// - `reserve`: The current pool reserves, before the swap is performed.
-    /// - `output`: The amount of output asset to swap. Must be one of the reserve
-    ///  assets, otherwise error.
+    /// - `output`: The amount of output asset to swap.
     ///
     /// ## Outputs
     ///
     /// - The updated pool reserves.
     /// - The necessary input asset.
+    ///
+    /// ## Notable errors
+    ///
+    /// The output asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_out(
         &self,
         reserve: CoinPair,
