@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, CoinPair, Denom, Udec128, Uint128},
+    grug::{Addr, CoinPair, Denom, MaxLength, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -71,6 +71,41 @@ pub enum ExecuteMsg {
         base_denom: Denom,
         quote_denom: Denom,
     },
+    /// Perform an instant swap directly in the passive liquidity pools, with an
+    /// exact amount of input asset.
+    ///
+    /// User must send exactly one asset, which must be either the base or quote
+    /// asset of the first pair in the `route`.
+    ///
+    /// User may specify a minimum amount of output, for slippage control.
+    SwapExactAmountIn {
+        /// Since our mainnet will have zero gas fee for swapping in the DEX, we
+        /// must prevent attacker from sending a swap request with very long `route`'s.
+        ///
+        /// Here, we set a maximum of route to 2. This is fine because the pairs
+        /// we plan to support at launch all come with USDC as the quote asset.
+        /// As such, it's possible to go from any asset to any other in no more
+        /// than 2 hops.
+        ///
+        /// If we plan to support non-USDC quoted pools in the future, we need to
+        /// allow longer routes. We can replace this with `UniqueVec<PairId>`.
+        /// The uniqueness ensures there's no loops in the route.
+        route: MaxLength<Vec<PairId>, 2>,
+        minimum_output: Option<Uint128>,
+    },
+    /// Perform an instant swap directly in the passive liqudiity pools, with an
+    /// exact amount of output asset.
+    ///
+    /// User must send exactly one asset, which must be either the base or quote
+    /// asset of the first pair in the `route`.
+    ///
+    /// Slippage control is implied by the input amount. If required input is
+    /// less than what user sends, the excess is refunded. Otherwise, if required
+    /// input more than what user sends, the swap fails.
+    SwapExactAmountOut {
+        route: MaxLength<Vec<PairId>, 2>,
+        output: Uint128,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -84,7 +119,7 @@ pub enum QueryMsg {
     /// Enumerate all trading pairs and their parameters.
     #[returns(Vec<PairUpdate>)]
     Pairs {
-        start_after: Option<PairPageParam>,
+        start_after: Option<PairId>,
         limit: Option<u32>,
     },
     /// Query the passive liquidity pool reserve of a single trading pair,
@@ -96,7 +131,7 @@ pub enum QueryMsg {
     /// Enumerate all passive liquidity pool reserves.
     #[returns(Vec<ReservesResponse>)]
     Reserves {
-        start_after: Option<PairPageParam>,
+        start_after: Option<PairId>,
         limit: Option<u32>,
     },
     /// Query a single active order by ID.
@@ -125,9 +160,10 @@ pub enum QueryMsg {
     },
 }
 
-/// Pagination parameters of the `QueryMsg::Pairs` query.
+/// Identifier of a trading pair. Consists of the base asset and quote asset
+/// denominations.
 #[grug::derive(Serde)]
-pub struct PairPageParam {
+pub struct PairId {
     pub base_denom: Denom,
     pub quote_denom: Denom,
 }
@@ -135,7 +171,7 @@ pub struct PairPageParam {
 /// Response type of the `QueryMsg::Reserves` query.
 #[grug::derive(Serde)]
 pub struct ReservesResponse {
-    pub pair: PairPageParam,
+    pub pair: PairId,
     pub reserve: CoinPair,
 }
 

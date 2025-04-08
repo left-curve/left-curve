@@ -1,8 +1,8 @@
 use {
     crate::{ORDERS, PAIRS, RESERVES},
     dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParam,
-        PairParams, PairUpdate, QueryMsg, ReservesResponse,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
+        PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
         Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt,
@@ -72,7 +72,7 @@ fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdRe
 #[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
-    start_after: Option<PairPageParam>,
+    start_after: Option<PairId>,
     limit: Option<u32>,
 ) -> StdResult<Vec<PairUpdate>> {
     let start = start_after
@@ -102,7 +102,7 @@ fn query_reserve(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> St
 #[inline]
 fn query_reserves(
     ctx: ImmutableCtx,
-    start_after: Option<PairPageParam>,
+    start_after: Option<PairId>,
     limit: Option<u32>,
 ) -> StdResult<Vec<ReservesResponse>> {
     let start = start_after
@@ -116,7 +116,7 @@ fn query_reserves(
         .map(|res| {
             let ((base_denom, quote_denom), reserve) = res?;
             Ok(ReservesResponse {
-                pair: PairPageParam {
+                pair: PairId {
                     base_denom,
                     quote_denom,
                 },
