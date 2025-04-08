@@ -1,18 +1,18 @@
 use {
-    crate::{ORDERS, PAIRS, RESERVES},
+    crate::{ORDERS, PAIRS, RESERVES, core},
     dango_types::dex::{
         OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
         PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
-        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt,
-        Order as IterationOrder, StdResult,
+        Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
+        JsonSerExt, Order as IterationOrder, StdResult, UniqueVec,
     },
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Pair {
             base_denom,
@@ -61,7 +61,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_orders_by_user(ctx, user, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::SimulateSwapExactAmountIn { route, input } => {
+            let res = simulate_swap_exact_amount_in(ctx, route.into_inner(), input)?;
+            res.to_json_value()
+        },
+        QueryMsg::SimulateSwapExactAmountOut { route, output } => {
+            let res = simulate_swap_exact_amount_out(ctx, route.into_inner(), output)?;
+            res.to_json_value()
+        },
     }
+    .map_err(Into::into)
 }
 
 #[inline]
@@ -238,4 +247,24 @@ fn query_orders_by_user(
             }))
         })
         .collect()
+}
+
+#[inline]
+fn simulate_swap_exact_amount_in(
+    ctx: ImmutableCtx,
+    route: UniqueVec<PairId>,
+    input: Coin,
+) -> anyhow::Result<Coin> {
+    let (_, output) = core::swap_exact_amount_in(ctx.storage, route, input)?;
+    Ok(output)
+}
+
+#[inline]
+fn simulate_swap_exact_amount_out(
+    ctx: ImmutableCtx,
+    route: UniqueVec<PairId>,
+    output: Coin,
+) -> anyhow::Result<Coin> {
+    let (_, input) = core::swap_exact_amount_out(ctx.storage, route, output)?;
+    Ok(input)
 }

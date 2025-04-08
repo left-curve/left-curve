@@ -147,6 +147,18 @@ pub enum QueryMsg {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
+    /// Simulate a swap with exact input.
+    #[returns(Coin)]
+    SimulateSwapExactAmountIn {
+        route: MaxLength<UniqueVec<PairId>, 2>,
+        input: Coin,
+    },
+    /// Simulate a swap with exact output.
+    #[returns(Coin)]
+    SimulateSwapExactAmountOut {
+        route: MaxLength<UniqueVec<PairId>, 2>,
+        output: Coin,
+    },
 }
 
 /// Identifier of a trading pair. Consists of the base asset and quote asset
