@@ -3,8 +3,6 @@ use {
     indexer_httpd::graphql::{mutation, query, subscription},
 };
 
-const SCHEMA_PATH: &str = "src/schemas/schema.graphql";
-
 fn main() {
     let schema = Schema::build(
         query::Query::default(),
@@ -13,11 +11,12 @@ fn main() {
     )
     .finish();
 
-    let sdl = schema.sdl();
-    std::fs::write(SCHEMA_PATH, sdl).unwrap();
+    let filename = std::env::args()
+        .next_back()
+        .expect("No argument given. Please provide the path to the schema file.");
 
-    println!(
-        "Schema generated successfully at: {:?}",
-        std::env::current_dir().unwrap().join(SCHEMA_PATH)
-    );
+    let sdl = schema.sdl();
+    std::fs::write(&filename, sdl).unwrap();
+
+    println!("Schema generated successfully at: {:?}", filename);
 }

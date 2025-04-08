@@ -5558,13 +5558,11 @@ name = "indexer-client"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "async-graphql",
  "async-trait",
  "graphql_client",
  "grug-jmt",
  "grug-math",
  "grug-types",
- "indexer-httpd",
  "paste",
  "reqwest 0.12.15",
  "serde",

@@ -24,7 +24,3 @@ tendermint-rpc = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
-
-[build-dependencies]
-async-graphql = { workspace = true }
-indexer-httpd = { workspace = true }
