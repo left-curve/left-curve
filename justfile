@@ -36,7 +36,7 @@ fmt:
   cargo +nightly fmt --all
 
 # Build schema
-build_graphql_schema:
+build-graphql-schema:
   cargo run -p indexer-httpd build_graphql_schema -- \
     ./indexer/client/src/schemas/schema.graphql
 
