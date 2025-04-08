@@ -83,7 +83,7 @@ impl PythClientTrait for PythClient {
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running = self.keep_running.clone();
 
-        // EventSource::new() return an Error only if the builder is not Cloneable.
+        // `EventSource::new()` return an Error only if the builder is not `Clone`-able.
         // Instead of returning a result inside of the stream, clone the builder
         // here to ensure it's cloneable.
         let _ = builder.try_clone().ok_or(CannotCloneRequestError)?;
@@ -91,8 +91,8 @@ impl PythClientTrait for PythClient {
         let stream = stream! {
             let mut retry_attempts = 0;
 
-            loop{
-                // Create an EventSource.
+            loop {
+                // Create an `EventSource`.
                 let mut es = EventSource::new(builder.try_clone().unwrap()).unwrap();
 
                 // Set the exponential backoff for reconnect.
@@ -124,6 +124,7 @@ impl PythClientTrait for PythClient {
                                     Duration::from_secs((u32::pow(2, retry_attempts)) as u64),
                                 )
                             };
+
                             retry_attempts += 1;
 
                             warn!("No new data received. Reconnecting in {} seconds", delay.as_secs());
@@ -131,8 +132,7 @@ impl PythClientTrait for PythClient {
                             sleep(delay).await;
 
                             break;
-                        }
-
+                        },
                         data = es.next() => {
                             if !keep_running.load(Ordering::Acquire) {
                                 es.close();
@@ -172,7 +172,7 @@ impl PythClientTrait for PythClient {
                                 es.close();
                                 break;
                             }
-                        }
+                        },
                     }
                 }
             }
