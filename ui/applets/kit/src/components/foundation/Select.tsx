@@ -174,7 +174,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
             const { value } = child.props as SelectItemProps;
             return (
               <option key={value} value={value}>
-                {value}
+                {typeof child.props.children === "string" ? child.props.children : value}
               </option>
             );
           }
