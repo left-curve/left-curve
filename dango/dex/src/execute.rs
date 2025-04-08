@@ -1,7 +1,7 @@
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, MatchingOutcome, NEXT_ORDER_ID, ORDERS, Order, PAIRS,
-        PassiveLiquidityPool, RESERVES, fill_orders, match_orders,
+        PassiveLiquidityPool, RESERVES, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
     dango_types::{
@@ -15,7 +15,7 @@ use {
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, Message,
         MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
-        StdResult, Storage, SudoCtx, Udec128, Uint128,
+        StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -45,9 +45,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SwapExactAmountIn {
             route,
             minimum_output,
-        } => swap_exact_amount_in(ctx, route.into_inner().into_inner(), minimum_output),
+        } => swap_exact_amount_in(ctx, route.into_inner(), minimum_output),
         ExecuteMsg::SwapExactAmountOut { route, output } => {
-            swap_exact_amount_out(ctx, route.into_inner().into_inner(), output)
+            swap_exact_amount_out(ctx, route.into_inner(), output)
         },
     }
 }
@@ -358,25 +358,11 @@ fn withdraw_liquidity(
 #[inline]
 fn swap_exact_amount_in(
     ctx: MutableCtx,
-    route: Vec<PairId>,
+    route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
-    let mut output = ctx.funds.into_one_coin()?;
-
-    for pair in route {
-        // Load the pair's parameters.
-        let params = PAIRS.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
-
-        // Load the pair's reserves.
-        let mut reserve = RESERVES.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
-
-        // Perform the swap.
-        // The output of the previous step is the input of this step.
-        (reserve, output) = params.swap_exact_amount_in(reserve, output)?;
-
-        // Save the updated reserves.
-        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
-    }
+    let (reserves, output) =
+        core::swap_exact_amount_in(ctx.storage, route, ctx.funds.into_one_coin()?)?;
 
     // Ensure the output is above the minimum.
     if let Some(minimum_output) = minimum_output {
@@ -388,6 +374,11 @@ fn swap_exact_amount_in(
         );
     }
 
+    // Save the updated pool reserves.
+    for (pair, reserve) in reserves {
+        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
+    }
+
     // TODO:
     // 1. add events
     // 2. handle the case if output is zero
@@ -397,29 +388,20 @@ fn swap_exact_amount_in(
 #[inline]
 fn swap_exact_amount_out(
     mut ctx: MutableCtx,
-    route: Vec<PairId>,
+    route: UniqueVec<PairId>,
     output: Coin,
 ) -> anyhow::Result<Response> {
-    let mut input = output.clone();
-
-    for pair in route.iter().rev() {
-        // Load the pair's parameters.
-        let params = PAIRS.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
-
-        // Load the pair's reserves.
-        let mut reserve = RESERVES.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
-
-        // Perform the swap.
-        (reserve, input) = params.swap_exact_amount_out(reserve, input)?;
-
-        // Save the updated reserves.
-        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
-    }
+    let (reserves, input) = core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
     ctx.funds.deduct(input)?;
     ctx.funds.insert(output)?;
+
+    // Save the updated pool reserves.
+    for (pair, reserve) in reserves {
+        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
+    }
 
     Ok(Response::new().add_message(Message::transfer(ctx.sender, ctx.funds)?))
 }
