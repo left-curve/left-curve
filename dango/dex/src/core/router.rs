@@ -1,7 +1,7 @@
 use {
     crate::{PAIRS, PassiveLiquidityPool, RESERVES},
     dango_types::dex::PairId,
-    grug::{Coin, CoinPair, Storage, UniqueVec},
+    grug::{Coin, CoinPair, Inner, NonZero, Storage, UniqueVec},
     std::collections::HashMap,
 };
 
@@ -34,10 +34,10 @@ pub fn swap_exact_amount_in(
 pub fn swap_exact_amount_out(
     storage: &dyn Storage,
     route: UniqueVec<PairId>,
-    output: Coin,
+    output: NonZero<Coin>,
 ) -> anyhow::Result<(HashMap<PairId, CoinPair>, Coin)> {
     let mut reserves = HashMap::new();
-    let mut input = output;
+    let mut input = output.into_inner();
 
     for pair in route.into_iter().rev() {
         // Load the pair's parameters.

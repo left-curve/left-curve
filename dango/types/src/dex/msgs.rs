@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, Coin, CoinPair, Denom, MaxLength, Udec128, Uint128, UniqueVec},
+    grug::{Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Udec128, Uint128, UniqueVec},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -105,7 +105,10 @@ pub enum ExecuteMsg {
     /// Slippage control is implied by the input amount. If required input is
     /// less than what user sends, the excess is refunded. Otherwise, if required
     /// input more than what user sends, the swap fails.
-    SwapExactAmountOut { route: SwapRoute, output: Coin },
+    SwapExactAmountOut {
+        route: SwapRoute,
+        output: NonZero<Coin>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -163,7 +166,10 @@ pub enum QueryMsg {
     SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
     /// Simulate a swap with exact output.
     #[returns(Coin)]
-    SimulateSwapExactAmountOut { route: SwapRoute, output: Coin },
+    SimulateSwapExactAmountOut {
+        route: SwapRoute,
+        output: NonZero<Coin>,
+    },
 }
 
 /// Identifier of a trading pair. Consists of the base asset and quote asset

@@ -6,7 +6,7 @@ use {
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
-        JsonSerExt, Order as IterationOrder, StdResult, UniqueVec,
+        JsonSerExt, NonZero, Order as IterationOrder, StdResult, UniqueVec,
     },
     std::collections::BTreeMap,
 };
@@ -263,7 +263,7 @@ fn simulate_swap_exact_amount_in(
 fn simulate_swap_exact_amount_out(
     ctx: ImmutableCtx,
     route: UniqueVec<PairId>,
-    output: Coin,
+    output: NonZero<Coin>,
 ) -> anyhow::Result<Coin> {
     let (_, input) = core::swap_exact_amount_out(ctx.storage, route, output)?;
     Ok(input)

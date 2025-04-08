@@ -14,8 +14,8 @@ use {
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, Message,
-        MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
-        StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
+        MultiplyFraction, MutableCtx, NonZero, Number, Order as IterationOrder, QuerierExt,
+        Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -389,20 +389,24 @@ fn swap_exact_amount_in(
 fn swap_exact_amount_out(
     mut ctx: MutableCtx,
     route: UniqueVec<PairId>,
-    output: Coin,
+    output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
     let (reserves, input) = core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
     ctx.funds.deduct(input)?;
-    ctx.funds.insert(output)?;
+    ctx.funds.insert(output.into_inner())?;
 
     // Save the updated pool reserves.
     for (pair, reserve) in reserves {
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
+    // TODO: add events
+    //
+    // Unlike `swap_exact_amount_in`, no need to check whether output is zero
+    // here, because we already ensure it's non-zero.
     Ok(Response::new().add_message(Message::transfer(ctx.sender, ctx.funds)?))
 }
 
