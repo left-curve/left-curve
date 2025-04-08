@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, Coin, CoinPair, Denom, MaxLength, Udec128, Uint128},
+    grug::{Addr, Coin, CoinPair, Denom, MaxLength, Udec128, Uint128, UniqueVec},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -79,18 +79,7 @@ pub enum ExecuteMsg {
     ///
     /// User may specify a minimum amount of output, for slippage control.
     SwapExactAmountIn {
-        /// Since our mainnet will have zero gas fee for swapping in the DEX, we
-        /// must prevent attacker from sending a swap request with very long `route`'s.
-        ///
-        /// Here, we set a maximum of route to 2. This is fine because the pairs
-        /// we plan to support at launch all come with USDC as the quote asset.
-        /// As such, it's possible to go from any asset to any other in no more
-        /// than 2 hops.
-        ///
-        /// If we plan to support non-USDC quoted pools in the future, we need to
-        /// allow longer routes. We can replace this with `UniqueVec<PairId>`.
-        /// The uniqueness ensures there's no loops in the route.
-        route: MaxLength<Vec<PairId>, 2>,
+        route: MaxLength<UniqueVec<PairId>, 2>,
         minimum_output: Option<Uint128>,
     },
     /// Perform an instant swap directly in the passive liqudiity pools, with an
@@ -103,7 +92,7 @@ pub enum ExecuteMsg {
     /// less than what user sends, the excess is refunded. Otherwise, if required
     /// input more than what user sends, the swap fails.
     SwapExactAmountOut {
-        route: MaxLength<Vec<PairId>, 2>,
+        route: MaxLength<UniqueVec<PairId>, 2>,
         output: Coin,
     },
 }
@@ -163,6 +152,7 @@ pub enum QueryMsg {
 /// Identifier of a trading pair. Consists of the base asset and quote asset
 /// denominations.
 #[grug::derive(Serde)]
+#[derive(Hash)]
 pub struct PairId {
     pub base_denom: Denom,
     pub quote_denom: Denom,

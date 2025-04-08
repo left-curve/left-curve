@@ -45,9 +45,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SwapExactAmountIn {
             route,
             minimum_output,
-        } => swap_exact_amount_in(ctx, route.into_inner(), minimum_output),
+        } => swap_exact_amount_in(ctx, route.into_inner().into_inner(), minimum_output),
         ExecuteMsg::SwapExactAmountOut { route, output } => {
-            swap_exact_amount_out(ctx, route.into_inner(), output)
+            swap_exact_amount_out(ctx, route.into_inner().into_inner(), output)
         },
     }
 }
