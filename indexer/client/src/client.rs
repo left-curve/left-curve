@@ -12,6 +12,7 @@ use {
     std::{fmt::Display, str::FromStr},
 };
 
+#[derive(Debug, Clone)]
 pub struct HttpClient {
     inner: reqwest::Client,
     endpoint: String,

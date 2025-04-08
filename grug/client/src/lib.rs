@@ -15,6 +15,7 @@ use {
     },
 };
 
+#[derive(Debug, Clone)]
 pub struct TendermintRpcClient {
     inner: HttpClient,
 }
