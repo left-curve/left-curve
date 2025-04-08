@@ -395,8 +395,10 @@ fn swap_exact_amount_out(
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
-    ctx.funds.deduct(input)?;
-    ctx.funds.insert(output.into_inner())?;
+    ctx.funds
+        .insert(output.into_inner())?
+        .deduct(input)
+        .map_err(|e| anyhow!("insufficient input for swap: {e}"))?;
 
     // Save the updated pool reserves.
     for (pair, reserve) in reserves {
