@@ -5,8 +5,8 @@ use {
         PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
-        Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
-        JsonSerExt, NonZero, Order as IterationOrder, StdResult, UniqueVec,
+        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
+        Order as IterationOrder, StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -62,12 +62,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountIn { route, input } => {
-            let res = simulate_swap_exact_amount_in(ctx, route.into_inner(), input)?;
-            res.to_json_value()
+            let (_, output) = core::swap_exact_amount_in(ctx.storage, route.into_inner(), input)?;
+            output.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {
-            let res = simulate_swap_exact_amount_out(ctx, route.into_inner(), output)?;
-            res.to_json_value()
+            let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
+            input.to_json_value()
         },
     }
     .map_err(Into::into)
@@ -247,24 +247,4 @@ fn query_orders_by_user(
             }))
         })
         .collect()
-}
-
-#[inline]
-fn simulate_swap_exact_amount_in(
-    ctx: ImmutableCtx,
-    route: UniqueVec<PairId>,
-    input: Coin,
-) -> anyhow::Result<Coin> {
-    let (_, output) = core::swap_exact_amount_in(ctx.storage, route, input)?;
-    Ok(output)
-}
-
-#[inline]
-fn simulate_swap_exact_amount_out(
-    ctx: ImmutableCtx,
-    route: UniqueVec<PairId>,
-    output: NonZero<Coin>,
-) -> anyhow::Result<Coin> {
-    let (_, input) = core::swap_exact_amount_out(ctx.storage, route, output)?;
-    Ok(input)
 }
