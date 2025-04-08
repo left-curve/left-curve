@@ -4,6 +4,20 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
+/// A series of liquidity pools for performing swaps.
+///
+/// The route must not contain loops, e.g. asset A -> B -> A. In other words,
+/// the pair IDs must be unique.
+///
+/// Additionally, we enforce a maximum length of 2. This is to prevent the DoS
+/// attack of submitting swaps of extremely long routes.
+///
+/// 2 is a reasonble number, because at launch, all the trading pairs we plan to
+/// support comes with USDC as the quote asset. As such, it's possible to go
+/// from any one asset to any other in no more than 2 hops. If we plan to support
+/// non-USDC quoted pairs, the maximum route length can be adjusted.
+pub type SwapRoute = MaxLength<UniqueVec<PairId>, 2>;
+
 /// A request to create a new limit order.
 ///
 /// When creating a new limit order, the trader must send appropriate amount of
@@ -79,7 +93,7 @@ pub enum ExecuteMsg {
     ///
     /// User may specify a minimum amount of output, for slippage control.
     SwapExactAmountIn {
-        route: MaxLength<UniqueVec<PairId>, 2>,
+        route: SwapRoute,
         minimum_output: Option<Uint128>,
     },
     /// Perform an instant swap directly in the passive liqudiity pools, with an
@@ -91,10 +105,7 @@ pub enum ExecuteMsg {
     /// Slippage control is implied by the input amount. If required input is
     /// less than what user sends, the excess is refunded. Otherwise, if required
     /// input more than what user sends, the swap fails.
-    SwapExactAmountOut {
-        route: MaxLength<UniqueVec<PairId>, 2>,
-        output: Coin,
-    },
+    SwapExactAmountOut { route: SwapRoute, output: Coin },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -149,16 +160,10 @@ pub enum QueryMsg {
     },
     /// Simulate a swap with exact input.
     #[returns(Coin)]
-    SimulateSwapExactAmountIn {
-        route: MaxLength<UniqueVec<PairId>, 2>,
-        input: Coin,
-    },
+    SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
     /// Simulate a swap with exact output.
     #[returns(Coin)]
-    SimulateSwapExactAmountOut {
-        route: MaxLength<UniqueVec<PairId>, 2>,
-        output: Coin,
-    },
+    SimulateSwapExactAmountOut { route: SwapRoute, output: Coin },
 }
 
 /// Identifier of a trading pair. Consists of the base asset and quote asset
