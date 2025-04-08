@@ -85,7 +85,7 @@ impl PythClientTrait for PythClient {
 
         // EventSource::new() return an Error only if the builder is not Cloneable.
         // Instead of returning a result inside of the stream, clone the builder
-        // here and return the error if it fails.
+        // here to ensure it's cloneable.
         let _ = builder.try_clone().ok_or(CannotCloneRequestError)?;
 
         let stream = stream! {
