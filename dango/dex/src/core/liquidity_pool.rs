@@ -1,7 +1,7 @@
 use {
     crate::TradingFunction,
     dango_types::dex::PairParams,
-    grug::{CoinPair, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
+    grug::{Coin, CoinPair, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -47,6 +47,42 @@ pub trait PassiveLiquidityPool {
         lp_token_supply: Uint128,
         lp_burn_amount: Uint128,
     ) -> anyhow::Result<(CoinPair, CoinPair)>;
+
+    /// Perform a swap with an exact amount of input and a variable output.
+    ///
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the swap is performed.
+    /// - `input`: The amount of input asset to swap. Must be one of the reserve
+    ///   assets, otherwise error.
+    ///
+    /// ## Outputs
+    ///
+    /// - The updated pool reserves.
+    /// - The amount of output asset received from the swap.
+    fn swap_exact_amount_in(
+        &self,
+        reserve: CoinPair,
+        input: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)>;
+
+    /// Perform a swap with a variable amount of input and an exact output.
+    ///
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the swap is performed.
+    /// - `output`: The amount of output asset to swap. Must be one of the reserve
+    ///  assets, otherwise error.
+    ///
+    /// ## Outputs
+    ///
+    /// - The updated pool reserves.
+    /// - The necessary input asset.
+    fn swap_exact_amount_out(
+        &self,
+        reserve: CoinPair,
+        output: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -113,6 +149,22 @@ impl PassiveLiquidityPool for PairParams {
         let refund = reserve.split(lp_burn_amount, lp_token_supply)?;
 
         Ok((reserve, refund))
+    }
+
+    fn swap_exact_amount_in(
+        &self,
+        reserve: CoinPair,
+        input: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)> {
+        todo!()
+    }
+
+    fn swap_exact_amount_out(
+        &self,
+        reserve: CoinPair,
+        output: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)> {
+        todo!()
     }
 }
 

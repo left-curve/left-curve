@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, CoinPair, Denom, MaxLength, Udec128, Uint128},
+    grug::{Addr, Coin, CoinPair, Denom, MaxLength, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -104,7 +104,7 @@ pub enum ExecuteMsg {
     /// input more than what user sends, the swap fails.
     SwapExactAmountOut {
         route: MaxLength<Vec<PairId>, 2>,
-        output: Uint128,
+        output: Coin,
     },
 }
 

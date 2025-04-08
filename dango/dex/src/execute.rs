@@ -8,14 +8,14 @@ use {
         bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
-            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched,
+            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
             PairUpdate, PairUpdated,
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Message,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, Message,
         MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
-        StdResult, Storage, SudoCtx, Udec128,
+        StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -42,6 +42,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             base_denom,
             quote_denom,
         } => withdraw_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::SwapExactAmountIn {
+            route,
+            minimum_output,
+        } => swap_exact_amount_in(ctx, route.into_inner(), minimum_output),
+        ExecuteMsg::SwapExactAmountOut { route, output } => {
+            swap_exact_amount_out(ctx, route.into_inner(), output)
+        },
     }
 }
 
@@ -346,6 +353,75 @@ fn withdraw_liquidity(
         })
         .add_message(Message::transfer(ctx.sender, refunds)?))
     // TODO: add events
+}
+
+#[inline]
+fn swap_exact_amount_in(
+    ctx: MutableCtx,
+    route: Vec<PairId>,
+    minimum_output: Option<Uint128>,
+) -> anyhow::Result<Response> {
+    let mut output = ctx.funds.into_one_coin()?;
+
+    for pair in route {
+        // Load the pair's parameters.
+        let params = PAIRS.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
+
+        // Load the pair's reserves.
+        let mut reserve = RESERVES.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
+
+        // Perform the swap.
+        // The output of the previous step is the input of this step.
+        (reserve, output) = params.swap_exact_amount_in(reserve, output)?;
+
+        // Save the updated reserves.
+        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
+    }
+
+    // Ensure the output is above the minimum.
+    if let Some(minimum_output) = minimum_output {
+        ensure!(
+            output.amount >= minimum_output,
+            "output amount is below the minimum: {} < {}",
+            output.amount,
+            minimum_output
+        );
+    }
+
+    // TODO:
+    // 1. add events
+    // 2. handle the case if output is zero
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, output)?))
+}
+
+#[inline]
+fn swap_exact_amount_out(
+    mut ctx: MutableCtx,
+    route: Vec<PairId>,
+    output: Coin,
+) -> anyhow::Result<Response> {
+    let mut input = output.clone();
+
+    for pair in route.iter().rev() {
+        // Load the pair's parameters.
+        let params = PAIRS.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
+
+        // Load the pair's reserves.
+        let mut reserve = RESERVES.load(ctx.storage, (&pair.base_denom, &pair.quote_denom))?;
+
+        // Perform the swap.
+        (reserve, input) = params.swap_exact_amount_out(reserve, input)?;
+
+        // Save the updated reserves.
+        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
+    }
+
+    // The user must have sent no less than the required input amount.
+    // Any extra is refunded.
+    ctx.funds.deduct(input)?;
+    ctx.funds.insert(output)?;
+
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, ctx.funds)?))
 }
 
 /// Match and fill orders using the uniform price auction strategy.
