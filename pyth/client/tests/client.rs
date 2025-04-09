@@ -53,7 +53,7 @@ async fn test_sse_stream() {
 #[tokio::test]
 async fn test_client_reconnection() {
     let mut client = PythClient::new("http://127.0.0.1:3030").unwrap();
-    setup_tracing_subscriber(tracing::Level::DEBUG);
+    setup_tracing_subscriber(tracing::Level::INFO);
     let mut stream = client
         .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
         .await

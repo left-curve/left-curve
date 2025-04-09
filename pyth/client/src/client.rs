@@ -4,7 +4,7 @@ use {
     async_trait::async_trait,
     grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     pyth_types::LatestVaaResponse,
-    reqwest::{Client, IntoUrl, Url},
+    reqwest::{Client, IntoUrl, RequestBuilder, Url},
     reqwest_eventsource::{CannotCloneRequestError, Event, EventSource, retry::ExponentialBackoff},
     std::{
         cmp::min,
@@ -58,6 +58,81 @@ impl PythClient {
 
         params
     }
+
+    async fn create_event_source(
+        builder: &RequestBuilder,
+        backoff_start_duration: Duration,
+    ) -> EventSource {
+        // Function to calculate the exponential backoff before try to reconnect.
+        let fn_next_backoff_duration = |current_sleep: Duration| {
+            if current_sleep > MAX_DELAY {
+                MAX_DELAY
+            } else {
+                min(MAX_DELAY, current_sleep * 2)
+            }
+        };
+
+        let mut current_sleep = backoff_start_duration;
+
+        // Create the `EventSource`.
+        loop {
+            let mut es = match EventSource::new(builder.try_clone().unwrap()) {
+                Ok(es) => es,
+                Err(err) => {
+                    error!(
+                        err = err.to_string(),
+                        "Failed to create EventSource. Reconnecting in {} seconds",
+                        current_sleep.as_secs()
+                    );
+                    sleep(current_sleep).await;
+
+                    current_sleep = fn_next_backoff_duration(current_sleep);
+
+                    continue;
+                },
+            };
+
+            // Set the exponential backoff for reconnect.
+            es.set_retry_policy(Box::new(ExponentialBackoff::new(
+                Duration::from_millis(500),
+                1.5,
+                Some(MAX_DELAY),
+                None,
+            )));
+
+            // Check if the connection is open.
+            match es.next().await {
+                Some(event_result) => match event_result {
+                    Ok(_) => {
+                        info!("Pyth SSE connection open");
+                        return es;
+                    },
+                    Err(err) => {
+                        error!(
+                            err = err.to_string(),
+                            "Failed to connect. Reconnecting in {} seconds",
+                            current_sleep.as_secs()
+                        );
+                    },
+                },
+
+                // This point should never be reached since the `EventSource` return None
+                // only if the connection is closed with `close()`.
+                // This check is made in case the `EventSource` logic changes in the future.
+                None => {
+                    error!(
+                        "Received None. Reconnecting in {} seconds",
+                        current_sleep.as_secs()
+                    );
+                },
+            }
+
+            // The connection is not open correctly: close it and wait before retrying.
+            es.close();
+            sleep(current_sleep).await;
+            current_sleep = fn_next_backoff_duration(current_sleep);
+        }
+    }
 }
 
 #[async_trait]
@@ -89,19 +164,13 @@ impl PythClientTrait for PythClient {
         let _ = builder.try_clone().ok_or(CannotCloneRequestError)?;
 
         let stream = stream! {
-            let mut retry_attempts = 0;
 
-            loop {
-                // Create an `EventSource`.
-                let mut es = EventSource::new(builder.try_clone().unwrap()).unwrap();
-
-                // Set the exponential backoff for reconnect.
-                es.set_retry_policy(Box::new(ExponentialBackoff::new(
-                    Duration::from_secs(1),
-                    1.5,
-                    Some(Duration::from_secs(30)),
-                    None,
-                )));
+            loop{
+                // Create the `EventSource`.
+                let mut es = Self::create_event_source(
+                    &builder,
+                    Duration::from_millis(500),
+                ).await;
 
                 loop {
                     tokio::select! {
@@ -115,24 +184,15 @@ impl PythClientTrait for PythClient {
                                 return;
                             }
 
-                            // Exponential backoff before try to reconnect.
-                            let delay = if retry_attempts > 6 {
-                                MAX_DELAY
-                            } else {
-                                min(
-                                    MAX_DELAY,
-                                    Duration::from_secs((u32::pow(2, retry_attempts)) as u64),
-                                )
-                            };
+                            warn!("No new data received, start reconnecting");
 
-                            retry_attempts += 1;
+                            es = Self::create_event_source(
+                                &builder,
+                                Duration::from_millis(100),
+                            ).await;
 
-                            warn!("No new data received. Reconnecting in {} seconds", delay.as_secs());
-
-                            sleep(delay).await;
-
-                            break;
                         },
+
                         data = es.next() => {
                             if !keep_running.load(Ordering::Acquire) {
                                 es.close();
@@ -140,13 +200,11 @@ impl PythClientTrait for PythClient {
                             }
 
                             if let Some(event) = data {
-
                                 match event {
                                     Ok(Event::Open) => {
                                         info!("Pyth SSE connection open");
                                     },
                                     Ok(Event::Message(message)) => {
-                                        retry_attempts = 0;
 
                                         match message.data.deserialize_json::<LatestVaaResponse>() {
                                             Ok(vaas) => {
@@ -168,7 +226,7 @@ impl PythClientTrait for PythClient {
                                     },
                                 }
                             } else {
-                                error!("Pyth SSE connection close");
+                                error!("Pyth SSE connection close, start reconnecting");
                                 es.close();
                                 break;
                             }
