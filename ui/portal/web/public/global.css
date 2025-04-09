@@ -2,20 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-body,
-#root {
-  font-family: 'ABCDiatypeRounded', sans-serif;
-  min-height: 100vh;
-  width: 100vw;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
 body {
   overflow-x: hidden;
   overflow-y: auto;
+  min-height: 100svh;
   scrollbar-gutter: stable;
+  background: black;
+}
+
+#root {
+  font-family: 'ABCDiatypeRounded', sans-serif;
+  background: theme("colors.white.100");
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .header {

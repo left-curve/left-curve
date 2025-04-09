@@ -346,7 +346,7 @@
         }
       }
     ],
-    "number": "Number",
+    "number": "Format Number",
     "connectToMobile": "Connect to Mobile",
     "keyManagment": {
       "title": "Key Management",
