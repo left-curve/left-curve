@@ -260,8 +260,8 @@ async fn index(
         .zip(outcome.block_outcome.tx_outcomes.iter())
         .enumerate()
     {
-        index_txs.insert(hash.clone(), SearchTxOutcome {
-            hash: hash.clone(),
+        index_txs.insert(*hash, SearchTxOutcome {
+            hash: *hash,
             height: block_info.height,
             index: index as u32,
             tx: tx.clone(),
@@ -293,8 +293,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     let outcome = suite.make_block(tx);
-    let info = suite.block.clone();
-    index(index_txs, index_blocks, outcome, info).await
+    index(index_txs, index_blocks, outcome, suite.block).await
 }
 
 enum BlockMode {
