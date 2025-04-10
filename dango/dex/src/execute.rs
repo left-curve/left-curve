@@ -13,7 +13,7 @@ use {
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, Message,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
         QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
     },
@@ -365,13 +365,17 @@ fn swap_exact_amount_in(
     let (reserves, output) = core::swap_exact_amount_in(ctx.storage, route, input.clone())?;
 
     // Ensure the output is above the minimum.
-    let minimum_output = minimum_output.unwrap_or(Uint128::ONE);
-    ensure!(
-        output.amount >= minimum_output,
-        "output amount is below the minimum: {} < {}",
-        output.amount,
-        minimum_output
-    );
+    // If not minimum is specified, the output should at least be greater than zero.
+    if let Some(minimum_output) = minimum_output {
+        ensure!(
+            output.amount >= minimum_output,
+            "output amount is below the minimum: {} < {}",
+            output.amount,
+            minimum_output
+        );
+    } else {
+        ensure!(output.amount.is_non_zero(), "output amount is zero");
+    }
 
     // Save the updated pool reserves.
     for (pair, reserve) in reserves {
