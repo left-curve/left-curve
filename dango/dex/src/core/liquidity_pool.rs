@@ -195,7 +195,13 @@ impl PassiveLiquidityPool for PairParams {
         reserve: CoinPair,
         input: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
-        todo!()
+        let mut new_reserve = reserve.clone();
+
+        let output = self.simulate_swap_exact_amount_in(reserve, input.clone())?;
+
+        new_reserve.checked_add(&input)?.checked_sub(&output)?;
+
+        Ok((new_reserve, output))
     }
 
     fn swap_exact_amount_out(
@@ -203,6 +209,15 @@ impl PassiveLiquidityPool for PairParams {
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
+        let mut new_reserve = reserve.clone();
+
+        let input = self.simulate_swap_exact_amount_out(reserve, output.clone())?;
+
+        new_reserve.checked_add(&input)?.checked_sub(&output)?;
+
+        Ok((new_reserve, input))
+    }
+
     fn simulate_swap_exact_amount_in(
         &self,
         reserve: CoinPair,

@@ -108,6 +108,7 @@ pub enum ExecuteMsg {
     SwapExactAmountOut {
         route: SwapRoute,
         output: NonZero<Coin>,
+        maximum_input: Option<Uint128>,
     },
 }
 
