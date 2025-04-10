@@ -9,7 +9,7 @@ use {
         SearchTxOutcome, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    std::{collections::BTreeMap, ops::DerefMut, sync::Arc, thread, time::Duration},
+    std::{collections::BTreeMap, ops::DerefMut, sync::Arc, time::Duration},
     tokio::{runtime::Runtime, sync::Mutex},
 };
 
@@ -48,7 +48,7 @@ where
                 let th_blocks = blocks.clone();
                 let th_txs = txs.clone();
 
-                thread::spawn(|| {
+                tokio::spawn(async {
                     let rt = Runtime::new().unwrap();
                     rt.block_on(async move {
                         loop {
