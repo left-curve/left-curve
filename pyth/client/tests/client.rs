@@ -74,9 +74,16 @@ async fn test_client_reconnection() {
     // - valid data;
     // - invalid data;
     // - connection close;
+    // - panic from the server;
+    // - no data for an extended period of time;
     // Each time the client should be able to reconnect.
     for _ in 0..10 {
-        let _ = stream.next().await.unwrap();
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(10)) => {
+                panic!("The client has not received any data for 10 seconds")
+            },
+            _ = stream.next() => {},
+        }
     }
 }
 
@@ -139,7 +146,7 @@ async fn sse_handler(
             } else {
                 // Wait some times to trigger the reconnect from client.
                 if request_index == 0 {
-                    sleep(Duration::from_secs(10)).await;
+                    sleep(Duration::from_secs(1000)).await;
                 } else if request_index == 1 {
                     // Panic to simulate an unexpected disconnection.
                     warn!("Panic inside the server");

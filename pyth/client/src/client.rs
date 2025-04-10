@@ -76,7 +76,11 @@ impl PythClient {
 
         // Create the `EventSource`.
         loop {
-            let mut es = match EventSource::new(builder.try_clone().unwrap()) {
+            let mut es = match EventSource::new(
+                builder
+                    .try_clone()
+                    .expect("Failed to clone builder, Pyth connection cannot be established"),
+            ) {
                 Ok(es) => es,
                 Err(err) => {
                     error!(
@@ -160,9 +164,8 @@ impl PythClientTrait for PythClient {
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running = self.keep_running.clone();
 
-        // `EventSource::new()` return an Error only if the builder is not `Clone`-able.
-        // Instead of returning a result inside of the stream, clone the builder
-        // here to ensure it's cloneable.
+        // Ensure the builder can be cloned before entering the stream, otherwise
+        // will raise a panic later.
         let _ = builder.try_clone().ok_or(CannotCloneRequestError)?;
 
         let stream = stream! {
