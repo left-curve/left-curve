@@ -1,4 +1,4 @@
-import type { NativeCoin } from "./coin.js";
+import type { Denom } from "./coins.js";
 import type { Json } from "./encoding.js";
 
 export type ChainId = string;
@@ -36,7 +36,7 @@ export type Chain<custom extends Json | undefined = Json | undefined> = {
   /**
    * The native currency of the chain.
    */
-  nativeCoin: NativeCoin;
+  nativeCoin: Denom;
 
   /**
    * The URLs for the chain.

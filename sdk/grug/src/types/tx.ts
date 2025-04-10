@@ -1,6 +1,6 @@
 import type { Address } from "./address.js";
 import type { ChainConfig } from "./app.js";
-import type { Coins, Funds } from "./coin.js";
+import type { Coins, Funds } from "./coins.js";
 import type { Base64, Hex, Json } from "./encoding.js";
 
 export type TxOutcome = {
