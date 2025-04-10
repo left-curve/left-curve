@@ -181,9 +181,8 @@ impl PassiveLiquidityPool for PairParams {
                 // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
                 // => amount_out = B - (A * B) / (A + offer.amount)
                 // Round so that user takes the loss.
-                let amount_out = b.checked_sub(
-                    Uint128::ONE.checked_multiply_ratio_ceil(a * b, a + input.amount)?,
-                )?;
+                let amount_out =
+                    b.checked_sub(a.checked_multiply_ratio_ceil(b, a.checked_add(input.amount)?)?)?;
 
                 // Apply swap fee. Round so that user takes the loss.
                 amount_out
@@ -233,8 +232,8 @@ impl PassiveLiquidityPool for PairParams {
                 // Round so that user takes the loss.
                 Uint128::ONE
                     .checked_multiply_ratio_floor(
-                        offer_reserves * ask_reserves,
-                        ask_reserves - coin_out_after_fee,
+                        offer_reserves.checked_mul(ask_reserves)?,
+                        ask_reserves.checked_sub(coin_out_after_fee)?,
                     )?
                     .checked_sub(offer_reserves)?
             },
