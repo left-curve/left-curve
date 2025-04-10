@@ -4,13 +4,14 @@ use {
         constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
             self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
-            OrderResponse, PairParams, PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
+            OrderResponse, PairId, PairParams, PairUpdate, QueryOrdersByPairRequest,
+            QueryOrdersRequest, QueryReserveRequest,
         },
     },
     grug::{
-        Addr, Addressable, BalanceChange, Bounded, Coin, Coins, Denom, Inner, Message,
-        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
-        Uint128, btree_map, coins,
+        Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, IsZero,
+        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
+        ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -1281,6 +1282,265 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
                 .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
                 .unwrap()
         });
+}
+
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    coins! {
+        DANGO_DENOM.clone() => 1000000,
+    },
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
+    },
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    },
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee large swap"
+)]
+fn swap_exact_amount_in(
+    pool_reserves: BTreeMap<(Denom, Denom), Coins>,
+    route: Vec<PairId>,
+    swap_funds: Coins,
+    swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
+    expected_out: Coins,
+    expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
+        if swap_fee_rate.is_zero() {
+            continue;
+        }
+
+        suite
+            .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            })
+            .should_succeed_and(|pair_params: &PairParams| {
+                // Update pair params
+                suite
+                    .execute(
+                        &mut accounts.owner,
+                        contracts.dex,
+                        &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
+                            params: PairParams {
+                                lp_denom: pair_params.lp_denom.clone(),
+                                swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                                curve_invariant: pair_params.curve_invariant.clone(),
+                            },
+                        }]),
+                        Coins::new(),
+                    )
+                    .should_succeed();
+                true
+            });
+    }
+
+    // Provide liquidity with owner account
+    for ((base_denom, quote_denom), reserve) in pool_reserves {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.dex,
+                &dex::ExecuteMsg::ProvideLiquidity {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                },
+                reserve.clone(),
+            )
+            .should_succeed();
+    }
+
+    // Record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+    // User swaps
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
+                minimum_output: None,
+            },
+            swap_funds.clone(),
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(expected_out.clone(), swap_funds.clone()),
+    );
+
+    // Assert that the dex balance has changed by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(swap_funds.clone(), expected_out.clone()),
+    );
+
+    // Query pools and assert that the reserves are updated correctly
+    for ((base_denom, quote_denom), expected_reserve) in expected_pool_reserves_after {
+        suite
+            .query_wasm_smart(contracts.dex, QueryReserveRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            })
+            .should_succeed_and(|reserve: &CoinPair| {
+                reserve.clone() == CoinPair::try_from(expected_reserve).unwrap()
+            });
+    }
+}
+
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    Coin::new(USDC_DENOM.clone(), 500000).unwrap(),
+    coins! {
+        DANGO_DENOM.clone() => 1000000,
+    },
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
+    },
+    Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee large swap"
+)]
+fn swap_exact_amount_out(
+    pool_reserves: BTreeMap<(Denom, Denom), Coins>,
+    route: Vec<PairId>,
+    exact_out: Coin,
+    swap_funds: Coins,
+    swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
+    expected_in: Coin,
+    expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
+        if swap_fee_rate.is_zero() {
+            continue;
+        }
+
+        suite
+            .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            })
+            .should_succeed_and(|pair_params: &PairParams| {
+                // Update pair params
+                suite
+                    .execute(
+                        &mut accounts.owner,
+                        contracts.dex,
+                        &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
+                            params: PairParams {
+                                lp_denom: pair_params.lp_denom.clone(),
+                                swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                                curve_invariant: pair_params.curve_invariant.clone(),
+                            },
+                        }]),
+                        Coins::new(),
+                    )
+                    .should_succeed();
+                true
+            });
+    }
+
+    // Provide liquidity with owner account
+    for ((base_denom, quote_denom), reserve) in pool_reserves {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.dex,
+                &dex::ExecuteMsg::ProvideLiquidity {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                },
+                reserve.clone(),
+            )
+            .should_succeed();
+    }
+
+    // Record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+    // User swaps
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
+                output: NonZero::new(exact_out.clone()).unwrap(),
+                maximum_input: None,
+            },
+            swap_funds.clone(),
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    let expected_out_coins: Coins = vec![exact_out].try_into().unwrap();
+    let expected_in_coins: Coins = vec![expected_in].try_into().unwrap();
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(expected_out_coins.clone(), expected_in_coins.clone()),
+    );
+
+    // Assert that the dex balance has changed by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(expected_in_coins.clone(), expected_out_coins.clone()),
+    );
+
+    // Query pools and assert that the reserves are updated correctly
+    for ((base_denom, quote_denom), expected_reserve) in expected_pool_reserves_after {
+        suite
+            .query_wasm_smart(contracts.dex, QueryReserveRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            })
+            .should_succeed_and(|reserve: &CoinPair| {
+                reserve.clone() == CoinPair::try_from(expected_reserve).unwrap()
+            });
+    }
 }
 
 fn balance_changes_from_coins(
