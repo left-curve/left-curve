@@ -10,10 +10,9 @@ pub fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     input: Coin,
 ) -> anyhow::Result<(HashMap<PairId, CoinPair>, Coin, EventBuilder)> {
+    let mut events = EventBuilder::new();
     let mut reserves = HashMap::new();
     let mut output = input;
-
-    let mut events = EventBuilder::new();
 
     for pair in route.into_iter() {
         // Load the pair's parameters.
@@ -48,9 +47,9 @@ pub fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<(HashMap<PairId, CoinPair>, Coin, EventBuilder)> {
+    let mut events = EventBuilder::new();
     let mut reserves = HashMap::new();
     let mut input = output.into_inner();
-    let mut events = EventBuilder::new();
 
     for pair in route.into_iter().rev() {
         // Load the pair's parameters.
