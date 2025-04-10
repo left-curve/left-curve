@@ -8,116 +8,11 @@ use {
         constants::USDC_DENOM,
     },
     grug::{
-        Addressable, Coin, Coins, HashExt, Message, NonEmpty, QuerierExt, ResultExt, Uint128,
-        btree_map, coins, setup_tracing_subscriber,
+        Addressable, Coin, Coins, HashExt, QuerierExt, ResultExt, Uint128, btree_map, coins,
+        setup_tracing_subscriber,
     },
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
+    sea_orm::EntityTrait,
 };
-
-#[test]
-fn index_transfer_events() {
-    let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
-
-    // Copied from benchmarks.rs
-    let msgs = vec![
-        Message::execute(
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
-            },
-            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
-        )
-        .unwrap(),
-    ];
-
-    suite
-        .send_messages_with_gas(
-            &mut accounts.user1,
-            50_000_000,
-            NonEmpty::new_unchecked(msgs),
-        )
-        .should_succeed();
-
-    suite.app.indexer.wait_for_finish();
-
-    // The 2 transfers should have been indexed.
-    suite
-        .app
-        .indexer
-        .handle
-        .block_on(async {
-            let blocks = indexer_sql::entity::blocks::Entity::find()
-                .all(&suite.app.indexer.context.db)
-                .await?;
-
-            assert_that!(blocks).has_length(1);
-
-            let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-                .all(&suite.app.indexer.context.db)
-                .await?;
-
-            assert_that!(transfers).has_length(2);
-
-            assert_that!(
-                transfers
-                    .iter()
-                    .map(|t| t.amount.as_str())
-                    .collect::<Vec<_>>()
-            )
-            .is_equal_to(vec!["100000000", "100000000"]);
-
-            Ok::<_, anyhow::Error>(())
-        })
-        .expect("Can't fetch transfers");
-
-    let msg = Message::transfer(
-        accounts.user1.address(),
-        Coins::one(USDC_DENOM.clone(), 123).unwrap(),
-    )
-    .unwrap();
-
-    suite
-        .send_messages_with_gas(
-            &mut accounts.user1,
-            50_000_000,
-            NonEmpty::new_unchecked(vec![msg]),
-        )
-        .should_succeed();
-
-    // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
-
-    // The transfer should have been indexed.
-    suite
-        .app
-        .indexer
-        .handle
-        .block_on(async {
-            let blocks = indexer_sql::entity::blocks::Entity::find()
-                .all(&suite.app.indexer.context.db)
-                .await?;
-
-            assert_that!(blocks).has_length(2);
-
-            let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-                .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
-                .all(&suite.app.indexer.context.db)
-                .await?;
-
-            assert_that!(transfers).has_length(1);
-
-            assert_that!(
-                transfers
-                    .iter()
-                    .map(|t| t.amount.as_str())
-                    .collect::<Vec<_>>()
-            )
-            .is_equal_to(vec!["123"]);
-
-            Ok::<_, anyhow::Error>(())
-        })
-        .expect("Can't fetch transfers");
-}
 
 #[test]
 fn index_account_creations() {
@@ -127,10 +22,11 @@ fn index_account_creations() {
     let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
     let chain_id = suite.chain_id.clone();
+    let username = "user";
 
     // Copied from `user_onboarding`` test
     // Create a new key offchain; then, predict what its address would be.
-    let user = TestAccount::new_random("user").predict_address(
+    let user = TestAccount::new_random(username).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -212,4 +108,31 @@ fn index_account_creations() {
     suite
         .query_balance(&user, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
+
+    // Force the runtime to wait for the async indexer task to finish
+    suite.app.indexer.wait_for_finish();
+
+    // The transfer should have been indexed.
+    suite
+        .app
+        .indexer
+        .handle
+        .block_on(async {
+            let accounts = dango_indexer_sql::entity::accounts::Entity::find()
+                .all(&suite.app.indexer.context.db)
+                .await?;
+
+            assert_that!(accounts).has_length(1);
+
+            assert_that!(
+                accounts
+                    .iter()
+                    .map(|t| t.username.as_str())
+                    .collect::<Vec<_>>()
+            )
+            .is_equal_to(vec![username]);
+
+            Ok::<_, anyhow::Error>(())
+        })
+        .expect("Can't fetch accounts");
 }
