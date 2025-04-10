@@ -215,7 +215,13 @@ impl PassiveLiquidityPool for PairParams {
 
         let input_reserve = reserve.amount_of(&denom_in)?;
         let output_reserve = reserve.amount_of(&output.denom)?;
-        ensure!(output_reserve > output.amount, "insufficient liquidity");
+
+        ensure!(
+            output_reserve > output.amount,
+            "insufficient liquidity: {} <= {}",
+            output_reserve,
+            output.amount
+        );
 
         let input_amount = match self.curve_invariant {
             CurveInvariant::Xyk => {
