@@ -122,7 +122,7 @@ rand                    = "0.8" # can't use 0.9 because RustCrypto libraries sti
 reqwest                 = { version = "0.12", features = ["stream"] }
 reqwest-eventsource     = "0.6.0"
 ripemd                  = "0.1"
-rocksdb                 = { version = "0.23", default-features = false, features = ["bindgen-runtime"] }
+rocksdb                 = "0.23"
 sentry                  = { version = "0.37", features = ["log", "tracing"] }
 sentry-actix            = "0.37"
 serde                   = "1"
