@@ -12,7 +12,7 @@ use {
 /// Additionally, we enforce a maximum length of 2. This is to prevent the DoS
 /// attack of submitting swaps of extremely long routes.
 ///
-/// 2 is a reasonble number, because at launch, all the trading pairs we plan to
+/// 2 is a reasonable number, because at launch, all the trading pairs we plan to
 /// support comes with USDC as the quote asset. As such, it's possible to go
 /// from any one asset to any other in no more than 2 hops. If we plan to support
 /// non-USDC quoted pairs, the maximum route length can be adjusted.
