@@ -172,24 +172,29 @@ impl PassiveLiquidityPool for PairParams {
             reserve.first().denom.clone()
         };
 
-        let a = reserve.amount_of(&input.denom)?;
-        let b = reserve.amount_of(&output_denom)?;
-        let out_amount = match self.curve_invariant {
+        let input_reserve = reserve.amount_of(&input.denom)?;
+        let output_reserve = reserve.amount_of(&output_denom)?;
+
+        let output_amount_after_fee = match self.curve_invariant {
             CurveInvariant::Xyk => {
-                // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
-                // => amount_out = B - (A * B) / (A + offer.amount)
+                // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
+                // => output_amount = B - (A * B) / (A + input_amount)
                 // Round so that user takes the loss.
-                let amount_out =
-                    b.checked_sub(a.checked_multiply_ratio_ceil(b, a.checked_add(input.amount)?)?)?;
+                let output_amount =
+                    output_reserve.checked_sub(input_reserve.checked_multiply_ratio_ceil(
+                        output_reserve,
+                        input_reserve.checked_add(input.amount)?,
+                    )?)?;
 
                 // Apply swap fee. Round so that user takes the loss.
-                amount_out.checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?
+                output_amount
+                    .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?
             },
         };
 
         let output = Coin {
             denom: output_denom,
-            amount: out_amount,
+            amount: output_amount_after_fee,
         };
 
         reserve.checked_add(&input)?.checked_sub(&output)?;
@@ -208,35 +213,35 @@ impl PassiveLiquidityPool for PairParams {
             reserve.first().denom.clone()
         };
 
-        let offer_reserves = reserve.amount_of(&denom_in)?;
-        let ask_reserves = reserve.amount_of(&output.denom)?;
-        ensure!(ask_reserves > output.amount, "insufficient liquidity");
+        let input_reserve = reserve.amount_of(&denom_in)?;
+        let output_reserve = reserve.amount_of(&output.denom)?;
+        ensure!(output_reserve > output.amount, "insufficient liquidity");
 
-        let amount_in = match self.curve_invariant {
+        let input_amount = match self.curve_invariant {
             CurveInvariant::Xyk => {
                 // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
                 // offer amount after fees. So in this case we need to divide ask by (1 - fee)
                 // to get the ask amount after fees.
                 // Round so that user takes the loss.
-                let coin_out_after_fee = output
+                let output_amount_before_fee = output
                     .amount
                     .checked_div_dec_ceil(Udec128::ONE - self.swap_fee_rate.into_inner())?;
 
-                // Solve A * B = (A + amount_in) * (B - ask.amount) for amount_in
-                // => amount_in = (A * B) / (B - ask.amount) - A
+                // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
+                // => input_amount = (A * B) / (B - output_amount) - A
                 // Round so that user takes the loss.
                 Uint128::ONE
                     .checked_multiply_ratio_floor(
-                        offer_reserves.checked_mul(ask_reserves)?,
-                        ask_reserves.checked_sub(coin_out_after_fee)?,
+                        input_reserve.checked_mul(output_reserve)?,
+                        output_reserve.checked_sub(output_amount_before_fee)?,
                     )?
-                    .checked_sub(offer_reserves)?
+                    .checked_sub(input_reserve)?
             },
         };
 
         let input = Coin {
             denom: denom_in,
-            amount: amount_in,
+            amount: input_amount,
         };
 
         reserve.checked_add(&input)?.checked_sub(&output)?;
