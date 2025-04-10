@@ -9,8 +9,8 @@ use {
         SearchTxOutcome, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    std::{collections::BTreeMap, ops::DerefMut, sync::Arc, time::Duration},
-    tokio::sync::Mutex,
+    std::{collections::BTreeMap, ops::DerefMut, sync::Arc, thread, time::Duration},
+    tokio::{runtime::Runtime, sync::Mutex},
 };
 
 pub struct MockClient<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
@@ -23,7 +23,7 @@ where
     suite: Arc<Mutex<TestSuite<DB, VM, PP, ID>>>,
     blocks: Arc<Mutex<BTreeMap<u64, (Block, BlockOutcome)>>>,
     txs: Arc<Mutex<BTreeMap<Hash256, SearchTxOutcome>>>,
-    block_mode: BlockMode,
+    block_mode: BlockModeCache,
 }
 
 impl<DB, VM, PP, ID> MockClient<DB, VM, PP, ID>
@@ -34,13 +34,13 @@ where
     ID: Indexer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    pub fn new(suite: TestSuite<DB, VM, PP, ID>, block_mode: BlockModeSetting) -> Self {
+    pub fn new(suite: TestSuite<DB, VM, PP, ID>, block_mode: BlockCreation) -> Self {
         let suite = Arc::new(Mutex::new(suite));
         let blocks = Arc::new(Mutex::new(BTreeMap::new()));
         let txs = Arc::new(Mutex::new(BTreeMap::new()));
 
         let block_mode = match block_mode {
-            BlockModeSetting::Timed => {
+            BlockCreation::Timed => {
                 let buffer = Arc::new(Mutex::new(vec![]));
 
                 let th_buffer = buffer.clone();
@@ -48,30 +48,33 @@ where
                 let th_blocks = blocks.clone();
                 let th_txs = txs.clone();
 
-                tokio::spawn(async move {
-                    loop {
-                        let sleep = th_suite.lock().await.block.timestamp.into_nanos();
-                        tokio::time::sleep(Duration::from_nanos(sleep as u64)).await;
+                thread::spawn(|| {
+                    let rt = Runtime::new().unwrap();
+                    rt.block_on(async move {
+                        loop {
+                            let sleep = th_suite.lock().await.block_time.into_nanos();
+                            tokio::time::sleep(Duration::from_nanos(sleep as u64)).await;
 
-                        let txs = {
-                            let mut guard = th_buffer.lock().await;
-                            std::mem::take(&mut *guard)
-                        };
+                            let txs = {
+                                let mut guard = th_buffer.lock().await;
+                                std::mem::take(&mut *guard)
+                            };
 
-                        next_block(
-                            th_txs.lock().await.deref_mut(),
-                            th_blocks.lock().await.deref_mut(),
-                            th_suite.lock().await.deref_mut(),
-                            txs,
-                        )
-                        .await
-                        .unwrap();
-                    }
+                            next_block(
+                                th_txs.lock().await.deref_mut(),
+                                th_blocks.lock().await.deref_mut(),
+                                th_suite.lock().await.deref_mut(),
+                                txs,
+                            )
+                            .await
+                            .unwrap();
+                        }
+                    })
                 });
 
-                BlockMode::Timed { buffer }
+                BlockModeCache::Timed { buffer }
             },
-            BlockModeSetting::OnBroadcast => BlockMode::OnBroadcast,
+            BlockCreation::OnBroadcast => BlockModeCache::OnBroadcast,
         };
 
         Self {
@@ -230,10 +233,10 @@ where
         };
 
         match &self.block_mode {
-            BlockMode::Timed { buffer, .. } => {
+            BlockModeCache::Timed { buffer, .. } => {
                 buffer.lock().await.push(tx);
             },
-            BlockMode::OnBroadcast => {
+            BlockModeCache::OnBroadcast => {
                 next_block(
                     self.txs.lock().await.deref_mut(),
                     self.blocks.lock().await.deref_mut(),
@@ -296,13 +299,13 @@ where
     index(index_txs, index_blocks, outcome, suite.block).await
 }
 
-enum BlockMode {
+enum BlockModeCache {
     Timed { buffer: Arc<Mutex<Vec<Tx>>> },
     OnBroadcast,
 }
 
 /// Settings for the block creation.
-pub enum BlockModeSetting {
+pub enum BlockCreation {
     /// The block is created at a fixed interval (based on `suite.block.timestamp`).
     Timed,
     /// The block is created when a transaction is broadcasted.
