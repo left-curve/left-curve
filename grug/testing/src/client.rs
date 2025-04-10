@@ -50,6 +50,7 @@ where
 
                 tokio::spawn(async {
                     let rt = Runtime::new().unwrap();
+
                     rt.block_on(async move {
                         loop {
                             let sleep = th_suite.lock().await.block_time.into_nanos();
