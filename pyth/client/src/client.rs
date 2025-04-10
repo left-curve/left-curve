@@ -84,6 +84,7 @@ impl PythClient {
                         "Failed to create EventSource. Reconnecting in {} seconds",
                         current_sleep.as_secs()
                     );
+
                     sleep(current_sleep).await;
 
                     current_sleep = fn_next_backoff_duration(current_sleep);
@@ -105,6 +106,7 @@ impl PythClient {
                 Some(event_result) => match event_result {
                     Ok(_) => {
                         info!("Pyth SSE connection open");
+
                         return es;
                     },
                     Err(err) => {
@@ -170,7 +172,8 @@ impl PythClientTrait for PythClient {
                 let mut es = Self::create_event_source(
                     &builder,
                     Duration::from_millis(500),
-                ).await;
+                )
+                .await;
 
                 loop {
                     tokio::select! {
@@ -184,13 +187,13 @@ impl PythClientTrait for PythClient {
                                 return;
                             }
 
-                            warn!("No new data received, start reconnecting");
+                            warn!("No new data received. Start reconnecting");
 
                             es = Self::create_event_source(
                                 &builder,
                                 Duration::from_millis(100),
-                            ).await;
-
+                            )
+                            .await;
                         },
 
                         data = es.next() => {
@@ -226,7 +229,7 @@ impl PythClientTrait for PythClient {
                                     },
                                 }
                             } else {
-                                error!("Pyth SSE connection close, start reconnecting");
+                                error!("Pyth SSE connection closed. Start reconnecting");
                                 es.close();
                                 break;
                             }
