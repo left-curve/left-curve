@@ -313,7 +313,7 @@ impl PassiveLiquidityPool for PairParams {
         let mut orders = Vec::with_capacity(2 * self.order_depth as usize);
         let mut a_bid_prev = Uint128::ZERO;
         let mut a_ask_prev = Uint128::ZERO;
-        for i in 0..(self.order_depth + 1) {
+        for i in 1..(self.order_depth + 1) {
             let delta_p = self
                 .tick_size
                 .checked_mul(Udec128::checked_from_ratio(i as u128, Uint128::ONE)?)?;
