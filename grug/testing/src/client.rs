@@ -228,7 +228,6 @@ where
         let tx_hash = tx.tx_hash()?;
 
         let check_tx = self.suite.lock().await.app.do_check_tx(tx.clone())?;
-
         if check_tx.result.is_err() {
             return Ok(BroadcastTxOutcome { tx_hash, check_tx });
         };
