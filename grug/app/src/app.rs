@@ -17,11 +17,11 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
-        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GENESIS_SENDER, GenericResult,
-        GenericResultExt, GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order,
-        Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        TxEvents, TxOutcome, UnsignedTx,
+        Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxEvents, CheckTxOutcome,
+        CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GENESIS_SENDER,
+        GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
+        MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult,
+        Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
 };
@@ -406,20 +406,27 @@ where
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
-        if let Err((_, err)) = do_withhold_fee(
-            self.vm.clone(),
-            Box::new(buffer.clone()),
-            GasTracker::new_limitless(),
-            block,
-            &tx,
-            AuthMode::Check,
-        )
-        .as_result()
-        {
-            return Ok(new_outcome(gas_tracker, Err(err)));
+        let mut events = CheckTxEvents::new(
+            do_withhold_fee(
+                self.vm.clone(),
+                Box::new(buffer.clone()),
+                GasTracker::new_limitless(),
+                block,
+                &tx,
+                AuthMode::Check,
+            )
+            .into_commitment_status(),
+        );
+
+        if let Err((_, err)) = events.withhold.as_result() {
+            return Ok(new_check_tx_outcome(
+                gas_tracker,
+                Err(err.to_string()),
+                events,
+            ));
         }
 
-        if let Err((_, err)) = do_authenticate(
+        events.authenticate = do_authenticate(
             self.vm.clone(),
             Box::new(buffer),
             gas_tracker.clone(),
@@ -427,12 +434,15 @@ where
             &tx,
             AuthMode::Check,
         )
-        .as_result()
-        {
-            return Ok(new_outcome(gas_tracker, Err(err)));
-        }
+        .into_commitment_status();
 
-        Ok(new_outcome(gas_tracker, Ok(())))
+        let result = if let Err((_, err)) = events.authenticate.as_result() {
+            Err(err.to_string())
+        } else {
+            Ok(())
+        };
+
+        Ok(new_check_tx_outcome(gas_tracker, result, events))
     }
 
     // Returns (last_block_height, last_block_app_hash).
@@ -1065,11 +1075,16 @@ pub(crate) fn schedule_cronjob(
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }
 
-fn new_outcome(gas_tracker: GasTracker, result: AppResult<()>) -> CheckTxOutcome {
+fn new_check_tx_outcome(
+    gas_tracker: GasTracker,
+    result: GenericResult<()>,
+    events: CheckTxEvents,
+) -> CheckTxOutcome {
     CheckTxOutcome {
-        gas_limit: gas_tracker.limit(),
+        gas_limit: gas_tracker.limit().unwrap(),
         gas_used: gas_tracker.used(),
-        result: result.into_generic_result(),
+        result,
+        events,
     }
 }
 

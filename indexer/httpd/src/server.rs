@@ -7,6 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    sentry_actix::Sentry,
     std::fmt::Display,
 };
 
@@ -30,18 +31,23 @@ where
     tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
     HttpServer::new(move || {
-        let cors = if let Some(origin) = cors_allowed_origin.as_deref() {
-            Cors::default()
-                .allowed_origin(origin)
-                .allowed_methods(vec!["POST"])
-                .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
-                .allowed_header(http::header::CONTENT_TYPE)
-                .max_age(3600)
-        } else {
-            Cors::default()
-        };
+        let mut cors = Cors::default()
+            .allowed_methods(vec!["POST", "GET", "OPTIONS"])
+            .allowed_headers(vec![
+                http::header::AUTHORIZATION,
+                http::header::ACCEPT,
+                http::header::CONTENT_TYPE,
+                http::header::HeaderName::from_static("sentry-trace"),
+                http::header::HeaderName::from_static("baggage"),
+            ])
+            .max_age(3600);
+
+        if let Some(origin) = cors_allowed_origin.as_deref() {
+            cors = cors.allowed_origin(origin);
+        }
 
         let app = App::new()
+            .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
             .wrap(cors);
@@ -61,8 +67,7 @@ where
 {
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
-            .service(routes::api::blocks::block_by_height)
-            .service(routes::api::blocks::block_results_by_height)
+            .service(routes::api::services::api_services())
             .service(routes::graphql::graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))

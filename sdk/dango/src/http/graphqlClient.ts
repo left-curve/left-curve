@@ -39,10 +39,12 @@ export function graphqlClient(url: string, options: GraphqlClientOptions = {}): 
 
         return response;
       } catch (err) {
+        console.error("Error in GraphQL: ", err);
         if (err instanceof HttpRequestError) throw err;
         if (err instanceof TimeoutError) throw err;
         throw new HttpRequestError({
           cause: err as Error,
+          status: (err as HttpRequestError).status,
           body: { body },
           url,
         });

@@ -1,5 +1,5 @@
 use {
-    crate::{CheckTxOutcome, TxError, TxOutcome, TxSuccess},
+    crate::{CheckTxError, CheckTxOutcome, CheckTxSuccess, TxError, TxOutcome, TxSuccess},
     std::fmt::{Debug, Display},
 };
 
@@ -167,19 +167,28 @@ impl ResultExt for TxOutcome {
 }
 
 impl ResultExt for CheckTxOutcome {
-    type Error = String;
-    type Success = ();
+    type Error = CheckTxError;
+    type Success = CheckTxSuccess;
 
     fn should_succeed(self) -> Self::Success {
         match self.result {
-            Ok(_) => (),
+            Ok(_) => CheckTxSuccess {
+                gas_limit: self.gas_limit,
+                gas_used: self.gas_used,
+                events: self.events,
+            },
             Err(err) => panic!("expecting success, got error: {err}"),
         }
     }
 
     fn should_fail(self) -> Self::Error {
         match self.result {
-            Err(error) => error,
+            Err(error) => CheckTxError {
+                gas_limit: self.gas_limit,
+                gas_used: self.gas_used,
+                error: error.to_string(),
+                events: self.events,
+            },
             Ok(_) => panic!("expecting error, got success"),
         }
     }

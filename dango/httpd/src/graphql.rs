@@ -2,7 +2,7 @@ use {
     async_graphql::{Schema, dataloader::DataLoader, extensions},
     indexer_httpd::{
         context::Context,
-        graphql::{dataloader, mutation::Mutation},
+        graphql::{dataloader, mutation::Mutation, telemetry::SentryExtension},
     },
     query::Query,
     subscription::Subscription,
@@ -49,6 +49,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         Subscription::default(),
     )
     .extension(extensions::Logger)
+    .extension(SentryExtension)
     .data(app_ctx)
     .data(block_transactions_loader)
     .data(block_events_loader)

@@ -149,4 +149,4 @@ mdbook build
 
 © 2024-2025 Left Curve Software. All rights reserved.
 
-This repository and all its contents, including but not limited to source code, documentation, specifications, and associated materials (collectively, the "Software") are proprietary to Left Curve Software Limited (the "Company") and provided for informational purposes only. No license, express or implied, is granted. No part of the Software may be modified, forked, distributed, sublicensed, or used in any manner, for commercial or non-commercial purpose, without express written permission of the Comapny.
+This repository and all its contents, including but not limited to source code, documentation, specifications, and associated materials (collectively, the "Software") are proprietary to Left Curve Software Limited (the "Company") and are provided for informational purposes only. No license, express or implied, is granted. No part of the Software may be modified, forked, distributed, sublicensed, or used in any manner, for commercial or non-commercial purpose, without express written permission of the Company.

@@ -63,6 +63,28 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
     let message = Message::decode(raw_message)?;
     let metadata = Metadata::decode(raw_metadata)?;
 
+    // Ensure the message contains the appropriate number of signatures.
+    //
+    // On the one hand, the number must be no less than the threshold, for the
+    // message to be considered valid.
+    //
+    // On the other hand, the number can't be too big, otherwise an attackr can
+    // DoS the chain by fabricating a message with a great amount of signatures.
+    // The contract would need to verify them all, consuming onchain computing
+    // resources. Here, we use the size of the validator set as a reasonble
+    // upper bound.
+    let validator_set = VALIDATOR_SETS.load(ctx.storage, message.origin_domain)?;
+    let min = validator_set.threshold as usize;
+    let max = validator_set.validators.len();
+
+    ensure!(
+        (min..=max).contains(&metadata.signatures.len()),
+        "invalid number of signatures! expecting between {} and {}, got {}",
+        min,
+        max,
+        metadata.signatures.len()
+    );
+
     // This is the hash that validators are supposed to sign.
     let multisig_hash = eip191_hash(multisig_hash(
         domain_hash(
@@ -76,7 +98,7 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
     ));
 
     // Loop through the signatures and recover the addresses.
-    let validators = metadata
+    let signers = metadata
         .signatures
         .into_iter()
         .map(|signature| {
@@ -93,17 +115,9 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
         })
         .collect::<StdResult<BTreeSet<_>>>()?;
 
-    let validator_set = VALIDATOR_SETS.load(ctx.storage, message.origin_domain)?;
-
+    // Ensure all signatures are from legit validators.
     ensure!(
-        validators.len() >= validator_set.threshold as usize,
-        "not enough signatures! expecting at least {}, got {}",
-        validator_set.threshold,
-        validators.len()
-    );
-
-    ensure!(
-        validators.is_subset(&validator_set.validators),
+        signers.is_subset(&validator_set.validators),
         "recovered addresses is not a strict subset of the validator set"
     );
 
@@ -118,11 +132,17 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
 mod tests {
     use {
         super::*,
-        grug::{MockContext, ResultExt, btree_set, hash},
+        grug::{Inner, MockContext, ResultExt, btree_set},
+        grug_crypto::Identity256,
         hex_literal::hex,
-        hyperlane_types::{addr32, mailbox::MAILBOX_VERSION},
+        hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
+        rand::rngs::OsRng,
         test_case::test_case,
     };
+
+    /// Mock address.
+    const ZERO_ADDRESS: Addr32 =
+        addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
     #[test_case(
         hex!("0000000000000068220000000000000000000000000d1255b09d94659bb0888e0aa9fca60245ce402a0000682155208cd518cffaac1b5d8df216a9bd050c9a03f0d4f3ba88e5268ac4cd12ee2d68656c6c6f"),
@@ -166,51 +186,156 @@ mod tests {
         verify(ctx.as_immutable(), &message.encode(), &raw_metadata).should_fail();
     }
 
+    /// Test three scenarios:
+    ///
+    /// 1. Number of signatures is less than threshold.
+    /// 2. Number of signatures is greater than the size of validator set.
+    /// 3. A signature is from an unknown signer (who is not in the validator set).
     #[test]
-    fn rejecting_reuse_of_signature() {
-        let validators = btree_set! {
-            HexByteArray::from_inner(hex!("ebc301013b6cd2548e347c28d2dc43ec20c068f2")),
-            HexByteArray::from_inner(hex!("315db9868fc8813b221b1694f8760ece39f45447")),
-            HexByteArray::from_inner(hex!("17517c98358c5937c5d9ee47ce1f5b4c2b7fc9f5")),
-        };
-
-        let message = Message {
-            version: MAILBOX_VERSION,
-            nonce: 36,
-            origin_domain: 80001,
-            sender: addr32!("00000000000000000000000004980c17e2ce26578c82f81207e706e4505fae3b"),
-            destination_domain: 43113,
-            recipient: addr32!("00000000000000000000000004980c17e2ce26578c82f81207e706e4505fae3b"),
-            body: hex!("48656c6c6f21").to_vec().into(),
-        };
-
-        let metadata = Metadata {
-            origin_merkle_tree: addr32!(
-                "0000000000000000000000009af85731edd41e2e50f81ef8a0a69d2fb836edf9"
-            ),
-            merkle_root: hash!("a84430f822e0e9b5942faace72bd5b97f0b59a58a9b8281231d9e5c393b5859c"),
-            merkle_index: 36,
-            signatures: btree_set! {
-                // Valid signature but used twice.
-                HexByteArray::from_inner(hex!(
-                    "539feceace17782697e29e74151006dc7b47227cf48aba02926336cb5f7fa38b3d05e8293045f7b5811eda3ae8aa070116bb5fbf57c79e143a69e909df90cefa1b"
-                )),
-                HexByteArray::from_inner(hex!(
-                    "539feceace17782697e29e74151006dc7b47227cf48aba02926336cb5f7fa38b3d05e8293045f7b5811eda3ae8aa070116bb5fbf57c79e143a69e909df90cefa1b"
-                )),
-            },
-        };
-
+    fn rejecting_too_many_or_too_few_or_unknown_signatures() {
         let mut ctx = MockContext::new();
 
+        // ------------------------ 1. Prepare message -------------------------
+
+        // Create a mock message.
+        let message = Message {
+            version: MAILBOX_VERSION,
+            nonce: 0,
+            origin_domain: 0,
+            sender: ZERO_ADDRESS,
+            destination_domain: 0,
+            recipient: ZERO_ADDRESS,
+            body: Vec::new().into(),
+        };
+
+        let raw_message = message.encode();
+        let message_id = raw_message.keccak256();
+
+        // Insert the message into Merkle tree.
+        let mut merkle_tree = IncrementalMerkleTree::default();
+        merkle_tree.insert(message_id).unwrap();
+
+        let merkle_root = merkle_tree.root();
+        let merkle_index = (merkle_tree.count - 1) as u32;
+
+        // Create the hash that the validators need to sign.
+        let multisig_hash = eip191_hash(multisig_hash(
+            domain_hash(message.origin_domain, ZERO_ADDRESS, HYPERLANE_DOMAIN_KEY),
+            merkle_root,
+            merkle_index,
+            message_id,
+        ));
+
+        // --------------------- 2. Prepare validator set ----------------------
+
+        // Generate 4 validator keys.
+        let validators = (0..4)
+            .map(|_| k256::ecdsa::SigningKey::random(&mut OsRng))
+            .collect::<Vec<_>>();
+
+        // Derive the corresponding Ethereum addresses.
+        let validator_set = validators
+            .iter()
+            .map(|sk| {
+                let pk = k256::ecdsa::VerifyingKey::from(sk)
+                    .to_encoded_point(false)
+                    .to_bytes();
+                let pk_hash = (&pk[1..]).keccak256();
+                HexByteArray::from_inner(pk_hash[12..].try_into().unwrap())
+            })
+            .collect::<Vec<_>>();
+
+        // The 4 validators sign the message.
+        let signatures = validators
+            .iter()
+            .map(|sk| {
+                let (signature, recovery_id) = sk
+                    .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
+                    .unwrap();
+                let mut packed = [0_u8; 65];
+                packed[..64].copy_from_slice(&signature.to_bytes());
+                packed[64] = recovery_id.to_byte() + 27;
+                HexByteArray::from_inner(packed)
+            })
+            .collect::<Vec<_>>();
+
+        // Save the _only the first three_ validators with a threshold of 2.
         VALIDATOR_SETS
             .save(&mut ctx.storage, message.origin_domain, &ValidatorSet {
                 threshold: 2,
-                validators,
+                validators: validator_set[..3].iter().copied().collect(),
             })
             .unwrap();
 
-        verify(ctx.as_immutable(), &message.encode(), &metadata.encode())
-            .should_fail_with_error("not enough signatures! expecting at least 2, got 1");
+        // ----------------------- 3. Verify signatures ------------------------
+
+        // 2 or 3 signatures. Should succeed.
+        for num in [2, 3] {
+            verify(
+                ctx.as_immutable(),
+                &raw_message,
+                &Metadata {
+                    origin_merkle_tree: ZERO_ADDRESS,
+                    merkle_root,
+                    merkle_index,
+                    signatures: signatures[..num].iter().cloned().collect(),
+                }
+                .encode(),
+            )
+            .should_succeed();
+        }
+
+        // 1 or 4 signatures. Should fail.
+        for num in [1, 4] {
+            verify(
+                ctx.as_immutable(),
+                &raw_message,
+                &Metadata {
+                    origin_merkle_tree: ZERO_ADDRESS,
+                    merkle_root,
+                    merkle_index,
+                    signatures: signatures[..num].iter().cloned().collect(),
+                }
+                .encode(),
+            )
+            .should_fail_with_error(format!(
+                "invalid number of signatures! expecting between 2 and 3, got {num}"
+            ));
+        }
+
+        // 3 signatures, but one of which is from an unknown signer.
+        verify(
+            ctx.as_immutable(),
+            &raw_message,
+            &Metadata {
+                origin_merkle_tree: ZERO_ADDRESS,
+                merkle_root,
+                merkle_index,
+                signatures: btree_set! {
+                    signatures[0],
+                    signatures[1],
+                    signatures[3], // unknown signer
+                },
+            }
+            .encode(),
+        )
+        .should_fail_with_error("recovered addresses is not a strict subset of the validator set");
+
+        // 2 signatures, but they are the same. This is essentially just one signature.
+        verify(
+            ctx.as_immutable(),
+            &raw_message,
+            &Metadata {
+                origin_merkle_tree: ZERO_ADDRESS,
+                merkle_root,
+                merkle_index,
+                signatures: btree_set! {
+                    signatures[0],
+                    signatures[0], // same signature
+                },
+            }
+            .encode(),
+        )
+        .should_fail_with_error("invalid number of signatures! expecting between 2 and 3, got 1");
     }
 }

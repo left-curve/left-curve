@@ -12,9 +12,10 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow         = { workspace = true }
+async-trait    = { workspace = true }
 grug-jmt       = { workspace = true }
 grug-math      = { workspace = true }
-grug-types     = { workspace = true }
+grug-types     = { workspace = true, features = ["tendermint"] }
 serde          = { workspace = true }
 tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }

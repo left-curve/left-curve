@@ -35,6 +35,11 @@ lint:
 fmt:
   cargo +nightly fmt --all
 
+# Build schema
+build-graphql-schema:
+  cargo run -p indexer-httpd build_graphql_schema -- \
+    ./indexer/client/src/schemas/schema.graphql
+
 # Update wasm artifacts used in tests
 testdata:
   cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/

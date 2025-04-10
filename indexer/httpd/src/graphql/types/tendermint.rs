@@ -9,6 +9,7 @@ use {
 
 #[derive(SimpleObject)]
 pub struct TxSyncResponse {
+    pub codespace: String,
     pub code: u32,
     /// The base64 encoded data
     pub data: String,
@@ -19,6 +20,7 @@ pub struct TxSyncResponse {
 impl From<tx_sync::Response> for TxSyncResponse {
     fn from(resp: tx_sync::Response) -> Self {
         TxSyncResponse {
+            codespace: resp.codespace,
             code: resp.code.value(),
             data: STANDARD.encode(resp.data),
             log: resp.log,

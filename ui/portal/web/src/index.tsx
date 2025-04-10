@@ -7,6 +7,8 @@ import * as Sentry from "@sentry/react";
 Sentry.init({
   dsn: import.meta.env.PUBLIC_SENTRY_DSN,
   integrations: [
+    Sentry.httpClientIntegration(),
+    Sentry.captureConsoleIntegration(),
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
     Sentry.tanstackRouterBrowserTracingIntegration(router),
@@ -14,7 +16,7 @@ Sentry.init({
   tracesSampleRate: 0.5,
   tracePropagationTargets: [/^https:\/\/devnet\.dango\.exchange\//],
   replaysOnErrorSampleRate: 0.5,
-  maxValueLength: 1000,
+  maxValueLength: 5000,
 });
 
 const container = document.getElementById("root");
