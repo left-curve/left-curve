@@ -238,11 +238,14 @@ where
                 key_hash: owner.key_hash(),
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
+                //
+                // In reality, it's not possible that anyone has Hyperlane synth
+                // synth tokens in genesis. We add this just for testing purpose.
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000,
-                    ETH_DENOM.clone() => 100_000_000_000_000,
-                    BTC_DENOM.clone() => 100_000_000_000_000,
+                    ETH_DENOM.clone()   => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 },
             },
             user1.username.clone() => GenesisUser {
@@ -251,11 +254,9 @@ where
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
-                    // In reality, it's not possible that anyone has Hyperlane
-                    // synth tokens in genesis. We add this just for testing purpose.
-                    WBTC_DENOM.clone() => 100_000_000_000_000,
-                    ETH_DENOM.clone()  => 100_000_000_000_000,
-                    BTC_DENOM.clone() => 100_000_000_000_000,
+                    WBTC_DENOM.clone()  => 100_000_000_000_000,
+                    ETH_DENOM.clone()   => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 }
             },
             user2.username.clone() => GenesisUser {
