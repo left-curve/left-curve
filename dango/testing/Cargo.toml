@@ -10,11 +10,10 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-actix-web     = { workspace = true }
-anyhow        = { workspace = true }
-async-graphql = { workspace = true }
-dango-genesis = { workspace = true }
-
+actix-web               = { workspace = true }
+anyhow                  = { workspace = true }
+async-graphql           = { workspace = true }
+dango-genesis           = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["tracing"] }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true }
