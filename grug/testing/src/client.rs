@@ -170,7 +170,7 @@ where
                 .map(|(_, (block, _))| block.clone()),
         };
 
-        maybe_block.ok_or(anyhow::anyhow!("block not found: {:?}", height))
+        maybe_block.ok_or(anyhow::anyhow!("block not found: {height:?}"))
     }
 
     async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
@@ -189,7 +189,7 @@ where
                 .map(|(_, (_, block))| block.clone()),
         };
 
-        maybe_block.ok_or(anyhow::anyhow!("block not found: {:?}", height))
+        maybe_block.ok_or(anyhow::anyhow!("block not found: {height:?}"))
     }
 }
 
@@ -209,7 +209,7 @@ where
             .await
             .get(&hash)
             .cloned()
-            .ok_or(anyhow::anyhow!("tx not found: {:?}", hash))
+            .ok_or(anyhow::anyhow!("tx not found: {hash}"))
     }
 }
 
