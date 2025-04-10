@@ -82,12 +82,14 @@ pub struct PairParams {
 #[grug::derive(Serde, Borsh)]
 pub enum CurveInvariant {
     Xyk,
+    Solidly,
 }
 
 impl Display for CurveInvariant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             CurveInvariant::Xyk => "xyk",
+            CurveInvariant::Solidly => "solidly",
         };
         write!(f, "{}", s)
     }
@@ -99,6 +101,7 @@ impl FromStr for CurveInvariant {
     fn from_str(s: &str) -> StdResult<Self> {
         match s {
             "xyk" => Ok(CurveInvariant::Xyk),
+            "solidly" => Ok(CurveInvariant::Solidly),
             _ => Err(StdError::deserialize::<Self, _>(
                 "str",
                 "invalid curve type",
