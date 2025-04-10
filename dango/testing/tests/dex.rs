@@ -1299,6 +1299,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
+    None,
     coins! {
         USDC_DENOM.clone() => 500000,
     },
@@ -1325,6 +1326,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         DANGO_DENOM.clone() => 500000,
     },
     BTreeMap::new(),
+    None,
     coins! {
         USDC_DENOM.clone() => 333333,
     },
@@ -1351,6 +1353,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         DANGO_DENOM.clone() => 333333,
     },
     BTreeMap::new(),
+    None,
     coins! {
         USDC_DENOM.clone() => 249999,
     },
@@ -1387,6 +1390,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         DANGO_DENOM.clone() => 500000,
     },
     BTreeMap::new(),
+    None,
     coins! {
         BTC_DENOM.clone() => 249999,
     },
@@ -1400,13 +1404,68 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
             USDC_DENOM.clone() => 1000000 + 333333,
         },
     };
-    "1:1 pools no swap fee large swap two step route"
+    "1:1 pools no swap fee input 100% of pool liquidity two step route"
+)]
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    coins! {
+        DANGO_DENOM.clone() => 1000000,
+    },
+    BTreeMap::new(),
+    Some(500000u128.into()),
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    },
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee one step route input 100% of pool liquidity output is not less than minimum output"
+)]
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    coins! {
+        DANGO_DENOM.clone() => 1000000,
+    },
+    BTreeMap::new(),
+    Some(499999u128.into()),
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    },
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
 )]
 fn swap_exact_amount_in(
     pool_reserves: BTreeMap<(Denom, Denom), Coins>,
     route: Vec<PairId>,
     swap_funds: Coins,
     swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
+    minimum_output: Option<Uint128>,
     expected_out: Coins,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
@@ -1471,7 +1530,7 @@ fn swap_exact_amount_in(
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountIn {
                 route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
-                minimum_output: None,
+                minimum_output,
             },
             swap_funds.clone(),
         )
@@ -1517,9 +1576,8 @@ fn swap_exact_amount_in(
     coins! {
         DANGO_DENOM.clone() => 1000000,
     },
-    btree_map! {
-        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
-    },
+    BTreeMap::new(),
+    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1544,9 +1602,8 @@ fn swap_exact_amount_in(
     coins! {
         DANGO_DENOM.clone() => 499999,
     },
-    btree_map! {
-        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
-    },
+    BTreeMap::new(),
+    None,
     Coin::new(DANGO_DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1571,9 +1628,8 @@ fn swap_exact_amount_in(
     coins! {
         DANGO_DENOM.clone() => 333333,
     },
-    btree_map! {
-        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
-    },
+    BTreeMap::new(),
+    None,
     Coin::new(DANGO_DENOM.clone(), 333333).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1598,9 +1654,8 @@ fn swap_exact_amount_in(
     coins! {
         DANGO_DENOM.clone() => 1000000,
     },
-    btree_map! {
-        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
-    },
+    BTreeMap::new(),
+    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1626,9 +1681,8 @@ fn swap_exact_amount_in(
     coins! {
         DANGO_DENOM.clone() => 999999,
     },
-    btree_map! {
-        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::ZERO,
-    },
+    BTreeMap::new(),
+    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1637,7 +1691,33 @@ fn swap_exact_amount_in(
         },
     }
     => panics "insufficient input for swap" ;
-    "1:1 pool no swap fee one step route output 100% of pool liquidity insufficient funds"
+    "1:1 pool no swap fee one step route output 50% of pool liquidity insufficient funds"
+)]
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    Coin::new(USDC_DENOM.clone(), 500000).unwrap(),
+    coins! {
+        DANGO_DENOM.clone() => 1100000,
+    },
+    BTreeMap::new(),
+    None,
+    Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee one step route output 50% of pool liquidity excessive funds returned"
 )]
 #[test_case(
     btree_map! {
@@ -1665,6 +1745,7 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
+    None,
     Coin::new(DANGO_DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1678,12 +1759,65 @@ fn swap_exact_amount_in(
     };
     "1:1 pool no swap fee two step route output 25% of pool liquidity"
 )]
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    Coin::new(USDC_DENOM.clone(), 500000).unwrap(),
+    coins! {
+        DANGO_DENOM.clone() => 1000000,
+    },
+    BTreeMap::new(),
+    Some(1000000u128.into()),
+    Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee one step route output 50% of pool liquidity with maximum input not exceeded"
+)]
+#[test_case(
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        },
+    },
+    vec![PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    }],
+    Coin::new(USDC_DENOM.clone(), 500000).unwrap(),
+    coins! {
+        DANGO_DENOM.clone() => 1000000,
+    },
+    BTreeMap::new(),
+    Some(9999999u128.into()),
+    Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
+    btree_map! {
+        (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            DANGO_DENOM.clone() => 2000000,
+            USDC_DENOM.clone() => 500000,
+        },
+    };
+    "1:1 pool no swap fee one step route output 50% of pool liquidity with maximum input exceeded"
+)]
 fn swap_exact_amount_out(
     pool_reserves: BTreeMap<(Denom, Denom), Coins>,
     route: Vec<PairId>,
     exact_out: Coin,
     swap_funds: Coins,
     swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
+    maximum_input: Option<Uint128>,
     expected_in: Coin,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
@@ -1749,7 +1883,7 @@ fn swap_exact_amount_out(
             &dex::ExecuteMsg::SwapExactAmountOut {
                 route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
                 output: NonZero::new(exact_out.clone()).unwrap(),
-                maximum_input: None,
+                maximum_input,
             },
             swap_funds.clone(),
         )
