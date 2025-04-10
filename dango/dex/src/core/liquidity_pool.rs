@@ -163,11 +163,9 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_in(
         &self,
-        reserve: CoinPair,
+        mut reserve: CoinPair,
         input: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
-        let mut new_reserve = reserve.clone();
-
         let output_denom = if reserve.first().denom == &input.denom {
             reserve.second().denom.clone()
         } else {
@@ -185,28 +183,25 @@ impl PassiveLiquidityPool for PairParams {
                     b.checked_sub(a.checked_multiply_ratio_ceil(b, a.checked_add(input.amount)?)?)?;
 
                 // Apply swap fee. Round so that user takes the loss.
-                amount_out
-                    .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.clone().into_inner())?
+                amount_out.checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?
             },
         };
 
         let output = Coin {
-            denom: output_denom.clone(),
+            denom: output_denom,
             amount: out_amount,
         };
 
-        new_reserve.checked_add(&input)?.checked_sub(&output)?;
+        reserve.checked_add(&input)?.checked_sub(&output)?;
 
-        Ok((new_reserve, output))
+        Ok((reserve, output))
     }
 
     fn swap_exact_amount_out(
         &self,
-        reserve: CoinPair,
+        mut reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
-        let mut new_reserve = reserve.clone();
-
         let denom_in = if reserve.first().denom == &output.denom {
             reserve.second().denom.clone()
         } else {
@@ -225,7 +220,7 @@ impl PassiveLiquidityPool for PairParams {
                 // Round so that user takes the loss.
                 let coin_out_after_fee = output
                     .amount
-                    .checked_div_dec_ceil(Udec128::ONE - self.swap_fee_rate.clone().into_inner())?;
+                    .checked_div_dec_ceil(Udec128::ONE - self.swap_fee_rate.into_inner())?;
 
                 // Solve A * B = (A + amount_in) * (B - ask.amount) for amount_in
                 // => amount_in = (A * B) / (B - ask.amount) - A
@@ -240,13 +235,13 @@ impl PassiveLiquidityPool for PairParams {
         };
 
         let input = Coin {
-            denom: denom_in.clone(),
+            denom: denom_in,
             amount: amount_in,
         };
 
-        new_reserve.checked_add(&input)?.checked_sub(&output)?;
+        reserve.checked_add(&input)?.checked_sub(&output)?;
 
-        Ok((new_reserve, input))
+        Ok((reserve, input))
     }
 }
 
