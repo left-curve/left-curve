@@ -18,11 +18,16 @@ use {
 fn index_account_creations() {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((suite, accounts, codes, contracts), _) = setup_test_with_indexer();
+    let ((suite, accounts, codes, contracts), context) = setup_test_with_indexer();
     let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
     let chain_id = suite.chain_id.clone();
     let username = "user";
+
+    tracing::debug!(
+        "Will use indexerpath for testing: {:?}",
+        context.indexer_path
+    );
 
     // Copied from `user_onboarding`` test
     // Create a new key offchain; then, predict what its address would be.
