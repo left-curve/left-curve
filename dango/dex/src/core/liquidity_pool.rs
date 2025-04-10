@@ -180,12 +180,12 @@ impl PassiveLiquidityPool for PairParams {
             CurveInvariant::Xyk => {
                 // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
                 // => amount_out = B - (A * B) / (A + offer.amount)
-                // Round so that user takes the loss
+                // Round so that user takes the loss.
                 let amount_out = b.checked_sub(
                     Uint128::ONE.checked_multiply_ratio_ceil(a * b, a + input.amount)?,
                 )?;
 
-                // Apply swap fee. Round so that user takes the loss
+                // Apply swap fee. Round so that user takes the loss.
                 amount_out
                     .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.clone().into_inner())?
             },
@@ -222,14 +222,15 @@ impl PassiveLiquidityPool for PairParams {
             CurveInvariant::Xyk => {
                 // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
                 // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-                // to get the ask amount after fees. Round so that user takes the loss
+                // to get the ask amount after fees.
+                // Round so that user takes the loss.
                 let coin_out_after_fee = output
                     .amount
                     .checked_div_dec_ceil(Udec128::ONE - self.swap_fee_rate.clone().into_inner())?;
 
                 // Solve A * B = (A + amount_in) * (B - ask.amount) for amount_in
                 // => amount_in = (A * B) / (B - ask.amount) - A
-                // Round so that user takes the loss
+                // Round so that user takes the loss.
                 Uint128::ONE
                     .checked_multiply_ratio_floor(
                         offer_reserves * ask_reserves,
