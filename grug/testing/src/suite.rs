@@ -1,5 +1,8 @@
 use {
-    crate::{BalanceTracker, InstantiateOutcome, UploadAndInstantiateOutcome, UploadOutcome},
+    crate::{
+        BalanceTracker, InstantiateOutcome, MakeBlockOutcome, UploadAndInstantiateOutcome,
+        UploadOutcome,
+    },
     grug_app::{
         App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
         ProposalPreparer, Vm,
@@ -8,8 +11,8 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Coins, Config,
-        Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
+        Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
+        Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
         Querier, Query, QueryResponse, Signer, StdError, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
@@ -208,12 +211,12 @@ where
     }
 
     /// Make a new block without any transaction.
-    pub fn make_empty_block(&mut self) -> BlockOutcome {
+    pub fn make_empty_block(&mut self) -> MakeBlockOutcome {
         self.make_block(vec![])
     }
 
     /// Make a new block with the given transactions.
-    pub fn make_block(&mut self, txs: Vec<Tx>) -> BlockOutcome {
+    pub fn make_block(&mut self, txs: Vec<Tx>) -> MakeBlockOutcome {
         // Advance block height and time
         self.block.height += 1;
         self.block.timestamp = self.block.timestamp + self.block_time;
@@ -228,11 +231,11 @@ where
             .do_prepare_proposal(raw_txs, usize::MAX)
             .into_iter()
             .map(|raw_tx| (raw_tx.deserialize_json().unwrap(), raw_tx.hash256()))
-            .collect();
+            .collect::<Vec<_>>();
 
         let block = Block {
             info: self.block,
-            txs,
+            txs: txs.clone(),
         };
 
         // Call ABCI `FinalizeBlock` method
@@ -245,14 +248,14 @@ where
             panic!("fatal error while committing block: {err}");
         });
 
-        block_outcome
+        MakeBlockOutcome { txs, block_outcome }
     }
 
     /// Execute a single transaction.
     pub fn send_transaction(&mut self, tx: Tx) -> TxOutcome {
         let mut block_outcome = self.make_block(vec![tx]);
 
-        block_outcome.tx_outcomes.pop().unwrap()
+        block_outcome.block_outcome.tx_outcomes.pop().unwrap()
     }
 
     /// Sign a transaction with the default gas limit.
