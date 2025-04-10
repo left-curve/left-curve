@@ -382,7 +382,6 @@ fn swap_exact_amount_in(
 
     // TODO:
     // 1. add events
-    // 2. handle the case if output is zero
     Ok(Response::new().add_message(Message::transfer(ctx.sender, output)?))
 }
 
