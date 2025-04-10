@@ -363,7 +363,7 @@ fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
-    let (reserves, output) =
+    let (reserves, output, events) =
         core::swap_exact_amount_in(ctx.storage, route, ctx.funds.into_one_coin()?)?;
 
     // Ensure the output is above the minimum.
@@ -380,9 +380,9 @@ fn swap_exact_amount_in(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    // TODO:
-    // 1. add events
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, output)?))
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, output)?)
+        .add_events(events)?)
 }
 
 #[inline]
@@ -392,7 +392,8 @@ fn swap_exact_amount_out(
     output: NonZero<Coin>,
     maximum_input: Option<Uint128>,
 ) -> anyhow::Result<Response> {
-    let (reserves, input) = core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
+    let (reserves, input, events) =
+        core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
 
     // Ensure the input is below the maximum.
     if let Some(maximum_input) = maximum_input {
@@ -416,11 +417,11 @@ fn swap_exact_amount_out(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    // TODO: add events
-    //
     // Unlike `swap_exact_amount_in`, no need to check whether output is zero
     // here, because we already ensure it's non-zero.
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, ctx.funds)?))
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .add_events(events)?)
 }
 
 /// Match and fill orders using the uniform price auction strategy.

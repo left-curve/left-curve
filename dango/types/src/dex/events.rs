@@ -1,4 +1,5 @@
 use {
+    super::PairId,
     crate::dex::{Direction, OrderId},
     grug::{Addr, Coin, Coins, Denom, Udec128, Uint128},
 };
@@ -54,4 +55,20 @@ pub struct OrderFilled {
     pub fee: Option<Coin>,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("swap_exact_amount_in")]
+pub struct SwapExactAmountIn {
+    pub pair: PairId,
+    pub input: Coin,
+    pub output: Coin,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("swap_exact_amount_out")]
+pub struct SwapExactAmountOut {
+    pub pair: PairId,
+    pub input: Coin,
+    pub output: Coin,
 }
