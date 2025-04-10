@@ -6478,11 +6478,15 @@ where
 /// ## Inputs
 /// * `a` - The first reserve
 /// * `b` - The second reserve
+/// * `oracle_price` - The price of the `a` reserve in terms of the `b` reserve. I.e. the `#b tokens per #a token`
 /// 
 /// ## Outputs
 /// * `Ok(Dec256)` - The 10-logarithm of the solidly invariant
-pub fn solidly_log_invariant(a: Dec256, b: Dec256) -> anyhow::Result<Dec256> {
+pub fn solidly_log_invariant(a: Dec256, b: Dec256, oracle_price: Dec256) -> anyhow::Result<Dec256> {
     anyhow::ensure!(!a.is_zero() && !b.is_zero(), "Reserves cannot be zero");
+
+    // Scale b reserve by the oracle price
+    let b = b.checked_div(oracle_price)?;
     
     let three = Dec256::new(3);
     let log_a = log10_dec256(a)?;

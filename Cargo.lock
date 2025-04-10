@@ -3243,6 +3243,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "bnum",
+ "dango-oracle",
  "dango-types",
  "grug",
  "test-case",

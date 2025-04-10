@@ -4,8 +4,10 @@ use {
         INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
     },
     anyhow::{anyhow, bail, ensure},
+    dango_oracle::OracleQuerier,
     dango_types::{
         bank,
+        config::AppConfig,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled,
             OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
@@ -13,9 +15,9 @@ use {
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128, GENESIS_SENDER,
+        Addr, Coin, CoinPair, CoinRef, Coins, Decimal, Denom, EventBuilder, Message,
+        MultiplyFraction, MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt,
+        QuerierWrapper, Response, StdResult, Storage, SudoCtx, Udec128, Uint128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -299,11 +301,16 @@ fn provide_liquidity(
             Ok,
         )?;
 
+    // Scale the deposit and reserve by the oracle price
+    let reserve_scaled = _scale_by_oracle_price_ceil(&ctx.querier, reserve)?;
+    let deposit_scaled = _scale_by_oracle_price_floor(&ctx.querier, deposit)?;
+
     // Query the LP token supply.
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
 
     // Compute the amount of LP tokens to mint.
-    let (reserve, lp_mint_amount) = pair.add_liquidity(reserve, lp_token_supply, deposit)?;
+    let (reserve, lp_mint_amount) =
+        pair.add_liquidity(reserve_scaled, lp_token_supply, deposit_scaled)?;
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
@@ -366,24 +373,37 @@ fn swap(
                 ),
             };
 
+        // Scale the reserves by the oracle price.
+        let reserves_scaled = _scale_by_oracle_price_ceil(&ctx.querier, reserves)?;
+
         // For direction Ask use the output of last swap as the input for the next swap.
         // For direction Bid use the input of last swap as the demanded output for the
         // next swap.
         let (new_reserves, offer, ask) = match direction {
-            Direction::Bid => pair.swap(
-                reserves,
-                base_denom.clone(),
-                quote_denom.clone(),
-                direction,
-                coin_in.amount,
-            )?,
-            Direction::Ask => pair.swap(
-                reserves,
-                base_denom.clone(),
-                quote_denom.clone(),
-                direction,
-                coin_out.amount,
-            )?,
+            Direction::Bid => {
+                // Scale the coin in by the oracle price.
+                let scaled_coin_in =
+                    _scale_coin_by_oracle_price_floor(&ctx.querier, coin_in.as_ref())?;
+                pair.swap(
+                    reserves_scaled,
+                    base_denom.clone(),
+                    quote_denom.clone(),
+                    direction,
+                    scaled_coin_in.amount,
+                )?
+            },
+            Direction::Ask => {
+                // Scale the coin out by the oracle price.
+                let scaled_coin_out =
+                    _scale_coin_by_oracle_price_ceil(&ctx.querier, coin_out.as_ref())?;
+                pair.swap(
+                    reserves_scaled,
+                    base_denom.clone(),
+                    quote_denom.clone(),
+                    direction,
+                    scaled_coin_out.amount,
+                )?
+            },
         };
 
         // Update the coin in and out.
@@ -675,4 +695,54 @@ fn clear_orders_of_pair(
     }
 
     Ok(())
+}
+
+fn _scale_by_oracle_price_floor(
+    querier: &QuerierWrapper,
+    coin_pair: CoinPair,
+) -> anyhow::Result<CoinPair> {
+    Ok(CoinPair::new(
+        _scale_coin_by_oracle_price_floor(querier, coin_pair.first())?,
+        _scale_coin_by_oracle_price_floor(querier, coin_pair.second())?,
+    )?)
+}
+
+fn _scale_by_oracle_price_ceil(
+    querier: &QuerierWrapper,
+    coin_pair: CoinPair,
+) -> anyhow::Result<CoinPair> {
+    Ok(CoinPair::new(
+        _scale_coin_by_oracle_price_ceil(querier, coin_pair.first())?,
+        _scale_coin_by_oracle_price_ceil(querier, coin_pair.second())?,
+    )?)
+}
+
+fn _scale_coin_by_oracle_price_floor(
+    querier: &QuerierWrapper,
+    coin: CoinRef,
+) -> anyhow::Result<Coin> {
+    let app_cfg: AppConfig = querier.query_app_config()?;
+
+    let amount_scaled = querier
+        .query_price(app_cfg.addresses.oracle, &coin.denom, None)?
+        .value_of_unit_amount(coin.amount.clone())?
+        .checked_floor()?
+        .into_int();
+
+    Ok(Coin::new(coin.denom.clone(), amount_scaled)?)
+}
+
+fn _scale_coin_by_oracle_price_ceil(
+    querier: &QuerierWrapper,
+    coin: CoinRef,
+) -> anyhow::Result<Coin> {
+    let app_cfg: AppConfig = querier.query_app_config()?;
+
+    let amount_scaled = querier
+        .query_price(app_cfg.addresses.oracle, &coin.denom, None)?
+        .value_of_unit_amount(coin.amount.clone())?
+        .checked_ceil()?
+        .into_int();
+
+    Ok(Coin::new(coin.denom.clone(), amount_scaled)?)
 }

@@ -18,10 +18,11 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-anyhow      = { workspace = true }
-dango-types = { workspace = true }
-grug        = { workspace = true }
-bnum        = { workspace = true }
+anyhow       = { workspace = true }
+dango-oracle = { workspace = true }
+dango-types  = { workspace = true }
+grug         = { workspace = true }
+bnum         = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }
