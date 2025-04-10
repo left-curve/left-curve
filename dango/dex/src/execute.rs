@@ -498,13 +498,13 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         )?;
     }
 
-    Response::new()
+    Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
             Some(Message::batch_transfer(refunds)?)
         } else {
             None
         })
-        .add_events(events)
+        .add_events(events)?)
 }
 
 #[inline]
