@@ -96,7 +96,7 @@ function AccountCard({
         ) : null}
       </AnimatePresence>
       <div className="flex items-center justify-between relative z-10">
-        <div className="flex gap-4 ">
+        <div className="flex gap-1 ">
           <div className="flex flex-col">
             <p className="exposure-m-italic capitalize">{name}</p>
             <div className="flex gap-1 items-center">

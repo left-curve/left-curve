@@ -5,7 +5,8 @@ on:
   push:
     branches:
       - "main"
-      - "develop"
+      - "ui/testnet"
+      - "ui/release"
     paths:
       - "sdk/**"
       - "ui/store/**"

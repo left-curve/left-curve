@@ -31,6 +31,8 @@ export async function reconnect<config extends Config>(
     const chain = chainId === config.state.chainId ? config.chain : undefined;
     if (!connector || !chain) continue;
     if (_connector_.uid === config.state.current) current = connector.uid;
+    const isAuthorized = await connector.isAuthorized?.();
+    if (!isAuthorized) continue;
 
     try {
       connector.emitter.off("connect", config._internal.events.connect);

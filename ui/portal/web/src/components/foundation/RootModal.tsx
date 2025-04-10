@@ -23,25 +23,21 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("../modals/AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal })),
     ),
-    initialSnap: 0.7,
   },
   [Modals.RemoveKey]: {
     component: lazy(() =>
       import("../modals/RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey })),
     ),
-    initialSnap: 0.4,
   },
   [Modals.QRConnect]: {
     component: lazy(() =>
       import("../modals/QRConnect").then(({ QRConnect }) => ({ default: QRConnect })),
     ),
-    initialSnap: 0.4,
   },
   [Modals.ConfirmSend]: {
     component: lazy(() =>
       import("../modals/ConfirmSend").then(({ ConfirmSend }) => ({ default: ConfirmSend })),
     ),
-    initialSnap: 0.6,
   },
   [Modals.ConfirmAccount]: {
     component: lazy(() =>
@@ -49,7 +45,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
         default: ConfirmAccount,
       })),
     ),
-    initialSnap: 0.5,
   },
   [Modals.SignWithDesktop]: {
     header: m["common.signin"](),
@@ -58,14 +53,12 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
         default: SignWithDesktop,
       })),
     ),
-    initialSnap: 1,
   },
 };
 
 type ModalDefinition = {
   header?: string;
   component: React.LazyExoticComponent<React.ForwardRefExoticComponent<any>>;
-  initialSnap: number;
 };
 
 export const RootModal: React.FC = () => {
@@ -78,11 +71,8 @@ export const RootModal: React.FC = () => {
 
   const { modal: activeModal, props: modalProps } = modal;
 
-  const {
-    component: Modal,
-    header,
-    initialSnap,
-  } = useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
+  const { component: Modal, header } =
+    useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
 
   const closeModal = () => {
     hideModal();
@@ -98,8 +88,8 @@ export const RootModal: React.FC = () => {
         ref={sheetRef}
         isOpen={!!activeModal}
         onClose={closeModal}
-        initialSnap={0}
-        snapPoints={[initialSnap]}
+        detent="content-height"
+        rootId="root"
       >
         <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
           <Sheet.Header>

@@ -59,10 +59,10 @@ export async function broadcastTxSync<transport extends Transport>(
     return result;
   })();
 
-  const { code, codespace, log } = result;
+  const { code, log } = result;
 
   if (code === 1) {
-    throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+    throw new Error(`failed to broadcast tx! code: ${code}, log: ${log}`);
   }
 
   await withRetry(
@@ -76,7 +76,6 @@ export async function broadcastTxSync<transport extends Transport>(
           if (!tx) throw new Error(`Transaction not found: ${hash}`);
 
           if (tx.tx_result.code === 1) {
-            const { codespace, code, log } = tx.tx_result;
             abort(tx.tx_result.data || "Transaction failed");
           }
           return tx;

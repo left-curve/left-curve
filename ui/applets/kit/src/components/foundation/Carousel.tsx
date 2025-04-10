@@ -48,17 +48,25 @@ export const Carousel: React.FC<CarouselProps> = ({
     }
   }, [currentIndex, autoPlayInterval]);
 
-  const nextSlide = () => {
-    setDirection(1);
-    setCurrentIndex((prev) => (prev === total - 1 ? (infinite ? 0 : prev) : prev + 1));
+  const changeSlide = (newDirection: number) => {
+    if (total <= 1) return;
+
+    setDirection(newDirection);
+
+    if (newDirection > 0) {
+      setCurrentIndex((prev) => (prev === total - 1 ? (infinite ? 0 : prev) : prev + 1));
+    } else {
+      setCurrentIndex((prev) => (prev === 0 ? (infinite ? total - 1 : prev) : prev - 1));
+    }
   };
 
-  const prevSlide = () => {
-    setDirection(-1);
-    setCurrentIndex((prev) => (prev === 0 ? (infinite ? total - 1 : prev) : prev - 1));
-  };
+  const nextSlide = () => changeSlide(1);
+  const prevSlide = () => changeSlide(-1);
 
   const goToSlide = (index: number) => {
+    if (index === currentIndex) return;
+    const newDirection = index > currentIndex ? 1 : -1;
+    setDirection(newDirection);
     setCurrentIndex(index);
   };
 
@@ -78,27 +86,30 @@ export const Carousel: React.FC<CarouselProps> = ({
   return (
     <div
       className={twMerge(
-        "relative flex flex-col items-center justify-center gap-6 overflow-hidden",
+        "relative flex flex-col items-center justify-center overflow-hidden",
         className,
       )}
     >
-      <AnimatePresence initial={false} mode="wait" custom={direction}>
-        <motion.div
-          key={currentIndex}
-          custom={direction}
-          variants={variants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.3 }}
-          className="w-full h-full flex items-center justify-center"
-          drag={draggable ? "x" : false}
-          dragConstraints={{ left: 0, right: 0 }}
-          onDragEnd={handleDragEnd}
-        >
-          {children[currentIndex]}
-        </motion.div>
-      </AnimatePresence>
+      <div className="relative w-full h-full flex-1">
+        <AnimatePresence initial={false} mode="wait" custom={direction}>
+          <motion.div
+            key={currentIndex}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3 }}
+            className="absolute top-0 left-0 w-full h-full flex items-center justify-center"
+            drag={draggable ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.1}
+            onDragEnd={handleDragEnd}
+          >
+            {children[currentIndex]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       <div className="w-full max-w-[18rem] flex items-center justify-center lg:justify-between gap-3">
         <IconChevronLeftCarousell
@@ -108,12 +119,13 @@ export const Carousel: React.FC<CarouselProps> = ({
 
         <div className="flex space-x-2">
           {children.map((_, idx) => (
-            <div
+            <button
+              type="button"
               key={`idx-${idx + 1}`}
               onClick={() => goToSlide(idx)}
               className={twMerge(
-                "w-[10px] h-[10px] rounded-full cursor-pointer transition-colors",
-                idx === currentIndex ? "bg-blue-500" : "bg-blue-200",
+                "w-[10px] h-[10px] rounded-full cursor-pointer transition-colors duration-200 ease-in-out",
+                idx === currentIndex ? "bg-blue-500" : "bg-blue-200 hover:bg-blue-300",
               )}
             />
           ))}
