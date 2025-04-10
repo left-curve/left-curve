@@ -105,7 +105,7 @@ hex                     = "0.4"
 hex-literal             = "0.4" # requires rust edition 2024 in order to upgrade to v1
 home                    = "0.5"
 ics23                   = "0.12"
-itertools               = "0"
+itertools               = "0.14"
 k256                    = "0.13"
 lzma-rs                 = "0.3"
 num_cpus                = "1"
@@ -122,7 +122,7 @@ rand                    = "0.8" # can't use 0.9 because RustCrypto libraries sti
 reqwest                 = { version = "0.12", features = ["stream"] }
 reqwest-eventsource     = "0.6.0"
 ripemd                  = "0.1"
-rocksdb                 = "0.23"
+rocksdb                 = { version = "0.23", default-features = false, features = ["bindgen-runtime"] }
 sentry                  = { version = "0.37", features = ["log", "tracing"] }
 sentry-actix            = "0.37"
 serde                   = "1"
