@@ -117,7 +117,7 @@ where
             .lock()
             .await
             .app
-            .do_query_app(query, height.unwrap_or_default(), false)?)
+            .do_query_app(query, height.unwrap_or(0), false)?)
     }
 
     async fn query_store(
@@ -131,7 +131,7 @@ where
                 .lock()
                 .await
                 .app
-                .do_query_store(&key, height.unwrap_or_default(), prove)?;
+                .do_query_store(&key, height.unwrap_or(0), prove)?;
 
         let value = value.map(Binary::from_inner);
         let proof = proof.map(|p| p.deserialize_borsh()).transpose()?;
