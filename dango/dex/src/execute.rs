@@ -14,8 +14,8 @@ use {
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
+        MultiplyFraction, MutableCtx, NonZero, Number, Order as IterationOrder, QuerierExt,
+        Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
