@@ -46,11 +46,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             route,
             minimum_output,
         } => swap_exact_amount_in(ctx, route.into_inner(), minimum_output),
-        ExecuteMsg::SwapExactAmountOut {
-            route,
-            output,
-            maximum_input,
-        } => swap_exact_amount_out(ctx, route.into_inner(), output, maximum_input),
+        ExecuteMsg::SwapExactAmountOut { route, output } => {
+            swap_exact_amount_out(ctx, route.into_inner(), output)
+        },
     }
 }
 
@@ -390,20 +388,9 @@ fn swap_exact_amount_out(
     mut ctx: MutableCtx,
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
-    maximum_input: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let (reserves, input, events) =
         core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
-
-    // Ensure the input is below the maximum.
-    if let Some(maximum_input) = maximum_input {
-        ensure!(
-            input.amount <= maximum_input,
-            "input amount is above the maximum: {} > {}",
-            input.amount,
-            maximum_input
-        );
-    }
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.

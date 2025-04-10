@@ -1606,7 +1606,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1632,7 +1631,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 499999,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1658,7 +1656,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 333333,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 333333).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1684,7 +1681,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1711,7 +1707,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 999999,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1738,7 +1733,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1100000,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1774,7 +1768,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    None,
     Coin::new(DANGO_DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1804,7 +1797,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    Some(1000000u128.into()),
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1830,7 +1822,6 @@ fn swap_exact_amount_in(
         DANGO_DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    Some(9999999u128.into()),
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1858,7 +1849,6 @@ fn swap_exact_amount_in(
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => Udec128::new_bps(1),
     },
-    None,
     Coin::new(DANGO_DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (DANGO_DENOM.clone(), USDC_DENOM.clone()) => coins! {
@@ -1874,7 +1864,6 @@ fn swap_exact_amount_out(
     exact_out: Coin,
     swap_funds: Coins,
     swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
-    maximum_input: Option<Uint128>,
     expected_in: Coin,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
@@ -1940,7 +1929,6 @@ fn swap_exact_amount_out(
             &dex::ExecuteMsg::SwapExactAmountOut {
                 route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
                 output: NonZero::new(exact_out.clone()).unwrap(),
-                maximum_input,
             },
             swap_funds.clone(),
         )
