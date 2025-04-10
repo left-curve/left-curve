@@ -1,7 +1,11 @@
 use {
     crate::TradingFunction,
-    dango_types::dex::PairParams,
-    grug::{Coin, CoinPair, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
+    anyhow::ensure,
+    dango_types::dex::{CurveInvariant, PairParams},
+    grug::{
+        Coin, CoinPair, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
+        Udec128, Uint128,
+    },
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -89,6 +93,35 @@ pub trait PassiveLiquidityPool {
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
+
+    /// Simulate a swap with an exact amount of input and a variable output.
+    ///
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the swap is performed.
+    /// - `input`: The amount of input asset to swap.
+    ///
+    /// ## Outputs
+    ///
+    /// - The amount of output asset received from the swap.
+    fn simulate_swap_exact_amount_in(&self, reserve: CoinPair, input: Coin)
+    -> anyhow::Result<Coin>;
+
+    /// Simulate a swap with a variable amount of input and an exact output.
+    ///
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the swap is performed.
+    /// - `output`: The amount of output asset to receive.
+    ///
+    /// ## Outputs
+    ///
+    /// - The amount of input asset required to receive the exact output.
+    fn simulate_swap_exact_amount_out(
+        &self,
+        reserve: CoinPair,
+        output: Coin,
+    ) -> anyhow::Result<Coin>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -170,7 +203,81 @@ impl PassiveLiquidityPool for PairParams {
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
-        todo!()
+    fn simulate_swap_exact_amount_in(
+        &self,
+        reserve: CoinPair,
+        input: Coin,
+    ) -> anyhow::Result<Coin> {
+        let output_denom = if reserve.first().denom == &input.denom {
+            reserve.second().denom.clone()
+        } else {
+            reserve.first().denom.clone()
+        };
+
+        let a = reserve.amount_of(&input.denom)?;
+        let b = reserve.amount_of(&output_denom)?;
+        match self.curve_invariant {
+            CurveInvariant::Xyk => {
+                // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
+                // => amount_out = B - (A * B) / (A + offer.amount)
+                // Round so that user takes the loss
+                let amount_out = b.checked_sub(
+                    Uint128::ONE.checked_multiply_ratio_ceil(a * b, a + input.amount)?,
+                )?;
+
+                // Apply swap fee. Round so that user takes the loss
+                let amount_out = amount_out.checked_mul_dec_floor(
+                    Udec128::ONE - self.swap_fee_rate.clone().into_inner(),
+                )?;
+
+                Ok(Coin {
+                    denom: output_denom.clone(),
+                    amount: amount_out,
+                })
+            },
+        }
+    }
+
+    fn simulate_swap_exact_amount_out(
+        &self,
+        reserve: CoinPair,
+        output: Coin,
+    ) -> anyhow::Result<Coin> {
+        let denom_in = if reserve.first().denom == &output.denom {
+            reserve.second().denom.clone()
+        } else {
+            reserve.first().denom.clone()
+        };
+
+        let offer_reserves = reserve.amount_of(&denom_in)?;
+        let ask_reserves = reserve.amount_of(&output.denom)?;
+        ensure!(offer_reserves > output.amount, "insufficient liquidity");
+
+        match self.curve_invariant {
+            CurveInvariant::Xyk => {
+                // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
+                // offer amount after fees. So in this case we need to divide ask by (1 - fee)
+                // to get the ask amount after fees. Round so that user takes the loss
+                let coin_out_after_fee = output
+                    .amount
+                    .checked_div_dec_ceil(Udec128::ONE - self.swap_fee_rate.clone().into_inner())?;
+
+                // Solve A * B = (A + amount_in) * (B - ask.amount) for amount_in
+                // => amount_in = (A * B) / (B - ask.amount) - A
+                // Round so that user takes the loss
+                let amount_in = Uint128::ONE
+                    .checked_multiply_ratio_floor(
+                        offer_reserves * ask_reserves,
+                        ask_reserves - coin_out_after_fee,
+                    )?
+                    .checked_sub(offer_reserves)?;
+
+                Ok(Coin {
+                    denom: denom_in.clone(),
+                    amount: amount_in,
+                })
+            },
+        }
     }
 }
 
