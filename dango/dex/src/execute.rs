@@ -9,7 +9,7 @@ use {
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
-            PairUpdate, PairUpdated,
+            PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
     },
     grug::{
@@ -361,8 +361,8 @@ fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
-    let (reserves, output, events) =
-        core::swap_exact_amount_in(ctx.storage, route, ctx.funds.into_one_coin()?)?;
+    let input = ctx.funds.into_one_coin()?;
+    let (reserves, output) = core::swap_exact_amount_in(ctx.storage, route, input.clone())?;
 
     // Ensure the output is above the minimum.
     let minimum_output = minimum_output.unwrap_or(Uint128::ONE);
@@ -379,8 +379,12 @@ fn swap_exact_amount_in(
     }
 
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, output)?)
-        .add_events(events)?)
+        .add_message(Message::transfer(ctx.sender, output.clone())?)
+        .add_event(SwapExactAmountIn {
+            user: ctx.sender,
+            input,
+            output,
+        })?)
 }
 
 #[inline]
@@ -389,14 +393,13 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
-    let (reserves, input, events) =
-        core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
+    let (reserves, input) = core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
     ctx.funds
-        .insert(output.into_inner())?
-        .deduct(input)
+        .insert(output.clone().into_inner())?
+        .deduct(input.clone())
         .map_err(|e| anyhow!("insufficient input for swap: {e}"))?;
 
     // Save the updated pool reserves.
@@ -408,7 +411,11 @@ fn swap_exact_amount_out(
     // here, because we already ensure it's non-zero.
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_events(events)?)
+        .add_event(SwapExactAmountOut {
+            user: ctx.sender,
+            input,
+            output: output.into_inner(),
+        })?)
 }
 
 /// Match and fill orders using the uniform price auction strategy.
