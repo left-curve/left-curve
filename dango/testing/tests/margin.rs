@@ -1158,7 +1158,7 @@ proptest! {
                 &mut suite,
                 &mut accounts,
                 collateral.denom.denom.clone(),
-                collateral.collateral_power.clone(),
+                collateral.collateral_power,
             );
 
             // Mint collateral to margin account
