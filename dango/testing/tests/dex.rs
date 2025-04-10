@@ -1869,36 +1869,35 @@ fn swap_exact_amount_out(
 ) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
+    // Update the pairs with the new swap fee rates.
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
         if swap_fee_rate.is_zero() {
             continue;
         }
 
-        suite
+        let mut params = suite
             .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
                 base_denom: base_denom.clone(),
                 quote_denom: quote_denom.clone(),
             })
-            .should_succeed_and(|pair_params: &PairParams| {
-                // Update pair params
-                suite
-                    .execute(
-                        &mut accounts.owner,
-                        contracts.dex,
-                        &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            params: PairParams {
-                                lp_denom: pair_params.lp_denom.clone(),
-                                swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                                curve_invariant: pair_params.curve_invariant.clone(),
-                            },
-                        }]),
-                        Coins::new(),
-                    )
-                    .should_succeed();
-                true
-            });
+            .should_succeed();
+
+        if params.swap_fee_rate.into_inner() != swap_fee_rate {
+            params.swap_fee_rate = Bounded::new_unchecked(swap_fee_rate);
+
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: base_denom.clone(),
+                        quote_denom: quote_denom.clone(),
+                        params,
+                    }]),
+                    Coins::new(),
+                )
+                .should_succeed();
+        }
     }
 
     // Provide liquidity with owner account
