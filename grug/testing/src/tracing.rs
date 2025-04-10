@@ -3,6 +3,8 @@ use std::sync::Once;
 // The tracing subscriber can only be set once. We ensure this by using `Once`.
 static TRACING: Once = Once::new();
 
+pub use tracing::Level;
+
 pub fn setup_tracing_subscriber(level: tracing::Level) {
     TRACING.call_once(|| {
         let subscriber = tracing_subscriber::FmtSubscriber::builder()
