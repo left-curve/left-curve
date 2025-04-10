@@ -207,13 +207,13 @@ impl PassiveLiquidityPool for PairParams {
         mut reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
-        let denom_in = if reserve.first().denom == &output.denom {
+        let input_denom = if reserve.first().denom == &output.denom {
             reserve.second().denom.clone()
         } else {
             reserve.first().denom.clone()
         };
 
-        let input_reserve = reserve.amount_of(&denom_in)?;
+        let input_reserve = reserve.amount_of(&input_denom)?;
         let output_reserve = reserve.amount_of(&output.denom)?;
 
         ensure!(
@@ -246,7 +246,7 @@ impl PassiveLiquidityPool for PairParams {
         };
 
         let input = Coin {
-            denom: denom_in,
+            denom: input_denom,
             amount: input_amount,
         };
 
