@@ -169,35 +169,21 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
         "only margin accounts can borrow and repay"
     );
 
-    // Load the sender's debts
-    let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
+    let (debts, markets) = core::borrow(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.sender,
+        coins.inner(),
+    )?;
 
-    for coin in coins.inner() {
-        // Update the market state
-        let market = MARKETS
-            .load(ctx.storage, &coin.denom)?
-            .update_indices(&ctx.querier, ctx.block.timestamp)?;
-
-        // Update the sender's liabilities
-        let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
-        let new_scaled_debt = coin
-            .amount
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
-        let added_scaled_debt = prev_scaled_debt.checked_add(new_scaled_debt)?;
-        scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
-
-        // Save the updated market state
-        MARKETS.save(
-            ctx.storage,
-            &coin.denom,
-            &market.add_borrowed(added_scaled_debt)?,
-        )?;
+    // Save the updated markets.
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
     // Save the updated debts
-    DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+    DEBTS.save(ctx.storage, ctx.sender, &debts)?;
 
     // Transfer the coins to the caller
     Ok(Response::new()
