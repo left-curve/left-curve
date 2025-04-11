@@ -109,7 +109,7 @@ pub fn authenticate_tx(
     verify_nonce_and_signature(ctx, tx, Some(factory), Some(metadata))
 }
 
-/// Ensure the nonce is acceptible and the signature is authentic.
+/// Ensure the nonce is acceptable and the signature is authentic.
 ///
 /// Compared to [`authenticate_tx`](crate::authenticate_tx), this function skips
 /// the part of verifying the username.

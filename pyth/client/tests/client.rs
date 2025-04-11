@@ -16,6 +16,7 @@ use {
         ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, LatestVaaBinaryResponse,
         LatestVaaResponse, PYTH_URL,
     },
+    rand::Rng,
     std::{
         convert::Infallible,
         sync::{
@@ -24,7 +25,10 @@ use {
         },
         time::Duration,
     },
-    tokio::{net::TcpListener, time::interval},
+    tokio::{
+        net::TcpListener,
+        time::{interval, sleep},
+    },
     tokio_stream::StreamExt,
     tracing::{info, warn},
 };
@@ -49,8 +53,12 @@ async fn test_sse_stream() {
 
 #[tokio::test]
 async fn test_client_reconnection() {
-    let mut client = PythClient::new("http://127.0.0.1:3030").unwrap();
-    setup_tracing_subscriber(tracing::Level::DEBUG);
+    // Random port 15k - 16k.
+    let mut rng = rand::thread_rng();
+    let port = rng.gen_range(15000..16000);
+
+    let mut client = PythClient::new(format!("http://127.0.0.1:{port}")).unwrap();
+    setup_tracing_subscriber(tracing::Level::INFO);
     let mut stream = client
         .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
         .await
@@ -58,32 +66,41 @@ async fn test_client_reconnection() {
 
     // Start client before the server to ensure that the client in able to reconnect.
     tokio::select! {
-        _ = tokio::time::sleep(Duration::from_secs(3)) => (),
+        _ = tokio::time::sleep(Duration::from_secs(6)) => (),
         _ = stream.next() => {
             panic!("Stream should be empty")
         },
     }
 
-    start_server().await;
+    start_server(port).await;
 
     // Read some data from the stream.
     // During this pull, the client will receive:
     // - valid data;
     // - invalid data;
     // - connection close;
+    // - panic from the server;
+    // - no data for an extended period of time;
     // Each time the client should be able to reconnect.
     for _ in 0..10 {
-        let _ = stream.next().await.unwrap();
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(5)) => {
+                panic!("The client has not received any data for 10 seconds")
+            },
+            _ = stream.next() => {},
+        }
     }
 }
 
-async fn start_server() {
+async fn start_server(port: u16) {
     let counter = Arc::new(AtomicUsize::new(0));
     let app = Router::new()
         .route("/v2/updates/price/stream", get(sse_handler))
         .with_state(counter.clone());
 
-    let listener = TcpListener::bind("127.0.0.1:3030").await.unwrap();
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
+        .await
+        .unwrap();
 
     tokio::spawn(async move {
         serve(listener, app.into_make_service()).await.unwrap();
@@ -97,7 +114,7 @@ async fn sse_handler(
 
     // Create the data to send to the client.
     let mut values = vec![];
-    for _ in 0..4 {
+    for _ in 0..3 {
         let latest_vaas = pyth_client_cache
             .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
             .unwrap();
@@ -117,12 +134,12 @@ async fn sse_handler(
     let request_index = counter.clone().fetch_add(1, Ordering::SeqCst);
 
     // Add invalid string in the values.
-    values.insert(2, "{}".to_json_value().unwrap());
+    values.insert(1, "{}".to_json_value().unwrap());
 
     let stream = stream::unfold(
         (
             0u32,
-            interval(Duration::from_secs(1)),
+            interval(Duration::from_millis(700)),
             values,
             request_index,
         ),
@@ -134,12 +151,15 @@ async fn sse_handler(
                 count += 1;
                 json.clone()
             } else {
+                // Wait some times to trigger the reconnect from client.
                 if request_index == 0 {
+                    sleep(Duration::from_secs(10)).await;
+                } else if request_index == 1 {
                     // Panic to simulate an unexpected disconnection.
                     warn!("Panic inside the server");
                     panic!("BOOM 💥");
                 }
-                // None ti simulate a connection close.
+                // None to simulate a connection close.
                 warn!("Closing server connection");
                 return None;
             };
