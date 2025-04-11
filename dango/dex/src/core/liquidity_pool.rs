@@ -1,7 +1,11 @@
 use {
     crate::TradingFunction,
-    dango_types::dex::PairParams,
-    grug::{CoinPair, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
+    anyhow::ensure,
+    dango_types::dex::{CurveInvariant, PairParams},
+    grug::{
+        Coin, CoinPair, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
+        Udec128, Uint128,
+    },
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -31,13 +35,13 @@ pub trait PassiveLiquidityPool {
 
     /// Remove a portion of the liquidity from the pool. This function mutates the pool reserves.
     ///
-    /// ## Inputs:
+    /// ## Inputs
     ///
     /// - `reserve`: The current pool reserves, before the withdrawal is made.
     /// - `lp_token_supply`: The current total supply of LP tokens.
     /// - `lp_burn_amount`: The amount of LP tokens to burn.
     ///
-    /// ## Outputs:
+    /// ## Outputs
     ///
     /// - The updated pool reserves.
     /// - The funds withdrawn from the pool.
@@ -47,6 +51,48 @@ pub trait PassiveLiquidityPool {
         lp_token_supply: Uint128,
         lp_burn_amount: Uint128,
     ) -> anyhow::Result<(CoinPair, CoinPair)>;
+
+    /// Perform a swap with an exact amount of input and a variable output.
+    ///
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the swap is performed.
+    /// - `input`: The amount of input asset to swap.
+    ///
+    /// ## Outputs
+    ///
+    /// - The updated pool reserves.
+    /// - The amount of output asset received from the swap.
+    ///
+    /// ## Notable errors
+    ///
+    /// The input asset must be one of the reserve assets, otherwise error.
+    fn swap_exact_amount_in(
+        &self,
+        reserve: CoinPair,
+        input: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)>;
+
+    /// Perform a swap with a variable amount of input and an exact output.
+    ///
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the swap is performed.
+    /// - `output`: The amount of output asset to swap.
+    ///
+    /// ## Outputs
+    ///
+    /// - The updated pool reserves.
+    /// - The necessary input asset.
+    ///
+    /// ## Notable errors
+    ///
+    /// The output asset must be one of the reserve assets, otherwise error.
+    fn swap_exact_amount_out(
+        &self,
+        reserve: CoinPair,
+        output: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -113,6 +159,100 @@ impl PassiveLiquidityPool for PairParams {
         let refund = reserve.split(lp_burn_amount, lp_token_supply)?;
 
         Ok((reserve, refund))
+    }
+
+    fn swap_exact_amount_in(
+        &self,
+        mut reserve: CoinPair,
+        input: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)> {
+        let output_denom = if reserve.first().denom == &input.denom {
+            reserve.second().denom.clone()
+        } else {
+            reserve.first().denom.clone()
+        };
+
+        let input_reserve = reserve.amount_of(&input.denom)?;
+        let output_reserve = reserve.amount_of(&output_denom)?;
+
+        let output_amount_after_fee = match self.curve_invariant {
+            CurveInvariant::Xyk => {
+                // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
+                // => output_amount = B - (A * B) / (A + input_amount)
+                // Round so that user takes the loss.
+                let output_amount =
+                    output_reserve.checked_sub(input_reserve.checked_multiply_ratio_ceil(
+                        output_reserve,
+                        input_reserve.checked_add(input.amount)?,
+                    )?)?;
+
+                // Apply swap fee. Round so that user takes the loss.
+                output_amount
+                    .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?
+            },
+        };
+
+        let output = Coin {
+            denom: output_denom,
+            amount: output_amount_after_fee,
+        };
+
+        reserve.checked_add(&input)?.checked_sub(&output)?;
+
+        Ok((reserve, output))
+    }
+
+    fn swap_exact_amount_out(
+        &self,
+        mut reserve: CoinPair,
+        output: Coin,
+    ) -> anyhow::Result<(CoinPair, Coin)> {
+        let input_denom = if reserve.first().denom == &output.denom {
+            reserve.second().denom.clone()
+        } else {
+            reserve.first().denom.clone()
+        };
+
+        let input_reserve = reserve.amount_of(&input_denom)?;
+        let output_reserve = reserve.amount_of(&output.denom)?;
+
+        ensure!(
+            output_reserve > output.amount,
+            "insufficient liquidity: {} <= {}",
+            output_reserve,
+            output.amount
+        );
+
+        let input_amount = match self.curve_invariant {
+            CurveInvariant::Xyk => {
+                // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
+                // offer amount after fees. So in this case we need to divide ask by (1 - fee)
+                // to get the ask amount after fees.
+                // Round so that user takes the loss.
+                let output_amount_before_fee = output
+                    .amount
+                    .checked_div_dec_ceil(Udec128::ONE - self.swap_fee_rate.into_inner())?;
+
+                // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
+                // => input_amount = (A * B) / (B - output_amount) - A
+                // Round so that user takes the loss.
+                Uint128::ONE
+                    .checked_multiply_ratio_floor(
+                        input_reserve.checked_mul(output_reserve)?,
+                        output_reserve.checked_sub(output_amount_before_fee)?,
+                    )?
+                    .checked_sub(input_reserve)?
+            },
+        };
+
+        let input = Coin {
+            denom: input_denom,
+            amount: input_amount,
+        };
+
+        reserve.checked_add(&input)?.checked_sub(&output)?;
+
+        Ok((reserve, input))
     }
 }
 

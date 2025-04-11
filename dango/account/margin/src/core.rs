@@ -85,7 +85,7 @@ pub fn query_health(
 
         let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
         let value = price.value_of_unit_amount(collateral_balance)?;
-        let adjusted_value = value.checked_mul(power.clone().into_inner())?;
+        let adjusted_value = value.checked_mul(power.into_inner())?;
 
         collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
         total_collateral_value.checked_add_assign(value)?;
@@ -138,7 +138,7 @@ pub fn query_health(
         let offer_collateral_power = app_cfg
             .collateral_powers
             .get(&offer.denom)
-            .map(|x| x.clone().into_inner())
+            .map(|x| x.into_inner())
             .unwrap_or(Udec128::ZERO);
         let offer_adjusted_value = offer_value.checked_mul(offer_collateral_power)?;
 
@@ -147,7 +147,7 @@ pub fn query_health(
         let ask_collateral_power = app_cfg
             .collateral_powers
             .get(&ask.denom)
-            .map(|x| x.clone().into_inner())
+            .map(|x| x.into_inner())
             .unwrap_or(Udec128::ZERO);
         let ask_adjusted_value = ask_value.checked_mul(ask_collateral_power)?;
 

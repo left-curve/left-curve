@@ -1,21 +1,21 @@
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, MatchingOutcome, NEXT_ORDER_ID, ORDERS, Order, PAIRS,
-        PassiveLiquidityPool, RESERVES, fill_orders, match_orders,
+        PassiveLiquidityPool, RESERVES, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
     dango_types::{
         bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
-            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched,
-            PairUpdate, PairUpdated,
+            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
+            PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Message,
-        MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
-        StdResult, Storage, SudoCtx, Udec128,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
+        MultiplyFraction, MutableCtx, NonZero, Number, Order as IterationOrder, QuerierExt,
+        Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -42,6 +42,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             base_denom,
             quote_denom,
         } => withdraw_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::SwapExactAmountIn {
+            route,
+            minimum_output,
+        } => swap_exact_amount_in(ctx, route.into_inner(), minimum_output),
+        ExecuteMsg::SwapExactAmountOut { route, output } => {
+            swap_exact_amount_out(ctx, route.into_inner(), output)
+        },
     }
 }
 
@@ -346,6 +353,73 @@ fn withdraw_liquidity(
         })
         .add_message(Message::transfer(ctx.sender, refunds)?))
     // TODO: add events
+}
+
+#[inline]
+fn swap_exact_amount_in(
+    ctx: MutableCtx,
+    route: UniqueVec<PairId>,
+    minimum_output: Option<Uint128>,
+) -> anyhow::Result<Response> {
+    let input = ctx.funds.into_one_coin()?;
+    let (reserves, output) = core::swap_exact_amount_in(ctx.storage, route, input.clone())?;
+
+    // Ensure the output is above the minimum.
+    // If not minimum is specified, the output should at least be greater than zero.
+    if let Some(minimum_output) = minimum_output {
+        ensure!(
+            output.amount >= minimum_output,
+            "output amount is below the minimum: {} < {}",
+            output.amount,
+            minimum_output
+        );
+    } else {
+        ensure!(output.amount.is_non_zero(), "output amount is zero");
+    }
+
+    // Save the updated pool reserves.
+    for (pair, reserve) in reserves {
+        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
+    }
+
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, output.clone())?)
+        .add_event(SwapExactAmountIn {
+            user: ctx.sender,
+            input,
+            output,
+        })?)
+}
+
+#[inline]
+fn swap_exact_amount_out(
+    mut ctx: MutableCtx,
+    route: UniqueVec<PairId>,
+    output: NonZero<Coin>,
+) -> anyhow::Result<Response> {
+    let (reserves, input) = core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
+
+    // The user must have sent no less than the required input amount.
+    // Any extra is refunded.
+    ctx.funds
+        .insert(output.clone().into_inner())?
+        .deduct(input.clone())
+        .map_err(|e| anyhow!("insufficient input for swap: {e}"))?;
+
+    // Save the updated pool reserves.
+    for (pair, reserve) in reserves {
+        RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
+    }
+
+    // Unlike `swap_exact_amount_in`, no need to check whether output is zero
+    // here, because we already ensure it's non-zero.
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .add_event(SwapExactAmountOut {
+            user: ctx.sender,
+            input,
+            output: output.into_inner(),
+        })?)
 }
 
 /// Match and fill orders using the uniform price auction strategy.
