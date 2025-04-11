@@ -1,7 +1,7 @@
 use {
     crate::{Coin, CoinRef, CoinRefMut, Coins, Denom, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{IsZero, MultiplyRatio, Number, NumberConst, Uint128},
+    grug_math::{IsZero, MultiplyRatio, Number, NumberConst, Udec128, Uint128},
     serde::{Serialize, de},
     std::{cmp::Ordering, collections::BTreeMap, io},
 };
@@ -215,6 +215,17 @@ impl CoinPair {
         }
 
         Ok(self)
+    }
+
+    /// Return the ratio of the two coins in the coin pair.
+    ///
+    /// The ratio is calculated as amount of coin index 0 divided by amount of
+    /// coin index 1.
+    pub fn ratio(&self) -> StdResult<Udec128> {
+        let amount1 = self.0[0].amount;
+        let amount2 = self.0[1].amount;
+
+        Ok(Udec128::checked_from_ratio(amount1, amount2)?)
     }
 }
 
