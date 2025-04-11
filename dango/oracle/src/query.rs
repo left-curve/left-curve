@@ -14,7 +14,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             Ok(res.to_json_value()?)
         },
         QueryMsg::Prices { start_after, limit } => {
-            let res = query_prices(ctx, start_after, limit)?;
+            let res = query_prices(ctx, start_after, limit);
             Ok(res.to_json_value()?)
         },
         QueryMsg::PriceSource { denom } => {
@@ -44,11 +44,11 @@ fn query_prices(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> anyhow::Result<BTreeMap<Denom, PrecisionedPrice>> {
+) -> BTreeMap<Denom, PrecisionedPrice> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    Ok(PRICE_SOURCES
+    PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .filter_map(|res| {
@@ -62,7 +62,7 @@ fn query_prices(
                 .ok()?;
             Some((denom, price))
         })
-        .collect())
+        .collect()
 }
 
 fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceSource> {
