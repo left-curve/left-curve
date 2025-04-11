@@ -174,8 +174,7 @@ impl CoinPair {
             Ok(*self.second().amount)
         } else {
             Err(StdError::invalid_coins(format!(
-                "coin pair {:?} doesn't have denom: {}",
-                self, denom
+                "coin pair {self:?} doesn't have denom: {denom}",
             )))
         }
     }
