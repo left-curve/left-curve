@@ -463,10 +463,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         creates.extend(creates_for_pair);
     }
 
-    for (i, create) in creates.iter().enumerate() {
-        println!("create {} : {:?}", i, create);
-    }
-
     // Update the orders.
     let (.., mut events) =
         _batch_update_orders(ctx.storage, ctx.contract, creates, Some(OrderIds::All))?;

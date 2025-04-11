@@ -2104,10 +2104,6 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            println!("orders: {:?}", orders);
-            for (i, order) in orders.iter().enumerate() {
-                println!("order {} : {:?}", i, order);
-            }
             assert_eq!(orders.len(), 2 * order_depth as usize);
             for (order_id, (price, amount)) in expected_orders {
                 let order = orders.get(&order_id).unwrap();
