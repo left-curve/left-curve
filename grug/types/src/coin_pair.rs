@@ -217,7 +217,7 @@ impl CoinPair {
         Ok(self)
     }
 
-    /// Return the ratio of the two coins in the coin pair.
+    /// Return the ratio of the two coins in the coin pair. Note: Division by zero will result in an error.
     ///
     /// The ratio is calculated as amount of coin index 0 divided by amount of
     /// coin index 1.
