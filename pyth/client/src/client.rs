@@ -174,7 +174,7 @@ impl PythClientTrait for PythClient {
                 // Create the `EventSource`.
                 let mut es = Self::create_event_source(
                     &builder,
-                    Duration::from_millis(500),
+                    Duration::from_millis(100),
                 )
                 .await;
 
@@ -187,16 +187,12 @@ impl PythClientTrait for PythClient {
 
                             // Check if the streaming has to be closed.
                             if !keep_running.load(Ordering::Relaxed) {
+                                info!("Pyth SSE connection closed");
                                 return;
                             }
 
                             warn!("No new data received. Start reconnecting");
-
-                            es = Self::create_event_source(
-                                &builder,
-                                Duration::from_millis(100),
-                            )
-                            .await;
+                            break;
                         },
 
                         data = es.next() => {
