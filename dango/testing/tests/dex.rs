@@ -5,7 +5,7 @@ use {
         dex::{
             self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
             OrderResponse, PairId, PairParams, PairUpdate, QueryOrdersByPairRequest,
-            QueryOrdersRequest, QueryReserveRequest,
+            QueryOrdersByUserRequest, QueryOrdersRequest, QueryReserveRequest,
         },
     },
     grug::{
@@ -1049,6 +1049,8 @@ fn only_owner_can_create_passive_pool() {
                     lp_denom: lp_denom.clone(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             }]),
             Coins::new(),
@@ -1067,6 +1069,8 @@ fn only_owner_can_create_passive_pool() {
                     lp_denom: lp_denom.clone(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             }]),
             Coins::new(),
@@ -1523,6 +1527,8 @@ fn swap_exact_amount_in(
                                 lp_denom: pair_params.lp_denom.clone(),
                                 swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                                 curve_invariant: pair_params.curve_invariant.clone(),
+                                order_depth: pair_params.order_depth,
+                                order_spacing: pair_params.order_spacing,
                             },
                         }]),
                         Coins::new(),
@@ -1908,6 +1914,204 @@ fn swap_exact_amount_out(
                 reserve.clone() == CoinPair::try_from(expected_reserve).unwrap()
             });
     }
+}
+
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        !0  => (Udec128::new_percent(19900), 50251),
+        !2  => (Udec128::new_percent(19800), 50759),
+        !4  => (Udec128::new_percent(19700), 51274),
+        !6  => (Udec128::new_percent(19600), 51797),
+        !8  => (Udec128::new_percent(19500), 52329),
+        !10 => (Udec128::new_percent(19400), 52868),
+        !12 => (Udec128::new_percent(19300), 53416),
+        !14 => (Udec128::new_percent(19200), 53972),
+        !16 => (Udec128::new_percent(19100), 54538),
+        !18 => (Udec128::new_percent(19000), 55112),
+        1   => (Udec128::new_percent(20100), 49751),
+        3   => (Udec128::new_percent(20200), 49259),
+        5   => (Udec128::new_percent(20300), 48773),
+        7   => (Udec128::new_percent(20400), 48295),
+        9   => (Udec128::new_percent(20500), 47824),
+        11  => (Udec128::new_percent(20600), 47360),
+        13  => (Udec128::new_percent(20700), 46902),
+        15  => (Udec128::new_percent(20800), 46451),
+        17  => (Udec128::new_percent(20900), 46007),
+        19  => (Udec128::new_percent(21000), 45568),
+    },
+    1 ; "xyk pool balance 1:200 tick size 1 no fee")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::new_percent(1),
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        !0  => (Udec128::new_percent(19700), 152284),
+        !2  => (Udec128::new_percent(19600), 51797),
+        !4  => (Udec128::new_percent(19500), 52329),
+        !6  => (Udec128::new_percent(19400), 52868),
+        !8  => (Udec128::new_percent(19300), 53416),
+        !10 => (Udec128::new_percent(19200), 53972),
+        !12 => (Udec128::new_percent(19100), 54538),
+        !14 => (Udec128::new_percent(19000), 55112),
+        !16 => (Udec128::new_percent(18900), 55694),
+        !18 => (Udec128::new_percent(18800), 56287),
+        1   => (Udec128::new_percent(20300), 147783),
+        3   => (Udec128::new_percent(20400), 48295),
+        5   => (Udec128::new_percent(20500), 47824),
+        7   => (Udec128::new_percent(20600), 47360),
+        9   => (Udec128::new_percent(20700), 46902),
+        11  => (Udec128::new_percent(20800), 46451),
+        13  => (Udec128::new_percent(20900), 46007),
+        15  => (Udec128::new_percent(21000), 45568),
+        17  => (Udec128::new_percent(21100), 45137),
+        19  => (Udec128::new_percent(21200), 44711),
+    },
+    1 ; "xyk pool balance 1:200 tick size 1 one percent fee")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::new_percent(1),
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        !0  => (Udec128::new_percent(99), 101010),
+        !2  => (Udec128::new_percent(98), 103072),
+        !4  => (Udec128::new_percent(97), 105197),
+        !6  => (Udec128::new_percent(96), 107388),
+        !8  => (Udec128::new_percent(95), 109649),
+        !10 => (Udec128::new_percent(94), 111982),
+        !12 => (Udec128::new_percent(93), 114390),
+        !14 => (Udec128::new_percent(92), 116877),
+        !16 => (Udec128::new_percent(91), 119446),
+        !18 => (Udec128::new_percent(90), 122100),
+        1   => (Udec128::new_percent(101), 99010),
+        3   => (Udec128::new_percent(102), 97069),
+        5   => (Udec128::new_percent(103), 95184),
+        7   => (Udec128::new_percent(104), 93353),
+        9   => (Udec128::new_percent(105), 91575),
+        11  => (Udec128::new_percent(106), 89847),
+        13  => (Udec128::new_percent(107), 88168),
+        15  => (Udec128::new_percent(108), 86535),
+        17  => (Udec128::new_percent(109), 84947),
+        19  => (Udec128::new_percent(110), 83403),
+    },
+    1 ; "xyk pool balance 1:1 no fee")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::new_percent(1),
+    10,
+    Udec128::new_percent(1),
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        !0  => (Udec128::new_percent(98), 204081),
+        !2  => (Udec128::new_percent(97), 105196),
+        !4  => (Udec128::new_percent(96), 107388),
+        !6  => (Udec128::new_percent(95), 109649),
+        !8  => (Udec128::new_percent(94), 111982),
+        !10 => (Udec128::new_percent(93), 114390),
+        !12 => (Udec128::new_percent(92), 116877),
+        !14 => (Udec128::new_percent(91), 119445),
+        !16 => (Udec128::new_percent(90), 122100),
+        !18 => (Udec128::new_percent(89), 124843),
+        1   => (Udec128::new_percent(102), 196078),
+        3   => (Udec128::new_percent(103), 95184),
+        5   => (Udec128::new_percent(104), 93353),
+        7   => (Udec128::new_percent(105), 91575),
+        9   => (Udec128::new_percent(106), 89847),
+        11  => (Udec128::new_percent(107), 88168),
+        13  => (Udec128::new_percent(108), 86535),
+        15  => (Udec128::new_percent(109), 84947),
+        17  => (Udec128::new_percent(110), 83403),
+        19  => (Udec128::new_percent(111), 81900),
+    },
+    1 ; "xyk pool balance 1:1 one percent fee")]
+fn curve_on_orderbook(
+    curve_invariant: CurveInvariant,
+    order_spacing: Udec128,
+    order_depth: u64,
+    swap_fee_rate: Udec128,
+    pool_liquidity: Coins,
+    expected_orders: BTreeMap<OrderId, (Udec128, u128)>,
+    order_size_tolerance: u128,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Update pair params
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Provide liquidity with owner account
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: ETH_DENOM.clone(),
+                        quote_denom: USDC_DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            curve_invariant,
+                            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                            order_depth,
+                            order_spacing,
+                        },
+                    }]),
+                    pool_liquidity.clone(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Provide liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersByUserRequest {
+            user: contracts.dex.address(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), 2 * order_depth as usize);
+            for (order_id, (price, amount)) in expected_orders {
+                let order = orders.get(&order_id).unwrap();
+                assert_eq!(order.price, price);
+                assert!(order.amount.into_inner().abs_diff(amount) <= order_size_tolerance);
+            }
+            true
+        });
 }
 
 fn balance_changes_from_coins(
