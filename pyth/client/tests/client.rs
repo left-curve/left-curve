@@ -16,6 +16,7 @@ use {
         ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, LatestVaaBinaryResponse,
         LatestVaaResponse, PYTH_URL,
     },
+    rand::Rng,
     std::{
         convert::Infallible,
         sync::{
@@ -52,7 +53,11 @@ async fn test_sse_stream() {
 
 #[tokio::test]
 async fn test_client_reconnection() {
-    let mut client = PythClient::new("http://127.0.0.1:3030").unwrap();
+    // Random port 15k - 16k.
+    let mut rng = rand::thread_rng();
+    let port = rng.gen_range(15000..16000);
+
+    let mut client = PythClient::new(format!("http://127.0.0.1:{port}")).unwrap();
     setup_tracing_subscriber(tracing::Level::INFO);
     let mut stream = client
         .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
@@ -67,7 +72,7 @@ async fn test_client_reconnection() {
         },
     }
 
-    start_server().await;
+    start_server(port).await;
 
     // Read some data from the stream.
     // During this pull, the client will receive:
@@ -87,13 +92,15 @@ async fn test_client_reconnection() {
     }
 }
 
-async fn start_server() {
+async fn start_server(port: u16) {
     let counter = Arc::new(AtomicUsize::new(0));
     let app = Router::new()
         .route("/v2/updates/price/stream", get(sse_handler))
         .with_state(counter.clone());
 
-    let listener = TcpListener::bind("127.0.0.1:3030").await.unwrap();
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
+        .await
+        .unwrap();
 
     tokio::spawn(async move {
         serve(listener, app.into_make_service()).await.unwrap();

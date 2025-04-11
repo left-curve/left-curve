@@ -7209,6 +7209,7 @@ dependencies = [
  "grug-app",
  "indexer-disk-saver",
  "pyth-types",
+ "rand 0.8.5",
  "reqwest 0.12.15",
  "reqwest-eventsource",
  "thiserror 2.0.12",

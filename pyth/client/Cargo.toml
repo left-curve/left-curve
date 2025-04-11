@@ -28,3 +28,4 @@ url                 = { workspace = true }
 axum        = { workspace = true }
 dango-types = { workspace = true }
 futures     = { workspace = true }
+rand        = { workspace = true }
