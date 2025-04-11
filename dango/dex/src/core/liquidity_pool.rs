@@ -306,7 +306,7 @@ impl PassiveLiquidityPool for PairParams {
 
         // Calculate the starting price for the ask and bid side respectively. We
         // place the spread symmetrically around the spot price.
-        let swap_fee_rate = self.swap_fee_rate.clone().into_inner();
+        let swap_fee_rate = self.swap_fee_rate.into_inner();
         let starting_price_ask = price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
         let starting_price_bid = price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
 
