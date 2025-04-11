@@ -117,12 +117,7 @@ impl Market {
         let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
         let protocol_fee =
             borrow_interest.checked_mul_dec(self.interest_rate_model.reserve_factor())?;
-        let protocol_fee_scaled = protocol_fee
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(supply_index.into_next())?
-            .into_int()
-            .checked_into_prev()?;
+        let protocol_fee_scaled = protocol_fee.checked_div_dec_floor(supply_index)?;
 
         // Return the new market state
         new_market
