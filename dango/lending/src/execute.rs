@@ -273,7 +273,11 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     };
 
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, refunds.clone())?)
+        .may_add_message(if refunds.is_non_empty() {
+            Some(Message::transfer(ctx.sender, refunds.clone())?)
+        } else {
+            None
+        })
         .add_event(Repaid {
             user: ctx.sender,
             repaid: ctx.funds,
