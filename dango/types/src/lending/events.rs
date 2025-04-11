@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
-
-use grug::{Addr, Coins, Denom, Udec256};
+use {
+    grug::{Addr, Coins, Denom, Udec256},
+    std::collections::BTreeMap,
+};
 
 /// An event indicating a user has borrowed coins from the lending contract.
 #[grug::derive(Serde)]
