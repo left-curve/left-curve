@@ -1,5 +1,5 @@
 use {
-    crate::{DEBTS, MARKETS, calculate_deposit, calculate_withdraw},
+    crate::{DEBTS, MARKETS, core},
     anyhow::{anyhow, ensure},
     dango_account_factory::ACCOUNTS,
     dango_types::{
@@ -87,7 +87,7 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint.
-    let (lp_tokens, markets) = calculate_deposit(
+    let (lp_tokens, markets) = core::deposit(
         ctx.storage,
         &ctx.querier,
         ctx.block.timestamp,
@@ -121,7 +121,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of underlying coins to withdraw
-    let (withdrawn, markets) = calculate_withdraw(
+    let (withdrawn, markets) = core::withdraw(
         ctx.storage,
         &ctx.querier,
         ctx.block.timestamp,

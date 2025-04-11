@@ -8,7 +8,7 @@ use {
 
 /// Calculates the amount of LP tokens to mint for a deposit.
 /// Returns the amount of LP tokens and the updated markets.
-pub fn calculate_deposit(
+pub fn deposit(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
     timestamp: Timestamp,
@@ -35,7 +35,7 @@ pub fn calculate_deposit(
 
 /// Calculates the amount of underlying coins to withdraw for a given amount of LP tokens.
 /// Returns the amount of underlying coins and the updated markets.
-pub fn calculate_withdraw(
+pub fn withdraw(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
     timestamp: Timestamp,
