@@ -44,7 +44,9 @@ pub fn query_health(
         .unwrap_or_default();
 
     // Query all markets.
-    let markets = scaled_debts.keys().map(|denom| {
+    let markets = scaled_debts
+        .keys()
+        .map(|denom| {
             let market = querier
                 .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
                 .update_indices(querier, current_time)?;
@@ -54,7 +56,9 @@ pub fn query_health(
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
 
     // Query collateral balances.
-    let collateral_balances = collateral_powers.keys().map(|denom| {
+    let collateral_balances = collateral_powers
+        .keys()
+        .map(|denom| {
             let balance = querier.query_balance(account, denom.clone())?;
             Ok((denom.clone(), balance))
         })
@@ -160,12 +164,10 @@ pub fn compute_health(
     let mut collaterals = Coins::new();
 
     for (denom, power) in &collateral_powers {
-        let mut collateral_balance = *collateral_balances
-            .get(denom)
-            .ok_or(anyhow::anyhow!(
-                "collateral balance for denom {} not found",
-                denom
-            ))?;
+        let mut collateral_balance = *collateral_balances.get(denom).ok_or(anyhow::anyhow!(
+            "collateral balance for denom {} not found",
+            denom
+        ))?;
 
         if let Some(discount_collateral) = discount_collateral.as_ref() {
             collateral_balance.checked_sub_assign(discount_collateral.amount_of(denom))?;
