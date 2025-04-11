@@ -66,11 +66,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     },
     btree_map! {
         !0 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            DANGO_DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !1 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            DANGO_DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
@@ -79,11 +79,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         3 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(200),
+            USDC_DENOM.clone()  => BalanceChange::Increased(199), // Receives one less due to fee
         },
         4 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(200),
+            USDC_DENOM.clone()  => BalanceChange::Increased(199), // Receives one less due to fee
         },
         5 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
@@ -108,11 +108,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     },
     btree_map! {
         !0 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            DANGO_DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !1 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            DANGO_DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !2 => btree_map! {
@@ -121,11 +121,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         3 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(175),
+            USDC_DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         4 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(175),
+            USDC_DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         5 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
@@ -152,11 +152,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     },
     btree_map! {
         !0 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            DANGO_DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !1 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(5),   // half filled
+            DANGO_DENOM.clone() => BalanceChange::Increased(4),   // half filled, receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(188), // -200 deposit, +12 refund
         },
         !2 => btree_map! {
@@ -165,18 +165,18 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         3 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(175),
+            USDC_DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         4 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(175),
+            USDC_DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         5 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
             USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
         !6 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(5),
+            DANGO_DENOM.clone() => BalanceChange::Increased(4),  // receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(88), // -150 deposit, +62 refund
         },
     };
@@ -199,7 +199,7 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     },
     btree_map! {
         !0 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(20),
+            DANGO_DENOM.clone() => BalanceChange::Increased(19), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(450), // -600 deposit, +150 refund
         },
         !1 => btree_map! {
@@ -212,11 +212,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         3 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(225),
+            USDC_DENOM.clone()  => BalanceChange::Increased(224), // Receives one less due to fee
         },
         4 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(225),
+            USDC_DENOM.clone()  => BalanceChange::Increased(224), // Receives one less due to fee
         },
         5 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
@@ -242,7 +242,7 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     },
     btree_map! {
         !0 => btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(25),
+            DANGO_DENOM.clone() => BalanceChange::Increased(24), // Receives one less due to fee
             USDC_DENOM.clone()  => BalanceChange::Decreased(688), // -750 deposit, +62 refund
         },
         !1 => btree_map! {
@@ -255,15 +255,15 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         3 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(275),
+            USDC_DENOM.clone()  => BalanceChange::Increased(273), // Receives two less due to fee
         },
         4 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(275),
+            USDC_DENOM.clone()  => BalanceChange::Increased(273), // Receives two less due to fee
         },
         5 => btree_map! {
             DANGO_DENOM.clone() => BalanceChange::Decreased(10),
-            USDC_DENOM.clone()  => BalanceChange::Increased(137), // refund: floor(5 * 27.5) = 137
+            USDC_DENOM.clone()  => BalanceChange::Increased(136), // refund: floor(5 * 27.5) = 137, minus 1 due to fee
         },
     };
     "example 5"

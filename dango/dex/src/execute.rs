@@ -12,6 +12,7 @@ use {
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
             PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
@@ -229,6 +230,7 @@ fn batch_update_orders(
                     user: ctx.sender,
                     amount: order.amount,
                     remaining: order.amount,
+                    created_at_block_height: ctx.block.height,
                 },
             ),
         )?;
@@ -432,12 +434,26 @@ fn swap_exact_amount_out(
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
+    let mut collected_fees = Coins::new();
+    let mut fee_payments = BTreeMap::new();
+
+    // Query fee rates from Dango config
+    let dango_config = ctx.querier.query_dango_config()?;
+    let maker_fee = dango_config.maker_fee.into_inner();
+    let taker_fee = dango_config.taker_fee.into_inner();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
+        // Ensure that the order was created in the current block. This should
+        // always be the case, or something has gone wrong.
+        ensure!(
+            order.created_at_block_height == ctx.block.height,
+            "incoming order was created in a previous block"
+        );
+
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }
 
@@ -455,20 +471,39 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             ctx.storage,
             &ctx.querier,
             ctx.block.timestamp,
+            ctx.block.height,
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
+            &mut collected_fees,
+            &mut fee_payments,
+            maker_fee,
+            taker_fee,
         )?;
     }
 
-    Ok(Response::new()
-        .may_add_message(if !refunds.is_empty() {
-            Some(Message::batch_transfer(refunds)?)
-        } else {
-            None
-        })
-        .add_events(events)?)
+    // Add fee transfer to fee collector if any fees collected
+    let response = Response::new().may_add_message(if !refunds.is_empty() {
+        Some(Message::batch_transfer(refunds)?)
+    } else {
+        None
+    });
+
+    // Add fee transfer if any fees were collected
+    let response = response.may_add_message(if !fee_payments.is_empty() {
+        Some(Message::execute(
+            dango_config.addresses.taxman,
+            &taxman::ExecuteMsg::Pay {
+                payments: fee_payments,
+            },
+            collected_fees,
+        )?)
+    } else {
+        None
+    });
+
+    Ok(response.add_events(events)?)
 }
 
 #[inline]
@@ -476,10 +511,15 @@ fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
     current_time: Timestamp,
+    current_block_height: u64,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
+    collected_fees: &mut Coins,
+    fee_payments: &mut BTreeMap<Addr, (FeeType, Coins)>,
+    maker_fee: Udec128,
+    taker_fee: Udec128,
 ) -> anyhow::Result<()> {
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
@@ -527,7 +567,7 @@ fn clear_orders_of_pair(
     let oracle = dango_config.addresses.oracle;
     let account_factory = dango_config.addresses.account_factory;
 
-    // Clear the BUY orders.
+    // Fill orders
     for FillingOutcome {
         order_direction,
         order_price,
@@ -537,8 +577,17 @@ fn clear_orders_of_pair(
         cleared,
         refund_base,
         refund_quote,
-    } in fill_orders(bids, asks, clearing_price, volume)?
-    {
+        fee_base,
+        fee_quote,
+    } in fill_orders(
+        bids,
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee,
+        taker_fee,
+    )? {
         let refund = Coins::try_from([
             Coin {
                 denom: base_denom.clone(),
@@ -550,12 +599,46 @@ fn clear_orders_of_pair(
             },
         ])?;
 
+        // Add fees to collected_fees
+        if fee_base.is_non_zero() {
+            collected_fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_insert((FeeType::Trade, Coins::new()))
+                .1
+                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+        }
+
+        if fee_quote.is_non_zero() {
+            collected_fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_insert((FeeType::Trade, Coins::new()))
+                .1
+                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+        }
+
+        // Include fee information in the event
+        let fee = if fee_base.is_non_zero() {
+            Some(Coin {
+                denom: base_denom.clone(),
+                amount: fee_base,
+            })
+        } else if fee_quote.is_non_zero() {
+            Some(Coin {
+                denom: quote_denom.clone(),
+                amount: fee_quote,
+            })
+        } else {
+            None
+        };
+
         events.push(OrderFilled {
             order_id,
             clearing_price,
             filled,
             refund: refund.clone(),
-            fee: None,
+            fee,
             cleared,
         })?;
 
