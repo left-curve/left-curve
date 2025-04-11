@@ -1,10 +1,7 @@
 use {
     crate::{GUARDIAN_SETS, OracleQuerier, PRICE_SOURCES},
     dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
-    grug::{
-        Addressable, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
-        StdResult,
-    },
+    grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
 };
@@ -40,8 +37,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    ctx.querier
-        .query_price(ctx.contract.address(), &denom, None)
+    ctx.querier.query_price(ctx.contract, &denom, None)
 }
 
 fn query_prices(
@@ -55,12 +51,16 @@ fn query_prices(
     PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|res| {
-            let (denom, price_source) = res?;
-            let price =
-                ctx.querier
-                    .query_price(ctx.contract.address(), &denom, Some(price_source))?;
-            Ok((denom, price))
+        .filter_map(|res| {
+            // Here we consider the situation where a price source exists, but
+            // no price has been uploaded onchain yet.
+            // Instead of throwing a "data not found" error, we simply skip it.
+            let (denom, price_source) = res.ok()?;
+            let price = ctx
+                .querier
+                .query_price(ctx.contract, &denom, Some(price_source))
+                .ok()?;
+            Some(Ok((denom, price)))
         })
         .collect()
 }
