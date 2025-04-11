@@ -10,8 +10,8 @@ use {
         },
     },
     grug::{
-        Coin, Coins, Denom, Message, MutableCtx, NextNumber, Number, Order, QuerierExt, Response,
-        StdResult, StorageQuerier,
+        Coin, Coins, Denom, Inner, Message, MutableCtx, NextNumber, NonEmpty, Number, Order,
+        QuerierExt, Response, StdResult, StorageQuerier,
     },
     std::collections::BTreeMap,
 };
@@ -156,7 +156,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         .add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
-fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
+fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
     let account_factory = ctx.querier.query_account_factory()?;
 
     // Ensure sender is a margin account.
@@ -172,7 +172,7 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // Load the sender's debts
     let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
 
-    for coin in coins.clone() {
+    for coin in coins.inner() {
         // Update the market state
         let market = MARKETS
             .load(ctx.storage, &coin.denom)?
@@ -201,10 +201,10 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
     // Transfer the coins to the caller
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, coins.clone())?)
+        .add_message(Message::transfer(ctx.sender, coins.inner().clone())?)
         .add_event(Borrowed {
             user: ctx.sender,
-            borrowed: coins,
+            borrowed: coins.into_inner(),
         })?)
 }
 
