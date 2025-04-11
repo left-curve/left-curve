@@ -91,7 +91,8 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 ///
 /// ## Inputs
 ///
-/// - `ctx`: The context of the contract.
+/// - `storage`: Storage instance for read and write.
+/// - `sender`:  The sender of the transaction. This is the address for whom to update the orders for.
 /// - `creates`: The orders to create.
 /// - `cancels`: The orders to cancel.
 ///
