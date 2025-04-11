@@ -1,12 +1,14 @@
 use {
-    crate::{ORDERS, PAIRS, RESERVES, core},
+    crate::{ORDERS, PAIRS, PassiveLiquidityPool, RESERVES, core},
+    anyhow::ensure,
     dango_types::dex::{
         OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
-        PairUpdate, QueryMsg, ReservesResponse,
+        PairUpdate, QueryMsg, ReservesResponse, SimulateProvideLiquidityResponse,
+        SimulateSwapExactAmountInResponse, SimulateSwapExactAmountOutResponse,
     },
     grug::{
-        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
-        Order as IterationOrder, StdResult,
+        Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
+        JsonSerExt, Order as IterationOrder, QuerierExt, StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -62,12 +64,32 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountIn { route, input } => {
-            let (_, output) = core::swap_exact_amount_in(ctx.storage, route.into_inner(), input)?;
-            output.to_json_value()
+            let (reserves, output) =
+                core::swap_exact_amount_in(ctx.storage, route.into_inner(), input)?;
+            SimulateSwapExactAmountInResponse {
+                output,
+                reserves_after: reserves.into_iter().collect(),
+            }
+            .to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {
-            let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
-            input.to_json_value()
+            let (reserves, input) =
+                core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
+            SimulateSwapExactAmountOutResponse {
+                input,
+                reserves_after: reserves.into_iter().collect(),
+            }
+            .to_json_value()
+        },
+        QueryMsg::SimulateProvideLiquidity {
+            base_denom,
+            quote_denom,
+            deposit,
+            reserve,
+        } => {
+            let res =
+                query_simulate_provide_liquidity(ctx, base_denom, quote_denom, deposit, reserve)?;
+            res.to_json_value()
         },
     }
     .map_err(Into::into)
@@ -247,4 +269,45 @@ fn query_orders_by_user(
             }))
         })
         .collect()
+}
+
+#[inline]
+fn query_simulate_provide_liquidity(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    deposit: CoinPair,
+    reserve: Option<CoinPair>,
+) -> anyhow::Result<SimulateProvideLiquidityResponse> {
+    // Ensure the deposit is valid.
+    ensure!(
+        deposit.has(&base_denom) && deposit.has(&quote_denom),
+        "invalid deposit"
+    );
+
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Use the supplied reserve if provided, otherwise load the current pool reserve.
+    let reserve = if let Some(reserve) = reserve {
+        reserve
+    } else {
+        RESERVES
+            .may_load(ctx.storage, (&base_denom, &quote_denom))?
+            .map_or_else(
+                || CoinPair::new_empty(base_denom.clone(), quote_denom.clone()),
+                Ok,
+            )?
+    };
+
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Compute the amount of LP tokens to mint.
+    let (reserve, lp_mint_amount) = pair.add_liquidity(reserve, lp_token_supply, deposit)?;
+
+    Ok(SimulateProvideLiquidityResponse {
+        lp_tokens_minted: Coin::new(pair.lp_denom.clone(), lp_mint_amount)?,
+        reserves_after: reserve,
+    })
 }

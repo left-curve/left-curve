@@ -162,13 +162,26 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Simulate a swap with exact input.
-    #[returns(Coin)]
+    #[returns(SimulateSwapExactAmountInResponse)]
     SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
     /// Simulate a swap with exact output.
-    #[returns(Coin)]
+    #[returns(SimulateSwapExactAmountOutResponse)]
     SimulateSwapExactAmountOut {
         route: SwapRoute,
         output: NonZero<Coin>,
+    },
+    /// Simulate a liquidity provision.
+    #[returns(SimulateProvideLiquidityResponse)]
+    SimulateProvideLiquidity {
+        /// The base asset denomination.
+        base_denom: Denom,
+        /// The quote asset denomination.
+        quote_denom: Denom,
+        /// The coins to deposit into the pool.
+        deposit: CoinPair,
+        /// Optional pool reserves before the provision. If not provided, the
+        /// current pool reserves will be used.
+        reserve: Option<CoinPair>,
     },
 }
 
@@ -219,4 +232,22 @@ pub struct OrdersByUserResponse {
     pub price: Udec128,
     pub amount: Uint128,
     pub remaining: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct SimulateSwapExactAmountInResponse {
+    pub output: Coin,
+    pub reserves_after: Vec<(PairId, CoinPair)>,
+}
+
+#[grug::derive(Serde)]
+pub struct SimulateSwapExactAmountOutResponse {
+    pub input: Coin,
+    pub reserves_after: Vec<(PairId, CoinPair)>,
+}
+
+#[grug::derive(Serde)]
+pub struct SimulateProvideLiquidityResponse {
+    pub lp_tokens_minted: Coin,
+    pub reserves_after: CoinPair,
 }
