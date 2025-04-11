@@ -315,7 +315,7 @@ impl PassiveLiquidityPool for PairParams {
         let mut a_ask_prev = Uint128::ZERO;
         for i in 1..(self.order_depth + 1) {
             let delta_p = self
-                .tick_size
+                .order_spacing
                 .checked_mul(Udec128::checked_from_ratio(i as u128, Uint128::ONE)?)?;
 
             // Calculate the price i ticks on the ask and bid side respectively

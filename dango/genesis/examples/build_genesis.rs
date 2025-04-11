@@ -124,7 +124,7 @@ fn main() {
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     order_depth: 100,
-                    tick_size: Udec128::new_bps(1),
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
             PairUpdate {
@@ -135,7 +135,7 @@ fn main() {
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     order_depth: 100,
-                    tick_size: Udec128::new_bps(1),
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
             PairUpdate {
@@ -146,7 +146,7 @@ fn main() {
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     order_depth: 100,
-                    tick_size: Udec128::new_bps(1),
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
             PairUpdate {
@@ -157,7 +157,7 @@ fn main() {
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     order_depth: 100,
-                    tick_size: Udec128::new_bps(1),
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
         ],
