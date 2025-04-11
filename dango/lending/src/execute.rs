@@ -235,12 +235,10 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         };
 
         // If the repaid amount is equal to the debt, remove the debt from the
-        // sender's debts.
+        // sender's debts. Otherwise, update the sender's liabilities.
         if repaid == debt {
             scaled_debts.remove(coin.denom);
-        }
-        // Otherwise, update the sender's liabilities.
-        else {
+        } else {
             // Update the sender's liabilities
             let repaid_debt_scaled = repaid
                 .into_next()
