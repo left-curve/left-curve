@@ -48,7 +48,7 @@ where
                 let th_blocks = blocks.clone();
                 let th_txs = txs.clone();
 
-                thread::spawn(|| async move {
+                thread::spawn(move || {
                     let rt = Runtime::new().unwrap();
 
                     rt.block_on(async move {
