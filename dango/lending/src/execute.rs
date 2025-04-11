@@ -4,7 +4,10 @@ use {
     dango_account_factory::ACCOUNTS,
     dango_types::{
         DangoQuerier, bank,
-        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
+        lending::{
+            Borrowed, ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, Repaid,
+            SUBNAMESPACE,
+        },
     },
     grug::{
         Coin, Coins, Denom, Message, MutableCtx, NextNumber, Number, Order, QuerierExt, Response,
@@ -197,7 +200,12 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
 
     // Transfer the coins to the caller
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, coins.clone())?)
+        .add_event(Borrowed {
+            user: ctx.sender,
+            borrowed: coins,
+        })?)
 }
 
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -206,35 +214,42 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Read debts
     let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
 
-    for coin in ctx.funds {
+    for coin in &ctx.funds {
         // Update the market indices
         let market = MARKETS
-            .load(ctx.storage, &coin.denom)?
+            .load(ctx.storage, coin.denom)?
             .update_indices(&ctx.querier, ctx.block.timestamp)?;
 
         // Calculated the users real debt
-        let scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
+        let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
         let debt = market.calculate_debt(scaled_debt)?;
 
         // Calculate the repaid amount and refund the remainders to the sender,
         // if any.
-        let repaid = if coin.amount > debt {
+        let repaid = if coin.amount > &debt {
             let refund_amount = coin.amount.checked_sub(debt)?;
             refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
             debt
         } else {
-            coin.amount
+            *coin.amount
         };
 
-        // Update the sender's liabilities
-        let repaid_debt_scaled = repaid
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
-        scaled_debts.insert(
-            coin.denom.clone(),
-            scaled_debt.saturating_sub(repaid_debt_scaled),
-        );
+        // If the repaid amount is equal to the debt, remove the debt from the
+        // sender's debts. Otherwise, update the sender's liabilities.
+        if repaid == debt {
+            scaled_debts.remove(coin.denom);
+        } else {
+            // Update the sender's liabilities
+            let repaid_debt_scaled = repaid
+                .into_next()
+                .checked_into_dec()?
+                .checked_div(market.borrow_index.into_next())?;
+
+            scaled_debts.insert(
+                coin.denom.clone(),
+                scaled_debt.saturating_sub(repaid_debt_scaled),
+            );
+        }
 
         // Deduct the repaid scaled debt and save the updated market state
         let debt_after = debt.checked_sub(repaid)?;
@@ -246,15 +261,25 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         MARKETS.save(
             ctx.storage,
-            &coin.denom,
+            coin.denom,
             &market.deduct_borrowed(scaled_debt_diff)?,
         )?;
     }
 
-    // Save the updated debts
-    DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+    if scaled_debts.is_empty() {
+        DEBTS.remove(ctx.storage, ctx.sender);
+    } else {
+        DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+    };
 
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, refunds)?))
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, refunds.clone())?)
+        .add_event(Repaid {
+            user: ctx.sender,
+            repaid: ctx.funds,
+            refunds,
+            remaining_scaled_debts: scaled_debts,
+        })?)
 }
 
 fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {

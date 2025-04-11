@@ -1,18 +1,18 @@
 use {
-    crate::{ORDERS, PAIRS, RESERVES},
+    crate::{ORDERS, PAIRS, RESERVES, core},
     dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParam,
-        PairParams, PairUpdate, QueryMsg, ReservesResponse,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
+        PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
-        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt,
+        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
         Order as IterationOrder, StdResult,
     },
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Pair {
             base_denom,
@@ -61,7 +61,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_orders_by_user(ctx, user, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::SimulateSwapExactAmountIn { route, input } => {
+            let (_, output) = core::swap_exact_amount_in(ctx.storage, route.into_inner(), input)?;
+            output.to_json_value()
+        },
+        QueryMsg::SimulateSwapExactAmountOut { route, output } => {
+            let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
+            input.to_json_value()
+        },
     }
+    .map_err(Into::into)
 }
 
 #[inline]
@@ -72,7 +81,7 @@ fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdRe
 #[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
-    start_after: Option<PairPageParam>,
+    start_after: Option<PairId>,
     limit: Option<u32>,
 ) -> StdResult<Vec<PairUpdate>> {
     let start = start_after
@@ -102,7 +111,7 @@ fn query_reserve(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> St
 #[inline]
 fn query_reserves(
     ctx: ImmutableCtx,
-    start_after: Option<PairPageParam>,
+    start_after: Option<PairId>,
     limit: Option<u32>,
 ) -> StdResult<Vec<ReservesResponse>> {
     let start = start_after
@@ -116,7 +125,7 @@ fn query_reserves(
         .map(|res| {
             let ((base_denom, quote_denom), reserve) = res?;
             Ok(ReservesResponse {
-                pair: PairPageParam {
+                pair: PairId {
                     base_denom,
                     quote_denom,
                 },

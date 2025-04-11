@@ -1027,13 +1027,12 @@ fn interest_rate_model_works(
         margin_usdc_balance_before - usdc_debt
     );
 
-    // Query the margin account's debt. Ensure it is zero
-    let debt = suite
+    // Query the margin account's debt. Should fail as the debt has been repaid
+    suite
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
-        .should_succeed();
-    assert_eq!(debt.amount_of(&USDC_DENOM), Uint128::ZERO);
+        .should_fail_with_error("data not found!");
 
     // Query the market
     let market = suite
