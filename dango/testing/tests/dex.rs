@@ -2046,7 +2046,7 @@ fn swap_exact_amount_out(
     1 ; "xyk pool balance 1:1 one percent fee")]
 fn curve_on_orderbook(
     curve_invariant: CurveInvariant,
-    tick_size: Udec128,
+    order_spacing: Udec128,
     order_depth: u64,
     swap_fee_rate: Udec128,
     pool_liquidity: Coins,

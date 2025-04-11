@@ -314,15 +314,16 @@ impl PassiveLiquidityPool for PairParams {
         let mut a_bid_prev = Uint128::ZERO;
         let mut a_ask_prev = Uint128::ZERO;
         for i in 1..(self.order_depth + 1) {
+            // Calculate the price that is `i` price steps of size `order_spacing`
+            // on the ask and bid side of the spot price respectively.
             let delta_p = self
                 .order_spacing
                 .checked_mul(Udec128::checked_from_ratio(i as u128, Uint128::ONE)?)?;
-
-            // Calculate the price i ticks on the ask and bid side respectively
             let price_ask = starting_price_ask.checked_add(delta_p)?;
             let price_bid = starting_price_bid.checked_sub(delta_p)?;
 
-            // Calculate the amount of base that can be bought at the price
+            // Calculate the amount of base that the pool will trade from the
+            // current spot price to `price_ask` and `price_bid` respectively.
             let (amount_ask, amount_bid) = match self.curve_invariant {
                 CurveInvariant::Xyk => {
                     let amount_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
@@ -331,6 +332,9 @@ impl PassiveLiquidityPool for PairParams {
                 },
             };
 
+            // Calculate the difference in the amount as compared to the previous iteration.
+            // I.e. the amount that the pool places at the current `price_bid` and `price_ask`
+            // respectively. Only place orders if the amount is positive.
             let amount_bid_diff = amount_bid.checked_sub(a_bid_prev)?;
             if amount_bid_diff > Uint128::ZERO {
                 orders.push(CreateLimitOrderRequest {
@@ -353,6 +357,7 @@ impl PassiveLiquidityPool for PairParams {
                 });
             }
 
+            // Update the previous amounts for the next iteration.
             a_bid_prev = amount_bid;
             a_ask_prev = amount_ask;
         }

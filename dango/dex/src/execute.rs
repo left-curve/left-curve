@@ -246,27 +246,25 @@ fn _batch_update_orders(
 
 #[inline]
 fn batch_update_orders(
-    ctx: MutableCtx,
+    mut ctx: MutableCtx,
     creates: Vec<CreateLimitOrderRequest>,
     cancels: Option<OrderIds>,
 ) -> anyhow::Result<Response> {
-    let mut funds = ctx.funds.clone();
-    let sender = ctx.sender;
-
-    let (deposits, refunds, events) = _batch_update_orders(ctx.storage, sender, creates, cancels)?;
+    let (deposits, refunds, events) =
+        _batch_update_orders(ctx.storage, ctx.sender, creates, cancels)?;
 
     // Compute the amount of tokens that should be sent back to the users.
     //
     // This equals the amount that user has sent to the contract, plus the
     // amount that are to be refunded from the cancelled orders, and the amount
     // that the user is supposed to deposit for creating the new orders.
-    funds
+    ctx.funds
         .insert_many(refunds)?
         .deduct_many(deposits)
         .map_err(|e| anyhow!("insufficient funds for batch updating orders: {e}"))?;
 
     Ok(Response::new()
-        .add_message(Message::transfer(sender, funds)?)
+        .add_message(Message::transfer(ctx.sender, ctx.funds)?)
         .add_events(events)?)
 }
 
