@@ -322,7 +322,7 @@ fn cronjob_fails() {
         .should_succeed_and_equal(Some(Binary::from(*b"init")));
 
     // Advance block and trigger the cronjob
-    let res = suite.make_empty_block();
+    let res = suite.make_empty_block().block_outcome;
     assert_eq!(res.cron_outcomes.len(), 1);
 
     // The cronjob attempts to overwrite the value with `b"cron_execute"`.

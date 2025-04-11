@@ -206,7 +206,7 @@ fn prepare_proposal_works() {
     // Make an "empty" block.
     // The block should contain 1 transaction, the price feed inserted by the
     // proposal preparer.
-    let outcomes = suite.make_empty_block().tx_outcomes;
+    let outcomes = suite.make_empty_block().block_outcome.tx_outcomes;
     assert_eq!(outcomes.len(), 1);
     assert!(outcomes[0].result.is_ok());
 

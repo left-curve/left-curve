@@ -11,9 +11,11 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow             = { workspace = true }
+async-trait        = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
+grug-jmt           = { workspace = true }
 grug-math          = { workspace = true }
 grug-mock-account  = { workspace = true, features = ["library"] }
 grug-mock-bank     = { workspace = true, features = ["library"] }
@@ -24,6 +26,7 @@ k256               = { workspace = true }
 rand               = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
+tokio              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 

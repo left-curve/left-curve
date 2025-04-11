@@ -297,7 +297,7 @@ pub struct BroadcastTxSuccess {
     pub check_tx: CheckTxSuccess,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct SearchTxOutcome {
     pub hash: Hash256,
     pub height: u64,

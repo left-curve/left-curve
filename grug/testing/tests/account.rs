@@ -86,7 +86,7 @@ fn check_tx_and_finalize() {
     // The tx with sequence 1 should succeed.
     // The tx with sequence 2 should succeed.
     // The tx with sequence 4 should fail.
-    let result = suite.make_block(txs);
+    let result = suite.make_block(txs).block_outcome;
 
     result.tx_outcomes[0].clone().should_succeed();
     result.tx_outcomes[1].clone().should_succeed();
@@ -109,7 +109,7 @@ fn check_tx_and_finalize() {
         )
         .unwrap();
 
-    suite.make_block(vec![tx]).tx_outcomes[0]
+    suite.make_block(vec![tx]).block_outcome.tx_outcomes[0]
         .clone()
         .should_succeed();
 
