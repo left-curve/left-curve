@@ -10,8 +10,8 @@ use {
         },
     },
     grug::{
-        Coin, Coins, Denom, Inner, Message, MutableCtx, NextNumber, NonEmpty, Number, Order,
-        QuerierExt, Response, StdResult, StorageQuerier,
+        Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response, StdResult,
+        StorageQuerier,
     },
     std::collections::BTreeMap,
 };
@@ -195,63 +195,20 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
 }
 
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let mut refunds = Coins::new();
+    let (scaled_debts, markets, refunds) = core::repay(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.sender,
+        &ctx.funds,
+    )?;
 
-    // Read debts
-    let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
-
-    for coin in &ctx.funds {
-        // Update the market indices
-        let market = MARKETS
-            .load(ctx.storage, coin.denom)?
-            .update_indices(&ctx.querier, ctx.block.timestamp)?;
-
-        // Calculated the users real debt
-        let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
-        let debt = market.calculate_debt(scaled_debt)?;
-
-        // Calculate the repaid amount and refund the remainders to the sender,
-        // if any.
-        let repaid = if coin.amount > &debt {
-            let refund_amount = coin.amount.checked_sub(debt)?;
-            refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
-            debt
-        } else {
-            *coin.amount
-        };
-
-        // If the repaid amount is equal to the debt, remove the debt from the
-        // sender's debts. Otherwise, update the sender's liabilities.
-        if repaid == debt {
-            scaled_debts.remove(coin.denom);
-        } else {
-            // Update the sender's liabilities
-            let repaid_debt_scaled = repaid
-                .into_next()
-                .checked_into_dec()?
-                .checked_div(market.borrow_index.into_next())?;
-
-            scaled_debts.insert(
-                coin.denom.clone(),
-                scaled_debt.saturating_sub(repaid_debt_scaled),
-            );
-        }
-
-        // Deduct the repaid scaled debt and save the updated market state
-        let debt_after = debt.checked_sub(repaid)?;
-        let debt_after_scaled = debt_after
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
-        let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
-
-        MARKETS.save(
-            ctx.storage,
-            coin.denom,
-            &market.deduct_borrowed(scaled_debt_diff)?,
-        )?;
+    // Save the updated markets.
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
+    // Save the updated debts.
     if scaled_debts.is_empty() {
         DEBTS.remove(ctx.storage, ctx.sender);
     } else {
