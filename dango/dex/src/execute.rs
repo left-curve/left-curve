@@ -1,11 +1,12 @@
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, MatchingOutcome, NEXT_ORDER_ID, ORDERS, Order, PAIRS,
-        PassiveLiquidityPool, RESERVES, core, fill_orders, match_orders,
+        PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
+    dango_oracle::OracleQuerier,
     dango_types::{
-        bank,
+        DangoQuerier, bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
@@ -14,8 +15,9 @@ use {
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, Order as IterationOrder, QuerierExt,
-        Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx,
+        Timestamp, Udec128, Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -427,7 +429,7 @@ fn swap_exact_amount_out(
 /// Implemented according to:
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
 
@@ -451,6 +453,8 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
+            &ctx.querier,
+            ctx.block.timestamp,
             base_denom,
             quote_denom,
             &mut events,
@@ -458,23 +462,25 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         )?;
     }
 
-    Response::new()
+    Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
             Some(Message::batch_transfer(refunds)?)
         } else {
             None
         })
-        .add_events(events)
+        .add_events(events)?)
 }
 
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
+    querier: &QuerierWrapper,
+    current_time: Timestamp,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
-) -> StdResult<()> {
+) -> anyhow::Result<()> {
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
     let bid_iter = ORDERS
@@ -516,6 +522,10 @@ fn clear_orders_of_pair(
         clearing_price,
         volume,
     })?;
+
+    let dango_config = querier.query_dango_config()?;
+    let oracle = dango_config.addresses.oracle;
+    let account_factory = dango_config.addresses.account_factory;
 
     // Clear the BUY orders.
     for FillingOutcome {
@@ -571,6 +581,49 @@ fn clear_orders_of_pair(
                     order_id,
                 ),
                 &order,
+            )?;
+        }
+
+        // Calculate the volume in USD for the filled order
+        let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
+        let volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
+
+        // Get the previous volume for the user's address
+        let previous_volume = VOLUMES
+            .prefix(&order.user)
+            .values(storage, None, None, IterationOrder::Descending)
+            .next()
+            .transpose()?
+            .unwrap_or(Uint128::ZERO);
+        // Record trading volume for the user's address
+        VOLUMES.save(
+            storage,
+            (&order.user, current_time),
+            &previous_volume.checked_add(volume)?,
+        )?;
+
+        // Get the username from the user address
+        let username = querier
+            .query_wasm_path(
+                account_factory,
+                &dango_account_factory::ACCOUNTS.path(order.user),
+            )?
+            .params
+            .owner();
+
+        if let Some(username) = username {
+            // Get the previous volume for the user's username
+            let previous_volume = VOLUMES_BY_USER
+                .prefix(&username)
+                .values(storage, None, None, IterationOrder::Descending)
+                .next()
+                .transpose()?
+                .unwrap_or(Uint128::ZERO);
+            // Record trading volume for the user's username
+            VOLUMES_BY_USER.save(
+                storage,
+                (&username, current_time),
+                &previous_volume.checked_add(volume)?,
             )?;
         }
     }

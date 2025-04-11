@@ -1,7 +1,11 @@
 use {
-    dango_types::dex::{Direction, OrderId, PairParams},
+    dango_types::{
+        account_factory::Username,
+        dex::{Direction, OrderId, PairParams},
+    },
     grug::{
-        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, Udec128, Uint128, UniqueIndex,
+        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, Timestamp, Udec128, Uint128,
+        UniqueIndex,
     },
 };
 
@@ -48,3 +52,9 @@ pub struct OrderIndex<'a> {
     pub user: MultiIndex<'a, OrderKey, Addr, Order>,
     // TODO: also index orders by pair
 }
+
+/// Stores the total trading volume in USD for each account address and timestamp.
+pub const VOLUMES: Map<(&Addr, Timestamp), Uint128> = Map::new("volumes");
+
+/// Stores the total trading volume in USD for each username and timestamp.
+pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Uint128> = Map::new("volumes_by_user");
