@@ -8,7 +8,7 @@ use {
 #[grug::event("borrowed")]
 pub struct Borrowed {
     pub user: Addr,
-    pub coins: Coins,
+    pub borrowed: Coins,
 }
 
 /// An event indicating a user has repaid coins to the lending contract.

@@ -204,7 +204,7 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         .add_message(Message::transfer(ctx.sender, coins.clone())?)
         .add_event(Borrowed {
             user: ctx.sender,
-            coins,
+            borrowed: coins,
         })?)
 }
 
