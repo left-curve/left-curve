@@ -48,7 +48,7 @@ fn query_prices(
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    PRICE_SOURCES
+    Ok(PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .filter_map(|res| {
@@ -60,9 +60,9 @@ fn query_prices(
                 .querier
                 .query_price(ctx.contract, &denom, Some(price_source))
                 .ok()?;
-            Some(Ok((denom, price)))
+            Some((denom, price))
         })
-        .collect()
+        .collect())
 }
 
 fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceSource> {
