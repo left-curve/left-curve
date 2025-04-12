@@ -18,11 +18,11 @@ pub fn borrow(
     for coin in coins {
         // Update the market state
         let market = MARKETS
-            .load(storage, &coin.denom)?
+            .load(storage, coin.denom)?
             .update_indices(querier, current_time)?;
 
         // Update the sender's liabilities
-        let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
+        let prev_scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
         let new_scaled_debt = coin
             .amount
             .into_next()
