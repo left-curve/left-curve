@@ -60,7 +60,7 @@ export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
  *
  * @param message The typed message.
  * @param typeData The typed data parameters.
- * @retuns The composed typed data
+ * @returns The composed typed data
  */
 export function composeTxTypedData(
   message: EIP712Message,
