@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
 import { useState } from "react";
 
-import { applets as AppletsMetadata } from "../../applets";
+import { m } from "~/paraglide/messages";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
 import type {
@@ -20,12 +20,24 @@ type UseSearchBarParameters = {
   debounceMs?: number;
 };
 
+const defaultApplets = Array.from(
+  { length: 4 },
+  (_, i) =>
+    ({
+      title: m[`applets.${i as 0}.title`](),
+      description: m[`applets.${i as 0}.description`](),
+      img: m[`applets.${i as 0}.img`](),
+      keywords: m[`applets.${i as 0}.keywords`]().split(","),
+      path: m[`applets.${i as 0}.path`](),
+    }) as AppletMetadata,
+);
+
 export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const { debounceMs = 300 } = parameters;
   const [searchText, setSearchText] = useState("");
   const [block, setBlock] = useState<IndexedBlock>();
   const [txs, setTxs] = useState<IndexedTransaction[]>([]);
-  const [applets, setApplets] = useState<AppletMetadata[]>(AppletsMetadata.slice(0, 4));
+  const [applets, setApplets] = useState<AppletMetadata[]>(defaultApplets);
   const [contractInfo, setContractInfo] = useState();
 
   const queryClient = useQueryClient();
@@ -35,7 +47,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
     queryKey: ["searchBar", searchText],
     queryFn: async ({ signal }) => {
       if (!searchText.length) {
-        setApplets(AppletsMetadata.slice(0, 4));
+        setApplets(defaultApplets);
         setBlock(undefined);
         setTxs([]);
         return null;
@@ -43,7 +55,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
 
       setApplets(
         fuzzysort
-          .go(searchText, AppletsMetadata, {
+          .go(searchText, defaultApplets, {
             threshold: 0.5,
             all: false,
             keys: ["title", "description", (obj: AppletMetadata) => obj.keywords?.join()],

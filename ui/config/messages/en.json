@@ -91,6 +91,36 @@
       }
     ]
   },
+  "applets": {
+    "0": {
+      "img": "/images/applets/send-and-receive.svg",
+      "title": "Transfer",
+      "description": "Send and receive crypto.",
+      "path": "/transfer",
+      "keywords": "transfer,send,receive"
+    },
+    "1": {
+      "img": "/images/emojis/simple/settings.svg",
+      "title": "Settings",
+      "description": "Optimize your display, security, and more.",
+      "path": "/settings",
+      "keywords": "settings,preferences,options"
+    },
+    "2": {
+      "img": "/images/emojis/simple/notifications.svg",
+      "title": "Notifications",
+      "description": "View recent transactions.",
+      "path": "/notifications",
+      "keywords": "notifications,alerts"
+    },
+    "3": {
+      "img": "/images/applets/account-creation.svg",
+      "title": "Subaccount creation",
+      "description": "Create subaccounts.",
+      "path": "/create-account",
+      "keywords": "account,create,register"
+    }
+  },
   "explorer": {
     "block": {
       "notFound": {
