@@ -17,6 +17,7 @@ const badgeVariants = tv(
         blue: "bg-blue-100 text-blue-800 border-blue-200",
         red: "bg-red-bean-100 text-red-bean-800 border-red-bean-200",
         green: "bg-green-bean-100 text-green-bean-800 border-green-bean-200",
+        rice: "bg-rice-200 text-rice-700 border-rice-300",
       },
       size: {
         s: "py-[2px] px-2 diatype-xs-medium",
