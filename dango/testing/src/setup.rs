@@ -6,17 +6,20 @@ use {
     },
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
+        bank,
         constants::{
             BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,
             WBTC_DENOM,
         },
         dex::{CurveInvariant, PairParams, PairUpdate},
         lending::InterestRateModel,
+        oracle::PriceSource,
         taxman,
     },
     grug::{
-        Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128, btree_map, coins,
+        Binary, BlockInfo, Bounded, Coin, Coins, ContractWrapper, Denom, Duration,
+        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128,
+        btree_map, coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -25,11 +28,12 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
+    hyperlane_types::{Addr32, isms::multisig::ValidatorSet, mailbox::Domain},
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
-    pyth_types::GUARDIAN_SETS,
-    std::{path::PathBuf, str::FromStr, sync::Arc},
+    pyth_types::{GUARDIAN_SETS, GuardianSet, GuardianSetIndex},
+    std::{collections::BTreeMap, path::PathBuf, str::FromStr, sync::Arc},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -415,4 +419,464 @@ where
     };
 
     (suite, accounts, codes, contracts)
+}
+
+pub struct DangoTestBuilder<DB, VM, PP, ID> {
+    db: DB,
+    vm: VM,
+    pp: PP,
+    indexer: ID,
+    // --- //
+    account_factory_minimum_deposit: Coins,
+    fee_cfg: taxman::Config,
+    hyperlane_local_domain: Domain,
+    hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
+    hyperlane_va_announce_fee_per_byte: Coin,
+    markets: BTreeMap<Denom, InterestRateModel>,
+    max_orphan_age: Duration,
+    metadatas: BTreeMap<Denom, bank::Metadata>,
+    pairs: Vec<PairUpdate>,
+    price_sources: BTreeMap<Denom, PriceSource>,
+    unlocking_cliff: Duration,
+    unlocking_period: Duration,
+    warp_routes: BTreeMap<(Denom, Domain), Addr32>,
+    wormhole_guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
+}
+
+impl<DB, VM, PP, ID> DangoTestBuilder<DB, VM, PP, ID>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    ID: Indexer,
+    PP: grug_app::ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    pub fn default() -> DangoTestBuilder<MemDb, RustVm, NaiveProposalPreparer, NullIndexer> {
+        DangoTestBuilder {
+            db: MemDb::new(),
+            vm: RustVm::new(),
+            pp: NaiveProposalPreparer,
+            indexer: NullIndexer,
+            account_factory_minimum_deposit: coins! { USDC_DENOM.clone() => 10_000_000 },
+            fee_cfg: taxman::Config {
+                fee_denom: USDC_DENOM.clone(),
+                fee_rate: Udec128::ZERO,
+            },
+            max_orphan_age: Duration::from_seconds(7 * 24 * 60 * 60),
+            metadatas: btree_map! {},
+            pairs: vec![
+                PairUpdate {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        curve_invariant: CurveInvariant::Xyk,
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), /* TODO: set to non-zero */
+                    },
+                },
+                PairUpdate {
+                    base_denom: BTC_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                        curve_invariant: CurveInvariant::Xyk,
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), /* TODO: set to non-zero */
+                    },
+                },
+                PairUpdate {
+                    base_denom: ETH_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                        curve_invariant: CurveInvariant::Xyk,
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), /* TODO: set to non-zero */
+                    },
+                },
+                PairUpdate {
+                    base_denom: SOL_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
+                        curve_invariant: CurveInvariant::Xyk,
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), /* TODO: set to non-zero */
+                    },
+                },
+            ],
+            markets: btree_map! {
+                USDC_DENOM.clone() => InterestRateModel::default(),
+                WBTC_DENOM.clone() => InterestRateModel::default(),
+            },
+            price_sources: PYTH_PRICE_SOURCES.clone(),
+            unlocking_cliff: Duration::from_weeks(4 * 9),
+            unlocking_period: Duration::from_weeks(4 * 27),
+            wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+            hyperlane_local_domain: MOCK_LOCAL_DOMAIN,
+            hyperlane_ism_validator_sets: btree_map! {},
+            hyperlane_va_announce_fee_per_byte: Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+            warp_routes: btree_map! {},
+        }
+    }
+
+    pub fn with_db<DB1>(self, db: DB1) -> DangoTestBuilder<DB1, VM, PP, ID> {
+        DangoTestBuilder {
+            db,
+            vm: self.vm,
+            pp: self.pp,
+            indexer: self.indexer,
+            account_factory_minimum_deposit: self.account_factory_minimum_deposit,
+            fee_cfg: self.fee_cfg,
+            hyperlane_local_domain: self.hyperlane_local_domain,
+            hyperlane_ism_validator_sets: self.hyperlane_ism_validator_sets,
+            hyperlane_va_announce_fee_per_byte: self.hyperlane_va_announce_fee_per_byte,
+            warp_routes: self.warp_routes,
+            markets: self.markets,
+            max_orphan_age: self.max_orphan_age,
+            metadatas: self.metadatas,
+            pairs: self.pairs,
+            price_sources: self.price_sources,
+            unlocking_cliff: self.unlocking_cliff,
+            unlocking_period: self.unlocking_period,
+            wormhole_guardian_sets: self.wormhole_guardian_sets,
+        }
+    }
+
+    pub fn with_vm<VM1>(self, vm: VM1) -> DangoTestBuilder<DB, VM1, PP, ID> {
+        DangoTestBuilder {
+            db: self.db,
+            vm,
+            pp: self.pp,
+            indexer: self.indexer,
+            account_factory_minimum_deposit: self.account_factory_minimum_deposit,
+            fee_cfg: self.fee_cfg,
+            hyperlane_local_domain: self.hyperlane_local_domain,
+            hyperlane_ism_validator_sets: self.hyperlane_ism_validator_sets,
+            hyperlane_va_announce_fee_per_byte: self.hyperlane_va_announce_fee_per_byte,
+            warp_routes: self.warp_routes,
+            markets: self.markets,
+            max_orphan_age: self.max_orphan_age,
+            metadatas: self.metadatas,
+            pairs: self.pairs,
+            price_sources: self.price_sources,
+            unlocking_cliff: self.unlocking_cliff,
+            unlocking_period: self.unlocking_period,
+            wormhole_guardian_sets: self.wormhole_guardian_sets,
+        }
+    }
+
+    pub fn with_pp<PP1>(self, pp: PP1) -> DangoTestBuilder<DB, VM, PP1, ID> {
+        DangoTestBuilder {
+            db: self.db,
+            vm: self.vm,
+            pp,
+            indexer: self.indexer,
+            account_factory_minimum_deposit: self.account_factory_minimum_deposit,
+            fee_cfg: self.fee_cfg,
+            hyperlane_local_domain: self.hyperlane_local_domain,
+            hyperlane_ism_validator_sets: self.hyperlane_ism_validator_sets,
+            hyperlane_va_announce_fee_per_byte: self.hyperlane_va_announce_fee_per_byte,
+            warp_routes: self.warp_routes,
+            markets: self.markets,
+            max_orphan_age: self.max_orphan_age,
+            metadatas: self.metadatas,
+            pairs: self.pairs,
+            price_sources: self.price_sources,
+            unlocking_cliff: self.unlocking_cliff,
+            unlocking_period: self.unlocking_period,
+            wormhole_guardian_sets: self.wormhole_guardian_sets,
+        }
+    }
+
+    pub fn with_indexer<ID1>(self, indexer: ID1) -> DangoTestBuilder<DB, VM, PP, ID1> {
+        DangoTestBuilder {
+            db: self.db,
+            vm: self.vm,
+            pp: self.pp,
+            indexer,
+            account_factory_minimum_deposit: self.account_factory_minimum_deposit,
+            fee_cfg: self.fee_cfg,
+            hyperlane_local_domain: self.hyperlane_local_domain,
+            hyperlane_ism_validator_sets: self.hyperlane_ism_validator_sets,
+            hyperlane_va_announce_fee_per_byte: self.hyperlane_va_announce_fee_per_byte,
+            warp_routes: self.warp_routes,
+            markets: self.markets,
+            max_orphan_age: self.max_orphan_age,
+            metadatas: self.metadatas,
+            pairs: self.pairs,
+            price_sources: self.price_sources,
+            unlocking_cliff: self.unlocking_cliff,
+            unlocking_period: self.unlocking_period,
+            wormhole_guardian_sets: self.wormhole_guardian_sets,
+        }
+    }
+
+    pub fn with_account_factory_minimum_deposit(
+        mut self,
+        account_factory_minimum_deposit: Coins,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.account_factory_minimum_deposit = account_factory_minimum_deposit;
+        self
+    }
+
+    pub fn with_fee_cfg(mut self, fee_cfg: taxman::Config) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.fee_cfg = fee_cfg;
+        self
+    }
+
+    pub fn with_hyperlane_local_domain(
+        mut self,
+        hyperlane_local_domain: Domain,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.hyperlane_local_domain = hyperlane_local_domain;
+        self
+    }
+
+    pub fn with_hyperlane_ism_validator_sets(
+        mut self,
+        hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.hyperlane_ism_validator_sets = hyperlane_ism_validator_sets;
+        self
+    }
+
+    pub fn with_hyperlane_va_announce_fee_per_byte(
+        mut self,
+        hyperlane_va_announce_fee_per_byte: Coin,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.hyperlane_va_announce_fee_per_byte = hyperlane_va_announce_fee_per_byte;
+        self
+    }
+
+    pub fn with_markets(
+        mut self,
+        markets: BTreeMap<Denom, InterestRateModel>,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.markets = markets;
+        self
+    }
+
+    pub fn with_max_orphan_age(
+        mut self,
+        max_orphan_age: Duration,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.max_orphan_age = max_orphan_age;
+        self
+    }
+
+    pub fn with_metadatas(
+        mut self,
+        metadatas: BTreeMap<Denom, bank::Metadata>,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.metadatas = metadatas;
+        self
+    }
+
+    pub fn with_pairs(mut self, pairs: Vec<PairUpdate>) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.pairs = pairs;
+        self
+    }
+
+    pub fn with_price_sources(
+        mut self,
+        price_sources: BTreeMap<Denom, PriceSource>,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.price_sources = price_sources;
+        self
+    }
+
+    pub fn with_unlocking_cliff(
+        mut self,
+        unlocking_cliff: Duration,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.unlocking_cliff = unlocking_cliff;
+        self
+    }
+
+    pub fn with_unlocking_period(
+        mut self,
+        unlocking_period: Duration,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.unlocking_period = unlocking_period;
+        self
+    }
+
+    pub fn with_warp_routes(
+        mut self,
+        warp_routes: BTreeMap<(Denom, Domain), Addr32>,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.warp_routes = warp_routes;
+        self
+    }
+
+    pub fn with_wormhole_guardian_sets(
+        mut self,
+        wormhole_guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
+    ) -> DangoTestBuilder<DB, VM, PP, ID> {
+        self.wormhole_guardian_sets = wormhole_guardian_sets;
+        self
+    }
+
+    pub fn build(
+        self,
+    ) -> (
+        TestSuite<PP, DB, VM, ID>,
+        TestAccounts,
+        Codes<ContractWrapper>,
+        Contracts,
+    ) {
+        let owner = TestAccount::new_from_private_key("owner", OWNER_PRIVATE_KEY);
+        let user1 = TestAccount::new_from_private_key("user1", USER1_PRIVATE_KEY);
+        let user2 = TestAccount::new_from_private_key("user2", USER2_PRIVATE_KEY);
+        let user3 = TestAccount::new_from_private_key("user3", USER3_PRIVATE_KEY);
+        let user4 = TestAccount::new_from_private_key("user4", USER4_PRIVATE_KEY);
+        let user5 = TestAccount::new_from_private_key("user5", USER5_PRIVATE_KEY);
+        let user6 = TestAccount::new_from_private_key("user6", USER6_PRIVATE_KEY);
+        let user7 = TestAccount::new_from_private_key("user7", USER7_PRIVATE_KEY);
+        let user8 = TestAccount::new_from_private_key("user8", USER8_PRIVATE_KEY);
+        let user9 = TestAccount::new_from_private_key("user9", USER9_PRIVATE_KEY);
+
+        let codes = build_rust_codes();
+
+        let (genesis_state, contracts, addresses) = build_genesis(GenesisConfig {
+            codes,
+            users: btree_map! {
+                owner.username.clone() => GenesisUser {
+                    key: owner.key(),
+                    key_hash: owner.key_hash(),
+                    // Some of the tests depend on the number of tokens, so careful
+                    // when changing these. They may break tests...
+                    //
+                    // In reality, it's not possible that anyone has Hyperlane synth
+                    // synth tokens in genesis. We add this just for testing purpose.
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000,
+                        ETH_DENOM.clone()   => 100_000_000_000_000,
+                        BTC_DENOM.clone()   => 100_000_000_000_000,
+                    },
+                },
+                user1.username.clone() => GenesisUser {
+                    key: user1.key(),
+                    key_hash: user1.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                        WBTC_DENOM.clone()  => 100_000_000_000_000,
+                        ETH_DENOM.clone()   => 100_000_000_000_000,
+                        BTC_DENOM.clone()   => 100_000_000_000_000,
+                    }
+                },
+                user2.username.clone() => GenesisUser {
+                    key: user2.key(),
+                    key_hash: user2.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user3.username.clone() => GenesisUser {
+                    key: user3.key(),
+                    key_hash: user3.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user4.username.clone() => GenesisUser {
+                    key: user4.key(),
+                    key_hash: user4.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user5.username.clone() => GenesisUser {
+                    key: user5.key(),
+                    key_hash: user5.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user6.username.clone() => GenesisUser {
+                    key: user6.key(),
+                    key_hash: user6.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user7.username.clone() => GenesisUser {
+                    key: user7.key(),
+                    key_hash: user7.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user8.username.clone() => GenesisUser {
+                    key: user8.key(),
+                    key_hash: user8.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+                user9.username.clone() => GenesisUser {
+                    key: user9.key(),
+                    key_hash: user9.key_hash(),
+                    balances: coins! {
+                        DANGO_DENOM.clone() => 100_000_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                    },
+                },
+            },
+            account_factory_minimum_deposit: self.account_factory_minimum_deposit,
+            owner: owner.username.clone(),
+            fee_cfg: self.fee_cfg,
+            max_orphan_age: self.max_orphan_age,
+            metadatas: self.metadatas,
+            pairs: self.pairs,
+            price_sources: self.price_sources,
+            unlocking_cliff: self.unlocking_cliff,
+            unlocking_period: self.unlocking_period,
+            wormhole_guardian_sets: self.wormhole_guardian_sets,
+            hyperlane_local_domain: self.hyperlane_local_domain,
+            hyperlane_ism_validator_sets: self.hyperlane_ism_validator_sets,
+            hyperlane_va_announce_fee_per_byte: self.hyperlane_va_announce_fee_per_byte,
+            warp_routes: self.warp_routes,
+            markets: self.markets,
+        })
+        .unwrap();
+
+        let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
+            self.db,
+            self.vm,
+            self.pp,
+            self.indexer,
+            MOCK_CHAIN_ID.to_string(),
+            Duration::from_millis(250),
+            1_000_000,
+            BlockInfo {
+                hash: GENESIS_BLOCK_HASH,
+                height: GENESIS_BLOCK_HEIGHT,
+                timestamp: MOCK_GENESIS_TIMESTAMP,
+            },
+            genesis_state,
+        );
+
+        let accounts = TestAccounts {
+            owner: owner.set_address(&addresses),
+            user1: user1.set_address(&addresses),
+            user2: user2.set_address(&addresses),
+            user3: user3.set_address(&addresses),
+            user4: user4.set_address(&addresses),
+            user5: user5.set_address(&addresses),
+            user6: user6.set_address(&addresses),
+            user7: user7.set_address(&addresses),
+            user8: user8.set_address(&addresses),
+            user9: user9.set_address(&addresses),
+        };
+
+        (suite, accounts, codes, contracts)
+    }
 }
