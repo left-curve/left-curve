@@ -37,7 +37,6 @@ export { PlusIcon } from "./foundation/icons/Plus";
 export { ProfileIcon } from "./foundation/icons/Profile";
 export { IconCopy } from "./foundation/icons/IconCopy";
 export { BellIcon } from "./foundation/icons/Bell";
-export { WalletIcon } from "./foundation/icons/Wallet";
 export { ExternalLinkIcon } from "./foundation/icons/ExternalLink";
 export { SearchIcon } from "./foundation/icons/Search";
 export { ArrowSelectorIcon } from "./foundation/icons/ArrowSelector";

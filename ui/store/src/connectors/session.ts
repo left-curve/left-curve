@@ -21,7 +21,6 @@ type SessionConnectorParameters = {
 };
 
 export function session(parameters: SessionConnectorParameters = {}) {
-  let _isAuthorized = false;
   let _provider_ = async (): Promise<SigningSession | null> => await storage.getItem("session");
 
   const { storage = createStorage({ storage: sessionStorage }), target } = parameters;
@@ -51,7 +50,6 @@ export function session(parameters: SessionConnectorParameters = {}) {
         const keys = await getKeysByUsername(client, { username });
 
         if (!keys[session.keyHash]) throw new Error("Not authorized");
-        _isAuthorized = true;
         storage.setItem("session", session);
         const accountsInfo = await getAccountsByUsername(client, { username });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
@@ -61,7 +59,6 @@ export function session(parameters: SessionConnectorParameters = {}) {
         emitter.emit("connect", { accounts, chainId, username, keyHash: session.keyHash });
       },
       async disconnect() {
-        _isAuthorized = false;
         storage.removeItem("session");
         emitter.emit("disconnect");
       },
@@ -103,7 +100,9 @@ export function session(parameters: SessionConnectorParameters = {}) {
         });
       },
       async isAuthorized() {
-        return _isAuthorized;
+        const session = await storage.getItem<"session", SigningSession, undefined>("session");
+        const isExpired = Number(session?.sessionInfo.expireAt || 0) < Date.now();
+        return !isExpired;
       },
       async signArbitrary(payload) {
         const provider = await this.getProvider();
