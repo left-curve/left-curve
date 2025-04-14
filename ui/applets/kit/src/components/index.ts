@@ -50,7 +50,7 @@ export { DangoDotsIcon } from "./foundation/icons/DangoDots";
 
 export { IconDoubleChevronRight } from "./foundation/icons/IconDoubleChevronRight";
 export { IconChevronRight } from "./foundation/icons/IconChevronRight";
-export { IconChevronLeftCarousell } from "./foundation/icons/IconChevronLeftCarousell";
+export { IconChevronLeftCarousel } from "./foundation/icons/IconChevronLeftCarousel";
 export { IconChevronLeft } from "./foundation/icons/IconChevronLeft";
 export { IconChevronDown } from "./foundation/icons/IconChevronDown";
 export { IconGear } from "./foundation/icons/IconGear";
