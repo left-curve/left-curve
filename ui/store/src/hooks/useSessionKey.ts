@@ -18,7 +18,7 @@ export type UseSessionKeyReturnType = {
   client?: ReturnType<typeof createSignerClient> | null;
   session: SigningSession | null;
   setSession: (session: SigningSession | null) => void;
-  deleteSessionkey: () => void;
+  deleteSessionKey: () => void;
   createSessionKey: (parameters: { expireAt: number }) => Promise<void>;
 };
 
@@ -68,7 +68,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     });
   }
 
-  function deleteSessionkey() {
+  function deleteSessionKey() {
     setSession(null);
   }
 
@@ -76,7 +76,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     client,
     session,
     setSession,
-    deleteSessionkey,
+    deleteSessionKey,
     createSessionKey,
   };
 }

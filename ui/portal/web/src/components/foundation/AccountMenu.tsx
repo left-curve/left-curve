@@ -164,7 +164,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector, account } = useAccount();
-  const { deleteSessionkey } = useSessionKey();
+  const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -195,7 +195,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           onClick={() => {
             setSidebarVisibility(false);
             connector?.disconnect();
-            deleteSessionkey();
+            deleteSessionKey();
           }}
         >
           <IconLogOut />
