@@ -1,6 +1,6 @@
 import type React from "react";
 
-export const IconChevronLeftCarousell: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({
+export const IconChevronLeftCarousel: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({
   ...props
 }) => {
   return (

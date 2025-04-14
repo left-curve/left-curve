@@ -47,13 +47,13 @@ type AccountCardProps = {
   onTriggerAction?: () => void;
 };
 
-function AccountCard({
+const AccountCard: React.FC<AccountCardProps> = ({
   account,
   balance,
   balanceChange,
   onTriggerAction,
   isSelectorActive,
-}: AccountCardProps) {
+}) => {
   const { address, type } = account;
   const name = `${account?.type} #${account?.index}`;
 
@@ -122,14 +122,14 @@ function AccountCard({
       )}
     </div>
   );
-}
+};
 
-type AccountCardPreviwProps = {
+type AccountCardPreviewProps = {
   account: Account;
   onAccountSelect: (account: Account) => void;
 };
 
-export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
+const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }) => {
   const { address } = account;
 
   const type = account?.type as AccountTypes;
@@ -173,8 +173,10 @@ export function Preview({ account, onAccountSelect }: AccountCardPreviwProps) {
       </div>
     </div>
   );
-}
+};
 
-AccountCard.Preview = Preview;
+const ExportContainer = Object.assign(AccountCard, {
+  Preview,
+});
 
-export { AccountCard };
+export { ExportContainer as AccountCard };

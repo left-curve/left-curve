@@ -21,7 +21,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
       onError: (err) => {
         toast.error({
           title: m["common.error"](),
-          description: m["signin.errors.failedSingInWithDesktop"](),
+          description: m["signin.errors.failedSignInWithDesktop"](),
         });
         console.error(err);
       },

@@ -13,7 +13,7 @@ import {
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { Modals } from "~/components/foundation/RootModal";
-import { KeyManagment } from "~/components/settings/KeyManagment";
+import { KeyManagement } from "~/components/settings/KeyManagement";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
@@ -96,7 +96,7 @@ function SettingsComponent() {
           </Tabs>
         </div> */}
       </div>
-      <KeyManagment />
+      <KeyManagement />
     </div>
   );
 }

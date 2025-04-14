@@ -158,7 +158,7 @@ export const tailwindConfig: Partial<Config> = {
         "margin-header":
           "linear-gradient(0deg, #FFFCF6, #FFFCF6),linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%)",
         quest:
-          "linear-gradient(170deg, rgba(245,117,137,1) 0%, rgba(249,169,178,1) 35%, rgba(254,241,241,1) 100%);",
+          "linear-gradient(170deg, rgba(245,117,137,1) 0%, rgba(249,169,178,1) 35%, rgba(254,241,241,1) 100%)",
       },
       fontFamily: {
         "diatype-rounded": "ABCDiatypeRounded",

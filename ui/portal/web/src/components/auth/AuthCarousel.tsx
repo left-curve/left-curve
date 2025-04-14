@@ -33,7 +33,7 @@ export const AuthCarousel: React.FC = () => {
             >
               <div className="flex flex-1 w-full overflow-hidden">
                 <img
-                  src={`/images/caraousel/${img}.svg`}
+                  src={`/images/carousel/${img}.svg`}
                   alt={title}
                   className="object-contain w-full h-full"
                   draggable={false}

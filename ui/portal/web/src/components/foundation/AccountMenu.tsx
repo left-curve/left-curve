@@ -27,11 +27,18 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AssetCard } from "./AssetCard";
 
+import type { PropsWithChildren } from "react";
+import type React from "react";
+
+const Root: React.FC<PropsWithChildren> = ({ children }) => {
+  return <>{children}</>;
+};
+
 type AccountMenuProps = {
   backAllowed?: boolean;
 };
 
-function AccountMenu({ backAllowed }: AccountMenuProps) {
+const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   const { settings, isSidebarVisible } = useApp();
   const { formatNumberOptions } = settings;
   const { account } = useAccount();
@@ -104,9 +111,9 @@ function AccountMenu({ backAllowed }: AccountMenuProps) {
       </div>
     </>
   );
-}
+};
 
-export function Desktop() {
+export const Desktop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible } = useApp();
 
@@ -126,14 +133,14 @@ export function Desktop() {
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
         <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-gray-100">
-          <AccountMenu />
+          <Menu />
         </div>
       </div>
     </div>
   );
-}
+};
 
-export function Mobile() {
+export const Mobile: React.FC = () => {
   const { isSidebarVisible, setSidebarVisibility } = useApp();
 
   return (
@@ -141,13 +148,13 @@ export function Mobile() {
       <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
-          <AccountMenu />
+          <Menu />
         </Sheet.Content>
       </Sheet.Container>
       <Sheet.Backdrop onTap={() => setSidebarVisibility(false)} />
     </Sheet>
   );
-}
+};
 
 type AssetsProps = {
   onSwitch: () => void;
@@ -157,7 +164,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector, account } = useAccount();
-  const { deleteSessionkey } = useSessionKey();
+  const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -188,7 +195,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           onClick={() => {
             setSidebarVisibility(false);
             connector?.disconnect();
-            deleteSessionkey();
+            deleteSessionKey();
           }}
         >
           <IconLogOut />
@@ -250,7 +257,7 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
   );
 };
 
-const ExportComponent = Object.assign(AccountMenu, {
+const ExportComponent = Object.assign(Root, {
   Desktop,
   Mobile,
   Assets,

@@ -151,11 +151,11 @@
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
     "errors": {
-      "failedSingInWithDesktop": "Failed to sign in with desktop",
+      "failedSignInWithDesktop": "Failed to sign in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
       "usernameRequired": "Username is required",
       "usernameNotExist": "Username doesn’t exist",
-      "failedSigingIn": "Failed to connect with the selected credential."
+      "failedSigningIn": "Failed to connect with the selected credential."
     },
     "credential": {
       "description": "Choose any of the credentials that have been associated with your username."
@@ -348,11 +348,11 @@
     ],
     "number": "Format Number",
     "connectToMobile": "Connect to Mobile",
-    "keyManagment": {
+    "keyManagement": {
       "title": "Key Management",
       "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
       "add": "Add",
-      "managment": {
+      "management": {
         "add": {
           "title": "Add new credential",
           "description": "Choose a credential. You can add or remove credentials later."
@@ -365,7 +365,7 @@
       }
     }
   },
-  "commadBar": {
+  "searchBar": {
     "noResult": "No results found.",
     "placeholder": {
       "title": "Search for",

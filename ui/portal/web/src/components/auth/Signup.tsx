@@ -388,7 +388,7 @@ const Signin: React.FC = () => {
         console.error(err);
         toast.error({
           title: m["common.error"](),
-          description: m["signin.errors.failedSigingIn"](),
+          description: m["signin.errors.failedSigningIn"](),
         });
       },
     },
