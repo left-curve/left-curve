@@ -23,11 +23,11 @@ import {
   CoinSelector,
   IconButton,
   IconChevronDown,
-  IconCopy,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
+  TextCopy,
   TruncateText,
   useInputs,
   useMediaQuery,
@@ -254,7 +254,7 @@ function TransferApplet() {
                     className="diatype-sm-medium text-gray-500"
                     text={account?.address}
                   />
-                  <IconCopy
+                  <TextCopy
                     copyText={account?.address}
                     className="w-4 h-4 cursor-pointer text-gray-500"
                   />

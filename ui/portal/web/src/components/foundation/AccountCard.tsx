@@ -10,7 +10,7 @@ import {
   IconButton,
   IconChevronDown,
   IconClose,
-  IconCopy,
+  TextCopy,
   TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
@@ -106,7 +106,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                 start={4}
                 end={4}
               />
-              <IconCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+              <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
             </div>
           </div>
           <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
@@ -162,7 +162,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
                 start={4}
                 end={4}
               />
-              <IconCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+              <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
             </div>
           </div>
         </div>

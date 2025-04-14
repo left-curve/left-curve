@@ -1,9 +1,9 @@
 import {
   Button,
   IconAddCross,
-  IconCopy,
   IconTrash,
   Spinner,
+  TextCopy,
   TruncateText,
   twMerge,
   useMediaQuery,
@@ -80,7 +80,7 @@ export const KeyManagement: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyRepresentation} />
+                  <TextCopy className="w-5 h-5 cursor-pointer" copyText={keyRepresentation} />
                   <IconTrash
                     onClick={() => (isActive ? null : showModal(Modals.RemoveKey, { keyHash }))}
                     className={twMerge("w-5 h-5 cursor-pointer", {
