@@ -126,7 +126,7 @@ function TransferApplet() {
       toast.error(
         {
           title: "Transfer failed",
-          description: e instanceof Error ? e.message : e,
+          description: e instanceof Error ? e.message : undefined,
         },
         {
           duration: Number.POSITIVE_INFINITY,
