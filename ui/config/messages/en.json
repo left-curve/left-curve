@@ -352,7 +352,7 @@
       "title": "Key Management",
       "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
       "add": "Add",
-      "managment": {
+      "management": {
         "add": {
           "title": "Add new credential",
           "description": "Choose a credential. You can add or remove credentials later."
