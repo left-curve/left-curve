@@ -24,7 +24,7 @@ const KeyTranslation = {
   ethereum: "Ethereum Wallet",
 };
 
-export const KeyManagment: React.FC = () => {
+export const KeyManagement: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { showModal } = useApp();
@@ -42,14 +42,14 @@ export const KeyManagment: React.FC = () => {
     <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-1 max-w-lg">
-          <h3 className="h4-bold text-gray-900">{m["settings.keyManagment.title"]()}</h3>
+          <h3 className="h4-bold text-gray-900">{m["settings.keyManagement.title"]()}</h3>
           <p className="text-gray-500 diatype-sm-regular">
-            {m["settings.keyManagment.description"]()}
+            {m["settings.keyManagement.description"]()}
           </p>
         </div>
         <Button size="md" className="min-w-[120px]" onClick={() => showModal(Modals.AddKey)}>
           <IconAddCross className="w-5 h-5" />
-          {m["settings.keyManagment.add"]()}
+          {m["settings.keyManagement.add"]()}
         </Button>
       </div>
       {isPending ? (

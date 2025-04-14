@@ -109,7 +109,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       },
       async isAuthorized() {
         const provider = await this.getProvider();
-        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+        const [controllerAddress] = await provider.request({ method: "eth_accounts" });
         return !!controllerAddress;
       },
       async signArbitrary(payload) {

@@ -119,15 +119,15 @@ function SearchMenu() {
                     className="flex absolute w-full h-full bg-transparent left-0 rounded-md cursor-text gap-1 items-center pl-9 pt-1 diatype-m-regular"
                     onClick={() => setSearchBarVisibility(!isSearchBarVisible)}
                   >
-                    <span>{m["commadBar.placeholder.title"]()}</span>{" "}
+                    <span>{m["searchBar.placeholder.title"]()}</span>{" "}
                     <TextLoop
                       texts={[
-                        m["commadBar.placeholder.transactions"](),
-                        m["commadBar.placeholder.apps"](),
-                        m["commadBar.placeholder.blocks"](),
-                        m["commadBar.placeholder.accounts"](),
-                        m["commadBar.placeholder.usernames"](),
-                        m["commadBar.placeholder.tokens"](),
+                        m["searchBar.placeholder.transactions"](),
+                        m["searchBar.placeholder.apps"](),
+                        m["searchBar.placeholder.blocks"](),
+                        m["searchBar.placeholder.accounts"](),
+                        m["searchBar.placeholder.usernames"](),
+                        m["searchBar.placeholder.tokens"](),
                       ]}
                     />
                   </motion.button>
@@ -195,7 +195,7 @@ export function Body({ isVisible, hideMenu, applets, txs, block, isLoading }: Se
                   </div>
                 ) : (
                   <p className="text-gray-500 diatype-m-regular p-2 text-center">
-                    {m["commadBar.noResult"]()}
+                    {m["searchBar.noResult"]()}
                   </p>
                 )}
               </Command.Empty>

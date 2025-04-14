@@ -44,7 +44,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
           transport,
         });
 
-        if (!challenge) throw new Error("challenge is requiered to recover the session");
+        if (!challenge) throw new Error("challenge is required to recover the session");
 
         const session = deserializeJson<SigningSession>(decodeUtf8(decodeBase64(challenge)));
         const keys = await getKeysByUsername(client, { username });
