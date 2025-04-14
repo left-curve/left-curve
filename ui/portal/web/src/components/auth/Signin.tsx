@@ -37,7 +37,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="h-svh xl:h-screen w-screen flex items-center justify-center">
       <div className="flex items-center justify-center flex-1">
-        <ResizerContainer layoutId="sigin" className="w-full max-w-[22.5rem]">
+        <ResizerContainer layoutId="signin" className="w-full max-w-[22.5rem]">
           {children}
         </ResizerContainer>
       </div>
