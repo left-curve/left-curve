@@ -2,6 +2,7 @@ import { IconButton, IconClose, IconMobile, QRCode, forwardRef } from "@left-cur
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
 import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useId, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
@@ -45,6 +46,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
         title: m["common.error"](),
         description: m["signin.errors.mobileSessionAborted"](),
       });
+      captureException(error);
       hideModal();
       dataChannel.sendMessage({
         id,

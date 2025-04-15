@@ -214,6 +214,7 @@ const Credential: React.FC = () => {
       } catch (err) {
         toast.error({ title: "Couldn't complete the request" });
         console.log(err);
+        captureException(err);
       }
     },
   });
@@ -309,15 +310,7 @@ const Username: React.FC = () => {
       } catch (err) {
         toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
-        captureException(err, {
-          data: {
-            key,
-            keyHash,
-            username,
-            connectorId,
-            seed,
-          },
-        });
+        captureException(err);
       }
     },
   });
@@ -390,6 +383,7 @@ const Signin: React.FC = () => {
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
         });
+        captureException(err);
       },
     },
   });

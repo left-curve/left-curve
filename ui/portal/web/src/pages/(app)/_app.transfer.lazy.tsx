@@ -13,6 +13,7 @@ import {
   usePrices,
   useSigningClient,
 } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -131,6 +132,7 @@ function TransferApplet() {
           duration: Number.POSITIVE_INFINITY,
         },
       );
+      captureException(e);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quests", account] });

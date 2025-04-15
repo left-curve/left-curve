@@ -1,9 +1,9 @@
 import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
 import { useAccount, useSigningClient } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { KeyHash } from "@left-curve/dango/types";
-import { wait } from "@left-curve/dango/utils";
 import { useApp } from "~/hooks/useApp";
 
 import { forwardRef } from "react";
@@ -29,6 +29,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         action: "delete",
       });
     },
+    onError: (e) => captureException(e),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
       hideModal();

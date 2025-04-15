@@ -1,6 +1,6 @@
 import { IconButton, IconClose, IconKey, forwardRef } from "@left-curve/applets-kit";
-import { wait } from "@left-curve/dango/utils";
 import { useAccount, useConnectors, useSigningClient } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApp } from "~/hooks/useApp";
 import { AuthOptions } from "../auth/AuthOptions";
@@ -35,6 +35,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
       queryClient.invalidateQueries({ queryKey: ["quests", account] });
       hideModal();
     },
+    onError: (e) => captureException(e),
   });
 
   return (

@@ -6,11 +6,14 @@ import * as Sentry from "@sentry/react";
 
 Sentry.init({
   dsn: import.meta.env.PUBLIC_SENTRY_DSN,
-  integrations: [
-    Sentry.httpClientIntegration(),
-    Sentry.replayIntegration(),
-    Sentry.tanstackRouterBrowserTracingIntegration(router),
-  ],
+  integrations: (defaultIntegrations) =>
+    defaultIntegrations
+      .filter((integration) => integration.name !== "GlobalHandlers")
+      .concat([
+        Sentry.httpClientIntegration(),
+        Sentry.replayIntegration(),
+        Sentry.tanstackRouterBrowserTracingIntegration(router),
+      ]),
   tracesSampleRate: 0.5,
   tracePropagationTargets: [/^https:\/\/devnet\.dango\.exchange\//],
   replaysOnErrorSampleRate: 0.5,

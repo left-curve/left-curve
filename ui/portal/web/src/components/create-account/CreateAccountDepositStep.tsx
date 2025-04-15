@@ -1,6 +1,7 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
 import { capitalize, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
@@ -78,6 +79,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           duration: Number.POSITIVE_INFINITY,
         },
       );
+      captureException(e);
     },
   });
 
