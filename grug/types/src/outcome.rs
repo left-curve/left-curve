@@ -1,9 +1,10 @@
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
+        EvtWithhold, GenericResult, Hash256, ResultExt, StdError, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    data_encoding::{BASE64_NOPAD, HEXUPPER},
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
 };
@@ -210,7 +211,31 @@ impl CheckTxEvents {
             authenticate: CommitmentStatus::NotReached,
         }
     }
+
+    pub fn from_tm_data(raw_bytes: &[u8]) -> StdResult<Self> {
+        let b64 = BASE64_NOPAD.encode(&raw_bytes);
+        let hex = HEXUPPER.decode(b64.as_bytes())?;
+
+        // remove all bytes after the last }
+        let end = hex.iter().rposition(|&b| b == b'}').unwrap_or(hex.len());
+        let mut bytes = hex[..=end].to_vec();
+
+        let curly_open = bytes.iter().filter(|b| **b == b'{').count();
+        let curly_close = bytes.iter().filter(|b| **b == b'}').count();
+
+        let diff = curly_open.checked_sub(curly_close).ok_or(StdError::Math(
+            grug_math::MathError::overflow_sub(curly_open, curly_close),
+        ))?;
+
+        // Add a } at the end of the string for each missing {
+        for _ in 0..diff {
+            bytes.push(b'}');
+        }
+
+        bytes.deserialize_json()
+    }
 }
+
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
     pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
@@ -281,7 +306,12 @@ impl BroadcastTxOutcome {
                 gas_limit: 0,
                 gas_used: 0,
                 result: into_generic_result(response.code, response.log),
-                events: BASE64.decode(&response.data)?.deserialize_json()?,
+                // The data has a strange format.
+                // If it fails to deserialize, we return a mock value.
+                events: CheckTxEvents::from_tm_data(&response.data).unwrap_or(CheckTxEvents {
+                    withhold: CommitmentStatus::NotReached,
+                    authenticate: CommitmentStatus::NotReached,
+                }),
             },
         })
     }
