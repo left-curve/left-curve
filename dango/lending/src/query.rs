@@ -84,13 +84,13 @@ fn query_debts(
         .map(|res| {
             let (account, scaled_debts) = res?;
             let debts = scaled_debts
-                .iter()
+                .into_iter()
                 .map(|(denom, scaled_debt)| {
-                    let market = MARKETS.load(storage, denom)?.update_indices(timestamp)?;
-                    let debt = market.calculate_debt(*scaled_debt)?;
-                    Ok(Coin::new(denom.clone(), debt)?)
+                    let market = MARKETS.load(storage, &denom)?.update_indices(timestamp)?;
+                    let debt = market.calculate_debt(scaled_debt)?;
+                    Ok(Coin::new(denom, debt)?)
                 })
-                .collect::<Result<Vec<Coin>, anyhow::Error>>()?;
+                .collect::<anyhow::Result<Vec<_>>>()?;
             Ok((account, Coins::try_from(debts)?))
         })
         .collect()
