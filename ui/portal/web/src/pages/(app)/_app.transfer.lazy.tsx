@@ -37,8 +37,8 @@ import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
+import { Modals } from "~/components/modals/RootModal";
 import { m } from "~/paraglide/messages";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({

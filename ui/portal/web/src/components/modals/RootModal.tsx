@@ -20,28 +20,22 @@ export const Modals = {
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
-    component: lazy(() =>
-      import("../modals/AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal })),
-    ),
+    component: lazy(() => import("./AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
   },
   [Modals.RemoveKey]: {
-    component: lazy(() =>
-      import("../modals/RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey })),
-    ),
+    component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
   },
   [Modals.QRConnect]: {
-    component: lazy(() =>
-      import("../modals/QRConnect").then(({ QRConnect }) => ({ default: QRConnect })),
-    ),
+    component: lazy(() => import("./QRConnect").then(({ QRConnect }) => ({ default: QRConnect }))),
   },
   [Modals.ConfirmSend]: {
     component: lazy(() =>
-      import("../modals/ConfirmSend").then(({ ConfirmSend }) => ({ default: ConfirmSend })),
+      import("./ConfirmSend").then(({ ConfirmSend }) => ({ default: ConfirmSend })),
     ),
   },
   [Modals.ConfirmAccount]: {
     component: lazy(() =>
-      import("../modals/ConfirmAccount").then(({ ConfirmAccount }) => ({
+      import("./ConfirmAccount").then(({ ConfirmAccount }) => ({
         default: ConfirmAccount,
       })),
     ),
@@ -49,7 +43,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.SignWithDesktop]: {
     header: m["common.signin"](),
     component: lazy(() =>
-      import("../modals/SignWithDesktop").then(({ SignWithDesktop }) => ({
+      import("./SignWithDesktop").then(({ SignWithDesktop }) => ({
         default: SignWithDesktop,
       })),
     ),

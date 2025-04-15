@@ -12,7 +12,7 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
-import { Modals } from "~/components/foundation/RootModal";
+import { Modals } from "~/components/modals/RootModal";
 import { KeyManagement } from "~/components/settings/KeyManagement";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
