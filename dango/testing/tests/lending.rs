@@ -42,7 +42,7 @@ fn assert_eq_or_one_off(a: impl Into<Uint128>, b: impl Into<Uint128>) {
         b - a
     };
 
-    assert!(diff <= Uint128::ONE);
+    assert!(diff <= Uint128::ONE, "a = {a}, b = {b}");
 }
 
 /// Feeds the oracle contract a price for USDC
@@ -830,7 +830,7 @@ fn interest_rate_model_works(
     // Compute interest rates
     let interest_rate = market
         .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite).unwrap());
+        .calculate_rates(market.utilization_rate().unwrap());
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
     assert_eq!(interest_rate.deposit_rate, Udec128::ZERO);
@@ -909,7 +909,7 @@ fn interest_rate_model_works(
     // Compute interest rates
     let interest_rates = market
         .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite).unwrap());
+        .calculate_rates(market.utilization_rate().unwrap());
 
     // Assert that the all interest rates are non-zero
     assert!(interest_rates.borrow_rate.is_positive());
@@ -972,9 +972,9 @@ fn interest_rate_model_works(
             denom: USDC_DENOM.clone(),
         })
         .should_succeed()
-        .update_indices(suite, time)
+        .update_indices(time)
         .unwrap();
-    let total_supply = market.total_supplied(suite).unwrap();
+    let total_supply = market.total_supplied().unwrap();
     let total_borrowed = market.total_borrowed().unwrap();
 
     let supply_increase = total_supply - Uint128::from(deposit_amount);
@@ -1100,6 +1100,7 @@ fn interest_rate_model_works(
     let owner_lp_balance = suite
         .query_balance(&accounts.owner.address(), lp_denom.clone())
         .should_succeed();
+    dbg!(owner_lp_balance);
     suite
         .execute(
             &mut accounts.owner,
@@ -1126,6 +1127,6 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Ensure that total supply is equal to the protocol revenueand total borrowed are zero
-    assert_eq!(market.total_supplied(suite).unwrap(), Uint128::ZERO);
+    assert_eq!(market.total_supplied_scaled, Uint128::ZERO);
     assert_eq!(market.total_borrowed_scaled, Udec256::ZERO);
 }

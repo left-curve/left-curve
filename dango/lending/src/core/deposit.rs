@@ -1,7 +1,7 @@
 use {
     crate::MARKETS,
     dango_types::lending::Market,
-    grug::{Coin, Coins, Denom, MultiplyFraction, QuerierWrapper, Storage, Timestamp},
+    grug::{Coin, Coins, Denom, MultiplyFraction, Storage, Timestamp},
     std::collections::BTreeMap,
 };
 
@@ -9,7 +9,6 @@ use {
 /// Returns the amount of LP tokens and the updated markets.
 pub fn deposit(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
     timestamp: Timestamp,
     underlying: Coins,
 ) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
@@ -20,7 +19,7 @@ pub fn deposit(
         // Get market and update the market indices
         let market = MARKETS
             .load(storage, &coin.denom)?
-            .update_indices(querier, timestamp)?;
+            .update_indices(timestamp)?;
 
         // Compute the amount of LP tokens to mint
         let supply_index = market.supply_index;
@@ -28,7 +27,9 @@ pub fn deposit(
         lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
 
         // Update the market's interest rates.
-        let market = market.update_interest_rates(querier)?;
+        let market = market
+            .add_supplied(amount_scaled)?
+            .update_interest_rates()?;
 
         // Save the updated market state.
         markets.insert(coin.denom, market);

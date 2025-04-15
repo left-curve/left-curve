@@ -1,9 +1,7 @@
 use {
     crate::{DEBTS, MARKETS},
     dango_types::lending::Market,
-    grug::{
-        Addr, Coin, Coins, Denom, NextNumber, Number, QuerierWrapper, Storage, Timestamp, Udec256,
-    },
+    grug::{Addr, Coin, Coins, Denom, NextNumber, Number, Storage, Timestamp, Udec256},
     std::collections::BTreeMap,
 };
 
@@ -14,7 +12,6 @@ use {
 /// - Excess funds to be returned to the user.
 pub fn repay(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
     current_time: Timestamp,
     sender: Addr,
     funds: &Coins,
@@ -27,7 +24,7 @@ pub fn repay(
         // Update the market indices
         let market = MARKETS
             .load(storage, coin.denom)?
-            .update_indices(querier, current_time)?;
+            .update_indices(current_time)?;
 
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
@@ -71,7 +68,7 @@ pub fn repay(
         // Update the market's interest rates.
         let market = market
             .deduct_borrowed(scaled_debt_diff)?
-            .update_interest_rates(querier)?;
+            .update_interest_rates()?;
 
         // Save the updated market state
         markets.push((coin.denom.clone(), market));

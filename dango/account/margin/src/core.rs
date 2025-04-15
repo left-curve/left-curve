@@ -47,7 +47,7 @@ pub fn query_health(
         // Query the market for the denom.
         let market = querier
             .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
-            .update_indices(querier, current_time)?;
+            .update_indices(current_time)?;
 
         // Calculate the real debt.
         let debt = market.calculate_debt(*scaled_debt)?;
