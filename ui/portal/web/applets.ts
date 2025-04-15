@@ -7,14 +7,14 @@ export const applets = [
     keywords: ["transfer", "send", "receive"],
   },
   {
-    img: "/images/applets/settings.svg",
+    img: "/images/emojis/simple/settings.svg",
     title: "Settings",
     description: "Optimize your display, security, and more.",
     path: "/settings",
     keywords: ["settings", "preferences"],
   },
   {
-    img: "/images/applets/notifications.svg",
+    img: "/images/emojis/simple/notifications.svg",
     title: "Notifications",
     description: "View recent transactions.",
     path: "/notifications",
@@ -22,7 +22,7 @@ export const applets = [
   },
   {
     img: "/images/applets/account-creation.svg",
-    title: "Subaccounts creation",
+    title: "Subaccount creation",
     description: "Create subaccounts.",
     path: "/create-account",
     keywords: ["account", "create", "register"],

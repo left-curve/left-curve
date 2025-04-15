@@ -1,30 +1,9 @@
-import type { Prettify } from "./utils.js";
+import type { Denom, Prettify, Price } from "@left-curve/dango/types";
 
 export type CoinGeckoId = string;
-export type Denom = string;
-
-export type Coin = {
-  readonly denom: Denom;
-  readonly amount: string;
-};
-
-/**
- * Coins is a record where the coin's denomination is used as the key
- * and the amount is used as the value.
- * @example
- * ```typescript
- * {
- * uusdc: "1000000",
- * uosmo: "1000000",
- * }
- * ```
- */
-export type Coins = Record<Denom, string>;
-
-export type Funds = Record<Denom, string>;
 
 export type WithPrice<T> = T & {
-  readonly price: number;
+  readonly price: Price;
 };
 
 export type WithGasPriceStep<T> = T & {

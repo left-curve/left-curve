@@ -207,7 +207,9 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -373,7 +375,9 @@ fn non_margin_accounts_cant_borrow() {
         .execute(
             &mut accounts.user1,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::new()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("only margin accounts can borrow");
@@ -411,7 +415,9 @@ fn cant_borrow_if_no_collateral() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
@@ -457,7 +463,9 @@ fn cant_borrow_if_undercollateralized() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
@@ -485,7 +493,9 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("subtraction overflow: 0 - 100");
@@ -513,7 +523,9 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -639,7 +651,9 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 50).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -709,7 +723,9 @@ fn repay_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -878,7 +894,9 @@ fn interest_rate_model_works(
         .execute(
             margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), borrow_amount).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => borrow_amount },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -1027,13 +1045,12 @@ fn interest_rate_model_works(
         margin_usdc_balance_before - usdc_debt
     );
 
-    // Query the margin account's debt. Ensure it is zero
-    let debt = suite
+    // Query the margin account's debt. Should fail as the debt has been repaid
+    suite
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
-        .should_succeed();
-    assert_eq!(debt.amount_of(&USDC_DENOM), Uint128::ZERO);
+        .should_fail_with_error("data not found!");
 
     // Query the market
     let market = suite

@@ -1,6 +1,6 @@
 import { Select } from "./Select";
 
-import type { AnyCoin } from "@left-curve/dango/types";
+import type { AnyCoin } from "@left-curve/store/types";
 import type { SelectProps } from "./Select";
 
 interface Props extends Omit<SelectProps, "children"> {

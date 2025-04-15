@@ -27,11 +27,18 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AssetCard } from "./AssetCard";
 
+import type { PropsWithChildren } from "react";
+import type React from "react";
+
+const Root: React.FC<PropsWithChildren> = ({ children }) => {
+  return <>{children}</>;
+};
+
 type AccountMenuProps = {
   backAllowed?: boolean;
 };
 
-function AccountMenu({ backAllowed }: AccountMenuProps) {
+const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   const { settings, isSidebarVisible } = useApp();
   const { formatNumberOptions } = settings;
   const { account } = useAccount();
@@ -104,11 +111,11 @@ function AccountMenu({ backAllowed }: AccountMenuProps) {
       </div>
     </>
   );
-}
+};
 
-export function Desktop() {
+export const Desktop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { setSidebarVisibility, isSidebarVisible } = useApp();
+  const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible } = useApp();
 
   useClickAway(menuRef, (e) => {
     if (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) return;
@@ -119,34 +126,35 @@ export function Desktop() {
     <div
       ref={menuRef}
       className={twMerge(
-        "transition-all lg:absolute fixed top-0 flex h-[100vh] justify-end z-50 duration-300 w-full lg:max-w-[360px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
+        "transition-all lg:absolute fixed top-0 flex h-[92vh] justify-end z-50 duration-300 w-full lg:max-w-[360px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
         isSidebarVisible ? "right-0" : "right-[-50vw]",
+        isQuestBannerVisible ? "h-[92vh]" : "h-[100svh]",
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
         <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-gray-100">
-          <AccountMenu />
+          <Menu />
         </div>
       </div>
     </div>
   );
-}
+};
 
-export function Mobile() {
+export const Mobile: React.FC = () => {
   const { isSidebarVisible, setSidebarVisibility } = useApp();
 
   return (
-    <Sheet isOpen={isSidebarVisible} onClose={() => setSidebarVisibility(false)}>
+    <Sheet isOpen={isSidebarVisible} onClose={() => setSidebarVisibility(false)} rootId="root">
       <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
-          <AccountMenu />
+          <Menu />
         </Sheet.Content>
       </Sheet.Container>
       <Sheet.Backdrop onTap={() => setSidebarVisibility(false)} />
     </Sheet>
   );
-}
+};
 
 type AssetsProps = {
   onSwitch: () => void;
@@ -156,7 +164,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector, account } = useAccount();
-  const { deleteSessionkey } = useSessionKey();
+  const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -187,7 +195,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           onClick={() => {
             setSidebarVisibility(false);
             connector?.disconnect();
-            deleteSessionkey();
+            deleteSessionKey();
           }}
         >
           <IconLogOut />
@@ -229,22 +237,27 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
           <IconAddCross className="w-5 h-5" /> <span>{m["accountMenu.accounts.addAccount"]()}</span>
         </Button>
       </div>
-      <div className="flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 relative max-h-[42rem]">
-        {accounts
-          ?.filter((acc) => acc.address !== account.address)
-          .map((account) => (
-            <AccountCard.Preview
-              key={account.address}
-              account={account}
-              onAccountSelect={(acc) => changeAccount?.(acc)}
-            />
-          ))}
+      <div className="relative w-full h-full">
+        <div className="relative flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 max-h-[52svh] md:max-h-[42rem]">
+          {accounts
+            ?.filter((acc) => acc.address !== account.address)
+            .map((account) => (
+              <AccountCard.Preview
+                key={account.address}
+                account={account}
+                onAccountSelect={(acc) => changeAccount?.(acc)}
+              />
+            ))}
+        </div>
+        <div className="absolute h-2 w-full bottom-[1.5rem] z-50 max-w-[22.5rem] md:max-w-[20.5rem] pointer-events-none left-1/2 -translate-x-1/2">
+          <div className="bg-gradient-to-b from-transparent from-20% to-white-100 h-[3rem] w-full rounded-b-2xl" />
+        </div>
       </div>
     </div>
   );
 };
 
-const ExportComponent = Object.assign(AccountMenu, {
+const ExportComponent = Object.assign(Root, {
   Desktop,
   Mobile,
   Assets,

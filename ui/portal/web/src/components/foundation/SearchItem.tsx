@@ -4,7 +4,7 @@ import {
   IconStar,
   TruncateText,
 } from "@left-curve/applets-kit";
-import type { AnyCoin, WithPrice } from "@left-curve/dango/types";
+import type { AnyCoin, WithPrice } from "@left-curve/store/types";
 import { motion } from "framer-motion";
 
 const ExportComponent = Object.assign(
@@ -26,7 +26,7 @@ const childVariants = {
 export function Applet({ description, img, title }: AppletMetadata) {
   return (
     <motion.div
-      className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs ] group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
       variants={childVariants}
       key={title}
     >
@@ -66,7 +66,7 @@ export function Asset({ logoURI, name, symbol, price }: WithPrice<AnyCoin>) {
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="diatype-sm-bold">${price}</p>
+        <p className="diatype-sm-bold">${price.humanizedPrice}</p>
       </div>
     </motion.div>
   );
@@ -81,7 +81,7 @@ export function Block({ height, hash }: { height: number; hash: string }) {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
-          <img src="/images/emojis/simple/map.svg" alt="test" className="w-12 h-12" />
+          <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="diatype-m-medium">#{height} Block</p>
@@ -101,7 +101,7 @@ export function Transaction({ height, hash }: { height: number; hash: string }) 
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
-          <img src="/images/emojis/simple/map.svg" alt="test" className="w-12 h-12" />
+          <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <TruncateText className="flex gap-2 diatype-m-medium" text={hash} end={20} />

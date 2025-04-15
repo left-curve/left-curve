@@ -1,5 +1,5 @@
 use {
-    crate::{StdError, StdResult},
+    crate::{Lengthy, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,
     serde::{Serialize, de},
@@ -61,6 +61,15 @@ where
 
     fn into_inner(self) -> Self::U {
         self.0
+    }
+}
+
+impl<T> Lengthy for UniqueVec<T>
+where
+    T: Eq + Hash,
+{
+    fn length(&self) -> usize {
+        self.0.len()
     }
 }
 

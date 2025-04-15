@@ -1,6 +1,6 @@
 use {
     super::{InterestRateModel, Market, MarketUpdates},
-    grug::{Addr, Coins, Denom, Part},
+    grug::{Addr, Coins, Denom, NonEmpty, Part},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 
@@ -28,7 +28,7 @@ pub enum ExecuteMsg {
     Withdraw {},
     /// Borrow coins from the lending pool.
     /// Sender must be a margin account.
-    Borrow(Coins),
+    Borrow(NonEmpty<Coins>),
     /// Repay debt.
     /// Sender must be a margin account.
     Repay {},

@@ -1,14 +1,6 @@
-import type {
-  AnyCoin,
-  Chain,
-  ChainId,
-  Client,
-  Denom,
-  Signer,
-  Transport,
-  UID,
-} from "@left-curve/dango/types";
+import type { Chain, ChainId, Client, Denom, Transport, UID } from "@left-curve/dango/types";
 
+import type { AnyCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";

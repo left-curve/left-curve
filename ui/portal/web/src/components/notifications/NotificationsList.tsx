@@ -20,6 +20,7 @@ interface Notification {
 interface Props {
   notifications: Notification[];
   className?: string;
+  showAsPage?: boolean;
 }
 
 const formatNotificationTimestamp = (timestamp: Date): string => {
@@ -48,7 +49,7 @@ const formatNotificationTimestamp = (timestamp: Date): string => {
   return format(timestamp, "MM/dd");
 };
 
-export const NotificationsList: React.FC<Props> = ({ notifications, className }) => {
+export const NotificationsList: React.FC<Props> = ({ notifications, className, showAsPage }) => {
   const sortedNotifications = [...notifications].sort(
     (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
   );
@@ -69,9 +70,9 @@ export const NotificationsList: React.FC<Props> = ({ notifications, className })
     return (
       <div className="min-h-[19rem] flex flex-col gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat">
         <img
-          src="/images/notifications/no-notifications.png"
+          src="/images/notifications/no-notifications.svg"
           alt="no-notifications"
-          className="w-[133px] h-[144px]"
+          className="h-[154px]"
         />
         <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
         <p className="diatype-m-bold text-gray-500">

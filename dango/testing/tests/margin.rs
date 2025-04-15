@@ -309,7 +309,9 @@ fn cant_liquidate_when_overcollateralised() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100_000_000 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -337,7 +339,9 @@ fn liquidation_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100_000_000 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -448,7 +452,9 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 1_000_000_000 }, // 1K USDC
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -467,7 +473,9 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(WBTC_DENOM.clone(), 100_000_000).unwrap()), // 1 BTC
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { WBTC_DENOM.clone() => 100_000_000 }, // 1 BTC
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -622,7 +630,9 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 1_000_000_000 }, // 1K USDC
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -755,7 +765,9 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(WBTC_DENOM.clone(), 600_000).unwrap()), // 0.006 WBTC = 426 USD
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { WBTC_DENOM.clone() => 600_000 }, // 0.006 WBTC = 426 USD
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -1158,7 +1170,7 @@ proptest! {
                 &mut suite,
                 &mut accounts,
                 collateral.denom.denom.clone(),
-                collateral.collateral_power.clone(),
+                collateral.collateral_power,
             );
 
             // Mint collateral to margin account
@@ -1221,9 +1233,9 @@ proptest! {
                 .execute(
                     &mut margin_account,
                     contracts.lending,
-                    &lending::ExecuteMsg::Borrow(
-                        Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
-                    ),
+                    &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                        coins! { debt.denom.denom.clone() => debt.amount },
+                    )),
                     Coins::new(),
                 )
                 .should_succeed();

@@ -37,7 +37,6 @@ export { PlusIcon } from "./foundation/icons/Plus";
 export { ProfileIcon } from "./foundation/icons/Profile";
 export { IconCopy } from "./foundation/icons/IconCopy";
 export { BellIcon } from "./foundation/icons/Bell";
-export { WalletIcon } from "./foundation/icons/Wallet";
 export { ExternalLinkIcon } from "./foundation/icons/ExternalLink";
 export { SearchIcon } from "./foundation/icons/Search";
 export { ArrowSelectorIcon } from "./foundation/icons/ArrowSelector";
@@ -51,7 +50,7 @@ export { DangoDotsIcon } from "./foundation/icons/DangoDots";
 
 export { IconDoubleChevronRight } from "./foundation/icons/IconDoubleChevronRight";
 export { IconChevronRight } from "./foundation/icons/IconChevronRight";
-export { IconChevronLeftCarousell } from "./foundation/icons/IconChevronLeftCarousell";
+export { IconChevronLeftCarousel } from "./foundation/icons/IconChevronLeftCarousel";
 export { IconChevronLeft } from "./foundation/icons/IconChevronLeft";
 export { IconChevronDown } from "./foundation/icons/IconChevronDown";
 export { IconGear } from "./foundation/icons/IconGear";
