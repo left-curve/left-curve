@@ -4,10 +4,7 @@ use {
     dango_account_factory::ACCOUNTS,
     dango_types::{
         DangoQuerier, bank,
-        lending::{
-            Borrowed, ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, Repaid,
-            SUBNAMESPACE,
-        },
+        lending::{Borrowed, ExecuteMsg, InstantiateMsg, Market, MarketUpdates, Repaid},
     },
     grug::{
         Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response, StdResult,
@@ -22,10 +19,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         MARKETS.save(
             ctx.storage,
             &denom,
-            &Market::new(
-                denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-                interest_rate_model,
-            ),
+            &Market::new(&denom, interest_rate_model)?,
         )?;
     }
 
@@ -70,11 +64,11 @@ fn update_markets(
                 ctx.storage,
                 &denom,
                 &Market::new(
-                    denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
+                    &denom,
                     updates.interest_rate_model.ok_or_else(|| {
                         anyhow!("interest rate model is required when adding new market {denom}")
                     })?,
-                ),
+                )?,
             )?;
         }
     }

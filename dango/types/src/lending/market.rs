@@ -1,8 +1,9 @@
 use {
-    crate::lending::InterestRateModel,
+    crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
         Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, Timestamp, Udec128, Udec256, Uint128, ZeroInclusiveOneInclusive,
+        NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Udec256, Uint128,
+        ZeroInclusiveOneInclusive,
     },
 };
 
@@ -40,9 +41,12 @@ pub struct Market {
 }
 
 impl Market {
-    pub fn new(supply_lp_denom: Denom, interest_rate_model: InterestRateModel) -> Self {
-        Self {
-            supply_lp_denom,
+    pub fn new(
+        underlying_denom: &Denom,
+        interest_rate_model: InterestRateModel,
+    ) -> StdResult<Self> {
+        Ok(Self {
+            supply_lp_denom: underlying_denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
             interest_rate_model,
             total_borrowed_scaled: Udec256::ZERO,
             borrow_index: Udec128::ONE,
@@ -52,7 +56,7 @@ impl Market {
             supply_rate: Udec128::ZERO,
             last_update_time: Timestamp::ZERO,
             pending_protocol_fee_scaled: Uint128::ZERO,
-        }
+        })
     }
 
     /// Computes the utilization rate of this market.
