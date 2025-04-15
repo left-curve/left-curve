@@ -8,7 +8,7 @@ use {
 };
 
 /// Seconds in a year, assuming 365 days.
-pub const SECONDS_PER_YEAR: u32 = 31536000;
+pub const SECONDS_PER_YEAR: u128 = 31536000;
 
 /// Configurations and state of a market.
 #[grug::derive(Serde, Borsh)]
@@ -97,7 +97,7 @@ impl Market {
         // Update the indices
         let time_delta = current_time - self.last_update_time;
         let time_out_of_year =
-            Udec128::checked_from_ratio(time_delta.into_seconds(), SECONDS_PER_YEAR as u128)?;
+            Udec128::checked_from_ratio(time_delta.into_seconds(), SECONDS_PER_YEAR)?;
         let borrow_index = self.borrow_index.checked_mul(
             Udec128::ONE.checked_add(self.borrow_rate.checked_mul(time_out_of_year)?)?,
         )?;

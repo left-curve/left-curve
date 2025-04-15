@@ -931,11 +931,9 @@ fn interest_rate_model_works(
     assert!(usdc_debt > Uint128::from(borrow_amount));
 
     // Check that debt increased with the correct amount of interest
-    let time_out_of_year = Udec128::checked_from_ratio(
-        Duration::from_weeks(1).into_seconds(),
-        SECONDS_PER_YEAR as u128,
-    )
-    .unwrap();
+    let time_out_of_year =
+        Udec128::checked_from_ratio(Duration::from_weeks(1).into_seconds(), SECONDS_PER_YEAR)
+            .unwrap();
     let debt_interest_amount = usdc_debt - Uint128::from(borrow_amount);
     assert!(debt_interest_amount > Uint128::ZERO);
     assert_eq!(
