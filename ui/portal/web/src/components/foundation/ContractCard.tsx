@@ -1,22 +1,21 @@
-import { useBalances, usePrices } from "@left-curve/store";
-
-import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
-
-import { AnimatePresence, motion } from "framer-motion";
-
 import { Badge, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
+import type React from "react";
 
 type ContractCardProps = {
   address: string;
   balance: string;
+  name: string;
   balanceChange?: string;
   isSelectorActive?: boolean;
   onTriggerAction?: () => void;
 };
 
-function ContractCard({ address, balance, balanceChange }: ContractCardProps) {
-  const name = "Dango DEX";
-
+export const ContractCard: React.FC<ContractCardProps> = ({
+  name,
+  address,
+  balance,
+  balanceChange,
+}) => {
   return (
     <div
       className={twMerge(
@@ -48,10 +47,8 @@ function ContractCard({ address, balance, balanceChange }: ContractCardProps) {
       </div>
       <div className="flex gap-2 items-center relative z-10">
         <p className="h4-regular">{balance}</p>
-        <p className="text-sm font-bold text-status-success">{balanceChange}</p>
+        {/*  <p className="text-sm font-bold text-status-success">{balanceChange}</p> */}
       </div>
     </div>
   );
-}
-
-export { ContractCard };
+};

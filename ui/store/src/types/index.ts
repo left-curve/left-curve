@@ -57,6 +57,7 @@ export type {
   NativeCoin,
   WithGasPriceStep,
   WithPrice,
+  WithAmount,
 } from "./coin.js";
 
 export { ConnectionStatus } from "./store.js";

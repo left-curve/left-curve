@@ -153,6 +153,20 @@
         "title": "Transaction not found",
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       }
+    },
+    "contracts": {
+      "notFound": {
+        "pre": "We couldn’t find",
+        "title": "Contract not found",
+        "description": " the contract you were looking for. If it’s a valid contract, it may not have been deployed yet or it may be an account, so please try again later. If the issue persists, please contact us for further assistance."
+      },
+      "details": {
+        "contractDetails": "Contract Details",
+        "codeHash": "Code Hash:",
+        "contractAddress": "Contract Address:",
+        "admin": "Admin:",
+        "balances": "Balances:"
+      }
     }
   },
   "modals": {

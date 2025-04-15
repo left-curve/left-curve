@@ -11,6 +11,7 @@ export { Select } from "./Select";
 export { Hamburger } from "./Hamburger";
 export { TruncateText } from "./TruncateText";
 export { Table, type TableColumn } from "./Table";
+export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
 export { Stepper } from "./Stepper";
