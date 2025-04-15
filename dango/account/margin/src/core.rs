@@ -10,7 +10,7 @@ use {
         oracle::PrecisionedPrice,
     },
     grug::{
-        Addr, Coin, Coins, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
+        Addr, Coin, Coins, Denom, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
         QuerierWrapper, StorageQuerier, Timestamp, Udec128, Udec256, Uint128,
     },
     std::{
@@ -190,7 +190,7 @@ pub fn compute_health(
             .get(denom)
             .ok_or(anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(collateral_balance)?;
-        let adjusted_value = value.checked_mul(power.clone().into_inner())?;
+        let adjusted_value = value.checked_mul(**power)?;
 
         collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
         total_collateral_value.checked_add_assign(value)?;
@@ -239,8 +239,7 @@ pub fn compute_health(
             "collateral power for denom {} not found",
             offer.denom
         ))?;
-        let offer_adjusted_value =
-            offer_value.checked_mul(offer_collateral_power.clone().into_inner())?;
+        let offer_adjusted_value = offer_value.checked_mul(**offer_collateral_power)?;
 
         let ask_price = prices
             .get(&ask.denom)
@@ -250,8 +249,7 @@ pub fn compute_health(
             "collateral power for denom {} not found",
             ask.denom
         ))?;
-        let ask_adjusted_value =
-            ask_value.checked_mul(ask_collateral_power.clone().into_inner())?;
+        let ask_adjusted_value = ask_value.checked_mul(**ask_collateral_power)?;
 
         let min_value = min(offer_value, ask_value);
         let min_adjusted_value = min(offer_adjusted_value, ask_adjusted_value);
