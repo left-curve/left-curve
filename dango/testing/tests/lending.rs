@@ -830,8 +830,7 @@ fn interest_rate_model_works(
     // Compute interest rates
     let interest_rate = market
         .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite).unwrap())
-        .unwrap();
+        .calculate_rates(market.utilization_rate(suite).unwrap());
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
     assert_eq!(interest_rate.deposit_rate, Udec128::ZERO);
@@ -910,8 +909,7 @@ fn interest_rate_model_works(
     // Compute interest rates
     let interest_rates = market
         .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite).unwrap())
-        .unwrap();
+        .calculate_rates(market.utilization_rate(suite).unwrap());
 
     // Assert that the all interest rates are non-zero
     assert!(interest_rates.borrow_rate.is_positive());

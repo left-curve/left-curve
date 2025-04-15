@@ -1,5 +1,4 @@
 use {
-    anyhow::anyhow,
     grug::{
         Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
         ZeroInclusiveOneInclusive,
@@ -50,33 +49,32 @@ impl Display for InterestRates {
 
 impl InterestRateModel {
     /// Calculates interest rates for a given utilization rate
-    pub fn calculate_rates(&self, utilization: Udec128) -> anyhow::Result<InterestRates> {
-        if utilization > Udec128::new_percent(100) {
-            return Err(anyhow!("invalid utilization rate"));
-        }
-
+    pub fn calculate_rates(
+        &self,
+        utilization: Bounded<Udec128, ZeroInclusiveOneInclusive>,
+    ) -> InterestRates {
         // Calculate borrow rate
-        let borrow_rate = if utilization <= *self.optimal_utilization {
+        let borrow_rate = if *utilization <= *self.optimal_utilization {
             // Below optimal: linear increase
-            *self.base_rate + (utilization / *self.optimal_utilization) * *self.first_slope
+            *self.base_rate + (*utilization / *self.optimal_utilization) * *self.first_slope
         } else {
             // Above optimal: steeper increase
-            let excess_utilization = (utilization - *self.optimal_utilization)
+            let excess_utilization = (*utilization - *self.optimal_utilization)
                 / (Udec128::ONE - *self.optimal_utilization);
             *self.base_rate + *self.first_slope + (excess_utilization * *self.second_slope)
         };
 
         // Calculate deposit rate
-        let deposit_rate = utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
+        let deposit_rate = *utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
 
         // Calculate spread
         let spread = borrow_rate - deposit_rate;
 
-        Ok(InterestRates {
+        InterestRates {
             borrow_rate,
             deposit_rate,
             spread,
-        })
+        }
     }
 }
 
@@ -97,7 +95,7 @@ impl Default for InterestRateModel {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::ResultExt};
+    use super::*;
 
     #[test]
     fn test_default_params() {
@@ -111,7 +109,7 @@ mod tests {
     #[test]
     fn test_zero_utilization() {
         let model = InterestRateModel::default();
-        let rates = model.calculate_rates(Udec128::ZERO).unwrap();
+        let rates = model.calculate_rates(Bounded::new_unchecked(Udec128::ZERO));
         assert_eq!(rates.borrow_rate, *model.base_rate);
         assert_eq!(rates.deposit_rate, Udec128::ZERO);
         assert_eq!(rates.spread, *model.base_rate);
@@ -120,18 +118,11 @@ mod tests {
     #[test]
     fn test_max_utilization() {
         let model = InterestRateModel::default();
-        let rates = model.calculate_rates(Udec128::ONE).unwrap();
+        let rates = model.calculate_rates(Bounded::new_unchecked(Udec128::ONE));
         assert_eq!(
             rates.borrow_rate,
             *model.base_rate + *model.first_slope + *model.second_slope
         );
         assert!(rates.spread > Udec128::ZERO);
-    }
-
-    #[test]
-    fn test_invalid_utilization() {
-        InterestRateModel::default()
-            .calculate_rates(Udec128::new_percent(110))
-            .should_fail_with_error("invalid utilization rate");
     }
 }

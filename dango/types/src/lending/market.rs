@@ -2,8 +2,9 @@ use {
     crate::lending::InterestRateModel,
     anyhow::ensure,
     grug::{
-        Decimal, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst, PrevNumber,
-        Querier, QuerierExt, QuerierWrapper, StdError, Timestamp, Udec128, Udec256, Uint128,
+        Bounded, Decimal, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
+        PrevNumber, Querier, QuerierExt, QuerierWrapper, StdError, Timestamp, Udec128, Udec256,
+        Uint128, ZeroInclusiveOneInclusive,
     },
     std::error::Error,
 };
@@ -48,7 +49,10 @@ impl Market {
     }
 
     /// Computes the utilization rate of this market.
-    pub fn utilization_rate<E>(&self, querier: &dyn Querier<Error = E>) -> anyhow::Result<Udec128>
+    pub fn utilization_rate<E>(
+        &self,
+        querier: &dyn Querier<Error = E>,
+    ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>>
     where
         E: From<StdError> + Error + Send + Sync + 'static,
     {
@@ -56,7 +60,7 @@ impl Market {
         let total_supplied = self.total_supplied(querier)?;
 
         if total_supplied.is_zero() {
-            return Ok(Udec128::ZERO);
+            return Ok(Bounded::new_unchecked(Udec128::ZERO));
         }
 
         let utilization_rate = Udec128::checked_from_ratio(total_borrowed, total_supplied)?;
@@ -65,10 +69,10 @@ impl Market {
         // This can happen if 100% of the supply is borrowed, which can then cause
         // borrowing to outgrow the supply due to interest accrual.
         if utilization_rate > Udec128::new_percent(100) {
-            return Ok(Udec128::new_percent(100));
+            return Ok(Bounded::new_unchecked(Udec128::new_percent(100)));
         }
 
-        Ok(utilization_rate)
+        Ok(Bounded::new_unchecked(utilization_rate))
     }
 
     /// Immutably updates the indices of this market and returns the new market
@@ -97,7 +101,7 @@ impl Market {
 
         // Calculate interest rates
         let utilization_rate = self.utilization_rate(querier)?;
-        let rates = self.interest_rate_model.calculate_rates(utilization_rate)?;
+        let rates = self.interest_rate_model.calculate_rates(utilization_rate);
 
         // Update the indices
         let time_delta = current_time - self.last_update_time;
