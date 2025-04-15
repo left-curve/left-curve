@@ -5,7 +5,15 @@ import {
   parseUnits,
   withResolvers,
 } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useConfig, usePrices, useSigningClient } from "@left-curve/store";
+import {
+  useAccount,
+  useBalances,
+  useChainId,
+  useConfig,
+  usePrices,
+  useSigningClient,
+} from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -116,30 +124,26 @@ function TransferApplet() {
           sender: account!.address as Address,
         });
 
-        reset();
-        toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-        notifier.publish("submit_tx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
-        });
-        refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
-      } catch (e) {
-        console.error(e);
-        notifier.publish("submit_tx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
-        });
-        toast.error(
-          {
-            title: m["transfer.error.title"](),
-            description: m["transfer.error.description"](),
-          },
-          {
-            duration: Number.POSITIVE_INFINITY,
-          },
-        );
-      }
+      reset();
+      toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
+      refreshBalances();
+    },
+
+    onError: (e) => {
+      console.error(e);
+      toast.error(
+        {
+          title: "Transfer failed",
+          description: e instanceof Error ? e.message : undefined,
+        },
+        {
+          duration: Number.POSITIVE_INFINITY,
+        },
+      );
+      captureException(e);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quests", account] });
     },
   });
 

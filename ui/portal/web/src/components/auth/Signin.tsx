@@ -1,5 +1,6 @@
 import { useInputs, useMediaQuery, useUsernames, useWizard } from "@left-curve/applets-kit";
 import { useAccount, usePublicClient, useSignin } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -81,6 +82,7 @@ const UsernameStep: React.FC = () => {
         setUsername(username);
       }
     },
+    onError: (err) => captureException(err),
   });
 
   return (
@@ -219,6 +221,7 @@ const CredentialStep: React.FC = () => {
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
         });
+        captureException(err);
         previousStep();
       },
     },

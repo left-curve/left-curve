@@ -1,6 +1,8 @@
 import { useAccount, useSigningClient } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { forwardRef } from "react";
+
+import type { KeyHash } from "@left-curve/dango/types";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
@@ -28,6 +30,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         action: "delete",
       });
     },
+    onError: (e) => captureException(e),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user_keys"] });
       hideModal();

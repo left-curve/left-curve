@@ -1,4 +1,5 @@
 import { useSigninWithDesktop } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { forwardRef, useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -25,6 +26,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
           description: m["signin.errors.failedSignInWithDesktop"](),
         });
         console.error(err);
+        captureException(err);
       },
     },
   });
