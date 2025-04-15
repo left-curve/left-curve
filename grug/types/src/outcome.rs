@@ -212,13 +212,18 @@ impl CheckTxEvents {
         }
     }
 
+    #[cfg(feature = "tendermint")]
     pub fn from_tm_data(raw_bytes: &[u8]) -> StdResult<Self> {
         let b64 = BASE64_NOPAD.encode(&raw_bytes);
         let hex = HEXUPPER.decode(b64.as_bytes())?;
 
         // remove all bytes after the last }
         let end = hex.iter().rposition(|&b| b == b'}').unwrap_or(hex.len());
-        let mut bytes = hex[..=end].to_vec();
+        let mut bytes = if end == hex.len() {
+            hex.to_vec()
+        } else {
+            hex[..=end].to_vec()
+        };
 
         let curly_open = bytes.iter().filter(|b| **b == b'{').count();
         let curly_close = bytes.iter().filter(|b| **b == b'}').count();
