@@ -9,17 +9,17 @@ use {
 /// Returns the amount of LP tokens and the updated markets.
 pub fn deposit(
     storage: &dyn Storage,
-    timestamp: Timestamp,
-    underlying: Coins,
+    current_time: Timestamp,
+    coins: Coins,
 ) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
     let mut lp_tokens = Coins::new();
     let mut markets = BTreeMap::new();
 
-    for coin in underlying {
+    for coin in coins {
         // Get market and update the market indices
         let market = MARKETS
             .load(storage, &coin.denom)?
-            .update_indices(timestamp)?;
+            .update_indices(current_time)?;
 
         // Compute the amount of LP tokens to mint
         let supply_index = market.supply_index;

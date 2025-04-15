@@ -14,13 +14,13 @@ pub fn repay(
     storage: &dyn Storage,
     current_time: Timestamp,
     sender: Addr,
-    funds: &Coins,
+    coins: &Coins,
 ) -> anyhow::Result<(BTreeMap<Denom, Udec256>, Vec<(Denom, Market)>, Coins)> {
     let mut scaled_debts = DEBTS.may_load(storage, sender)?.unwrap_or_default();
-    let mut markets = Vec::with_capacity(funds.len());
+    let mut markets = Vec::with_capacity(coins.len());
     let mut refunds = Coins::new();
 
-    for coin in funds {
+    for coin in coins {
         // Update the market indices
         let market = MARKETS
             .load(storage, coin.denom)?
