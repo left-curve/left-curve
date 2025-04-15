@@ -281,7 +281,7 @@ impl BroadcastTxOutcome {
                 gas_limit: 0,
                 gas_used: 0,
                 result: into_generic_result(response.code, response.log),
-                events: BASE64.decode(&response.data)?.deserialize_json()?,
+                events: response.data.deserialize_json()?,
             },
         })
     }

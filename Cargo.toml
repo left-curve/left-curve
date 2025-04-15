@@ -136,8 +136,8 @@ strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
-tendermint              = "0.40"
-tendermint-rpc          = "0.40"
+tendermint              = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" }
+tendermint-rpc          = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" }
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
