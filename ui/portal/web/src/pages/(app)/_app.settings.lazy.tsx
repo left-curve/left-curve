@@ -61,7 +61,7 @@ function SettingsComponent() {
           </p>
 
           <Select
-            defaultValue={formatNumberOptions.mask.toString()}
+            defaultValue={formatNumberOptions?.mask.toString() || "1"}
             onChange={(key) => [
               changeSettings({
                 formatNumberOptions: { ...formatNumberOptions, mask: Number(key) as 1 },
