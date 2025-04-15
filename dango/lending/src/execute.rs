@@ -84,7 +84,7 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint.
-    let (lp_tokens, markets) = core::deposit(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
+    let (lp_tokens, markets) = core::deposit(ctx.storage, ctx.block.timestamp, ctx.funds)?;
 
     // Save the updated markets.
     for (denom, market) in markets {
