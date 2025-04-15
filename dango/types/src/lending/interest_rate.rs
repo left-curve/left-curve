@@ -3,7 +3,7 @@ use grug::{
     ZeroInclusiveOneInclusive,
 };
 
-/// Dual slope intereate rate model, consisting of two linear functions.
+/// Dual slope interest rate model, consisting of two linear functions.
 ///
 /// This is based on Aave's interest rate model. The first slope is applied when
 /// the utilization is below the optimal utilization rate, and the second slope
