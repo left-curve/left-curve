@@ -914,7 +914,7 @@ fn interest_rate_model_works(
     // Assert that the all interest rates are non-zero
     assert!(interest_rates.borrow_rate.is_positive());
     assert!(interest_rates.deposit_rate.is_positive());
-    assert!(interest_rates.spread.is_positive());
+    assert!(interest_rates.borrow_rate > interest_rates.deposit_rate);
 
     // --- Property 3: Interest accrues over time ---
 

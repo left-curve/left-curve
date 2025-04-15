@@ -34,15 +34,14 @@ pub struct InterestRateModel {
 pub struct InterestRates {
     pub borrow_rate: Udec128,
     pub deposit_rate: Udec128,
-    pub spread: Udec128,
 }
 
 impl Display for InterestRates {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "borrow_rate: {}, deposit_rate: {}, spread: {}",
-            self.borrow_rate, self.deposit_rate, self.spread
+            "borrow_rate: {}, deposit_rate: {}",
+            self.borrow_rate, self.deposit_rate
         )
     }
 }
@@ -67,13 +66,9 @@ impl InterestRateModel {
         // Calculate deposit rate
         let deposit_rate = *utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
 
-        // Calculate spread
-        let spread = borrow_rate - deposit_rate;
-
         InterestRates {
             borrow_rate,
             deposit_rate,
-            spread,
         }
     }
 }
@@ -112,7 +107,6 @@ mod tests {
         let rates = model.calculate_rates(Bounded::new_unchecked(Udec128::ZERO));
         assert_eq!(rates.borrow_rate, *model.base_rate);
         assert_eq!(rates.deposit_rate, Udec128::ZERO);
-        assert_eq!(rates.spread, *model.base_rate);
     }
 
     #[test]
@@ -123,6 +117,5 @@ mod tests {
             rates.borrow_rate,
             *model.base_rate + *model.first_slope + *model.second_slope
         );
-        assert!(rates.spread > Udec128::ZERO);
     }
 }
