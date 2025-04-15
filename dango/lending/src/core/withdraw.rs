@@ -30,6 +30,11 @@ pub fn withdraw(
         // Compute the amount of underlying coins to withdraw
         let underlying_amount = coin.amount.checked_mul_dec_floor(market.supply_index)?;
         withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
+
+        // Update the market's interest rates.
+        let market = market.update_interest_rates(querier)?;
+
+        // Save the updated market state
         markets.insert(underlying_denom, market);
     }
 

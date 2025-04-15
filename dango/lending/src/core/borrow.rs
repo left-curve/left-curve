@@ -31,8 +31,13 @@ pub fn borrow(
         let added_scaled_debt = prev_scaled_debt.checked_add(new_scaled_debt)?;
         scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
 
-        // Save the updated market state
-        markets.push((coin.denom.clone(), market.add_borrowed(added_scaled_debt)?));
+        // Update the market's interest rates.
+        let market = market
+            .add_borrowed(added_scaled_debt)?
+            .update_interest_rates(querier)?;
+
+        // Save the updated market state.
+        markets.push((coin.denom.clone(), market));
     }
 
     Ok((scaled_debts, markets))
