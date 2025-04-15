@@ -1,4 +1,5 @@
 use {
+    anyhow::anyhow,
     dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -149,7 +150,7 @@ pub fn compute_health(
         // Get the market for the denom.
         let market = markets
             .get(denom)
-            .ok_or(anyhow::anyhow!("market for denom {} not found", denom))?;
+            .ok_or(anyhow!("market for denom {denom} not found"))?;
 
         // Calculate the real debt.
         let debt = market.calculate_debt(*scaled_debt)?;
@@ -158,7 +159,7 @@ pub fn compute_health(
         // Calculate the value of the debt.
         let price = prices
             .get(denom)
-            .ok_or(anyhow::anyhow!("price for denom {} not found", denom))?;
+            .ok_or(anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
@@ -172,8 +173,7 @@ pub fn compute_health(
 
     for (denom, power) in &collateral_powers {
         let mut collateral_balance = *collateral_balances.get(denom).ok_or(anyhow::anyhow!(
-            "collateral balance for denom {} not found",
-            denom
+            "collateral balance for denom {denom} not found"
         ))?;
 
         if let Some(discount_collateral) = discount_collateral.as_ref() {
@@ -188,7 +188,7 @@ pub fn compute_health(
 
         let price = prices
             .get(denom)
-            .ok_or(anyhow::anyhow!("price for denom {} not found", denom))?;
+            .ok_or(anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(power.clone().into_inner())?;
 
@@ -235,7 +235,7 @@ pub fn compute_health(
             .get(&offer.denom)
             .ok_or(anyhow::anyhow!("price for denom {} not found", offer.denom))?;
         let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
-        let offer_collateral_power = collateral_powers.get(&offer.denom).ok_or(anyhow::anyhow!(
+        let offer_collateral_power = collateral_powers.get(&offer.denom).ok_or(anyhow!(
             "collateral power for denom {} not found",
             offer.denom
         ))?;
@@ -246,7 +246,7 @@ pub fn compute_health(
             .get(&ask.denom)
             .ok_or(anyhow::anyhow!("price for denom {} not found", ask.denom))?;
         let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
-        let ask_collateral_power = collateral_powers.get(&ask.denom).ok_or(anyhow::anyhow!(
+        let ask_collateral_power = collateral_powers.get(&ask.denom).ok_or(anyhow!(
             "collateral power for denom {} not found",
             ask.denom
         ))?;
