@@ -1,5 +1,5 @@
 use {
-    crate::{DEBTS, MARKETS, calculate_deposit, calculate_withdraw},
+    crate::{DEBTS, MARKETS, core},
     dango_types::lending::{Market, QueryMsg},
     grug::{
         Addr, Bound, Coin, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
@@ -120,7 +120,7 @@ fn query_preview_deposit(
     timestamp: Timestamp,
     underlying: Coins,
 ) -> anyhow::Result<Coins> {
-    let (lp_tokens, ..) = calculate_deposit(storage, querier, timestamp, underlying)?;
+    let (lp_tokens, ..) = core::deposit(storage, querier, timestamp, underlying)?;
     Ok(lp_tokens)
 }
 
@@ -130,6 +130,6 @@ fn query_preview_withdraw(
     timestamp: Timestamp,
     lp_tokens: Coins,
 ) -> anyhow::Result<Coins> {
-    let (coins, ..) = calculate_withdraw(storage, querier, timestamp, lp_tokens)?;
+    let (coins, ..) = core::withdraw(storage, querier, timestamp, lp_tokens)?;
     Ok(coins)
 }
