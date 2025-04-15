@@ -78,7 +78,7 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices(&self, current_time: Timestamp) -> MathResult<Self> {
+    pub fn update_indices(self, current_time: Timestamp) -> MathResult<Self> {
         debug_assert!(
             current_time >= self.last_update_time,
             "last update time is in the future! current time: {:?}, last update time: {:?}",
@@ -112,7 +112,7 @@ impl Market {
         let new_total_borrowed = new_market.total_borrowed()?;
         let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
         let protocol_fee =
-            borrow_interest.checked_mul_dec(*self.interest_rate_model.reserve_factor)?;
+            borrow_interest.checked_mul_dec(*new_market.interest_rate_model.reserve_factor)?;
         let protocol_fee_scaled = protocol_fee.checked_div_dec_floor(supply_index)?;
 
         // Return the new market state
@@ -133,104 +133,104 @@ impl Market {
         })
     }
 
-    pub fn add_supplied(&self, amount_scaled: Uint128) -> MathResult<Self> {
+    pub fn add_supplied(self, amount_scaled: Uint128) -> MathResult<Self> {
         Ok(Self {
             total_supplied_scaled: self.total_supplied_scaled.checked_add(amount_scaled)?,
-            ..self.clone()
+            ..self
         })
     }
 
-    pub fn deduct_supplied(&self, amount_scaled: Uint128) -> MathResult<Self> {
+    pub fn deduct_supplied(self, amount_scaled: Uint128) -> MathResult<Self> {
         Ok(Self {
             total_supplied_scaled: self.total_supplied_scaled.checked_sub(amount_scaled)?,
-            ..self.clone()
+            ..self
         })
     }
 
     /// Immutably adds the given amount to the scaled total borrowed and returns
     /// the new market state.
-    pub fn add_borrowed(&self, amount_scaled: Udec256) -> MathResult<Self> {
+    pub fn add_borrowed(self, amount_scaled: Udec256) -> MathResult<Self> {
         Ok(Self {
             total_borrowed_scaled: self.total_borrowed_scaled.checked_add(amount_scaled)?,
-            ..self.clone()
+            ..self
         })
     }
 
     /// Immutably deducts the given amount from the scaled total borrowed and
     /// returns the new market state.
-    pub fn deduct_borrowed(&self, amount_scaled: Udec256) -> MathResult<Self> {
+    pub fn deduct_borrowed(self, amount_scaled: Udec256) -> MathResult<Self> {
         Ok(Self {
             total_borrowed_scaled: self.total_borrowed_scaled.checked_sub(amount_scaled)?,
-            ..self.clone()
+            ..self
         })
     }
 
     /// Immutably adds the given amount to the pending protocol fee and returns
     /// the new market state.
-    pub fn add_pending_protocol_fee(&self, amount_scaled: Uint128) -> MathResult<Self> {
+    pub fn add_pending_protocol_fee(self, amount_scaled: Uint128) -> MathResult<Self> {
         Ok(Self {
             pending_protocol_fee_scaled: self
                 .pending_protocol_fee_scaled
                 .checked_add(amount_scaled)?,
-            ..self.clone()
+            ..self
         })
     }
 
     /// Resets the pending protocol fee to zero.
-    pub fn reset_pending_protocol_fee(&self) -> Self {
+    pub fn reset_pending_protocol_fee(self) -> Self {
         Self {
             pending_protocol_fee_scaled: Uint128::ZERO,
-            ..self.clone()
+            ..self
         }
     }
 
     /// Immutably sets the supply index to the given value and returns the new
     /// market state.
-    pub fn set_supply_index(&self, index: Udec128) -> Self {
+    pub fn set_supply_index(self, index: Udec128) -> Self {
         Self {
             supply_index: index,
-            ..self.clone()
+            ..self
         }
     }
 
-    pub fn set_supply_rate(&self, supply_rate: Udec128) -> Self {
+    pub fn set_supply_rate(self, supply_rate: Udec128) -> Self {
         Self {
             supply_rate,
-            ..self.clone()
+            ..self
         }
     }
 
     /// Immutably sets the borrow index to the given value and returns the new
     /// market state.
-    pub fn set_borrow_index(&self, index: Udec128) -> Self {
+    pub fn set_borrow_index(self, index: Udec128) -> Self {
         Self {
             borrow_index: index,
-            ..self.clone()
+            ..self
         }
     }
 
-    pub fn set_borrow_rate(&self, borrow_rate: Udec128) -> Self {
+    pub fn set_borrow_rate(self, borrow_rate: Udec128) -> Self {
         Self {
             borrow_rate,
-            ..self.clone()
+            ..self
         }
     }
 
     /// Immutably sets the last update time to the given value and returns the
     /// new market state.
-    pub fn set_last_update_time(&self, time: Timestamp) -> Self {
+    pub fn set_last_update_time(self, time: Timestamp) -> Self {
         Self {
             last_update_time: time,
-            ..self.clone()
+            ..self
         }
     }
 
     /// Immutably sets the interest rate model to the given value and returns
     /// the new market state.
-    pub fn set_interest_rate_model(&self, interest_rate_model: InterestRateModel) -> Self {
+    pub fn set_interest_rate_model(self, interest_rate_model: InterestRateModel) -> Self {
         Self {
             interest_rate_model,
-            ..self.clone()
+            ..self
         }
     }
 

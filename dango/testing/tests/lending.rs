@@ -120,7 +120,7 @@ fn update_markets_works() {
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {}),
             Coins::new(),
         )
-        .should_fail_with_error("Only the owner can whitelist denoms");
+        .should_fail_with_error("only the owner can whitelist denoms");
 
     // Whitelist ATOM from owner, should succeed.
     suite

@@ -231,8 +231,9 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
     for (denom, market) in markets {
+        let pending_protocol_fee_scaled = market.pending_protocol_fee_scaled;
         let market = market
-            .add_supplied(market.pending_protocol_fee_scaled)?
+            .add_supplied(pending_protocol_fee_scaled)?
             .reset_pending_protocol_fee();
 
         MARKETS.save(ctx.storage, &denom, &market)?;
