@@ -990,7 +990,7 @@ fn interest_rate_model_works(
         .checked_mul_dec(
             interest_rates.borrow_rate
                 * time_out_of_year
-                * market.interest_rate_model.reserve_factor(),
+                * *market.interest_rate_model.reserve_factor,
         )
         .unwrap();
     let expected_supply_increase =
