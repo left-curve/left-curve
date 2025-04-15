@@ -20,20 +20,25 @@ use {
 
 /// Queries the health of the margin account.
 ///
-/// Arguments:
+/// ## Inputs
 ///
 /// - `account`: The margin account to query.
+///
 /// - `discount_collateral`: If set, does not include the value of these
 ///   coins in the total collateral value. Used when liquidating the
 ///   account as the liquidator has sent additional funds to the account
 ///   that should not be included in the total collateral value.
+///
+/// ## Outputs
+///
+/// - a `HealthResponse` struct containing the health of the margin account.
 pub fn query_health(
     querier: &QuerierWrapper,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
-    // ---------------------------- 1. Query needed data ----------------------------
+    // ------------------------ 1. Query necessary data ------------------------
 
     let app_cfg = querier.query_dango_config()?;
     let collateral_powers = app_cfg.collateral_powers;
@@ -89,7 +94,7 @@ pub fn query_health(
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
 
-    // ---------------------------- 2. Compute health ----------------------------
+    // --------------------------- 2. Compute health ---------------------------
 
     compute_health(
         discount_collateral,
@@ -104,7 +109,7 @@ pub fn query_health(
 
 /// Computes the health of the margin account.
 ///
-/// Arguments:
+/// ## Inputs
 ///
 /// - `discount_collateral`: If set, does not include the value of these
 ///   coins in the total collateral value. Used when liquidating the
@@ -123,7 +128,9 @@ pub fn query_health(
 ///
 /// - `limit_orders`: All limit orders for the margin account.
 ///
-/// Returns: a `HealthResponse` struct containing the health of the margin account.
+/// ## Outputs
+///
+/// - a `HealthResponse` struct containing the health of the margin account.
 pub fn compute_health(
     discount_collateral: Option<Coins>,
     scaled_debts: BTreeMap<Denom, Udec256>,
