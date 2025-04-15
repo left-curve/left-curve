@@ -156,12 +156,26 @@
     },
     "contracts": {
       "notFound": {
-        "pre": "We couldn’t find",
+        "pre": "We couldn’t find ",
         "title": "Contract not found",
-        "description": " the contract you were looking for. If it’s a valid contract, it may not have been deployed yet or it may be an account, so please try again later. If the issue persists, please contact us for further assistance."
+        "description": " contract you were looking for. If it’s a valid contract, it may not have been deployed yet or it may be an account, so please try again later. If the issue persists, please contact us for further assistance."
       },
       "details": {
         "contractDetails": "Contract Details",
+        "codeHash": "Code Hash:",
+        "contractAddress": "Contract Address:",
+        "admin": "Admin:",
+        "balances": "Balances:"
+      }
+    },
+    "accounts": {
+      "notFound": {
+        "pre": "We couldn’t find ",
+        "title": "Account not found",
+        "description": " account you were looking for. If it’s a valid account, it may not have been created yet or it may be a contract, so please try again later. If the issue persists, please contact us for further assistance."
+      },
+      "details": {
+        "accountDetails": "Account Details",
         "codeHash": "Code Hash:",
         "contractAddress": "Contract Address:",
         "admin": "Admin:",
