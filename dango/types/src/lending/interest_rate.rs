@@ -1,9 +1,6 @@
-use {
-    grug::{
-        Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
-        ZeroInclusiveOneInclusive,
-    },
-    std::fmt::Display,
+use grug::{
+    Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
+    ZeroInclusiveOneInclusive,
 };
 
 /// Dual slope intereate rate model, consisting of two linear functions.
@@ -34,16 +31,6 @@ pub struct InterestRateModel {
 pub struct InterestRates {
     pub borrow_rate: Udec128,
     pub deposit_rate: Udec128,
-}
-
-impl Display for InterestRates {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "borrow_rate: {}, deposit_rate: {}",
-            self.borrow_rate, self.deposit_rate
-        )
-    }
 }
 
 impl InterestRateModel {
