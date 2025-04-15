@@ -1,6 +1,5 @@
 use {
     crate::lending::InterestRateModel,
-    anyhow::ensure,
     grug::{
         Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
         NumberConst, PrevNumber, Timestamp, Udec128, Udec256, Uint128, ZeroInclusiveOneInclusive,
@@ -79,10 +78,12 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
-        ensure!(
+    pub fn update_indices(&self, current_time: Timestamp) -> MathResult<Self> {
+        debug_assert!(
             current_time >= self.last_update_time,
-            "last update time is in the future"
+            "last update time is in the future! current time: {:?}, last update time: {:?}",
+            current_time,
+            self.last_update_time
         );
 
         // If there is no supply or borrow or last update time is equal to the
@@ -115,10 +116,10 @@ impl Market {
         let protocol_fee_scaled = protocol_fee.checked_div_dec_floor(supply_index)?;
 
         // Return the new market state
-        Ok(new_market
+        new_market
             .set_supply_index(supply_index)
             .set_last_update_time(current_time)
-            .add_pending_protocol_fee(protocol_fee_scaled)?)
+            .add_pending_protocol_fee(protocol_fee_scaled)
     }
 
     pub fn update_interest_rates(self) -> MathResult<Self> {

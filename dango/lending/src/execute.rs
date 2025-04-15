@@ -51,7 +51,7 @@ fn update_markets(
     // Ensure only chain owner can update markets denoms.
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
-        "Only the owner can whitelist denoms"
+        "only the owner can whitelist denoms"
     );
 
     for (denom, updates) in updates {
@@ -72,10 +72,7 @@ fn update_markets(
                 &Market::new(
                     denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
                     updates.interest_rate_model.ok_or_else(|| {
-                        anyhow!(
-                            "interest rate model is required when adding new market {}",
-                            denom
-                        )
+                        anyhow!("interest rate model is required when adding new market {denom}")
                     })?,
                 ),
             )?;
