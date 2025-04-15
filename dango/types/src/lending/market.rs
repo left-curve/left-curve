@@ -264,9 +264,3 @@ impl Market {
             .checked_into_prev()
     }
 }
-
-/// A set of updates to be applied to a market.
-#[grug::derive(Serde)]
-pub struct MarketUpdates {
-    pub interest_rate_model: Option<InterestRateModel>,
-}

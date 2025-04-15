@@ -7,7 +7,7 @@ use {
         config::AppConfig,
         constants::{ATOM_DENOM, USDC_DENOM},
         lending::{
-            self, InterestRateModel, MarketUpdates, NAMESPACE, QueryDebtRequest, QueryDebtsRequest,
+            self, InterestRateModel, NAMESPACE, QueryDebtRequest, QueryDebtsRequest,
             QueryMarketRequest, QueryMarketsRequest, QueryPreviewWithdrawRequest, SECONDS_PER_YEAR,
             SUBNAMESPACE,
         },
@@ -128,9 +128,7 @@ fn update_markets_works() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                ATOM_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
+                ATOM_DENOM.clone() => InterestRateModel::default(),
             }),
             Coins::new(),
         )
@@ -233,9 +231,7 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
+                USDC_DENOM.clone() => InterestRateModel::default(),
             }),
             Coins::new(),
         )
@@ -757,9 +753,7 @@ fn interest_rate_setup() -> (
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
+                USDC_DENOM.clone() => InterestRateModel::default(),
             }),
             Coins::new(),
         )

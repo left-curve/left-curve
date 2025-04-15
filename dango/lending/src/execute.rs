@@ -1,10 +1,10 @@
 use {
     crate::{DEBTS, MARKETS, core},
-    anyhow::{anyhow, ensure},
+    anyhow::ensure,
     dango_account_factory::ACCOUNTS,
     dango_types::{
         DangoQuerier, bank,
-        lending::{Borrowed, ExecuteMsg, InstantiateMsg, Market, MarketUpdates, Repaid},
+        lending::{Borrowed, ExecuteMsg, InstantiateMsg, InterestRateModel, Market, Repaid},
     },
     grug::{
         Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response, StdResult,
@@ -40,7 +40,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn update_markets(
     ctx: MutableCtx,
-    updates: BTreeMap<Denom, MarketUpdates>,
+    updates: BTreeMap<Denom, InterestRateModel>,
 ) -> anyhow::Result<Response> {
     // Ensure only chain owner can update markets denoms.
     ensure!(
@@ -48,29 +48,17 @@ fn update_markets(
         "only the owner can whitelist denoms"
     );
 
-    for (denom, updates) in updates {
-        if let Some(market) = MARKETS.may_load(ctx.storage, &denom)? {
-            if let Some(interest_rate_model) = updates.interest_rate_model {
+    for (denom, new_interest_rate_model) in updates {
+        MARKETS.may_update(ctx.storage, &denom, |maybe_market| {
+            if let Some(market) = maybe_market {
                 // Update indexes first, so that interests accumulated up to this
                 // point are accounted for. Then, set the new interest rate model.
-                let new_market = market
-                    .update_indices(ctx.block.timestamp)?
-                    .set_interest_rate_model(interest_rate_model);
-
-                MARKETS.save(ctx.storage, &denom, &new_market)?;
+                let market = market.update_indices(ctx.block.timestamp)?;
+                Ok(market.set_interest_rate_model(new_interest_rate_model))
+            } else {
+                Market::new(&denom, new_interest_rate_model)
             }
-        } else {
-            MARKETS.save(
-                ctx.storage,
-                &denom,
-                &Market::new(
-                    &denom,
-                    updates.interest_rate_model.ok_or_else(|| {
-                        anyhow!("interest rate model is required when adding new market {denom}")
-                    })?,
-                )?,
-            )?;
-        }
+        })?;
     }
 
     Ok(Response::new())
