@@ -22,7 +22,7 @@ export const applets = [
   },
   {
     img: "/images/applets/account-creation.svg",
-    title: "Subaccounts creation",
+    title: "Subaccount creation",
     description: "Create subaccounts.",
     path: "/create-account",
     keywords: ["account", "create", "register"],

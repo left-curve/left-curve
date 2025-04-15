@@ -30,10 +30,10 @@ export async function hashTypedData(
 /**
  * @description Composes arbitrary typed data.
  *
- * @params parameters The parameters to compose the typed data.
- * @params parameters.message The typed message.
- * @params parameters.types The typed data types.
- * @params parameters.primaryType The primary type.
+ * @param parameters The parameters to compose the typed data.
+ * @param parameters.message The typed message.
+ * @param parameters.types The typed data types.
+ * @param parameters.primaryType The primary type.
  * @returns The composed typed data.
  */
 export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
@@ -60,7 +60,7 @@ export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
  *
  * @param message The typed message.
  * @param typeData The typed data parameters.
- * @retuns The composed typed data
+ * @returns The composed typed data
  */
 export function composeTxTypedData(
   message: EIP712Message,

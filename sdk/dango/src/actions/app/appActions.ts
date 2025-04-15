@@ -40,13 +40,15 @@ import type {
   SimulateParameters,
   SimulateReturnType,
 } from "@left-curve/sdk/actions";
-import type { DangoClient, Signer } from "../../types/index.js";
+import type { AppConfig, DangoClient, Signer } from "#types/index.js";
+import { getAppConfig } from "./queries/getAppConfig.js";
 import { queryApp } from "./queries/queryApp.js";
 import { type QueryStatusReturnType, queryStatus } from "./queries/queryStatus.js";
 import { queryTx } from "./queries/queryTx.js";
 import { simulate } from "./queries/simulate.js";
 
 export type AppQueryActions = {
+  getAppConfig: () => Promise<AppConfig>;
   queryTx(args: QueryTxParameters): QueryTxReturnType;
   queryApp(args: QueryAppParameters): QueryAppReturnType;
   queryStatus(): QueryStatusReturnType;
@@ -70,6 +72,7 @@ export function appQueryActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): AppQueryActions {
   return {
+    getAppConfig: () => getAppConfig(client),
     queryTx: (args) => queryTx(client, args),
     queryApp: (args) => queryApp(client, args),
     queryStatus: () => queryStatus(client),

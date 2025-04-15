@@ -47,5 +47,17 @@ export type {
   StoreApi,
 } from "./store.js";
 
+export type {
+  AlloyCoin,
+  AnyCoin,
+  BaseCoin,
+  CoinFee,
+  CoinGeckoId,
+  ContractCoin,
+  NativeCoin,
+  WithGasPriceStep,
+  WithPrice,
+} from "./coin.js";
+
 export { ConnectionStatus } from "./store.js";
 export { ConnectorIds } from "./connector.js";

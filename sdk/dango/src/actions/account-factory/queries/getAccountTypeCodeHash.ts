@@ -1,4 +1,5 @@
 import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import { getAction } from "@left-curve/sdk/actions";
 import type { Chain, Client, Hex, Signer, Transport } from "@left-curve/sdk/types";
 import type { AccountTypes, AppConfig } from "../../../types/index.js";
 
@@ -27,7 +28,9 @@ export async function getAccountTypeCodeHash<
   const msg = {
     codeHash: { accountType },
   };
-  const { addresses } = await getAppConfig<AppConfig>(client);
+  const action = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await action<AppConfig>({});
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

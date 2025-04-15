@@ -8,7 +8,6 @@ import { useState } from "react";
 import { applets as AppletsMetadata } from "../../applets";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
-import { getAppConfig } from "@left-curve/dango/actions";
 import type {
   Address,
   AppConfig,
@@ -56,7 +55,8 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
       if (signal.aborted) return;
 
       const promises: Promise<unknown>[] = [];
-      const { addresses } = await getAppConfig<AppConfig>(client);
+      const { addresses } = await client.getAppConfig();
+
       const response = await client.queryWasmSmart({
         contract: addresses.accountFactory,
         msg: { codeHashes: {} },
