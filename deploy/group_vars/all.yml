@@ -1,0 +1,3 @@
+ssh_users:
+  - penso
+deploy_user: deploy

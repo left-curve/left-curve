@@ -1,0 +1,65 @@
+- name: Set hostname in /etc/hostname
+  hostname:
+    name: "{{ hostname }}"
+    use: debian
+
+- name: Update /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: "127.0.1.1 {{ hostname }}"
+
+- name: Install base packages
+  apt:
+    name:
+      - ufw
+      - curl
+      - git
+      - ca-certificates
+      - fail2ban
+      - tmux
+      - mosh
+      - sudo
+      - gnupg
+      - apt-transport-https
+      - vim
+    state: present
+    update_cache: yes
+
+- ufw: state=reset
+- ufw: default=allow direction=outgoing
+- ufw: default=deny direction=incoming
+- ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  with_items: ['ssh']
+- ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: udp
+  # mosh and tailscale
+  with_items: ['60000:61000', '41641']
+- ufw: logging=low
+- ufw: state=enabled
+
+# - file:
+#     state: absent
+#     path: /etc/update-motd.d/{{ item }}
+#   with_items:
+#     - 10-uname
+#     - 85-fwupd
+
+- file:
+    state: absent
+    path: /etc/motd
+
+- copy:
+    src: "{{ item }}"
+    dest: /etc/update-motd.d/
+    mode: '0755'
+  with_items:
+    - 10-banner
+    - 20-sysinfo
