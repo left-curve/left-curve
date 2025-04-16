@@ -266,7 +266,7 @@ const Username: React.FC = () => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
 
-        const { addresses } = await client.getAppConfig<AppConfig>();
+        const { addresses } = await client.getAppConfig();
         const accountCodeHash = await client.getAccountTypeCodeHash({
           accountType: AccountType.Spot,
         });

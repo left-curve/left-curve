@@ -1,9 +1,13 @@
-import type { Denom, Prettify, Price } from "@left-curve/dango/types";
+import type { Denom, Prettify } from "@left-curve/dango/types";
 
 export type CoinGeckoId = string;
 
 export type WithPrice<T> = T & {
-  readonly price: Price;
+  readonly price: string;
+};
+
+export type WithAmount<T> = T & {
+  readonly amount: string;
 };
 
 export type WithGasPriceStep<T> = T & {

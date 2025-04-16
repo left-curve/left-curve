@@ -2,7 +2,7 @@ import {
   Button,
   IconBell,
   IconGear,
-  ProfileIcon,
+  IconProfile,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <>
-                <ProfileIcon className="w-6 h-6" />
+                <IconProfile className="w-6 h-6" />
                 <span className="italic font-exposure font-bold">{account?.username}</span>
               </>
             ) : (

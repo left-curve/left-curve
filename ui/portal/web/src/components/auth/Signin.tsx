@@ -16,8 +16,8 @@ import {
   ResizerContainer,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../foundation/RootModal";
 import { toast } from "../foundation/Toast";
+import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 

@@ -1,6 +1,6 @@
 import type React from "react";
 import { Toaster } from "react-hot-toast";
-import { RootModal } from "./components/foundation/RootModal";
+import { RootModal } from "./components/modals/RootModal";
 
 import { DangoStoreProvider } from "@left-curve/store";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";

@@ -23,11 +23,11 @@ import {
   CoinSelector,
   IconButton,
   IconChevronDown,
-  IconCopy,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
+  TextCopy,
   TruncateText,
   useInputs,
   useMediaQuery,
@@ -37,8 +37,8 @@ import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
+import { Modals } from "~/components/modals/RootModal";
 import { m } from "~/paraglide/messages";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
@@ -254,7 +254,7 @@ function TransferApplet() {
                     className="diatype-sm-medium text-gray-500"
                     text={account?.address}
                   />
-                  <IconCopy
+                  <TextCopy
                     copyText={account?.address}
                     className="w-4 h-4 cursor-pointer text-gray-500"
                   />
