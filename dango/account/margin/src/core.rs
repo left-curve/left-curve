@@ -142,7 +142,7 @@ pub fn compute_health(
     collateral_powers: BTreeMap<Denom, CollateralPower>,
     collateral_balances: BTreeMap<Denom, Uint128>,
     limit_orders: BTreeMap<u64, OrdersByUserResponse>,
-    exend: bool,
+    extend: bool,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------------- 1. Debts --------------------------------
 
@@ -285,12 +285,12 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
-        scaled_debts: if exend {
+        scaled_debts: if extend {
             Some(scaled_debts)
         } else {
             None
         },
-        limit_orders: if exend {
+        limit_orders: if extend {
             Some(limit_orders)
         } else {
             None
