@@ -17,13 +17,13 @@ pub fn repay(
     querier: &QuerierWrapper,
     current_time: Timestamp,
     sender: Addr,
-    funds: &Coins,
+    coins: &Coins,
 ) -> anyhow::Result<(BTreeMap<Denom, Udec256>, Vec<(Denom, Market)>, Coins)> {
     let mut scaled_debts = DEBTS.may_load(storage, sender)?.unwrap_or_default();
-    let mut markets = Vec::with_capacity(funds.len());
+    let mut markets = Vec::with_capacity(coins.len());
     let mut refunds = Coins::new();
 
-    for coin in funds {
+    for coin in coins {
         // Update the market indices
         let market = MARKETS
             .load(storage, coin.denom)?
@@ -68,10 +68,11 @@ pub fn repay(
             .checked_div(market.borrow_index.into_next())?;
         let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
 
-        markets.push((
-            coin.denom.clone(),
-            market.deduct_borrowed(scaled_debt_diff)?,
-        ));
+        // Update the market's borrowed amount.
+        let market = market.deduct_borrowed(scaled_debt_diff)?;
+
+        // Save the updated market state
+        markets.push((coin.denom.clone(), market));
     }
 
     Ok((scaled_debts, markets, refunds))

@@ -1,13 +1,10 @@
 use {
     crate::{DEBTS, MARKETS, core},
-    anyhow::{anyhow, ensure},
+    anyhow::ensure,
     dango_account_factory::ACCOUNTS,
     dango_types::{
         DangoQuerier, bank,
-        lending::{
-            Borrowed, ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, Repaid,
-            SUBNAMESPACE,
-        },
+        lending::{Borrowed, ExecuteMsg, InstantiateMsg, InterestRateModel, Market, Repaid},
     },
     grug::{
         Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response, StdResult,
@@ -22,10 +19,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         MARKETS.save(
             ctx.storage,
             &denom,
-            &Market::new(
-                denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-                interest_rate_model,
-            ),
+            &Market::new(&denom, interest_rate_model)?,
         )?;
     }
 
@@ -46,40 +40,25 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn update_markets(
     ctx: MutableCtx,
-    updates: BTreeMap<Denom, MarketUpdates>,
+    updates: BTreeMap<Denom, InterestRateModel>,
 ) -> anyhow::Result<Response> {
     // Ensure only chain owner can update markets denoms.
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
-        "Only the owner can whitelist denoms"
+        "only the owner can whitelist denoms"
     );
 
-    for (denom, updates) in updates {
-        if let Some(market) = MARKETS.may_load(ctx.storage, &denom)? {
-            if let Some(interest_rate_model) = updates.interest_rate_model {
+    for (denom, new_interest_rate_model) in updates {
+        MARKETS.may_update(ctx.storage, &denom, |maybe_market| -> anyhow::Result<_> {
+            if let Some(market) = maybe_market {
                 // Update indexes first, so that interests accumulated up to this
                 // point are accounted for. Then, set the new interest rate model.
-                let new_market = market
-                    .update_indices(&ctx.querier, ctx.block.timestamp)?
-                    .set_interest_rate_model(interest_rate_model);
-
-                MARKETS.save(ctx.storage, &denom, &new_market)?;
+                let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
+                Ok(market.set_interest_rate_model(new_interest_rate_model))
+            } else {
+                Ok(Market::new(&denom, new_interest_rate_model)?)
             }
-        } else {
-            MARKETS.save(
-                ctx.storage,
-                &denom,
-                &Market::new(
-                    denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-                    updates.interest_rate_model.ok_or_else(|| {
-                        anyhow!(
-                            "interest rate model is required when adding new market {}",
-                            denom
-                        )
-                    })?,
-                ),
-            )?;
-        }
+        })?;
     }
 
     Ok(Response::new())
@@ -87,12 +66,8 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint.
-    let (lp_tokens, markets) = core::deposit(
-        ctx.storage,
-        &ctx.querier,
-        ctx.block.timestamp,
-        ctx.funds.clone(),
-    )?;
+    let (lp_tokens, markets) =
+        core::deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, ctx.funds)?;
 
     // Save the updated markets.
     for (denom, market) in markets {
@@ -253,9 +228,10 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         })
         .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
-    // Reset the pending protocol fees and save the updated markets
     for (denom, market) in markets {
-        MARKETS.save(ctx.storage, &denom, &market.reset_pending_protocol_fee())?;
+        let market = market.reset_pending_protocol_fee();
+
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
     Ok(Response::new().add_messages(msgs))

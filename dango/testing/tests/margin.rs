@@ -12,7 +12,7 @@ use {
         config::AppConfig,
         constants::{DANGO_DENOM, USDC_DENOM, WBTC_DENOM},
         dex::CreateLimitOrderRequest,
-        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
+        lending::{self, InterestRateModel, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
@@ -1210,9 +1210,7 @@ proptest! {
                     &mut accounts.owner,
                     contracts.lending,
                     &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                        debt.denom.denom.clone() => MarketUpdates {
-                            interest_rate_model: Some(InterestRateModel::default()),
-                        },
+                        debt.denom.denom.clone() => InterestRateModel::default(),
                     }),
                     Coins::new(),
                 )

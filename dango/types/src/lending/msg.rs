@@ -1,5 +1,5 @@
 use {
-    super::{InterestRateModel, Market, MarketUpdates},
+    crate::lending::{InterestRateModel, Market},
     grug::{Addr, Coins, Denom, NonEmpty, Part},
     std::{collections::BTreeMap, sync::LazyLock},
 };
@@ -19,7 +19,7 @@ pub struct InstantiateMsg {
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Apply updates to markets.
-    UpdateMarkets(BTreeMap<Denom, MarketUpdates>),
+    UpdateMarkets(BTreeMap<Denom, InterestRateModel>),
     /// Deposit tokens into the lending pool.
     /// Sender must attach one or more supported tokens and nothing else.
     Deposit {},
@@ -58,8 +58,8 @@ pub enum QueryMsg {
     },
     /// Converts the supplied amount of underlying tokens to LP tokens.
     #[returns(Coins)]
-    PreviewDeposit { underlying: Coins },
+    SimulateDeposit { underlying: Coins },
     /// Converts the supplied amount of LP tokens to the underlying tokens.
     #[returns(Coins)]
-    PreviewWithdraw { lp_tokens: Coins },
+    SimulateWithdraw { lp_tokens: Coins },
 }
