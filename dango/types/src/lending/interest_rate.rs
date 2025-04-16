@@ -37,7 +37,7 @@ impl InterestRateModel {
     /// ## Outputs
     ///
     /// - The borrow interest rate.
-    /// - The deposit interest rate.
+    /// - The supply interest rate.
     pub fn calculate_rates(
         &self,
         utilization: Bounded<Udec128, ZeroInclusiveOneInclusive>,
@@ -54,9 +54,9 @@ impl InterestRateModel {
         };
 
         // Calculate deposit rate
-        let deposit_rate = *utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
+        let supply_rate = *utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
 
-        (borrow_rate, deposit_rate)
+        (borrow_rate, supply_rate)
     }
 }
 
@@ -91,10 +91,10 @@ mod tests {
     #[test]
     fn test_zero_utilization() {
         let model = InterestRateModel::default();
-        let (borrow_rate, deposit_rate) =
+        let (borrow_rate, supply_rate) =
             model.calculate_rates(Bounded::new_unchecked(Udec128::ZERO));
         assert_eq!(borrow_rate, *model.base_rate);
-        assert_eq!(deposit_rate, Udec128::ZERO);
+        assert_eq!(supply_rate, Udec128::ZERO);
     }
 
     #[test]
