@@ -1251,7 +1251,7 @@ proptest! {
 
         // Check margin accounts health
         let margin_account_health = suite
-            .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+            .query_wasm_smart(margin_account.address(), QueryHealthRequest { })
             .unwrap();
 
         // Get liquidators total account value before liquidation

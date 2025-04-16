@@ -10,7 +10,19 @@ use {
 };
 
 /// Represents a builder parameter that has not yet been provided.
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 pub struct Undefined<T = ()>(PhantomData<T>);
 
 impl<T> Undefined<T> {
@@ -26,7 +38,19 @@ impl<T> Default for Undefined<T> {
 }
 
 /// Represents a builder parameter that has already been provided.
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 pub struct Defined<T>(T);
 
 impl<T> Defined<T> {

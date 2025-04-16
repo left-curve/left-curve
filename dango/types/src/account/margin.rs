@@ -1,13 +1,24 @@
 use {
-    crate::auth::Nonce,
-    grug::{Bounded, Coins, Denom, Udec128, Uint128, ZeroExclusiveOneInclusive},
-    std::collections::BTreeSet,
+    crate::{auth::Nonce, dex::OrdersByUserResponse, lending::Market, oracle::PrecisionedPrice},
+    grug::{Bounded, Coins, Denom, Udec128, Udec256, Uint128, ZeroExclusiveOneInclusive},
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 /// A decimal bounded by the bounds: 0 < CollateralPower <= 1.
 pub type CollateralPower = Bounded<Udec128, ZeroExclusiveOneInclusive>;
 
-/// The response type for a margin account's `Health` query.
+/// Necessary input data for computing a margin account's health.
+#[grug::derive(Serde)]
+pub struct HealthData {
+    pub scaled_debts: BTreeMap<Denom, Udec256>,
+    pub markets: BTreeMap<Denom, Market>,
+    pub prices: BTreeMap<Denom, PrecisionedPrice>,
+    pub collateral_powers: BTreeMap<Denom, CollateralPower>,
+    pub collateral_balances: BTreeMap<Denom, Uint128>,
+    pub limit_orders: BTreeMap<u64, OrdersByUserResponse>,
+}
+
+/// Output for computing a margin account's health.
 #[grug::derive(Serde)]
 pub struct HealthResponse {
     /// The margin account's utilization rate.
@@ -44,7 +55,11 @@ pub enum QueryMsg {
     /// Query the most recent transaction nonces that have been recorded.
     #[returns(BTreeSet<Nonce>)]
     SeenNonces {},
-    /// Queries the health of the margin account.
+    /// Query the data necessary for computing the account's health, but don't
+    /// compute it yet.
+    #[returns(HealthData)]
+    HealthData {},
+    /// Compute the health of the margin account.
     #[returns(HealthResponse)]
     Health {},
 }
