@@ -8,8 +8,8 @@ use {
         constants::{ATOM_DENOM, USDC_DENOM},
         lending::{
             self, InterestRateModel, NAMESPACE, QueryDebtRequest, QueryDebtsRequest,
-            QueryMarketRequest, QueryMarketsRequest, QueryPreviewWithdrawRequest, SECONDS_PER_YEAR,
-            SUBNAMESPACE,
+            QueryMarketRequest, QueryMarketsRequest, QuerySimulateWithdrawRequest,
+            SECONDS_PER_YEAR, SUBNAMESPACE,
         },
         oracle::{self, PriceSource},
     },
@@ -851,7 +851,7 @@ fn interest_rate_model_works(
 
     // Query how many tokens the user can withdraw with their LP tokens
     let withdraw_amount = suite
-        .query_wasm_smart(contracts.lending, QueryPreviewWithdrawRequest {
+        .query_wasm_smart(contracts.lending, QuerySimulateWithdrawRequest {
             lp_tokens: Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         })
         .should_succeed();
@@ -867,7 +867,7 @@ fn interest_rate_model_works(
 
     // Check how many tokens the user can withdraw with their LP tokens
     let withdraw_amount = suite
-        .query_wasm_smart(contracts.lending, QueryPreviewWithdrawRequest {
+        .query_wasm_smart(contracts.lending, QuerySimulateWithdrawRequest {
             lp_tokens: Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         })
         .should_succeed();
@@ -939,7 +939,7 @@ fn interest_rate_model_works(
 
     // Check how many tokens the user can withdraw with their LP tokens
     let withdrawn_coins = suite
-        .query_wasm_smart(contracts.lending, QueryPreviewWithdrawRequest {
+        .query_wasm_smart(contracts.lending, QuerySimulateWithdrawRequest {
             lp_tokens: Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         })
         .should_succeed();

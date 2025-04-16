@@ -58,8 +58,8 @@ pub enum QueryMsg {
     },
     /// Converts the supplied amount of underlying tokens to LP tokens.
     #[returns(Coins)]
-    PreviewDeposit { underlying: Coins },
+    SimulateDeposit { underlying: Coins },
     /// Converts the supplied amount of LP tokens to the underlying tokens.
     #[returns(Coins)]
-    PreviewWithdraw { lp_tokens: Coins },
+    SimulateWithdraw { lp_tokens: Coins },
 }

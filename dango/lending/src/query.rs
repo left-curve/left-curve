@@ -27,12 +27,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_debts(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::PreviewDeposit { underlying } => {
+        QueryMsg::SimulateDeposit { underlying } => {
             let lp_tokens =
                 core::deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, underlying)?;
             lp_tokens.to_json_value()
         },
-        QueryMsg::PreviewWithdraw { lp_tokens } => {
+        QueryMsg::SimulateWithdraw { lp_tokens } => {
             let coins = core::withdraw(ctx.storage, &ctx.querier, ctx.block.timestamp, lp_tokens)?;
             coins.to_json_value()
         },
