@@ -12,14 +12,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_seen_nonces(ctx.storage)?;
             res.to_json_value()
         },
-        QueryMsg::Health { extend } => {
-            let res = query_health(
-                &ctx.querier,
-                ctx.contract,
-                ctx.block.timestamp,
-                None,
-                extend,
-            )?;
+        QueryMsg::Health {} => {
+            let res = query_health(&ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
             res.to_json_value()
         },
     }

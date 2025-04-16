@@ -22,7 +22,7 @@ pub struct HealthResponse {
     /// All of the accounts debts.
     pub debts: Coins,
     /// All of the accounts scaled debts.
-    pub scaled_debts: Option<BTreeMap<Denom, Udec256>>,
+    pub scaled_debts: BTreeMap<Denom, Udec256>,
     /// All of the account's collateral balances.
     pub collaterals: Coins,
     /// All of the account's collateral balances that are inside of limit orders.
@@ -30,7 +30,7 @@ pub struct HealthResponse {
     /// The coins that would be returned if the account's limit orders were to be filled.
     pub limit_order_outputs: Coins,
     /// All of the account's limit orders.
-    pub limit_orders: Option<BTreeMap<u64, OrdersByUserResponse>>,
+    pub limit_orders: BTreeMap<u64, OrdersByUserResponse>,
 }
 
 #[grug::derive(Serde)]
@@ -50,7 +50,7 @@ pub enum QueryMsg {
     SeenNonces {},
     /// Queries the health of the margin account.
     #[returns(HealthResponse)]
-    Health { extend: bool },
+    Health {},
 }
 
 #[grug::derive(Serde)]

@@ -38,7 +38,6 @@ pub fn query_health(
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
-    extend: bool,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------ 1. Query necessary data ------------------------
 
@@ -106,7 +105,6 @@ pub fn query_health(
         collateral_powers,
         collateral_balances,
         limit_orders,
-        extend,
     )
 }
 
@@ -142,7 +140,6 @@ pub fn compute_health(
     collateral_powers: BTreeMap<Denom, CollateralPower>,
     collateral_balances: BTreeMap<Denom, Uint128>,
     limit_orders: BTreeMap<u64, OrdersByUserResponse>,
-    extend: bool,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------------- 1. Debts --------------------------------
 
@@ -285,15 +282,7 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
-        scaled_debts: if extend {
-            Some(scaled_debts)
-        } else {
-            None
-        },
-        limit_orders: if extend {
-            Some(limit_orders)
-        } else {
-            None
-        },
+        scaled_debts,
+        limit_orders,
     })
 }
