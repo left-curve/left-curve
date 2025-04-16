@@ -45,12 +45,15 @@
 - ufw: logging=low
 - ufw: state=enabled
 
-# - file:
-#     state: absent
-#     path: /etc/update-motd.d/{{ item }}
-#   with_items:
-#     - 10-uname
-#     - 85-fwupd
+- copy:
+    src: "jail.local"
+    dest: /etc/fail2ban/
+    mode: '0644'
+
+- name: Restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
 
 - file:
     state: absent
