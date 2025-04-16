@@ -24,16 +24,12 @@ pub struct Market {
     /// The current borrow index of this market. This is used to calculate the
     /// interest accrued on borrows.
     pub borrow_index: Udec128,
-    /// The current borrow interest rate.
-    pub borrow_rate: Udec128,
     /// The total amount of coins supplied from this market scaled by the
     /// supply index.
     pub total_supplied_scaled: Uint128,
     /// The current supply index of this market. This is used to calculate the
     /// interest accrued on deposits.
     pub supply_index: Udec128,
-    /// The current supply interest rate.
-    pub supply_rate: Udec128,
     /// The last time the indices were updated.
     pub last_update_time: Timestamp,
     /// The pending scaled protocol fee that can be minted.
@@ -50,10 +46,8 @@ impl Market {
             interest_rate_model,
             total_borrowed_scaled: Udec256::ZERO,
             borrow_index: Udec128::ONE,
-            borrow_rate: Udec128::ZERO,
             total_supplied_scaled: Uint128::ZERO,
             supply_index: Udec128::ONE,
-            supply_rate: Udec128::ZERO,
             last_update_time: Timestamp::ZERO,
             pending_protocol_fee_scaled: Uint128::ZERO,
         })
@@ -99,16 +93,20 @@ impl Market {
             return Ok(self.set_last_update_time(current_time));
         }
 
+        // Calculate interest rates
+        let utilization_rate = self.utilization_rate()?;
+        let (borrow_rate, supply_rate) = self.interest_rate_model.calculate_rates(utilization_rate);
+
         // Update the indices
         let time_delta = current_time - self.last_update_time;
         let time_out_of_year =
             Udec128::checked_from_ratio(time_delta.into_seconds(), SECONDS_PER_YEAR)?;
-        let borrow_index = self.borrow_index.checked_mul(
-            Udec128::ONE.checked_add(self.borrow_rate.checked_mul(time_out_of_year)?)?,
-        )?;
-        let supply_index = self.supply_index.checked_mul(
-            Udec128::ONE.checked_add(self.supply_rate.checked_mul(time_out_of_year)?)?,
-        )?;
+        let borrow_index = self
+            .borrow_index
+            .checked_mul(Udec128::ONE.checked_add(borrow_rate.checked_mul(time_out_of_year)?)?)?;
+        let supply_index = self
+            .supply_index
+            .checked_mul(Udec128::ONE.checked_add(supply_rate.checked_mul(time_out_of_year)?)?)?;
 
         // Calculate the protocol fee
         let previous_total_borrowed = self.total_borrowed()?;
@@ -124,17 +122,6 @@ impl Market {
             .set_supply_index(supply_index)
             .set_last_update_time(current_time)
             .add_pending_protocol_fee(protocol_fee_scaled)
-    }
-
-    pub fn update_interest_rates(self) -> MathResult<Self> {
-        let utilization = self.utilization_rate()?;
-        let (borrow_rate, supply_rate) = self.interest_rate_model.calculate_rates(utilization);
-
-        Ok(Self {
-            borrow_rate,
-            supply_rate,
-            ..self
-        })
     }
 
     pub fn add_supplied(self, amount_scaled: Uint128) -> MathResult<Self> {
@@ -197,25 +184,11 @@ impl Market {
         }
     }
 
-    pub fn set_supply_rate(self, supply_rate: Udec128) -> Self {
-        Self {
-            supply_rate,
-            ..self
-        }
-    }
-
     /// Immutably sets the borrow index to the given value and returns the new
     /// market state.
     pub fn set_borrow_index(self, index: Udec128) -> Self {
         Self {
             borrow_index: index,
-            ..self
-        }
-    }
-
-    pub fn set_borrow_rate(self, borrow_rate: Udec128) -> Self {
-        Self {
-            borrow_rate,
             ..self
         }
     }

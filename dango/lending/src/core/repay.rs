@@ -65,10 +65,8 @@ pub fn repay(
             .checked_div(market.borrow_index.into_next())?;
         let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
 
-        // Update the market's interest rates.
-        let market = market
-            .deduct_borrowed(scaled_debt_diff)?
-            .update_interest_rates()?;
+        // Update the market's borrowed amount.
+        let market = market.deduct_borrowed(scaled_debt_diff)?;
 
         // Save the updated market state
         markets.push((coin.denom.clone(), market));

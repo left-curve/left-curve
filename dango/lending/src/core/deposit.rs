@@ -26,10 +26,8 @@ pub fn deposit(
         let amount_scaled = coin.amount.checked_div_dec_floor(supply_index)?;
         lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
 
-        // Update the market's interest rates.
-        let market = market
-            .add_supplied(amount_scaled)?
-            .update_interest_rates()?;
+        // Update the market's supplied amount.
+        let market = market.add_supplied(amount_scaled)?;
 
         // Save the updated market state.
         markets.insert(coin.denom, market);
