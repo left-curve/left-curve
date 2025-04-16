@@ -2,7 +2,7 @@ use {
     crate::{DEBTS, MARKETS, core},
     dango_types::lending::{Market, QueryMsg},
     grug::{
-        Addr, Bound, Coin, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
+        Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
         StdResult,
     },
     std::collections::BTreeMap,
@@ -59,17 +59,20 @@ fn query_markets(
 }
 
 fn query_debt(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<Coins> {
-    let scaled_debts = DEBTS.load(ctx.storage, account)?;
-    let mut debts = Coins::new();
-    for (denom, scaled_debt) in scaled_debts {
-        let market = MARKETS
-            .load(ctx.storage, &denom)?
-            .update_indices(&ctx.querier, ctx.block.timestamp)?;
-        let debt = market.calculate_debt(scaled_debt)?;
-        debts.insert(Coin::new(denom, debt)?)?;
-    }
+    let coins = DEBTS
+        .load(ctx.storage, account)?
+        .into_iter()
+        .map(|(denom, scaled_debt)| {
+            let market = MARKETS
+                .load(ctx.storage, &denom)?
+                .update_indices(&ctx.querier, ctx.block.timestamp)?;
+            let debt = market.calculate_debt(scaled_debt)?;
 
-    Ok(debts)
+            Ok((denom, debt))
+        })
+        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
+    Ok(Coins::new_unchecked(coins))
 }
 
 fn query_debts(
@@ -92,10 +95,12 @@ fn query_debts(
                         .load(ctx.storage, &denom)?
                         .update_indices(&ctx.querier, ctx.block.timestamp)?;
                     let debt = market.calculate_debt(scaled_debt)?;
-                    Ok(Coin::new(denom, debt)?)
+
+                    Ok((denom, debt))
                 })
-                .collect::<anyhow::Result<Vec<_>>>()?;
-            Ok((account, Coins::try_from(debts)?))
+                .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
+            Ok((account, Coins::new_unchecked(debts)))
         })
         .collect()
 }
