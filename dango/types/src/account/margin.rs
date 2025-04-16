@@ -1,7 +1,7 @@
 use {
-    crate::auth::Nonce,
-    grug::{Bounded, Coins, Denom, Udec128, Uint128, ZeroExclusiveOneInclusive},
-    std::collections::BTreeSet,
+    crate::{auth::Nonce, dex::OrdersByUserResponse},
+    grug::{Bounded, Coins, Denom, Udec128, Udec256, Uint128, ZeroExclusiveOneInclusive},
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 /// A decimal bounded by the bounds: 0 < CollateralPower <= 1.
@@ -21,12 +21,16 @@ pub struct HealthResponse {
     pub total_adjusted_collateral_value: Udec128,
     /// All of the accounts debts.
     pub debts: Coins,
+    /// All of the accounts scaled debts.
+    pub scaled_debts: Option<BTreeMap<Denom, Udec256>>,
     /// All of the account's collateral balances.
     pub collaterals: Coins,
     /// All of the account's collateral balances that are inside of limit orders.
     pub limit_order_collaterals: Coins,
     /// The coins that would be returned if the account's limit orders were to be filled.
     pub limit_order_outputs: Coins,
+    /// All of the account's limit orders.
+    pub limit_orders: Option<BTreeMap<u64, OrdersByUserResponse>>,
 }
 
 #[grug::derive(Serde)]
@@ -46,7 +50,7 @@ pub enum QueryMsg {
     SeenNonces {},
     /// Queries the health of the margin account.
     #[returns(HealthResponse)]
-    Health {},
+    Health { extend: bool },
 }
 
 #[grug::derive(Serde)]

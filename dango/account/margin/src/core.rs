@@ -11,7 +11,7 @@ use {
     },
     grug::{
         Addr, Coin, Coins, Denom, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
-        QuerierWrapper, StorageQuerier, Timestamp, Udec128, Udec256, Uint128,
+        QuerierWrapper, StorageQuerier, Timestamp, Udec128, Udec256,
     },
     std::{
         cmp::min,
@@ -38,6 +38,7 @@ pub fn query_health(
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
+    extend: bool,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------ 1. Query necessary data ------------------------
 
@@ -61,14 +62,11 @@ pub fn query_health(
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
 
-    // Query collateral balances.
-    let collateral_balances = collateral_powers
-        .keys()
-        .map(|denom| {
-            let balance = querier.query_balance(account, denom.clone())?;
-            Ok((denom.clone(), balance))
-        })
-        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+    let mut collateral_balances = Coins::default();
+    for denom in collateral_powers.keys() {
+        let balance = querier.query_balance(account, denom.clone())?;
+        collateral_balances.insert(Coin::new(denom.clone(), balance)?)?;
+    }
 
     // Query all limit orders for the account.
     let limit_orders =
@@ -105,6 +103,7 @@ pub fn query_health(
         collateral_powers,
         collateral_balances,
         limit_orders,
+        extend,
     )
 }
 
@@ -138,8 +137,9 @@ pub fn compute_health(
     markets: BTreeMap<Denom, Market>,
     prices: BTreeMap<Denom, PrecisionedPrice>,
     collateral_powers: BTreeMap<Denom, CollateralPower>,
-    collateral_balances: BTreeMap<Denom, Uint128>,
+    collateral_balances: Coins,
     limit_orders: BTreeMap<u64, OrdersByUserResponse>,
+    exend: bool,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------------- 1. Debts --------------------------------
 
@@ -172,9 +172,7 @@ pub fn compute_health(
     let mut collaterals = Coins::new();
 
     for (denom, power) in &collateral_powers {
-        let mut collateral_balance = *collateral_balances.get(denom).ok_or(anyhow::anyhow!(
-            "collateral balance for denom {denom} not found"
-        ))?;
+        let mut collateral_balance = collateral_balances.amount_of(denom);
 
         if let Some(discount_collateral) = discount_collateral.as_ref() {
             collateral_balance.checked_sub_assign(discount_collateral.amount_of(denom))?;
@@ -284,5 +282,15 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
+        scaled_debts: if exend {
+            Some(scaled_debts)
+        } else {
+            None
+        },
+        limit_orders: if exend {
+            Some(limit_orders)
+        } else {
+            None
+        },
     })
 }
