@@ -145,7 +145,7 @@ tokio                   = { version = "1", features = ["full"] }
 tokio-stream            = { version = "0.1", features = ["sync"] }
 toml                    = "0.8"
 tower                   = "0.5"
-tower-abci              = "0.19"
+tower-abci              = { git = "https://github.com/left-curve/tower-abci.git", rev = "6ba8190" }
 tracing                 = "0.1"
 tracing-actix-web       = "0.7"
 tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
