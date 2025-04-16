@@ -387,3 +387,193 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
         b - a
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use {
+        dango_types::constants::{ETH_DENOM, USDC_DENOM},
+        grug::{Bounded, coins},
+    };
+
+    use super::*;
+
+    use {grug::Coins, test_case::test_case};
+
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::ONE,
+        10,
+        Udec128::ZERO,
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 200 * 10000000,
+        },
+        vec![
+            (Udec128::new_percent(19900), Uint128::from(50251)),
+            (Udec128::new_percent(19800), Uint128::from(50759)),
+            (Udec128::new_percent(19700), Uint128::from(51274)),
+            (Udec128::new_percent(19600), Uint128::from(51797)),
+            (Udec128::new_percent(19500), Uint128::from(52329)),
+            (Udec128::new_percent(19400), Uint128::from(52868)),
+            (Udec128::new_percent(19300), Uint128::from(53416)),
+            (Udec128::new_percent(19200), Uint128::from(53972)),
+            (Udec128::new_percent(19100), Uint128::from(54538)),
+            (Udec128::new_percent(19000), Uint128::from(55112)),
+        ],
+        vec![
+            (Udec128::new_percent(20100), Uint128::from(49751)),
+            (Udec128::new_percent(20200), Uint128::from(49259)),
+            (Udec128::new_percent(20300), Uint128::from(48773)),
+            (Udec128::new_percent(20400), Uint128::from(48295)),
+            (Udec128::new_percent(20500), Uint128::from(47824)),
+            (Udec128::new_percent(20600), Uint128::from(47360)),
+            (Udec128::new_percent(20700), Uint128::from(46902)),
+            (Udec128::new_percent(20800), Uint128::from(46451)),
+            (Udec128::new_percent(20900), Uint128::from(46007)),
+            (Udec128::new_percent(21000), Uint128::from(45568)),
+        ],
+        1 ; "xyk pool balance 1:200 tick size 1 no fee")]
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::ONE,
+        10,
+        Udec128::new_percent(1),
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 200 * 10000000,
+        },
+        vec![
+            (Udec128::new_percent(19700), Uint128::from(152284)),
+            (Udec128::new_percent(19600), Uint128::from(51797)),
+            (Udec128::new_percent(19500), Uint128::from(52329)),
+            (Udec128::new_percent(19400), Uint128::from(52868)),
+            (Udec128::new_percent(19300), Uint128::from(53416)),
+            (Udec128::new_percent(19200), Uint128::from(53972)),
+            (Udec128::new_percent(19100), Uint128::from(54538)),
+            (Udec128::new_percent(19000), Uint128::from(55112)),
+            (Udec128::new_percent(18900), Uint128::from(55694)),
+            (Udec128::new_percent(18800), Uint128::from(56287)),
+        ],
+        vec![
+            (Udec128::new_percent(20300), Uint128::from(147783)),
+            (Udec128::new_percent(20400), Uint128::from(48295)),
+            (Udec128::new_percent(20500), Uint128::from(47824)),
+            (Udec128::new_percent(20600), Uint128::from(47360)),
+            (Udec128::new_percent(20700), Uint128::from(46902)),
+            (Udec128::new_percent(20800), Uint128::from(46451)),
+            (Udec128::new_percent(20900), Uint128::from(46007)),
+            (Udec128::new_percent(21000), Uint128::from(45568)),
+            (Udec128::new_percent(21100), Uint128::from(45137)),
+            (Udec128::new_percent(21200), Uint128::from(44711)),
+        ],
+        1 ; "xyk pool balance 1:200 tick size 1 one percent fee")]
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::new_percent(1),
+        10,
+        Udec128::ZERO,
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_percent(99), Uint128::from(101010)),
+            (Udec128::new_percent(98), Uint128::from(103072)),
+            (Udec128::new_percent(97), Uint128::from(105197)),
+            (Udec128::new_percent(96), Uint128::from(107388)),
+            (Udec128::new_percent(95), Uint128::from(109649)),
+            (Udec128::new_percent(94), Uint128::from(111982)),
+            (Udec128::new_percent(93), Uint128::from(114390)),
+            (Udec128::new_percent(92), Uint128::from(116877)),
+            (Udec128::new_percent(91), Uint128::from(119446)),
+            (Udec128::new_percent(90), Uint128::from(122100)),
+        ],
+        vec![
+            (Udec128::new_percent(101), Uint128::from(99010)),
+            (Udec128::new_percent(102), Uint128::from(97069)),
+            (Udec128::new_percent(103), Uint128::from(95184)),
+            (Udec128::new_percent(104), Uint128::from(93353)),
+            (Udec128::new_percent(105), Uint128::from(91575)),
+            (Udec128::new_percent(106), Uint128::from(89847)),
+            (Udec128::new_percent(107), Uint128::from(88168)),
+            (Udec128::new_percent(108), Uint128::from(86535)),
+            (Udec128::new_percent(109), Uint128::from(84947)),
+            (Udec128::new_percent(110), Uint128::from(83403)),
+        ],
+        1 ; "xyk pool balance 1:1 no fee")]
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::new_percent(1),
+        10,
+        Udec128::new_percent(1),
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_percent(98), Uint128::from(204081)),
+            (Udec128::new_percent(97), Uint128::from(105196)),
+            (Udec128::new_percent(96), Uint128::from(107388)),
+            (Udec128::new_percent(95), Uint128::from(109649)),
+            (Udec128::new_percent(94), Uint128::from(111982)),
+            (Udec128::new_percent(93), Uint128::from(114390)),
+            (Udec128::new_percent(92), Uint128::from(116877)),
+            (Udec128::new_percent(91), Uint128::from(119445)),
+            (Udec128::new_percent(90), Uint128::from(122100)),
+            (Udec128::new_percent(89), Uint128::from(124843)),
+        ],
+        vec![
+            (Udec128::new_percent(102), Uint128::from(196078)),
+            (Udec128::new_percent(103), Uint128::from(95184)),
+            (Udec128::new_percent(104), Uint128::from(93353)),
+            (Udec128::new_percent(105), Uint128::from(91575)),
+            (Udec128::new_percent(106), Uint128::from(89847)),
+            (Udec128::new_percent(107), Uint128::from(88168)),
+            (Udec128::new_percent(108), Uint128::from(86535)),
+            (Udec128::new_percent(109), Uint128::from(84947)),
+            (Udec128::new_percent(110), Uint128::from(83403)),
+            (Udec128::new_percent(111), Uint128::from(81900)),
+        ],
+        1 ; "xyk pool balance 1:1 one percent fee")]
+    fn curve_on_orderbook(
+        curve_invariant: CurveInvariant,
+        order_spacing: Udec128,
+        order_depth: u64,
+        swap_fee_rate: Udec128,
+        pool_liquidity: Coins,
+        expected_bids: Vec<(Udec128, Uint128)>,
+        expected_asks: Vec<(Udec128, Uint128)>,
+        order_size_tolerance: u128,
+    ) {
+        let pair = PairParams {
+            curve_invariant,
+            order_spacing,
+            order_depth,
+            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        let (bids, asks) = pair
+            .reflect_curve(
+                ETH_DENOM.clone(),
+                USDC_DENOM.clone(),
+                &pool_liquidity.try_into().unwrap(),
+            )
+            .unwrap();
+
+        for (bid, expected_bid) in bids.iter().zip(expected_bids.iter()) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert!(
+                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
+            );
+        }
+
+        for (ask, expected_ask) in asks.iter().zip(expected_asks.iter()) {
+            assert_eq!(ask.0, expected_ask.0);
+            assert!(
+                ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
+            );
+        }
+    }
+}
