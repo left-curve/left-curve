@@ -333,6 +333,18 @@ impl Coins {
     // instead.
 }
 
+impl Inner for Coins {
+    type U = BTreeMap<Denom, Uint128>;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
+    }
+}
+
 // cast a string of the following format to Coins:
 // denom1:amount1,denom2:amount2,...,denomN:amountN
 // allow the denoms to be out of order, but disallow duplicates and zero amounts.
