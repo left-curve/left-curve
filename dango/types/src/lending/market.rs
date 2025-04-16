@@ -2,9 +2,10 @@ use {
     crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
         Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Udec256, Uint128,
-        ZeroInclusiveOneInclusive,
+        NumberConst, PrevNumber, Querier, QuerierExt, StdError, StdResult, Timestamp, Udec128,
+        Udec256, Uint128, ZeroInclusiveOneInclusive,
     },
+    std::fmt::Debug,
 };
 
 /// Seconds in a year, assuming 365 days.
@@ -24,9 +25,6 @@ pub struct Market {
     /// The current borrow index of this market. This is used to calculate the
     /// interest accrued on borrows.
     pub borrow_index: Udec128,
-    /// The total amount of coins supplied from this market scaled by the
-    /// supply index.
-    pub total_supplied_scaled: Uint128,
     /// The current supply index of this market. This is used to calculate the
     /// interest accrued on deposits.
     pub supply_index: Udec128,
@@ -46,7 +44,6 @@ impl Market {
             interest_rate_model,
             total_borrowed_scaled: Udec256::ZERO,
             borrow_index: Udec128::ONE,
-            total_supplied_scaled: Uint128::ZERO,
             supply_index: Udec128::ONE,
             last_update_time: Timestamp::ZERO,
             pending_protocol_fee_scaled: Uint128::ZERO,
@@ -54,9 +51,17 @@ impl Market {
     }
 
     /// Computes the utilization rate of this market.
-    pub fn utilization_rate(&self) -> MathResult<Bounded<Udec128, ZeroInclusiveOneInclusive>> {
+    pub fn utilization_rate<Q>(
+        &self,
+        querier: &Q,
+    ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>>
+    where
+        Q: Querier,
+        Q::Error: From<StdError> + Debug,
+        anyhow::Error: From<Q::Error>,
+    {
         let total_borrowed = self.total_borrowed()?;
-        let total_supplied = self.total_supplied()?;
+        let total_supplied = self.total_supplied(querier)?;
 
         if total_supplied.is_zero() {
             return Ok(Bounded::new_unchecked(Udec128::ZERO));
@@ -76,7 +81,12 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices(self, current_time: Timestamp) -> MathResult<Self> {
+    pub fn update_indices<Q>(self, querier: &Q, current_time: Timestamp) -> anyhow::Result<Self>
+    where
+        Q: Querier,
+        Q::Error: From<StdError> + Debug,
+        anyhow::Error: From<Q::Error>,
+    {
         debug_assert!(
             current_time >= self.last_update_time,
             "last update time is in the future! current time: {:?}, last update time: {:?}",
@@ -86,7 +96,7 @@ impl Market {
 
         // If there is no supply or borrow or last update time is equal to the
         // current time, then there is no interest to accrue
-        if self.total_supplied_scaled.is_zero()
+        if self.total_supplied(querier)?.is_zero()
             || self.total_borrowed_scaled.is_zero()
             || current_time == self.last_update_time
         {
@@ -94,7 +104,7 @@ impl Market {
         }
 
         // Calculate interest rates
-        let utilization_rate = self.utilization_rate()?;
+        let utilization_rate = self.utilization_rate(querier)?;
         let (borrow_rate, supply_rate) = self.interest_rate_model.calculate_rates(utilization_rate);
 
         // Update the indices
@@ -118,24 +128,10 @@ impl Market {
         let protocol_fee_scaled = protocol_fee.checked_div_dec_floor(supply_index)?;
 
         // Return the new market state
-        new_market
+        Ok(new_market
             .set_supply_index(supply_index)
             .set_last_update_time(current_time)
-            .add_pending_protocol_fee(protocol_fee_scaled)
-    }
-
-    pub fn add_supplied(self, amount_scaled: Uint128) -> MathResult<Self> {
-        Ok(Self {
-            total_supplied_scaled: self.total_supplied_scaled.checked_add(amount_scaled)?,
-            ..self
-        })
-    }
-
-    pub fn deduct_supplied(self, amount_scaled: Uint128) -> MathResult<Self> {
-        Ok(Self {
-            total_supplied_scaled: self.total_supplied_scaled.checked_sub(amount_scaled)?,
-            ..self
-        })
+            .add_pending_protocol_fee(protocol_fee_scaled)?)
     }
 
     /// Immutably adds the given amount to the scaled total borrowed and returns
@@ -222,10 +218,16 @@ impl Market {
     }
 
     /// Returns the total amount of coins supplied to this market.
-    pub fn total_supplied(&self) -> MathResult<Uint128> {
-        self.total_supplied_scaled
+    pub fn total_supplied<Q>(&self, querier: &Q) -> anyhow::Result<Uint128>
+    where
+        Q: Querier,
+        Q::Error: From<StdError> + Debug,
+        anyhow::Error: From<Q::Error>,
+    {
+        Ok(querier
+            .query_supply(self.supply_lp_denom.clone())?
             .checked_add(self.pending_protocol_fee_scaled)?
-            .checked_mul_dec_floor(self.supply_index)
+            .checked_mul_dec(self.supply_index)?)
     }
 
     /// Returns the total amount of coins borrowed from this market.

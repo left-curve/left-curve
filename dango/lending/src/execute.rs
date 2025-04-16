@@ -49,14 +49,14 @@ fn update_markets(
     );
 
     for (denom, new_interest_rate_model) in updates {
-        MARKETS.may_update(ctx.storage, &denom, |maybe_market| {
+        MARKETS.may_update(ctx.storage, &denom, |maybe_market| -> anyhow::Result<_> {
             if let Some(market) = maybe_market {
                 // Update indexes first, so that interests accumulated up to this
                 // point are accounted for. Then, set the new interest rate model.
-                let market = market.update_indices(ctx.block.timestamp)?;
+                let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
                 Ok(market.set_interest_rate_model(new_interest_rate_model))
             } else {
-                Market::new(&denom, new_interest_rate_model)
+                Ok(Market::new(&denom, new_interest_rate_model)?)
             }
         })?;
     }
@@ -66,7 +66,8 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint.
-    let (lp_tokens, markets) = core::deposit(ctx.storage, ctx.block.timestamp, ctx.funds)?;
+    let (lp_tokens, markets) =
+        core::deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, ctx.funds)?;
 
     // Save the updated markets.
     for (denom, market) in markets {
@@ -95,7 +96,12 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of underlying coins to withdraw
-    let (withdrawn, markets) = core::withdraw(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
+    let (withdrawn, markets) = core::withdraw(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.funds.clone(),
+    )?;
 
     // Save the updated markets
     for (denom, market) in markets {
@@ -138,8 +144,13 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
         "only margin accounts can borrow and repay"
     );
 
-    let (debts, markets) =
-        core::borrow(ctx.storage, ctx.block.timestamp, ctx.sender, coins.inner())?;
+    let (debts, markets) = core::borrow(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.sender,
+        coins.inner(),
+    )?;
 
     // Save the updated markets.
     for (denom, market) in markets {
@@ -159,8 +170,13 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
 }
 
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let (scaled_debts, markets, refunds) =
-        core::repay(ctx.storage, ctx.block.timestamp, ctx.sender, &ctx.funds)?;
+    let (scaled_debts, markets, refunds) = core::repay(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.sender,
+        &ctx.funds,
+    )?;
 
     // Save the updated markets.
     for (denom, market) in markets {
@@ -196,7 +212,7 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|res| -> anyhow::Result<_> {
             let (denom, market) = res?;
-            let market = market.update_indices(ctx.block.timestamp)?;
+            let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
             Ok((
                 Message::execute(
                     bank,
@@ -213,10 +229,7 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
     for (denom, market) in markets {
-        let pending_protocol_fee_scaled = market.pending_protocol_fee_scaled;
-        let market = market
-            .add_supplied(pending_protocol_fee_scaled)?
-            .reset_pending_protocol_fee();
+        let market = market.reset_pending_protocol_fee();
 
         MARKETS.save(ctx.storage, &denom, &market)?;
     }
