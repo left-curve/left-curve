@@ -4,14 +4,12 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account::margin::{CollateralPower, HealthResponse},
-        dex::{Direction, OrdersByUserResponse, QueryOrdersByUserRequest},
-        lending::Market,
-        oracle::PrecisionedPrice,
+        account::margin::{HealthData, HealthResponse},
+        dex::{Direction, QueryOrdersByUserRequest},
     },
     grug::{
-        Addr, Coin, Coins, Denom, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
-        QuerierWrapper, StorageQuerier, Timestamp, Udec128, Udec256, Uint128,
+        Addr, Coin, Coins, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
+        QuerierWrapper, StorageQuerier, Timestamp, Udec128, Uint128,
     },
     std::{
         cmp::min,
@@ -19,28 +17,32 @@ use {
     },
 };
 
-/// Queries the health of the margin account.
+/// Query necessary data and compute the health of a margin account.
 ///
-/// ## Inputs
-///
-/// - `account`: The margin account to query.
+/// ## Notable inputs
 ///
 /// - `discount_collateral`: If set, does not include the value of these
-///   coins in the total collateral value. Used when liquidating the
-///   account as the liquidator has sent additional funds to the account
-///   that should not be included in the total collateral value.
+///   coins in the total collateral value.
 ///
-/// ## Outputs
-///
-/// - a `HealthResponse` struct containing the health of the margin account.
-pub fn query_health(
+///   Used when liquidating the account as the liquidator has sent additional
+///   funds to the account that should not be included in the total collateral
+///   value.
+pub fn query_and_compute_health(
     querier: &QuerierWrapper,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
-    // ------------------------ 1. Query necessary data ------------------------
+    let data = query_health(querier, account, current_time)?;
+    compute_health(data, discount_collateral)
+}
 
+/// Query relevant data necessary for computing the health of a margin account.
+pub fn query_health(
+    querier: &QuerierWrapper,
+    account: Addr,
+    current_time: Timestamp,
+) -> anyhow::Result<HealthData> {
     let app_cfg = querier.query_dango_config()?;
     let collateral_powers = app_cfg.collateral_powers;
 
@@ -95,51 +97,41 @@ pub fn query_health(
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
 
-    // --------------------------- 2. Compute health ---------------------------
-
-    compute_health(
-        discount_collateral,
+    Ok(HealthData {
         scaled_debts,
         markets,
         prices,
         collateral_powers,
         collateral_balances,
         limit_orders,
-    )
+    })
 }
 
-/// Computes the health of the margin account.
+/// Compute the health of the margin account.
 ///
 /// ## Inputs
+///
+/// - `data`: a `HealthData` struct containing the necessary data for computing
+///   the account's health.
 ///
 /// - `discount_collateral`: If set, does not include the value of these
 ///   coins in the total collateral value. Used when liquidating the
 ///   account as the liquidator has sent additional funds to the account
 ///   that should not be included in the total collateral value.
 ///
-/// - `scaled_debts`: The debts scaled of the margin account.
-///
-/// - `markets`: The markets for the debt denoms of the margin account.
-///
-/// - `prices`: A map of all relevant denoms to their prices.
-///
-/// - `collateral_powers`: All registered collateral powers.
-///
-/// - `collateral_balances`: The margin account's balances of collateral tokens.
-///
-/// - `limit_orders`: All limit orders for the margin account.
-///
 /// ## Outputs
 ///
 /// - a `HealthResponse` struct containing the health of the margin account.
 pub fn compute_health(
+    HealthData {
+        scaled_debts,
+        markets,
+        prices,
+        collateral_powers,
+        collateral_balances,
+        limit_orders,
+    }: HealthData,
     discount_collateral: Option<Coins>,
-    scaled_debts: BTreeMap<Denom, Udec256>,
-    markets: BTreeMap<Denom, Market>,
-    prices: BTreeMap<Denom, PrecisionedPrice>,
-    collateral_powers: BTreeMap<Denom, CollateralPower>,
-    collateral_balances: BTreeMap<Denom, Uint128>,
-    limit_orders: BTreeMap<u64, OrdersByUserResponse>,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------------- 1. Debts --------------------------------
 
@@ -282,7 +274,5 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
-        scaled_debts,
-        limit_orders,
     })
 }
