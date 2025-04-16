@@ -4,8 +4,7 @@ use {
         UploadOutcome,
     },
     grug_app::{
-        App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
-        ProposalPreparer, Vm,
+        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm,
     },
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
@@ -13,11 +12,12 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
         Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, Query, QueryResponse, Signer, StdError, StdResult, Tx, TxOutcome, UnsignedTx,
+        Querier, QuerierExt, Query, QueryResponse, Signer, StdError, StdResult, Tx, TxOutcome,
+        UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
-    std::{collections::BTreeMap, fmt::Debug},
+    std::collections::BTreeMap,
 };
 
 pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
@@ -648,21 +648,16 @@ where
     pub fn query_balance<D>(&self, address: &dyn Addressable, denom: D) -> StdResult<Uint128>
     where
         D: TryInto<Denom>,
-        <D as TryInto<Denom>>::Error: Debug,
+        StdError: From<D::Error>,
     {
-        let denom = denom.try_into().unwrap();
-        self.query_chain(Query::balance(address.address(), denom))
-            .map(|res| res.as_balance().amount)
+        let address = address.address();
+        let denom = denom.try_into()?;
+        <Self as QuerierExt>::query_balance(self, address, denom)
     }
 
-    pub fn query_balances(&self, account: &dyn Addressable) -> AppResult<Coins> {
-        self.app
-            .do_query_app(
-                Query::balances(account.address(), None, Some(u32::MAX)),
-                0, // zero means to use the latest height
-                false,
-            )
-            .map(|res| res.as_balances())
+    pub fn query_balances(&self, account: &dyn Addressable) -> StdResult<Coins> {
+        let address = account.address();
+        <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
     pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
