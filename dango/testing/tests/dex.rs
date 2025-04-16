@@ -334,6 +334,7 @@ fn dex_works(
     // successful.
     suite
         .make_block(txs)
+        .block_outcome
         .tx_outcomes
         .into_iter()
         .for_each(|outcome| {
@@ -837,6 +838,7 @@ fn submit_and_cancel_order_in_same_block() {
     // Execute the transaction in a block
     suite
         .make_block(vec![tx])
+        .block_outcome
         .tx_outcomes
         .into_iter()
         .for_each(|outcome| {
@@ -1003,6 +1005,7 @@ fn query_orders_by_pair(
     // successful.
     suite
         .make_block(txs)
+        .block_outcome
         .tx_outcomes
         .into_iter()
         .for_each(|outcome| {
