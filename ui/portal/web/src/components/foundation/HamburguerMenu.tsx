@@ -1,10 +1,10 @@
 import {
-  BellIcon,
-  DangoDotsIcon,
   Hamburger,
+  IconBell,
   IconButton,
+  IconDangoDots,
   IconGear,
-  ProfileIcon,
+  IconProfile,
   type VisibleRef,
   twMerge,
   useClickAway,
@@ -52,7 +52,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
             type="button"
             className={twMerge("shadow-btn-shadow-gradient", { "shadow-none": !showOptions })}
           >
-            <ProfileIcon className="h-6 w-6 " />
+            <IconProfile className="h-6 w-6 " />
           </IconButton>
         </div>
 
@@ -72,7 +72,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
             type="button"
             className={twMerge("shadow-btn-shadow-gradient", { "shadow-none": !showOptions })}
           >
-            <BellIcon className="h-6 w-6 " />
+            <IconBell className="h-6 w-6 " />
           </IconButton>
         </div>
 
@@ -110,7 +110,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
             type="button"
             className={twMerge("shadow-btn-shadow-gradient", { "shadow-none": !showOptions })}
           >
-            <DangoDotsIcon className="h-6 w-6 " />
+            <IconDangoDots className="h-6 w-6 " />
           </IconButton>
         </div>
 

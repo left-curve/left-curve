@@ -2,9 +2,21 @@ import { type AppletMetadata, IconAddCross } from "@left-curve/applets-kit";
 import { useStorage } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
-import { applets } from "../../../applets";
+import { m } from "~/paraglide/messages";
 
 import { Link } from "@tanstack/react-router";
+
+const applets = Array.from(
+  { length: 4 },
+  (_, i) =>
+    ({
+      title: m[`applets.${i as 0}.title`](),
+      description: m[`applets.${i as 0}.description`](),
+      img: m[`applets.${i as 0}.img`](),
+      keywords: m[`applets.${i as 0}.keywords`]().split(","),
+      path: m[`applets.${i as 0}.path`](),
+    }) as AppletMetadata,
+);
 
 export function AppletsSection() {
   const [favApplets] = useStorage<AppletMetadata[]>("fav_applets", {

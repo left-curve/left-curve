@@ -90,7 +90,7 @@ export type AccountFactoryQueryActions = {
     args: GetAccountTypeCodeHashParameters,
   ) => GetAccountTypeCodeHashReturnType;
   getAccountTypeCodeHashes: (
-    args: GetAccountTypeCodeHashesParameters,
+    args?: GetAccountTypeCodeHashesParameters,
   ) => GetAccountTypeCodeHashesReturnType;
   getAllAccountInfo: (args: GetAllAccountInfoParameters) => GetAllAccountInfoReturnType;
   getKey: (args: GetKeyParameters) => GetKeyReturnType;

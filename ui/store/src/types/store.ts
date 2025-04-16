@@ -1,4 +1,14 @@
-import type { Chain, ChainId, Client, Denom, Transport, UID } from "@left-curve/dango/types";
+import type {
+  AccountTypes,
+  AppConfig,
+  Chain,
+  ChainId,
+  Client,
+  Denom,
+  Hex,
+  Transport,
+  UID,
+} from "@left-curve/dango/types";
 
 import type { AnyCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
@@ -38,7 +48,9 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
-
+  getAppConfig(): Promise<
+    AppConfig & { accountFactory: { codeHashes: Record<AccountTypes, Hex> } }
+  >;
   getClient(): Client<transport>;
   _internal: Internal<transport>;
 };

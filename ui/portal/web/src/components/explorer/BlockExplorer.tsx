@@ -4,10 +4,10 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import {
-  IconCopy,
   Skeleton,
   Table,
   type TableColumn,
+  TextCopy,
   TruncateText,
   twMerge,
   useCountdown,
@@ -244,7 +244,7 @@ const BlockDetails: React.FC = () => {
               {m["explorer.block.details.blockHash"]()}
             </p>
             {isMd ? <p>{hash}</p> : <TruncateText text={hash} />}
-            <IconCopy className="w-4 h-4 cursor-pointer" copyText={hash} />
+            <TextCopy className="w-4 h-4 cursor-pointer" copyText={hash} />
           </div>
           <div className="flex items-center gap-1">
             <p className="diatype-md-medium text-gray-500">

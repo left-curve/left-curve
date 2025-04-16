@@ -7,7 +7,7 @@ import { useApp } from "~/hooks/useApp";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
-import { Modals } from "./RootModal";
+import { Modals } from "../modals/RootModal";
 
 import { AccountCard } from "./AccountCard";
 
@@ -167,7 +167,9 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
 
-  const { data: balances = {} } = useBalances({ address: account?.address });
+  const { data: balances = {} } = useBalances({
+    address: account?.address,
+  });
 
   return (
     <div className="flex flex-col w-full gap-4 items-center">
@@ -238,7 +240,7 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
         </Button>
       </div>
       <div className="relative w-full h-full">
-        <div className="relative flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 max-h-[52svh] md:max-h-[42rem]">
+        <div className="relative flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 max-h-[52svh] md:max-h-[68vh]">
           {accounts
             ?.filter((acc) => acc.address !== account.address)
             .map((account) => (

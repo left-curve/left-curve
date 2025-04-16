@@ -281,7 +281,7 @@ impl BroadcastTxOutcome {
                 gas_limit: 0,
                 gas_used: 0,
                 result: into_generic_result(response.code, response.log),
-                events: BASE64.decode(&response.data)?.deserialize_json()?,
+                events: response.data.deserialize_json()?,
             },
         })
     }
@@ -297,7 +297,7 @@ pub struct BroadcastTxSuccess {
     pub check_tx: CheckTxSuccess,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct SearchTxOutcome {
     pub hash: Hash256,
     pub height: u64,
