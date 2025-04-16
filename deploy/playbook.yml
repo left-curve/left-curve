@@ -4,6 +4,7 @@
   roles:
     - common
     - users
+    - docker
 
 # - hosts: builder
 #   become: true
