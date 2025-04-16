@@ -43,7 +43,7 @@ pub trait QuerierExt: Querier {
         T: DeserializeOwned,
     {
         self.query_chain(Query::app_config())
-            .and_then(|res| res.as_app_config().deserialize_json().map_err(Into::into))
+            .and_then(|res| res.as_app_config().deserialize_json())
     }
 
     fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
@@ -120,7 +120,7 @@ pub trait QuerierExt: Querier {
         let msg = R::Message::from(req);
 
         self.query_chain(Query::wasm_smart(contract, &msg)?)
-            .and_then(|res| res.as_wasm_smart().deserialize_json().map_err(Into::into))
+            .and_then(|res| res.as_wasm_smart().deserialize_json())
     }
 
     fn query_multi<const N: usize>(
@@ -147,7 +147,6 @@ pub trait QuerierExt: Querier {
                 iter.next()
                     .unwrap() // unwrap is safe because we've checked the length.
                     .map_err(StdError::host)
-                    .map_err(Into::into)
             })
         })
     }

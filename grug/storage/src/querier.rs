@@ -36,7 +36,7 @@ where
         C: Codec<T>,
     {
         self.query_wasm_raw(contract, path.storage_key())?
-            .map(|data| C::decode(&data).map_err(Into::into))
+            .map(|data| C::decode(&data))
             .transpose()
     }
 
@@ -47,6 +47,5 @@ where
         self.query_wasm_raw(contract, path.storage_key())?
             .ok_or_else(|| StdError::data_not_found::<T>(path.storage_key()))
             .and_then(|data| C::decode(&data))
-            .map_err(Into::into)
     }
 }
