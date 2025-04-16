@@ -4,22 +4,19 @@ use {
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     grug::{
         Coins, HashExt, NonEmpty, Querier, QuerierExt, QuerierWrapper, ResultExt, StdError,
-        btree_map,
+        StdResult, btree_map,
     },
-    grug_app::AppError,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::PYTH_URL,
     std::{thread::sleep, time::Duration},
 };
 
 struct QueryWrapperTest<'a> {
-    querier: QuerierWrapper<'a, AppError>,
+    querier: QuerierWrapper<'a>,
 }
 
 impl Querier for QueryWrapperTest<'_> {
-    type Error = StdError;
-
-    fn query_chain(&self, req: grug::Query) -> Result<grug::QueryResponse, Self::Error> {
+    fn query_chain(&self, req: grug::Query) -> StdResult<grug::QueryResponse> {
         self.querier
             .query_chain(req)
             .map_err(|_| StdError::host("query_chain failed".to_string()))

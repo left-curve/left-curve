@@ -13,7 +13,7 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
         Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, Query, QueryResponse, Signer, StdError, Tx, TxOutcome, UnsignedTx,
+        Querier, Query, QueryResponse, Signer, StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
@@ -629,10 +629,10 @@ where
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    type Error = AppError;
-
-    fn query_chain(&self, req: Query) -> AppResult<QueryResponse> {
-        self.app.do_query_app(req, 0, false)
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        self.app
+            .do_query_app(req, 0, false)
+            .map_err(|err| StdError::host(err.to_string()))
     }
 }
 
@@ -645,11 +645,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
     Self: Querier,
 {
-    pub fn query_balance<D>(
-        &self,
-        address: &dyn Addressable,
-        denom: D,
-    ) -> Result<Uint128, <Self as Querier>::Error>
+    pub fn query_balance<D>(&self, address: &dyn Addressable, denom: D) -> StdResult<Uint128>
     where
         D: TryInto<Denom>,
         <D as TryInto<Denom>>::Error: Debug,

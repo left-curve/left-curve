@@ -2,10 +2,9 @@ use {
     crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
         Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, Querier, QuerierExt, StdError, StdResult, Timestamp, Udec128,
-        Udec256, Uint128, ZeroInclusiveOneInclusive,
+        NumberConst, PrevNumber, Querier, QuerierExt, StdResult, Timestamp, Udec128, Udec256,
+        Uint128, ZeroInclusiveOneInclusive,
     },
-    std::fmt::Debug,
 };
 
 /// Seconds in a year, assuming 365 days.
@@ -57,8 +56,6 @@ impl Market {
     ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>>
     where
         Q: Querier,
-        Q::Error: From<StdError> + Debug,
-        anyhow::Error: From<Q::Error>,
     {
         let total_borrowed = self.total_borrowed()?;
         let total_supplied = self.total_supplied(querier)?;
@@ -84,8 +81,6 @@ impl Market {
     pub fn update_indices<Q>(self, querier: &Q, current_time: Timestamp) -> anyhow::Result<Self>
     where
         Q: Querier,
-        Q::Error: From<StdError> + Debug,
-        anyhow::Error: From<Q::Error>,
     {
         debug_assert!(
             current_time >= self.last_update_time,
@@ -221,8 +216,6 @@ impl Market {
     pub fn total_supplied<Q>(&self, querier: &Q) -> anyhow::Result<Uint128>
     where
         Q: Querier,
-        Q::Error: From<StdError> + Debug,
-        anyhow::Error: From<Q::Error>,
     {
         Ok(querier
             .query_supply(self.supply_lp_denom.clone())?
