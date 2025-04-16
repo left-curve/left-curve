@@ -822,12 +822,12 @@ fn interest_rate_model_works(
     assert_eq!(market.interest_rate_model, InterestRateModel::default());
 
     // Compute interest rates
-    let interest_rate = market
+    let (_, deposit_rate) = market
         .interest_rate_model
         .calculate_rates(market.utilization_rate().unwrap());
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
-    assert_eq!(interest_rate.deposit_rate, Udec128::ZERO);
+    assert_eq!(deposit_rate, Udec128::ZERO);
 
     // Deposit some USDC
     let deposit_amount = 1_000_000_000u128;
@@ -901,14 +901,14 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Compute interest rates
-    let interest_rates = market
+    let (borrow_rate, deposit_rate) = market
         .interest_rate_model
         .calculate_rates(market.utilization_rate().unwrap());
 
     // Assert that the all interest rates are non-zero
-    assert!(interest_rates.borrow_rate.is_positive());
-    assert!(interest_rates.deposit_rate.is_positive());
-    assert!(interest_rates.borrow_rate > interest_rates.deposit_rate);
+    assert!(borrow_rate.is_positive());
+    assert!(deposit_rate.is_positive());
+    assert!(borrow_rate > deposit_rate);
 
     // --- Property 3: Interest accrues over time ---
 
@@ -933,7 +933,7 @@ fn interest_rate_model_works(
     assert_eq!(
         debt_interest_amount,
         Uint128::from(borrow_amount)
-            .checked_mul_dec_ceil(interest_rates.borrow_rate * time_out_of_year)
+            .checked_mul_dec_ceil(borrow_rate * time_out_of_year)
             .unwrap()
     );
 
@@ -951,7 +951,7 @@ fn interest_rate_model_works(
     assert_eq_or_one_off(
         deposit_interest_amount,
         Uint128::from(deposit_amount)
-            .checked_mul_dec(interest_rates.deposit_rate * time_out_of_year)
+            .checked_mul_dec(deposit_rate * time_out_of_year)
             .unwrap(),
     );
 
@@ -974,13 +974,11 @@ fn interest_rate_model_works(
 
     // Check that the supply and borrow increased with the correct amount of interest
     let expected_supply_increase_from_deposit = Uint128::from(deposit_amount)
-        .checked_mul_dec(interest_rates.deposit_rate * time_out_of_year)
+        .checked_mul_dec(deposit_rate * time_out_of_year)
         .unwrap();
     let expected_supply_increase_from_protocol_revenue = Uint128::from(borrow_amount)
         .checked_mul_dec(
-            interest_rates.borrow_rate
-                * time_out_of_year
-                * *market.interest_rate_model.reserve_factor,
+            borrow_rate * time_out_of_year * *market.interest_rate_model.reserve_factor,
         )
         .unwrap();
     let expected_supply_increase =
@@ -988,7 +986,7 @@ fn interest_rate_model_works(
     assert_eq_or_one_off(supply_increase, expected_supply_increase);
 
     let expected_borrow_increase = Uint128::from(borrow_amount)
-        .checked_mul_dec(interest_rates.borrow_rate * time_out_of_year)
+        .checked_mul_dec(borrow_rate * time_out_of_year)
         .unwrap();
     assert_eq_or_one_off(borrow_increase, expected_borrow_increase);
 

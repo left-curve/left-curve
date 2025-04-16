@@ -128,11 +128,11 @@ impl Market {
 
     pub fn update_interest_rates(self) -> MathResult<Self> {
         let utilization = self.utilization_rate()?;
-        let interest_rates = self.interest_rate_model.calculate_rates(utilization);
+        let (borrow_rate, supply_rate) = self.interest_rate_model.calculate_rates(utilization);
 
         Ok(Self {
-            borrow_rate: interest_rates.borrow_rate,
-            supply_rate: interest_rates.deposit_rate,
+            borrow_rate,
+            supply_rate,
             ..self
         })
     }

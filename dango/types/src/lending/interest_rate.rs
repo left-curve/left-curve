@@ -26,19 +26,22 @@ pub struct InterestRateModel {
     pub reserve_factor: Bounded<Udec128, ZeroInclusiveOneInclusive>,
 }
 
-/// Represents the calculated interest rates at a given utilization
-#[derive(Debug)]
-pub struct InterestRates {
-    pub borrow_rate: Udec128,
-    pub deposit_rate: Udec128,
-}
-
 impl InterestRateModel {
-    /// Calculates interest rates for a given utilization rate
+    /// Calculates interest rates for a given utilization rate.
+    ///
+    /// ## Inputs
+    ///
+    /// - `utilization`: The current market utilization rate. Must be within the
+    ///   range [0, 1].
+    ///
+    /// ## Outputs
+    ///
+    /// - The borrow interest rate.
+    /// - The deposit interest rate.
     pub fn calculate_rates(
         &self,
         utilization: Bounded<Udec128, ZeroInclusiveOneInclusive>,
-    ) -> InterestRates {
+    ) -> (Udec128, Udec128) {
         // Calculate borrow rate
         let borrow_rate = if *utilization <= *self.optimal_utilization {
             // Below optimal: linear increase
@@ -53,10 +56,7 @@ impl InterestRateModel {
         // Calculate deposit rate
         let deposit_rate = *utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
 
-        InterestRates {
-            borrow_rate,
-            deposit_rate,
-        }
+        (borrow_rate, deposit_rate)
     }
 }
 
@@ -91,17 +91,18 @@ mod tests {
     #[test]
     fn test_zero_utilization() {
         let model = InterestRateModel::default();
-        let rates = model.calculate_rates(Bounded::new_unchecked(Udec128::ZERO));
-        assert_eq!(rates.borrow_rate, *model.base_rate);
-        assert_eq!(rates.deposit_rate, Udec128::ZERO);
+        let (borrow_rate, deposit_rate) =
+            model.calculate_rates(Bounded::new_unchecked(Udec128::ZERO));
+        assert_eq!(borrow_rate, *model.base_rate);
+        assert_eq!(deposit_rate, Udec128::ZERO);
     }
 
     #[test]
     fn test_max_utilization() {
         let model = InterestRateModel::default();
-        let rates = model.calculate_rates(Bounded::new_unchecked(Udec128::ONE));
+        let (borrow_rate, _) = model.calculate_rates(Bounded::new_unchecked(Udec128::ONE));
         assert_eq!(
-            rates.borrow_rate,
+            borrow_rate,
             *model.base_rate + *model.first_slope + *model.second_slope
         );
     }
