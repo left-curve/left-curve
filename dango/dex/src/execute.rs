@@ -579,6 +579,7 @@ fn clear_orders_of_pair(
         refund_quote,
         fee_base,
         fee_quote,
+        is_maker,
     } in fill_orders(
         bids,
         asks,
@@ -600,20 +601,24 @@ fn clear_orders_of_pair(
         ])?;
 
         // Add fees to collected_fees
+        let fee_type = if is_maker {
+            FeeType::Maker
+        } else {
+            FeeType::Taker
+        };
         if fee_base.is_non_zero() {
             collected_fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
             fee_payments
                 .entry(order.user)
-                .or_insert((FeeType::Trade, Coins::new()))
+                .or_insert((fee_type, Coins::new()))
                 .1
                 .insert(Coin::new(base_denom.clone(), fee_base)?)?;
         }
-
         if fee_quote.is_non_zero() {
             collected_fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
             fee_payments
                 .entry(order.user)
-                .or_insert((FeeType::Trade, Coins::new()))
+                .or_insert((fee_type, Coins::new()))
                 .1
                 .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
         }
