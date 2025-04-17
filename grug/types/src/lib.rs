@@ -31,6 +31,7 @@ mod outcome;
 mod query;
 mod response;
 mod result;
+mod search;
 mod serializers;
 mod signer;
 mod status;
@@ -44,7 +45,7 @@ pub use {
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
     encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
     length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
-    serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
+    search::*, serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
