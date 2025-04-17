@@ -1,4 +1,5 @@
 export { createConfig } from "./createConfig.js";
+export { createEventBus } from "./createEventBus.js";
 
 export {
   DangoStoreContext,
