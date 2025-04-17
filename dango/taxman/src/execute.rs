@@ -59,6 +59,7 @@ fn pay(ctx: MutableCtx, payments: BTreeMap<Addr, (FeeType, Coins)>) -> anyhow::R
     );
 
     let oracle = ctx.querier.query_dango_config()?.addresses.oracle;
+    let mut oracle_querier = OracleQuerier::new(oracle);
 
     // Record the fees in storage and emit events.
     let mut events: Vec<ContractEvent> = Vec::new();
@@ -74,7 +75,7 @@ fn pay(ctx: MutableCtx, payments: BTreeMap<Addr, (FeeType, Coins)>) -> anyhow::R
             .or_insert_with(FeePayments::default);
 
         for coin in payment.clone() {
-            let price = ctx.querier.query_price(oracle, &coin.denom, None)?;
+            let price = oracle_querier.query_price(&ctx.querier, &coin.denom, None)?;
             let usd_value = price.value_of_unit_amount(coin.amount)?.into_int();
             fee_payments.usd_value = fee_payments.usd_value.checked_add(usd_value)?;
             fee_payments.coins.insert(coin)?;
