@@ -1,6 +1,7 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
+        account::single::Params,
         constants::{ATOM_DENOM, BTC_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
             self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
@@ -13,7 +14,7 @@ use {
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
         ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coins,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::{BTreeMap, BTreeSet, HashMap},
     test_case::test_case,
 };
 
@@ -1179,13 +1180,244 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
         );
 }
 
+/// Test that providing liquidity with only one side of the pair results in the
+/// correct LP tokens minted and reserves updated.
+///
+/// A single sided provision should be equivalent to a swap followed such that
+/// the balance of the user's assets after the swap are the same as the balance
+/// of the pool reserves after the swap, followed by a provision of those assets.
+#[test_case(
+coins! {
+    DANGO_DENOM.clone() => 100_000_000,
+    USDC_DENOM.clone()  => 100_000_000,
+},
+Udec128::ZERO,
+coins! { DANGO_DENOM.clone() => 100_000_000, USDC_DENOM.clone() => 0 };
+"single sided provision, no fee, 1:1 pool"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100_000_000,
+        USDC_DENOM.clone()  => 100_000_000,
+    },
+    Udec128::new_bps(1),
+    coins! { DANGO_DENOM.clone() => 100_000_000, USDC_DENOM.clone() => 0 };
+    "single sided provision, 1bps fee, 1:1 pool"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100_000_000,
+        USDC_DENOM.clone()  => 50_000_000,
+    },
+    Udec128::new_bps(1),
+    coins! { DANGO_DENOM.clone() => 100_000_000, USDC_DENOM.clone() => 0 };
+    "single sided provision, 1bps fee, 2:1 pool"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 50_000_000,
+        USDC_DENOM.clone()  => 100_000_000,
+    },
+    Udec128::new_bps(1),
+    coins! { DANGO_DENOM.clone() => 100_000_000, USDC_DENOM.clone() => 0 };
+    "single sided provision, 1bps fee, 1:2 pool"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100_000_000,
+        USDC_DENOM.clone()  => 100_000_000,
+    },
+    Udec128::new_bps(1),
+    coins! { DANGO_DENOM.clone() => 100_000_000, USDC_DENOM.clone() => 50_000_000 };
+    "unbalanced provision, 1bps fee, 1:1 pool"
+)]
+fn provide_liquidity_unbalanced(
+    initial_reserves: Coins,
+    swap_fee_rate: Udec128,
+    provided_funds: Coins,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+    let pair_id = PairId {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    };
+    let route = MaxLength::new_unchecked(UniqueVec::try_from(vec![pair_id.clone()]).unwrap());
+
+    // Update the pair with the new swap fee rate.
+    let mut params = suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed();
+    if params.swap_fee_rate.into_inner() != swap_fee_rate {
+        params.swap_fee_rate = Bounded::new_unchecked(swap_fee_rate);
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    params,
+                }]),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Owner first provides some initial liquidity.
+    let pool_reserve_before = initial_reserves
+        .clone()
+        .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
+        .unwrap();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            initial_reserves.clone(),
+        )
+        .should_succeed();
+
+    // Create new empty account and send provided funds to it
+    let username = accounts.user1.username.clone();
+    let mut user = accounts
+        .user1
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            dango_types::account_factory::AccountParams::Spot(Params::new(username)),
+            provided_funds.clone(),
+        )
+        .unwrap();
+    let user_balances_before = suite.query_balances(&user.address()).unwrap();
+    assert_eq!(user_balances_before, provided_funds);
+    let user_balances_before: CoinPair = user_balances_before
+        .clone()
+        .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
+        .unwrap();
+
+    // Binary search for the amount of DANGO to swap to balance the user's
+    // DANGO/USDC balance to be the same as the pool's reserves after the swap.
+    let mut low = Uint128::ZERO;
+    let mut high = provided_funds.amount_of(&DANGO_DENOM);
+    let mut mid = (low + high) / Uint128::new(2);
+    let mut user_balances_after: CoinPair = user_balances_before.clone();
+    let mut reserve_after: CoinPair = pool_reserve_before.clone();
+
+    while low < high {
+        let input = Coin::new(DANGO_DENOM.clone(), mid).unwrap();
+        let swap_return = suite
+            .query_wasm_smart(contracts.dex, dex::QuerySimulateSwapExactAmountInRequest {
+                route: route.clone(),
+                input: input.clone(),
+            })
+            .should_succeed();
+        let reserves_after = swap_return
+            .reserves_after
+            .into_iter()
+            .collect::<HashMap<PairId, CoinPair>>();
+        reserve_after = reserves_after.get(&pair_id).unwrap().clone();
+
+        // Calculate the user's balances after the swap
+        user_balances_after = user_balances_before.clone();
+        user_balances_after.checked_sub(&input).unwrap();
+        user_balances_after
+            .checked_add(&swap_return.output)
+            .unwrap();
+
+        // Calculate the ratio of the user's balances and the pool's reserves
+        let user_balance_ratio = user_balances_after.ratio().unwrap();
+        let pool_ratio = reserve_after.ratio().unwrap();
+
+        // Break if the ratio is close enough
+        let abs_diff = if user_balance_ratio < pool_ratio {
+            pool_ratio - user_balance_ratio
+        } else {
+            user_balance_ratio - pool_ratio
+        };
+        if abs_diff / pool_ratio < Udec128::checked_from_ratio(1, 10000000).unwrap() {
+            break;
+        }
+
+        // Adjust the search range
+        if user_balance_ratio < pool_ratio {
+            high = mid;
+        } else {
+            low = mid;
+        }
+        mid = (low + high) / Uint128::new(2);
+    }
+
+    // Simulate provide liquidity after the swap
+    let balanced_provide_res = suite
+        .query_wasm_smart(contracts.dex, dex::QuerySimulateProvideLiquidityRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            deposit: user_balances_after.clone(),
+            reserve: Some(reserve_after.clone()),
+        })
+        .should_succeed_and(|res| {
+            // Pool reserves after provide should be the same as the reserve after the swap plus the provided amount
+            res.reserves_after.amount_of(&DANGO_DENOM).is_ok_and(|x| {
+                x == user_balances_after.amount_of(&DANGO_DENOM).unwrap()
+                    + reserve_after.amount_of(&DANGO_DENOM).unwrap()
+                    && res.reserves_after.amount_of(&USDC_DENOM).is_ok_and(|x| {
+                        x == user_balances_after.amount_of(&USDC_DENOM).unwrap()
+                            + reserve_after.amount_of(&USDC_DENOM).unwrap()
+                    })
+            })
+        });
+
+    // Perform the actual unbalanced provision
+    suite
+        .execute(
+            &mut user,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            user_balances_before.clone(),
+        )
+        .should_succeed();
+
+    // Ensure the pool reserves after the unbalanced provision are the same as the balanced provision
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and_equal(balanced_provide_res.reserves_after);
+
+    // Query the user's balances after the provision
+    let user_balances_after = suite.query_balances(&user.address()).unwrap();
+
+    // Ensure correct amount of LP tokens minted
+    assert_eq!(
+        user_balances_after.amount_of(&lp_denom),
+        balanced_provide_res.lp_tokens_minted.amount
+    );
+
+    // Ensure all the user's supplied coins were consumed
+    assert!(user_balances_after.amount_of(&DANGO_DENOM).is_zero());
+    assert!(user_balances_after.amount_of(&USDC_DENOM).is_zero());
+}
+
 #[test_case(
     Uint128::new(100),
     coins! {
         DANGO_DENOM.clone() => 100,
         USDC_DENOM.clone()  => 100,
     };
-    "withdrawa all"
+    "withdraw all"
 )]
 #[test_case(
     Uint128::new(50),
