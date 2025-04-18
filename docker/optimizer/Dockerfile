@@ -2,8 +2,8 @@
 
 FROM rust:alpine AS bob
 
-ARG LEFT_CURVE_GIT_COMMIT=main
-ENV LEFT_CURVE_GIT_COMMIT=$LEFT_CURVE_GIT_COMMIT
+ARG GIT_COMMIT=main
+ENV GIT_COMMIT=$GIT_COMMIT
 
 # Download the crates.io index using the new sparse protocol to improve performance
 # and avoid OOM in the build.
@@ -13,12 +13,15 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN apk update && apk add --no-cache git musl-dev
 
 # Download dango source code, build, then delete.
-RUN echo "Cloning commit: $LEFT_CURVE_GIT_COMMIT" \
+RUN echo "Cloning commit: $GIT_COMMIT" \
   && git init left-curve \
   && cd left-curve \
   && git remote add origin https://github.com/left-curve/left-curve.git \
-  && git fetch --depth 1 origin $LEFT_CURVE_GIT_COMMIT \
+  && git fetch --depth 1 origin $GIT_COMMIT \
   && git checkout FETCH_HEAD \
+  && cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in \
+  && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs \
+  && rm dango/cli/src/git_info.rs.in \
   && cargo install --path dango/cli \
   && cd .. \
   && rm -rf left-curve
