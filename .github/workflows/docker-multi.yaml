@@ -7,21 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  set-vars:
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.vars.outputs.tag }}
-      sha: ${{ steps.vars.outputs.sha }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set git SHA tag
-        id: vars
-        run: |
-          echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
   build-cometbft:
-    needs: set-vars
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,11 +23,10 @@ jobs:
           context: ./docker/cometbft
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}/cometbft:${{ needs.set-vars.outputs.tag }}
+            ghcr.io/${{ github.repository }}/cometbft:${{ github.sha }}
             ghcr.io/${{ github.repository }}/cometbft:latest
 
   build-dango:
-    needs: set-vars
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,10 +41,10 @@ jobs:
         with:
           context: ./docker/dango
           build-args: |
-            LEFT_CURVE_GIT_COMMIT=${{ needs.set-vars.outputs.sha }}
+            LEFT_CURVE_GIT_COMMIT=${{ github.sha }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}/dango:${{ needs.set-vars.outputs.tag }}
+            ghcr.io/${{ github.repository }}/dango:${{ github.sha }}
             ghcr.io/${{ github.repository }}/dango:latest
 
   build-optimizer:
@@ -78,8 +63,8 @@ jobs:
         with:
           context: ./docker/optimizer
           build-args: |
-            LEFT_CURVE_GIT_COMMIT=${{ needs.set-vars.outputs.sha }}
+            LEFT_CURVE_GIT_COMMIT=${{ github.sha }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}/optimizer:${{ needs.set-vars.outputs.tag }}
+            ghcr.io/${{ github.repository }}/optimizer:${{ github.sha }}
             ghcr.io/${{ github.repository }}/optimizer:latest
