@@ -91,26 +91,12 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     Ok(Response::new().add_events(events)?)
 }
 
-/// Internal use function for handling the logic of batch updating orders.
-///
-/// ## Inputs
-///
-/// - `storage`: Storage instance for read and write.
-/// - `sender`:  The sender of the transaction. This is the address for whom to update the orders for.
-/// - `creates`: The orders to create.
-/// - `cancels`: The orders to cancel.
-///
-/// ## Outputs
-///
-/// - A `Coins` instance containing the deposits required to create the orders.
-/// - A `Coins` instance containing the refunds for the cancelled orders.
-/// - A vec of `ContractEvent` instances containing the events.
-fn _batch_update_orders(
-    storage: &mut dyn Storage,
-    sender: Addr,
+#[inline]
+fn batch_update_orders(
+    mut ctx: MutableCtx,
     creates: Vec<CreateLimitOrderRequest>,
     cancels: Option<OrderIds>,
-) -> anyhow::Result<(Coins, Coins, EventBuilder)> {
+) -> anyhow::Result<Response> {
     let mut deposits = Coins::new();
     let mut refunds = Coins::new();
     let mut events = EventBuilder::new();
@@ -123,13 +109,13 @@ fn _batch_update_orders(
         Some(OrderIds::All) => ORDERS
             .idx
             .user
-            .prefix(sender)
-            .range(storage, None, None, IterationOrder::Ascending)
+            .prefix(ctx.sender)
+            .range(ctx.storage, None, None, IterationOrder::Ascending)
             .map(|order| Ok((order?, false)))
             .chain(
                 INCOMING_ORDERS
-                    .prefix(sender)
-                    .values(storage, None, None, IterationOrder::Ascending)
+                    .prefix(ctx.sender)
+                    .values(ctx.storage, None, None, IterationOrder::Ascending)
                     .map(|order| Ok((order?, true))),
             )
             .collect::<StdResult<Vec<_>>>()?,
@@ -139,9 +125,11 @@ fn _batch_update_orders(
             .map(|order_id| {
                 // First see if the order is the persistent storage. If not,
                 // check the transient storage.
-                if let Some(order) = ORDERS.idx.order_id.may_load(storage, order_id)? {
+                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
                     Ok((order, false))
-                } else if let Some(order) = INCOMING_ORDERS.may_load(storage, (sender, order_id))? {
+                } else if let Some(order) =
+                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
+                {
                     Ok((order, true))
                 } else {
                     bail!("order with id `{order_id}` not found");
@@ -156,7 +144,10 @@ fn _batch_update_orders(
     for ((order_key, order), is_incoming) in orders_to_cancel {
         let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
-        ensure!(sender == order.user, "only the user can cancel the order");
+        ensure!(
+            ctx.sender == order.user,
+            "only the user can cancel the order"
+        );
 
         let refund = match direction {
             Direction::Bid => Coin {
@@ -178,9 +169,9 @@ fn _batch_update_orders(
         })?;
 
         if is_incoming {
-            INCOMING_ORDERS.remove(storage, (sender, *order_id));
+            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
         } else {
-            ORDERS.remove(storage, order_key)?;
+            ORDERS.remove(ctx.storage, order_key)?;
         }
     }
 
@@ -188,7 +179,7 @@ fn _batch_update_orders(
 
     for order in creates {
         ensure!(
-            PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
+            PAIRS.has(ctx.storage, (&order.base_denom, &order.quote_denom)),
             "pair not found with base `{}` and quote `{}`",
             order.base_denom,
             order.quote_denom
@@ -205,7 +196,7 @@ fn _batch_update_orders(
             },
         };
 
-        let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+        let (mut order_id, _) = NEXT_ORDER_ID.increment(ctx.storage)?;
 
         // For BUY orders, invert the order ID. This is necessary for enforcing
         // price-time priority. See the docs on `OrderId` for details.
@@ -217,7 +208,7 @@ fn _batch_update_orders(
 
         events.push(OrderSubmitted {
             order_id,
-            user: sender,
+            user: ctx.sender,
             base_denom: order.base_denom.clone(),
             quote_denom: order.quote_denom.clone(),
             direction: order.direction,
@@ -227,8 +218,8 @@ fn _batch_update_orders(
         })?;
 
         INCOMING_ORDERS.save(
-            storage,
-            (sender, order_id),
+            ctx.storage,
+            (ctx.sender, order_id),
             &(
                 (
                     (order.base_denom, order.quote_denom),
@@ -237,25 +228,13 @@ fn _batch_update_orders(
                     order_id,
                 ),
                 Order {
-                    user: sender,
+                    user: ctx.sender,
                     amount: order.amount,
                     remaining: order.amount,
                 },
             ),
         )?;
     }
-
-    Ok((deposits, refunds, events))
-}
-
-#[inline]
-fn batch_update_orders(
-    mut ctx: MutableCtx,
-    creates: Vec<CreateLimitOrderRequest>,
-    cancels: Option<OrderIds>,
-) -> anyhow::Result<Response> {
-    let (deposits, refunds, events) =
-        _batch_update_orders(ctx.storage, ctx.sender, creates, cancels)?;
 
     // Compute the amount of tokens that should be sent back to the users.
     //
