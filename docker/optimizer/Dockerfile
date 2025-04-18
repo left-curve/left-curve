@@ -1,6 +1,6 @@
 # ------------------------------------ bob -------------------------------------
 
-FROM rust:1.81.0-alpine AS bob
+FROM rust:alpine AS bob
 
 ARG LEFT_CURVE_GIT_COMMIT=main
 ENV LEFT_CURVE_GIT_COMMIT=$LEFT_CURVE_GIT_COMMIT
@@ -33,7 +33,7 @@ RUN rm -rf left-curve
 
 # ---------------------------------- wasm-opt ----------------------------------
 
-FROM rust:1.81.0-alpine AS wasm-opt
+FROM rust:alpine AS wasm-opt
 
 ARG BINARYEN_GIT_TAG="version_119"
 

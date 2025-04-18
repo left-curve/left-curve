@@ -1,4 +1,4 @@
-FROM rust:1.85.0-slim
+FROM rust:slim
 
 # Install dependencies.
 RUN apt update && apt install -y clang git libssl-dev pkg-config
