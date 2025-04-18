@@ -1,5 +1,8 @@
 name: Build & Push Multi-Arch Images to GHCR
 
+env:
+  COMETBFT_GIT_TAG: v0.38.17
+
 on:
   push:
     branches: [main]
@@ -21,9 +24,11 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: ./docker/cometbft
+          build-args: |
+            COMETBFT_GIT_TAG=${{ env.COMETBFT_GIT_TAG }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}/cometbft:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
             ghcr.io/${{ github.repository }}/cometbft:latest
 
   build-dango:
@@ -48,7 +53,6 @@ jobs:
             ghcr.io/${{ github.repository }}/dango:latest
 
   build-optimizer:
-    needs: set-vars
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
