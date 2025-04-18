@@ -3,6 +3,7 @@
 FROM rust:1.81.0-alpine AS bob
 
 ARG LEFT_CURVE_GIT_COMMIT=main
+ENV LEFT_CURVE_GIT_COMMIT=$LEFT_CURVE_GIT_COMMIT
 
 # Download the crates.io index using the new sparse protocol to improve performance
 # and avoid OOM in the build.
@@ -12,7 +13,12 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN apk update && apk add --no-cache git musl-dev
 
 # Download source code
-RUN git clone clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
+RUN echo "Cloning commit: $LEFT_CURVE_GIT_COMMIT" \
+  && git clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
+  && cd left-curve \
+  && cargo install --path dango/cli \
+  && cd .. \
+  && rm -rf left-curve
 
 # Compile and install bob
 RUN cd left-curve \

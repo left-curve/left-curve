@@ -5,9 +5,11 @@ RUN apt update && apt install -y clang git libssl-dev pkg-config
 
 # Version of the left-curve monorepo.
 ARG LEFT_CURVE_GIT_COMMIT=main
+ENV LEFT_CURVE_GIT_COMMIT=$LEFT_CURVE_GIT_COMMIT
 
 # Download dango source code, build, then delete.
-RUN git clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
+RUN echo "Cloning commit: $LEFT_CURVE_GIT_COMMIT" \
+  && git clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
   && cd left-curve \
   && cargo install --path dango/cli \
   && cd .. \
