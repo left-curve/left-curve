@@ -11,7 +11,7 @@ pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 // (base_denom, quote_denom) => coin_pair
 pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
-pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
+pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 1, 1);
 
 pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("order", OrderIndex {
     order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),

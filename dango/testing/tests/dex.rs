@@ -1052,6 +1052,8 @@ fn only_owner_can_create_passive_pool() {
                     lp_denom: lp_denom.clone(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             }]),
             Coins::new(),
@@ -1070,6 +1072,8 @@ fn only_owner_can_create_passive_pool() {
                     lp_denom: lp_denom.clone(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             }]),
             Coins::new(),
@@ -1526,6 +1530,8 @@ fn swap_exact_amount_in(
                                 lp_denom: pair_params.lp_denom.clone(),
                                 swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                                 curve_invariant: pair_params.curve_invariant.clone(),
+                                order_depth: pair_params.order_depth,
+                                order_spacing: pair_params.order_spacing,
                             },
                         }]),
                         Coins::new(),
@@ -1911,6 +1917,507 @@ fn swap_exact_amount_out(
                 reserve.clone() == CoinPair::try_from(expected_reserve).unwrap()
             });
     }
+}
+
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::new_percent(1),
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(49751),
+                price: Udec128::new_percent(20100),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            USDC_DENOM.clone() => 49751 * 201,
+        },
+    ],
+    btree_map! {
+        !0u64 => (Udec128::new_percent(20100), Uint128::from(49751), Direction::Bid),
+    },
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 200 * 10000000,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Unchanged,
+        USDC_DENOM.clone() => BalanceChange::Increased(49751 * 201),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone() => BalanceChange::Decreased(49751 * 201),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 one percent fee no matching orders")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(49751),
+                price: Udec128::new_percent(20100),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            USDC_DENOM.clone() => 49751 * 201,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 - 49751,
+            USDC_DENOM.clone() => 200 * 10000000 + 49751 * 201,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Decreased(49751),
+        USDC_DENOM.clone() => BalanceChange::Increased(49751 * 201),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Increased(49751),
+            USDC_DENOM.clone() => BalanceChange::Decreased(49751 * 201),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::new_percent(1),
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(47783),
+                price: Udec128::new_percent(20300),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            USDC_DENOM.clone() => 47783 * 203,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 - 47783,
+            USDC_DENOM.clone() => 200 * 10000000 + 47783 * 203,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Decreased(47783),
+        USDC_DENOM.clone() => BalanceChange::Increased(47783 * 203),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Increased(47783),
+            USDC_DENOM.clone() => BalanceChange::Decreased(47783 * 203),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::new_percent(1),
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(157784),
+                price: Udec128::new_percent(20300),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            USDC_DENOM.clone() => 157784 * 203,
+        },
+    ],
+    btree_map! {
+        !0u64 => (Udec128::new_percent(20300), Uint128::from(10000), Direction::Bid),
+    },
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 - 147784,
+            USDC_DENOM.clone() => 200 * 10000000 + 147784 * 203,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Decreased(147784),
+        USDC_DENOM.clone() => BalanceChange::Increased(157784 * 203),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Increased(147784),
+            USDC_DENOM.clone() => BalanceChange::Decreased(157784 * 203),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(50251),
+                price: Udec128::new_percent(19900),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            ETH_DENOM.clone() => 50251,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 + 50251,
+            USDC_DENOM.clone() => 200 * 10000000 - 50251 * 199,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Increased(50251),
+        USDC_DENOM.clone() => BalanceChange::Decreased(50251 * 199),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Decreased(50251),
+            USDC_DENOM.clone() => BalanceChange::Increased(50251 * 199),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(30000),
+                price: Udec128::new_percent(19900),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            ETH_DENOM.clone() => 30000,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 + 30000,
+            USDC_DENOM.clone() => 200 * 10000000 - 30000 * 199,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Increased(30000),
+        USDC_DENOM.clone() => BalanceChange::Decreased(30000 * 199),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Decreased(30000),
+            USDC_DENOM.clone() => BalanceChange::Increased(30000 * 199),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(60251),
+                price: Udec128::new_percent(19900),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            ETH_DENOM.clone() => 60251,
+        },
+    ],
+    btree_map! {
+        0u64 => (Udec128::new_percent(19900), Uint128::from(10000), Direction::Ask),
+    },
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 + 50251,
+            USDC_DENOM.clone() => 200 * 10000000 - 50251 * 199,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Increased(60251),
+        USDC_DENOM.clone() => BalanceChange::Decreased(50251 * 199),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Decreased(60251),
+            USDC_DENOM.clone() => BalanceChange::Increased(50251 * 199),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::new_percent(1),
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(162284),
+                price: Udec128::new_percent(19700),
+            },
+        ],
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(157784),
+                price: Udec128::new_percent(20300),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            ETH_DENOM.clone() => 162284,
+        },
+        coins! {
+            USDC_DENOM.clone() => 157784 * 203,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (ETH_DENOM.clone(), USDC_DENOM.clone()) => coins! {
+            ETH_DENOM.clone() => 10000000 + 4500, // only the remaining amount of the ask order traded against the passive pool
+            USDC_DENOM.clone() => 200 * 10000000 - 4500 * 197,
+        }.try_into().unwrap(),
+    },
+    btree_map! {
+        ETH_DENOM.clone() => BalanceChange::Increased(162284 - 157784),
+        USDC_DENOM.clone() => BalanceChange::Decreased(4500 * 197),
+    },
+    vec![
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Decreased(162284),
+            USDC_DENOM.clone() => BalanceChange::Increased(162284 * 197),
+        },
+        btree_map! {
+            ETH_DENOM.clone() => BalanceChange::Increased(157784),
+            USDC_DENOM.clone() => BalanceChange::Decreased(157784 * 197),
+        }
+    ]
+    ; "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders")]
+fn curve_on_orderbook(
+    curve_invariant: CurveInvariant,
+    order_spacing: Udec128,
+    order_depth: u64,
+    swap_fee_rate: Udec128,
+    pool_liquidity: Coins,
+    orders: Vec<Vec<CreateLimitOrderRequest>>,
+    order_creation_funds: Vec<Coins>,
+    expected_orders_after_clearing: BTreeMap<OrderId, (Udec128, Uint128, Direction)>,
+    expected_reserves_after_clearing: BTreeMap<(Denom, Denom), CoinPair>,
+    expected_dex_balance_changes: BTreeMap<Denom, BalanceChange>,
+    expected_user_balance_changes: Vec<BTreeMap<Denom, BalanceChange>>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Update pair params
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Provide liquidity with owner account
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: ETH_DENOM.clone(),
+                        quote_denom: USDC_DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            curve_invariant,
+                            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                            order_depth,
+                            order_spacing,
+                        },
+                    }]),
+                    pool_liquidity.clone(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Provide liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+
+    // Record dex and user balances
+    suite.balances().record(contracts.dex.address());
+    suite
+        .balances()
+        .record_many(accounts.users().map(|user| user.address()));
+
+    // Create txs for all the orders from all users.
+    let txs = accounts
+        .users_mut()
+        .zip(orders)
+        .zip(order_creation_funds)
+        .map(|((user, orders), order_creation_funds)| {
+            let msg = Message::execute(
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: orders,
+                    cancels: None,
+                },
+                order_creation_funds,
+            )?;
+
+            user.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+        })
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    // Assert that dex balances have changed as expected
+    suite
+        .balances()
+        .should_change(contracts.dex.address(), expected_dex_balance_changes);
+
+    // Assert that user balances have changed as expected
+    for (user, expected_user_balance_change) in accounts.users().zip(expected_user_balance_changes)
+    {
+        println!("user: {:?}", user);
+        suite
+            .balances()
+            .should_change(user.address(), expected_user_balance_change);
+    }
+
+    // Assert that reserves have changed as expected
+    for ((base_denom, quote_denom), expected_reserve) in expected_reserves_after_clearing {
+        suite
+            .query_wasm_smart(contracts.dex, QueryReserveRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            })
+            .should_succeed_and_equal(expected_reserve);
+    }
+
+    // Assert that the order book contains the expected orders
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders_after_clearing.len());
+            for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
+                let order = orders.get(&order_id).unwrap();
+                assert_eq!(order.price, price);
+                assert_eq!(order.remaining, remaining);
+                assert_eq!(order.direction, direction);
+            }
+            true
+        });
 }
 
 fn balance_changes_from_coins(
