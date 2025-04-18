@@ -1,6 +1,7 @@
 mod config;
 mod db;
 mod home_directory;
+mod indexer;
 mod keys;
 mod prompt;
 mod query;
@@ -15,6 +16,7 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
+    indexer::IndexerCmd,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -46,6 +48,9 @@ enum Command {
 
     /// Start the node
     Start(StartCmd),
+
+    /// Indexer related commands
+    Indexer(IndexerCmd),
 
     /// Send transactions
     #[command(next_display_order = None)]
@@ -86,5 +91,6 @@ async fn main() -> anyhow::Result<()> {
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
+        Command::Indexer(cmd) => cmd.run(app_dir).await,
     }
 }

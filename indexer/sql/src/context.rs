@@ -31,7 +31,7 @@ impl Context {
         //.connect_timeout(Duration::from_secs(settings.timeout))
         //.idle_timeout(Duration::from_secs(8))
         //.max_lifetime(Duration::from_secs(20))
-        .sqlx_logging(false);
+        .sqlx_logging(true);
 
         match Database::connect(opt).await {
             Ok(db) => {

@@ -10,6 +10,8 @@ use {
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
 };
 
+pub mod accounts;
+
 #[test]
 fn index_transfer_events() {
     let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();

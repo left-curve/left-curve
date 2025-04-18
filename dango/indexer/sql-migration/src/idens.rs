@@ -13,3 +13,18 @@ pub enum Transfer {
     Amount,
     Denom,
 }
+
+#[derive(DeriveIden)]
+pub enum Account {
+    #[sea_orm(iden = "accounts")]
+    Table,
+    Id,
+    Username,
+    Index,
+    #[allow(clippy::enum_variant_names)]
+    AccountType,
+    Address,
+    EthAddress,
+    CreatedBlockHeight,
+    CreatedAt,
+}
