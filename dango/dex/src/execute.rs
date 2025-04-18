@@ -595,6 +595,7 @@ fn clear_orders_of_pair(
             .next()
             .transpose()?
             .unwrap_or(Uint128::ZERO);
+
         // Record trading volume for the user's address
         VOLUMES.save(
             storage,
@@ -619,6 +620,7 @@ fn clear_orders_of_pair(
                 .next()
                 .transpose()?
                 .unwrap_or(Uint128::ZERO);
+
             // Record trading volume for the user's username
             VOLUMES_BY_USER.save(
                 storage,
