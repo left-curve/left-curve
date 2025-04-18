@@ -545,20 +545,22 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .add_events(events)?)
 }
 
-struct MergedOrders<A>
+struct MergedOrders<A, B>
 where
     A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    B: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
 {
     real: Peekable<A>,
-    passive: Peekable<A>,
+    passive: Peekable<B>,
     order: grug::Order,
 }
 
-impl<A> MergedOrders<A>
+impl<A, B> MergedOrders<A, B>
 where
     A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    B: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
 {
-    pub fn new(real: A, passive: A, order: grug::Order) -> Self {
+    pub fn new(real: A, passive: B, order: grug::Order) -> Self {
         Self {
             real: real.peekable(),
             passive: passive.peekable(),
@@ -567,9 +569,10 @@ where
     }
 }
 
-impl<A> Iterator for MergedOrders<A>
+impl<A, B> Iterator for MergedOrders<A, B>
 where
     A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    B: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
 {
     type Item = StdResult<((Udec128, u64), Order)>;
 
