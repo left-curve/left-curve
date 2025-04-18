@@ -2350,7 +2350,6 @@ fn curve_on_orderbook(
         .users_mut()
         .zip(orders)
         .zip(order_creation_funds)
-        .into_iter()
         .map(|((user, orders), order_creation_funds)| {
             let msg = Message::execute(
                 contracts.dex,

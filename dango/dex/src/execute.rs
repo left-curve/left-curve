@@ -599,27 +599,13 @@ fn clear_orders_of_pair(
         MergedOrders::new(ask_iter, Box::new(passive_asks), grug::Order::Ascending),
     );
 
-    let merged_bid_iter = merged_bid_iter.collect::<StdResult<Vec<_>>>()?;
-    let merged_ask_iter = merged_ask_iter.collect::<StdResult<Vec<_>>>()?;
-
-    println!("merged_bid_iter: {:?}", merged_bid_iter);
-    println!("merged_ask_iter: {:?}", merged_ask_iter);
-
     // Run the order matching algorithm.
     let MatchingOutcome {
         range,
         volume,
         bids,
         asks,
-    } = match_orders(
-        merged_bid_iter.into_iter().map(|x| Ok(x)),
-        merged_ask_iter.into_iter().map(|x| Ok(x)),
-    )?;
-
-    println!("bids: {:?}", bids);
-    println!("asks: {:?}", asks);
-    println!("range: {:?}", range);
-    println!("volume: {:?}", volume);
+    } = match_orders(merged_bid_iter, merged_ask_iter)?;
 
     // If no matching orders were found, then we're done with this pair.
     // Continue to the next pair.
