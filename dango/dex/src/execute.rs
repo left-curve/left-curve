@@ -471,10 +471,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     // Save the updated volumes.
     for (address, volume) in volumes {
         VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
+        // TODO: purge volume data that are too old.
     }
 
     for (username, volume) in volumes_by_username {
         VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
+        // TODO: purge volume data that are too old.
     }
 
     Ok(Response::new()
