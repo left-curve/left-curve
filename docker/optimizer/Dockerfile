@@ -12,9 +12,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN apk update && apk add --no-cache git musl-dev
 
 # Download source code
-RUN git clone https://github.com/left-curve/left-curve.git \
-  && cd left-curve \
-  && git checkout $LEFT_CURVE_GIT_COMMIT
+RUN git clone clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
 
 # Compile and install bob
 RUN cd left-curve \

@@ -7,9 +7,8 @@ RUN apt update && apt install -y clang git libssl-dev pkg-config
 ARG LEFT_CURVE_GIT_COMMIT="c3e91a2"
 
 # Download dango source code, build, then delete.
-RUN git clone https://github.com/left-curve/left-curve.git \
+RUN git clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
   && cd left-curve \
-  && git checkout $LEFT_CURVE_GIT_COMMIT \
   && cargo install --path dango/cli \
   && cd .. \
   && rm -rf left-curve
