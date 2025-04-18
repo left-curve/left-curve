@@ -4,11 +4,14 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account::margin::{HealthData, HealthResponse},
+        account::margin::{CollateralPower, HealthData, HealthResponse},
+        config::AppConfig,
         dex::{Direction, QueryOrdersByUserRequest},
+        lending::Market,
+        oracle::PrecisionedPrice,
     },
     grug::{
-        Addr, Coin, Coins, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
+        Addr, Coin, Coins, Denom, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
         QuerierWrapper, StorageQuerier, Timestamp, Udec128, Uint128,
     },
     std::{
@@ -33,26 +36,12 @@ pub fn query_and_compute_health(
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
-    let data = query_health(querier, account, current_time)?;
-    compute_health(data, discount_collateral)
-}
-
-/// Query relevant data necessary for computing the health of a margin account.
-pub fn query_health(
-    querier: &QuerierWrapper,
-    account: Addr,
-    current_time: Timestamp,
-) -> anyhow::Result<HealthData> {
     let app_cfg = querier.query_dango_config()?;
-    let collateral_powers = app_cfg.collateral_powers;
-
-    // Query all debts for the account.
-    let scaled_debts = querier
-        .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
-        .unwrap_or_default();
+    let data = query_health(querier, account, &app_cfg)?;
 
     // Query all markets.
-    let markets = scaled_debts
+    let markets = data
+        .scaled_debts
         .keys()
         .map(|denom| {
             let market = querier
@@ -63,8 +52,50 @@ pub fn query_health(
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
 
+    // Query all prices.
+    let denoms = markets
+        .clone()
+        .into_keys()
+        .chain(app_cfg.collateral_powers.keys().cloned())
+        .chain(data.limit_orders.values().map(|res| res.base_denom.clone()))
+        .chain(
+            data.limit_orders
+                .values()
+                .map(|res| res.quote_denom.clone()),
+        )
+        .collect::<HashSet<_>>();
+
+    let prices = denoms
+        .iter()
+        .map(|denom| {
+            let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+            Ok((denom.clone(), price))
+        })
+        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
+    compute_health(
+        data,
+        markets,
+        prices,
+        app_cfg.collateral_powers,
+        discount_collateral,
+    )
+}
+
+/// Query relevant data necessary for computing the health of a margin account.
+pub fn query_health(
+    querier: &QuerierWrapper,
+    account: Addr,
+    app_cfg: &AppConfig,
+) -> anyhow::Result<HealthData> {
+    // Query all debts for the account.
+    let scaled_debts = querier
+        .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
+        .unwrap_or_default();
+
     // Query collateral balances.
-    let collateral_balances = collateral_powers
+    let collateral_balances = app_cfg
+        .collateral_powers
         .keys()
         .map(|denom| {
             let balance = querier.query_balance(account, denom.clone())?;
@@ -80,28 +111,8 @@ pub fn query_health(
             limit: None,
         })?;
 
-    // Query all prices.
-    let denoms = markets
-        .clone()
-        .into_keys()
-        .chain(collateral_powers.keys().cloned())
-        .chain(limit_orders.values().map(|res| res.base_denom.clone()))
-        .chain(limit_orders.values().map(|res| res.quote_denom.clone()))
-        .collect::<HashSet<_>>();
-
-    let prices = denoms
-        .iter()
-        .map(|denom| {
-            let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
-            Ok((denom.clone(), price))
-        })
-        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
-
     Ok(HealthData {
         scaled_debts,
-        markets,
-        prices,
-        collateral_powers,
         collateral_balances,
         limit_orders,
     })
@@ -125,12 +136,12 @@ pub fn query_health(
 pub fn compute_health(
     HealthData {
         scaled_debts,
-        markets,
-        prices,
-        collateral_powers,
         collateral_balances,
         limit_orders,
     }: HealthData,
+    markets: BTreeMap<Denom, Market>,
+    prices: BTreeMap<Denom, PrecisionedPrice>,
+    collateral_powers: BTreeMap<Denom, CollateralPower>,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
     // ------------------------------- 1. Debts --------------------------------

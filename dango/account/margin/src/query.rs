@@ -1,7 +1,7 @@
 use {
     crate::core,
     dango_auth::query_seen_nonces,
-    dango_types::account::margin::QueryMsg,
+    dango_types::{DangoQuerier, account::margin::QueryMsg},
     grug::{ImmutableCtx, Json, JsonSerExt},
 };
 
@@ -13,7 +13,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::HealthData {} => {
-            let res = core::query_health(&ctx.querier, ctx.contract, ctx.block.timestamp)?;
+            let app_cfg = ctx.querier.query_dango_config()?;
+            let res = core::query_health(&ctx.querier, ctx.contract, &app_cfg)?;
             res.to_json_value()
         },
         QueryMsg::Health {} => {
