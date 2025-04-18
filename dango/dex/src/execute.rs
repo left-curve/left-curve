@@ -6,7 +6,9 @@ use {
     anyhow::{anyhow, bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
-        DangoQuerier, bank,
+        DangoQuerier,
+        account_factory::Username,
+        bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
@@ -16,10 +18,10 @@ use {
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx,
-        Timestamp, Udec128, Uint128, UniqueVec,
+        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx, Udec128,
+        Uint128, UniqueVec,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -447,6 +449,9 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .map(|((pair, ..), _)| pair)
         .collect::<BTreeSet<_>>();
 
+    let mut volumes = HashMap::new();
+    let mut volumes_by_username = HashMap::new();
+
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
@@ -454,12 +459,22 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         clear_orders_of_pair(
             ctx.storage,
             &ctx.querier,
-            ctx.block.timestamp,
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
+            &mut volumes,
+            &mut volumes_by_username,
         )?;
+    }
+
+    // Save the updated volumes.
+    for (address, volume) in volumes {
+        VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
+    }
+
+    for (username, volume) in volumes_by_username {
+        VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
     }
 
     Ok(Response::new()
@@ -475,11 +490,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
-    current_time: Timestamp,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
+    volumes: &mut HashMap<Addr, Uint128>,
+    volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
@@ -590,15 +606,22 @@ fn clear_orders_of_pair(
 
         // Record trading volume for the user's address.
         {
-            let volume = VOLUMES
-                .prefix(&order.user)
-                .values(storage, None, None, IterationOrder::Descending)
-                .next()
-                .transpose()?
-                .unwrap_or(Uint128::ZERO)
-                .checked_add(new_volume)?;
+            match volumes.entry(order.user) {
+                Entry::Occupied(mut v) => {
+                    v.get_mut().checked_add_assign(new_volume)?;
+                },
+                Entry::Vacant(v) => {
+                    let volume = VOLUMES
+                        .prefix(&order.user)
+                        .values(storage, None, None, IterationOrder::Descending)
+                        .next()
+                        .transpose()?
+                        .unwrap_or(Uint128::ZERO)
+                        .checked_add(new_volume)?;
 
-            VOLUMES.save(storage, (&order.user, current_time), &volume)?;
+                    v.insert(volume);
+                },
+            }
         }
 
         // Record trading volume for the user's username, if the trader is a
@@ -612,16 +635,22 @@ fn clear_orders_of_pair(
             .params
             .owner()
         {
-            // Get the previous volume for the user's username
-            let volume = VOLUMES_BY_USER
-                .prefix(&username)
-                .values(storage, None, None, IterationOrder::Descending)
-                .next()
-                .transpose()?
-                .unwrap_or(Uint128::ZERO)
-                .checked_add(new_volume)?;
+            match volumes_by_username.entry(username.clone()) {
+                Entry::Occupied(mut v) => {
+                    v.get_mut().checked_add_assign(new_volume)?;
+                },
+                Entry::Vacant(v) => {
+                    let volume = VOLUMES_BY_USER
+                        .prefix(&username)
+                        .values(storage, None, None, IterationOrder::Descending)
+                        .next()
+                        .transpose()?
+                        .unwrap_or(Uint128::ZERO)
+                        .checked_add(new_volume)?;
 
-            VOLUMES_BY_USER.save(storage, (&username, current_time), &volume)?;
+                    v.insert(volume);
+                },
+            }
         }
     }
 
