@@ -9,8 +9,11 @@ ENV LEFT_CURVE_GIT_COMMIT=$LEFT_CURVE_GIT_COMMIT
 
 # Download dango source code, build, then delete.
 RUN echo "Cloning commit: $LEFT_CURVE_GIT_COMMIT" \
-  && git clone --branch $LEFT_CURVE_GIT_COMMIT --depth 1 https://github.com/left-curve/left-curve.git \
+  && git init left-curve \
   && cd left-curve \
+  && git remote add origin https://github.com/left-curve/left-curve.git \
+  && git fetch --depth 1 origin $LEFT_CURVE_GIT_COMMIT \
+  && git checkout FETCH_HEAD \
   && cargo install --path dango/cli \
   && cd .. \
   && rm -rf left-curve
