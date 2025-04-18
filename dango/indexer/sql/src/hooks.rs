@@ -36,9 +36,7 @@ impl HooksTrait for Hooks {
 impl Hooks {
     async fn save_transfers(&self, context: &Context, block: &BlockToIndex) -> Result<(), Error> {
         #[cfg(feature = "tracing")]
-        tracing::warn!(
-            "about to look at transfer events",
-        );
+        tracing::warn!("about to look at transfer events",);
 
         // 1. get all successful transfers events from the database for this block
         let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
@@ -122,9 +120,7 @@ impl Hooks {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::warn!(
-            "injected new transfers",
-        );
+        tracing::warn!("injected new transfers",);
 
         Ok(())
     }
