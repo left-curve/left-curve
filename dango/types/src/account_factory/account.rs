@@ -126,10 +126,9 @@ impl AccountParams {
     /// Returns the owner (username) of the account.
     ///
     /// Returns `None` for multisig accounts.
-    pub fn owner(&self) -> Option<Username> {
+    pub fn owner(self) -> Option<Username> {
         match self {
-            AccountParams::Spot(params) => Some(params.owner.clone()),
-            AccountParams::Margin(params) => Some(params.owner.clone()),
+            AccountParams::Spot(params) | AccountParams::Margin(params) => Some(params.owner),
             AccountParams::Multi(_) => None,
         }
     }
