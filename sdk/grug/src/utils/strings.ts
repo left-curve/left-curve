@@ -30,3 +30,13 @@ export function capitalize(str: string): string {
 export function truncateAddress(address: string, substring = 4): string {
   return address.slice(0, 6).concat("...") + address.substring(address.length - substring);
 }
+
+/**
+ *
+ * Convert a string from camelCase to Title Case.
+ * @param str The string to convert.
+ * @returns The converted string.
+ */
+export function camelToTitleCase(str: string): string {
+  return str.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
+}

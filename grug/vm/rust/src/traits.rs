@@ -5,7 +5,9 @@
 use {
     crate::VmResult,
     grug_types::{
-        Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult, ImmutableCtx, Json, MutableCtx, Querier, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome
+        Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Context, GenericResult,
+        ImmutableCtx, Json, MutableCtx, Querier, Response, Storage, SubMsgResult, SudoCtx, Tx,
+        TxOutcome,
     },
 };
 
@@ -15,7 +17,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
@@ -24,7 +26,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
@@ -33,7 +35,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
@@ -42,7 +44,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
     ) -> VmResult<GenericResult<Response>>;
 
     fn reply(
@@ -50,7 +52,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
         result: SubMsgResult,
     ) -> VmResult<GenericResult<Response>>;
@@ -60,7 +62,7 @@ pub trait Contract {
         ctx: Context,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Json>>;
 
@@ -69,7 +71,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<AuthResponse>>;
 
@@ -78,7 +80,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -87,7 +89,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: BankMsg,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -96,7 +98,7 @@ pub trait Contract {
         ctx: Context,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>>;
 
@@ -105,7 +107,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -114,7 +116,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
         outcome: TxOutcome,
     ) -> VmResult<GenericResult<Response>>;
@@ -124,7 +126,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
     ) -> VmResult<GenericResult<Response>>;
 }
 

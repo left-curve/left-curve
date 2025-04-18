@@ -1,60 +1,168 @@
 use {
+    anyhow::anyhow,
     dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account::margin::HealthResponse,
+        account::margin::{CollateralPower, HealthData, HealthResponse},
+        config::AppConfig,
         dex::{Direction, QueryOrdersByUserRequest},
+        lending::Market,
+        oracle::PrecisionedPrice,
     },
     grug::{
-        Addr, Coin, Coins, Inner, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
-        QuerierWrapper, StorageQuerier, Timestamp, Udec128,
+        Addr, Coin, Coins, Denom, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
+        QuerierWrapper, StorageQuerier, Timestamp, Udec128, Uint128,
     },
-    std::cmp::min,
+    std::{
+        cmp::min,
+        collections::{BTreeMap, HashSet},
+    },
 };
 
-/// Queries the health of the margin account.
+/// Query necessary data and compute the health of a margin account.
 ///
-/// Arguments:
+/// ## Notable inputs
 ///
-/// - `account`: The margin account to query.
 /// - `discount_collateral`: If set, does not include the value of these
-///   coins in the total collateral value. Used when liquidating the
-///   account as the liquidator has sent additional funds to the account
-///   that should not be included in the total collateral value.
-pub fn query_health(
+///   coins in the total collateral value.
+///
+///   Used when liquidating the account as the liquidator has sent additional
+///   funds to the account that should not be included in the total collateral
+///   value.
+pub fn query_and_compute_health(
     querier: &QuerierWrapper,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
     let app_cfg = querier.query_dango_config()?;
+    let data = query_health(querier, account, &app_cfg)?;
 
-    // ------------------------------- 1. Debts --------------------------------
+    // Query all markets.
+    let markets = data
+        .scaled_debts
+        .keys()
+        .map(|denom| {
+            let market = querier
+                .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
+                .update_indices(querier, current_time)?;
 
+            Ok((denom.clone(), market))
+        })
+        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
+    // Query all prices.
+    let denoms = markets
+        .clone()
+        .into_keys()
+        .chain(app_cfg.collateral_powers.keys().cloned())
+        .chain(data.limit_orders.values().map(|res| res.base_denom.clone()))
+        .chain(
+            data.limit_orders
+                .values()
+                .map(|res| res.quote_denom.clone()),
+        )
+        .collect::<HashSet<_>>();
+
+    let prices = denoms
+        .iter()
+        .map(|denom| {
+            let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+            Ok((denom.clone(), price))
+        })
+        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
+    compute_health(
+        data,
+        markets,
+        prices,
+        app_cfg.collateral_powers,
+        discount_collateral,
+    )
+}
+
+/// Query relevant data necessary for computing the health of a margin account.
+pub fn query_health(
+    querier: &QuerierWrapper,
+    account: Addr,
+    app_cfg: &AppConfig,
+) -> anyhow::Result<HealthData> {
     // Query all debts for the account.
     let scaled_debts = querier
         .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
         .unwrap_or_default();
 
-    // Calculate the total value of the debts.
+    // Query collateral balances.
+    let collateral_balances = app_cfg
+        .collateral_powers
+        .keys()
+        .map(|denom| {
+            let balance = querier.query_balance(account, denom.clone())?;
+            Ok((denom.clone(), balance))
+        })
+        .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+
+    // Query all limit orders for the account.
+    let limit_orders =
+        querier.query_wasm_smart(app_cfg.addresses.dex, QueryOrdersByUserRequest {
+            user: account,
+            start_after: None,
+            limit: None,
+        })?;
+
+    Ok(HealthData {
+        scaled_debts,
+        collateral_balances,
+        limit_orders,
+    })
+}
+
+/// Compute the health of the margin account.
+///
+/// ## Inputs
+///
+/// - `data`: a `HealthData` struct containing the necessary data for computing
+///   the account's health.
+///
+/// - `discount_collateral`: If set, does not include the value of these
+///   coins in the total collateral value. Used when liquidating the
+///   account as the liquidator has sent additional funds to the account
+///   that should not be included in the total collateral value.
+///
+/// ## Outputs
+///
+/// - a `HealthResponse` struct containing the health of the margin account.
+pub fn compute_health(
+    HealthData {
+        scaled_debts,
+        collateral_balances,
+        limit_orders,
+    }: HealthData,
+    markets: BTreeMap<Denom, Market>,
+    prices: BTreeMap<Denom, PrecisionedPrice>,
+    collateral_powers: BTreeMap<Denom, CollateralPower>,
+    discount_collateral: Option<Coins>,
+) -> anyhow::Result<HealthResponse> {
+    // ------------------------------- 1. Debts --------------------------------
+
     let mut debts = Coins::new();
     let mut total_debt_value = Udec128::ZERO;
 
-    // Iterate over the scaled debt amounts and add the debt value to the total
-    // debt value.
     for (denom, scaled_debt) in &scaled_debts {
-        // Query the market for the denom.
-        let market = querier
-            .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
-            .update_indices(querier, current_time)?;
+        // Get the market for the denom.
+        let market = markets
+            .get(denom)
+            .ok_or(anyhow!("market for denom {denom} not found"))?;
 
         // Calculate the real debt.
         let debt = market.calculate_debt(*scaled_debt)?;
         debts.insert(Coin::new(denom.clone(), debt)?)?;
 
         // Calculate the value of the debt.
-        let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+        let price = prices
+            .get(denom)
+            .ok_or(anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
@@ -62,16 +170,12 @@ pub fn query_health(
 
     // ---------------------------- 2. Collaterals -----------------------------
 
-    // Calculate the total value of the account's collateral adjusted for the
-    // collateral power.
     let mut total_collateral_value = Udec128::ZERO;
     let mut total_adjusted_collateral_value = Udec128::ZERO;
     let mut collaterals = Coins::new();
 
-    // Iterate over the collateral powers and add the collateral value to the
-    // total adjusted collateral value.
-    for (denom, power) in &app_cfg.collateral_powers {
-        let mut collateral_balance = querier.query_balance(account, denom.clone())?;
+    for (denom, power) in &collateral_powers {
+        let mut collateral_balance = *collateral_balances.get(denom).unwrap_or(&Uint128::ZERO);
 
         if let Some(discount_collateral) = discount_collateral.as_ref() {
             collateral_balance.checked_sub_assign(discount_collateral.amount_of(denom))?;
@@ -83,9 +187,11 @@ pub fn query_health(
             continue;
         }
 
-        let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+        let price = prices
+            .get(denom)
+            .ok_or(anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(collateral_balance)?;
-        let adjusted_value = value.checked_mul(power.into_inner())?;
+        let adjusted_value = value.checked_mul(**power)?;
 
         collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
         total_collateral_value.checked_add_assign(value)?;
@@ -104,16 +210,9 @@ pub fn query_health(
     let mut limit_order_collaterals = Coins::new();
     let mut limit_order_outputs = Coins::new();
 
-    // Query the user's open limit orders.
-    let orders = querier.query_wasm_smart(app_cfg.addresses.dex, QueryOrdersByUserRequest {
-        user: account,
-        start_after: None,
-        limit: None,
-    })?;
-
     // Iterate over the user's limit orders and add the order value to the
     // total collateral value.
-    for (_, res) in orders {
+    for res in limit_orders.values() {
         // Get asset locked in the order and the asset that would be returned
         // if the order was filled.
         let (offer, ask) = match res.direction {
@@ -133,23 +232,25 @@ pub fn query_health(
             ),
         };
 
-        let offer_price = querier.query_price(app_cfg.addresses.oracle, &offer.denom, None)?;
-        let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
-        let offer_collateral_power = app_cfg
-            .collateral_powers
+        let offer_price = prices
             .get(&offer.denom)
-            .map(|x| x.into_inner())
-            .unwrap_or(Udec128::ZERO);
-        let offer_adjusted_value = offer_value.checked_mul(offer_collateral_power)?;
+            .ok_or(anyhow::anyhow!("price for denom {} not found", offer.denom))?;
+        let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
+        let offer_collateral_power = collateral_powers.get(&offer.denom).ok_or(anyhow!(
+            "collateral power for denom {} not found",
+            offer.denom
+        ))?;
+        let offer_adjusted_value = offer_value.checked_mul(**offer_collateral_power)?;
 
-        let ask_price = querier.query_price(app_cfg.addresses.oracle, &ask.denom, None)?;
-        let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
-        let ask_collateral_power = app_cfg
-            .collateral_powers
+        let ask_price = prices
             .get(&ask.denom)
-            .map(|x| x.into_inner())
-            .unwrap_or(Udec128::ZERO);
-        let ask_adjusted_value = ask_value.checked_mul(ask_collateral_power)?;
+            .ok_or(anyhow::anyhow!("price for denom {} not found", ask.denom))?;
+        let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
+        let ask_collateral_power = collateral_powers.get(&ask.denom).ok_or(anyhow!(
+            "collateral power for denom {} not found",
+            ask.denom
+        ))?;
+        let ask_adjusted_value = ask_value.checked_mul(**ask_collateral_power)?;
 
         let min_value = min(offer_value, ask_value);
         let min_adjusted_value = min(offer_adjusted_value, ask_adjusted_value);

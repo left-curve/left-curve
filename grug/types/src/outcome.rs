@@ -31,7 +31,7 @@ pub struct CheckTxOutcome {
 }
 
 /// The success case of [`TxOutcome`](crate::TxOutcome).
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckTxSuccess {
     pub gas_limit: u64,
     pub gas_used: u64,
@@ -248,7 +248,7 @@ pub struct BlockOutcome {
     pub tx_outcomes: Vec<TxOutcome>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, Clone)]
 pub struct BroadcastTxOutcome {
     pub tx_hash: Hash256,
     pub check_tx: CheckTxOutcome,
@@ -281,7 +281,7 @@ impl BroadcastTxOutcome {
                 gas_limit: 0,
                 gas_used: 0,
                 result: into_generic_result(response.code, response.log),
-                events: BASE64.decode(&response.data)?.deserialize_json()?,
+                events: response.data.deserialize_json()?,
             },
         })
     }
@@ -292,12 +292,13 @@ pub struct BroadcastTxError {
     pub check_tx: CheckTxError,
 }
 
+#[derive(Debug, Clone)]
 pub struct BroadcastTxSuccess {
     pub tx_hash: Hash256,
     pub check_tx: CheckTxSuccess,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, Clone)]
 pub struct SearchTxOutcome {
     pub hash: Hash256,
     pub height: u64,
@@ -315,7 +316,7 @@ impl SearchTxOutcome {
             hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
             height: response.height.into(),
             index: response.index,
-            tx: BASE64.decode(&response.tx)?.deserialize_json()?,
+            tx: response.tx.deserialize_json()?,
             outcome: TxOutcome::from_tm_tx_result(response.tx_result)?,
         })
     }

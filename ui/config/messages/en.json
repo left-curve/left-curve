@@ -91,6 +91,36 @@
       }
     ]
   },
+  "applets": {
+    "0": {
+      "img": "/images/applets/send-and-receive.svg",
+      "title": "Transfer",
+      "description": "Send and receive crypto.",
+      "path": "/transfer",
+      "keywords": "transfer,send,receive"
+    },
+    "1": {
+      "img": "/images/emojis/simple/settings.svg",
+      "title": "Settings",
+      "description": "Optimize your display, security, and more.",
+      "path": "/settings",
+      "keywords": "settings,preferences,options"
+    },
+    "2": {
+      "img": "/images/emojis/simple/notifications.svg",
+      "title": "Notifications",
+      "description": "View recent transactions.",
+      "path": "/notifications",
+      "keywords": "notifications,alerts"
+    },
+    "3": {
+      "img": "/images/applets/account-creation.svg",
+      "title": "Subaccount creation",
+      "description": "Create subaccounts.",
+      "path": "/create-account",
+      "keywords": "account,create,register"
+    }
+  },
   "explorer": {
     "block": {
       "notFound": {
@@ -123,6 +153,34 @@
         "title": "Transaction not found",
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       }
+    },
+    "contracts": {
+      "notFound": {
+        "pre": "We couldn’t find ",
+        "title": "Contract not found",
+        "description": " contract you were looking for. If it’s a valid contract, it may not have been deployed yet or it may be an account, so please try again later. If the issue persists, please contact us for further assistance."
+      },
+      "details": {
+        "contractDetails": "Contract Details",
+        "codeHash": "Code Hash:",
+        "contractAddress": "Contract Address:",
+        "admin": "Admin:",
+        "balances": "Balances:"
+      }
+    },
+    "accounts": {
+      "notFound": {
+        "pre": "We couldn’t find ",
+        "title": "Account not found",
+        "description": " account you were looking for. If it’s a valid account, it may not have been created yet or it may be a contract, so please try again later. If the issue persists, please contact us for further assistance."
+      },
+      "details": {
+        "accountDetails": "Account Details",
+        "codeHash": "Code Hash:",
+        "contractAddress": "Contract Address:",
+        "admin": "Admin:",
+        "balances": "Balances:"
+      }
     }
   },
   "modals": {
@@ -151,11 +209,11 @@
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
     "errors": {
-      "failedSingInWithDesktop": "Failed to sign in with desktop",
+      "failedSignInWithDesktop": "Failed to sign in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
       "usernameRequired": "Username is required",
       "usernameNotExist": "Username doesn’t exist",
-      "failedSigingIn": "Failed to connect with the selected credential."
+      "failedSigningIn": "Failed to connect with the selected credential."
     },
     "credential": {
       "description": "Choose any of the credentials that have been associated with your username."
@@ -346,13 +404,13 @@
         }
       }
     ],
-    "number": "Number",
+    "number": "Format Number",
     "connectToMobile": "Connect to Mobile",
-    "keyManagment": {
+    "keyManagement": {
       "title": "Key Management",
       "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
       "add": "Add",
-      "managment": {
+      "management": {
         "add": {
           "title": "Add new credential",
           "description": "Choose a credential. You can add or remove credentials later."
@@ -365,7 +423,7 @@
       }
     }
   },
-  "commadBar": {
+  "searchBar": {
     "noResult": "No results found.",
     "placeholder": {
       "title": "Search for",

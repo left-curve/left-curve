@@ -23,11 +23,11 @@ import {
   CoinSelector,
   IconButton,
   IconChevronDown,
-  IconCopy,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
+  TextCopy,
   TruncateText,
   useInputs,
   useMediaQuery,
@@ -37,9 +37,8 @@ import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { z } from "zod";
-import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
+import { Modals } from "~/components/modals/RootModal";
 import { m } from "~/paraglide/messages";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
@@ -126,7 +125,7 @@ function TransferApplet() {
       toast.error(
         {
           title: "Transfer failed",
-          description: e instanceof Error ? e.message : e,
+          description: e instanceof Error ? e.message : undefined,
         },
         {
           duration: Number.POSITIVE_INFINITY,
@@ -139,7 +138,7 @@ function TransferApplet() {
   });
 
   return (
-    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4">
+    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
       {isMd ? null : (
         <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
           <IconButton variant="link">
@@ -255,7 +254,7 @@ function TransferApplet() {
                     className="diatype-sm-medium text-gray-500"
                     text={account?.address}
                   />
-                  <IconCopy
+                  <TextCopy
                     copyText={account?.address}
                     className="w-4 h-4 cursor-pointer text-gray-500"
                   />

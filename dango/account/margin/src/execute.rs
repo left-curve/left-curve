@@ -1,5 +1,5 @@
 use {
-    crate::query_health,
+    crate::core,
     anyhow::{anyhow, ensure},
     dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
@@ -46,7 +46,8 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
-    let health = query_health(&ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
+    let health =
+        core::query_and_compute_health(&ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
 
     // After executing all messages in the transactions, the account must have
     // a utilization rate no greater than one. Otherwise, we throw an error to
@@ -80,7 +81,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         collaterals,
         limit_order_collaterals,
         ..
-    } = query_health(
+    } = core::query_and_compute_health(
         &ctx.querier,
         ctx.contract,
         ctx.block.timestamp,
