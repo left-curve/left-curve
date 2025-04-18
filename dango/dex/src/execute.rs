@@ -493,6 +493,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
                     remaining: amount,
                 }))
             });
+            let mut reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
 
             clear_orders_of_pair(
                 ctx.storage,
@@ -501,23 +502,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
                 quote_denom.clone(),
                 passive_bids,
                 passive_asks,
+                Some(&mut reserve),
                 &mut events,
                 &mut refunds,
             )?;
 
-            // Update the reserves according to the refunds.
-            let mut reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
-            for (addr, refund) in refunds.clone() {
-                if addr == ctx.contract {
-                    for coin in refund {
-                        reserve.checked_add(&coin)?;
-                    }
-                } else {
-                    for coin in refund {
-                        reserve.checked_sub(&coin)?;
-                    }
-                }
-            }
             RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
         } else {
             clear_orders_of_pair(
@@ -527,13 +516,14 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
                 quote_denom.clone(),
                 vec![].into_iter(),
                 vec![].into_iter(),
+                None,
                 &mut events,
                 &mut refunds,
             )?;
         }
     }
 
-    // Remove the dex from the refunds map.
+    // Remove the dex from the refunds map since it cannot send tokens to itself.
     refunds.remove(&ctx.contract);
 
     Ok(Response::new()
@@ -609,6 +599,7 @@ fn clear_orders_of_pair(
     quote_denom: Denom,
     passive_bids: impl Iterator<Item = StdResult<((Udec128, u64), Order)>>,
     passive_asks: impl Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    reserve: Option<&mut CoinPair>,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
 ) -> StdResult<()> {
@@ -629,13 +620,27 @@ fn clear_orders_of_pair(
         MergedOrders::new(ask_iter, Box::new(passive_asks), grug::Order::Ascending),
     );
 
+    let merged_bid_iter = merged_bid_iter.collect::<StdResult<Vec<_>>>()?;
+    let merged_ask_iter = merged_ask_iter.collect::<StdResult<Vec<_>>>()?;
+
+    println!("merged_bid_iter: {:?}", merged_bid_iter);
+    println!("merged_ask_iter: {:?}", merged_ask_iter);
+
     // Run the order matching algorithm.
     let MatchingOutcome {
         range,
         volume,
         bids,
         asks,
-    } = match_orders(merged_bid_iter, merged_ask_iter)?;
+    } = match_orders(
+        merged_bid_iter.into_iter().map(|x| Ok(x)),
+        merged_ask_iter.into_iter().map(|x| Ok(x)),
+    )?;
+
+    println!("bids: {:?}", bids);
+    println!("asks: {:?}", asks);
+    println!("range: {:?}", range);
+    println!("volume: {:?}", volume);
 
     // If no matching orders were found, then we're done with this pair.
     // Continue to the next pair.
@@ -653,6 +658,8 @@ fn clear_orders_of_pair(
     // Here we choose the midpoint.
     let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
+    println!("clearing_price: {:?}", clearing_price);
+
     events.push(OrdersMatched {
         base_denom: base_denom.clone(),
         quote_denom: quote_denom.clone(),
@@ -660,7 +667,13 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    // Clear the BUY orders.
+    // Split fill_orders into two separate iterators depending on the order user
+    let (dex_filling_outcomes, user_filling_outcomes): (Vec<_>, Vec<_>) =
+        fill_orders(bids, asks, clearing_price, volume)?
+            .into_iter()
+            .partition(|x| x.order.user == dex_addr);
+
+    // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
         order_price,
@@ -670,8 +683,17 @@ fn clear_orders_of_pair(
         cleared,
         refund_base,
         refund_quote,
-    } in fill_orders(bids, asks, clearing_price, volume)?
+    } in user_filling_outcomes
     {
+        println!("order: {:?}", order);
+        println!("order_id: {:?}", order_id);
+        println!("order_direction: {:?}", order_direction);
+        println!("order_price: {:?}", order_price);
+        println!("refund_base: {:?}", refund_base);
+        println!("refund_quote: {:?}", refund_quote);
+        println!("filled: {:?}", filled);
+        println!("cleared: {:?}", cleared);
+
         let refund = Coins::try_from([
             Coin {
                 denom: base_denom.clone(),
@@ -692,34 +714,59 @@ fn clear_orders_of_pair(
             cleared,
         })?;
 
-        refunds.entry(order.user).or_default().insert_many(refund)?;
-
         // The order only exists in the storage if it's not owned by the dex, since
         // the passive orders are "virtual".
-        if order.user != dex_addr {
-            if cleared {
-                ORDERS.remove(
-                    storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                )?;
-            } else {
-                println!("saving order: {:?}", order);
-                ORDERS.save(
-                    storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                    &order,
-                )?;
-                println!("post save");
+        refunds.entry(order.user).or_default().insert_many(refund)?;
+
+        if cleared {
+            ORDERS.remove(
+                storage,
+                (
+                    (base_denom.clone(), quote_denom.clone()),
+                    order_direction,
+                    order_price,
+                    order_id,
+                ),
+            )?;
+        } else {
+            println!("saving order: {:?}", order);
+            ORDERS.save(
+                storage,
+                (
+                    (base_denom.clone(), quote_denom.clone()),
+                    order_direction,
+                    order_price,
+                    order_id,
+                ),
+                &order,
+            )?;
+            println!("post save");
+        }
+    }
+
+    // Handle order filling outcomes for the matched orders belonging to the dex.
+    if let Some(reserve) = reserve {
+        for FillingOutcome {
+            order_direction,
+            filled,
+            refund_quote,
+            ..
+        } in dex_filling_outcomes
+        {
+            match order_direction {
+                Direction::Bid => {
+                    reserve
+                        .checked_add(&Coin::new(base_denom.clone(), filled)?)?
+                        .checked_sub(&Coin::new(
+                            quote_denom.clone(),
+                            filled.checked_mul_dec_floor(clearing_price)?,
+                        )?)?;
+                },
+                Direction::Ask => {
+                    reserve
+                        .checked_sub(&Coin::new(base_denom.clone(), filled)?)?
+                        .checked_add(&Coin::new(quote_denom.clone(), refund_quote)?)?;
+                },
             }
         }
     }
