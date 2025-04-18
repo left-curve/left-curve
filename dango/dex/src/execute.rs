@@ -118,7 +118,7 @@ fn _batch_update_orders(
     // --------------------------- 1. Cancel orders ----------------------------
 
     // First, collect all orders to be cancelled into memory.
-    let orders = match cancels {
+    let orders_to_cancel = match cancels {
         // Cancel all orders.
         Some(OrderIds::All) => ORDERS
             .idx
@@ -153,7 +153,7 @@ fn _batch_update_orders(
     };
 
     // Now, cancel the orders one by one.
-    for ((order_key, order), is_incoming) in orders {
+    for ((order_key, order), is_incoming) in orders_to_cancel {
         let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
         ensure!(sender == order.user, "only the user can cancel the order");
@@ -480,7 +480,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
                 pair.reflect_curve(base_denom.clone(), quote_denom.clone(), &reserve)?;
 
             let passive_bids = passive_bids.into_iter().map(|(price, amount)| {
-                Ok(((price, 0), Order {
+                Ok(((price, u64::MAX), Order {
                     user: ctx.contract,
                     amount,
                     remaining: amount,
