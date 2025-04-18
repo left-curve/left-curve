@@ -1,0 +1,50 @@
+name: Cleanup Old GHCR Images
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # every day at 3am UTC
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cli/gh-action@v2
+
+      - name: Authenticate GitHub CLI
+        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Cleanup images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DAYS: 30
+        run: |
+          set -e
+
+          IMAGES=("cometbft" "dango" "optimizer")
+
+          for IMAGE in "${IMAGES[@]}"; do
+            echo "🧹 Cleaning $IMAGE..."
+            gh api -H "Accept: application/vnd.github+json" \
+              "/repos/${REPO}/packages/container/${IMAGE}/versions" |
+            jq -c '.[]' |
+            while read -r version; do
+              CREATED=$(echo "$version" | jq -r '.created_at')
+              ID=$(echo "$version" | jq -r '.id')
+              TAGS=$(echo "$version" | jq -r '.metadata.container.tags[]')
+
+              if echo "$TAGS" | grep -q "^latest$"; then
+                echo "✅ Skipping version $ID (has tag: latest)"
+                continue
+              fi
+
+              if [[ $(date -d "$CREATED" +%s) -lt $(date -d "-${DAYS} days" +%s) ]]; then
+                echo "🗑️  Deleting version ID $ID (created $CREATED)..."
+                gh api --method DELETE "/repos/${REPO}/packages/container/${IMAGE}/versions/$ID"
+              fi
+            done
+          done
