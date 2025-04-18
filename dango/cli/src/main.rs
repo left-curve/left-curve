@@ -1,12 +1,12 @@
 mod config;
 mod db;
+mod git_info;
 mod home_directory;
 mod keys;
 mod prompt;
 mod query;
 mod start;
 mod tx;
-mod git_info;
 
 use {
     crate::{
