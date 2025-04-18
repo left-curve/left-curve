@@ -586,47 +586,42 @@ fn clear_orders_of_pair(
 
         // Calculate the volume in USD for the filled order
         let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
-        let volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
+        let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
 
-        // Get the previous volume for the user's address
-        let previous_volume = VOLUMES
-            .prefix(&order.user)
-            .values(storage, None, None, IterationOrder::Descending)
-            .next()
-            .transpose()?
-            .unwrap_or(Uint128::ZERO);
+        // Record trading volume for the user's address.
+        {
+            let volume = VOLUMES
+                .prefix(&order.user)
+                .values(storage, None, None, IterationOrder::Descending)
+                .next()
+                .transpose()?
+                .unwrap_or(Uint128::ZERO)
+                .checked_add(new_volume)?;
 
-        // Record trading volume for the user's address
-        VOLUMES.save(
-            storage,
-            (&order.user, current_time),
-            &previous_volume.checked_add(volume)?,
-        )?;
+            VOLUMES.save(storage, (&order.user, current_time), &volume)?;
+        }
 
-        // Get the username from the user address
-        let username = querier
+        // Record trading volume for the user's username, if the trader is a
+        // single-signature account (skip for multisig accounts).
+        // TODO: this query can use caching, so we don't re-do queries for the same user.
+        if let Some(username) = querier
             .query_wasm_path(
                 account_factory,
                 &dango_account_factory::ACCOUNTS.path(order.user),
             )?
             .params
-            .owner();
-
-        if let Some(username) = username {
+            .owner()
+        {
             // Get the previous volume for the user's username
-            let previous_volume = VOLUMES_BY_USER
+            let volume = VOLUMES_BY_USER
                 .prefix(&username)
                 .values(storage, None, None, IterationOrder::Descending)
                 .next()
                 .transpose()?
-                .unwrap_or(Uint128::ZERO);
+                .unwrap_or(Uint128::ZERO)
+                .checked_add(new_volume)?;
 
-            // Record trading volume for the user's username
-            VOLUMES_BY_USER.save(
-                storage,
-                (&username, current_time),
-                &previous_volume.checked_add(volume)?,
-            )?;
+            VOLUMES_BY_USER.save(storage, (&username, current_time), &volume)?;
         }
     }
 
