@@ -70,7 +70,13 @@ impl TransferSubscription {
                         let t = to_address.clone();
                         async move { Self::get_transfers(app_ctx, block_height as i64, f, t).await }
                     }),
-            ),
+            ).filter_map(|transfers| async move {
+                if transfers.is_empty() {
+                    None
+                } else {
+                    Some(transfers)
+                }
+            }),
         )
     }
 }
