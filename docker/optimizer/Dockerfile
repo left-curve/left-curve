@@ -2,7 +2,7 @@
 
 FROM rust:1.81.0-alpine AS bob
 
-ARG LEFT_CURVE_GIT_COMMIT="bfa46b8"
+ARG LEFT_CURVE_GIT_COMMIT=main
 
 # Download the crates.io index using the new sparse protocol to improve performance
 # and avoid OOM in the build.

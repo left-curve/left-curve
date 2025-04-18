@@ -42,6 +42,8 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: ./docker/dango
+          build-args: |
+            LEFT_CURVE_GIT_COMMIT=${{ steps.vars.outputs.sha }}
           # push: true
           platforms: linux/amd64,linux/arm64
           tags: |
@@ -52,6 +54,8 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: ./docker/optimizer
+          build-args: |
+            LEFT_CURVE_GIT_COMMIT=${{ steps.vars.outputs.sha }}
           # push: true
           platforms: linux/amd64,linux/arm64
           tags: |
