@@ -432,6 +432,8 @@ fn swap_exact_amount_out(
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
 
@@ -459,6 +461,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         clear_orders_of_pair(
             ctx.storage,
             &ctx.querier,
+            app_cfg.addresses.oracle,
+            app_cfg.addresses.account_factory,
             base_denom,
             quote_denom,
             &mut events,
@@ -492,6 +496,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
+    oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
+    account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
@@ -540,10 +546,6 @@ fn clear_orders_of_pair(
         clearing_price,
         volume,
     })?;
-
-    let dango_config = querier.query_dango_config()?;
-    let oracle = dango_config.addresses.oracle;
-    let account_factory = dango_config.addresses.account_factory;
 
     // Clear the BUY orders.
     for FillingOutcome {
