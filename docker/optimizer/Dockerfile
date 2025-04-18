@@ -33,7 +33,7 @@ RUN rm -rf left-curve
 
 # ---------------------------------- wasm-opt ----------------------------------
 
-FROM rust:alpine AS wasm-opt
+FROM rust:1.81.0-alpine AS wasm-opt
 
 ARG BINARYEN_GIT_TAG="version_119"
 
@@ -59,7 +59,7 @@ RUN rm -rf binaryen
 
 # --------------------------------- optimizer ----------------------------------
 
-FROM rust:1.81.0-alpine AS optimizer
+FROM rust:alpine AS optimizer
 
 # Install build dependencies
 RUN apk update && apk add --no-cache musl-dev

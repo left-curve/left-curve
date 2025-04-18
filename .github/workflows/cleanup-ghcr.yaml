@@ -2,7 +2,8 @@ name: Cleanup Old GHCR Images
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # every day at 3am UTC
+    # every day at 3am UTC
+    - cron: '0 3 * * *'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +22,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          DAYS: 30
+          DAYS: 5
         run: |
           set -e
 
