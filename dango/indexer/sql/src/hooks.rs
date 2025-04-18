@@ -70,7 +70,7 @@ impl Hooks {
 
         #[cfg(feature = "tracing")]
         tracing::debug!(
-            transfer_event_counts = transfer_events.len(),
+            transfer_event_count = transfer_events.len(),
             "looked at transfer events",
         );
 
@@ -120,7 +120,7 @@ impl Hooks {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!("injected new transfers",);
+        tracing::debug!("injected new transfers");
 
         Ok(())
     }

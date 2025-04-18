@@ -61,22 +61,25 @@ impl TransferSubscription {
         Ok(
             once(async move { Self::get_transfers(app_ctx, latest_block_height, f, t).await })
                 .chain(
-                app_ctx
-                    .pubsub
-                    .subscribe_block_minted()
-                    .await?
-                    .then(move |block_height| {
-                        let f = from_address.clone();
-                        let t = to_address.clone();
-                        async move { Self::get_transfers(app_ctx, block_height as i64, f, t).await }
-                    }),
-            ).filter_map(|transfers| async move {
-                if transfers.is_empty() {
-                    None
-                } else {
-                    Some(transfers)
-                }
-            }),
+                    app_ctx
+                        .pubsub
+                        .subscribe_block_minted()
+                        .await?
+                        .then(move |block_height| {
+                            let f = from_address.clone();
+                            let t = to_address.clone();
+                            async move {
+                                Self::get_transfers(app_ctx, block_height as i64, f, t).await
+                            }
+                        }),
+                )
+                .filter_map(|transfers| async move {
+                    if transfers.is_empty() {
+                        None
+                    } else {
+                        Some(transfers)
+                    }
+                }),
         )
     }
 }
