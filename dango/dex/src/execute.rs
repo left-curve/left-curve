@@ -436,6 +436,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
+    let mut volumes = HashMap::new();
+    let mut volumes_by_username = HashMap::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
@@ -450,9 +452,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .into_values()
         .map(|((pair, ..), _)| pair)
         .collect::<BTreeSet<_>>();
-
-    let mut volumes = HashMap::new();
-    let mut volumes_by_username = HashMap::new();
 
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
