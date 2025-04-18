@@ -1,5 +1,5 @@
 use {
-    crate::{auth::Nonce, dex::OrdersByUserResponse, lending::Market, oracle::PrecisionedPrice},
+    crate::{auth::Nonce, dex::OrdersByUserResponse},
     grug::{Bounded, Coins, Denom, Udec128, Udec256, Uint128, ZeroExclusiveOneInclusive},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -11,9 +11,6 @@ pub type CollateralPower = Bounded<Udec128, ZeroExclusiveOneInclusive>;
 #[grug::derive(Serde)]
 pub struct HealthData {
     pub scaled_debts: BTreeMap<Denom, Udec256>,
-    pub markets: BTreeMap<Denom, Market>,
-    pub prices: BTreeMap<Denom, PrecisionedPrice>,
-    pub collateral_powers: BTreeMap<Denom, CollateralPower>,
     pub collateral_balances: BTreeMap<Denom, Uint128>,
     pub limit_orders: BTreeMap<u64, OrdersByUserResponse>,
 }
