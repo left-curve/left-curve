@@ -14,6 +14,7 @@ use {
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
             PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
@@ -231,6 +232,7 @@ fn batch_update_orders(
                     user: ctx.sender,
                     amount: order.amount,
                     remaining: order.amount,
+                    created_at_block_height: ctx.block.height,
                 },
             ),
         )?;
@@ -438,12 +440,21 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut refunds = BTreeMap::new();
     let mut volumes = HashMap::new();
     let mut volumes_by_username = HashMap::new();
+    let mut collected_fees = Coins::new();
+    let mut fee_payments = BTreeMap::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
+        // Ensure that the order was created in the current block. This should
+        // always be the case, or something has gone wrong.
+        ensure!(
+            order.created_at_block_height == ctx.block.height,
+            "incoming order was created in a previous block"
+        );
+
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }
 
@@ -460,16 +471,25 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         clear_orders_of_pair(
             ctx.storage,
             &ctx.querier,
+            ctx.block.height,
             app_cfg.addresses.oracle,
             app_cfg.addresses.account_factory,
+            app_cfg.maker_fee.into_inner(),
+            app_cfg.taker_fee.into_inner(),
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
+            &mut collected_fees,
+            &mut fee_payments,
             &mut volumes,
             &mut volumes_by_username,
         )?;
     }
+
+    // Add fee transfer to fee collector if any fees collected
+
+    // Add fee transfer if any fees were collected
 
     // Save the updated volumes.
     for (address, volume) in volumes {
@@ -488,6 +508,17 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         } else {
             None
         })
+        .may_add_message(if !fee_payments.is_empty() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    payments: fee_payments,
+                },
+                collected_fees,
+            )?)
+        } else {
+            None
+        })
         .add_events(events)?)
 }
 
@@ -495,12 +526,17 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
+    current_block_height: u64,
     oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
     account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    maker_fee: Udec128,
+    taker_fee: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
+    collected_fees: &mut Coins,
+    fee_payments: &mut BTreeMap<Addr, (FeeType, Coins)>,
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
@@ -546,7 +582,7 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    // Clear the BUY orders.
+    // Fill orders
     for FillingOutcome {
         order_direction,
         order_price,
@@ -556,8 +592,17 @@ fn clear_orders_of_pair(
         cleared,
         refund_base,
         refund_quote,
-    } in fill_orders(bids, asks, clearing_price, volume)?
-    {
+        fee_base,
+        fee_quote,
+    } in fill_orders(
+        bids,
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee,
+        taker_fee,
+    )? {
         let refund = Coins::try_from([
             Coin {
                 denom: base_denom.clone(),
@@ -569,12 +614,46 @@ fn clear_orders_of_pair(
             },
         ])?;
 
+        // Add fees to collected_fees
+        if fee_base.is_non_zero() {
+            collected_fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_insert((FeeType::Trade, Coins::new()))
+                .1
+                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+        }
+
+        if fee_quote.is_non_zero() {
+            collected_fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_insert((FeeType::Trade, Coins::new()))
+                .1
+                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+        }
+
+        // Include fee information in the event
+        let fee = if fee_base.is_non_zero() {
+            Some(Coin {
+                denom: base_denom.clone(),
+                amount: fee_base,
+            })
+        } else if fee_quote.is_non_zero() {
+            Some(Coin {
+                denom: quote_denom.clone(),
+                amount: fee_quote,
+            })
+        } else {
+            None
+        };
+
         events.push(OrderFilled {
             order_id,
             clearing_price,
             filled,
             refund: refund.clone(),
-            fee: None,
+            fee,
             cleared,
         })?;
 
