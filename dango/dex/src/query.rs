@@ -9,7 +9,7 @@ use {
     },
     grug::{
         Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
-        NumberConst, Order as IterationOrder, StdResult, Timestamp, Uint128,
+        Number, NumberConst, Order as IterationOrder, StdResult, Timestamp, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -285,8 +285,7 @@ fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdR
         Uint128::ZERO
     };
 
-    let volume_for_period = volume_now - volume_since;
-    Ok(volume_for_period)
+    Ok(volume_now.checked_sub(volume_since)?)
 }
 
 #[inline]
@@ -318,6 +317,5 @@ fn query_volume_by_user(
         Uint128::ZERO
     };
 
-    let volume_for_period = volume_now - volume_since;
-    Ok(volume_for_period)
+    Ok(volume_now.checked_sub(volume_since)?)
 }

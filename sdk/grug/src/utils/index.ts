@@ -8,6 +8,7 @@ export {
   snakeToCamel,
   capitalize,
   truncateAddress,
+  camelToTitleCase,
 } from "./strings.js";
 
 export {

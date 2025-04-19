@@ -23,6 +23,7 @@ config-parser           = { workspace = true }
 dango-client            = { workspace = true }
 dango-genesis           = { workspace = true }
 dango-httpd             = { workspace = true }
+dango-indexer-sql       = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true }
 data-encoding           = { workspace = true }

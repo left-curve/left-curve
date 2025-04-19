@@ -18,7 +18,7 @@ export type UseSessionKeyReturnType = {
   client?: ReturnType<typeof createSignerClient> | null;
   session: SigningSession | null;
   setSession: (session: SigningSession | null) => void;
-  deleteSessionkey: () => void;
+  deleteSessionKey: () => void;
   createSessionKey: (parameters: { expireAt: number }) => Promise<void>;
 };
 
@@ -29,12 +29,12 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
     storage: createStorage({ storage: sessionStorage }),
-    version: 1,
+    version: 1.1,
   });
 
   const { data: client } = useQuery({
     enabled: Boolean(session) && Boolean(username),
-    queryKey: ["session_key", username, session],
+    queryKey: ["session_key", username, session?.keyHash],
     queryFn: async () => {
       if (!session || !username) return null;
       return createSignerClient({
@@ -49,7 +49,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   async function createSessionKey(parameters: {
     expireAt: number;
   }) {
-    if (!connectorClient) return;
+    if (!connectorClient) throw new Error("connector client not found");
     const { expireAt } = parameters;
     const keyPair = Secp256k1.makeKeyPair();
     const publicKey = keyPair.getPublicKey();
@@ -68,7 +68,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     });
   }
 
-  function deleteSessionkey() {
+  function deleteSessionKey() {
     setSession(null);
   }
 
@@ -76,7 +76,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     client,
     session,
     setSession,
-    deleteSessionkey,
+    deleteSessionKey,
     createSessionKey,
   };
 }

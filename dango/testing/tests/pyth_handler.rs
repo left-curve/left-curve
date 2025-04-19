@@ -2,29 +2,11 @@ use {
     dango_proposal_preparer::PythHandler,
     dango_testing::setup_test,
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
-    grug::{
-        Coins, HashExt, NonEmpty, Querier, QuerierExt, QuerierWrapper, ResultExt, StdError,
-        btree_map,
-    },
-    grug_app::AppError,
+    grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::PYTH_URL,
     std::{thread::sleep, time::Duration},
 };
-
-struct QueryWrapperTest<'a> {
-    querier: QuerierWrapper<'a, AppError>,
-}
-
-impl Querier for QueryWrapperTest<'_> {
-    type Error = StdError;
-
-    fn query_chain(&self, req: grug::Query) -> Result<grug::QueryResponse, Self::Error> {
-        self.querier
-            .query_chain(req)
-            .map_err(|_| StdError::host("query_chain failed".to_string()))
-    }
-}
 
 #[test]
 fn handler() {
@@ -77,11 +59,7 @@ fn handler() {
         .should_succeed()
         .address;
 
-    let wrapper_test: QueryWrapperTest<'_> = QueryWrapperTest {
-        querier: QuerierWrapper::new(&suite),
-    };
-    let querier = QuerierWrapper::new(&wrapper_test);
-
+    let querier = QuerierWrapper::new(&suite);
     let mut handler = PythHandler::<PythClientCache>::new_with_cache(PYTH_URL);
 
     // Start the handler with oracle.

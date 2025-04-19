@@ -51,9 +51,9 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
           <IconKey />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">{m["settings.keyManagment.managment.add.title"]()}</h3>
+          <h3 className="h4-bold">{m["settings.keyManagement.management.add.title"]()}</h3>
           <p className="text-gray-500 diatype-m-regular">
-            {m["settings.keyManagment.managment.add.description"]()}
+            {m["settings.keyManagement.management.add.description"]()}
           </p>
         </div>
       </div>

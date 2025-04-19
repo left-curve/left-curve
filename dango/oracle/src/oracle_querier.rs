@@ -6,8 +6,7 @@ use {
         lending::{NAMESPACE, SUBNAMESPACE},
         oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
-    grug::{Addr, Denom, Number, Querier, QuerierExt, StdError, StorageQuerier},
-    std::fmt::Debug,
+    grug::{Addr, Denom, Number, Querier, QuerierExt, StorageQuerier},
 };
 
 /// A trait for querying prices from the oracle.
@@ -23,9 +22,7 @@ pub trait OracleQuerier: Querier {
 
 impl<Q> OracleQuerier for Q
 where
-    Q: QuerierExt,
-    Q::Error: From<StdError> + Debug,
-    anyhow::Error: From<Q::Error>,
+    Q: Querier,
 {
     fn query_price(
         &self,

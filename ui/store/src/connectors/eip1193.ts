@@ -19,8 +19,6 @@ type EIP1193ConnectorParameters = {
 };
 
 export function eip1193(parameters: EIP1193ConnectorParameters) {
-  let _isAuthorized = false;
-
   const {
     id = "metamask",
     name = "Ethereum Provider",
@@ -62,7 +60,6 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
-        _isAuthorized = false;
         emitter.emit("disconnect");
       },
       async getClient() {
@@ -111,7 +108,9 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         );
       },
       async isAuthorized() {
-        return _isAuthorized;
+        const provider = await this.getProvider();
+        const [controllerAddress] = await provider.request({ method: "eth_accounts" });
+        return !!controllerAddress;
       },
       async signArbitrary(payload) {
         const { types, primaryType, message } = payload;
