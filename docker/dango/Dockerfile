@@ -1,15 +1,26 @@
-FROM rust:1.85.0-slim
+FROM rust:slim
 
 # Install dependencies.
 RUN apt update && apt install -y clang git libssl-dev pkg-config
 
+# Download the crates.io index using the new sparse protocol to improve performance
+# and avoid OOM in the build.
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+
 # Version of the left-curve monorepo.
-ARG LEFT_CURVE_GIT_COMMIT="c3e91a2"
+ARG GIT_COMMIT=main
+ENV COMMIT=$GIT_COMMIT
 
 # Download dango source code, build, then delete.
-RUN git clone https://github.com/left-curve/left-curve.git \
+RUN echo "Cloning commit: $GIT_COMMIT" \
+  && git init left-curve \
   && cd left-curve \
-  && git checkout $LEFT_CURVE_GIT_COMMIT \
+  && git remote add origin https://github.com/left-curve/left-curve.git \
+  && git fetch --depth 1 origin $GIT_COMMIT \
+  && git checkout FETCH_HEAD \
+  && cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in \
+  && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs \
+  && rm dango/cli/src/git_info.rs.in \
   && cargo install --path dango/cli \
   && cd .. \
   && rm -rf left-curve

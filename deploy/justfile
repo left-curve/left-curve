@@ -1,0 +1,9 @@
+set positional-arguments
+
+# List available recipes
+default:
+  @just --list
+
+# Delete all local git branches except for main
+provision:
+  ansible-playbook -i inventory playbook.yml

@@ -1,0 +1,18 @@
+- hosts: all
+  vars:
+    ansible_user: root
+  roles:
+    - common
+    - users
+    - docker
+
+# - hosts: builder
+#   become: true
+#   roles:
+#     - rust
+#     - builder
+#
+# - hosts: dango
+#   become: true
+#   roles:
+#     - dango_node

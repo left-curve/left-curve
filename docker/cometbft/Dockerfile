@@ -5,11 +5,11 @@ RUN apk update && apk add git make
 
 # Git tag of the cometbft repo.
 ARG COMETBFT_GIT_TAG="v0.38.17"
+ENV COMETBFT_GIT_TAG=$COMETBFT_GIT_TAG
 
 # Download cometbft source code, build, then delete.
-RUN git clone https://github.com/cometbft/cometbft.git \
+RUN git clone --branch $COMETBFT_GIT_TAG --depth 1 https://github.com/cometbft/cometbft.git \
   && cd cometbft \
-  && git checkout $COMETBFT_GIT_TAG \
   && make install \
   && cd .. \
   && rm -rf cometbft
