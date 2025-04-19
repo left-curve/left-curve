@@ -2,9 +2,21 @@ import { type AppletMetadata, IconAddCross } from "@left-curve/applets-kit";
 import { useStorage } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
-import { applets } from "../../../applets";
+import { m } from "~/paraglide/messages";
 
 import { Link } from "@tanstack/react-router";
+
+const applets = Array.from(
+  { length: 4 },
+  (_, i) =>
+    ({
+      title: m[`applets.${i as 0}.title`](),
+      description: m[`applets.${i as 0}.description`](),
+      img: m[`applets.${i as 0}.img`](),
+      keywords: m[`applets.${i as 0}.keywords`]().split(","),
+      path: m[`applets.${i as 0}.path`](),
+    }) as AppletMetadata,
+);
 
 export function AppletsSection() {
   const [favApplets] = useStorage<AppletMetadata[]>("fav_applets", {
@@ -14,7 +26,7 @@ export function AppletsSection() {
   const { setSearchBarVisibility } = useApp();
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,_minmax(64px,_1fr))] md:place-items-start place-items-center gap-4 md:gap-8 w-full">
+    <div className="grid grid-cols-[repeat(auto-fill,_minmax(64px,_1fr))] md:place-items-start gap-4 md:gap-8 w-full min-h-[40vh] md:min-h-fit">
       {favApplets.map((applet) => (
         <div key={applet.title} className="flex flex-col items-center gap-2">
           <Link

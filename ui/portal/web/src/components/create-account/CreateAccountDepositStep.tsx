@@ -9,8 +9,8 @@ import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
 
 import { useApp } from "~/hooks/useApp";
-import { Modals } from "../foundation/RootModal";
 import { toast } from "../foundation/Toast";
+import { Modals } from "../modals/RootModal";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
@@ -42,15 +42,14 @@ export const CreateAccountDepositStep: React.FC = () => {
 
       const [nextIndex] = await Promise.all([
         signingClient.getNextAccountIndex({ username: account!.username }),
+        signingClient.registerAccount({
+          sender: account!.address,
+          config: { [accountType as "spot"]: { owner: account!.username } },
+          funds: {
+            "hyp/eth/usdc": parsedAmount,
+          },
+        }),
       ]);
-
-      await signingClient.registerAccount({
-        sender: account!.address,
-        config: { [accountType as "spot"]: { owner: account!.username } },
-        funds: {
-          "hyp/eth/usdc": parsedAmount,
-        },
-      });
 
       return {
         amount: parsedAmount,

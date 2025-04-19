@@ -1,5 +1,5 @@
 use {
-    crate::Binary,
+    crate::{Binary, Coins},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -42,6 +42,12 @@ impl<T> Lengthy for BTreeSet<T> {
 }
 
 impl<K, V> Lengthy for BTreeMap<K, V> {
+    fn length(&self) -> usize {
+        self.len()
+    }
+}
+
+impl Lengthy for Coins {
     fn length(&self) -> usize {
         self.len()
     }

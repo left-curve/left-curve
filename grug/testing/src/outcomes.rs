@@ -1,4 +1,4 @@
-use grug_types::{Addr, Hash256, ResultExt, TxError, TxOutcome, TxSuccess};
+use grug_types::{Addr, BlockOutcome, Hash256, ResultExt, Tx, TxError, TxOutcome, TxSuccess};
 
 #[must_use = "`UploadOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
 pub struct UploadOutcome {
@@ -82,4 +82,9 @@ impl ResultExt for UploadAndInstantiateOutcome {
     fn should_fail(self) -> Self::Error {
         self.outcome.should_fail()
     }
+}
+
+pub struct MakeBlockOutcome {
+    pub txs: Vec<(Tx, Hash256)>,
+    pub block_outcome: BlockOutcome,
 }

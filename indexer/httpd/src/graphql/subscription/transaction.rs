@@ -41,13 +41,19 @@ impl TransactionSubscription {
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 
         Ok(
-            once(async move { Self::get_transactions(app_ctx, latest_block_height).await }).chain(
-                app_ctx.pubsub.subscribe_block_minted().await?.then(
+            once(async move { Self::get_transactions(app_ctx, latest_block_height).await })
+                .chain(app_ctx.pubsub.subscribe_block_minted().await?.then(
                     move |block_height| async move {
                         Self::get_transactions(app_ctx, block_height as i64).await
                     },
-                ),
-            ),
+                ))
+                .filter_map(|transactions| async move {
+                    if transactions.is_empty() {
+                        None
+                    } else {
+                        Some(transactions)
+                    }
+                }),
         )
     }
 }

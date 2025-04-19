@@ -1,7 +1,9 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 use crate::{
-    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MockApi, MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, StdError, Storage, SudoCtx, Timestamp, Undefined
+    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MockApi,
+    MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp,
+    Undefined,
 };
 
 /// Default mock chain ID used in mock context.
@@ -216,7 +218,7 @@ impl<S, A, Q> MockContext<S, A, Q, Undefined<Addr>, Undefined<Coins>, Undefined<
 where
     S: Storage,
     A: Api,
-    Q: Querier<Error = StdError>,
+    Q: Querier,
 {
     pub fn as_immutable(&self) -> ImmutableCtx {
         ImmutableCtx {
@@ -245,7 +247,7 @@ impl<S, A, Q> MockContext<S, A, Q, Defined<Addr>, Defined<Coins>, Undefined<Auth
 where
     S: Storage,
     A: Api,
-    Q: Querier<Error = StdError>,
+    Q: Querier,
 {
     pub fn as_mutable(&mut self) -> MutableCtx {
         MutableCtx {
@@ -265,7 +267,7 @@ impl<S, A, Q> MockContext<S, A, Q, Undefined<Addr>, Undefined<Coins>, Defined<Au
 where
     S: Storage,
     A: Api,
-    Q: Querier<Error = StdError>,
+    Q: Querier,
 {
     pub fn as_auth(&mut self) -> AuthCtx {
         AuthCtx {
