@@ -1,10 +1,7 @@
 use {
     crate::{DEBTS, MARKETS, core},
     dango_types::lending::{Market, QueryMsg},
-    grug::{
-        Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
-        StdResult,
-    },
+    grug::{Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order},
     std::collections::BTreeMap,
 };
 
@@ -41,21 +38,30 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     .map_err(Into::into)
 }
 
-fn query_market(ctx: ImmutableCtx, denom: Denom) -> StdResult<Market> {
-    MARKETS.load(ctx.storage, &denom)
+fn query_market(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<Market> {
+    MARKETS
+        .load(ctx.storage, &denom)?
+        .update_indices(&ctx.querier, ctx.block.timestamp)
 }
 
 fn query_markets(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Denom, Market>> {
+) -> anyhow::Result<BTreeMap<Denom, Market>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     MARKETS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit as usize)
+        .map(|res| {
+            let (denom, market) = res?;
+            Ok((
+                denom,
+                market.update_indices(&ctx.querier, ctx.block.timestamp)?,
+            ))
+        })
         .collect()
 }
 
