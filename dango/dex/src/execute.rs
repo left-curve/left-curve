@@ -474,14 +474,14 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             ctx.block.height,
             app_cfg.addresses.oracle,
             app_cfg.addresses.account_factory,
+            app_cfg.maker_fee.into_inner(),
+            app_cfg.taker_fee.into_inner(),
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
             &mut collected_fees,
             &mut fee_payments,
-            app_cfg.maker_fee.into_inner(),
-            app_cfg.taker_fee.into_inner(),
             &mut volumes,
             &mut volumes_by_username,
         )?;
@@ -529,14 +529,14 @@ fn clear_orders_of_pair(
     current_block_height: u64,
     oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
     account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    maker_fee: Udec128,
+    taker_fee: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
     collected_fees: &mut Coins,
     fee_payments: &mut BTreeMap<Addr, (FeeType, Coins)>,
-    maker_fee: Udec128,
-    taker_fee: Udec128,
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
