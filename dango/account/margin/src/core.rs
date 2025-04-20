@@ -46,7 +46,7 @@ pub fn query_and_compute_health(
         .map(|denom| {
             let market = querier
                 .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
-                .update_indices(&querier, current_time)?;
+                .update_indices(querier, current_time)?;
 
             Ok((denom.clone(), market))
         })

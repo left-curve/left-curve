@@ -53,7 +53,7 @@ fn update_markets(
             if let Some(market) = maybe_market {
                 // Update indexes first, so that interests accumulated up to this
                 // point are accounted for. Then, set the new interest rate model.
-                let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
+                let market = market.update_indices(ctx.querier, ctx.block.timestamp)?;
                 Ok(market.set_interest_rate_model(new_interest_rate_model))
             } else {
                 Ok(Market::new(&denom, new_interest_rate_model)?)
@@ -212,7 +212,7 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|res| -> anyhow::Result<_> {
             let (denom, market) = res?;
-            let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
+            let market = market.update_indices(ctx.querier, ctx.block.timestamp)?;
             Ok((
                 Message::execute(
                     bank,

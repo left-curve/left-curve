@@ -20,7 +20,7 @@ pub fn deposit(
         // Get market and update the market indices
         let market = MARKETS
             .load(storage, &coin.denom)?
-            .update_indices(&querier, current_time)?;
+            .update_indices(querier, current_time)?;
 
         // Compute the amount of LP tokens to mint
         let supply_index = market.supply_index;

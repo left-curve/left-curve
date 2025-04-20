@@ -66,7 +66,7 @@ fn query_debt(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<Coins> {
         .map(|(denom, scaled_debt)| {
             let market = MARKETS
                 .load(ctx.storage, &denom)?
-                .update_indices(&ctx.querier, ctx.block.timestamp)?;
+                .update_indices(ctx.querier, ctx.block.timestamp)?;
             let debt = market.calculate_debt(scaled_debt)?;
 
             Ok((denom, debt))
@@ -94,7 +94,7 @@ fn query_debts(
                 .map(|(denom, scaled_debt)| {
                     let market = MARKETS
                         .load(ctx.storage, &denom)?
-                        .update_indices(&ctx.querier, ctx.block.timestamp)?;
+                        .update_indices(ctx.querier, ctx.block.timestamp)?;
                     let debt = market.calculate_debt(scaled_debt)?;
 
                     Ok((denom, debt))

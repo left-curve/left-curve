@@ -27,7 +27,7 @@ pub fn repay(
         // Update the market indices
         let market = MARKETS
             .load(storage, coin.denom)?
-            .update_indices(&querier, current_time)?;
+            .update_indices(querier, current_time)?;
 
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
