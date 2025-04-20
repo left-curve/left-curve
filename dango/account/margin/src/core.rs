@@ -31,7 +31,7 @@ use {
 ///   funds to the account that should not be included in the total collateral
 ///   value.
 pub fn query_and_compute_health(
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
@@ -84,7 +84,7 @@ pub fn query_and_compute_health(
 
 /// Query relevant data necessary for computing the health of a margin account.
 pub fn query_health(
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     account: Addr,
     app_cfg: &AppConfig,
 ) -> anyhow::Result<HealthData> {

@@ -9,7 +9,7 @@ use {
 /// Returns the amount of LP tokens and the updated markets.
 pub fn deposit(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_time: Timestamp,
     coins: Coins,
 ) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {

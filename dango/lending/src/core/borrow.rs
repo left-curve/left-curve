@@ -7,7 +7,7 @@ use {
 
 pub fn borrow(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_time: Timestamp,
     sender: Addr,
     coins: &Coins,

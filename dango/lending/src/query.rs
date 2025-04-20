@@ -29,12 +29,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::SimulateDeposit { underlying } => {
             let (lp_tokens, _) =
-                core::deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, underlying)?;
+                core::deposit(ctx.storage, ctx.querier, ctx.block.timestamp, underlying)?;
             lp_tokens.to_json_value()
         },
         QueryMsg::SimulateWithdraw { lp_tokens } => {
             let (coins, _) =
-                core::withdraw(ctx.storage, &ctx.querier, ctx.block.timestamp, lp_tokens)?;
+                core::withdraw(ctx.storage, ctx.querier, ctx.block.timestamp, lp_tokens)?;
             coins.to_json_value()
         },
     }
@@ -66,7 +66,7 @@ fn query_debt(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<Coins> {
         .map(|(denom, scaled_debt)| {
             let market = MARKETS
                 .load(ctx.storage, &denom)?
-                .update_indices(&ctx.querier, ctx.block.timestamp)?;
+                .update_indices(ctx.querier, ctx.block.timestamp)?;
             let debt = market.calculate_debt(scaled_debt)?;
 
             Ok((denom, debt))
@@ -94,7 +94,7 @@ fn query_debts(
                 .map(|(denom, scaled_debt)| {
                     let market = MARKETS
                         .load(ctx.storage, &denom)?
-                        .update_indices(&ctx.querier, ctx.block.timestamp)?;
+                        .update_indices(ctx.querier, ctx.block.timestamp)?;
                     let debt = market.calculate_debt(scaled_debt)?;
 
                     Ok((denom, debt))

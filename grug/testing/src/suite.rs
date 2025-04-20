@@ -12,8 +12,8 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
         Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, QuerierExt, Query, QueryResponse, Signer, StdError, StdResult, Tx, TxOutcome,
-        UnsignedTx,
+        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, Signer, StdError, StdResult, Tx,
+        TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
@@ -618,6 +618,11 @@ where
             gas_limit,
             Message::migrate(contract, new_code_hash, msg).unwrap(),
         )
+    }
+
+    /// Return a `QuerierWrapper` object.
+    pub fn querier(&self) -> QuerierWrapper {
+        QuerierWrapper::new(self)
     }
 }
 
