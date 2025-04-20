@@ -2,8 +2,8 @@ use {
     crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
         Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, Querier, QuerierExt, StdResult, Timestamp, Udec128, Udec256,
-        Uint128, ZeroInclusiveOneInclusive,
+        NumberConst, PrevNumber, QuerierExt, QuerierWrapper, StdResult, Timestamp, Udec128,
+        Udec256, Uint128, ZeroInclusiveOneInclusive,
     },
 };
 
@@ -50,13 +50,10 @@ impl Market {
     }
 
     /// Computes the utilization rate of this market.
-    pub fn utilization_rate<Q>(
+    pub fn utilization_rate(
         &self,
-        querier: &Q,
-    ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>>
-    where
-        Q: Querier,
-    {
+        querier: QuerierWrapper,
+    ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>> {
         let total_borrowed = self.total_borrowed()?;
         let total_supplied = self.total_supplied(querier)?;
 
@@ -78,10 +75,11 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices<Q>(self, querier: &Q, current_time: Timestamp) -> anyhow::Result<Self>
-    where
-        Q: Querier,
-    {
+    pub fn update_indices(
+        self,
+        querier: QuerierWrapper,
+        current_time: Timestamp,
+    ) -> anyhow::Result<Self> {
         debug_assert!(
             current_time >= self.last_update_time,
             "last update time is in the future! current time: {:?}, last update time: {:?}",
@@ -213,10 +211,7 @@ impl Market {
     }
 
     /// Returns the total amount of coins supplied to this market.
-    pub fn total_supplied<Q>(&self, querier: &Q) -> anyhow::Result<Uint128>
-    where
-        Q: Querier,
-    {
+    pub fn total_supplied(&self, querier: QuerierWrapper) -> anyhow::Result<Uint128> {
         Ok(querier
             .query_supply(self.supply_lp_denom.clone())?
             .checked_add(self.pending_protocol_fee_scaled)?

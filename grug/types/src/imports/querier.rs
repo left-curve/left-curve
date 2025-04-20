@@ -158,6 +158,7 @@ impl<Q> QuerierExt for Q where Q: Querier {}
 ///
 /// We have to do this because `&dyn Querier` itself doesn't implement `Querier`,
 /// so given a `&dyn Querier` you aren't able to access the `QuerierExt` methods.
+#[derive(Clone, Copy)]
 pub struct QuerierWrapper<'a> {
     inner: &'a dyn Querier,
 }

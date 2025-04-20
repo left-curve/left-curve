@@ -10,7 +10,7 @@ use {
 /// Returns the amount of underlying coins and the updated markets.
 pub fn withdraw(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_time: Timestamp,
     coins: Coins,
 ) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {

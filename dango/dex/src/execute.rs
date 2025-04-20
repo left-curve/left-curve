@@ -470,7 +470,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            &ctx.querier,
+            ctx.querier,
             ctx.block.height,
             app_cfg.addresses.oracle,
             app_cfg.addresses.account_factory,
@@ -525,7 +525,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_block_height: u64,
     oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
     account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching

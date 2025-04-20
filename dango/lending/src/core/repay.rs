@@ -14,7 +14,7 @@ use {
 /// - Excess funds to be returned to the user.
 pub fn repay(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_time: Timestamp,
     sender: Addr,
     coins: &Coins,

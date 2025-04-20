@@ -265,6 +265,7 @@ where
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 },
             },
             user3.username.clone() => GenesisUser {

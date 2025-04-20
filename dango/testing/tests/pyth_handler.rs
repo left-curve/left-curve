@@ -63,7 +63,7 @@ fn handler() {
     let mut handler = PythHandler::<PythClientCache>::new_with_cache(PYTH_URL);
 
     // Start the handler with oracle.
-    handler.update_stream(&querier, oracle).unwrap();
+    handler.update_stream(querier, oracle).unwrap();
 
     // Give some times to get the data ready.
     sleep(Duration::from_millis(500));
@@ -75,7 +75,7 @@ fn handler() {
     }
 
     // Update the handler with the empty oracle.
-    handler.update_stream(&querier, empty_oracle).unwrap();
+    handler.update_stream(querier, empty_oracle).unwrap();
 
     // Remove possible data.
     handler.fetch_latest_vaas();
@@ -87,7 +87,7 @@ fn handler() {
     }
 
     // Update the handler with oracle.
-    handler.update_stream(&querier, oracle).unwrap();
+    handler.update_stream(querier, oracle).unwrap();
 
     // Give some times to get the data ready.
     sleep(Duration::from_millis(500));
