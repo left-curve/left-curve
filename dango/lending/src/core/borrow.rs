@@ -7,7 +7,7 @@ use {
 
 pub fn borrow(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_time: Timestamp,
     sender: Addr,
     coins: &Coins,
@@ -19,7 +19,7 @@ pub fn borrow(
         // Update the market state
         let market = MARKETS
             .load(storage, coin.denom)?
-            .update_indices(querier, current_time)?;
+            .update_indices(&querier, current_time)?;
 
         // Update the sender's liabilities
         let prev_scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();

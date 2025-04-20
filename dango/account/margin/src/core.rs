@@ -31,7 +31,7 @@ use {
 ///   funds to the account that should not be included in the total collateral
 ///   value.
 pub fn query_and_compute_health(
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
@@ -46,7 +46,7 @@ pub fn query_and_compute_health(
         .map(|denom| {
             let market = querier
                 .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
-                .update_indices(querier, current_time)?;
+                .update_indices(&querier, current_time)?;
 
             Ok((denom.clone(), market))
         })
@@ -84,7 +84,7 @@ pub fn query_and_compute_health(
 
 /// Query relevant data necessary for computing the health of a margin account.
 pub fn query_health(
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     account: Addr,
     app_cfg: &AppConfig,
 ) -> anyhow::Result<HealthData> {

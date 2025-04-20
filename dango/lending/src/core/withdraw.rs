@@ -10,7 +10,7 @@ use {
 /// Returns the amount of underlying coins and the updated markets.
 pub fn withdraw(
     storage: &dyn Storage,
-    querier: &QuerierWrapper,
+    querier: QuerierWrapper,
     current_time: Timestamp,
     coins: Coins,
 ) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
@@ -25,7 +25,7 @@ pub fn withdraw(
         // Update the market indices
         let market = MARKETS
             .load(storage, &underlying_denom)?
-            .update_indices(querier, current_time)?;
+            .update_indices(&querier, current_time)?;
 
         // Compute the amount of underlying coins to withdraw
         let underlying_amount = coin.amount.checked_mul_dec_floor(market.supply_index)?;
