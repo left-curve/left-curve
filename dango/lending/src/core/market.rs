@@ -67,8 +67,8 @@ pub fn utilization_rate(
     market: &Market,
     querier: QuerierWrapper,
 ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>> {
-    let total_borrowed = total_borrowed(&market)?;
-    let total_supplied = total_supplied(&market, querier)?;
+    let total_borrowed = total_borrowed(market)?;
+    let total_supplied = total_supplied(market, querier)?;
 
     if total_supplied.is_zero() {
         return Ok(Bounded::new_unchecked(Udec128::ZERO));
@@ -90,7 +90,7 @@ pub fn utilization_rate(
 pub fn total_supplied(market: &Market, querier: QuerierWrapper) -> StdResult<Uint128> {
     let amount_scaled = querier.query_supply(market.supply_lp_denom.clone())?;
     let amount_scaled = amount_scaled.checked_add(market.pending_protocol_fee_scaled)?;
-    Ok(into_underlying_collateral(amount_scaled, &market)?)
+    Ok(into_underlying_collateral(amount_scaled, market)?)
 }
 
 /// Find the total amount of coins borrowed from the `Market`.
