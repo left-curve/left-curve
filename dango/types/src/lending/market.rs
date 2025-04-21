@@ -121,16 +121,6 @@ impl Market {
         }
     }
 
-    /// Calculates the actual debt for the given scaled amount. Makes sure to
-    /// round up in favor of the protocol.
-    pub fn calculate_debt(&self, scaled_amount: Udec256) -> MathResult<Uint128> {
-        scaled_amount
-            .checked_mul(self.borrow_index.into_next())?
-            .checked_ceil()?
-            .into_int()
-            .checked_into_prev()
-    }
-
     /// Returns the total amount of coins supplied to this market.
     pub fn total_supplied(&self, querier: QuerierWrapper) -> anyhow::Result<Uint128> {
         Ok(querier

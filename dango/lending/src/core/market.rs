@@ -1,7 +1,8 @@
 use {
     dango_types::lending::{Market, SECONDS_PER_YEAR},
     grug::{
-        Bounded, IsZero, MultiplyFraction, Number, NumberConst, QuerierWrapper, Timestamp, Udec128,
+        Bounded, Decimal, IsZero, MathResult, MultiplyFraction, NextNumber, Number, NumberConst,
+        PrevNumber, QuerierWrapper, Timestamp, Udec128, Udec256, Uint128,
         ZeroInclusiveOneInclusive,
     },
 };
@@ -82,4 +83,19 @@ pub fn utilization_rate(
     }
 
     Ok(Bounded::new_unchecked(utilization_rate))
+}
+
+/// Convert a scaled debt amount to the underlying amount, based on the `Market`
+/// state.
+///
+/// ## Note
+///
+/// Make sure the `Market` state is up-to-date by calling `update_indices`
+/// before this.
+pub fn into_underlying_debt(amount_scaled: Udec256, market: &Market) -> MathResult<Uint128> {
+    amount_scaled
+        .checked_mul(market.borrow_index.into_next())?
+        .checked_ceil()?
+        .into_int()
+        .checked_into_prev()
 }

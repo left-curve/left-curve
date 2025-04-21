@@ -154,7 +154,7 @@ pub fn compute_health(
             .ok_or(anyhow!("market for denom {denom} not found"))?;
 
         // Calculate the real debt.
-        let debt = market.calculate_debt(*scaled_debt)?;
+        let debt = dango_lending::into_underlying_debt(*scaled_debt, &market)?;
         debts.insert(Coin::new(denom.clone(), debt)?)?;
 
         // Calculate the value of the debt.

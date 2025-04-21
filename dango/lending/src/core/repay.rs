@@ -30,7 +30,7 @@ pub fn repay(
 
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
-        let debt = market.calculate_debt(scaled_debt)?;
+        let debt = core::into_underlying_debt(scaled_debt, &market)?;
 
         // Calculate the repaid amount and refund the remainders to the sender,
         // if any.

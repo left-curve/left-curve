@@ -69,7 +69,7 @@ fn query_debt(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<Coins> {
         .map(|(denom, scaled_debt)| {
             let market = MARKETS.load(ctx.storage, &denom)?;
             let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
-            let debt = market.calculate_debt(scaled_debt)?;
+            let debt = core::into_underlying_debt(scaled_debt, &market)?;
             Ok((denom, debt))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -95,7 +95,7 @@ fn query_debts(
                 .map(|(denom, scaled_debt)| {
                     let market = MARKETS.load(ctx.storage, &denom)?;
                     let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
-                    let debt = market.calculate_debt(scaled_debt)?;
+                    let debt = core::into_underlying_debt(scaled_debt, &market)?;
                     Ok((denom, debt))
                 })
                 .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
