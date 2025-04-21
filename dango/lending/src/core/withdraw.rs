@@ -27,7 +27,7 @@ pub fn withdraw(
         let market = core::update_indices(market, querier, current_time)?;
 
         // Compute the amount of underlying coins to withdraw
-        let underlying_amount = core::into_scaled_collateral(coin.amount, &market)?;
+        let underlying_amount = core::into_underlying_collateral(coin.amount, &market)?;
         withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
 
         // Save the updated market state
