@@ -98,7 +98,7 @@ pub fn total_borrowed(market: &Market) -> MathResult<Uint128> {
     into_underlying_debt(market.total_borrowed_scaled, market)
 }
 
-/// Convert an underlying debt amount to the scaled amount, based onthe `Market`
+/// Convert an underlying debt amount to the scaled amount, based on the `Market`
 /// state.
 pub fn into_scaled_debt(amount: Uint128, market: &Market) -> MathResult<Udec256> {
     amount
