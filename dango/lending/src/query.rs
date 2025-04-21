@@ -41,7 +41,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 fn query_market(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<Market> {
     MARKETS
         .load(ctx.storage, &denom)?
-        .update_indices(&ctx.querier, ctx.block.timestamp)
+        .update_indices(ctx.querier, ctx.block.timestamp)
 }
 
 fn query_markets(
@@ -59,7 +59,7 @@ fn query_markets(
             let (denom, market) = res?;
             Ok((
                 denom,
-                market.update_indices(&ctx.querier, ctx.block.timestamp)?,
+                market.update_indices(ctx.querier, ctx.block.timestamp)?,
             ))
         })
         .collect()
