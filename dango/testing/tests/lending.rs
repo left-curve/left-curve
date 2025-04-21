@@ -212,9 +212,6 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
         )
         .should_succeed();
 
-    // Increase time to accrue interest
-    suite.increase_time(Duration::from_seconds(60 * 60 * 24)); // 1 day
-
     // Query the current market for USDC
     let market = suite
         .query_wasm_smart(contracts.lending, QueryMarketRequest {
@@ -224,6 +221,9 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
 
     let old_borrow_index = market.borrow_index;
     let old_supply_index = market.supply_index;
+
+    // Increase time to accrue interest
+    suite.increase_time(Duration::from_seconds(60 * 60 * 24)); // 1 day
 
     // Update the interest rate model
     suite
