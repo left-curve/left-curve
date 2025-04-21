@@ -24,7 +24,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
-  const [isSubmitingTx, setIsSubmittingTx] = useState(false);
+  const [isSubmittingTx, setIsSubmittingTx] = useState(false);
 
   const {
     setSidebarVisibility,
@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               data-status={linkStatus("/notifications")}
               onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
             >
-              {isSubmitingTx ? (
+              {isSubmittingTx ? (
                 <Spinner size="sm" color="current" />
               ) : (
                 <IconBell className="w-6 h-6 text-rice-700" />

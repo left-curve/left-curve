@@ -17,10 +17,6 @@ import {
 import { motion } from "framer-motion";
 
 export const Hamburger: React.FC = () => {
-  return <HamburgerMenu />;
-};
-
-const HamburgerMenu: React.FC = () => {
   const { isConnected, account } = useAccount();
   const { setSidebarVisibility } = useApp();
   const [showOptions, setShowOptions] = useState(false);

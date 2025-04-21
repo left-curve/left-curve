@@ -1,7 +1,7 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import { createEventBus, useAccount, useConfig, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
-import { createClient, type Client as GraphqlSubscriptionClient } from "graphql-ws";
+import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
 import { router } from "./app.router";
@@ -94,7 +94,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     if (!username) return;
     let client: GraphqlSubscriptionClient | undefined;
     (async () => {
-     client = createClient({ url: chain.urls.indexer });
+      client = createClient({ url: chain.urls.indexer });
       const subscription = client.iterate({
         query: `subscription {
             transfers {
@@ -107,14 +107,14 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       });
       for await (const { data } of subscription) {
         if (!data) continue;
-        if ("transfer" in data) {
-          eventBus.publish("transfer", data.transfer as EventBusMap["transfer"]);
+        if ("transfers" in data) {
+          eventBus.publish("transfer", data.transfers as EventBusMap["transfer"]);
         }
       }
     })();
     return () => {
-      if (client) client.dispose()
-    }
+      if (client) client.dispose();
+    };
   }, [username]);
 
   return (
