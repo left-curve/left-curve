@@ -964,8 +964,8 @@ fn interest_rate_model_works(
         .should_succeed();
     let market = dango_lending::update_indices(market, suite.querier(), time).unwrap();
 
-    let total_supplied = market.total_supplied(suite.querier()).unwrap();
-    let total_borrowed = market.total_borrowed().unwrap();
+    let total_supplied = dango_lending::total_supplied(&market, suite.querier()).unwrap();
+    let total_borrowed = dango_lending::total_borrowed(&market).unwrap();
 
     let supply_increase = total_supplied - Uint128::from(deposit_amount);
     let borrow_increase = total_borrowed - Uint128::from(borrow_amount);
@@ -1116,7 +1116,7 @@ fn interest_rate_model_works(
 
     // Ensure that total supply is equal to the protocol revenueand total borrowed are zero
     assert_eq!(
-        market.total_supplied(suite.querier()).unwrap(),
+        dango_lending::total_supplied(&market, suite.querier()).unwrap(),
         Uint128::ZERO
     );
     assert_eq!(market.total_borrowed_scaled, Udec256::ZERO);

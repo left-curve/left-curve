@@ -1,8 +1,7 @@
 use {
     crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
-        Decimal, Denom, MathResult, MultiplyFraction, NextNumber, Number, NumberConst, PrevNumber,
-        QuerierExt, QuerierWrapper, StdResult, Timestamp, Udec128, Udec256, Uint128,
+        Denom, MathResult, Number, NumberConst, StdResult, Timestamp, Udec128, Udec256, Uint128,
     },
 };
 
@@ -119,22 +118,5 @@ impl Market {
             interest_rate_model,
             ..self
         }
-    }
-
-    /// Returns the total amount of coins supplied to this market.
-    pub fn total_supplied(&self, querier: QuerierWrapper) -> anyhow::Result<Uint128> {
-        Ok(querier
-            .query_supply(self.supply_lp_denom.clone())?
-            .checked_add(self.pending_protocol_fee_scaled)?
-            .checked_mul_dec(self.supply_index)?)
-    }
-
-    /// Returns the total amount of coins borrowed from this market.
-    pub fn total_borrowed(&self) -> MathResult<Uint128> {
-        self.total_borrowed_scaled
-            .checked_mul(self.borrow_index.into_next())?
-            .checked_ceil()?
-            .into_int()
-            .checked_into_prev()
     }
 }
