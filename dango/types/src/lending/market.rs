@@ -1,9 +1,8 @@
 use {
     crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
-        Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, QuerierExt, QuerierWrapper, StdResult, Timestamp, Udec128,
-        Udec256, Uint128, ZeroInclusiveOneInclusive,
+        Decimal, Denom, MathResult, MultiplyFraction, NextNumber, Number, NumberConst, PrevNumber,
+        QuerierExt, QuerierWrapper, StdResult, Timestamp, Udec128, Udec256, Uint128,
     },
 };
 
@@ -47,30 +46,6 @@ impl Market {
             last_update_time: Timestamp::ZERO,
             pending_protocol_fee_scaled: Uint128::ZERO,
         })
-    }
-
-    /// Computes the utilization rate of this market.
-    pub fn utilization_rate(
-        &self,
-        querier: QuerierWrapper,
-    ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>> {
-        let total_borrowed = self.total_borrowed()?;
-        let total_supplied = self.total_supplied(querier)?;
-
-        if total_supplied.is_zero() {
-            return Ok(Bounded::new_unchecked(Udec128::ZERO));
-        }
-
-        let utilization_rate = Udec128::checked_from_ratio(total_borrowed, total_supplied)?;
-
-        // Limit utilization rate to 100%
-        // This can happen if 100% of the supply is borrowed, which can then cause
-        // borrowing to outgrow the supply due to interest accrual.
-        if utilization_rate > Udec128::new_percent(100) {
-            return Ok(Bounded::new_unchecked(Udec128::new_percent(100)));
-        }
-
-        Ok(Bounded::new_unchecked(utilization_rate))
     }
 
     /// Immutably adds the given amount to the scaled total borrowed and returns

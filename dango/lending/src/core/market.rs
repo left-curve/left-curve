@@ -1,6 +1,9 @@
 use {
     dango_types::lending::{Market, SECONDS_PER_YEAR},
-    grug::{IsZero, MultiplyFraction, Number, NumberConst, QuerierWrapper, Timestamp, Udec128},
+    grug::{
+        Bounded, IsZero, MultiplyFraction, Number, NumberConst, QuerierWrapper, Timestamp, Udec128,
+        ZeroInclusiveOneInclusive,
+    },
 };
 
 /// Update the state of a `Market` to account for accrued interests and protocol
@@ -27,7 +30,7 @@ pub fn update_indices(
     }
 
     // Calculate interest rates
-    let utilization_rate = market.utilization_rate(querier)?;
+    let utilization_rate = utilization_rate(&market, querier)?;
     let (borrow_rate, supply_rate) = market.interest_rate_model.calculate_rates(utilization_rate);
 
     // Update the indices
@@ -55,4 +58,28 @@ pub fn update_indices(
         .set_supply_index(supply_index)
         .set_last_update_time(current_time)
         .add_pending_protocol_fee(protocol_fee_scaled)?)
+}
+
+/// Compute the `Market`'s utilization rate.
+pub fn utilization_rate(
+    market: &Market,
+    querier: QuerierWrapper,
+) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>> {
+    let total_borrowed = market.total_borrowed()?;
+    let total_supplied = market.total_supplied(querier)?;
+
+    if total_supplied.is_zero() {
+        return Ok(Bounded::new_unchecked(Udec128::ZERO));
+    }
+
+    let utilization_rate = Udec128::checked_from_ratio(total_borrowed, total_supplied)?;
+
+    // Limit utilization rate to 100%
+    // This can happen if 100% of the supply is borrowed, which can then cause
+    // borrowing to outgrow the supply due to interest accrual.
+    if utilization_rate > Udec128::new_percent(100) {
+        return Ok(Bounded::new_unchecked(Udec128::new_percent(100)));
+    }
+
+    Ok(Bounded::new_unchecked(utilization_rate))
 }

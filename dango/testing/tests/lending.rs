@@ -822,9 +822,8 @@ fn interest_rate_model_works(
     assert_eq!(market.interest_rate_model, InterestRateModel::default());
 
     // Compute interest rates
-    let (_, deposit_rate) = market
-        .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite.querier()).unwrap());
+    let utilization_rate = dango_lending::utilization_rate(&market, suite.querier()).unwrap();
+    let (_, deposit_rate) = market.interest_rate_model.calculate_rates(utilization_rate);
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
     assert_eq!(deposit_rate, Udec128::ZERO);
@@ -901,9 +900,8 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Compute interest rates
-    let (borrow_rate, deposit_rate) = market
-        .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite.querier()).unwrap());
+    let utilization_rate = dango_lending::utilization_rate(&market, suite.querier()).unwrap();
+    let (borrow_rate, deposit_rate) = market.interest_rate_model.calculate_rates(utilization_rate);
 
     // Assert that the all interest rates are non-zero
     assert!(borrow_rate.is_positive());
