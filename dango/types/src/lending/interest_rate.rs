@@ -26,9 +26,9 @@ pub struct InterestRateModel {
     pub reserve_factor: Bounded<Udec128, ZeroInclusiveOneInclusive>,
 }
 
-impl Default for InterestRateModel {
-    /// Default interest rate model used for testing.
-    fn default() -> Self {
+impl InterestRateModel {
+    /// Mock interest rate model used for testing.
+    pub fn mock() -> Self {
         Self {
             base_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
             optimal_utilization: Bounded::new(Udec128::new_percent(80)).unwrap(),

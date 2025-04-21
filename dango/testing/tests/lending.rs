@@ -131,7 +131,7 @@ fn update_markets_works() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                ATOM_DENOM.clone() => InterestRateModel::default(),
+                ATOM_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -234,7 +234,7 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => InterestRateModel::default(),
+                USDC_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -756,7 +756,7 @@ fn interest_rate_setup() -> (
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => InterestRateModel::default(),
+                USDC_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -822,7 +822,7 @@ fn interest_rate_model_works(
             denom: USDC_DENOM.clone(),
         })
         .should_succeed();
-    assert_eq!(market.interest_rate_model, InterestRateModel::default());
+    assert_eq!(market.interest_rate_model, InterestRateModel::mock());
 
     // Compute interest rates
     let utilization = utilization_rate(&market, suite.querier()).unwrap();

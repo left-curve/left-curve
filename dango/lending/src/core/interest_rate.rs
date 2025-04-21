@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_zero_utilization() {
-        let model = InterestRateModel::default();
+        let model = InterestRateModel::mock();
         let utilization = Bounded::new_unchecked(Udec128::ZERO);
         let (borrow_rate, supply_rate) = calculate_rates(&model, utilization);
         assert_eq!(borrow_rate, *model.base_rate);
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_max_utilization() {
-        let model = InterestRateModel::default();
+        let model = InterestRateModel::mock();
         let utilization = Bounded::new_unchecked(Udec128::ONE);
         let (borrow_rate, _) = calculate_rates(&model, utilization);
         assert_eq!(
