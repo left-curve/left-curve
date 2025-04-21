@@ -1,5 +1,5 @@
 use {
-    crate::MARKETS,
+    crate::{MARKETS, core},
     anyhow::bail,
     dango_types::lending::{Market, NAMESPACE, SUBNAMESPACE},
     grug::{Coin, Coins, Denom, MultiplyFraction, QuerierWrapper, Storage, Timestamp},
@@ -23,9 +23,8 @@ pub fn withdraw(
         };
 
         // Update the market indices
-        let market = MARKETS
-            .load(storage, &underlying_denom)?
-            .update_indices(querier, current_time)?;
+        let market = MARKETS.load(storage, &underlying_denom)?;
+        let market = core::update_indices(market, querier, current_time)?;
 
         // Compute the amount of underlying coins to withdraw
         let underlying_amount = coin.amount.checked_mul_dec_floor(market.supply_index)?;

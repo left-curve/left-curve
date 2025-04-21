@@ -1,5 +1,5 @@
 use {
-    crate::MARKETS,
+    crate::{MARKETS, core},
     dango_types::lending::Market,
     grug::{Coin, Coins, Denom, MultiplyFraction, QuerierWrapper, Storage, Timestamp},
     std::collections::BTreeMap,
@@ -18,9 +18,8 @@ pub fn deposit(
 
     for coin in coins {
         // Get market and update the market indices
-        let market = MARKETS
-            .load(storage, &coin.denom)?
-            .update_indices(querier, current_time)?;
+        let market = MARKETS.load(storage, &coin.denom)?;
+        let market = core::update_indices(market, querier, current_time)?;
 
         // Compute the amount of LP tokens to mint
         let supply_index = market.supply_index;

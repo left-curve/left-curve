@@ -1,5 +1,5 @@
 use {
-    crate::{DEBTS, MARKETS},
+    crate::{DEBTS, MARKETS, core},
     dango_types::lending::Market,
     grug::{
         Addr, Coin, Coins, Denom, NextNumber, Number, QuerierWrapper, Storage, Timestamp, Udec256,
@@ -25,9 +25,8 @@ pub fn repay(
 
     for coin in coins {
         // Update the market indices
-        let market = MARKETS
-            .load(storage, coin.denom)?
-            .update_indices(querier, current_time)?;
+        let market = MARKETS.load(storage, coin.denom)?;
+        let market = core::update_indices(market, querier, current_time)?;
 
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();

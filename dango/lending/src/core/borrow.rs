@@ -1,5 +1,5 @@
 use {
-    crate::{DEBTS, MARKETS},
+    crate::{DEBTS, MARKETS, core},
     dango_types::lending::Market,
     grug::{Addr, Coins, Denom, NextNumber, Number, QuerierWrapper, Storage, Timestamp, Udec256},
     std::collections::BTreeMap,
@@ -17,9 +17,8 @@ pub fn borrow(
 
     for coin in coins {
         // Update the market state
-        let market = MARKETS
-            .load(storage, coin.denom)?
-            .update_indices(querier, current_time)?;
+        let market = MARKETS.load(storage, coin.denom)?;
+        let market = core::update_indices(market, querier, current_time)?;
 
         // Update the sender's liabilities
         let prev_scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();

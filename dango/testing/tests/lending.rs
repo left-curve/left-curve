@@ -963,13 +963,13 @@ fn interest_rate_model_works(
         .query_wasm_smart(contracts.lending, QueryMarketRequest {
             denom: USDC_DENOM.clone(),
         })
-        .should_succeed()
-        .update_indices(suite.querier(), time)
-        .unwrap();
-    let total_supply = market.total_supplied(suite.querier()).unwrap();
+        .should_succeed();
+    let market = dango_lending::update_indices(market, suite.querier(), time).unwrap();
+
+    let total_supplied = market.total_supplied(suite.querier()).unwrap();
     let total_borrowed = market.total_borrowed().unwrap();
 
-    let supply_increase = total_supply - Uint128::from(deposit_amount);
+    let supply_increase = total_supplied - Uint128::from(deposit_amount);
     let borrow_increase = total_borrowed - Uint128::from(borrow_amount);
 
     // Check that the supply and borrow increased with the correct amount of interest
@@ -993,7 +993,7 @@ fn interest_rate_model_works(
     // --- Property 5: Total supply and borrow equal the sum of deposits and debts plus interest ---
 
     let expected_total_supply = Uint128::from(deposit_amount) + expected_supply_increase;
-    assert_eq_or_one_off(total_supply, expected_total_supply);
+    assert_eq_or_one_off(total_supplied, expected_total_supply);
     assert_eq_or_one_off(
         total_borrowed,
         Uint128::from(borrow_amount) + debt_interest_amount,

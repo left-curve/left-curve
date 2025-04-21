@@ -73,60 +73,6 @@ impl Market {
         Ok(Bounded::new_unchecked(utilization_rate))
     }
 
-    /// Immutably updates the indices of this market and returns the new market
-    /// state.
-    pub fn update_indices(
-        self,
-        querier: QuerierWrapper,
-        current_time: Timestamp,
-    ) -> anyhow::Result<Self> {
-        debug_assert!(
-            current_time >= self.last_update_time,
-            "last update time is in the future! current time: {:?}, last update time: {:?}",
-            current_time,
-            self.last_update_time
-        );
-
-        // If there is no supply or borrow or last update time is equal to the
-        // current time, then there is no interest to accrue
-        if self.total_supplied(querier)?.is_zero()
-            || self.total_borrowed_scaled.is_zero()
-            || current_time == self.last_update_time
-        {
-            return Ok(self.set_last_update_time(current_time));
-        }
-
-        // Calculate interest rates
-        let utilization_rate = self.utilization_rate(querier)?;
-        let (borrow_rate, supply_rate) = self.interest_rate_model.calculate_rates(utilization_rate);
-
-        // Update the indices
-        let time_delta = current_time - self.last_update_time;
-        let time_out_of_year =
-            Udec128::checked_from_ratio(time_delta.into_seconds(), SECONDS_PER_YEAR)?;
-        let borrow_index = self
-            .borrow_index
-            .checked_mul(Udec128::ONE.checked_add(borrow_rate.checked_mul(time_out_of_year)?)?)?;
-        let supply_index = self
-            .supply_index
-            .checked_mul(Udec128::ONE.checked_add(supply_rate.checked_mul(time_out_of_year)?)?)?;
-
-        // Calculate the protocol fee
-        let previous_total_borrowed = self.total_borrowed()?;
-        let new_market = self.set_borrow_index(borrow_index);
-        let new_total_borrowed = new_market.total_borrowed()?;
-        let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
-        let protocol_fee =
-            borrow_interest.checked_mul_dec(*new_market.interest_rate_model.reserve_factor)?;
-        let protocol_fee_scaled = protocol_fee.checked_div_dec_floor(supply_index)?;
-
-        // Return the new market state
-        Ok(new_market
-            .set_supply_index(supply_index)
-            .set_last_update_time(current_time)
-            .add_pending_protocol_fee(protocol_fee_scaled)?)
-    }
-
     /// Immutably adds the given amount to the scaled total borrowed and returns
     /// the new market state.
     pub fn add_borrowed(self, amount_scaled: Udec256) -> MathResult<Self> {
