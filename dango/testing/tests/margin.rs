@@ -1210,7 +1210,7 @@ proptest! {
                     &mut accounts.owner,
                     contracts.lending,
                     &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                        debt.denom.denom.clone() => InterestRateModel::default(),
+                        debt.denom.denom.clone() => InterestRateModel::mock(),
                     }),
                     Coins::new(),
                 )

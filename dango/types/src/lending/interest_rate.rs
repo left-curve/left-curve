@@ -1,5 +1,5 @@
 use grug::{
-    Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
+    Bounded, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
     ZeroInclusiveOneInclusive,
 };
 
@@ -27,42 +27,8 @@ pub struct InterestRateModel {
 }
 
 impl InterestRateModel {
-    /// Calculates interest rates for a given utilization rate.
-    ///
-    /// ## Inputs
-    ///
-    /// - `utilization`: The current market utilization rate. Must be within the
-    ///   range [0, 1].
-    ///
-    /// ## Outputs
-    ///
-    /// - The borrow interest rate.
-    /// - The supply interest rate.
-    pub fn calculate_rates(
-        &self,
-        utilization: Bounded<Udec128, ZeroInclusiveOneInclusive>,
-    ) -> (Udec128, Udec128) {
-        // Calculate borrow rate
-        let borrow_rate = if *utilization <= *self.optimal_utilization {
-            // Below optimal: linear increase
-            *self.base_rate + (*utilization / *self.optimal_utilization) * *self.first_slope
-        } else {
-            // Above optimal: steeper increase
-            let excess_utilization = (*utilization - *self.optimal_utilization)
-                / (Udec128::ONE - *self.optimal_utilization);
-            *self.base_rate + *self.first_slope + (excess_utilization * *self.second_slope)
-        };
-
-        // Calculate deposit rate
-        let supply_rate = *utilization * borrow_rate * (Udec128::ONE - *self.reserve_factor);
-
-        (borrow_rate, supply_rate)
-    }
-}
-
-impl Default for InterestRateModel {
-    /// Default interest rate model used for testing.
-    fn default() -> Self {
+    /// Mock interest rate model used for testing.
+    pub fn mock() -> Self {
         Self {
             base_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
             optimal_utilization: Bounded::new(Udec128::new_percent(80)).unwrap(),
@@ -70,40 +36,5 @@ impl Default for InterestRateModel {
             second_slope: Bounded::new(Udec128::new_percent(75)).unwrap(),
             reserve_factor: Bounded::new(Udec128::new_percent(2)).unwrap(),
         }
-    }
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_default_params() {
-        let model = InterestRateModel::default();
-        assert_eq!(*model.optimal_utilization, Udec128::new_percent(80));
-        assert_eq!(*model.first_slope, Udec128::new_percent(4));
-        assert_eq!(*model.second_slope, Udec128::new_percent(75));
-        assert_eq!(*model.reserve_factor, Udec128::new_percent(2));
-    }
-
-    #[test]
-    fn test_zero_utilization() {
-        let model = InterestRateModel::default();
-        let (borrow_rate, supply_rate) =
-            model.calculate_rates(Bounded::new_unchecked(Udec128::ZERO));
-        assert_eq!(borrow_rate, *model.base_rate);
-        assert_eq!(supply_rate, Udec128::ZERO);
-    }
-
-    #[test]
-    fn test_max_utilization() {
-        let model = InterestRateModel::default();
-        let (borrow_rate, _) = model.calculate_rates(Bounded::new_unchecked(Udec128::ONE));
-        assert_eq!(
-            borrow_rate,
-            *model.base_rate + *model.first_slope + *model.second_slope
-        );
     }
 }
