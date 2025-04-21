@@ -1,4 +1,5 @@
 use {
+    crate::calculate_rates,
     dango_types::lending::{Market, SECONDS_PER_YEAR},
     grug::{
         Bounded, Decimal, IsZero, MathResult, MultiplyFraction, NextNumber, Number, NumberConst,
@@ -32,7 +33,7 @@ pub fn update_indices(
 
     // Calculate interest rates
     let utilization_rate = utilization_rate(&market, querier)?;
-    let (borrow_rate, supply_rate) = market.interest_rate_model.calculate_rates(utilization_rate);
+    let (borrow_rate, supply_rate) = calculate_rates(&market.interest_rate_model, utilization_rate);
 
     // Update the indices
     let time_delta = current_time - market.last_update_time;
