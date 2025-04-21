@@ -60,12 +60,12 @@ const spinner = tv({
         circle2: "border-2",
       },
       md: {
-        wrapper: "w-8 h-8",
+        wrapper: "w-6 h-6",
         circle1: "border-[3px]",
         circle2: "border-[3px]",
       },
       lg: {
-        wrapper: "w-10 h-10",
+        wrapper: "w-8 h-8",
         circle1: "border-[3px]",
         circle2: "border-[3px]",
       },

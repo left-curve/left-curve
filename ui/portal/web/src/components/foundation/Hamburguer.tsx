@@ -1,22 +1,26 @@
+import { twMerge, useClickAway } from "@left-curve/applets-kit";
+import { useAccount } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useApp } from "~/hooks/useApp";
+
+import { capitalize } from "@left-curve/dango/utils";
+
 import {
-  Hamburger,
   IconBell,
   IconButton,
   IconDangoDots,
   IconGear,
   IconProfile,
-  type VisibleRef,
-  twMerge,
-  useClickAway,
+  Spinner,
 } from "@left-curve/applets-kit";
-import { capitalize } from "@left-curve/dango/utils";
-import { useAccount } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { forwardRef, useRef, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
-export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
+export const Hamburger: React.FC = () => {
+  return <HamburgerMenu />;
+};
+
+const HamburgerMenu: React.FC = () => {
   const { isConnected, account } = useAccount();
   const { setSidebarVisibility } = useApp();
   const [showOptions, setShowOptions] = useState(false);
@@ -114,7 +118,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
           </IconButton>
         </div>
 
-        <Hamburger isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
+        <HamburgerButton isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
       </div>
       {showOptions && (
         <motion.div
@@ -126,4 +130,90 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
       )}
     </>
   );
-});
+};
+
+type HamburgerButtonProps = {
+  isOpen: boolean;
+  className?: string;
+  onClick: () => void;
+};
+
+const HamburgerButton: React.FC<HamburgerButtonProps> = ({ isOpen, className, onClick }) => {
+  const { eventBus } = useApp();
+  const [isSubmittingTx, setIsSubmittingTx] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = eventBus.subscribe("submit_tx", ({ isSubmitted }) =>
+      setIsSubmittingTx(!isSubmitted),
+    );
+    return () => unsubscribe();
+  }, []);
+
+  return isSubmittingTx ? (
+    <IconButton
+      variant="utility"
+      size="lg"
+      className={twMerge("relative group", className)}
+      type="button"
+      onClick={onClick}
+    >
+      <Spinner size="sm" color="current" />
+    </IconButton>
+  ) : (
+    <IconButton
+      variant="utility"
+      size="lg"
+      className={twMerge("relative group", className)}
+      type="button"
+      onClick={onClick}
+    >
+      <div className="relative flex overflow-hidden items-center justify-center transform transition-all duration-200">
+        <div
+          className={twMerge(
+            "flex flex-col justify-between transform transition-all duration-200 origin-center overflow-hidden",
+            isOpen ? "gap-2" : "gap-1",
+          )}
+        >
+          <div
+            className={twMerge(
+              "bg-rice-700 h-[2px] w-4 rounded-xl transform transition-all duration-200 origin-left",
+              { "translate-x-10": isOpen },
+            )}
+          />
+          <div
+            className={twMerge(
+              "bg-rice-700 h-[2px] w-4 rounded-xl transform transition-all duration-200 delay-75",
+              { "translate-x-10": isOpen },
+            )}
+          />
+          <div
+            className={twMerge(
+              "bg-rice-700 h-[2px] w-4 rounded-xl transform transition-all duration-200 origin-left delay-150",
+              { "translate-x-10": isOpen },
+            )}
+          />
+
+          <div
+            className={twMerge(
+              "absolute items-center justify-between transform transition-all duration-300 top-2.5 -translate-x-10 flex w-0",
+              { "translate-x-[-1.5px] translate-y-[1px] w-12": isOpen },
+            )}
+          >
+            <div
+              className={twMerge(
+                "absolute bg-rice-700 h-[2px] w-5 rounded-full transform transition-all duration-300 rotate-0 delay-200",
+                { "rotate-45": isOpen },
+              )}
+            />
+            <div
+              className={twMerge(
+                "absolute bg-rice-700 h-[2px] w-5 rounded-full transform transition-all duration-300 -rotate-0 delay-200",
+                { "-rotate-45": isOpen },
+              )}
+            />
+          </div>
+        </div>
+      </div>
+    </IconButton>
+  );
+};

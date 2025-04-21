@@ -48,7 +48,7 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 function TransferApplet() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal } = useApp();
+  const { settings, showModal, eventBus } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
@@ -90,34 +90,39 @@ function TransferApplet() {
   >({
     mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
-      const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
+      eventBus.publish("submit_tx", { isSubmitted: false });
+      try {
+        const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
-      const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
+        const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
 
-      showModal(Modals.ConfirmSend, {
-        amount: parsedAmount,
-        denom: selectedDenom,
-        to: address as Address,
-        confirmSend,
-        rejectSend,
-      });
+        showModal(Modals.ConfirmSend, {
+          amount: parsedAmount,
+          denom: selectedDenom,
+          to: address as Address,
+          confirmSend,
+          rejectSend,
+        });
 
-      const response = await promise.then(() => true).catch(() => false);
+        const response = await promise.then(() => true).catch(() => false);
 
-      if (!response) return undefined;
+        if (!response) return undefined;
 
-      await signingClient.transfer({
-        transfer: {
-          [address]: {
-            [selectedCoin.denom]: parsedAmount,
+        await signingClient.transfer({
+          transfer: {
+            [address]: {
+              [selectedCoin.denom]: parsedAmount,
+            },
           },
-        },
-        sender: account!.address as Address,
-      });
+          sender: account!.address as Address,
+        });
 
-      reset();
-      toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-      refreshBalances();
+        reset();
+        toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
+        refreshBalances();
+      } finally {
+        eventBus.publish("submit_tx", { isSubmitted: true });
+      }
     },
 
     onError: (e) => {

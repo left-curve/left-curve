@@ -24,7 +24,9 @@
     "build"
   ],
   "imports": {
-    "#types/*": "./src/types/*"
+    "#types/*": "./src/types/*",
+    "#actions/*": "./src/actions/*",
+    "#utils/*": "./src/utils/*"
   },
   "exports": {
     ".": {
@@ -90,9 +92,9 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "@left-curve/sdk": "workspace:^",
     "graphql": "^16.10.0",
     "graphql-request": "^7.1.2",
-    "@left-curve/sdk": "workspace:^",
     "ox": "^0.6.10"
   },
   "license": "TBD",
