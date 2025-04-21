@@ -39,9 +39,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_market(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<Market> {
-    MARKETS
-        .load(ctx.storage, &denom)?
-        .update_indices(ctx.querier, ctx.block.timestamp)
+    let market = MARKETS.load(ctx.storage, &denom)?;
+    core::update_indices(market, ctx.querier, ctx.block.timestamp)
 }
 
 fn query_markets(
@@ -57,10 +56,8 @@ fn query_markets(
         .take(limit as usize)
         .map(|res| {
             let (denom, market) = res?;
-            Ok((
-                denom,
-                market.update_indices(ctx.querier, ctx.block.timestamp)?,
-            ))
+            let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+            Ok((denom, market))
         })
         .collect()
 }
@@ -70,11 +67,9 @@ fn query_debt(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<Coins> {
         .load(ctx.storage, account)?
         .into_iter()
         .map(|(denom, scaled_debt)| {
-            let market = MARKETS
-                .load(ctx.storage, &denom)?
-                .update_indices(ctx.querier, ctx.block.timestamp)?;
-            let debt = market.calculate_debt(scaled_debt)?;
-
+            let market = MARKETS.load(ctx.storage, &denom)?;
+            let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+            let debt = core::into_underlying_debt(scaled_debt, &market)?;
             Ok((denom, debt))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -98,11 +93,9 @@ fn query_debts(
             let debts = scaled_debts
                 .into_iter()
                 .map(|(denom, scaled_debt)| {
-                    let market = MARKETS
-                        .load(ctx.storage, &denom)?
-                        .update_indices(ctx.querier, ctx.block.timestamp)?;
-                    let debt = market.calculate_debt(scaled_debt)?;
-
+                    let market = MARKETS.load(ctx.storage, &denom)?;
+                    let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+                    let debt = core::into_underlying_debt(scaled_debt, &market)?;
                     Ok((denom, debt))
                 })
                 .collect::<anyhow::Result<BTreeMap<_, _>>>()?;

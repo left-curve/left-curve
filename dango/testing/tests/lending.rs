@@ -1,5 +1,8 @@
 use {
     dango_genesis::Contracts,
+    dango_lending::{
+        calculate_rates, total_borrowed, total_supplied, update_indices, utilization_rate,
+    },
     dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         account::{margin::CollateralPower, single},
@@ -128,7 +131,7 @@ fn update_markets_works() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                ATOM_DENOM.clone() => InterestRateModel::default(),
+                ATOM_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -231,7 +234,7 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => InterestRateModel::default(),
+                USDC_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -753,7 +756,7 @@ fn interest_rate_setup() -> (
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => InterestRateModel::default(),
+                USDC_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -819,12 +822,11 @@ fn interest_rate_model_works(
             denom: USDC_DENOM.clone(),
         })
         .should_succeed();
-    assert_eq!(market.interest_rate_model, InterestRateModel::default());
+    assert_eq!(market.interest_rate_model, InterestRateModel::mock());
 
     // Compute interest rates
-    let (_, deposit_rate) = market
-        .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite.querier()).unwrap());
+    let utilization = utilization_rate(&market, suite.querier()).unwrap();
+    let (_, deposit_rate) = calculate_rates(&market.interest_rate_model, utilization);
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
     assert_eq!(deposit_rate, Udec128::ZERO);
@@ -901,9 +903,8 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Compute interest rates
-    let (borrow_rate, deposit_rate) = market
-        .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite.querier()).unwrap());
+    let utilization = utilization_rate(&market, suite.querier()).unwrap();
+    let (borrow_rate, deposit_rate) = calculate_rates(&market.interest_rate_model, utilization);
 
     // Assert that the all interest rates are non-zero
     assert!(borrow_rate.is_positive());
@@ -963,11 +964,11 @@ fn interest_rate_model_works(
         .query_wasm_smart(contracts.lending, QueryMarketRequest {
             denom: USDC_DENOM.clone(),
         })
-        .should_succeed()
-        .update_indices(suite.querier(), time)
-        .unwrap();
-    let total_supply = market.total_supplied(suite.querier()).unwrap();
-    let total_borrowed = market.total_borrowed().unwrap();
+        .should_succeed();
+    let market = update_indices(market, suite.querier(), time).unwrap();
+
+    let total_supply = total_supplied(&market, suite.querier()).unwrap();
+    let total_borrowed = total_borrowed(&market).unwrap();
 
     let supply_increase = total_supply - Uint128::from(deposit_amount);
     let borrow_increase = total_borrowed - Uint128::from(borrow_amount);
@@ -1118,7 +1119,7 @@ fn interest_rate_model_works(
 
     // Ensure that total supply is equal to the protocol revenueand total borrowed are zero
     assert_eq!(
-        market.total_supplied(suite.querier()).unwrap(),
+        total_supplied(&market, suite.querier()).unwrap(),
         Uint128::ZERO
     );
     assert_eq!(market.total_borrowed_scaled, Udec256::ZERO);

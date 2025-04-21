@@ -36,18 +36,16 @@ pub fn query_and_compute_health(
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
-    let app_cfg = querier.query_dango_config()?;
-    let data = query_health(querier, account, &app_cfg)?;
+    let cfg = querier.query_dango_config()?;
+    let data = query_health(querier, account, &cfg)?;
 
     // Query all markets.
     let markets = data
         .scaled_debts
         .keys()
         .map(|denom| {
-            let market = querier
-                .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
-                .update_indices(querier, current_time)?;
-
+            let market = querier.query_wasm_path(cfg.addresses.lending, &MARKETS.path(denom))?;
+            let market = dango_lending::update_indices(market, querier, current_time)?;
             Ok((denom.clone(), market))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -56,7 +54,7 @@ pub fn query_and_compute_health(
     let denoms = markets
         .clone()
         .into_keys()
-        .chain(app_cfg.collateral_powers.keys().cloned())
+        .chain(cfg.collateral_powers.keys().cloned())
         .chain(data.limit_orders.values().map(|res| res.base_denom.clone()))
         .chain(
             data.limit_orders
@@ -68,7 +66,7 @@ pub fn query_and_compute_health(
     let prices = denoms
         .iter()
         .map(|denom| {
-            let price = querier.query_price(app_cfg.addresses.oracle, denom, None)?;
+            let price = querier.query_price(cfg.addresses.oracle, denom, None)?;
             Ok((denom.clone(), price))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -77,7 +75,7 @@ pub fn query_and_compute_health(
         data,
         markets,
         prices,
-        app_cfg.collateral_powers,
+        cfg.collateral_powers,
         discount_collateral,
     )
 }
@@ -156,7 +154,7 @@ pub fn compute_health(
             .ok_or(anyhow!("market for denom {denom} not found"))?;
 
         // Calculate the real debt.
-        let debt = market.calculate_debt(*scaled_debt)?;
+        let debt = dango_lending::into_underlying_debt(*scaled_debt, market)?;
         debts.insert(Coin::new(denom.clone(), debt)?)?;
 
         // Calculate the value of the debt.
