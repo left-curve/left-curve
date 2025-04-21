@@ -1,12 +1,21 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { useAccount, useStorage } from "@left-curve/store";
+import { createEventBus, useAccount, useConfig, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
+import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
 import { router } from "./app.router";
 
+export type EventBusMap = {
+  submit_tx: { isSubmitted: boolean };
+  transfer: { amount: number; denom: string; from: string; to: string };
+};
+
+export const eventBus = createEventBus<EventBusMap>();
+
 type AppState = {
   router: typeof router;
+  eventBus: typeof eventBus;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isNotificationMenuVisible: boolean;
@@ -30,6 +39,7 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const { chain } = useConfig();
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -79,10 +89,39 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   }, [username]);
 
+  // Track notifications
+  useEffect(() => {
+    if (!username) return;
+    let client: GraphqlSubscriptionClient | undefined;
+    (async () => {
+      client = createClient({ url: chain.urls.indexer });
+      const subscription = client.iterate({
+        query: `subscription {
+            transfers {
+              fromAddress,
+              toAddress,
+              amount,
+              denom
+          }
+        }`,
+      });
+      for await (const { data } of subscription) {
+        if (!data) continue;
+        if ("transfers" in data) {
+          eventBus.publish("transfer", data.transfers as EventBusMap["transfer"]);
+        }
+      }
+    })();
+    return () => {
+      if (client) client.dispose();
+    };
+  }, [username]);
+
   return (
     <AppContext.Provider
       value={{
         router,
+        eventBus,
         isSidebarVisible,
         setSidebarVisibility,
         isNotificationMenuVisible,

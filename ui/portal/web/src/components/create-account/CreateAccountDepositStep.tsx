@@ -14,13 +14,13 @@ import { Modals } from "../modals/RootModal";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
-  const { register, inputs } = useInputs({ initialValues: { amount: "0" } });
+  const { register, inputs } = useInputs();
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { showModal } = useApp();
+  const { showModal, eventBus } = useApp();
   const { coins, state } = useConfig();
   const { account, refreshAccounts, changeAccount } = useAccount();
   const { settings } = useApp();
@@ -38,25 +38,30 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
       if (!signingClient) throw new Error("error: no signing client");
-      const parsedAmount = parseUnits(fundsAmount, coinInfo.decimals).toString();
+      eventBus.publish("submit_tx", { isSubmitted: false });
+      try {
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
-      const [nextIndex] = await Promise.all([
-        signingClient.getNextAccountIndex({ username: account!.username }),
-        signingClient.registerAccount({
-          sender: account!.address,
-          config: { [accountType as "spot"]: { owner: account!.username } },
-          funds: {
-            "hyp/eth/usdc": parsedAmount,
-          },
-        }),
-      ]);
+        const [nextIndex] = await Promise.all([
+          signingClient.getNextAccountIndex({ username: account!.username }),
+          signingClient.registerAccount({
+            sender: account!.address,
+            config: { [accountType as "spot"]: { owner: account!.username } },
+            funds: {
+              "hyp/eth/usdc": parsedAmount,
+            },
+          }),
+        ]);
 
-      return {
-        amount: parsedAmount,
-        accountType,
-        accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
-        denom: "hyp/eth/usdc",
-      };
+        return {
+          amount: parsedAmount,
+          accountType,
+          accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
+          denom: "hyp/eth/usdc",
+        };
+      } finally {
+        eventBus.publish("submit_tx", { isSubmitted: true });
+      }
     },
     onSuccess: async (data) => {
       showModal(Modals.ConfirmAccount, data);
@@ -71,7 +76,7 @@ export const CreateAccountDepositStep: React.FC = () => {
       toast.error(
         {
           title: m["signup.errors.couldntCompleteRequest"]() as string,
-          description: e instanceof Error ? e.message : e,
+          description: "message" in e ? e.message : undefined,
         },
         {
           duration: Number.POSITIVE_INFINITY,

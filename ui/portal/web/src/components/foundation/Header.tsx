@@ -3,18 +3,19 @@ import {
   IconBell,
   IconGear,
   IconProfile,
+  Spinner,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
 import { useAccount } from "@left-curve/store";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
-import { HamburgerMenu } from "./HamburguerMenu";
+import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
 
 interface HeaderProps {
@@ -23,6 +24,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
+  const [isSubmittingTx, setIsSubmittingTx] = useState(false);
 
   const {
     setSidebarVisibility,
@@ -30,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     isNotificationMenuVisible,
     isSearchBarVisible,
     isSidebarVisible,
+    eventBus,
   } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
@@ -37,6 +40,13 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
+
+  useEffect(() => {
+    const unsubscribe = eventBus.subscribe("submit_tx", ({ isSubmitted }) =>
+      setIsSubmittingTx(!isSubmitted),
+    );
+    return () => unsubscribe();
+  }, []);
 
   return (
     <header
@@ -65,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           )}
         >
           <SearchMenu />
-          {!isSearchBarVisible ? <HamburgerMenu /> : null}
+          {!isSearchBarVisible ? <Hamburger /> : null}
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
           <Button
@@ -87,7 +97,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               data-status={linkStatus("/notifications")}
               onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
             >
-              <IconBell className="w-6 h-6 text-rice-700" />
+              {isSubmittingTx ? (
+                <Spinner size="sm" color="current" />
+              ) : (
+                <IconBell className="w-6 h-6 text-rice-700" />
+              )}
             </Button>
           ) : null}
           <Button
