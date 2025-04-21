@@ -98,6 +98,21 @@ pub fn total_borrowed(market: &Market) -> MathResult<Uint128> {
     into_underlying_debt(market.total_borrowed_scaled, market)
 }
 
+/// Convert an underlying debt amount to the scaled amount, based onthe `Market`
+/// state.
+pub fn into_scaled_debt(amount: Uint128, market: &Market) -> MathResult<Udec256> {
+    amount
+        .into_next()
+        .checked_into_dec()?
+        .checked_div(market.borrow_index.into_next())
+}
+
+/// Convert an underlying collateral amount to the scaled amount, based on
+/// the `Market` state.
+pub fn into_scaled_collateral(amount: Uint128, market: &Market) -> MathResult<Uint128> {
+    amount.checked_div_dec_floor(market.supply_index)
+}
+
 /// Convert a scaled debt amount to the underlying amount, based on the `Market`
 /// state.
 ///

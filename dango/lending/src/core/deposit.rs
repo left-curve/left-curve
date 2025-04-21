@@ -1,7 +1,7 @@
 use {
     crate::{MARKETS, core},
     dango_types::lending::Market,
-    grug::{Coin, Coins, Denom, MultiplyFraction, QuerierWrapper, Storage, Timestamp},
+    grug::{Coin, Coins, Denom, QuerierWrapper, Storage, Timestamp},
     std::collections::BTreeMap,
 };
 
@@ -22,8 +22,7 @@ pub fn deposit(
         let market = core::update_indices(market, querier, current_time)?;
 
         // Compute the amount of LP tokens to mint
-        let supply_index = market.supply_index;
-        let amount_scaled = coin.amount.checked_div_dec_floor(supply_index)?;
+        let amount_scaled = core::into_scaled_collateral(coin.amount, &market)?;
         lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
 
         // Save the updated market state.

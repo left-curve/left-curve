@@ -1,9 +1,7 @@
 use {
     crate::{DEBTS, MARKETS, core},
     dango_types::lending::Market,
-    grug::{
-        Addr, Coin, Coins, Denom, NextNumber, Number, QuerierWrapper, Storage, Timestamp, Udec256,
-    },
+    grug::{Addr, Coin, Coins, Denom, Number, QuerierWrapper, Storage, Timestamp, Udec256},
     std::collections::BTreeMap,
 };
 
@@ -48,10 +46,7 @@ pub fn repay(
             scaled_debts.remove(coin.denom);
         } else {
             // Update the sender's liabilities
-            let repaid_debt_scaled = repaid
-                .into_next()
-                .checked_into_dec()?
-                .checked_div(market.borrow_index.into_next())?;
+            let repaid_debt_scaled = core::into_scaled_debt(repaid, &market)?;
 
             scaled_debts.insert(
                 coin.denom.clone(),
@@ -61,10 +56,7 @@ pub fn repay(
 
         // Deduct the repaid scaled debt and save the updated market state
         let debt_after = debt.checked_sub(repaid)?;
-        let debt_after_scaled = debt_after
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
+        let debt_after_scaled = core::into_scaled_debt(debt_after, &market)?;
         let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
 
         // Update the market's borrowed amount.
