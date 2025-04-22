@@ -1,8 +1,8 @@
 use {
     crate::{DEBTS, MARKETS, core},
     dango_types::lending::Market,
-    grug::{Addr, Coin, Coins, Denom, Number, QuerierWrapper, Storage, Timestamp, Udec256},
-    std::collections::BTreeMap,
+    grug::{Addr, Coin, Coins, Denom, Number, Storage, Timestamp, Uint128},
+    std::{cmp::Ordering, collections::BTreeMap},
 };
 
 /// ## Returns
@@ -12,58 +12,69 @@ use {
 /// - Excess funds to be returned to the user.
 pub fn repay(
     storage: &dyn Storage,
-    querier: QuerierWrapper,
     current_time: Timestamp,
     sender: Addr,
     coins: &Coins,
-) -> anyhow::Result<(BTreeMap<Denom, Udec256>, Vec<(Denom, Market)>, Coins)> {
-    let mut scaled_debts = DEBTS.may_load(storage, sender)?.unwrap_or_default();
+) -> anyhow::Result<(BTreeMap<Denom, Uint128>, Vec<(Denom, Market)>, Coins)> {
     let mut markets = Vec::with_capacity(coins.len());
+    let mut scaled_debts = DEBTS.may_load(storage, sender)?.unwrap_or_default();
     let mut refunds = Coins::new();
 
     for coin in coins {
-        // Update the market indices
+        // Load and update the market state.
         let market = MARKETS.load(storage, coin.denom)?;
-        let market = core::update_indices(market, querier, current_time)?;
+        let mut market = core::update_indices(market, current_time)?;
 
-        // Calculated the users real debt
-        let scaled_debt = scaled_debts.get(coin.denom).cloned().unwrap_or_default();
-        let debt = core::into_underlying_debt(scaled_debt, &market)?;
+        // Update the user's debt; refund if necessary.
+        let diff = {
+            // Find the user's current scaled debt.
+            let scaled_before = scaled_debts.get(coin.denom).copied().unwrap_or_default();
 
-        // Calculate the repaid amount and refund the remainders to the sender,
-        // if any.
-        let repaid = if coin.amount > &debt {
-            let refund_amount = coin.amount.checked_sub(debt)?;
-            refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
-            debt
-        } else {
-            *coin.amount
+            // Convert the user's current scaled debt from scaled to underlying.
+            let underlying_before = core::scaled_debt_to_underlying(scaled_before, &market)?;
+
+            // Decrease the user's underlying debt amount.
+            match underlying_before.cmp(coin.amount) {
+                // User pays exactly the full amount.
+                Ordering::Equal => {
+                    // Clear the debt.
+                    scaled_debts.remove(coin.denom);
+
+                    scaled_before
+                },
+                // User pays more than the full amount.
+                Ordering::Less => {
+                    // Clear the debt.
+                    scaled_debts.remove(coin.denom);
+
+                    // Refund the excess.
+                    let excess = *coin.amount - underlying_before;
+                    refunds.insert(Coin::new(coin.denom.clone(), excess)?)?;
+
+                    scaled_before
+                },
+                // User pays less than the full amount.
+                Ordering::Greater => {
+                    // Decrease the user's underlying debt amount.
+                    let underlying_after = underlying_before.checked_sub(*coin.amount)?;
+
+                    // Convert the user's updated debt from underlying to scaled.
+                    let scaled_after = core::underlying_debt_to_scaled(underlying_after, &market)?;
+
+                    // Update the user's scaled debt.
+                    scaled_debts.insert(coin.denom.clone(), scaled_after);
+
+                    scaled_before - scaled_after
+                },
+            }
         };
 
-        // If the repaid amount is equal to the debt, remove the debt from the
-        // sender's debts. Otherwise, update the sender's liabilities.
-        if repaid == debt {
-            scaled_debts.remove(coin.denom);
-        } else {
-            // Update the sender's liabilities
-            let repaid_debt_scaled = core::into_scaled_debt(repaid, &market)?;
+        // Update the market's total debt.
+        {
+            market.total_borrowed_scaled.checked_sub_assign(diff)?;
 
-            scaled_debts.insert(
-                coin.denom.clone(),
-                scaled_debt.saturating_sub(repaid_debt_scaled),
-            );
+            markets.push((coin.denom.clone(), market));
         }
-
-        // Deduct the repaid scaled debt and save the updated market state
-        let debt_after = debt.checked_sub(repaid)?;
-        let debt_after_scaled = core::into_scaled_debt(debt_after, &market)?;
-        let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
-
-        // Update the market's borrowed amount.
-        let market = market.deduct_borrowed(scaled_debt_diff)?;
-
-        // Save the updated market state
-        markets.push((coin.denom.clone(), market));
     }
 
     Ok((scaled_debts, markets, refunds))

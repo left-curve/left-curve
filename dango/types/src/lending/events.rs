@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Coins, Denom, Udec256},
+    grug::{Addr, Coins, Denom, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -18,5 +18,5 @@ pub struct Repaid {
     pub user: Addr,
     pub repaid: Coins,
     pub refunds: Coins,
-    pub remaining_scaled_debts: BTreeMap<Denom, Udec256>,
+    pub remaining_scaled_debts: BTreeMap<Denom, Uint128>,
 }

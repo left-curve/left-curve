@@ -1,20 +1,15 @@
 use {
-    crate::calculate_rates,
+    crate::{calculate_rates, core},
     dango_types::lending::{Market, SECONDS_PER_YEAR},
     grug::{
-        Bounded, Decimal, IsZero, MathResult, MultiplyFraction, NextNumber, Number, NumberConst,
-        PrevNumber, QuerierExt, QuerierWrapper, StdResult, Timestamp, Udec128, Udec256, Uint128,
-        ZeroInclusiveOneInclusive,
+        Bounded, IsZero, MathResult, MultiplyFraction, Number, NumberConst, StdResult, Timestamp,
+        Udec128, Uint128, ZeroInclusiveOneInclusive,
     },
 };
 
 /// Update the state of a `Market` to account for accrued interests and protocol
 /// fees since the last update.
-pub fn update_indices(
-    market: Market,
-    querier: QuerierWrapper,
-    current_time: Timestamp,
-) -> anyhow::Result<Market> {
+pub fn update_indices(market: Market, current_time: Timestamp) -> anyhow::Result<Market> {
     debug_assert!(
         current_time >= market.last_update_time,
         "last update time is in the future! current time: {:?}, last update time: {:?}",
@@ -24,7 +19,7 @@ pub fn update_indices(
 
     // If there is no supply or borrow or last update time is equal to the
     // current time, then there is no interest to accrue
-    if total_supplied(&market, querier)?.is_zero()
+    if total_supplied(&market)?.is_zero()
         || market.total_borrowed_scaled.is_zero()
         || current_time == market.last_update_time
     {
@@ -32,7 +27,7 @@ pub fn update_indices(
     }
 
     // Calculate interest rates
-    let utilization_rate = utilization_rate(&market, querier)?;
+    let utilization_rate = utilization_rate(&market)?;
     let (borrow_rate, supply_rate) = calculate_rates(&market.interest_rate_model, utilization_rate);
 
     // Update the indices
@@ -65,10 +60,9 @@ pub fn update_indices(
 /// Compute the `Market`'s utilization rate.
 pub fn utilization_rate(
     market: &Market,
-    querier: QuerierWrapper,
 ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>> {
     let total_borrowed = total_borrowed(market)?;
-    let total_supplied = total_supplied(market, querier)?;
+    let total_supplied = total_supplied(market)?;
 
     if total_supplied.is_zero() {
         return Ok(Bounded::new_unchecked(Udec128::ZERO));
@@ -87,58 +81,13 @@ pub fn utilization_rate(
 }
 
 /// Find the total amount of coins supplied to the `Market`.
-pub fn total_supplied(market: &Market, querier: QuerierWrapper) -> StdResult<Uint128> {
-    let amount_scaled = querier.query_supply(market.supply_lp_denom.clone())?;
+pub fn total_supplied(market: &Market) -> StdResult<Uint128> {
+    let amount_scaled = market.total_supplied_scaled;
     let amount_scaled = amount_scaled.checked_add(market.pending_protocol_fee_scaled)?;
-    Ok(into_underlying_collateral(amount_scaled, market)?)
+    Ok(core::scaled_asset_to_underlying(amount_scaled, market)?)
 }
 
 /// Find the total amount of coins borrowed from the `Market`.
 pub fn total_borrowed(market: &Market) -> MathResult<Uint128> {
-    into_underlying_debt(market.total_borrowed_scaled, market)
-}
-
-/// Convert an underlying debt amount to the scaled amount, based on the `Market`
-/// state.
-pub fn into_scaled_debt(amount: Uint128, market: &Market) -> MathResult<Udec256> {
-    amount
-        .into_next()
-        .checked_into_dec()?
-        .checked_div(market.borrow_index.into_next())
-}
-
-/// Convert an underlying collateral amount to the scaled amount, based on
-/// the `Market` state.
-pub fn into_scaled_collateral(amount: Uint128, market: &Market) -> MathResult<Uint128> {
-    amount.checked_div_dec_floor(market.supply_index)
-}
-
-/// Convert a scaled debt amount to the underlying amount, based on the `Market`
-/// state.
-///
-/// ## Note
-///
-/// - Make sure the `Market` state is up-to-date by calling `update_indices`
-///   before this.
-/// - The underlying amount is rounded _up_ to the advantage of the protocol.
-///   This is necessary to mitigate certain attacks exploiting rounding errors.
-pub fn into_underlying_debt(amount_scaled: Udec256, market: &Market) -> MathResult<Uint128> {
-    amount_scaled
-        .checked_mul(market.borrow_index.into_next())?
-        .checked_ceil()?
-        .into_int()
-        .checked_into_prev()
-}
-
-/// Convert a scaled collateral amount to the underlying amount, based on the
-/// `Market` state.
-///
-/// ## Notes
-///
-/// - Make sure the `Market` state is up-to-date by calling `update_indices`
-///   before this.
-/// - The underlying amount is rounded _down_ to the advantage of the protocol.
-///   This is necessary to mitigate certain attacks exploiting rounding errors.
-pub fn into_underlying_collateral(amount_scaled: Uint128, market: &Market) -> MathResult<Uint128> {
-    amount_scaled.checked_mul_dec_floor(market.supply_index)
+    core::scaled_debt_to_underlying(market.total_borrowed_scaled, market)
 }
