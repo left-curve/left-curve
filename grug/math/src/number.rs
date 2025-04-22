@@ -72,6 +72,26 @@ pub trait Number: Sized + Copy {
     fn saturating_mul(self, other: Self) -> Self;
 
     fn saturating_pow(self, exp: u32) -> Self;
+
+    #[inline]
+    fn saturating_add_assign(&mut self, other: Self) {
+        *self = self.saturating_add(other);
+    }
+
+    #[inline]
+    fn saturating_sub_assign(&mut self, other: Self) {
+        *self = self.saturating_sub(other);
+    }
+
+    #[inline]
+    fn saturating_mul_assign(&mut self, other: Self) {
+        *self = self.saturating_mul(other);
+    }
+
+    #[inline]
+    fn saturating_pow_assign(&mut self, exp: u32) {
+        *self = self.saturating_pow(exp);
+    }
 }
 
 // ------------------------------------ int ------------------------------------
