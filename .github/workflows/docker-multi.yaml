@@ -60,19 +60,19 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: build arm64
-        uses: docker/build-push-action@v5
-        env:
-          BUILDKIT_PROGRESS: plain
-        with:
-          context: ./docker/dango
-          build-args: |
-            GIT_COMMIT=${{ github.sha }}
-          platforms: linux/arm64
-          tags: |
-            ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64
-          push: true
-          no-cache: true
+      # - name: build arm64
+      #   uses: docker/build-push-action@v5
+      #   env:
+      #     BUILDKIT_PROGRESS: plain
+      #   with:
+      #     context: ./docker/dango
+      #     build-args: |
+      #       GIT_COMMIT=${{ github.sha }}
+      #     platforms: linux/arm64
+      #     tags: |
+      #       ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64
+      #     push: true
+      #     no-cache: true
       - name: build amd64
         uses: docker/build-push-action@v5
         env:
@@ -83,16 +83,16 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
           platforms: linux/amd64
           tags: |
-            ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-amd64
+            ghcr.io/${{ github.repository }}/dango:${{ github.sha }}
           push: true
           no-cache: true
-      - name: Create and push manifest
-        run: |
-          docker manifest create ghcr.io/${{ github.repository }}/dango:${{ github.sha }} \
-            --amend ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-amd64 \
-            --amend ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64
-
-          docker manifest push ghcr.io/${{ github.repository }}/dango:${{ github.sha }}
+      # - name: Create and push manifest
+      #   run: |
+      #     docker manifest create ghcr.io/${{ github.repository }}/dango:${{ github.sha }} \
+      #       --amend ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-amd64 \
+      #       --amend ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64
+      #
+      #     docker manifest push ghcr.io/${{ github.repository }}/dango:${{ github.sha }}
 
   # build-optimizer:
   #   runs-on: ubuntu-latest
