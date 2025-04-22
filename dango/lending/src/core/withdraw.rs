@@ -55,7 +55,7 @@ pub fn withdraw(
 
                     scaled_assets.insert(coin.denom.clone(), scaled_after);
 
-                    scaled_after - scaled_before
+                    scaled_before - scaled_after
                 },
             }
         };
