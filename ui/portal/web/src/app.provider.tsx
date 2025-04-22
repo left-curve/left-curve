@@ -9,7 +9,9 @@ import { router } from "./app.router";
 import type { AnyCoin } from "@left-curve/store/types";
 
 export type EventBusMap = {
-  submit_tx: { isSubmitted: boolean };
+  submit_tx:
+    | { isSubmitting: true; txResult?: never }
+    | { isSubmitting: false; txResult: { hasSucceeded: boolean; message: string } };
   transfer: {
     amount: number;
     coin: AnyCoin;

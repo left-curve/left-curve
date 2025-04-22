@@ -1,12 +1,16 @@
 import { type VariantProps, tv } from "tailwind-variants";
 
-const Spinner: React.FC<SpinnerVariantProps> = (props) => {
+type SpinnerProps = {
+  className?: string;
+} & SpinnerVariantProps;
+
+const Spinner: React.FC<SpinnerProps> = ({ className, color, size }) => {
   const { base, wrapper, circle1, circle2 } = spinner();
   return (
-    <div className={base()}>
-      <div className={wrapper(props)}>
-        <i className={circle1(props)} />
-        <i className={circle2(props)} />
+    <div className={base({ color, size })}>
+      <div className={wrapper({ color, size, className })}>
+        <i className={circle1({ color, size })} />
+        <i className={circle2({ color, size })} />
       </div>
     </div>
   );

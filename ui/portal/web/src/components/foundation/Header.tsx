@@ -3,20 +3,20 @@ import {
   IconBell,
   IconGear,
   IconProfile,
-  Spinner,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
 import { useAccount } from "@left-curve/store";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
+import { TxIndicator } from "./TxIndicator";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -24,7 +24,6 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
-  const [isSubmittingTx, setIsSubmittingTx] = useState(false);
 
   const {
     setSidebarVisibility,
@@ -32,7 +31,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     isNotificationMenuVisible,
     isSearchBarVisible,
     isSidebarVisible,
-    eventBus,
   } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
@@ -40,13 +38,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
-
-  useEffect(() => {
-    const unsubscribe = eventBus.subscribe("submit_tx", ({ isSubmitted }) =>
-      setIsSubmittingTx(!isSubmitted),
-    );
-    return () => unsubscribe();
-  }, []);
 
   return (
     <header
@@ -97,11 +88,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               data-status={linkStatus("/notifications")}
               onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
             >
-              {isSubmittingTx ? (
-                <Spinner size="sm" color="current" />
-              ) : (
+              <TxIndicator>
                 <IconBell className="w-6 h-6 text-rice-700" />
-              )}
+              </TxIndicator>
             </Button>
           ) : null}
           <Button

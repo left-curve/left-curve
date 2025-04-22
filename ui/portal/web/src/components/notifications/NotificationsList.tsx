@@ -11,16 +11,22 @@ import { Notification } from "./Notification";
 
 type NotificationListProps = {
   className?: string;
+  maxNotifications?: number;
 };
 
 const notificationCard = {
   transfer: Notification.Transfer,
 };
 
-export const NotificationsList: React.FC<NotificationListProps> = ({ className }) => {
+export const NotificationsList: React.FC<NotificationListProps> = ({
+  className,
+  maxNotifications,
+}) => {
   const { notifications } = useApp();
 
   const sortedNotifications: Record<string, Notifications[]> = [...notifications]
+    .reverse()
+    .slice(0, maxNotifications || notifications.length)
     .sort((a, b) => b.createdAt - a.createdAt)
     .reduce((acc, notification) => {
       const dateKey = isToday(notification.createdAt)

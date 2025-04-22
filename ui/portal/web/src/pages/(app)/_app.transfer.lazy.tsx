@@ -90,7 +90,7 @@ function TransferApplet() {
   >({
     mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
-      eventBus.publish("submit_tx", { isSubmitted: false });
+      eventBus.publish("submit_tx", { isSubmitting: true });
       try {
         const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
@@ -119,26 +119,28 @@ function TransferApplet() {
 
         reset();
         toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
+        });
         refreshBalances();
-      } finally {
-        eventBus.publish("submit_tx", { isSubmitted: true });
+        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+      } catch (e) {
+        console.error(e);
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
+        });
+        toast.error(
+          {
+            title: m["transfer.error.title"](),
+            description: m["transfer.error.description"](),
+          },
+          {
+            duration: Number.POSITIVE_INFINITY,
+          },
+        );
       }
-    },
-
-    onError: (e) => {
-      console.error(e);
-      toast.error(
-        {
-          title: "Transfer failed",
-          description: "message" in e ? e.message : undefined,
-        },
-        {
-          duration: Number.POSITIVE_INFINITY,
-        },
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quests", account] });
     },
   });
 
