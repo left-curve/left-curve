@@ -11,6 +11,7 @@ on:
 
 jobs:
   build-cometbft:
+    permissions: write-all
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +30,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
-            ghcr.io/${{ github.repository }}/cometbft:latest
+            # ghcr.io/${{ github.repository }}/cometbft:latest
 
   build-dango:
     permissions: write-all
@@ -53,7 +54,7 @@ jobs:
           # platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository }}/dango:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/dango:latest
+            # ghcr.io/${{ github.repository }}/dango:latest
           push: true
 
   # build-optimizer:
