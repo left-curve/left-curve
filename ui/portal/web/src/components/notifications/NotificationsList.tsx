@@ -1,70 +1,38 @@
+import { useApp } from "~/hooks/useApp";
+
 import { twMerge } from "@left-curve/applets-kit";
-import {
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  format,
-  isToday,
-} from "date-fns";
-import type React from "react";
+import { format, isToday } from "date-fns";
+
 import { m } from "~/paraglide/messages";
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: Date;
-  icon?: string;
-}
+import type React from "react";
+import type { Notifications } from "~/app.provider";
+import { Notification } from "./Notification";
 
-interface Props {
-  notifications: Notification[];
+type NotificationListProps = {
   className?: string;
-  showAsPage?: boolean;
-}
-
-const formatNotificationTimestamp = (timestamp: Date): string => {
-  const now = new Date();
-  if (isToday(timestamp)) {
-    const minutesDifference = differenceInMinutes(now, timestamp);
-    if (minutesDifference < 1) {
-      return "1m";
-    }
-
-    if (minutesDifference < 60) {
-      return `${minutesDifference}m`;
-    }
-
-    const hoursDifference = differenceInHours(now, timestamp);
-    if (hoursDifference < 24) {
-      return `${hoursDifference}h`;
-    }
-  }
-
-  const daysDifference = differenceInDays(now, timestamp);
-  if (daysDifference === 1) {
-    return "1d";
-  }
-
-  return format(timestamp, "MM/dd");
 };
 
-export const NotificationsList: React.FC<Props> = ({ notifications, className, showAsPage }) => {
-  const sortedNotifications = [...notifications].sort(
-    (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
-  );
+const notificationCard = {
+  transfer: Notification.Transfer,
+};
 
-  const groupedNotifications: { [date: string]: Notification[] } = {};
-  sortedNotifications.forEach((notification) => {
-    const dateKey = isToday(notification.timestamp)
-      ? "Today"
-      : format(notification.timestamp, "MM/dd/yyyy");
+export const NotificationsList: React.FC<NotificationListProps> = ({ className }) => {
+  const { notifications } = useApp();
 
-    if (!groupedNotifications[dateKey]) {
-      groupedNotifications[dateKey] = [];
-    }
-    groupedNotifications[dateKey].push(notification);
-  });
+  const sortedNotifications: Record<string, Notifications[]> = [...notifications]
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .reduce((acc, notification) => {
+      const dateKey = isToday(notification.createdAt)
+        ? "Today"
+        : format(notification.createdAt, "MM/dd/yyyy");
+
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(notification);
+      return acc;
+    }, Object.create({}));
 
   if (!notifications.length) {
     return (
@@ -84,33 +52,17 @@ export const NotificationsList: React.FC<Props> = ({ notifications, className, s
 
   return (
     <div className={twMerge("bg-transparent py-2 px-1 rounded-xl shadow-lg", className)}>
-      {Object.keys(groupedNotifications).map((dateKey) => (
+      {Object.entries(sortedNotifications).map(([dateKey, n]) => (
         <div key={dateKey}>
           <p className="text-sm text-gray-500 mx-2">{dateKey}</p>
           <div className="flex flex-col gap-2">
-            {groupedNotifications[dateKey].map((notification) => (
-              <div
-                key={notification.id}
-                className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100"
-              >
-                <div className="flex items-start gap-2">
-                  {notification.icon && (
-                    <img
-                      src={`/images/notifications/${notification.icon}.svg`}
-                      alt="Icon"
-                      className="w-6 h-6 rounded-full"
-                    />
-                  )}
-                  <div className="flex flex-col">
-                    <div className="diatype-m-medium text-gray-700">{notification.title}</div>
-                    <div className="diatype-m-medium text-gray-500">{notification.message}</div>
-                  </div>
-                </div>
-                <div className="diatype-sm-medium text-gray-500">
-                  {formatNotificationTimestamp(notification.timestamp)}
-                </div>
-              </div>
-            ))}
+            {n.map((notification) => {
+              const NotificationCard =
+                notificationCard[notification.type as keyof typeof notificationCard];
+              return (
+                <NotificationCard key={notification.createdAt} notification={notification as any} />
+              );
+            })}
           </div>
         </div>
       ))}

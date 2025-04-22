@@ -349,6 +349,30 @@
     "noNotifications": {
       "title": "No Notifications yet",
       "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
+    },
+    "notification": {
+      "transfer": {
+        "title": [
+          {
+            "declarations": ["input action"],
+            "selectors": ["action"],
+            "match": {
+              "action=sent": "Sent",
+              "action=received": "Received"
+            }
+          }
+        ],
+        "direction": [
+          {
+            "declarations": ["input direction"],
+            "selectors": ["direction"],
+            "match": {
+              "direction=sent": "to",
+              "direction=received": "from"
+            }
+          }
+        ]
+      }
     }
   },
   "sendAndReceive": {
