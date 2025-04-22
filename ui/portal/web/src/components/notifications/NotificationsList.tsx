@@ -24,7 +24,7 @@ export const NotificationsList: React.FC<NotificationListProps> = ({
 }) => {
   const { notifications } = useApp();
 
-  const sortedNotifications: Record<string, Notifications[]> = notifications
+  const sortedNotifications: Record<string, Notifications[]> = [...notifications]
     .reverse()
     .slice(0, maxNotifications || notifications.length)
     .sort((a, b) => b.createdAt - a.createdAt)
