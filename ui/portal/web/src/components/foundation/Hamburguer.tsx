@@ -1,7 +1,7 @@
 import { twMerge, useClickAway } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { capitalize } from "@left-curve/dango/utils";
@@ -12,9 +12,9 @@ import {
   IconDangoDots,
   IconGear,
   IconProfile,
-  Spinner,
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
+import { TxIndicator } from "./TxIndicator";
 
 export const Hamburger: React.FC = () => {
   const { isConnected, account } = useAccount();
@@ -114,7 +114,9 @@ export const Hamburger: React.FC = () => {
           </IconButton>
         </div>
 
-        <HamburgerButton isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
+        <TxIndicator>
+          <HamburgerButton isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
+        </TxIndicator>
       </div>
       {showOptions && (
         <motion.div
@@ -135,27 +137,7 @@ type HamburgerButtonProps = {
 };
 
 const HamburgerButton: React.FC<HamburgerButtonProps> = ({ isOpen, className, onClick }) => {
-  const { eventBus } = useApp();
-  const [isSubmittingTx, setIsSubmittingTx] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = eventBus.subscribe("submit_tx", ({ isSubmitted }) =>
-      setIsSubmittingTx(!isSubmitted),
-    );
-    return () => unsubscribe();
-  }, []);
-
-  return isSubmittingTx ? (
-    <IconButton
-      variant="utility"
-      size="lg"
-      className={twMerge("relative group", className)}
-      type="button"
-      onClick={onClick}
-    >
-      <Spinner size="sm" color="current" />
-    </IconButton>
-  ) : (
+  return (
     <IconButton
       variant="utility"
       size="lg"

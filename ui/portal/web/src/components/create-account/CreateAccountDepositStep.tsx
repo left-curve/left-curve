@@ -1,4 +1,4 @@
-import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
+import { Button, Input, ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
 import { capitalize, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -38,7 +38,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
       if (!signingClient) throw new Error("error: no signing client");
-      eventBus.publish("submit_tx", { isSubmitted: false });
+      eventBus.publish("submit_tx", { isSubmitting: true });
       try {
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
@@ -53,35 +53,38 @@ export const CreateAccountDepositStep: React.FC = () => {
           }),
         ]);
 
-        return {
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: true, message: m["accountCreation.accountCreated"]() },
+        });
+
+        showModal(Modals.ConfirmAccount, {
           amount: parsedAmount,
           accountType,
           accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
           denom: "hyp/eth/usdc",
-        };
-      } finally {
-        eventBus.publish("submit_tx", { isSubmitted: true });
+        });
+        await refreshAccounts?.();
+        await refreshBalances();
+        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        navigate({ to: "/" });
+      } catch (e) {
+        console.error(e);
+        const error = ensureErrorMessage(e);
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: false, message: m["signup.errors.couldntCompleteRequest"]() },
+        });
+        toast.error(
+          {
+            title: m["signup.errors.couldntCompleteRequest"]() as string,
+            description: error,
+          },
+          {
+            duration: Number.POSITIVE_INFINITY,
+          },
+        );
       }
-    },
-    onSuccess: async (data) => {
-      showModal(Modals.ConfirmAccount, data);
-      await refreshAccounts?.();
-      await refreshBalances();
-      // changeAccount?.(data.address);
-      queryClient.invalidateQueries({ queryKey: ["quests", account] });
-      navigate({ to: "/" });
-    },
-    onError: (e) => {
-      console.error(e);
-      toast.error(
-        {
-          title: m["signup.errors.couldntCompleteRequest"]() as string,
-          description: "message" in e ? e.message : undefined,
-        },
-        {
-          duration: Number.POSITIVE_INFINITY,
-        },
-      );
     },
   });
 

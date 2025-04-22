@@ -398,6 +398,12 @@
       ]
     }
   },
+  "transfer": {
+    "error": {
+      "title": "Transfer Error",
+      "description": "We couldn’t complete your transfer. Please try again later."
+    }
+  },
   "settings": {
     "title": "Settings",
     "display": "Display",
