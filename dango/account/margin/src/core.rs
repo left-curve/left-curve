@@ -1,6 +1,6 @@
 use {
     anyhow::anyhow,
-    dango_lending::{DEBTS, MARKETS},
+    dango_lending::{ASSETS, DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
@@ -45,7 +45,7 @@ pub fn query_and_compute_health(
         .keys()
         .map(|denom| {
             let market = querier.query_wasm_path(cfg.addresses.lending, &MARKETS.path(denom))?;
-            let market = dango_lending::update_indices(market, querier, current_time)?;
+            let market = dango_lending::update_indices(market, current_time)?;
             Ok((denom.clone(), market))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -91,6 +91,11 @@ pub fn query_health(
         .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
         .unwrap_or_default();
 
+    // Query assets lent out using the lending protocol.
+    let scaled_assets = querier
+        .may_query_wasm_path(app_cfg.addresses.lending, ASSETS.path(account))?
+        .unwrap_or_default();
+
     // Query collateral balances.
     let collateral_balances = app_cfg
         .collateral_powers
@@ -110,6 +115,7 @@ pub fn query_health(
         })?;
 
     Ok(HealthData {
+        scaled_assets,
         scaled_debts,
         collateral_balances,
         limit_orders,
@@ -133,6 +139,7 @@ pub fn query_health(
 /// - a `HealthResponse` struct containing the health of the margin account.
 pub fn compute_health(
     HealthData {
+        scaled_assets,
         scaled_debts,
         collateral_balances,
         limit_orders,
@@ -149,18 +156,14 @@ pub fn compute_health(
 
     for (denom, scaled_debt) in &scaled_debts {
         // Get the market for the denom.
-        let market = markets
-            .get(denom)
-            .ok_or(anyhow!("market for denom {denom} not found"))?;
+        let market = get_market(&markets, denom)?;
 
-        // Calculate the real debt.
-        let debt = dango_lending::into_underlying_debt(*scaled_debt, market)?;
+        // Calculate the underlying debt amount.
+        let debt = dango_lending::scaled_debt_to_underlying(*scaled_debt, market)?;
         debts.insert(Coin::new(denom.clone(), debt)?)?;
 
         // Calculate the value of the debt.
-        let price = prices
-            .get(denom)
-            .ok_or(anyhow!("price for denom {denom} not found"))?;
+        let price = get_price(&prices, denom)?;
         let value = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
@@ -173,10 +176,24 @@ pub fn compute_health(
     let mut collaterals = Coins::new();
 
     for (denom, power) in &collateral_powers {
+        // The asset's balance in the wallet.
         let mut collateral_balance = *collateral_balances.get(denom).unwrap_or(&Uint128::ZERO);
 
+        // Discount the collateral balance if necessary.
         if let Some(discount_collateral) = discount_collateral.as_ref() {
             collateral_balance.checked_sub_assign(discount_collateral.amount_of(denom))?;
+        }
+
+        // If the asset has been lent out through the lending protocol, add the
+        // underlying amount.
+        if let Some(scaled) = scaled_assets.get(denom).copied() {
+            // Get the market for the denom.
+            let market = get_market(&markets, denom)?;
+
+            // Calculate the underlying amount.
+            let underlying = dango_lending::scaled_asset_to_underlying(scaled, market)?;
+
+            collateral_balance.checked_add_assign(underlying)?;
         }
 
         // As an optimization, don't query the price if the collateral balance
@@ -185,9 +202,7 @@ pub fn compute_health(
             continue;
         }
 
-        let price = prices
-            .get(denom)
-            .ok_or(anyhow!("price for denom {denom} not found"))?;
+        let price = get_price(&prices, denom)?;
         let value = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(**power)?;
 
@@ -230,24 +245,14 @@ pub fn compute_health(
             ),
         };
 
-        let offer_price = prices
-            .get(&offer.denom)
-            .ok_or(anyhow::anyhow!("price for denom {} not found", offer.denom))?;
+        let offer_price = get_price(&prices, &offer.denom)?;
         let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
-        let offer_collateral_power = collateral_powers.get(&offer.denom).ok_or(anyhow!(
-            "collateral power for denom {} not found",
-            offer.denom
-        ))?;
+        let offer_collateral_power = get_collateral_power(&collateral_powers, &offer.denom)?;
         let offer_adjusted_value = offer_value.checked_mul(**offer_collateral_power)?;
 
-        let ask_price = prices
-            .get(&ask.denom)
-            .ok_or(anyhow::anyhow!("price for denom {} not found", ask.denom))?;
+        let ask_price = get_price(&prices, &ask.denom)?;
         let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
-        let ask_collateral_power = collateral_powers.get(&ask.denom).ok_or(anyhow!(
-            "collateral power for denom {} not found",
-            ask.denom
-        ))?;
+        let ask_collateral_power = get_collateral_power(&collateral_powers, &ask.denom)?;
         let ask_adjusted_value = ask_value.checked_mul(**ask_collateral_power)?;
 
         let min_value = min(offer_value, ask_value);
@@ -284,4 +289,31 @@ pub fn compute_health(
         limit_order_collaterals,
         limit_order_outputs,
     })
+}
+
+fn get_market<'a>(
+    markets: &'a BTreeMap<Denom, Market>,
+    denom: &Denom,
+) -> anyhow::Result<&'a Market> {
+    markets
+        .get(denom)
+        .ok_or_else(|| anyhow!("market not found for denom `{denom}`"))
+}
+
+fn get_price<'a>(
+    prices: &'a BTreeMap<Denom, PrecisionedPrice>,
+    denom: &Denom,
+) -> anyhow::Result<&'a PrecisionedPrice> {
+    prices
+        .get(denom)
+        .ok_or_else(|| anyhow!("price not found for denom `{denom}`"))
+}
+
+fn get_collateral_power<'a>(
+    collateral_powers: &'a BTreeMap<Denom, CollateralPower>,
+    denom: &Denom,
+) -> anyhow::Result<&'a CollateralPower> {
+    collateral_powers
+        .get(denom)
+        .ok_or_else(|| anyhow!("collateral power not found for denom `{denom}`"))
 }
