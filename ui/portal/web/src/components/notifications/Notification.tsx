@@ -59,7 +59,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
         <img src={"/images/notifications/user.svg"} alt="Icon" className="w-6 h-6 rounded-full" />
 
         <div className="flex flex-col">
-          <p className="daitype-m-medium text-gray-700">
+          <p className="diatype-m-medium text-gray-700">
             {m["notifications.notification.transfer.title"]({ action: type })}
           </p>
           <div className="flex flex-wrap diatype-m-medium text-gray-500 gap-1">

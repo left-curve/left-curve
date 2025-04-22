@@ -97,7 +97,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     (notification: { type: string; data: unknown; createdAt: number }) => {
       setNotifications((prev) => [...prev, notification]);
     },
-    [notifications],
+    [],
   );
 
   const changeSettings = useCallback(
