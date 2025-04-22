@@ -69,12 +69,13 @@
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
+    "@rsbuild/core": "catalog:",
+    "@rsbuild/plugin-react": "catalog:",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.3.2",
     "@storybook/addon-links": "^8.3.2",
     "@storybook/blocks": "^8.3.2",
     "@storybook/react": "^8.3.2",
-    "@storybook/react-vite": "^8.3.2",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -83,9 +84,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "storybook": "^8.3.2",
-    "tailwindcss": "catalog:",
-    "vite": "catalog:",
-    "vite-tsconfig-paths": "catalog:"
+    "storybook-react-rsbuild": "^1.0.1",
+    "tailwindcss": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5.0.0",
