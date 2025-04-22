@@ -34,7 +34,7 @@ export type {
   AmmQueryMsg,
   AmmExecuteMsg,
   SwapOutcome,
-} from "./amm.js";
+} from "./dex.js";
 
 export type { AppConfig } from "./app.js";
 
