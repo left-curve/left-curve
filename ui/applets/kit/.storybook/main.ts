@@ -1,6 +1,5 @@
 import { dirname, join } from "node:path";
-import type { StorybookConfig } from "@storybook/react-vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import type { StorybookConfig } from "storybook/internal/types";
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -18,20 +17,11 @@ const config: StorybookConfig = {
     getAbsolutePath("@storybook/addon-essentials"),
   ],
   framework: {
-    name: getAbsolutePath("@storybook/react-vite"),
+    name: getAbsolutePath("storybook-react-rsbuild"),
     options: {},
   },
   core: {
     disableTelemetry: true,
-  },
-  typescript: {
-    reactDocgen: false,
-  },
-  async viteFinal(config) {
-    const { mergeConfig } = await import("vite");
-    return mergeConfig(config, {
-      plugins: [tsconfigPaths()],
-    });
   },
 };
 export default config;
