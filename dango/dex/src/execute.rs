@@ -570,6 +570,7 @@ fn clear_orders_of_pair(
         ])?;
 
         events.push(OrderFilled {
+            user: order.user,
             order_id,
             clearing_price,
             filled,
