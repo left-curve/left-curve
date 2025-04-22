@@ -1,5 +1,7 @@
 FROM golang:1.24-alpine
 
+LABEL org.opencontainers.image.description "CometBFT image for Dango"
+
 # Install dependencies.
 RUN apk update && apk add git make
 
