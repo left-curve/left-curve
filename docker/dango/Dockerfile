@@ -1,4 +1,4 @@
-FROM rust:slim as builder
+FROM rust:slim AS builder
 
 LABEL org.opencontainers.image.description="Dango build stage"
 
@@ -23,7 +23,7 @@ RUN echo "Cloning commit: $GIT_COMMIT" \
   && cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in \
   && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs \
   && rm dango/cli/src/git_info.rs.in \
-  && cargo install --path dango/cli \
+  && cargo install --path dango/cli
 
 FROM debian:bookworm-slim AS runtime
 
