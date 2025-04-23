@@ -26,6 +26,7 @@ on:
 
 jobs:
   test:
+    needs: [format]
     name: Test + Lint
     # runs-on: ubuntu-latest
     runs-on: self-hosted
