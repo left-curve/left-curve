@@ -1,14 +1,14 @@
 use {
-    crate::{DEBTS, MARKETS, calculate_deposit, calculate_withdraw},
-    anyhow::{anyhow, ensure},
+    crate::{DEBTS, MARKETS, core},
+    anyhow::ensure,
     dango_account_factory::ACCOUNTS,
     dango_types::{
         DangoQuerier, bank,
-        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
+        lending::{Borrowed, ExecuteMsg, InstantiateMsg, InterestRateModel, Market, Repaid},
     },
     grug::{
-        Coin, Coins, Denom, Message, MutableCtx, NextNumber, Number, Order, QuerierExt, Response,
-        StdResult, StorageQuerier,
+        Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response, StdResult,
+        StorageQuerier,
     },
     std::collections::BTreeMap,
 };
@@ -19,10 +19,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         MARKETS.save(
             ctx.storage,
             &denom,
-            &Market::new(
-                denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-                interest_rate_model,
-            ),
+            &Market::new(&denom, interest_rate_model)?,
         )?;
     }
 
@@ -43,40 +40,25 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn update_markets(
     ctx: MutableCtx,
-    updates: BTreeMap<Denom, MarketUpdates>,
+    updates: BTreeMap<Denom, InterestRateModel>,
 ) -> anyhow::Result<Response> {
     // Ensure only chain owner can update markets denoms.
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
-        "Only the owner can whitelist denoms"
+        "only the owner can whitelist denoms"
     );
 
-    for (denom, updates) in updates {
-        if let Some(market) = MARKETS.may_load(ctx.storage, &denom)? {
-            if let Some(interest_rate_model) = updates.interest_rate_model {
+    for (denom, new_interest_rate_model) in updates {
+        MARKETS.may_update(ctx.storage, &denom, |maybe_market| -> anyhow::Result<_> {
+            if let Some(market) = maybe_market {
                 // Update indexes first, so that interests accumulated up to this
                 // point are accounted for. Then, set the new interest rate model.
-                let new_market = market
-                    .update_indices(&ctx.querier, ctx.block.timestamp)?
-                    .set_interest_rate_model(interest_rate_model);
-
-                MARKETS.save(ctx.storage, &denom, &new_market)?;
+                let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+                Ok(market.set_interest_rate_model(new_interest_rate_model))
+            } else {
+                Ok(Market::new(&denom, new_interest_rate_model)?)
             }
-        } else {
-            MARKETS.save(
-                ctx.storage,
-                &denom,
-                &Market::new(
-                    denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-                    updates.interest_rate_model.ok_or_else(|| {
-                        anyhow!(
-                            "interest rate model is required when adding new market {}",
-                            denom
-                        )
-                    })?,
-                ),
-            )?;
-        }
+        })?;
     }
 
     Ok(Response::new())
@@ -84,12 +66,8 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint.
-    let (lp_tokens, markets) = calculate_deposit(
-        ctx.storage,
-        &ctx.querier,
-        ctx.block.timestamp,
-        ctx.funds.clone(),
-    )?;
+    let (lp_tokens, markets) =
+        core::deposit(ctx.storage, ctx.querier, ctx.block.timestamp, ctx.funds)?;
 
     // Save the updated markets.
     for (denom, market) in markets {
@@ -118,9 +96,9 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of underlying coins to withdraw
-    let (withdrawn, markets) = calculate_withdraw(
+    let (withdrawn, markets) = core::withdraw(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.block.timestamp,
         ctx.funds.clone(),
     )?;
@@ -153,7 +131,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         .add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
-fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
+fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
     let account_factory = ctx.querier.query_account_factory()?;
 
     // Ensure sender is a margin account.
@@ -166,95 +144,64 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         "only margin accounts can borrow and repay"
     );
 
-    // Load the sender's debts
-    let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
+    let (debts, markets) = core::borrow(
+        ctx.storage,
+        ctx.querier,
+        ctx.block.timestamp,
+        ctx.sender,
+        coins.inner(),
+    )?;
 
-    for coin in coins.clone() {
-        // Update the market state
-        let market = MARKETS
-            .load(ctx.storage, &coin.denom)?
-            .update_indices(&ctx.querier, ctx.block.timestamp)?;
-
-        // Update the sender's liabilities
-        let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
-        let new_scaled_debt = coin
-            .amount
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
-        let added_scaled_debt = prev_scaled_debt.checked_add(new_scaled_debt)?;
-        scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
-
-        // Save the updated market state
-        MARKETS.save(
-            ctx.storage,
-            &coin.denom,
-            &market.add_borrowed(added_scaled_debt)?,
-        )?;
+    // Save the updated markets.
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
     // Save the updated debts
-    DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+    DEBTS.save(ctx.storage, ctx.sender, &debts)?;
 
     // Transfer the coins to the caller
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, coins.inner().clone())?)
+        .add_event(Borrowed {
+            user: ctx.sender,
+            borrowed: coins.into_inner(),
+        })?)
 }
 
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let mut refunds = Coins::new();
+    let (scaled_debts, markets, refunds) = core::repay(
+        ctx.storage,
+        ctx.querier,
+        ctx.block.timestamp,
+        ctx.sender,
+        &ctx.funds,
+    )?;
 
-    // Read debts
-    let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
-
-    for coin in ctx.funds {
-        // Update the market indices
-        let market = MARKETS
-            .load(ctx.storage, &coin.denom)?
-            .update_indices(&ctx.querier, ctx.block.timestamp)?;
-
-        // Calculated the users real debt
-        let scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
-        let debt = market.calculate_debt(scaled_debt)?;
-
-        // Calculate the repaid amount and refund the remainders to the sender,
-        // if any.
-        let repaid = if coin.amount > debt {
-            let refund_amount = coin.amount.checked_sub(debt)?;
-            refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
-            debt
-        } else {
-            coin.amount
-        };
-
-        // Update the sender's liabilities
-        let repaid_debt_scaled = repaid
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
-        scaled_debts.insert(
-            coin.denom.clone(),
-            scaled_debt.saturating_sub(repaid_debt_scaled),
-        );
-
-        // Deduct the repaid scaled debt and save the updated market state
-        let debt_after = debt.checked_sub(repaid)?;
-        let debt_after_scaled = debt_after
-            .into_next()
-            .checked_into_dec()?
-            .checked_div(market.borrow_index.into_next())?;
-        let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
-
-        MARKETS.save(
-            ctx.storage,
-            &coin.denom,
-            &market.deduct_borrowed(scaled_debt_diff)?,
-        )?;
+    // Save the updated markets.
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
-    // Save the updated debts
-    DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+    // Save the updated debts.
+    if scaled_debts.is_empty() {
+        DEBTS.remove(ctx.storage, ctx.sender);
+    } else {
+        DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+    };
 
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, refunds)?))
+    Ok(Response::new()
+        .may_add_message(if refunds.is_non_empty() {
+            Some(Message::transfer(ctx.sender, refunds.clone())?)
+        } else {
+            None
+        })
+        .add_event(Repaid {
+            user: ctx.sender,
+            repaid: ctx.funds,
+            refunds,
+            remaining_scaled_debts: scaled_debts,
+        })?)
 }
 
 fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -265,7 +212,7 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|res| -> anyhow::Result<_> {
             let (denom, market) = res?;
-            let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
+            let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
             Ok((
                 Message::execute(
                     bank,
@@ -281,9 +228,10 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         })
         .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
-    // Reset the pending protocol fees and save the updated markets
     for (denom, market) in markets {
-        MARKETS.save(ctx.storage, &denom, &market.reset_pending_protocol_fee())?;
+        let market = market.reset_pending_protocol_fee();
+
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
     Ok(Response::new().add_messages(msgs))

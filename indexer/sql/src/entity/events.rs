@@ -4,7 +4,7 @@ use {
 };
 
 #[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
-#[sea_orm(rs_type = "i16", db_type = "Integer")]
+#[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum CommitmentStatus {
     #[sea_orm(num_value = 0)]
     Committed,
@@ -25,7 +25,7 @@ impl From<FlatCommitmentStatus> for CommitmentStatus {
 }
 
 #[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
-#[sea_orm(rs_type = "i16", db_type = "Integer")]
+#[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum EventStatus {
     #[sea_orm(num_value = 0)]
     Ok,

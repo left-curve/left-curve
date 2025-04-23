@@ -3,7 +3,7 @@ import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
 import { WizardProvider } from "@left-curve/applets-kit";
 import { useEffect } from "react";
 import { Signin } from "~/components/auth/Signin";
-import { Modals } from "~/components/foundation/RootModal";
+import { Modals } from "~/components/modals/RootModal";
 import { useApp } from "~/hooks/useApp";
 
 export const Route = createLazyFileRoute("/(auth)/_auth/signin")({

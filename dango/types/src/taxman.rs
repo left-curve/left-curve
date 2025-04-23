@@ -33,10 +33,11 @@ impl Default for FeePayments {
 pub enum FeeType {
     /// Gas Fee.
     Gas,
-    /// Protocol fee for maker trades in Dango DEX.
-    Maker,
-    /// Protocol fee for taker trades in Dango DEX.
-    Taker,
+    /// Protocol fee for trading in Dango DEX.
+    ///
+    /// Not to be confused with liquidity fee, which is paid to liquidity
+    /// providers when using Dango DEX's instant swap feature.
+    Trade,
     /// Fee for bridging assets out of Dango chain.
     Withdraw,
 }
@@ -45,8 +46,7 @@ impl FeeType {
     pub fn as_str(&self) -> &'static str {
         match self {
             FeeType::Gas => "gas",
-            FeeType::Maker => "maker",
-            FeeType::Taker => "taker",
+            FeeType::Trade => "trade",
             FeeType::Withdraw => "withdraw",
         }
     }
@@ -64,7 +64,9 @@ pub enum ExecuteMsg {
     Configure { new_cfg: Config },
     /// Forward protocol fee to the taxman.
     Pay {
-        payments: BTreeMap<Addr, (FeeType, Coins)>,
+        #[serde(rename = "type")]
+        ty: FeeType,
+        payments: BTreeMap<Addr, Coins>,
     },
 }
 

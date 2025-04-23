@@ -12,7 +12,7 @@ use {
         config::AppConfig,
         constants::{DANGO_DENOM, USDC_DENOM, WBTC_DENOM},
         dex::CreateLimitOrderRequest,
-        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
+        lending::{self, InterestRateModel, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
@@ -309,7 +309,9 @@ fn cant_liquidate_when_overcollateralised() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100_000_000 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -337,7 +339,9 @@ fn liquidation_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100_000_000 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -448,7 +452,9 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 1_000_000_000 }, // 1K USDC
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -467,7 +473,9 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(WBTC_DENOM.clone(), 100_000_000).unwrap()), // 1 BTC
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { WBTC_DENOM.clone() => 100_000_000 }, // 1 BTC
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -622,7 +630,9 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 1_000_000_000 }, // 1K USDC
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -755,7 +765,9 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(WBTC_DENOM.clone(), 600_000).unwrap()), // 0.006 WBTC = 426 USD
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { WBTC_DENOM.clone() => 600_000 }, // 0.006 WBTC = 426 USD
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -1198,9 +1210,7 @@ proptest! {
                     &mut accounts.owner,
                     contracts.lending,
                     &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                        debt.denom.denom.clone() => MarketUpdates {
-                            interest_rate_model: Some(InterestRateModel::default()),
-                        },
+                        debt.denom.denom.clone() => InterestRateModel::mock(),
                     }),
                     Coins::new(),
                 )
@@ -1221,9 +1231,9 @@ proptest! {
                 .execute(
                     &mut margin_account,
                     contracts.lending,
-                    &lending::ExecuteMsg::Borrow(
-                        Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
-                    ),
+                    &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                        coins! { debt.denom.denom.clone() => debt.amount },
+                    )),
                     Coins::new(),
                 )
                 .should_succeed();
@@ -1241,7 +1251,7 @@ proptest! {
 
         // Check margin accounts health
         let margin_account_health = suite
-            .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+            .query_wasm_smart(margin_account.address(), QueryHealthRequest { })
             .unwrap();
 
         // Get liquidators total account value before liquidation

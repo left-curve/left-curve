@@ -25,7 +25,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
-        ExecuteMsg::Pay { payments } => pay(ctx, payments),
+        ExecuteMsg::Pay { ty, payments } => pay(ctx, ty, payments),
     }
 }
 
@@ -41,28 +41,29 @@ fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
-fn pay(ctx: MutableCtx, payments: BTreeMap<Addr, (FeeType, Coins)>) -> anyhow::Result<Response> {
+fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
     ensure!(ctx.funds.is_non_empty(), "funds cannot be empty!");
 
     // Ensure funds add up to the total amount of payments.
-    let total_amount = payments
-        .clone()
-        .into_values()
-        .map(|(_, coins)| coins)
-        .try_fold(Coins::new(), |mut acc, coins| {
-            acc.insert_many(coins)?;
-            Ok::<Coins, anyhow::Error>(acc)
+    let total = payments
+        .values()
+        .try_fold(Coins::new(), |mut acc, coins| -> StdResult<_> {
+            acc.insert_many(coins.clone())?;
+            Ok(acc)
         })?;
+
     ensure!(
-        ctx.funds == total_amount,
-        "funds do not add up to the total amount of payments"
+        ctx.funds == total,
+        "funds do not add up to the total amount of payments! funds: {}, total: {}",
+        ctx.funds,
+        total
     );
 
     let oracle = ctx.querier.query_dango_config()?.addresses.oracle;
 
     // Record the fees in storage and emit events.
     let mut events: Vec<ContractEvent> = Vec::new();
-    for (user, (fee_type, payment)) in payments {
+    for (user, payment) in payments {
         let mut previous_amount = FEES_BY_USER
             .prefix(user)
             .values(ctx.storage, None, None, Order::Descending)
@@ -70,7 +71,7 @@ fn pay(ctx: MutableCtx, payments: BTreeMap<Addr, (FeeType, Coins)>) -> anyhow::R
             .transpose()?
             .unwrap_or(BTreeMap::new());
         let fee_payments = previous_amount
-            .entry(fee_type)
+            .entry(ty)
             .or_insert_with(FeePayments::default);
 
         for coin in payment.clone() {
@@ -85,7 +86,7 @@ fn pay(ctx: MutableCtx, payments: BTreeMap<Addr, (FeeType, Coins)>) -> anyhow::R
             ReceiveFee {
                 handler: ctx.contract,
                 user,
-                ty: fee_type,
+                ty,
                 amount: payment,
             }
             .try_into()?,

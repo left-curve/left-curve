@@ -499,8 +499,8 @@ where
             hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,
-            warp,
             taxman,
+            warp,
         },
         ..Default::default()
     };

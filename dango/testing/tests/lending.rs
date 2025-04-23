@@ -1,5 +1,8 @@
 use {
     dango_genesis::Contracts,
+    dango_lending::{
+        calculate_rates, total_borrowed, total_supplied, update_indices, utilization_rate,
+    },
     dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         account::{margin::CollateralPower, single},
@@ -7,9 +10,9 @@ use {
         config::AppConfig,
         constants::{ATOM_DENOM, USDC_DENOM},
         lending::{
-            self, InterestRateModel, MarketUpdates, NAMESPACE, QueryDebtRequest, QueryDebtsRequest,
-            QueryMarketRequest, QueryMarketsRequest, QueryPreviewWithdrawRequest, SECONDS_PER_YEAR,
-            SUBNAMESPACE,
+            self, InterestRateModel, NAMESPACE, QueryDebtRequest, QueryDebtsRequest,
+            QueryMarketRequest, QueryMarketsRequest, QuerySimulateWithdrawRequest,
+            SECONDS_PER_YEAR, SUBNAMESPACE,
         },
         oracle::{self, PriceSource},
     },
@@ -42,7 +45,7 @@ fn assert_eq_or_one_off(a: impl Into<Uint128>, b: impl Into<Uint128>) {
         b - a
     };
 
-    assert!(diff <= Uint128::ONE);
+    assert!(diff <= Uint128::ONE, "a = {a}, b = {b}");
 }
 
 /// Feeds the oracle contract a price for USDC
@@ -120,7 +123,7 @@ fn update_markets_works() {
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {}),
             Coins::new(),
         )
-        .should_fail_with_error("Only the owner can whitelist denoms");
+        .should_fail_with_error("only the owner can whitelist denoms");
 
     // Whitelist ATOM from owner, should succeed.
     suite
@@ -128,9 +131,7 @@ fn update_markets_works() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                ATOM_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
+                ATOM_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -207,13 +208,12 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
-
-    // Increase time to accrue interest
-    suite.increase_time(Duration::from_seconds(60 * 60 * 24)); // 1 day
 
     // Query the current market for USDC
     let market = suite
@@ -225,15 +225,16 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
     let old_borrow_index = market.borrow_index;
     let old_supply_index = market.supply_index;
 
+    // Increase time to accrue interest
+    suite.increase_time(Duration::from_seconds(60 * 60 * 24)); // 1 day
+
     // Update the interest rate model
     suite
         .execute(
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
+                USDC_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -373,7 +374,9 @@ fn non_margin_accounts_cant_borrow() {
         .execute(
             &mut accounts.user1,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::new()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("only margin accounts can borrow");
@@ -411,7 +414,9 @@ fn cant_borrow_if_no_collateral() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
@@ -457,7 +462,9 @@ fn cant_borrow_if_undercollateralized() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
@@ -485,7 +492,9 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_fail_with_error("subtraction overflow: 0 - 100");
@@ -513,7 +522,9 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -639,7 +650,9 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 50).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -709,7 +722,9 @@ fn repay_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => 100 },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -741,9 +756,7 @@ fn interest_rate_setup() -> (
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                USDC_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
+                USDC_DENOM.clone() => InterestRateModel::mock(),
             }),
             Coins::new(),
         )
@@ -809,16 +822,14 @@ fn interest_rate_model_works(
             denom: USDC_DENOM.clone(),
         })
         .should_succeed();
-    assert_eq!(market.interest_rate_model, InterestRateModel::default());
+    assert_eq!(market.interest_rate_model, InterestRateModel::mock());
 
     // Compute interest rates
-    let interest_rate = market
-        .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite).unwrap())
-        .unwrap();
+    let utilization = utilization_rate(&market, suite.querier()).unwrap();
+    let (_, deposit_rate) = calculate_rates(&market.interest_rate_model, utilization);
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
-    assert_eq!(interest_rate.deposit_rate, Udec128::ZERO);
+    assert_eq!(deposit_rate, Udec128::ZERO);
 
     // Deposit some USDC
     let deposit_amount = 1_000_000_000u128;
@@ -842,7 +853,7 @@ fn interest_rate_model_works(
 
     // Query how many tokens the user can withdraw with their LP tokens
     let withdraw_amount = suite
-        .query_wasm_smart(contracts.lending, QueryPreviewWithdrawRequest {
+        .query_wasm_smart(contracts.lending, QuerySimulateWithdrawRequest {
             lp_tokens: Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         })
         .should_succeed();
@@ -858,7 +869,7 @@ fn interest_rate_model_works(
 
     // Check how many tokens the user can withdraw with their LP tokens
     let withdraw_amount = suite
-        .query_wasm_smart(contracts.lending, QueryPreviewWithdrawRequest {
+        .query_wasm_smart(contracts.lending, QuerySimulateWithdrawRequest {
             lp_tokens: Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         })
         .should_succeed();
@@ -878,7 +889,9 @@ fn interest_rate_model_works(
         .execute(
             margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), borrow_amount).unwrap()),
+            &lending::ExecuteMsg::Borrow(NonEmpty::new_unchecked(
+                coins! { USDC_DENOM.clone() => borrow_amount },
+            )),
             Coins::new(),
         )
         .should_succeed();
@@ -890,15 +903,13 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Compute interest rates
-    let interest_rates = market
-        .interest_rate_model
-        .calculate_rates(market.utilization_rate(suite).unwrap())
-        .unwrap();
+    let utilization = utilization_rate(&market, suite.querier()).unwrap();
+    let (borrow_rate, deposit_rate) = calculate_rates(&market.interest_rate_model, utilization);
 
     // Assert that the all interest rates are non-zero
-    assert!(interest_rates.borrow_rate.is_positive());
-    assert!(interest_rates.deposit_rate.is_positive());
-    assert!(interest_rates.spread.is_positive());
+    assert!(borrow_rate.is_positive());
+    assert!(deposit_rate.is_positive());
+    assert!(borrow_rate > deposit_rate);
 
     // --- Property 3: Interest accrues over time ---
 
@@ -915,23 +926,21 @@ fn interest_rate_model_works(
     assert!(usdc_debt > Uint128::from(borrow_amount));
 
     // Check that debt increased with the correct amount of interest
-    let time_out_of_year = Udec128::checked_from_ratio(
-        Duration::from_weeks(1).into_seconds(),
-        SECONDS_PER_YEAR as u128,
-    )
-    .unwrap();
+    let time_out_of_year =
+        Udec128::checked_from_ratio(Duration::from_weeks(1).into_seconds(), SECONDS_PER_YEAR)
+            .unwrap();
     let debt_interest_amount = usdc_debt - Uint128::from(borrow_amount);
     assert!(debt_interest_amount > Uint128::ZERO);
     assert_eq!(
         debt_interest_amount,
         Uint128::from(borrow_amount)
-            .checked_mul_dec_ceil(interest_rates.borrow_rate * time_out_of_year)
+            .checked_mul_dec_ceil(borrow_rate * time_out_of_year)
             .unwrap()
     );
 
     // Check how many tokens the user can withdraw with their LP tokens
     let withdrawn_coins = suite
-        .query_wasm_smart(contracts.lending, QueryPreviewWithdrawRequest {
+        .query_wasm_smart(contracts.lending, QuerySimulateWithdrawRequest {
             lp_tokens: Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         })
         .should_succeed();
@@ -943,7 +952,7 @@ fn interest_rate_model_works(
     assert_eq_or_one_off(
         deposit_interest_amount,
         Uint128::from(deposit_amount)
-            .checked_mul_dec(interest_rates.deposit_rate * time_out_of_year)
+            .checked_mul_dec(deposit_rate * time_out_of_year)
             .unwrap(),
     );
 
@@ -955,24 +964,22 @@ fn interest_rate_model_works(
         .query_wasm_smart(contracts.lending, QueryMarketRequest {
             denom: USDC_DENOM.clone(),
         })
-        .should_succeed()
-        .update_indices(suite, time)
-        .unwrap();
-    let total_supply = market.total_supplied(suite).unwrap();
-    let total_borrowed = market.total_borrowed().unwrap();
+        .should_succeed();
+    let market = update_indices(market, suite.querier(), time).unwrap();
+
+    let total_supply = total_supplied(&market, suite.querier()).unwrap();
+    let total_borrowed = total_borrowed(&market).unwrap();
 
     let supply_increase = total_supply - Uint128::from(deposit_amount);
     let borrow_increase = total_borrowed - Uint128::from(borrow_amount);
 
     // Check that the supply and borrow increased with the correct amount of interest
     let expected_supply_increase_from_deposit = Uint128::from(deposit_amount)
-        .checked_mul_dec(interest_rates.deposit_rate * time_out_of_year)
+        .checked_mul_dec(deposit_rate * time_out_of_year)
         .unwrap();
     let expected_supply_increase_from_protocol_revenue = Uint128::from(borrow_amount)
         .checked_mul_dec(
-            interest_rates.borrow_rate
-                * time_out_of_year
-                * market.interest_rate_model.reserve_factor(),
+            borrow_rate * time_out_of_year * *market.interest_rate_model.reserve_factor,
         )
         .unwrap();
     let expected_supply_increase =
@@ -980,7 +987,7 @@ fn interest_rate_model_works(
     assert_eq_or_one_off(supply_increase, expected_supply_increase);
 
     let expected_borrow_increase = Uint128::from(borrow_amount)
-        .checked_mul_dec(interest_rates.borrow_rate * time_out_of_year)
+        .checked_mul_dec(borrow_rate * time_out_of_year)
         .unwrap();
     assert_eq_or_one_off(borrow_increase, expected_borrow_increase);
 
@@ -1027,13 +1034,12 @@ fn interest_rate_model_works(
         margin_usdc_balance_before - usdc_debt
     );
 
-    // Query the margin account's debt. Ensure it is zero
-    let debt = suite
+    // Query the margin account's debt. Should fail as the debt has been repaid
+    suite
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
-        .should_succeed();
-    assert_eq!(debt.amount_of(&USDC_DENOM), Uint128::ZERO);
+        .should_fail_with_error("data not found!");
 
     // Query the market
     let market = suite
@@ -1085,6 +1091,7 @@ fn interest_rate_model_works(
     let owner_lp_balance = suite
         .query_balance(&accounts.owner.address(), lp_denom.clone())
         .should_succeed();
+    dbg!(owner_lp_balance);
     suite
         .execute(
             &mut accounts.owner,
@@ -1111,6 +1118,9 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Ensure that total supply is equal to the protocol revenueand total borrowed are zero
-    assert_eq!(market.total_supplied(suite).unwrap(), Uint128::ZERO);
+    assert_eq!(
+        total_supplied(&market, suite.querier()).unwrap(),
+        Uint128::ZERO
+    );
     assert_eq!(market.total_borrowed_scaled, Udec256::ZERO);
 }

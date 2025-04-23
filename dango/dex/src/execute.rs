@@ -6,7 +6,9 @@ use {
     anyhow::{anyhow, bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
-        DangoQuerier, bank,
+        DangoQuerier,
+        account_factory::Username,
+        bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
@@ -17,10 +19,10 @@ use {
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx,
-        Timestamp, Udec128, Uint128, UniqueVec,
+        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx, Udec128,
+        Uint128, UniqueVec,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -432,26 +434,25 @@ fn swap_exact_amount_out(
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
-    let mut collected_fees = Coins::new();
+    let mut volumes = HashMap::new();
+    let mut volumes_by_username = HashMap::new();
+    let mut fees = Coins::new();
     let mut fee_payments = BTreeMap::new();
-
-    // Query fee rates from Dango config
-    let dango_config = ctx.querier.query_dango_config()?;
-    let maker_fee = dango_config.maker_fee.into_inner();
-    let taker_fee = dango_config.taker_fee.into_inner();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
-        // Ensure that the order was created in the current block. This should
-        // always be the case, or something has gone wrong.
-        ensure!(
+        debug_assert!(
             order.created_at_block_height == ctx.block.height,
-            "incoming order was created in a previous block"
+            "incoming order was created in a previous block! creation height: {}, current height: {}",
+            order.created_at_block_height,
+            ctx.block.height
         );
 
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
@@ -469,57 +470,72 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            &ctx.querier,
-            ctx.block.timestamp,
+            ctx.querier,
             ctx.block.height,
+            app_cfg.addresses.oracle,
+            app_cfg.addresses.account_factory,
+            app_cfg.maker_fee_rate.into_inner(),
+            app_cfg.taker_fee_rate.into_inner(),
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
-            &mut collected_fees,
+            &mut fees,
             &mut fee_payments,
-            maker_fee,
-            taker_fee,
+            &mut volumes,
+            &mut volumes_by_username,
         )?;
     }
 
-    // Add fee transfer to fee collector if any fees collected
-    let response = Response::new().may_add_message(if !refunds.is_empty() {
-        Some(Message::batch_transfer(refunds)?)
-    } else {
-        None
-    });
+    // Save the updated volumes.
+    for (address, volume) in volumes {
+        VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
+        // TODO: purge volume data that are too old.
+    }
 
-    // Add fee transfer if any fees were collected
-    let response = response.may_add_message(if !fee_payments.is_empty() {
-        Some(Message::execute(
-            dango_config.addresses.taxman,
-            &taxman::ExecuteMsg::Pay {
-                payments: fee_payments,
-            },
-            collected_fees,
-        )?)
-    } else {
-        None
-    });
+    for (username, volume) in volumes_by_username {
+        VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
+        // TODO: purge volume data that are too old.
+    }
 
-    Ok(response.add_events(events)?)
+    Ok(Response::new()
+        .may_add_message(if !refunds.is_empty() {
+            Some(Message::batch_transfer(refunds)?)
+        } else {
+            None
+        })
+        .may_add_message(if !fee_payments.is_empty() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: fee_payments,
+                },
+                fees,
+            )?)
+        } else {
+            None
+        })
+        .add_events(events)?)
 }
 
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    current_time: Timestamp,
+    querier: QuerierWrapper,
     current_block_height: u64,
+    oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
+    account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
-    collected_fees: &mut Coins,
-    fee_payments: &mut BTreeMap<Addr, (FeeType, Coins)>,
-    maker_fee: Udec128,
-    taker_fee: Udec128,
+    fees: &mut Coins,
+    fee_payments: &mut BTreeMap<Addr, Coins>,
+    volumes: &mut HashMap<Addr, Uint128>,
+    volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
@@ -563,10 +579,6 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    let dango_config = querier.query_dango_config()?;
-    let oracle = dango_config.addresses.oracle;
-    let account_factory = dango_config.addresses.account_factory;
-
     // Fill orders
     for FillingOutcome {
         order_direction,
@@ -579,15 +591,14 @@ fn clear_orders_of_pair(
         refund_quote,
         fee_base,
         fee_quote,
-        is_maker,
     } in fill_orders(
         bids,
         asks,
         clearing_price,
         volume,
         current_block_height,
-        maker_fee,
-        taker_fee,
+        maker_fee_rate,
+        taker_fee_rate,
     )? {
         let refund = Coins::try_from([
             Coin {
@@ -600,26 +611,20 @@ fn clear_orders_of_pair(
             },
         ])?;
 
-        // Add fees to collected_fees
-        let fee_type = if is_maker {
-            FeeType::Maker
-        } else {
-            FeeType::Taker
-        };
+        // Handle fees.
         if fee_base.is_non_zero() {
-            collected_fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
             fee_payments
                 .entry(order.user)
-                .or_insert((fee_type, Coins::new()))
-                .1
+                .or_default()
                 .insert(Coin::new(base_denom.clone(), fee_base)?)?;
         }
+
         if fee_quote.is_non_zero() {
-            collected_fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
             fee_payments
                 .entry(order.user)
-                .or_insert((fee_type, Coins::new()))
-                .1
+                .or_default()
                 .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
         }
 
@@ -639,6 +644,7 @@ fn clear_orders_of_pair(
         };
 
         events.push(OrderFilled {
+            user: order.user,
             order_id,
             clearing_price,
             filled,
@@ -674,45 +680,55 @@ fn clear_orders_of_pair(
 
         // Calculate the volume in USD for the filled order
         let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
-        let volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
+        let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
 
-        // Get the previous volume for the user's address
-        let previous_volume = VOLUMES
-            .prefix(&order.user)
-            .values(storage, None, None, IterationOrder::Descending)
-            .next()
-            .transpose()?
-            .unwrap_or(Uint128::ZERO);
-        // Record trading volume for the user's address
-        VOLUMES.save(
-            storage,
-            (&order.user, current_time),
-            &previous_volume.checked_add(volume)?,
-        )?;
+        // Record trading volume for the user's address.
+        {
+            match volumes.entry(order.user) {
+                Entry::Occupied(mut v) => {
+                    v.get_mut().checked_add_assign(new_volume)?;
+                },
+                Entry::Vacant(v) => {
+                    let volume = VOLUMES
+                        .prefix(&order.user)
+                        .values(storage, None, None, IterationOrder::Descending)
+                        .next()
+                        .transpose()?
+                        .unwrap_or(Uint128::ZERO)
+                        .checked_add(new_volume)?;
 
-        // Get the username from the user address
-        let username = querier
+                    v.insert(volume);
+                },
+            }
+        }
+
+        // Record trading volume for the user's username, if the trader is a
+        // single-signature account (skip for multisig accounts).
+        // TODO: this query can use caching, so we don't re-do queries for the same user.
+        if let Some(username) = querier
             .query_wasm_path(
                 account_factory,
                 &dango_account_factory::ACCOUNTS.path(order.user),
             )?
             .params
-            .owner();
+            .owner()
+        {
+            match volumes_by_username.entry(username.clone()) {
+                Entry::Occupied(mut v) => {
+                    v.get_mut().checked_add_assign(new_volume)?;
+                },
+                Entry::Vacant(v) => {
+                    let volume = VOLUMES_BY_USER
+                        .prefix(&username)
+                        .values(storage, None, None, IterationOrder::Descending)
+                        .next()
+                        .transpose()?
+                        .unwrap_or(Uint128::ZERO)
+                        .checked_add(new_volume)?;
 
-        if let Some(username) = username {
-            // Get the previous volume for the user's username
-            let previous_volume = VOLUMES_BY_USER
-                .prefix(&username)
-                .values(storage, None, None, IterationOrder::Descending)
-                .next()
-                .transpose()?
-                .unwrap_or(Uint128::ZERO);
-            // Record trading volume for the user's username
-            VOLUMES_BY_USER.save(
-                storage,
-                (&username, current_time),
-                &previous_volume.checked_add(volume)?,
-            )?;
+                    v.insert(volume);
+                },
+            }
         }
     }
 

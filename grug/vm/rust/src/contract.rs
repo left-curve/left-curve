@@ -480,7 +480,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
@@ -495,7 +495,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let Some(execute_fn) = &self.execute_fn else {
@@ -514,7 +514,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>> {
         let Some(migrate_fn) = &self.migrate_fn else {
@@ -533,7 +533,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
     ) -> VmResult<GenericResult<Response>> {
         let Some(receive_fn) = &self.receive_fn else {
             return Err(VmError::function_not_found("receive"));
@@ -550,7 +550,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
         result: SubMsgResult,
     ) -> VmResult<GenericResult<Response>> {
@@ -570,7 +570,7 @@ where
         ctx: Context,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: &[u8],
     ) -> VmResult<GenericResult<Json>> {
         let Some(query_fn) = &self.query_fn else {
@@ -589,7 +589,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<AuthResponse>> {
         let Some(authenticate_fn) = &self.authenticate_fn else {
@@ -607,7 +607,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>> {
         let Some(backrun_fn) = &self.backrun_fn else {
@@ -625,7 +625,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: BankMsg,
     ) -> VmResult<GenericResult<Response>> {
         let Some(bank_execute_fn) = &self.bank_execute_fn else {
@@ -643,7 +643,7 @@ where
         ctx: Context,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         msg: BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>> {
         let Some(bank_query_fn) = &self.bank_query_fn else {
@@ -661,7 +661,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>> {
         let Some(withhold_fee_fn) = &self.withhold_fee_fn else {
@@ -679,7 +679,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
         tx: Tx,
         outcome: TxOutcome,
     ) -> VmResult<GenericResult<Response>> {
@@ -698,7 +698,7 @@ where
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Error = StdError>,
+        querier: &dyn Querier,
     ) -> VmResult<GenericResult<Response>> {
         let Some(cron_execute_fn) = &self.cron_execute_fn else {
             return Err(VmError::function_not_found("cron_execute"));

@@ -3302,6 +3302,7 @@ dependencies = [
  "dango-client",
  "dango-genesis",
  "dango-httpd",
+ "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-types",
  "data-encoding",
@@ -3506,6 +3507,7 @@ dependencies = [
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
+ "dango-lending",
  "dango-oracle",
  "dango-proposal-preparer",
  "dango-types",
@@ -3545,17 +3547,12 @@ name = "dango-types"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "borsh 1.5.6",
- "byteorder",
- "data-encoding",
  "grug",
  "hyperlane-types",
  "paste",
  "pyth-types",
  "serde",
  "sha2 0.10.8",
- "thiserror 2.0.12",
- "tokio",
 ]
 
 [[package]]
@@ -4757,10 +4754,12 @@ name = "grug-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "borsh 1.5.6",
  "grug-app",
  "grug-crypto",
  "grug-db-memory",
+ "grug-jmt",
  "grug-math",
  "grug-mock-account",
  "grug-mock-bank",
@@ -4776,6 +4775,7 @@ dependencies = [
  "serde_json",
  "test-case",
  "thiserror 2.0.12",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -7258,6 +7258,7 @@ dependencies = [
  "grug-app",
  "indexer-disk-saver",
  "pyth-types",
+ "rand 0.8.5",
  "reqwest 0.12.15",
  "reqwest-eventsource",
  "thiserror 2.0.12",
@@ -9386,9 +9387,8 @@ dependencies = [
 
 [[package]]
 name = "tendermint"
-version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9703e34d940c2a293804752555107f8dbe2b84ec4c6dd5203831235868105d2"
+version = "0.40.3"
+source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
 dependencies = [
  "bytes",
  "digest 0.10.7",
@@ -9414,9 +9414,8 @@ dependencies = [
 
 [[package]]
 name = "tendermint-config"
-version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89cc3ea9a39b7ee34eefcff771cc067ecaa0c988c1c5ac08defd878471a06f76"
+version = "0.40.3"
+source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
 dependencies = [
  "flex-error",
  "serde",
@@ -9428,9 +9427,8 @@ dependencies = [
 
 [[package]]
 name = "tendermint-proto"
-version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ae9e1705aa0fa5ecb2c6aa7fb78c2313c4a31158ea5f02048bf318f849352eb"
+version = "0.40.3"
+source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
 dependencies = [
  "bytes",
  "flex-error",
@@ -9443,9 +9441,8 @@ dependencies = [
 
 [[package]]
 name = "tendermint-rpc"
-version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "835a52aa504c63ec05519e31348d3f4ba2fe79493c588e2cad5323d5e81b161a"
+version = "0.40.3"
+source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
 dependencies = [
  "async-trait",
  "bytes",
@@ -9854,8 +9851,7 @@ dependencies = [
 [[package]]
 name = "tower-abci"
 version = "0.19.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f20500d25342b86338bc9e053694dd199e9dafbc1044126a54ce378bfbbcfa5"
+source = "git+https://github.com/left-curve/tower-abci.git?rev=6ba8190#6ba81903150128456c7c2949ca484972621c4e00"
 dependencies = [
  "bytes",
  "futures",

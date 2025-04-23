@@ -132,9 +132,8 @@ fn query_fees_for_user_works() {
             &mut accounts.user1,
             contracts.taxman,
             &taxman::ExecuteMsg::Pay {
-                payments: btree_map! {
-                    user1_addr => (taxman::FeeType::Gas, first_fees.clone()),
-                },
+                ty: taxman::FeeType::Gas,
+                payments: btree_map! { user1_addr => first_fees.clone() },
             },
             first_fees.clone(),
         )
@@ -165,7 +164,7 @@ fn query_fees_for_user_works() {
     suite
         .query_wasm_smart(contracts.taxman, taxman::QueryFeesForUserRequest {
             user: accounts.user1.address(),
-            fee_type: Some(taxman::FeeType::Maker),
+            fee_type: Some(taxman::FeeType::Trade),
             since: None,
         })
         .should_succeed_and_equal(FeePayments::default());
@@ -194,7 +193,8 @@ fn query_fees_for_user_works() {
             &mut accounts.user1,
             contracts.taxman,
             &taxman::ExecuteMsg::Pay {
-                payments: btree_map! { user1_addr => (taxman::FeeType::Gas, first_fees.clone()) },
+                ty: taxman::FeeType::Gas,
+                payments: btree_map! { user1_addr => first_fees.clone() },
             },
             first_fees.clone(),
         )
@@ -245,9 +245,8 @@ fn query_fees_for_user_works() {
             &mut accounts.user1,
             contracts.taxman,
             &taxman::ExecuteMsg::Pay {
-                payments: btree_map! {
-                    user1_addr => (taxman::FeeType::Maker, third_fees.clone()),
-                },
+                ty: taxman::FeeType::Trade,
+                payments: btree_map! { user1_addr => third_fees.clone() },
             },
             third_fees.clone(),
         )
@@ -266,7 +265,7 @@ fn query_fees_for_user_works() {
     suite
         .query_wasm_smart(contracts.taxman, taxman::QueryFeesForUserRequest {
             user: accounts.user1.address(),
-            fee_type: Some(taxman::FeeType::Maker),
+            fee_type: Some(taxman::FeeType::Trade),
             since: None,
         })
         .should_succeed_and_equal(third_fee_payments.clone());
@@ -294,7 +293,7 @@ fn query_fees_for_user_works() {
     suite
         .query_wasm_smart(contracts.taxman, taxman::QueryFeesForUserRequest {
             user: accounts.user1.address(),
-            fee_type: Some(taxman::FeeType::Maker),
+            fee_type: Some(taxman::FeeType::Trade),
             since: Some(time_after_second_payment),
         })
         .should_succeed_and_equal(third_fee_payments.clone());

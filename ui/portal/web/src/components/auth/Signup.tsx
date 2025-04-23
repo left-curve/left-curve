@@ -266,7 +266,7 @@ const Username: React.FC = () => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
 
-        const { addresses } = await client.getAppConfig<AppConfig>();
+        const { addresses } = await client.getAppConfig();
         const accountCodeHash = await client.getAccountTypeCodeHash({
           accountType: AccountType.Spot,
         });
@@ -293,7 +293,9 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(`https://devnet.dango.exchange/faucet/mint/${address}`);
+        const response = await fetch(
+          `${import.meta.env.PUBLIC_FAUCET_URI || "https://devnet.dango.exchange/faucet"}/mint/${address}`,
+        );
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
@@ -388,7 +390,7 @@ const Signin: React.FC = () => {
         console.error(err);
         toast.error({
           title: m["common.error"](),
-          description: m["signin.errors.failedSigingIn"](),
+          description: m["signin.errors.failedSigningIn"](),
         });
       },
     },
