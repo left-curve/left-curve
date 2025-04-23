@@ -1,4 +1,4 @@
-FROM debian:slim
+FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.description="Dango docker image"
 

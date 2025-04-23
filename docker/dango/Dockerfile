@@ -1,6 +1,6 @@
-FROM rust:slim
+FROM rust:slim as builder
 
-LABEL org.opencontainers.image.description="Dango docker image"
+LABEL org.opencontainers.image.description="Dango build stage"
 
 # Install dependencies.
 RUN apt update && apt install -y clang git libssl-dev pkg-config
@@ -24,10 +24,18 @@ RUN echo "Cloning commit: $GIT_COMMIT" \
   && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs \
   && rm dango/cli/src/git_info.rs.in \
   && cargo install --path dango/cli \
-  && cd .. \
-  && rm -rf left-curve
 
-# Expose the indexer httpd (8080) and Tendermint ABCI (26658) ports.
+FROM debian:bookworm-slim AS runtime
+
+LABEL org.opencontainers.image.description="Dango runtime image"
+
+RUN apt-get update && \
+    apt-get install -y libssl3 ca-certificates && \
+    # apt-get install -y libssl-dev pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /left-curve/target/release/dango /usr/local/bin/dango
+
 EXPOSE 8080 26658
 
 # Run dango.
