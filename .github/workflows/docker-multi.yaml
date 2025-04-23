@@ -93,6 +93,7 @@ jobs:
           cargo install cross
           cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in
           sed "s/{{GIT_COMMIT}}/${{ github.sha }}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs
+          rm dango/cli/src/git_info.rs.in
           cross build --target aarch64-unknown-linux-gnu --release
           docker buildx build --platform linux/arm64 --provenance=false --push -t ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64 -f docker/dango-arm/Dockerfile .
 
