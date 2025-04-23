@@ -1,4 +1,4 @@
-FROM rust:slim
+FROM debian:slim
 
 LABEL org.opencontainers.image.description="Dango docker image"
 
