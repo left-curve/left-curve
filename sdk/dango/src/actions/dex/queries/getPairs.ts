@@ -12,7 +12,7 @@ export type GetPairsParameters = {
   height?: number;
 };
 
-export type GetPairsReturnType = Promise<PairUpdate>;
+export type GetPairsReturnType = Promise<PairUpdate[]>;
 
 /**
  * Enumerate all trading pairs and their parameters.

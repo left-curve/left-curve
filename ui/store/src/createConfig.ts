@@ -105,7 +105,10 @@ export function createConfig<
   }
 
   let _appConfig:
-    | (AppConfig & { accountFactory: { codeHashes: Record<AccountTypes, Hex> }; pairs: PairUpdate })
+    | (AppConfig & {
+        accountFactory: { codeHashes: Record<AccountTypes, Hex> };
+        pairs: PairUpdate[];
+      })
     | undefined;
 
   async function getAppConfig() {

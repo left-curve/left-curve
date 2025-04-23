@@ -17,8 +17,8 @@ export type GetPairReturnType = Promise<PairParams>;
 /**
  * Query the parameters of a single trading pair.
  * @param parameters
- * @param parameters.limit The maximum number of pairs to return.
- * @param parameters.startAfter The ID of the pair to start after.
+ * @param parameters.quoteDenom The quote denomination of the pair.
+ * @param parameters.baseDenom The base denomination of the pair.
  * @param parameters.height The height at which to query the pairs
  * @returns The prices.
  */

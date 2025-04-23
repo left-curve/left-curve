@@ -28,9 +28,9 @@ export async function swapExactAmountIn<transport extends Transport>(
 ): SwapExactAmountInReturnType {
   const { route, minimumOutput, sender, input } = parameters;
 
-  const geAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
-  const { addresses } = await geAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const msg: DexExecuteMsg = {
     swapExactAmountIn: {

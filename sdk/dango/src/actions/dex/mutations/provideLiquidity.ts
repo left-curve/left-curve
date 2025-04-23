@@ -27,9 +27,9 @@ export async function provideLiquidity<transport extends Transport>(
 ): ProvideLiquidityReturnType {
   const { baseDenom, quoteDenom, funds, sender } = parameters;
 
-  const geAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
-  const { addresses } = await geAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const msg: DexExecuteMsg = {
     provideLiquidity: {

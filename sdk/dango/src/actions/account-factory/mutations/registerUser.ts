@@ -40,9 +40,9 @@ export async function registerUser<transport extends Transport>(
 ): RegisterUserReturnType {
   const { username, keyHash, key, seed, signature } = parameters;
 
-  const geAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
-  const { addresses } = await geAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const registerMsg = {
     registerUser: {
