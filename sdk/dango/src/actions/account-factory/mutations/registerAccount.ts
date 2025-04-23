@@ -29,9 +29,9 @@ export async function registerAccount<transport extends Transport>(
   const { gasLimit } = txParameters;
   const msg = { registerAccount: { params: config } };
 
-  const geAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
-  const { addresses } = await geAppConfigAction<AppConfig>({});
+  const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const typedData: TypedDataParameter = {
     type: [{ name: "register_account", type: "RegisterAccount" }],

@@ -7,7 +7,7 @@ export type AppConfig = {
     tokenFactory: Address;
     lending: Address;
     oracle: Address;
-    amm: Address;
+    dex: Address;
     warp: Address;
     hyperlane: {
       fee: Address;

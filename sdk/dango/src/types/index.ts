@@ -29,13 +29,6 @@ export type {
   Username,
 } from "./account.js";
 
-export type {
-  AmmConfig,
-  AmmQueryMsg,
-  AmmExecuteMsg,
-  SwapOutcome,
-} from "./amm.js";
-
 export type { AppConfig } from "./app.js";
 
 export type { Chain } from "./chain.js";
@@ -106,6 +99,21 @@ export type {
 } from "./signature.js";
 
 export type { IndexedBlock, IndexedTransaction, IndexedTransactionType } from "./indexer.js";
+
+export type {
+  DexExecuteMsg,
+  DexQueryMsg,
+  Directions,
+  CoinPair,
+  OrderResponse,
+  OrdersByPairResponse,
+  OrdersByUserResponse,
+  PairId,
+  ReservesResponse,
+  SwapRoute,
+  PairParams,
+  PairUpdate,
+} from "./dex.js";
 
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 
