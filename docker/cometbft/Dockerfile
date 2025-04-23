@@ -3,7 +3,7 @@ FROM golang:1.24-bookworm as builder
 LABEL org.opencontainers.image.description "CometBFT builder for Dango"
 
 # Install dependencies.
-RUN apk update && apk add git make
+RUN apt update && apt install git make
 
 # Git tag of the cometbft repo.
 ARG COMETBFT_GIT_TAG="v0.38.17"
