@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm as builder
+FROM golang:1.24-bookworm AS builder
 
 LABEL org.opencontainers.image.description "CometBFT builder for Dango"
 
@@ -18,7 +18,7 @@ FROM debian:bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.description="CometBFT runtime for Dango"
 
-COPY --from=builder /cometbft/cometbft /usr/local/bin/
+COPY --from=builder /go/bin/cometbft /usr/local/bin/
 
 # Expose the Tendermint p2p (26656), RPC (26657), and ABCI (26658) ports.
 EXPOSE 26656 26657 26658
