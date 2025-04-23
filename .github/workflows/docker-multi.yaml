@@ -71,6 +71,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64
           push: true
+          provenance: false
           # no-cache: true
 
   build-dango-amd64:
@@ -98,6 +99,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-amd64
           push: true
+          provenance: false
           # no-cache: true
 
   push-manifest:
