@@ -87,3 +87,5 @@ export type Failure<E> = {
 };
 
 export type Result<T, E = Error> = Success<T> | Failure<E>;
+
+export type Option<T> = T | undefined;
