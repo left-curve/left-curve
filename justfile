@@ -68,3 +68,12 @@ optimize:
     --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
+
+# --------------------------------- arm builder ----------------------------------
+# To be called from a x86 architecture
+docker-build-arm-builder:
+  docker build -t ghcr.io/left-curve/left-curve/arm-builder:latest docker/arm-builder ; \
+      docker push ghcr.io/left-curve/left-curve/arm-builder:latest
+
+build-arm-on-x86:
+  cross build --target aarch64-unknown-linux-gnu --release
