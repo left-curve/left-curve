@@ -71,7 +71,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64
           push: true
-          no-cache: true
+          # no-cache: true
 
   build-dango-amd64:
     permissions:
@@ -96,9 +96,9 @@ jobs:
             GIT_COMMIT=${{ github.sha }}
           platforms: linux/amd64
           tags: |
-            ghcr.io/${{ github.repository }}/dango:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-amd64
           push: true
-          no-cache: true
+          # no-cache: true
 
   push-manifest:
     needs: [build-dango-amd64, build-dango-arm64]
