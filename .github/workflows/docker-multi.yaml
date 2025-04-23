@@ -9,6 +9,13 @@ on:
   pull_request:
     branches: [main]
 
+          # if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
+          #   echo "Image with tag ${{ env.COMETBFT_GIT_TAG }} already exists, skipping build."
+          #   echo "skip_build=true" >> $GITHUB_OUTPUT
+          # else
+          #   echo "Image does not exist, proceeding with build."
+          #   echo "skip_build=false" >> $GITHUB_OUTPUT
+          # fi
 jobs:
   build-cometbft:
     permissions:
@@ -27,13 +34,7 @@ jobs:
       - name: Check if Docker image already exists
         id: check-image
         run: |
-          if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
-            echo "Image with tag ${{ env.COMETBFT_GIT_TAG }} already exists, skipping build."
-            echo "skip_build=true" >> $GITHUB_OUTPUT
-          else
-            echo "Image does not exist, proceeding with build."
-            echo "skip_build=false" >> $GITHUB_OUTPUT
-          fi
+          echo "skip_build=false" >> $GITHUB_OUTPUT
       - name: Build and push Docker image
         if: steps.check-image.outputs.skip_build == 'false'
         uses: docker/build-push-action@v5

@@ -1,6 +1,6 @@
-FROM golang:1.24-alpine
+FROM golang:1.24-bookworm as builder
 
-LABEL org.opencontainers.image.description "CometBFT image for Dango"
+LABEL org.opencontainers.image.description "CometBFT builder for Dango"
 
 # Install dependencies.
 RUN apk update && apk add git make
@@ -12,9 +12,13 @@ ENV COMETBFT_GIT_TAG=$COMETBFT_GIT_TAG
 # Download cometbft source code, build, then delete.
 RUN git clone --branch $COMETBFT_GIT_TAG --depth 1 https://github.com/cometbft/cometbft.git \
   && cd cometbft \
-  && make install \
-  && cd .. \
-  && rm -rf cometbft
+  && make install
+
+FROM debian:bookworm-slim AS runtime
+
+LABEL org.opencontainers.image.description="CometBFT runtime for Dango"
+
+COPY --from=builder /cometbft/cometbft /usr/local/bin/
 
 # Expose the Tendermint p2p (26656), RPC (26657), and ABCI (26658) ports.
 EXPOSE 26656 26657 26658
