@@ -2,17 +2,9 @@ import type { Client, Transport } from "@left-curve/sdk/types";
 import type { DangoClient } from "#types/clients.js";
 import type { Signer } from "#types/signer.js";
 
-import {
-  type QueryPairsParameters,
-  type QueryPairsReturnType,
-  queryPairs,
-} from "./queries/queryPairs.js";
+import { type GetPairsParameters, type GetPairsReturnType, getPairs } from "./queries/getPairs.js";
 
-import {
-  type QueryPairParameters,
-  type QueryPairReturnType,
-  queryPair,
-} from "./queries/queryPair.js";
+import { type GetPairParameters, type GetPairReturnType, getPair } from "./queries/getPair.js";
 
 import {
   type SimulateSwapExactAmountOutParameters,
@@ -51,8 +43,8 @@ import {
 } from "./mutations/swapExactAmountIn.js";
 
 export type DexQueryActions = {
-  queryPairs: (args?: QueryPairsParameters) => QueryPairsReturnType;
-  queryPair: (args: QueryPairParameters) => QueryPairReturnType;
+  getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
+  getPair: (args: GetPairParameters) => GetPairReturnType;
   simulateSwapExactAmountOut: (
     args: SimulateSwapExactAmountOutParameters,
   ) => SimulateSwapExactAmountOutReturnType;
@@ -65,8 +57,8 @@ export function dexQueryActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): DexQueryActions {
   return {
-    queryPairs: (args) => queryPairs(client, args),
-    queryPair: (args) => queryPair(client, args),
+    getPairs: (args) => getPairs(client, args),
+    getPair: (args) => getPair(client, args),
     simulateSwapExactAmountOut: (args) => simulateSwapExactAmountOut(client, args),
     simulateSwapExactAmountIn: (args) => simulateSwapExactAmountIn(client, args),
   };

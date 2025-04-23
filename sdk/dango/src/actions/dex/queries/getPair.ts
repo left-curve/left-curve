@@ -6,13 +6,13 @@ import type { Chain, Signer } from "@left-curve/sdk/types";
 import type { AppConfig } from "#types/app.js";
 import type { DexQueryMsg, PairParams } from "#types/dex.js";
 
-export type QueryPairParameters = {
+export type GetPairParameters = {
   quoteDenom: Denom;
   baseDenom: Denom;
   height?: number;
 };
 
-export type QueryPairReturnType = Promise<PairParams>;
+export type GetPairReturnType = Promise<PairParams>;
 
 /**
  * Query the parameters of a single trading pair.
@@ -22,10 +22,10 @@ export type QueryPairReturnType = Promise<PairParams>;
  * @param parameters.height The height at which to query the pairs
  * @returns The prices.
  */
-export async function queryPair<chain extends Chain | undefined, signer extends Signer | undefined>(
+export async function getPair<chain extends Chain | undefined, signer extends Signer | undefined>(
   client: Client<Transport, chain, signer>,
-  parameters: QueryPairParameters,
-): QueryPairReturnType {
+  parameters: GetPairParameters,
+): GetPairReturnType {
   const { quoteDenom, baseDenom, height = 0 } = parameters;
 
   const action = getAction(client, getAppConfig, "getAppConfig");

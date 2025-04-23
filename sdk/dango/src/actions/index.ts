@@ -181,16 +181,16 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export {
-  type QueryPairsParameters,
-  type QueryPairsReturnType,
-  queryPairs,
-} from "./dex/queries/queryPairs.js";
+  type GetPairsParameters,
+  type GetPairsReturnType,
+  getPairs,
+} from "./dex/queries/getPairs.js";
 
 export {
-  type QueryPairParameters,
-  type QueryPairReturnType,
-  queryPair,
-} from "./dex/queries/queryPair.js";
+  type GetPairParameters,
+  type GetPairReturnType,
+  getPair,
+} from "./dex/queries/getPair.js";
 
 export {
   type SimulateSwapExactAmountOutParameters,
