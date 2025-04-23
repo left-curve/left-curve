@@ -1,6 +1,6 @@
 FROM rust:slim
 
-LABEL org.opencontainers.image.description "Dango docker image"
+LABEL org.opencontainers.image.description="Dango docker image"
 
 # Install dependencies.
 RUN apt update && apt install -y clang git libssl-dev pkg-config

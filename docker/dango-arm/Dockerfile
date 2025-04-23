@@ -1,6 +1,6 @@
 FROM rust:slim
 
-LABEL org.opencontainers.image.description "Dango docker image"
+LABEL org.opencontainers.image.description="Dango docker image"
 
 COPY target/aarch64-unknown-linux-gnu/release/dango /usr/local/bin/dango
 

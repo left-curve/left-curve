@@ -47,6 +47,7 @@ jobs:
           push: true
 
   build-dango-arm64:
+    # disabled, too slow to build, using cross instead
     if: false
     permissions:
       packages: write
@@ -90,11 +91,12 @@ jobs:
       - name: Use cross to build Dango
         run: |
           cargo install cross
+          cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/${{ github.sha }}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs
           cross build --target aarch64-unknown-linux-gnu --release
           docker buildx build --platform linux/arm64 --provenance=false --push -t ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64 -f docker/dango-arm/Dockerfile .
 
   build-dango-amd64:
-    if: false
     permissions:
       packages: write
     runs-on: [self-hosted, X64]
@@ -123,8 +125,7 @@ jobs:
           # no-cache: true
 
   push-manifest:
-    if: false
-    needs: [build-dango-amd64, build-dango-arm64]
+    needs: [build-dango-amd64, build-dango-arm64-with-cross]
     permissions:
       packages: write
     runs-on: ubuntu-latest
