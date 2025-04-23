@@ -201,8 +201,9 @@ fn transfer_remote(
             Some(Message::execute(
                 cfg.taxman,
                 &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Withdraw,
                     payments: btree_map! {
-                        ctx.sender => (FeeType::Withdraw, coins! { token.denom.clone() => route.fee })
+                        ctx.sender => coins! { token.denom.clone() => route.fee },
                     },
                 },
                 coins! { token.denom.clone() => route.fee },

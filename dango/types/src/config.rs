@@ -27,9 +27,9 @@ pub struct AppConfig {
     /// its collateral) until the account's utilization rate is at this value.
     pub target_utilization_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
     /// The maker fee for the DEX.
-    pub maker_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    pub maker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     /// The taker fee for the DEX.
-    pub taker_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    pub taker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
 }
 
 impl Default for AppConfig {
@@ -40,8 +40,8 @@ impl Default for AppConfig {
             target_utilization_rate: Bounded::new(Udec128::new_percent(90)).unwrap(),
             min_liquidation_bonus: Bounded::new(Udec128::new_percent(2)).unwrap(),
             max_liquidation_bonus: Bounded::new(Udec128::new_percent(20)).unwrap(),
-            maker_fee: Bounded::new(Udec128::new_bps(25)).unwrap(),
-            taker_fee: Bounded::new(Udec128::new_bps(40)).unwrap(),
+            maker_fee_rate: Bounded::new(Udec128::new_bps(25)).unwrap(),
+            taker_fee_rate: Bounded::new(Udec128::new_bps(40)).unwrap(),
         }
     }
 }
@@ -54,8 +54,8 @@ pub struct AppAddresses {
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
-    pub warp: Addr,
     pub taxman: Addr,
+    pub warp: Addr,
 }
 
 // Default implementation that can be used in tests when the addresses are not
@@ -68,8 +68,8 @@ impl Default for AppAddresses {
             hyperlane: Hyperlane::default(),
             lending: Addr::mock(0),
             oracle: Addr::mock(0),
-            warp: Addr::mock(0),
             taxman: Addr::mock(0),
+            warp: Addr::mock(0),
         }
     }
 }

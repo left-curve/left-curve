@@ -440,7 +440,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut refunds = BTreeMap::new();
     let mut volumes = HashMap::new();
     let mut volumes_by_username = HashMap::new();
-    let mut collected_fees = Coins::new();
+    let mut fees = Coins::new();
     let mut fee_payments = BTreeMap::new();
 
     // Collect incoming orders and clear the temporary storage.
@@ -448,11 +448,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
-        // Ensure that the order was created in the current block. This should
-        // always be the case, or something has gone wrong.
-        ensure!(
+        debug_assert!(
             order.created_at_block_height == ctx.block.height,
-            "incoming order was created in a previous block"
+            "incoming order was created in a previous block! creation height: {}, current height: {}",
+            order.created_at_block_height,
+            ctx.block.height
         );
 
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
@@ -474,22 +474,18 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             ctx.block.height,
             app_cfg.addresses.oracle,
             app_cfg.addresses.account_factory,
-            app_cfg.maker_fee.into_inner(),
-            app_cfg.taker_fee.into_inner(),
+            app_cfg.maker_fee_rate.into_inner(),
+            app_cfg.taker_fee_rate.into_inner(),
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
-            &mut collected_fees,
+            &mut fees,
             &mut fee_payments,
             &mut volumes,
             &mut volumes_by_username,
         )?;
     }
-
-    // Add fee transfer to fee collector if any fees collected
-
-    // Add fee transfer if any fees were collected
 
     // Save the updated volumes.
     for (address, volume) in volumes {
@@ -512,9 +508,10 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
                     payments: fee_payments,
                 },
-                collected_fees,
+                fees,
             )?)
         } else {
             None
@@ -529,14 +526,14 @@ fn clear_orders_of_pair(
     current_block_height: u64,
     oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
     account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
-    maker_fee: Udec128,
-    taker_fee: Udec128,
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
-    collected_fees: &mut Coins,
-    fee_payments: &mut BTreeMap<Addr, (FeeType, Coins)>,
+    fees: &mut Coins,
+    fee_payments: &mut BTreeMap<Addr, Coins>,
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
@@ -600,8 +597,8 @@ fn clear_orders_of_pair(
         clearing_price,
         volume,
         current_block_height,
-        maker_fee,
-        taker_fee,
+        maker_fee_rate,
+        taker_fee_rate,
     )? {
         let refund = Coins::try_from([
             Coin {
@@ -614,22 +611,20 @@ fn clear_orders_of_pair(
             },
         ])?;
 
-        // Add fees to collected_fees
+        // Handle fees.
         if fee_base.is_non_zero() {
-            collected_fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
             fee_payments
                 .entry(order.user)
-                .or_insert((FeeType::Trade, Coins::new()))
-                .1
+                .or_default()
                 .insert(Coin::new(base_denom.clone(), fee_base)?)?;
         }
 
         if fee_quote.is_non_zero() {
-            collected_fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
             fee_payments
                 .entry(order.user)
-                .or_insert((FeeType::Trade, Coins::new()))
-                .1
+                .or_default()
                 .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
         }
 

@@ -23,7 +23,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
-        ExecuteMsg::Pay { payments } => pay(ctx, payments),
+        ExecuteMsg::Pay { ty, payments } => pay(ctx, ty, payments),
     }
 }
 
@@ -39,37 +39,38 @@ fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
-fn pay(ctx: MutableCtx, payments: BTreeMap<Addr, (FeeType, Coins)>) -> anyhow::Result<Response> {
+fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
     ensure!(ctx.funds.is_non_empty(), "funds cannot be empty!");
 
     // Ensure funds add up to the total amount of payments.
-    let total_amount = payments
-        .clone()
-        .into_values()
-        .map(|(_, coins)| coins)
-        .try_fold(Coins::new(), |mut acc, coins| {
-            acc.insert_many(coins)?;
-            Ok::<Coins, anyhow::Error>(acc)
+    let total = payments
+        .values()
+        .try_fold(Coins::new(), |mut acc, coins| -> StdResult<_> {
+            acc.insert_many(coins.clone())?;
+            Ok(acc)
         })?;
+
     ensure!(
-        ctx.funds == total_amount,
-        "funds do not add up to the total amount of payments"
+        ctx.funds == total,
+        "funds do not add up to the total amount of payments! funds: {}, total: {}",
+        ctx.funds,
+        total
     );
 
     // For now, nothing to do.
     // In the future, we will implement affiliate fees.
     let events = payments
         .into_iter()
-        .map(|(user, (ty, amount))| {
-            ReceiveFee {
+        .map(|(user, amount)| {
+            ContractEvent::new(&ReceiveFee {
                 handler: ctx.contract,
                 user,
                 ty,
                 amount,
-            }
-            .try_into()
+            })
         })
-        .collect::<Result<Vec<ContractEvent>, _>>()?;
+        .collect::<StdResult<Vec<_>>>()?;
+
     Ok(Response::new().add_events(events)?)
 }
 
