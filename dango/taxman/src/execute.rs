@@ -63,7 +63,7 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
         .into_iter()
         .map(|(user, amount)| {
             ContractEvent::new(&ReceiveFee {
-                handler: ctx.contract,
+                handler: ctx.sender,
                 user,
                 ty,
                 amount,
