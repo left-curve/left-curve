@@ -53,7 +53,7 @@ fn update_markets(
             if let Some(market) = maybe_market {
                 // Update indexes first, so that interests accumulated up to this
                 // point are accounted for. Then, set the new interest rate model.
-                let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
+                let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
                 Ok(market.set_interest_rate_model(new_interest_rate_model))
             } else {
                 Ok(Market::new(&denom, new_interest_rate_model)?)
@@ -67,7 +67,7 @@ fn update_markets(
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint.
     let (lp_tokens, markets) =
-        core::deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, ctx.funds)?;
+        core::deposit(ctx.storage, ctx.querier, ctx.block.timestamp, ctx.funds)?;
 
     // Save the updated markets.
     for (denom, market) in markets {
@@ -98,7 +98,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of underlying coins to withdraw
     let (withdrawn, markets) = core::withdraw(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.block.timestamp,
         ctx.funds.clone(),
     )?;
@@ -146,7 +146,7 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
 
     let (debts, markets) = core::borrow(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.block.timestamp,
         ctx.sender,
         coins.inner(),
@@ -172,7 +172,7 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     let (scaled_debts, markets, refunds) = core::repay(
         ctx.storage,
-        &ctx.querier,
+        ctx.querier,
         ctx.block.timestamp,
         ctx.sender,
         &ctx.funds,
@@ -212,7 +212,7 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|res| -> anyhow::Result<_> {
             let (denom, market) = res?;
-            let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
+            let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
             Ok((
                 Message::execute(
                     bank,

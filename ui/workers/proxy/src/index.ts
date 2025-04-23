@@ -6,6 +6,7 @@ const getPort = (pathname: string) => {
   if (pathname.includes("/rpc")) return "26657";
   if (pathname.includes("/graphql")) return "8080";
   if (pathname.includes("/quests")) return "8081";
+  if (pathname.includes("/faucet")) return "8082";
   throw new Error("Invalid path");
 };
 
@@ -24,16 +25,28 @@ export default {
       });
     }
 
+    if (request.headers.get("Upgrade") === "websocket") {
+      const wsRequest = new Request(`http://${env.SERVER_URI}:8080/graphql`, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      });
+      return await fetch(wsRequest);
+    }
+
     const url = new URL(request.url);
+
     if (
       url.pathname.includes("/rpc") ||
       url.pathname.includes("/quests") ||
-      url.pathname.includes("/graphql")
+      url.pathname.includes("/graphql") ||
+      url.pathname.includes("/faucet")
     ) {
       const PORT = getPort(url.pathname);
+      const PROTOCOL = url.protocol.includes("http") ? "http" : "ws";
 
       const newRequest = new Request(
-        `${env.SERVER_URI}:${PORT}${url.pathname.replace("/rpc", "").replace("/quests", "")}${url.search}`,
+        `${PROTOCOL}://${env.SERVER_URI}:${PORT}${url.pathname.replace("/rpc", "").replace("/quests", "").replace("/faucet", "")}${url.search}`,
         {
           method: request.method,
           headers: request.headers,
@@ -55,10 +68,11 @@ export default {
       });
     }
 
-    const [questsStatus, graphqlStatus, rpcStatus] = await Promise.all([
-      fetch(`${env.SERVER_URI}:8081/check_username/none`),
-      fetch(`${env.SERVER_URI}:8080`),
-      fetch(`${env.SERVER_URI}:26657`),
+    const [questsStatus, graphqlStatus, rpcStatus, faucetStatus] = await Promise.all([
+      fetch(`http://${env.SERVER_URI}:8081/check_username/none`),
+      fetch(`http://${env.SERVER_URI}:8080`),
+      fetch(`http://${env.SERVER_URI}:26657`),
+      fetch(`http://${env.SERVER_URI}:8082/health`),
     ]);
 
     return new Response(
@@ -67,6 +81,7 @@ export default {
           quests: questsStatus.ok ? "up" : "down",
           graphql: graphqlStatus.ok ? "up" : "down",
           rpc: rpcStatus.ok ? "up" : "down",
+          faucet: faucetStatus.ok ? "up" : "down",
         },
       }),
       {

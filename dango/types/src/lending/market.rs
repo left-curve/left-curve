@@ -1,9 +1,7 @@
 use {
     crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
     grug::{
-        Bounded, Decimal, Denom, IsZero, MathResult, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, Querier, QuerierExt, StdResult, Timestamp, Udec128, Udec256,
-        Uint128, ZeroInclusiveOneInclusive,
+        Denom, MathResult, Number, NumberConst, StdResult, Timestamp, Udec128, Udec256, Uint128,
     },
 };
 
@@ -47,86 +45,6 @@ impl Market {
             last_update_time: Timestamp::ZERO,
             pending_protocol_fee_scaled: Uint128::ZERO,
         })
-    }
-
-    /// Computes the utilization rate of this market.
-    pub fn utilization_rate<Q>(
-        &self,
-        querier: &Q,
-    ) -> anyhow::Result<Bounded<Udec128, ZeroInclusiveOneInclusive>>
-    where
-        Q: Querier,
-    {
-        let total_borrowed = self.total_borrowed()?;
-        let total_supplied = self.total_supplied(querier)?;
-
-        if total_supplied.is_zero() {
-            return Ok(Bounded::new_unchecked(Udec128::ZERO));
-        }
-
-        let utilization_rate = Udec128::checked_from_ratio(total_borrowed, total_supplied)?;
-
-        // Limit utilization rate to 100%
-        // This can happen if 100% of the supply is borrowed, which can then cause
-        // borrowing to outgrow the supply due to interest accrual.
-        if utilization_rate > Udec128::new_percent(100) {
-            return Ok(Bounded::new_unchecked(Udec128::new_percent(100)));
-        }
-
-        Ok(Bounded::new_unchecked(utilization_rate))
-    }
-
-    /// Immutably updates the indices of this market and returns the new market
-    /// state.
-    pub fn update_indices<Q>(self, querier: &Q, current_time: Timestamp) -> anyhow::Result<Self>
-    where
-        Q: Querier,
-    {
-        debug_assert!(
-            current_time >= self.last_update_time,
-            "last update time is in the future! current time: {:?}, last update time: {:?}",
-            current_time,
-            self.last_update_time
-        );
-
-        // If there is no supply or borrow or last update time is equal to the
-        // current time, then there is no interest to accrue
-        if self.total_supplied(querier)?.is_zero()
-            || self.total_borrowed_scaled.is_zero()
-            || current_time == self.last_update_time
-        {
-            return Ok(self.set_last_update_time(current_time));
-        }
-
-        // Calculate interest rates
-        let utilization_rate = self.utilization_rate(querier)?;
-        let (borrow_rate, supply_rate) = self.interest_rate_model.calculate_rates(utilization_rate);
-
-        // Update the indices
-        let time_delta = current_time - self.last_update_time;
-        let time_out_of_year =
-            Udec128::checked_from_ratio(time_delta.into_seconds(), SECONDS_PER_YEAR)?;
-        let borrow_index = self
-            .borrow_index
-            .checked_mul(Udec128::ONE.checked_add(borrow_rate.checked_mul(time_out_of_year)?)?)?;
-        let supply_index = self
-            .supply_index
-            .checked_mul(Udec128::ONE.checked_add(supply_rate.checked_mul(time_out_of_year)?)?)?;
-
-        // Calculate the protocol fee
-        let previous_total_borrowed = self.total_borrowed()?;
-        let new_market = self.set_borrow_index(borrow_index);
-        let new_total_borrowed = new_market.total_borrowed()?;
-        let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
-        let protocol_fee =
-            borrow_interest.checked_mul_dec(*new_market.interest_rate_model.reserve_factor)?;
-        let protocol_fee_scaled = protocol_fee.checked_div_dec_floor(supply_index)?;
-
-        // Return the new market state
-        Ok(new_market
-            .set_supply_index(supply_index)
-            .set_last_update_time(current_time)
-            .add_pending_protocol_fee(protocol_fee_scaled)?)
     }
 
     /// Immutably adds the given amount to the scaled total borrowed and returns
@@ -200,35 +118,5 @@ impl Market {
             interest_rate_model,
             ..self
         }
-    }
-
-    /// Calculates the actual debt for the given scaled amount. Makes sure to
-    /// round up in favor of the protocol.
-    pub fn calculate_debt(&self, scaled_amount: Udec256) -> MathResult<Uint128> {
-        scaled_amount
-            .checked_mul(self.borrow_index.into_next())?
-            .checked_ceil()?
-            .into_int()
-            .checked_into_prev()
-    }
-
-    /// Returns the total amount of coins supplied to this market.
-    pub fn total_supplied<Q>(&self, querier: &Q) -> anyhow::Result<Uint128>
-    where
-        Q: Querier,
-    {
-        Ok(querier
-            .query_supply(self.supply_lp_denom.clone())?
-            .checked_add(self.pending_protocol_fee_scaled)?
-            .checked_mul_dec(self.supply_index)?)
-    }
-
-    /// Returns the total amount of coins borrowed from this market.
-    pub fn total_borrowed(&self) -> MathResult<Uint128> {
-        self.total_borrowed_scaled
-            .checked_mul(self.borrow_index.into_next())?
-            .checked_ceil()?
-            .into_int()
-            .checked_into_prev()
     }
 }

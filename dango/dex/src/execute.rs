@@ -14,6 +14,7 @@ use {
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
             PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Addr, Borsh, Codec, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner,
@@ -235,6 +236,7 @@ fn batch_update_orders(
                     user: ctx.sender,
                     amount: order.amount,
                     remaining: order.amount,
+                    created_at_block_height: ctx.block.height,
                 },
             ),
         )?;
@@ -440,12 +442,21 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut refunds = BTreeMap::new();
     let mut volumes = HashMap::new();
     let mut volumes_by_username = HashMap::new();
+    let mut fees = Coins::new();
+    let mut fee_payments = BTreeMap::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
+        debug_assert!(
+            order.created_at_block_height == ctx.block.height,
+            "incoming order was created in a previous block! creation height: {}, current height: {}",
+            order.created_at_block_height,
+            ctx.block.height
+        );
+
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }
 
@@ -461,14 +472,19 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            ctx.contract,
             &ctx.querier,
+            ctx.block.height,
+            app_cfg.addresses.dex,
             app_cfg.addresses.oracle,
             app_cfg.addresses.account_factory,
-            base_denom.clone(),
-            quote_denom.clone(),
+            app_cfg.maker_fee_rate.into_inner(),
+            app_cfg.taker_fee_rate.into_inner(),
+            base_denom,
+            quote_denom,
             &mut events,
             &mut refunds,
+            &mut fees,
+            &mut fee_payments,
             &mut volumes,
             &mut volumes_by_username,
         )?;
@@ -491,6 +507,18 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
             Some(Message::batch_transfer(refunds)?)
+        } else {
+            None
+        })
+        .may_add_message(if !fee_payments.is_empty() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: fee_payments,
+                },
+                fees,
+            )?)
         } else {
             None
         })
@@ -556,14 +584,19 @@ where
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    dex_addr: Addr,
     querier: &QuerierWrapper,
+    current_block_height: u64,
+    dex_addr: Addr,
     oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
     account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
+    fees: &mut Coins,
+    fee_payments: &mut BTreeMap<Addr, Coins>,
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
@@ -599,6 +632,7 @@ fn clear_orders_of_pair(
                     user: dex_addr,
                     amount,
                     remaining: amount,
+                    created_at_block_height: current_block_height,
                 }))
             });
             let passive_asks = passive_asks.into_iter().map(|(price, amount)| {
@@ -606,6 +640,7 @@ fn clear_orders_of_pair(
                     user: dex_addr,
                     amount,
                     remaining: amount,
+                    created_at_block_height: current_block_height,
                 }))
             });
 
@@ -642,14 +677,20 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    // Handle order filling outcomes for the user placed orders.
-
     // Partition the orders into real and passive orders.
-    let (passive_orders, user_orders): (Vec<_>, Vec<_>) =
-        fill_orders(bids, asks, clearing_price, volume)?
-            .into_iter()
-            .partition(|filling_outcome| filling_outcome.order.user == dex_addr);
+    let (passive_orders, user_orders): (Vec<_>, Vec<_>) = fill_orders(
+        bids,
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
+    )?
+    .into_iter()
+    .partition(|filling_outcome| filling_outcome.order.user == dex_addr);
 
+    // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
         order_price,
@@ -659,6 +700,8 @@ fn clear_orders_of_pair(
         cleared,
         refund_base,
         refund_quote,
+        fee_base,
+        fee_quote,
     } in user_orders
     {
         update_trading_volumes(
@@ -689,13 +732,46 @@ fn clear_orders_of_pair(
             .or_default()
             .insert_many(refund.clone())?;
 
+        // Handle fees.
+        if fee_base.is_non_zero() {
+            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_default()
+                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+        }
+
+        if fee_quote.is_non_zero() {
+            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_default()
+                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+        }
+
+        // Include fee information in the event
+        let fee = if fee_base.is_non_zero() {
+            Some(Coin {
+                denom: base_denom.clone(),
+                amount: fee_base,
+            })
+        } else if fee_quote.is_non_zero() {
+            Some(Coin {
+                denom: quote_denom.clone(),
+                amount: fee_quote,
+            })
+        } else {
+            None
+        };
+
         // Emit event for filled user orders to be used by the frontend
         events.push(OrderFilled {
+            user: order.user,
             order_id,
             clearing_price,
             filled,
             refund,
-            fee: None,
+            fee,
             cleared,
         })?;
 

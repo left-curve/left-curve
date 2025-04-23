@@ -1,10 +1,7 @@
 use {
     crate::{DEBTS, MARKETS, core},
     dango_types::lending::{Market, QueryMsg},
-    grug::{
-        Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
-        StdResult,
-    },
+    grug::{Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order},
     std::collections::BTreeMap,
 };
 
@@ -29,33 +26,39 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::SimulateDeposit { underlying } => {
             let (lp_tokens, _) =
-                core::deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, underlying)?;
+                core::deposit(ctx.storage, ctx.querier, ctx.block.timestamp, underlying)?;
             lp_tokens.to_json_value()
         },
         QueryMsg::SimulateWithdraw { lp_tokens } => {
             let (coins, _) =
-                core::withdraw(ctx.storage, &ctx.querier, ctx.block.timestamp, lp_tokens)?;
+                core::withdraw(ctx.storage, ctx.querier, ctx.block.timestamp, lp_tokens)?;
             coins.to_json_value()
         },
     }
     .map_err(Into::into)
 }
 
-fn query_market(ctx: ImmutableCtx, denom: Denom) -> StdResult<Market> {
-    MARKETS.load(ctx.storage, &denom)
+fn query_market(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<Market> {
+    let market = MARKETS.load(ctx.storage, &denom)?;
+    core::update_indices(market, ctx.querier, ctx.block.timestamp)
 }
 
 fn query_markets(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Denom, Market>> {
+) -> anyhow::Result<BTreeMap<Denom, Market>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     MARKETS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit as usize)
+        .map(|res| {
+            let (denom, market) = res?;
+            let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+            Ok((denom, market))
+        })
         .collect()
 }
 
@@ -64,11 +67,9 @@ fn query_debt(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<Coins> {
         .load(ctx.storage, account)?
         .into_iter()
         .map(|(denom, scaled_debt)| {
-            let market = MARKETS
-                .load(ctx.storage, &denom)?
-                .update_indices(&ctx.querier, ctx.block.timestamp)?;
-            let debt = market.calculate_debt(scaled_debt)?;
-
+            let market = MARKETS.load(ctx.storage, &denom)?;
+            let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+            let debt = core::into_underlying_debt(scaled_debt, &market)?;
             Ok((denom, debt))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -92,11 +93,9 @@ fn query_debts(
             let debts = scaled_debts
                 .into_iter()
                 .map(|(denom, scaled_debt)| {
-                    let market = MARKETS
-                        .load(ctx.storage, &denom)?
-                        .update_indices(&ctx.querier, ctx.block.timestamp)?;
-                    let debt = market.calculate_debt(scaled_debt)?;
-
+                    let market = MARKETS.load(ctx.storage, &denom)?;
+                    let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
+                    let debt = core::into_underlying_debt(scaled_debt, &market)?;
                     Ok((denom, debt))
                 })
                 .collect::<anyhow::Result<BTreeMap<_, _>>>()?;

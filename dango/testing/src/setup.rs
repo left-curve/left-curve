@@ -265,6 +265,7 @@ where
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 },
             },
             user3.username.clone() => GenesisUser {
@@ -379,8 +380,8 @@ where
             },
         ],
         markets: btree_map! {
-            USDC_DENOM.clone() => InterestRateModel::default(),
-            WBTC_DENOM.clone() => InterestRateModel::default(),
+            USDC_DENOM.clone() => InterestRateModel::mock(),
+            WBTC_DENOM.clone() => InterestRateModel::mock(),
         },
         price_sources: PYTH_PRICE_SOURCES.clone(),
         unlocking_cliff: Duration::from_weeks(4 * 9),

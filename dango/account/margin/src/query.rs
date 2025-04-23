@@ -14,12 +14,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::HealthData {} => {
             let app_cfg = ctx.querier.query_dango_config()?;
-            let res = core::query_health(&ctx.querier, ctx.contract, &app_cfg)?;
+            let res = core::query_health(ctx.querier, ctx.contract, &app_cfg)?;
             res.to_json_value()
         },
         QueryMsg::Health {} => {
             let res = core::query_and_compute_health(
-                &ctx.querier,
+                ctx.querier,
                 ctx.contract,
                 ctx.block.timestamp,
                 None,

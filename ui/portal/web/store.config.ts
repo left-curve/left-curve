@@ -7,7 +7,7 @@ const dango = devnet;
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain: dango,
-  transport: graphql(dango.urls.indexer, { batch: true }),
+  transport: graphql(import.meta.env.PUBLIC_GRAPHQL_URI || dango.urls.indexer, { batch: true }),
   coins: {
     [dango.id]: {
       "hyp/all/wbtc": {

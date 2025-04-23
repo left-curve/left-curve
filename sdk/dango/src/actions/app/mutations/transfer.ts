@@ -1,14 +1,9 @@
-import { getCoinsTypedData } from "../../../utils/typedData.js";
+import { getCoinsTypedData } from "#utils/typedData.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 import type { Address, Coins, Transport } from "@left-curve/sdk/types";
 
-import type {
-  DangoClient,
-  Signer,
-  TxMessageType,
-  TypedDataParameter,
-} from "../../../types/index.js";
+import type { DangoClient, Signer, TxMessageType, TypedDataParameter } from "#types/index.js";
 
 export type TransferParameters = {
   sender: Address;
