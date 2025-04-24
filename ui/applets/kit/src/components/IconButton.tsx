@@ -1,10 +1,8 @@
 import { type VariantProps, tv } from "tailwind-variants";
-import type { As } from "#types/react.js";
-import { forwardRef, twMerge } from "#utils/index.js";
+import { forwardRefPolymorphic, twMerge } from "#utils/index.js";
 import { Spinner } from "./Spinner";
 
 export interface IconButtonProps extends VariantProps<typeof buttonVariants> {
-  as?: As;
   /**
    * When true, the button will be disabled.
    * @default false
@@ -13,7 +11,7 @@ export interface IconButtonProps extends VariantProps<typeof buttonVariants> {
   isDisabled?: boolean;
 }
 
-export const IconButton = forwardRef<"button", IconButtonProps>(
+export const IconButton = forwardRefPolymorphic<"button", IconButtonProps>(
   (
     {
       as,

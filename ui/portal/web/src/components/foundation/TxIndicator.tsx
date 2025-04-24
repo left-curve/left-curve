@@ -1,13 +1,9 @@
-import {
-  CheckCircleIcon,
-  IconButton,
-  Spinner,
-  XCircleIcon,
-  twMerge,
-} from "@left-curve/applets-kit";
-import type React from "react";
-import { type PropsWithChildren, useEffect, useState } from "react";
+import { CheckCircleIcon, Spinner, XCircleIcon, twMerge } from "@left-curve/applets-kit";
+import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
+
+import type React from "react";
+import type { PropsWithChildren } from "react";
 
 const Indicators = {
   spinner: Spinner,
@@ -15,12 +11,23 @@ const Indicators = {
   error: XCircleIcon,
 };
 
-export const TxIndicator: React.FC<PropsWithChildren> = ({ children }) => {
+type IndicatorProps<C extends React.ElementType = React.ElementType> = PropsWithChildren<
+  {
+    as?: C;
+  } & React.ComponentPropsWithoutRef<C>
+>;
+
+export const TxIndicator = <C extends React.ElementType = React.ElementType>({
+  as,
+  children,
+  ...props
+}: IndicatorProps<C>) => {
   const { eventBus } = useApp();
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [indicator, setIndicator] = useState<keyof typeof Indicators>("spinner");
 
   const IndicatorComponent = Indicators[indicator];
+  const WrapperComponent = as ?? "button";
 
   useEffect(() => {
     const unsubscribe = eventBus.subscribe("submit_tx", ({ isSubmitting, txResult }) => {
@@ -38,7 +45,7 @@ export const TxIndicator: React.FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   return isSubmittingTx ? (
-    <IconButton variant="utility" size="lg" type="button">
+    <WrapperComponent {...props}>
       <IndicatorComponent
         size="sm"
         color="current"
@@ -47,7 +54,7 @@ export const TxIndicator: React.FC<PropsWithChildren> = ({ children }) => {
           "stroke-2 stroke-red-bean-400 w-6 h-6": indicator === "error",
         })}
       />
-    </IconButton>
+    </WrapperComponent>
   ) : (
     <>{children}</>
   );

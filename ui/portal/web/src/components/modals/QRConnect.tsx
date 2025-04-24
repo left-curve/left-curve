@@ -1,11 +1,13 @@
-import { IconButton, IconClose, IconMobile, QRCode, forwardRef } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
 import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
-import { useId, useState } from "react";
+import { forwardRef, useId, useState } from "react";
 import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
+
+import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
 import { toast } from "../foundation/Toast";
+
+import { m } from "~/paraglide/messages";
 
 import type { JsonValue } from "@left-curve/dango/types";
 

@@ -1,13 +1,12 @@
 import { Spinner } from "./Spinner";
 
 import { tv } from "tailwind-variants";
-import { forwardRef, twMerge } from "#utils/index.js";
+import { twMerge } from "#utils/index.js";
 
 import type { VariantProps } from "tailwind-variants";
-import type { As } from "#types/react.js";
+import { forwardRefPolymorphic } from "#utils/polymorph.js";
 
 export interface ButtonProps extends VariantProps<typeof buttonVariants> {
-  as?: As;
   /**
    * When true, the button will be disabled.
    * @default false
@@ -16,7 +15,7 @@ export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   isDisabled?: boolean;
 }
 
-export const Button = forwardRef<"button", ButtonProps>(
+export const Button = forwardRefPolymorphic<"button", ButtonProps>(
   (
     { as, fullWidth, variant, size, radius, isDisabled, isLoading, className, children, ...props },
     ref,
