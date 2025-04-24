@@ -1,7 +1,7 @@
 use {
     alloy::{
         dyn_abi::{Eip712Domain, TypedData},
-        primitives::{U160, U256, address},
+        primitives::{U160, U256, address, uint},
     },
     anyhow::{bail, ensure},
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
@@ -32,6 +32,17 @@ pub mod account_factory {
 
     pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
 }
+
+/// The [EIP-155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
+/// chain ID of Ethereum mainnet.
+///
+/// The [EIP-712](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md#definition-of-domainseparator)
+/// standard requires the `chainId` field in the domain. Some wallets enforce
+/// this requirement.
+///
+/// Since Dango isn't an EVM chain and hence doesn't have an EIP-155 chain ID,
+/// we use that of Ethereum mainnet for compatibility.
+pub const EIP155_CHAIN_ID: U256 = uint!(0x1_U256);
 
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
@@ -310,10 +321,8 @@ pub fn verify_signature(
                 resolver,
                 domain: Eip712Domain {
                     name: domain.name,
-                    // The EIP-712 standard requires the `chainId` field
-                    // in the domain. Some wallets enforce this requirement.
-                    // We use ethereum chainId (1) EIP-155 for compatibility.
-                    chain_id: Some(U256::from(1)),
+                    // We use Ethereum's EIP-155 chainId (0x1) for compatibility.
+                    chain_id: Some(EIP155_CHAIN_ID),
                     verifying_contract,
                     ..Default::default()
                 },
@@ -553,13 +562,24 @@ mod tests {
               }
             }
           },
-          "data": { "chain_id": "dev-6", "nonce": 0, "username": "javier" },
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 0,
+            "username": "javier"
+          },
           "gas_limit": 2448139,
           "msgs": [
-            { "transfer": { "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": { "hyp/eth/usdc": "1000000" } } }
+            {
+              "transfer": {
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "1000000"
+                }
+              }
+            }
           ],
           "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
-        }"#;
+        }
+        "#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
