@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 
 import type { ElementType } from "react";
-import type { PolymorphicComponent, PolymorphicRenderFunction } from "#types/polymorph.js";
+import type { PolymorphicComponent, PolymorphicRenderFunction } from "../types/polymorph";
 
 export const forwardRefPolymorphic = <T extends ElementType = "div", P = object>(
   render: PolymorphicRenderFunction<T, P>,

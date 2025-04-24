@@ -1,34 +1,19 @@
-import type {
-  ComponentPropsWithoutRef,
-  DetailedHTMLProps,
-  ElementType,
-  ForwardedRef,
-  HTMLAttributes,
-  PropsWithChildren,
-  PropsWithoutRef,
-  ReactElement,
-} from "react";
-
-export type ElementTypeToHTMLElement<T extends ElementType> = T extends keyof JSX.IntrinsicElements
-  ? JSX.IntrinsicElements[T] extends DetailedHTMLProps<HTMLAttributes<infer E>, any>
-    ? E
-    : never
-  : never;
-
 type withAsProp<T> = { as?: T };
 
-type PolymorphicComponentProps<T extends ElementType, P = object> = PropsWithChildren<
+type PolymorphicComponentProps<T extends React.ElementType, P = object> = React.PropsWithChildren<
   P & withAsProp<T>
 > &
-  Omit<ComponentPropsWithoutRef<T>, keyof (P & withAsProp<T>)>;
+  Omit<React.ComponentPropsWithoutRef<T>, keyof (P & withAsProp<T>)>;
 
-export type PolymorphicRenderFunction<T extends ElementType, P = object> = (
-  props: PropsWithoutRef<PolymorphicComponentProps<T, P>>,
-  ref: ForwardedRef<ElementTypeToHTMLElement<T>>,
-) => ReactElement | null;
+export type PolymorphicRenderFunction<T extends React.ElementType, P = object> = (
+  props: React.PropsWithoutRef<PolymorphicComponentProps<T, P>>,
+  ref: React.ForwardedRef<React.ElementRef<T>>,
+) => React.ReactElement | null;
 
-export type PolymorphicComponent<T extends ElementType, P> = <Element extends ElementType = T>(
+export type PolymorphicComponent<T extends React.ElementType, P> = <
+  Element extends React.ElementType = T,
+>(
   props: PolymorphicComponentProps<Element, P> & {
-    ref?: ForwardedRef<ElementTypeToHTMLElement<Element>>;
+    ref?: React.ForwardedRef<React.ElementRef<Element>>;
   },
-) => ReactElement;
+) => React.ReactElement;
