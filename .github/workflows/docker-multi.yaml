@@ -9,13 +9,6 @@ on:
   pull_request:
     branches: [main]
 
-          # if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
-          #   echo "Image with tag ${{ env.COMETBFT_GIT_TAG }} already exists, skipping build."
-          #   echo "skip_build=true" >> $GITHUB_OUTPUT
-          # else
-          #   echo "Image does not exist, proceeding with build."
-          #   echo "skip_build=false" >> $GITHUB_OUTPUT
-          # fi
 jobs:
   build-cometbft:
     permissions:
@@ -34,7 +27,13 @@ jobs:
       - name: Check if Docker image already exists
         id: check-image
         run: |
-          echo "skip_build=false" >> $GITHUB_OUTPUT
+          if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
+            echo "Image with tag ${{ env.COMETBFT_GIT_TAG }} already exists, skipping build."
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "Image does not exist, proceeding with build."
+            echo "skip_build=false" >> $GITHUB_OUTPUT
+          fi
       - name: Build and push Docker image
         if: steps.check-image.outputs.skip_build == 'false'
         uses: docker/build-push-action@v5
@@ -89,16 +88,67 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cross-cache/aarch64-unknown-linux-gnu
+          key: cross-cache-${{ runner.os }}-aarch64-${{ hashFiles('**/Cargo.lock') }}
       - name: Use cross to build Dango
         run: |
           cargo install cross
           cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in
           sed "s/{{GIT_COMMIT}}/${{ github.sha }}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs
           rm dango/cli/src/git_info.rs.in
+
+          mkdir -p .cross-cache/aarch64-unknown-linux-gnu
+          CROSS_TARGET_CACHE=$(pwd)/.cross-cache/aarch64-unknown-linux-gnu \
           cross build --target aarch64-unknown-linux-gnu --release
-          docker buildx build --platform linux/arm64 --provenance=false --push -t ghcr.io/${{ github.repository }}/dango:${{ github.sha }}-arm64 -f docker/dango-arm/Dockerfile .
+
+          docker buildx build \
+              --platform linux/arm64 \
+              --build-arg TARGET_ARCH=aarch64-unknown-linux-gnu \
+              --push \
+              -t ghcr.io/your-org/dango:${{ github.sha }}-arm64 \
+              -f docker/Dockerfile .
+
+  build-dango-amd64-with-cross:
+    permissions:
+      packages: write
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cache cross target for amd64
+        uses: actions/cache@v4
+        with:
+          path: .cross-cache/x86_64-unknown-linux-gnu
+          key: cross-cache-${{ runner.os }}-amd64-${{ hashFiles('**/Cargo.lock') }}
+      - name: Use cross to build Dango
+        run: |
+          cargo install cross
+          cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/${{ github.sha }}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs
+          rm dango/cli/src/git_info.rs.in
+
+          mkdir -p .cross-cache/x86_64-unknown-linux-gnu
+          CROSS_TARGET_CACHE=$(pwd)/.cross-cache/x86_64-unknown-linux-gnu \
+          cross build --target x86_64-unknown-linux-gnu --release
+
+          docker buildx build \
+              --platform linux/amd64 \
+              --build-arg TARGET_ARCH=x86_64-unknown-linux-gnu \
+              --push \
+              -t ghcr.io/your-org/dango:${{ github.sha }}-amd64 \
+              -f docker/Dockerfile .
 
   build-dango-amd64:
+    # disabled, using cross to be flexible
+    if: false
     permissions:
       packages: write
     runs-on: [self-hosted, X64]
@@ -127,7 +177,7 @@ jobs:
           # no-cache: true
 
   push-manifest:
-    needs: [build-dango-amd64, build-dango-arm64-with-cross]
+    needs: [build-dango-amd64-with-cross, build-dango-arm64-with-cross]
     permissions:
       packages: write
     runs-on: ubuntu-latest
