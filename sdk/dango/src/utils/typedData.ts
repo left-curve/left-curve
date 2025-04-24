@@ -41,6 +41,7 @@ export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
   return {
     domain: {
       name: "DangoArbitraryMessage",
+      chainId: 1,
       verifyingContract: "0x0000000000000000000000000000000000000000",
     },
     message: recursiveTransform(message, camelToSnake) as Record<string, unknown>,
@@ -48,6 +49,7 @@ export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
     types: {
       EIP712Domain: [
         { name: "name", type: "string" },
+        { name: "chainId", type: "uint256" },
         { name: "verifyingContract", type: "address" },
       ],
       ...types,
@@ -75,6 +77,7 @@ export function composeTxTypedData(
     types: {
       EIP712Domain: [
         { name: "name", type: "string" },
+        { name: "chainId", type: "uint256" },
         { name: "verifyingContract", type: "address" },
       ],
       Message: [
