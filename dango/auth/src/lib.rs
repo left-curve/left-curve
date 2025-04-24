@@ -578,8 +578,7 @@ mod tests {
             }
           ],
           "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
-        }
-        "#;
+        }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
