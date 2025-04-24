@@ -109,7 +109,7 @@ jobs:
               --build-arg TARGET_ARCH=aarch64-unknown-linux-gnu \
               --push \
               -t ghcr.io/left-curve/left-curve/dango:${{ github.sha }}-arm64 \
-              -f docker/Dockerfile .
+              -f docker/dango-arm/Dockerfile .
 
   build-dango-amd64-with-cross:
     permissions:
@@ -144,7 +144,7 @@ jobs:
               --build-arg TARGET_ARCH=x86_64-unknown-linux-gnu \
               --push \
               -t ghcr.io/left-curve/left-curve/dango:${{ github.sha }}-amd64 \
-              -f docker/Dockerfile .
+              -f docker/dango/Dockerfile .
 
   build-dango-amd64:
     # disabled, using cross to be flexible
