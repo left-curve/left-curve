@@ -104,7 +104,15 @@ function TransferApplet() {
           rejectSend,
         });
 
-        const response = await promise.then(() => true).catch(() => false);
+        const response = await promise
+          .then(() => true)
+          .catch(() => {
+            eventBus.publish("submit_tx", {
+              isSubmitting: false,
+              txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
+            });
+            return false;
+          });
 
         if (!response) return undefined;
 
