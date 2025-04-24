@@ -79,6 +79,6 @@ docker-build-cross-builder:
   docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg TARGETARCH \
-  --tag ghcr.io/left-curve/cross-builder:latest \
+  --tag ghcr.io/left-curve/left-curve/cross-builder:latest \
   --push \
   -f docker/cross-builder/Dockerfile .
