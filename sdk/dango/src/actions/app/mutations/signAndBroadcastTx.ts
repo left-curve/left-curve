@@ -56,6 +56,7 @@ export async function signAndBroadcastTx<transport extends Transport>(
 
   const domain = {
     name: "dango",
+    chainId: 1,
     verifyingContract: sender,
   };
 
