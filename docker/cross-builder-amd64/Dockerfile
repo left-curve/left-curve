@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM rust:bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
