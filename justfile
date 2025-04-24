@@ -75,5 +75,10 @@ docker-build-arm-builder:
   docker build -t ghcr.io/left-curve/left-curve/arm-builder:latest docker/arm-builder ; \
       docker push ghcr.io/left-curve/left-curve/arm-builder:latest
 
-build-arm-on-x86:
-  cross build --target aarch64-unknown-linux-gnu --release
+docker-build-cross-builder:
+  docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --build-arg TARGETARCH \
+  --tag ghcr.io/left-curve/cross-builder:latest \
+  --push \
+  -f docker/cross-builder/Dockerfile .
