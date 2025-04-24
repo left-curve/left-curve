@@ -146,7 +146,7 @@ jobs:
               --push \
               --provenance=false \
               -t ghcr.io/left-curve/left-curve/dango:${{ github.sha }}-amd64 \
-              -f docker/dango/Dockerfile .
+              -f docker/dango-arm/Dockerfile .
 
   build-dango-amd64:
     # disabled, using cross to be flexible
