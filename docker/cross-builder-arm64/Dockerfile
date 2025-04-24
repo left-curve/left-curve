@@ -1,5 +1,7 @@
 FROM debian:bookworm
 
+LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
+
 RUN dpkg --add-architecture arm64 && \
     apt-get update && \
     apt-get install -y \

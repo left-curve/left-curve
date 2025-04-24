@@ -108,7 +108,7 @@ jobs:
               --platform linux/arm64 \
               --build-arg TARGET_ARCH=aarch64-unknown-linux-gnu \
               --push \
-              -t ghcr.io/your-org/dango:${{ github.sha }}-arm64 \
+              -t ghcr.io/left-curve/left-curve/dango:${{ github.sha }}-arm64 \
               -f docker/Dockerfile .
 
   build-dango-amd64-with-cross:
@@ -143,7 +143,7 @@ jobs:
               --platform linux/amd64 \
               --build-arg TARGET_ARCH=x86_64-unknown-linux-gnu \
               --push \
-              -t ghcr.io/your-org/dango:${{ github.sha }}-amd64 \
+              -t ghcr.io/left-curve/left-curve/dango:${{ github.sha }}-amd64 \
               -f docker/Dockerfile .
 
   build-dango-amd64:

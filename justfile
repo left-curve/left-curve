@@ -69,16 +69,26 @@ optimize:
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
 
-# --------------------------------- arm builder ----------------------------------
-# To be called from a x86 architecture
-docker-build-arm-builder:
-  docker build -t ghcr.io/left-curve/left-curve/arm-builder:latest docker/arm-builder ; \
-      docker push ghcr.io/left-curve/left-curve/arm-builder:latest
-
+# --------------------------------- cross builder ----------------------------------
 docker-build-cross-builder:
-  docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  --build-arg TARGETARCH \
-  --tag ghcr.io/left-curve/left-curve/cross-builder:latest \
-  --push \
-  -f docker/cross-builder/Dockerfile .
+  # AMD64
+  docker buildx build --platform linux/amd64 \
+    -t ghcr.io/left-curve/left-curve/cross-builder:amd64 \
+    --provenance=false \
+    --push \
+    -f docker/cross-builder-amd64/Dockerfile .
+
+  # ARM64
+  docker buildx build --platform linux/arm64 \
+    -t ghcr.io/left-curve/left-curve/cross-builder:arm64 \
+    --provenance=false \
+    --push \
+    -f docker/cross-builder-arm64/Dockerfile .
+
+  # Combine the two into a manifest
+  docker manifest create ghcr.io/left-curve/left-curve/cross-builder:latest \
+    --amend ghcr.io/left-curve/left-curve/cross-builder:amd64 \
+    --amend ghcr.io/left-curve/left-curve/cross-builder:arm64
+
+  # Push the manifest
+  docker manifest push ghcr.io/left-curve/left-curve/cross-builder:latest
