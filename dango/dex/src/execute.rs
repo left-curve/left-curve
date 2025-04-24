@@ -490,9 +490,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         )?;
     }
 
-    // Remove the dex from the refunds map since it cannot send tokens to itself.
-    refunds.remove(&ctx.contract);
-
     // Save the updated volumes.
     for (address, volume) in volumes {
         VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
@@ -532,7 +529,7 @@ where
 {
     real: Peekable<A>,
     passive: Peekable<B>,
-    order: grug::Order,
+    iteration_order: grug::Order,
 }
 
 impl<A, B> MergedOrders<A, B>
@@ -540,11 +537,11 @@ where
     A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
     B: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
 {
-    pub fn new(real: A, passive: B, order: grug::Order) -> Self {
+    pub fn new(real: A, passive: B, iteration_order: grug::Order) -> Self {
         Self {
             real: real.peekable(),
             passive: passive.peekable(),
-            order,
+            iteration_order,
         }
     }
 }
@@ -561,7 +558,7 @@ where
             (Some(Ok(((real_price, _), _))), Some(Ok(((passive_price, _), _)))) => {
                 // Compare only the price since passive orders don't have an order ID.
                 let ordering_raw = real_price.cmp(passive_price);
-                let ordering = match self.order {
+                let ordering = match self.iteration_order {
                     grug::Order::Ascending => ordering_raw,
                     grug::Order::Descending => ordering_raw.reverse(),
                 };

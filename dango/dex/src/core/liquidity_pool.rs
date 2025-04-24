@@ -301,8 +301,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserves: &CoinPair,
     ) -> StdResult<(Vec<(Udec128, Uint128)>, Vec<(Udec128, Uint128)>)> {
-        let a = reserves.amount_of(&base_denom)?;
-        let b = reserves.amount_of(&quote_denom)?;
+        let base_reserves = reserves.amount_of(&base_denom)?;
+        let quote_reserves = reserves.amount_of(&quote_denom)?;
 
         let price = self.spot_price(&base_denom, &quote_denom, reserves)?;
 
@@ -314,8 +314,8 @@ impl PassiveLiquidityPool for PairParams {
 
         let mut bids = Vec::with_capacity(self.order_depth as usize);
         let mut asks = Vec::with_capacity(self.order_depth as usize);
-        let mut a_bid_prev = Uint128::ZERO;
-        let mut a_ask_prev = Uint128::ZERO;
+        let mut amount_bid_prev = Uint128::ZERO;
+        let mut amount_ask_prev = Uint128::ZERO;
         for i in 1..(self.order_depth + 1) {
             // Calculate the price that is `i` price steps of size `order_spacing`
             // on the ask and bid side of the spot price respectively.
@@ -329,28 +329,32 @@ impl PassiveLiquidityPool for PairParams {
             // current spot price to `price_ask` and `price_bid` respectively.
             let (amount_ask, amount_bid) = match self.curve_invariant {
                 CurveInvariant::Xyk => {
-                    let amount_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
-                    let amount_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
+                    let amount_ask =
+                        base_reserves.checked_sub(quote_reserves.checked_div_dec(price_ask)?)?;
+                    let amount_bid = quote_reserves
+                        .checked_div_dec(price_bid)?
+                        .checked_sub(base_reserves)?;
                     (amount_ask, amount_bid)
                 },
             };
 
             // Calculate the difference in the amount as compared to the previous iteration.
-            // I.e. the amount that the pool places at the current `price_bid` and `price_ask`
-            // respectively. Only place orders if the amount is positive.
-            let amount_bid_diff = amount_bid.checked_sub(a_bid_prev)?;
+            // I.e. the amount that the pool would trade between the previous price and the
+            // current price, which is the amount of the order to place at the current price.
+            // Only place orders if the amount is positive.
+            let amount_bid_diff = amount_bid.checked_sub(amount_bid_prev)?;
             if amount_bid_diff > Uint128::ZERO {
                 bids.push((price_bid, amount_bid_diff));
             }
 
-            let amount_ask_diff = amount_ask.checked_sub(a_ask_prev)?;
+            let amount_ask_diff = amount_ask.checked_sub(amount_ask_prev)?;
             if amount_ask_diff > Uint128::ZERO {
                 asks.push((price_ask, amount_ask_diff));
             }
 
             // Update the previous amounts for the next iteration.
-            a_bid_prev = amount_bid;
-            a_ask_prev = amount_ask;
+            amount_bid_prev = amount_bid;
+            amount_ask_prev = amount_ask;
         }
 
         Ok((bids, asks))
