@@ -1,6 +1,8 @@
 FROM rust:slim AS builder
 
 LABEL org.opencontainers.image.description="Dango build stage"
+LABEL org.opencontainers.image.revision=$GIT_COMMIT
+LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 # Install dependencies.
 RUN apt update && apt install -y clang git libssl-dev pkg-config
@@ -28,6 +30,8 @@ RUN echo "Cloning commit: $GIT_COMMIT" \
 FROM debian:bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.description="Dango runtime image"
+LABEL org.opencontainers.image.revision=$GIT_COMMIT
+LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 RUN apt-get update && \
     apt-get install -y libssl3 ca-certificates && \
