@@ -12,8 +12,10 @@ on:
 
 jobs:
   manifest:
+    permissions:
+      packages: write
     needs: [build-arm64, build-amd64]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -40,6 +42,8 @@ jobs:
 
   build-arm64:
     runs-on: [self-hosted]
+    permissions:
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -107,6 +111,8 @@ jobs:
 
   build-amd64:
     runs-on: [self-hosted]
+    permissions:
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
