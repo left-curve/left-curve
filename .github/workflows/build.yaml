@@ -47,7 +47,7 @@ jobs:
         id: config
         run: |
           if [[ "${{ runner.arch }}" == "X64" ]]; then
-            echo "image=ghcr.io/left-curve/left-curve/cross-builder:arm64" >> $GITHUB_OUTPUT
+            echo "image=ghcr.io/left-curve/left-curve/cross-builder:amd64" >> $GITHUB_OUTPUT
             echo "arch=x86_64" >> $GITHUB_OUTPUT
           elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
             echo "image=ghcr.io/left-curve/left-curve/native-builder:arm64" >> $GITHUB_OUTPUT
@@ -117,7 +117,7 @@ jobs:
             echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
             echo "arch=x86_64" >> $GITHUB_OUTPUT
           elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-            echo "image=ghcr.io/left-curve/left-curve/cross-builder:amd64" >> $GITHUB_OUTPUT
+            echo "image=ghcr.io/left-curve/left-curve/cross-builder:arm64" >> $GITHUB_OUTPUT
             echo "arch=arm64" >> $GITHUB_OUTPUT
           else
             echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
