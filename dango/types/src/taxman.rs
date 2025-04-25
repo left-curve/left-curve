@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Coins, Denom, Udec128},
+    grug::{Addr, Coins, Denom, NumberConst, Timestamp, Udec128, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -10,8 +10,26 @@ pub struct Config {
     pub fee_rate: Udec128,
 }
 
-#[grug::derive(Serde)]
-#[derive(Copy)]
+#[grug::derive(Serde, Borsh)]
+/// A fee payment including the coins paid and the USD value of the coins.
+pub struct FeePayments {
+    /// The coins paid.
+    pub coins: Coins,
+    /// The USD value of the coins.
+    pub usd_value: Uint128,
+}
+
+impl Default for FeePayments {
+    fn default() -> Self {
+        Self {
+            coins: Coins::new(),
+            usd_value: Uint128::ZERO,
+        }
+    }
+}
+
+#[grug::derive(Serde, Borsh)]
+#[derive(Copy, PartialOrd, Ord)]
 pub enum FeeType {
     /// Gas Fee.
     Gas,
@@ -57,6 +75,20 @@ pub enum QueryMsg {
     /// Query the fee configurations.
     #[returns(Config)]
     Config {},
+
+    /// Returns the total amount of fees collected from a user since the
+    /// specified timestamp.
+    #[returns(FeePayments)]
+    FeesForUser {
+        /// The user to query fees for.
+        user: Addr,
+        /// The type of fee to query. If not provided, the total amount of fees
+        /// collected for all fee types will be returned.
+        fee_type: Option<FeeType>,
+        /// The start timestamp to query fees for. If not provided, the total
+        /// amount of fees collected will be returned.
+        since: Option<Timestamp>,
+    },
 }
 
 #[grug::derive(Serde)]

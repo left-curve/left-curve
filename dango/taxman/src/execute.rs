@@ -1,13 +1,15 @@
 use {
-    crate::{CONFIG, WITHHELD_FEE},
+    crate::{CONFIG, FEES_BY_USER, WITHHELD_FEE},
     anyhow::ensure,
+    dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, bank,
-        taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
+        taxman::{Config, ExecuteMsg, FeePayments, FeeType, InstantiateMsg, ReceiveFee},
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome, Uint128,
+        MutableCtx, Number, NumberConst, Order, QuerierExt, Response, StdResult, Tx, TxOutcome,
+        Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -57,19 +59,39 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
         total
     );
 
-    // For now, nothing to do.
-    // In the future, we will implement affiliate fees.
-    let events = payments
-        .into_iter()
-        .map(|(user, amount)| {
-            ContractEvent::new(&ReceiveFee {
-                handler: ctx.sender,
+    let oracle = ctx.querier.query_dango_config()?.addresses.oracle;
+
+    // Record the fees in storage and emit events.
+    let mut events: Vec<ContractEvent> = Vec::new();
+    for (user, payment) in payments {
+        let mut previous_amount = FEES_BY_USER
+            .prefix(user)
+            .values(ctx.storage, None, None, Order::Descending)
+            .next()
+            .transpose()?
+            .unwrap_or(BTreeMap::new());
+        let fee_payments = previous_amount
+            .entry(ty)
+            .or_insert_with(FeePayments::default);
+
+        for coin in payment.clone() {
+            let price = ctx.querier.query_price(oracle, &coin.denom, None)?;
+            let usd_value = price.value_of_unit_amount(coin.amount)?.into_int();
+            fee_payments.usd_value = fee_payments.usd_value.checked_add(usd_value)?;
+            fee_payments.coins.insert(coin)?;
+        }
+        FEES_BY_USER.save(ctx.storage, (user, ctx.block.timestamp), &previous_amount)?;
+
+        events.push(
+            ReceiveFee {
+                handler: ctx.contract,
                 user,
                 ty,
-                amount,
-            })
-        })
-        .collect::<StdResult<Vec<_>>>()?;
+                amount: payment,
+            }
+            .try_into()?,
+        );
+    }
 
     Ok(Response::new().add_events(events)?)
 }
