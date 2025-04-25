@@ -3,7 +3,7 @@ group "default" {
 }
 
 target "cross-builder-amd64" {
-  context = "docker/cross-builder-amd64"
+  context = "docker/cross-builder-arm64"
   dockerfile = "Dockerfile"
   tags = ["ghcr.io/left-curve/left-curve/cross-builder:amd64"]
   platforms = ["linux/amd64"]
@@ -20,7 +20,7 @@ target "cross-builder-amd64" {
 }
 
 target "cross-builder-arm64" {
-  context = "docker/cross-builder-arm64"
+  context = "docker/cross-builder-amd64"
   dockerfile = "Dockerfile"
   tags = ["ghcr.io/left-curve/left-curve/cross-builder:arm64"]
   platforms = ["linux/arm64"]

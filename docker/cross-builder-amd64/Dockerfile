@@ -20,4 +20,6 @@ RUN dpkg --add-architecture amd64 && \
     git && \
     rm -rf /var/lib/apt/lists/*
 
+RUN rustup target add x86_64-unknown-linux-gnu
+
 ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
