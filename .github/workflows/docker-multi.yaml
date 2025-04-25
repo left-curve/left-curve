@@ -78,6 +78,7 @@ jobs:
           # no-cache: true
 
   build-dango-arm64-with-cross:
+    if: false
     permissions:
       packages: write
     runs-on: self-hosted
@@ -115,6 +116,7 @@ jobs:
               -f docker/dango-arm/Dockerfile .
 
   build-dango-amd64-with-cross:
+    if: false
     permissions:
       packages: write
     runs-on: self-hosted
