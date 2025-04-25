@@ -65,7 +65,7 @@ jobs:
           echo "suffix=arm64" >> $GITHUB_OUTPUT
 
       - name: Install cross
-        run: cargo install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Write dynamic Cross.toml
         run: |
@@ -134,7 +134,7 @@ jobs:
           echo "suffix=amd64" >> $GITHUB_OUTPUT
 
       - name: Install cross
-        run: cargo install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Write dynamic Cross.toml
         run: |
