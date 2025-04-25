@@ -1,5 +1,5 @@
 [target.aarch64-unknown-linux-gnu]
-image = "ghcr.io/left-curve/left-curve/cross-builder:arm64"
+image = "ghcr.io/left-curve/left-curve/native-builder:arm64"
 
 [target.x86_64-unknown-linux-gnu]
-image = "ghcr.io/left-curve/left-curve/cross-builder:amd64"
+image = "ghcr.io/left-curve/left-curve/native-builder:amd64"

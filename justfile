@@ -70,20 +70,8 @@ optimize:
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
 
 # --------------------------------- cross builder ----------------------------------
-docker-build-cross-builder:
-  # AMD64
-  docker buildx build --platform linux/amd64 \
-    -t ghcr.io/left-curve/left-curve/cross-builder:amd64 \
-    --provenance=false \
-    --push \
-    -f docker/cross-builder-amd64/Dockerfile .
-
-  # ARM64
-  docker buildx build --platform linux/arm64 \
-    -t ghcr.io/left-curve/left-curve/cross-builder:arm64 \
-    --provenance=false \
-    --push \
-    -f docker/cross-builder-arm64/Dockerfile .
+docker-build-builder-images:
+  docker buildx bake --push
 
   # Combine the two into a manifest
   docker manifest create ghcr.io/left-curve/left-curve/cross-builder:latest \
@@ -92,3 +80,11 @@ docker-build-cross-builder:
 
   # Push the manifest
   docker manifest push ghcr.io/left-curve/left-curve/cross-builder:latest
+
+  # Combine the two into a manifest
+  docker manifest create ghcr.io/left-curve/left-curve/native-builder:latest \
+    --amend ghcr.io/left-curve/left-curve/native-builder:amd64 \
+    --amend ghcr.io/left-curve/left-curve/native-builder:arm64
+
+  # Push the manifest
+  docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest
