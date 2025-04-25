@@ -52,10 +52,16 @@ jobs:
         run: |
           if [[ "${{ runner.arch }}" == "X64" ]]; then
             echo "image=ghcr.io/left-curve/left-curve/cross-builder:amd64" >> $GITHUB_OUTPUT
-            echo "arch=x86_64" >> $GITHUB_OUTPUT
           elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-            echo "image=ghcr.io/left-curve/left-curve/native-builder:arm64" >> $GITHUB_OUTPUT
-            echo "arch=arm64" >> $GITHUB_OUTPUT
+            if [[ "${{ runner.os }}" == "macOS" ]]; then
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+            elif [[ "${{ runner.os }}" == "Linux" ]]; then
+              # NOTE: I could use a native-builder in such case
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+            else
+              echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              exit 1
+            fi
           else
             echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
             exit 1
@@ -92,6 +98,16 @@ jobs:
             .cross-cache
           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
 
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Build Dango with cross and local cache
         run: |
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
@@ -123,7 +139,7 @@ jobs:
             echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
             echo "arch=x86_64" >> $GITHUB_OUTPUT
           elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-            echo "image=ghcr.io/left-curve/left-curve/cross-builder:arm64" >> $GITHUB_OUTPUT
+            echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
             echo "arch=arm64" >> $GITHUB_OUTPUT
           else
             echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
@@ -160,6 +176,16 @@ jobs:
           path: |
             .cross-cache
           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build Dango with cross and local cache
         run: |
