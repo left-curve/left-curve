@@ -23,3 +23,7 @@ RUN rustup target add aarch64-unknown-linux-gnu
 
 # Set PKG_CONFIG_PATH for aarch64
 ENV PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+ENV PKG_CONFIG_ALLOW_CROSS=1
+ENV OPENSSL_DIR=/usr
+ENV OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu
+ENV OPENSSL_INCLUDE_DIR=/usr/include/aarch64-linux-gnu

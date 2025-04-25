@@ -23,3 +23,7 @@ RUN dpkg --add-architecture amd64 && \
 RUN rustup target add x86_64-unknown-linux-gnu
 
 ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+ENV PKG_CONFIG_ALLOW_CROSS=1
+ENV OPENSSL_DIR=/usr
+ENV OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu
+ENV OPENSSL_INCLUDE_DIR=/usr/include/x86_64-linux-gnu
