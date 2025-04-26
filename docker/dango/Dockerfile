@@ -9,7 +9,7 @@ ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT
 
 RUN apt-get update && \
-    apt-get install -y libssl-dev pkg-config && \
+    apt-get install -y libssl-dev pkg-config libsqlite3-0 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/dango
