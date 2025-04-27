@@ -32,7 +32,8 @@ fn cannot_submit_orders_in_non_existing_pairs() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: ATOM_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Bid,
@@ -349,7 +350,8 @@ fn dex_works(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates: vec![CreateLimitOrderRequest {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
                         base_denom: DANGO_DENOM.clone(),
                         quote_denom: USDC_DENOM.clone(),
                         direction,
@@ -556,7 +558,8 @@ fn submit_and_cancel_orders(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: submissions,
+                creates_market: vec![],
+                creates_limit: submissions,
                 cancels: None,
             },
             funds,
@@ -569,7 +572,8 @@ fn submit_and_cancel_orders(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![],
+                creates_market: vec![],
+                creates_limit: vec![],
                 cancels: cancellations,
             },
             coins! { DANGO_DENOM.clone() => 1 },
@@ -779,7 +783,8 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: initial_orders,
+                creates_market: vec![],
+                creates_limit: initial_orders,
                 cancels: None,
             },
             initial_funds,
@@ -795,7 +800,8 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: new_orders,
+                creates_market: vec![],
+                creates_limit: new_orders,
                 cancels: cancellations,
             },
             second_funds,
@@ -838,7 +844,8 @@ fn submit_and_cancel_order_in_same_block() {
     let submit_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![CreateLimitOrderRequest {
+            creates_market: vec![],
+            creates_limit: vec![CreateLimitOrderRequest {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: Direction::Bid,
@@ -854,7 +861,8 @@ fn submit_and_cancel_order_in_same_block() {
     let cancel_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![],
+            creates_market: vec![],
+            creates_limit: vec![],
             cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
         },
         Coins::new(),
@@ -1016,7 +1024,8 @@ fn query_orders_by_pair(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates: vec![CreateLimitOrderRequest {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
                         base_denom,
                         quote_denom,
                         direction,
@@ -2069,7 +2078,8 @@ fn volume_tracking_works() {
             &mut user1_addr_1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Bid,
@@ -2088,7 +2098,8 @@ fn volume_tracking_works() {
             &mut user2_addr_1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Ask,
@@ -2158,7 +2169,8 @@ fn volume_tracking_works() {
             &mut user1_addr_2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Bid,
@@ -2177,7 +2189,8 @@ fn volume_tracking_works() {
             &mut user2_addr_2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Ask,
@@ -2339,7 +2352,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: DANGO_DENOM.clone(),
                         quote_denom: USDC_DENOM.clone(),
@@ -2374,7 +2388,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: DANGO_DENOM.clone(),
                         quote_denom: USDC_DENOM.clone(),
@@ -2454,7 +2469,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: DANGO_DENOM.clone(),
                         quote_denom: USDC_DENOM.clone(),
@@ -2498,7 +2514,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: DANGO_DENOM.clone(),
                         quote_denom: USDC_DENOM.clone(),

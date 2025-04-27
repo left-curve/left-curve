@@ -54,6 +54,16 @@ pub struct CreateLimitOrderRequest {
     pub price: Udec128,
 }
 
+#[grug::derive(Serde)]
+pub struct CreateMarketOrderRequest {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    /// For BUY orders, the amount of quote asset; for SELL orders, that of the
+    /// base asset.
+    pub amount: Uint128,
+}
+
 /// A set of order IDs, either a specific set or all. Used to cancel orders.
 #[grug::derive(Serde)]
 pub enum OrderIds {
@@ -74,7 +84,8 @@ pub enum ExecuteMsg {
     BatchUpdatePairs(Vec<PairUpdate>),
     /// Create or cancel multiple limit orders in one batch.
     BatchUpdateOrders {
-        creates: Vec<CreateLimitOrderRequest>,
+        creates_market: Vec<CreateMarketOrderRequest>,
+        creates_limit: Vec<CreateLimitOrderRequest>,
         cancels: Option<OrderIds>,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is

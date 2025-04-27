@@ -729,7 +729,8 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
             &mut margin_account,
             contracts.dex,
             &dango_types::dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: dango_types::dex::Direction::Bid,
