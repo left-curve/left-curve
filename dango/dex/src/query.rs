@@ -1,5 +1,5 @@
 use {
-    crate::{ORDERS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
+    crate::{LIMIT_ORDERS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
     dango_types::{
         account_factory::Username,
         dex::{
@@ -149,7 +149,7 @@ fn query_reserves(
 #[inline]
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
     let (((base_denom, quote_denom), direction, price, _), order) =
-        ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+        LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
 
     Ok(OrderResponse {
         base_denom,
@@ -171,7 +171,7 @@ fn query_orders(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    ORDERS
+    LIMIT_ORDERS
         .idx
         .order_id
         .range(ctx.storage, start, None, IterationOrder::Ascending)
@@ -201,13 +201,14 @@ fn query_orders_by_pair(
 ) -> StdResult<BTreeMap<OrderId, OrdersByPairResponse>> {
     let start = start_after
         .map(|order_id| -> StdResult<_> {
-            let ((_, direction, price, _), _) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            let ((_, direction, price, _), _) =
+                LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
             Ok(Bound::Exclusive((direction, price, order_id)))
         })
         .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    ORDERS
+    LIMIT_ORDERS
         .prefix((base_denom, quote_denom))
         .range(ctx.storage, start, None, IterationOrder::Ascending)
         .take(limit)
@@ -234,13 +235,13 @@ fn query_orders_by_user(
     let start = start_after
         .map(|order_id| -> StdResult<_> {
             let ((pair, direction, price, _), _) =
-                ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+                LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
             Ok(Bound::Exclusive((pair, direction, price, order_id)))
         })
         .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    ORDERS
+    LIMIT_ORDERS
         .idx
         .user
         .prefix(user)
