@@ -64,9 +64,8 @@ pub struct CreateMarketOrderRequest {
     pub amount: Uint128,
 }
 
-/// A set of order IDs, either a specific set or all. Used to cancel orders.
 #[grug::derive(Serde)]
-pub enum OrderIds {
+pub enum CancelOrderRequest {
     Some(BTreeSet<OrderId>),
     All,
 }
@@ -86,7 +85,7 @@ pub enum ExecuteMsg {
     BatchUpdateOrders {
         creates_market: Vec<CreateMarketOrderRequest>,
         creates_limit: Vec<CreateLimitOrderRequest>,
-        cancels: Option<OrderIds>,
+        cancels: Option<CancelOrderRequest>,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
     /// equivalent to a swap to reach the pool ratio, followed by a liquidity

@@ -13,9 +13,9 @@ use {
         account_factory::Username,
         bank,
         dex::{
-            CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, OrderFilled, OrderIds, OrdersMatched, PairId,
-            PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
+            CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction,
+            ExecuteMsg, InstantiateMsg, LP_NAMESPACE, NAMESPACE, OrderFilled, OrdersMatched,
+            PairId, PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
         taxman::{self, FeeType},
     },
@@ -101,7 +101,7 @@ pub fn batch_update_orders(
     mut ctx: MutableCtx,
     creates_market: Vec<CreateMarketOrderRequest>,
     creates_limit: Vec<CreateLimitOrderRequest>,
-    cancels: Option<OrderIds>,
+    cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
     let mut deposits = Coins::new();
     let mut refunds = Coins::new();
@@ -109,7 +109,7 @@ pub fn batch_update_orders(
 
     match cancels {
         // Cancel selected orders.
-        Some(OrderIds::Some(order_ids)) => {
+        Some(CancelOrderRequest::Some(order_ids)) => {
             for order_id in order_ids {
                 order_cancellation::cancel_order_from_user(
                     ctx.storage,
@@ -121,7 +121,7 @@ pub fn batch_update_orders(
             }
         },
         // Cancel all orders.
-        Some(OrderIds::All) => {
+        Some(CancelOrderRequest::All) => {
             order_cancellation::cancel_all_orders_from_user(
                 ctx.storage,
                 ctx.sender,

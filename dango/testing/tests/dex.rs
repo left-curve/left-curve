@@ -5,7 +5,7 @@ use {
         account_factory::AccountParams,
         constants::{ATOM_DENOM, BTC_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
-            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
+            self, CancelOrderRequest, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId,
             OrderResponse, PairId, PairParams, PairUpdate, QueryOrdersByPairRequest,
             QueryOrdersRequest, QueryReserveRequest,
         },
@@ -431,7 +431,7 @@ fn dex_works(
         amount: Uint128::new(100),
         price: Udec128::new(1),
     }],
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     coins! { USDC_DENOM.clone() => 100 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {};
@@ -454,7 +454,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     coins! { USDC_DENOM.clone() => 200 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
@@ -487,7 +487,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::Some(BTreeSet::from([!0, !1]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0, !1]))),
     coins! { USDC_DENOM.clone() => 200 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {};
@@ -510,7 +510,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::All),
+    Some(CancelOrderRequest::All),
     coins! { USDC_DENOM.clone() => 200 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {};
@@ -533,7 +533,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     coins! { USDC_DENOM.clone() => 199 },
     btree_map! {},
     btree_map! {}
@@ -542,7 +542,7 @@ fn dex_works(
 )]
 fn submit_and_cancel_orders(
     submissions: Vec<CreateLimitOrderRequest>,
-    cancellations: Option<OrderIds>,
+    cancellations: Option<CancelOrderRequest>,
     funds: Coins,
     expected_balance_changes: BTreeMap<Denom, BalanceChange>,
     expected_orders_after: BTreeMap<OrderId, OrderResponse>,
@@ -614,7 +614,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { USDC_DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     vec![CreateLimitOrderRequest {
         base_denom: DANGO_DENOM.clone(),
         quote_denom: USDC_DENOM.clone(),
@@ -646,7 +646,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { USDC_DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     vec![CreateLimitOrderRequest {
         base_denom: DANGO_DENOM.clone(),
         quote_denom: USDC_DENOM.clone(),
@@ -678,7 +678,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { USDC_DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     vec![CreateLimitOrderRequest {
         base_denom: DANGO_DENOM.clone(),
         quote_denom: USDC_DENOM.clone(),
@@ -710,7 +710,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { USDC_DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     vec![CreateLimitOrderRequest {
         base_denom: DANGO_DENOM.clone(),
         quote_denom: USDC_DENOM.clone(),
@@ -743,7 +743,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { USDC_DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!0]))),
     vec![CreateLimitOrderRequest {
         base_denom: DANGO_DENOM.clone(),
         quote_denom: USDC_DENOM.clone(),
@@ -769,7 +769,7 @@ fn submit_and_cancel_orders(
 fn submit_orders_then_cancel_and_submit_in_same_message(
     initial_orders: Vec<CreateLimitOrderRequest>,
     initial_funds: Coins,
-    cancellations: Option<OrderIds>,
+    cancellations: Option<CancelOrderRequest>,
     new_orders: Vec<CreateLimitOrderRequest>,
     second_funds: Coins,
     expected_balance_changes: BTreeMap<Denom, BalanceChange>,
@@ -863,7 +863,7 @@ fn submit_and_cancel_order_in_same_block() {
         &dex::ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![],
             creates_limit: vec![],
-            cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
+            cancels: Some(dex::CancelOrderRequest::Some(BTreeSet::from([!0]))),
         },
         Coins::new(),
     )
