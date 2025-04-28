@@ -4,6 +4,7 @@ use {
         PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
+    dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
@@ -19,8 +20,8 @@ use {
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx, Udec128,
-        Uint128, UniqueVec,
+        QuerierExt, QuerierWrapper, Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
+        UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -465,6 +466,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .collect::<BTreeSet<_>>();
 
     let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory);
 
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
@@ -475,7 +477,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             ctx.querier,
             ctx.block.height,
             &mut oracle_querier,
-            app_cfg.addresses.account_factory,
+            &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
             base_denom,
@@ -527,7 +529,7 @@ fn clear_orders_of_pair(
     querier: QuerierWrapper,
     current_block_height: u64,
     oracle_querier: &mut OracleQuerier,
-    account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    account_querier: &mut AccountQuerier,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     base_denom: Denom,
@@ -706,12 +708,8 @@ fn clear_orders_of_pair(
 
         // Record trading volume for the user's username, if the trader is a
         // single-signature account (skip for multisig accounts).
-        // TODO: this query can use caching, so we don't re-do queries for the same user.
-        if let Some(username) = querier
-            .query_wasm_path(
-                account_factory,
-                &dango_account_factory::ACCOUNTS.path(order.user),
-            )?
+        if let Some(username) = account_querier
+            .query_account(&querier, order.user)?
             .params
             .owner()
         {
