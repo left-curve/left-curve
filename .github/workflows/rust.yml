@@ -205,7 +205,7 @@ jobs:
   push-manifest:
     permissions:
       packages: write
-    needs: [build-arm64, build-amd64]
+    needs: [build]
     runs-on: [self-hosted]
     steps:
       - name: Log in to GHCR
