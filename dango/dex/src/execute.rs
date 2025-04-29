@@ -651,6 +651,9 @@ fn clear_orders_of_pair(
             refund: refund.clone(),
             fee,
             cleared,
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            order_direction,
         })?;
 
         refunds.entry(order.user).or_default().insert_many(refund)?;
