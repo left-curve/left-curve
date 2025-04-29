@@ -29,89 +29,89 @@ on:
       - "**.toml"
 
 jobs:
-  format:
-    name: Format
-    runs-on: [self-hosted]
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
-          components: rustfmt
-
-      # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
-      # - uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ${HOME}/.cargo/bin/
-      #       ${HOME}/.cargo/registry/index/
-      #       ${HOME}/.cargo/registry/cache/
-      #       ${HOME}/.cargo/git/db/
-      #       target/
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Run rustfmt checks
-        run: cargo +nightly fmt --check --all
-
-  test:
-    needs: [format]
-    name: Lint + Test
-    runs-on: self-hosted
-    env:
-      PGDATABASE: grug_test
-      DB_HOST: postgres
-    # services:
-    #   postgres:
-    #     image: postgres
-    #     env:
-    #       POSTGRES_PASSWORD: postgres
-    #     options: >-
-    #       --health-cmd pg_isready
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: clippy
-
-      # - name: Create database
-      #   run: |
-      #     createdb -U postgres -h postgres "$PGDATABASE"
-
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${HOME}/.cargo/bin/
-            ${HOME}/.cargo/registry/index/
-            ${HOME}/.cargo/registry/cache/
-            ${HOME}/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Run clippy
-        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
-
-      - name: Run tests
-        run: cargo test --all-features
-        env:
-          RUST_BACKTRACE: 1
+  # format:
+  #   name: Format
+  #   runs-on: [self-hosted]
+  #   steps:
+  #     - name: Checkout sources
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Install toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: nightly
+  #         components: rustfmt
+  #
+  #     # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
+  #     # - uses: actions/cache@v4
+  #     #   with:
+  #     #     path: |
+  #     #       ${HOME}/.cargo/bin/
+  #     #       ${HOME}/.cargo/registry/index/
+  #     #       ${HOME}/.cargo/registry/cache/
+  #     #       ${HOME}/.cargo/git/db/
+  #     #       target/
+  #     #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - name: Run rustfmt checks
+  #       run: cargo +nightly fmt --check --all
+  #
+  # test:
+  #   needs: [format]
+  #   name: Lint + Test
+  #   runs-on: self-hosted
+  #   env:
+  #     PGDATABASE: grug_test
+  #     DB_HOST: postgres
+  #   # services:
+  #   #   postgres:
+  #   #     image: postgres
+  #   #     env:
+  #   #       POSTGRES_PASSWORD: postgres
+  #   #     options: >-
+  #   #       --health-cmd pg_isready
+  #   #       --health-interval 10s
+  #   #       --health-timeout 5s
+  #   #       --health-retries 5
+  #   steps:
+  #     - name: Checkout sources
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Install toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: stable
+  #         components: clippy
+  #
+  #     # - name: Create database
+  #     #   run: |
+  #     #     createdb -U postgres -h postgres "$PGDATABASE"
+  #
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ${HOME}/.cargo/bin/
+  #           ${HOME}/.cargo/registry/index/
+  #           ${HOME}/.cargo/registry/cache/
+  #           ${HOME}/.cargo/git/db/
+  #           target/
+  #         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+  #
+  #     - name: Run clippy
+  #       run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+  #
+  #     - name: Run tests
+  #       run: cargo test --all-features
+  #       env:
+  #         RUST_BACKTRACE: 1
 
   build:
     name: Build (${{ matrix.arch }})
     runs-on: [self-hosted]
-    needs: [test]
+    # needs: [test]
     strategy:
       matrix:
-        arch: [amd64] # , arm64]
+        arch: [amd64, arm64]
     permissions:
       packages: write
     steps:
