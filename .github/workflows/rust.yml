@@ -142,12 +142,12 @@ jobs:
             echo "suffix=amd64" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
             if [[ "${{ runner.arch }}" == "X64" ]]; then
-              echo "image=ghcr.io/left-curve/left-curve/cross-builder:amd64" >> $GITHUB_OUTPUT
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
             elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
               if [[ "${{ runner.os }}" == "macOS" ]]; then
                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
               elif [[ "${{ runner.os }}" == "Linux" ]]; then
-                # NOTE: I could use a native-builder in such case, but using cross to keep consistency. Also it'd have to be a linux arm64 runner, not a macOS one.
+                # NOTE: I could use a native-builder in such case, but using cross to keep consistency
                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
               else
                 echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
