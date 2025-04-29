@@ -111,7 +111,7 @@ jobs:
     # needs: [test]
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        arch: [arm64] # [amd64, arm64]
     permissions:
       packages: write
     steps:
@@ -142,7 +142,7 @@ jobs:
             echo "suffix=amd64" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
             if [[ "${{ runner.arch }}" == "X64" ]]; then
-              echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder:amd64" >> $GITHUB_OUTPUT
             elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
               if [[ "${{ runner.os }}" == "macOS" ]]; then
                 echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
