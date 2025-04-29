@@ -255,7 +255,7 @@ jobs:
             -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango/Dockerfile .
 
-  manifest:
+  build-manifest:
     permissions:
       packages: write
     needs: [build-arm64, build-amd64]
