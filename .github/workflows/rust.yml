@@ -188,12 +188,14 @@ jobs:
           path: .cross-cache
           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - run: |
+      - name: build binary with cross
+        run: |
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
           CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
           cross build --target ${{ steps.config.outputs.target }} --release
 
-      - run: |
+      - name: build docker image
+        run: |
           docker buildx build \
             --platform ${{ steps.config.outputs.platform }} \
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
