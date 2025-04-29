@@ -111,7 +111,7 @@ jobs:
     needs: [test]
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        arch: [amd64] # , arm64]
     permissions:
       packages: write
     steps:
