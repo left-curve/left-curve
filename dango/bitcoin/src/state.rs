@@ -1,0 +1,44 @@
+use {
+    dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction},
+    grug::{Addr, Counter, Empty, Hash256, IndexedMap, Item, Map, Uint128, UniqueIndex},
+    std::collections::{BTreeMap, BTreeSet},
+};
+
+pub const CONFIG: Item<Config> = Item::new("config");
+
+/// Inbound transactions that have not received threshold number of votes.
+///
+/// ```plain
+/// (transaction_hash, amount, recipient) => voted_guardians
+/// ```
+pub const INBOUNDS: Map<(Hash256, Uint128, Option<Addr>), BTreeSet<Addr>> = Map::new("inbound");
+
+/// UTXOs owned by the multisig, available to be spent for outbound transactions.
+///
+/// ```plain
+/// amount => transaction_hash
+/// ```
+///
+/// TODO: We should create `IndexedSet` for this.
+pub const UTXOS: IndexedMap<(Uint128, Hash256), Empty, UtxoIndexes> =
+    IndexedMap::new("utxo", UtxoIndexes {
+        transaction_hash: UniqueIndex::new(|(_, hash), _| *hash, "utxo", "utxo__hash"),
+    });
+
+/// Outbound transactions that have not received threshold number of signatures.
+///
+/// ```plain
+/// recipient_bitcoin_address => amount
+/// ```
+pub const OUTBOUND_QUEUE: Map<BitcoinAddress, Uint128> = Map::new("outbound");
+
+pub const NEXT_OUTBOUND_ID: Counter<u32> = Counter::new("next_outbound_id", 0, 1);
+
+pub const OUTBOUNDS: Map<u32, Transaction> = Map::new("outbound");
+
+pub const SIGNATURES: Map<u32, BTreeMap<Addr, BitcoinSignature>> = Map::new("signature");
+
+#[grug::index_list((Uint128, Hash256), Empty)]
+pub struct UtxoIndexes<'a> {
+    pub transaction_hash: UniqueIndex<'a, (Uint128, Hash256), Hash256, Empty>,
+}

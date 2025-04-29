@@ -125,6 +125,32 @@ impl PrimaryKey for () {
     }
 }
 
+impl PrimaryKey for bool {
+    type Output = bool;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        match self {
+            false => vec![RawKey::Fixed8([0])],
+            true => vec![RawKey::Fixed8([1])],
+        }
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        match bytes {
+            [0] => Ok(false),
+            [1] => Ok(true),
+            _ => Err(StdError::deserialize::<Self::Output, _>(
+                "key",
+                format!("unknown bytes `{bytes:?}` for boolean key, expecting 0 or 1"),
+            )),
+        }
+    }
+}
+
 impl PrimaryKey for &[u8] {
     type Output = Vec<u8>;
     type Prefix = ();
@@ -425,6 +451,41 @@ where
         let d = D::from_slice(d_raw)?;
 
         Ok((a, b, c, d))
+    }
+}
+
+// For `Option<T>`s, we treat them basically like a tuple `(u8, T)`.
+// The boolean is `0` for `None`, or `1` for `Some(_)`.
+impl<T> PrimaryKey for Option<T>
+where
+    T: PrimaryKey,
+{
+    type Output = Option<T::Output>;
+    type Prefix = bool;
+    type Suffix = T;
+
+    const KEY_ELEMS: u8 = 1 + T::KEY_ELEMS;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        match self {
+            Some(k) => {
+                let mut keys = true.raw_keys();
+                keys.extend(k.raw_keys());
+                keys
+            },
+            None => false.raw_keys(),
+        }
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (tag, rest) = split_first_key(1, bytes);
+        match bool::from_slice(&tag)? {
+            true => {
+                let inner = T::from_slice(rest)?;
+                Ok(Some(inner))
+            },
+            false => Ok(None),
+        }
     }
 }
 

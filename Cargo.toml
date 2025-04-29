@@ -4,6 +4,7 @@ members = [
   "dango/account/*",
   "dango/auth",
   "dango/bank",
+  "dango/bitcoin",
   "dango/cli",
   "dango/client",
   "dango/dex",
@@ -162,6 +163,7 @@ dango-account-spot          = { path = "dango/account/spot" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
+dango-bitcoin               = { path = "dango/bitcoin" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-genesis               = { path = "dango/genesis" }

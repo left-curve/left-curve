@@ -3289,6 +3289,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-bitcoin"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-cli"
 version = "0.0.0"
 dependencies = [
