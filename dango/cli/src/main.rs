@@ -1,6 +1,6 @@
 mod config;
-mod git_info;
 mod db;
+mod git_info;
 mod home_directory;
 mod keys;
 mod prompt;
