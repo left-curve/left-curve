@@ -47,7 +47,7 @@ pub struct OrderFilled {
     pub order_id: OrderId,
     pub base_denom: Denom,
     pub quote_denom: Denom,
-    pub order_direction: Direction,
+    pub direction: Direction,
     /// The price at which the order was executed.
     pub clearing_price: Udec128,
     /// The amount (measured in base asset) that was filled.
