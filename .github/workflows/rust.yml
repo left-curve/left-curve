@@ -36,11 +36,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
           components: rustfmt
-          override: true
 
       - uses: actions/cache@v4
         with:
@@ -76,11 +76,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           components: clippy
-          override: true
 
       # - name: Create database
       #   run: |
@@ -119,6 +119,7 @@ jobs:
       - name: Set build config
         id: config
         run: |
+          set -euo pipefail
           if [[ "${{ matrix.arch }}" == "amd64" ]]; then
             if [[ "${{ runner.arch }}" == "X64" ]]; then
               echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
