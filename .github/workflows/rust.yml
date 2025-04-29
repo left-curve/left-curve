@@ -16,6 +16,7 @@ on:
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
+      - "docker/**"
       - "**.toml"
   pull_request:
     branches:
@@ -26,6 +27,7 @@ on:
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
+      - "docker/**"
       - "**.toml"
 
 jobs:
