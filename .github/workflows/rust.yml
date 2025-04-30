@@ -216,6 +216,7 @@ jobs:
           set -euo pipefail
             # --push \
           docker buildx build \
+            --load \
             --platform ${{ steps.config.outputs.platform }} \
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
             --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
