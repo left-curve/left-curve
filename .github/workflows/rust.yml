@@ -111,8 +111,8 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
-        runners:
-          - [self-hosted, Linux, X64]
+        runner:
+          - [self-hosted, Linux]
           # - [self-hosted, macOS, ARM64]
     name: Build ${{ matrix.arch }} on ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
