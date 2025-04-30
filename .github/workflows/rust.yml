@@ -223,6 +223,10 @@ jobs:
             -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango/Dockerfile .
 
+      - name: Ensure Dango works
+        run: |
+          docker run --rm -it ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango
+
   # push-manifest:
   #   permissions:
   #     packages: write
