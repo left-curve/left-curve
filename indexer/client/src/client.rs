@@ -45,7 +45,12 @@ impl HttpClient {
         V: Variables + Serialize,
     {
         let query = V::Query::build_query(variables);
-        let response = self.inner.post(&self.endpoint).json(&query).send().await?;
+        let response = self
+            .inner
+            .post(format!("{}/graphql", self.endpoint))
+            .json(&query)
+            .send()
+            .await?;
 
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
 
