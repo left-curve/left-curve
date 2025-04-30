@@ -36,6 +36,13 @@ where
 {
     pub fn new(suite: TestSuite<DB, VM, PP, ID>, block_mode: BlockCreation) -> Self {
         let suite = Arc::new(Mutex::new(suite));
+        Self::new_shared(suite, block_mode)
+    }
+
+    pub fn new_shared(
+        suite: Arc<Mutex<TestSuite<DB, VM, PP, ID>>>,
+        block_mode: BlockCreation,
+    ) -> Self {
         let blocks = Arc::new(Mutex::new(BTreeMap::new()));
         let txs = Arc::new(Mutex::new(BTreeMap::new()));
 

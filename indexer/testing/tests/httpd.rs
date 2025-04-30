@@ -46,7 +46,7 @@ async fn create_block() -> anyhow::Result<(
     let httpd_context = Context::new(
         context,
         Arc::new(suite.app.clone_without_indexer()),
-        "http://localhost:26657",
+        todo!(),
         indexer_path,
     );
 

@@ -29,6 +29,7 @@ chrono                  = { workspace = true }
 clap                    = { workspace = true }
 grug-app                = { workspace = true }
 grug-math               = { workspace = true }
+grug-testing            = { workspace = true }
 grug-types              = { workspace = true }
 indexer-sql             = { workspace = true }
 itertools               = { workspace = true }

@@ -10,6 +10,7 @@ use {
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, AppError, Db, Indexer, NullIndexer},
+    grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_types::HashExt,
     grug_vm_hybrid::HybridVm,
@@ -74,7 +75,7 @@ impl StartCmd {
                 let httpd_context = Context::new(
                     indexer.context.clone(),
                     Arc::new(app),
-                    cfg.tendermint.rpc_addr.clone(),
+                    Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
                     indexer.indexer_path.clone(),
                 );
 

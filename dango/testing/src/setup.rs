@@ -16,7 +16,8 @@ use {
     },
     grug::{
         Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128, btree_map, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, TendermintRpcClient, Timestamp, Udec128,
+        btree_map, coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -121,10 +122,12 @@ pub fn setup_test_with_indexer() -> (
         indexer,
     );
 
+    let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
+
     let httpd_context = Context::new(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
-        "http://localhost:26657",
+        consensus_client,
         indexer_path,
     );
 
@@ -204,7 +207,7 @@ pub fn setup_benchmark_wasm(
     setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
 }
 
-fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
+pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
