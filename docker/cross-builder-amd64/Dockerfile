@@ -9,6 +9,7 @@ RUN dpkg --add-architecture amd64 && \
     gcc \
     binutils \
     gcc-x86-64-linux-gnu \
+    g++-x86-64-linux-gnu \
     binutils-x86-64-linux-gnu \
     libssl-dev:amd64 \
     clang \
@@ -21,11 +22,12 @@ RUN dpkg --add-architecture amd64 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN rustup target add x86_64-unknown-linux-gnu
+RUN rustup component add rustfmt
 
 ENV OPENSSL_DIR=/usr
 ENV OPENSSL_INCLUDE_DIR=/usr/include/x86_64-linux-gnu
 ENV OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu
 ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
 ENV PKG_CONFIG_ALLOW_CROSS=1
-ENV CARGO_TARGET_x86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
-ENV CARGO_TARGET_x86_64_UNKNOWN_LINUX_GNU_AR=x86_64-linux-gnu-ar
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_AR=x86_64-linux-gnu-ar
