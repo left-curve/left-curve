@@ -108,6 +108,8 @@ jobs:
   #         RUST_BACKTRACE: 1
 
   build:
+    fail-fast: false
+    timeout-minutes: 15
     strategy:
       matrix:
         arch: [amd64, arm64]
