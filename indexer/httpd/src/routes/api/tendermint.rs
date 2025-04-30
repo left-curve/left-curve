@@ -14,8 +14,6 @@ pub async fn search_tx(
 ) -> Result<HttpResponse, Error> {
     let tx_hash = Hash256::from_str(&path.into_inner()).map_err(ErrorInternalServerError)?;
 
-    info!("Searching for tx: {:?}", tx_hash);
-
     let tx = app_ctx
         .consensus_client
         .search_tx(tx_hash)
