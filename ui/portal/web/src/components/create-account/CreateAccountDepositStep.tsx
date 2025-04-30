@@ -32,7 +32,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   });
 
   const { accountType } = data;
-  const coinInfo = coins[state.chainId]["hyp/eth/usdc"];
+  const coinInfo = coins["hyp/eth/usdc"];
   const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, coinInfo.decimals);
 
   const { mutateAsync: send, isPending } = useMutation({

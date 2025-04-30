@@ -33,7 +33,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   } = parameters;
   const config = useConfig();
 
-  const coins = parameters.coins || config.coins[config.state.chainId];
+  const coins = parameters.coins || config.coins;
 
   function getPrice<T extends boolean = false>(
     amount: number | string,
@@ -58,6 +58,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   ): T extends true ? string : number {
     const { formatOptions = defaultFormatOptions, format = false } = options || {};
     const totalValue = Object.entries(balances).reduce((total, [denom, amount]) => {
+      console.log(coins, denom);
       const price = getPrice(formatUnits(amount, coins[denom].decimals), denom, {
         formatOptions,
         format: false,
