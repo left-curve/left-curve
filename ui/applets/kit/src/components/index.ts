@@ -63,3 +63,4 @@ export { IconMobile } from "./icons/IconMobile";
 export { IconFormatNumber } from "./icons/IconFormatNumber";
 export { IconLanguage } from "./icons/IconLanguage";
 export { IconSwitch } from "./icons/IconSwitch";
+export { IconArrowDown } from "./icons/IconArrowDown";
