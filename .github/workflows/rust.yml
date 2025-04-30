@@ -109,7 +109,7 @@ jobs:
   #         RUST_BACKTRACE: 1
 
   build:
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -209,7 +209,7 @@ jobs:
           set -euo pipefail
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
           CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
-          cross build --target ${{ steps.config.outputs.target }} --release
+          cross build --target ${{ steps.config.outputs.target }} --release --verbose
 
       - name: build docker image
         run: |
