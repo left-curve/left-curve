@@ -113,8 +113,8 @@ jobs:
         arch: [amd64, arm64]
         runner:
           - [self-hosted, Linux]
-          # - [self-hosted, macOS, ARM64]
-    name: Build ${{ matrix.arch }} on ${{ matrix.runner }}
+          - [self-hosted, macOS]
+    name: Build ${{ matrix.arch }} on join(matrix.runner, ', ')
     runs-on: ${{ matrix.runner }}
     # needs: [test]
     permissions:
