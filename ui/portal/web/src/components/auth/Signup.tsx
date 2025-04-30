@@ -293,9 +293,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(
-          `${import.meta.env.PUBLIC_FAUCET_URI || "https://devnet.dango.exchange/faucet"}/mint/${address}`,
-        );
+        const response = await fetch(`${import.meta.env.PUBLIC_FAUCET_URI}/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
