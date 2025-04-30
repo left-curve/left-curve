@@ -108,12 +108,13 @@ jobs:
   #         RUST_BACKTRACE: 1
 
   build:
-    name: Build (${{ matrix.arch }})
-    runs-on: [self-hosted]
+    name: Build ${{ matrix.arch }} on ${{ matrix.os }}
+    runs-on: [self-hosted, ${{ matrix.os }}]
     # needs: [test]
     strategy:
       matrix:
         arch: [amd64, arm64]
+        os: [Linux, macOS]
     permissions:
       packages: write
     steps:
@@ -210,36 +211,36 @@ jobs:
             --platform ${{ steps.config.outputs.platform }} \
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
             --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
-            --push \
+            # --push \
             --provenance=false \
             -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango/Dockerfile .
 
-  push-manifest:
-    permissions:
-      packages: write
-    needs: [build]
-    runs-on: [self-hosted]
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create and push multi-arch Docker manifest
-        run: |
-          docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
-            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-
-          docker manifest push ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
-
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
-              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-
-            docker manifest push ghcr.io/left-curve/left-curve/dango:latest
-          fi
+  # push-manifest:
+  #   permissions:
+  #     packages: write
+  #   needs: [build]
+  #   runs-on: [self-hosted]
+  #   steps:
+  #     - name: Log in to GHCR
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #
+  #     - name: Create and push multi-arch Docker manifest
+  #       run: |
+  #         docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
+  #           --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
+  #           --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+  #
+  #         docker manifest push ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
+  #
+  #         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+  #           docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
+  #             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
+  #             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+  #
+  #           docker manifest push ghcr.io/left-curve/left-curve/dango:latest
+  #         fi
