@@ -108,13 +108,13 @@ jobs:
   #         RUST_BACKTRACE: 1
 
   build:
-    name: Build ${{ matrix.arch }} on ${{ matrix.os }}
-    runs-on: [self-hosted, ${{ matrix.os }}]
-    # needs: [test]
     strategy:
       matrix:
         arch: [amd64, arm64]
         os: [Linux, macOS]
+    name: Build (${{ matrix.arch }}) on (${{ matrix.os }})
+    runs-on: [self-hosted, ${{ matrix.os }}]
+    # needs: [test]
     permissions:
       packages: write
     steps:
