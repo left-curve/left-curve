@@ -111,9 +111,9 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
-        os: [Linux, macOS]
+        os: [Linux] # , macOS]
     name: Build (${{ matrix.arch }}) on (${{ matrix.os }})
-    runs-on: [self-hosted, ${{ matrix.os }}]
+    runs-on: [self-hosted, Linux]
     # needs: [test]
     permissions:
       packages: write
