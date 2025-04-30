@@ -32,81 +32,81 @@ on:
       - "**.toml"
 
 jobs:
-  # format:
-  #   name: Format
-  #   runs-on: [self-hosted]
-  #   steps:
-  #     - name: Checkout sources
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: nightly
-  #         components: rustfmt
-  #
-  #     # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
-  #     # - uses: actions/cache@v4
-  #     #   with:
-  #     #     path: |
-  #     #       ${HOME}/.cargo/bin/
-  #     #       ${HOME}/.cargo/registry/index/
-  #     #       ${HOME}/.cargo/registry/cache/
-  #     #       ${HOME}/.cargo/git/db/
-  #     #       target/
-  #     #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-  #
-  #     - name: Run rustfmt checks
-  #       run: cargo +nightly fmt --check --all
-  #
-  # test:
-  #   needs: [format]
-  #   name: Lint + Test
-  #   runs-on: self-hosted
-  #   env:
-  #     PGDATABASE: grug_test
-  #     DB_HOST: postgres
-  #   # services:
-  #   #   postgres:
-  #   #     image: postgres
-  #   #     env:
-  #   #       POSTGRES_PASSWORD: postgres
-  #   #     options: >-
-  #   #       --health-cmd pg_isready
-  #   #       --health-interval 10s
-  #   #       --health-timeout 5s
-  #   #       --health-retries 5
-  #   steps:
-  #     - name: Checkout sources
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #         components: clippy
-  #
-  #     # - name: Create database
-  #     #   run: |
-  #     #     createdb -U postgres -h postgres "$PGDATABASE"
-  #
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           ${HOME}/.cargo/bin/
-  #           ${HOME}/.cargo/registry/index/
-  #           ${HOME}/.cargo/registry/cache/
-  #           ${HOME}/.cargo/git/db/
-  #           target/
-  #         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-  #
-  #     - name: Run clippy
-  #       run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
-  #
-  #     - name: Run tests
-  #       run: cargo test --all-features
-  #       env:
-  #         RUST_BACKTRACE: 1
+  format:
+    name: Format
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
+      # - uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ${HOME}/.cargo/bin/
+      #       ${HOME}/.cargo/registry/index/
+      #       ${HOME}/.cargo/registry/cache/
+      #       ${HOME}/.cargo/git/db/
+      #       target/
+      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run rustfmt checks
+        run: cargo +nightly fmt --check --all
+
+  test:
+    needs: [format]
+    name: Lint + Test
+    runs-on: self-hosted
+    env:
+      PGDATABASE: grug_test
+      DB_HOST: postgres
+    # services:
+    #   postgres:
+    #     image: postgres
+    #     env:
+    #       POSTGRES_PASSWORD: postgres
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      # - name: Create database
+      #   run: |
+      #     createdb -U postgres -h postgres "$PGDATABASE"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${HOME}/.cargo/bin/
+            ${HOME}/.cargo/registry/index/
+            ${HOME}/.cargo/registry/cache/
+            ${HOME}/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run clippy
+        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all-features
+        env:
+          RUST_BACKTRACE: 1
 
   build:
     timeout-minutes: 20
@@ -114,12 +114,13 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-        runner:
-          - [self-hosted, Linux]
-          - [self-hosted, macOS]
+        runner: [self-hosted]
+          # when needing to try on all runner types
+          # - [self-hosted, Linux]
+          # - [self-hosted, macOS]
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
-    # needs: [test]
+    needs: [test]
     permissions:
       packages: write
     steps:
@@ -214,9 +215,8 @@ jobs:
       - name: build docker image
         run: |
           set -euo pipefail
-            # --push \
           docker buildx build \
-            --load \
+            --push \
             --platform ${{ steps.config.outputs.platform }} \
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
             --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
@@ -228,31 +228,31 @@ jobs:
         run: |
           docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
 
-  # push-manifest:
-  #   permissions:
-  #     packages: write
-  #   needs: [build]
-  #   runs-on: [self-hosted]
-  #   steps:
-  #     - name: Log in to GHCR
-  #       uses: docker/login-action@v3
-  #       with:
-  #         registry: ghcr.io
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-  #
-  #     - name: Create and push multi-arch Docker manifest
-  #       run: |
-  #         docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
-  #           --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-  #           --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-  #
-  #         docker manifest push ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
-  #
-  #         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-  #           docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
-  #             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-  #             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-  #
-  #           docker manifest push ghcr.io/left-curve/left-curve/dango:latest
-  #         fi
+  push-manifest:
+    permissions:
+      packages: write
+    needs: [build]
+    runs-on: [self-hosted]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch Docker manifest
+        run: |
+          docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
+            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
+            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+
+          docker manifest push ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
+              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+
+            docker manifest push ghcr.io/left-curve/left-curve/dango:latest
+          fi
