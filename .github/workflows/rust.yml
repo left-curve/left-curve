@@ -111,9 +111,11 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
-        os: [Linux] # , macOS]
-    name: Build (${{ matrix.arch }}) on (${{ matrix.os }})
-    runs-on: [self-hosted, Linux]
+        runners:
+          - [self-hosted, Linux, X64]
+          # - [self-hosted, macOS, ARM64]
+    name: Build ${{ matrix.arch }} on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     # needs: [test]
     permissions:
       packages: write
@@ -201,17 +203,19 @@ jobs:
 
       - name: build binary with cross
         run: |
+          set -euo pipefail
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
           CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
           cross build --target ${{ steps.config.outputs.target }} --release
 
       - name: build docker image
         run: |
+          set -euo pipefail
+            # --push \
           docker buildx build \
             --platform ${{ steps.config.outputs.platform }} \
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
             --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
-            # --push \
             --provenance=false \
             -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango/Dockerfile .
