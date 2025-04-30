@@ -4,6 +4,8 @@ use {
     },
     grug_testing::TestSuite,
     grug_types::{BlockInfo, BroadcastClient, JsonDeExt, JsonSerExt, SearchTxClient},
+    std::sync::Arc,
+    tokio::runtime::Runtime,
 };
 
 pub trait QueryApp {
@@ -74,13 +76,22 @@ where
     }
 }
 
-impl<T> QueryApp for tokio::sync::Mutex<T>
+impl<T> QueryApp for Arc<tokio::sync::Mutex<T>>
 where
-    T: QueryApp,
+    T: QueryApp + Send + Sync + 'static,
 {
     fn query_app(&self, raw_req: String, height: Option<u64>) -> AppResult<String> {
-        tokio::runtime::Handle::current()
-            .block_on(async { self.lock().await.query_app(raw_req, height) })
+        let arc_clone = Arc::clone(self);
+
+        std::thread::spawn(move || {
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let guard = arc_clone.lock().await;
+                guard.query_app(raw_req, height)
+            })
+        })
+        .join()
+        .unwrap()
     }
 
     fn query_store(
@@ -89,22 +100,60 @@ where
         height: Option<u64>,
         prove: bool,
     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        tokio::runtime::Handle::current()
-            .block_on(async { self.lock().await.query_store(key, height, prove) })
+        let arc_clone = Arc::clone(self);
+        let key_clone = key.to_vec();
+
+        std::thread::spawn(move || {
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let guard = arc_clone.lock().await;
+                guard.query_store(&key_clone, height, prove)
+            })
+        })
+        .join()
+        .unwrap()
     }
 
     fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String> {
-        tokio::runtime::Handle::current()
-            .block_on(async { self.lock().await.simulate(raw_unsigned_tx) })
+        let arc_clone = Arc::clone(self);
+
+        std::thread::spawn(move || {
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let guard = arc_clone.lock().await;
+                guard.simulate(raw_unsigned_tx)
+            })
+        })
+        .join()
+        .unwrap()
     }
 
     fn chain_id(&self) -> AppResult<String> {
-        tokio::runtime::Handle::current().block_on(async { self.lock().await.chain_id() })
+        let arc_clone = Arc::clone(self);
+
+        std::thread::spawn(move || {
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let guard = arc_clone.lock().await;
+                guard.chain_id()
+            })
+        })
+        .join()
+        .unwrap()
     }
 
     fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-        tokio::runtime::Handle::current()
-            .block_on(async { self.lock().await.last_finalized_block() })
+        let arc_clone = Arc::clone(self);
+
+        std::thread::spawn(move || {
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let guard = arc_clone.lock().await;
+                guard.last_finalized_block()
+            })
+        })
+        .join()
+        .unwrap()
     }
 }
 

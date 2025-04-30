@@ -1,3 +1,20 @@
+type AbciQuery {
+	code: Int!
+	log: String!
+	info: String!
+	index: Int!
+	"""
+	The base64 encoded key
+	"""
+	key: String!
+	"""
+	The base64 encoded value
+	"""
+	value: String!
+	height: Int!
+	codespace: String!
+}
+
 type Block {
 	blockHeight: Int!
 	createdAt: DateTime!
@@ -179,7 +196,19 @@ type Mutation {
 		The base64 encoded transaction to broadcast
 		"""
 		tx: String!
-	): String!
+	): TxSyncResponse!
+	broadcastTxAsync(
+		"""
+		The base64 encoded transaction to broadcast
+		"""
+		tx: String!
+	): TxAsyncResponse!
+	broadcastTxCommit(
+		"""
+		The base64 encoded transaction to broadcast
+		"""
+		tx: String!
+	): TxCommitResponse!
 }
 
 """
@@ -225,6 +254,12 @@ type Query {
 	Get events
 	"""
 	events(after: String, before: String, first: Int, last: Int, sortBy: EventSortBy): EventConnection!
+	abciQuery(		path: String,
+		"""
+		The base64 encoded data
+		"""
+		data: String!,		height: Int,		prove: Boolean! = false
+	): AbciQuery!
 	queryApp(
 		"""
 		Request as JSON string
@@ -324,6 +359,33 @@ type TransactionEdge {
 enum TransactionSortBy {
 	BLOCK_HEIGHT_ASC
 	BLOCK_HEIGHT_DESC
+}
+
+type TxAsyncResponse {
+	codespace: String!
+	code: Int!
+	"""
+	The base64 encoded data
+	"""
+	data: String!
+	log: String!
+	hash: String!
+}
+
+type TxCommitResponse {
+	hash: String!
+	blockHeight: Int!
+}
+
+type TxSyncResponse {
+	codespace: String!
+	code: Int!
+	"""
+	The base64 encoded data
+	"""
+	data: String!
+	log: String!
+	hash: String!
 }
 
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT

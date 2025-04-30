@@ -146,20 +146,9 @@ impl BroadcastClient for HttpClient {
             })
             .await?;
 
-        Ok(BroadcastTxOutcome {
-            tx_hash: Hash256::from_str(&response.broadcast_tx_sync.hash)?,
-            check_tx: CheckTxOutcome {
-                gas_limit: 0,
-                gas_used: 0,
-                result: into_generic_result(
-                    response.broadcast_tx_sync.code,
-                    response.broadcast_tx_sync.log,
-                ),
-                events: Binary::from_str(&response.broadcast_tx_sync.data)?
-                    .into_inner()
-                    .deserialize_json()?,
-            },
-        })
+        let outcome = response.broadcast_tx_sync.deserialize_json()?;
+
+        Ok(outcome)
     }
 }
 

@@ -40,9 +40,15 @@ async fn mock() {
 
     let suite = Arc::new(Mutex::new(suite));
 
-    let mock_client = MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::Timed);
+    let mock_client =
+        MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::OnBroadcast);
 
-    let context = Context::new(indexer_context, suite, Arc::new(mock_client), indexer_path);
+    let context = Context::new(
+        indexer_context,
+        Arc::new(suite),
+        Arc::new(mock_client),
+        indexer_path,
+    );
 
     indexer_httpd::server::run_server("127.0.0.1", 8080, None, context, config_app, build_schema)
         .await
