@@ -20,6 +20,7 @@ async fn mock() {
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
+        .with_tmpdir()
         .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()
         .unwrap();

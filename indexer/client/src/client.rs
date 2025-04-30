@@ -157,21 +157,12 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let response: tendermint_rpc::endpoint::tx::Response = self
+        let response: SearchTxOutcome = self
             .get(format!("api/tendermint/search_tx/{hash}"))
             .await?
             .json()
             .await?;
-        let outcome = SearchTxOutcome::from_tm_query_tx_response(response)?;
 
-        Ok(outcome)
-    }
-}
-
-fn into_generic_result(code: i64, log: String) -> GenericResult<()> {
-    if code == 0 {
-        Ok(())
-    } else {
-        Err(log)
+        Ok(response)
     }
 }

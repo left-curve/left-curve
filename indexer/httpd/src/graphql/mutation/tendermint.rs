@@ -1,6 +1,5 @@
 use {
     async_graphql::*,
-    base64::{Engine, engine::general_purpose::STANDARD},
     grug_types::{JsonDeExt, JsonSerExt, Tx},
     sentry::configure_scope,
 };
@@ -17,7 +16,7 @@ impl TendermintMutation {
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        let decoded_tx: Tx = STANDARD.decode(tx.clone())?.deserialize_json()?;
+        let decoded_tx: Tx = tx.deserialize_json()?;
 
         match app_ctx
             .consensus_client

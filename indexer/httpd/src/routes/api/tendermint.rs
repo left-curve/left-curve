@@ -2,6 +2,7 @@ use {
     actix_web::{Error, HttpResponse, error::ErrorInternalServerError, get, web},
     grug_types::Hash256,
     std::str::FromStr,
+    tracing::info,
 };
 
 use crate::context::Context;
@@ -12,6 +13,8 @@ pub async fn search_tx(
     app_ctx: web::Data<Context>,
 ) -> Result<HttpResponse, Error> {
     let tx_hash = Hash256::from_str(&path.into_inner()).map_err(ErrorInternalServerError)?;
+
+    info!("Searching for tx: {:?}", tx_hash);
 
     let tx = app_ctx
         .consensus_client
