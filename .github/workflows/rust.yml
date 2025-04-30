@@ -114,7 +114,7 @@ jobs:
         runner:
           - [self-hosted, Linux]
           - [self-hosted, macOS]
-    name: Build ${{ matrix.arch }} on join(matrix.runner, ', ')
+    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     # needs: [test]
     permissions:
@@ -131,10 +131,10 @@ jobs:
               echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
               echo "arch=x86_64" >> $GITHUB_OUTPUT
             elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-              if [[ "${{ runner.os }}" == "macOS" ]]; then
-                echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}, cross doesn't work with this config (sadly). We should fix this."
-                exit 1
-              fi
+              # if [[ "${{ runner.os }}" == "macOS" ]]; then
+              #   echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}, cross doesn't work with this config (sadly). We should fix this."
+              #   exit 1
+              # fi
 
               echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
               echo "arch=arm64" >> $GITHUB_OUTPUT
