@@ -6,6 +6,10 @@ use {
     },
 };
 
+pub const OVERHEAD_SIZE: Uint128 = Uint128::new(11);
+pub const INPUT_SIZE: Uint128 = Uint128::new(105);
+pub const OUTPUT_SIZE: Uint128 = Uint128::new(43);
+
 pub const NAMESPACE: &str = "bitcoin";
 
 pub const SUBDENOM: &str = "satoshi";
@@ -24,8 +28,8 @@ pub struct Config {
     pub vault: BitcoinAddress,
     pub guardians: NonEmpty<BTreeSet<Addr>>,
     pub threshold: u8,
-    /// The amount of Sats as gas fee for each outbound transaction.
-    pub outbound_gas: Uint128,
+    /// The amount of Sats for each vByte to calculate the fee.
+    pub sats_per_vbyte: Uint128,
     /// For outbound transactions, a flat fee deducted from the withdraw amount.
     ///
     /// We expect this to be updated often to reflect the gas price on Bitcoin
@@ -71,7 +75,7 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     UpdateConfig {
-        outbound_gas: Option<Uint128>,
+        sats_per_vbyte: Option<Uint128>,
         outbound_fee: Option<Uint128>,
         outbound_strategy: Option<Order>,
         // TODO: Allow changing the vault address and guardian set? This requires resetting the UTXO set.

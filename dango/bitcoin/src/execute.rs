@@ -4,8 +4,9 @@ use {
     dango_types::{
         bank,
         bitcoin::{
-            BitcoinAddress, BitcoinSignature, DENOM, ExecuteMsg, InboundConfirmed, InstantiateMsg,
-            OutboundConfirmed, OutboundRequested, Transaction,
+            BitcoinAddress, BitcoinSignature, DENOM, ExecuteMsg, INPUT_SIZE, InboundConfirmed,
+            InstantiateMsg, OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed, OutboundRequested,
+            Transaction,
         },
         taxman::{self, FeeType},
     },
@@ -34,10 +35,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateConfig {
-            outbound_gas,
+            sats_per_vbyte,
             outbound_fee,
             outbound_strategy,
-        } => update_config(ctx, outbound_gas, outbound_fee, outbound_strategy),
+        } => update_config(ctx, sats_per_vbyte, outbound_fee, outbound_strategy),
         ExecuteMsg::ObserveInbound {
             transaction_hash,
             amount,
@@ -50,7 +51,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn update_config(
     ctx: MutableCtx,
-    outbound_gas: Option<Uint128>,
+    sats_per_vbyte: Option<Uint128>,
     outbound_fee: Option<Uint128>,
     outbound_strategy: Option<Order>,
 ) -> anyhow::Result<Response> {
@@ -60,8 +61,8 @@ fn update_config(
     );
 
     CONFIG.update(ctx.storage, |mut cfg| -> StdResult<_> {
-        if let Some(outbound_gas) = outbound_gas {
-            cfg.outbound_gas = outbound_gas;
+        if let Some(sats_per_vbyte) = sats_per_vbyte {
+            cfg.sats_per_vbyte = sats_per_vbyte;
         }
 
         if let Some(outbound_fee) = outbound_fee {
@@ -203,21 +204,28 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         return Ok(Response::new());
     }
 
+    // Calculate the number of outputs, adding 1 (vault) for the change.
+    let n_outupt = outputs.len() + 1;
+
     // Sum up the total outbound amount.
-    // Make sure to include the Bitcoin gas fee.
-    let total = outputs
+    let withdraw_amount = outputs
         .iter()
         .try_fold(Uint128::ZERO, |total, (_, amount)| {
             total.checked_add(*amount)
-        })?
-        .checked_add(cfg.outbound_gas)?;
+        })?;
 
     // Choose the UTXOs as inputs for the outbound transaction.
     let mut inputs = BTreeMap::new();
     let mut sum = Uint128::ZERO;
 
+    // The size of the transaction is calculated as:
+    // size = overhead + n_input * input_size + n_output * output_size
+    // and the fee = size * sats_per_vbyte
+    let mut fee =
+        (OVERHEAD_SIZE + Uint128::new(n_outupt as u128) * OUTPUT_SIZE) * cfg.sats_per_vbyte;
+
     for res in UTXOS.keys(ctx.storage, None, None, cfg.outbound_strategy) {
-        if sum >= total {
+        if sum >= withdraw_amount + fee {
             break;
         }
 
@@ -225,16 +233,21 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
         inputs.insert(hash, amount);
         sum.checked_add_assign(amount)?;
+
+        fee += INPUT_SIZE * cfg.sats_per_vbyte;
+    }
+
+    // Total amount of BTC needed for this tx.
+    let total = withdraw_amount + fee;
+
+    // If there's excess input, send the excess back to the vault.
+    if sum > total {
+        outputs.insert(cfg.vault, sum - total);
     }
 
     // Delete the chosen UTXOs.
     for (hash, amount) in &inputs {
         UTXOS.remove(ctx.storage, (*amount, *hash))?;
-    }
-
-    // If there's excess input, send the excess back to the vault.
-    if total > sum {
-        outputs.insert(cfg.vault, total - sum);
     }
 
     let (id, _) = NEXT_OUTBOUND_ID.increment(ctx.storage)?;
