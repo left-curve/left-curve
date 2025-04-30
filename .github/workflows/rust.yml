@@ -115,7 +115,7 @@ jobs:
         arch: [amd64, arm64]
         runner:
           - [self-hosted, Linux]
-          # - [self-hosted, macOS]
+          - [macos-latest]
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     # needs: [test]
