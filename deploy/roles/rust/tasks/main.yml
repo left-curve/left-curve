@@ -19,17 +19,6 @@
     CARGO_HOME: /usr/local/cargo
     RUSTUP_HOME: /usr/local/rustup
 
-- name: Symlink rust tools to /usr/local/bin
-  file:
-    src: "/usr/local/cargo/bin/{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
-    state: link
-    force: yes
-  loop:
-    - rustc
-    - cargo
-    - rustup
-
 - name: Install Rust components
   shell: |
     source /etc/profile
