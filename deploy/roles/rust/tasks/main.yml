@@ -1,28 +1,43 @@
-- name: Ensure curl is installed
-  apt:
-    name: curl
-    state: present
-    update_cache: yes
-
-- name: Install rustup (Rust toolchain installer)
-  become: false
-  shell: |
-    curl https://sh.rustup.rs -sSf | sh -s -- -y
-  args:
-    creates: "{{ ansible_env.HOME }}/.cargo/bin/rustc"
-
-- name: Add cargo bin path to profile
-  lineinfile:
-    path: ~/.profile
-    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
-    create: yes
-
-- name: Install base packages
+- name: Ensure dependencies are installed
   apt:
     name:
+      - curl
       - build-essential
       - libssl-dev
       - clang
       - pkg-config
     state: present
     update_cache: yes
+
+- name: Install rustup system-wide
+  shell: |
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+  args:
+    creates: /usr/local/cargo/bin/rustc
+    executable: /bin/bash
+  environment:
+    CARGO_HOME: /usr/local/cargo
+    RUSTUP_HOME: /usr/local/rustup
+
+- name: Symlink rust tools to /usr/local/bin
+  file:
+    src: "/usr/local/cargo/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: yes
+  loop:
+    - rustc
+    - cargo
+    - rustup
+
+- name: Install Rust components
+  shell: |
+    source /etc/profile
+    rustup component add clippy rustfmt rust-src
+    rustup component add rustfmt clippy rust-src --toolchain nightly
+  environment:
+    CARGO_HOME: /usr/local/cargo
+    RUSTUP_HOME: /usr/local/rustup
+    PATH: /usr/local/cargo/bin:{{ ansible_env.PATH }}
+  args:
+    executable: /bin/bash

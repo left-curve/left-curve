@@ -7,3 +7,36 @@
     access_token: "{{ lookup('env', 'GITHUB_TOKEN') }}"
   roles:
     - MonolithProjects.github_actions_runner
+  tasks:
+    - name: Add ~/.cargo/bin to PATH in GitHub Actions runner systemd service
+      ansible.builtin.lineinfile:
+        path: "/etc/systemd/system/actions.runner.{{ github_account }}.{{ hostname }}.service"
+        regexp: '^Environment='
+        line: 'Environment="PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"'
+        state: present
+      notify:
+        - Reload systemd
+        - Restart github-actions-runner
+      become: yes
+
+    - name: Ensure .bashrc includes ~/.cargo/bin for the runner user
+      ansible.builtin.lineinfile:
+        path: "/home/{{ runner_user }}/.bashrc"
+        line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+        state: present
+        owner: "{{ runner_user }}"
+        mode: '0644'
+      become: yes
+      become_user: "{{ runner_user }}"
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+      become: yes
+
+    - name: Restart github-actions-runner
+      ansible.builtin.systemd:
+        name: "actions.runner.{{ github_account }}.{{ hostname }}.service"
+        state: restarted
+      become: yes
