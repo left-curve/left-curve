@@ -1,14 +1,16 @@
 import type {
-  AnyCoin,
+  AccountTypes,
+  AppConfig,
   Chain,
   ChainId,
   Client,
   Denom,
-  Signer,
+  Hex,
   Transport,
   UID,
 } from "@left-curve/dango/types";
 
+import type { AnyCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
@@ -46,7 +48,9 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
-
+  getAppConfig(): Promise<
+    AppConfig & { accountFactory: { codeHashes: Record<AccountTypes, Hex> } }
+  >;
   getClient(): Client<transport>;
   _internal: Internal<transport>;
 };

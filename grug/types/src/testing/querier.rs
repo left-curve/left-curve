@@ -110,8 +110,6 @@ impl MockQuerier {
 }
 
 impl Querier for MockQuerier {
-    type Error = StdError;
-
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         match req {
             Query::Config(_req) => {

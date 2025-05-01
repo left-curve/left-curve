@@ -1,23 +1,28 @@
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, MatchingOutcome, NEXT_ORDER_ID, ORDERS, Order, PAIRS,
-        PassiveLiquidityPool, RESERVES, core, fill_orders, match_orders,
+        PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
+    dango_oracle::OracleQuerier,
     dango_types::{
+        DangoQuerier,
+        account_factory::Username,
         bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
             NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
             PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, Order as IterationOrder, QuerierExt,
-        Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx, Udec128,
+        Uint128, UniqueVec, coins,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -227,6 +232,7 @@ fn batch_update_orders(
                     user: ctx.sender,
                     amount: order.amount,
                     remaining: order.amount,
+                    created_at_block_height: ctx.block.height,
                 },
             ),
         )?;
@@ -295,8 +301,7 @@ fn provide_liquidity(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom: pair.lp_denom,
-                amount: lp_mint_amount,
+                coins: coins! { pair.lp_denom => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
         )?
@@ -345,8 +350,7 @@ fn withdraw_liquidity(
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: pair.lp_denom,
-                    amount: lp_burn_amount,
+                    coins: coins! { pair.lp_denom => lp_burn_amount },
                 },
                 Coins::new(), // No funds needed for burning
             )?
@@ -427,15 +431,28 @@ fn swap_exact_amount_out(
 /// Implemented according to:
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
+    let mut volumes = HashMap::new();
+    let mut volumes_by_username = HashMap::new();
+    let mut fees = Coins::new();
+    let mut fee_payments = BTreeMap::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
+        debug_assert!(
+            order.created_at_block_height == ctx.block.height,
+            "incoming order was created in a previous block! creation height: {}, current height: {}",
+            order.created_at_block_height,
+            ctx.block.height
+        );
+
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }
 
@@ -451,30 +468,73 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
+            ctx.querier,
+            ctx.block.height,
+            app_cfg.addresses.oracle,
+            app_cfg.addresses.account_factory,
+            app_cfg.maker_fee_rate.into_inner(),
+            app_cfg.taker_fee_rate.into_inner(),
             base_denom,
             quote_denom,
             &mut events,
             &mut refunds,
+            &mut fees,
+            &mut fee_payments,
+            &mut volumes,
+            &mut volumes_by_username,
         )?;
     }
 
-    Response::new()
+    // Save the updated volumes.
+    for (address, volume) in volumes {
+        VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
+        // TODO: purge volume data that are too old.
+    }
+
+    for (username, volume) in volumes_by_username {
+        VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
+        // TODO: purge volume data that are too old.
+    }
+
+    Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
             Some(Message::batch_transfer(refunds)?)
         } else {
             None
         })
-        .add_events(events)
+        .may_add_message(if !fee_payments.is_empty() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: fee_payments,
+                },
+                fees,
+            )?)
+        } else {
+            None
+        })
+        .add_events(events)?)
 }
 
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
+    querier: QuerierWrapper,
+    current_block_height: u64,
+    oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
+    account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
-) -> StdResult<()> {
+    fees: &mut Coins,
+    fee_payments: &mut BTreeMap<Addr, Coins>,
+    volumes: &mut HashMap<Addr, Uint128>,
+    volumes_by_username: &mut HashMap<Username, Uint128>,
+) -> anyhow::Result<()> {
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
     let bid_iter = ORDERS
@@ -517,7 +577,7 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    // Clear the BUY orders.
+    // Fill orders
     for FillingOutcome {
         order_direction,
         order_price,
@@ -527,8 +587,17 @@ fn clear_orders_of_pair(
         cleared,
         refund_base,
         refund_quote,
-    } in fill_orders(bids, asks, clearing_price, volume)?
-    {
+        fee_base,
+        fee_quote,
+    } in fill_orders(
+        bids,
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
+    )? {
         let refund = Coins::try_from([
             Coin {
                 denom: base_denom.clone(),
@@ -540,13 +609,49 @@ fn clear_orders_of_pair(
             },
         ])?;
 
+        // Handle fees.
+        if fee_base.is_non_zero() {
+            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_default()
+                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+        }
+
+        if fee_quote.is_non_zero() {
+            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fee_payments
+                .entry(order.user)
+                .or_default()
+                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+        }
+
+        // Include fee information in the event
+        let fee = if fee_base.is_non_zero() {
+            Some(Coin {
+                denom: base_denom.clone(),
+                amount: fee_base,
+            })
+        } else if fee_quote.is_non_zero() {
+            Some(Coin {
+                denom: quote_denom.clone(),
+                amount: fee_quote,
+            })
+        } else {
+            None
+        };
+
         events.push(OrderFilled {
+            user: order.user,
             order_id,
             clearing_price,
             filled,
             refund: refund.clone(),
-            fee: None,
+            fee,
             cleared,
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction: order_direction,
         })?;
 
         refunds.entry(order.user).or_default().insert_many(refund)?;
@@ -572,6 +677,59 @@ fn clear_orders_of_pair(
                 ),
                 &order,
             )?;
+        }
+
+        // Calculate the volume in USD for the filled order
+        let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
+        let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
+
+        // Record trading volume for the user's address.
+        {
+            match volumes.entry(order.user) {
+                Entry::Occupied(mut v) => {
+                    v.get_mut().checked_add_assign(new_volume)?;
+                },
+                Entry::Vacant(v) => {
+                    let volume = VOLUMES
+                        .prefix(&order.user)
+                        .values(storage, None, None, IterationOrder::Descending)
+                        .next()
+                        .transpose()?
+                        .unwrap_or(Uint128::ZERO)
+                        .checked_add(new_volume)?;
+
+                    v.insert(volume);
+                },
+            }
+        }
+
+        // Record trading volume for the user's username, if the trader is a
+        // single-signature account (skip for multisig accounts).
+        // TODO: this query can use caching, so we don't re-do queries for the same user.
+        if let Some(username) = querier
+            .query_wasm_path(
+                account_factory,
+                &dango_account_factory::ACCOUNTS.path(order.user),
+            )?
+            .params
+            .owner()
+        {
+            match volumes_by_username.entry(username.clone()) {
+                Entry::Occupied(mut v) => {
+                    v.get_mut().checked_add_assign(new_volume)?;
+                },
+                Entry::Vacant(v) => {
+                    let volume = VOLUMES_BY_USER
+                        .prefix(&username)
+                        .values(storage, None, None, IterationOrder::Descending)
+                        .next()
+                        .transpose()?
+                        .unwrap_or(Uint128::ZERO)
+                        .checked_add(new_volume)?;
+
+                    v.insert(volume);
+                },
+            }
         }
     }
 

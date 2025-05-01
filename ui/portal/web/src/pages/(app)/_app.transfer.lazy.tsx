@@ -23,11 +23,11 @@ import {
   CoinSelector,
   IconButton,
   IconChevronDown,
-  IconCopy,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
+  TextCopy,
   TruncateText,
   useInputs,
   useMediaQuery,
@@ -37,9 +37,8 @@ import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { z } from "zod";
-import { Modals } from "~/components/foundation/RootModal";
 import { toast } from "~/components/foundation/Toast";
+import { Modals } from "~/components/modals/RootModal";
 import { m } from "~/paraglide/messages";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
@@ -49,7 +48,7 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 function TransferApplet() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal } = useApp();
+  const { settings, showModal, eventBus } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
@@ -91,55 +90,70 @@ function TransferApplet() {
   >({
     mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
-      const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
+      eventBus.publish("submit_tx", { isSubmitting: true });
+      try {
+        const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
-      const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
+        const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
 
-      showModal(Modals.ConfirmSend, {
-        amount: parsedAmount,
-        denom: selectedDenom,
-        to: address as Address,
-        confirmSend,
-        rejectSend,
-      });
+        showModal(Modals.ConfirmSend, {
+          amount: parsedAmount,
+          denom: selectedDenom,
+          to: address as Address,
+          confirmSend,
+          rejectSend,
+        });
 
-      const response = await promise.then(() => true).catch(() => false);
+        const response = await promise
+          .then(() => true)
+          .catch(() => {
+            eventBus.publish("submit_tx", {
+              isSubmitting: false,
+              txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
+            });
+            return false;
+          });
 
-      if (!response) return undefined;
+        if (!response) return undefined;
 
-      await signingClient.transfer({
-        transfer: {
-          [address]: {
-            [selectedCoin.denom]: parsedAmount,
+        await signingClient.transfer({
+          transfer: {
+            [address]: {
+              [selectedCoin.denom]: parsedAmount,
+            },
           },
-        },
-        sender: account!.address as Address,
-      });
+          sender: account!.address as Address,
+        });
 
-      reset();
-      toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-      refreshBalances();
-    },
-
-    onError: (e) => {
-      console.error(e);
-      toast.error(
-        {
-          title: "Transfer failed",
-          description: e instanceof Error ? e.message : e,
-        },
-        {
-          duration: Number.POSITIVE_INFINITY,
-        },
-      );
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        reset();
+        toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
+        });
+        refreshBalances();
+        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+      } catch (e) {
+        console.error(e);
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
+        });
+        toast.error(
+          {
+            title: m["transfer.error.title"](),
+            description: m["transfer.error.description"](),
+          },
+          {
+            duration: Number.POSITIVE_INFINITY,
+          },
+        );
+      }
     },
   });
 
   return (
-    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4">
+    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
       {isMd ? null : (
         <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
           <IconButton variant="link">
@@ -255,7 +269,7 @@ function TransferApplet() {
                     className="diatype-sm-medium text-gray-500"
                     text={account?.address}
                   />
-                  <IconCopy
+                  <TextCopy
                     copyText={account?.address}
                     className="w-4 h-4 cursor-pointer text-gray-500"
                   />

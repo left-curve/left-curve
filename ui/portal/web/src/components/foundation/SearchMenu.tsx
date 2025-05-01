@@ -1,5 +1,12 @@
+import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { useApp } from "~/hooks/useApp";
+import { useSearchBar } from "~/hooks/useSearchBar";
+
+import { m } from "~/paraglide/messages";
+
 import {
-  type AppletMetadata,
   IconButton,
   IconChevronDown,
   IconClose,
@@ -7,33 +14,18 @@ import {
   ResizerContainer,
   Spinner,
   TextLoop,
-  twMerge,
-  useClickAway,
-  useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { useApp } from "~/hooks/useApp";
-
-import { m } from "~/paraglide/messages";
-
-import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
-import { useSearchBar } from "~/hooks/useSearchBar";
 import { SearchItem } from "./SearchItem";
 
-const ExportComponent = Object.assign(SearchMenu, {
-  Body,
-});
+import type React from "react";
+import type { SearchBarResult } from "~/hooks/useSearchBar";
 
-export { ExportComponent as SearchMenu };
-
-function SearchMenu() {
+const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
-  const { searchText, setSearchText, isLoading, txs, block, applets, isRefetching } =
-    useSearchBar();
+  const { searchText, setSearchText, isLoading, searchResult, isRefetching } = useSearchBar();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -119,15 +111,15 @@ function SearchMenu() {
                     className="flex absolute w-full h-full bg-transparent left-0 rounded-md cursor-text gap-1 items-center pl-9 pt-1 diatype-m-regular"
                     onClick={() => setSearchBarVisibility(!isSearchBarVisible)}
                   >
-                    <span>{m["commadBar.placeholder.title"]()}</span>{" "}
+                    <span>{m["searchBar.placeholder.title"]()}</span>{" "}
                     <TextLoop
                       texts={[
-                        m["commadBar.placeholder.transactions"](),
-                        m["commadBar.placeholder.apps"](),
-                        m["commadBar.placeholder.blocks"](),
-                        m["commadBar.placeholder.accounts"](),
-                        m["commadBar.placeholder.usernames"](),
-                        m["commadBar.placeholder.tokens"](),
+                        m["searchBar.placeholder.transactions"](),
+                        m["searchBar.placeholder.apps"](),
+                        m["searchBar.placeholder.blocks"](),
+                        m["searchBar.placeholder.accounts"](),
+                        m["searchBar.placeholder.usernames"](),
+                        m["searchBar.placeholder.tokens"](),
                       ]}
                     />
                   </motion.button>
@@ -139,28 +131,25 @@ function SearchMenu() {
           <Body
             isVisible={isSearchBarVisible}
             hideMenu={hideMenu}
-            applets={applets}
-            block={block}
-            txs={txs}
+            searchResult={searchResult}
             isLoading={isLoading || isRefetching}
           />
         </div>
       </ResizerContainer>
     </Command>
   );
-}
+};
 
 type SearchMenuBodyProps = {
   isVisible: boolean;
   hideMenu: () => void;
-  applets: AppletMetadata[];
-  txs: IndexedTransaction[];
-  block?: IndexedBlock;
+  searchResult: SearchBarResult;
   isLoading: boolean;
 };
 
-export function Body({ isVisible, hideMenu, applets, txs, block, isLoading }: SearchMenuBodyProps) {
+const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult, isLoading }) => {
   const navigate = useNavigate();
+  const { applets, block, txs, account, contract } = searchResult;
 
   return (
     <AnimatePresence mode="wait" custom={isVisible}>
@@ -195,7 +184,7 @@ export function Body({ isVisible, hideMenu, applets, txs, block, isLoading }: Se
                   </div>
                 ) : (
                   <p className="text-gray-500 diatype-m-regular p-2 text-center">
-                    {m["commadBar.noResult"]()}
+                    {m["searchBar.noResult"]()}
                   </p>
                 )}
               </Command.Empty>
@@ -239,6 +228,30 @@ export function Body({ isVisible, hideMenu, applets, txs, block, isLoading }: Se
                     </Command.Group>
                   ))
                 : null}
+              {account ? (
+                <Command.Group heading="Accounts">
+                  <Command.Item
+                    key={account.address}
+                    value={account.address}
+                    className="group"
+                    onSelect={() => [navigate({ to: `/account/${account.address}` }), hideMenu()]}
+                  >
+                    <SearchItem.Account account={account} />
+                  </Command.Item>
+                </Command.Group>
+              ) : null}
+              {contract ? (
+                <Command.Group heading="Contracts">
+                  <Command.Item
+                    key={contract.address}
+                    value={contract.address}
+                    className="group"
+                    onSelect={() => [navigate({ to: `/contract/${contract.address}` }), hideMenu()]}
+                  >
+                    <SearchItem.Contract contract={contract} />
+                  </Command.Item>
+                </Command.Group>
+              ) : null}
               {/*    <Command.Group value="Assets">
                 {[].map((token) => (
                   <Command.Item
@@ -257,4 +270,10 @@ export function Body({ isVisible, hideMenu, applets, txs, block, isLoading }: Se
       )}
     </AnimatePresence>
   );
-}
+};
+
+const ExportComponent = Object.assign(SearchMenu, {
+  Body,
+});
+
+export { ExportComponent as SearchMenu };

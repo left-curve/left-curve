@@ -33,6 +33,26 @@ pub trait Integer: Sized + Copy {
     fn wrapping_mul(self, other: Self) -> Self;
 
     fn wrapping_pow(self, exp: u32) -> Self;
+
+    #[inline]
+    fn wrapping_add_assign(&mut self, other: Self) {
+        *self = self.wrapping_add(other);
+    }
+
+    #[inline]
+    fn wrapping_sub_assign(&mut self, other: Self) {
+        *self = self.wrapping_sub(other);
+    }
+
+    #[inline]
+    fn wrapping_mul_assign(&mut self, other: Self) {
+        *self = self.wrapping_mul(other);
+    }
+
+    #[inline]
+    fn wrapping_pow_assign(&mut self, exp: u32) {
+        *self = self.wrapping_pow(exp);
+    }
 }
 
 // ------------------------------------ int ------------------------------------

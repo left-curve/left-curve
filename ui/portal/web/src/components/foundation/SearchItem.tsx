@@ -1,32 +1,28 @@
-import {
-  type AppletMetadata,
-  IconEmptyStar,
-  IconStar,
-  TruncateText,
-} from "@left-curve/applets-kit";
-import type { AnyCoin, WithPrice } from "@left-curve/dango/types";
+import { useMediaQuery } from "@left-curve/applets-kit";
+
+import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-const ExportComponent = Object.assign(
-  {},
-  {
-    Applet,
-    Asset,
-    Block,
-    Transaction,
-  },
-);
-
-export { ExportComponent as SearchItem };
+import type { AppletMetadata } from "@left-curve/applets-kit";
+import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
+import type { AnyCoin, WithPrice } from "@left-curve/store/types";
+import type { PropsWithChildren } from "react";
 
 const childVariants = {
   hidden: { opacity: 0, y: -30 },
   visible: { opacity: 1, y: 0 },
 };
-export function Applet({ description, img, title }: AppletMetadata) {
+
+const Root: React.FC<PropsWithChildren> = ({ children }) => {
+  return <>{children}</>;
+};
+
+type SearchAppletItemProps = AppletMetadata;
+
+const AppletItem: React.FC<SearchAppletItemProps> = ({ description, img, title }) => {
   return (
     <motion.div
-      className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs ] group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
       variants={childVariants}
       key={title}
     >
@@ -48,9 +44,11 @@ export function Applet({ description, img, title }: AppletMetadata) {
       </div>
     </motion.div>
   );
-}
+};
 
-export function Asset({ logoURI, name, symbol, price }: WithPrice<AnyCoin>) {
+type SearchAssetProps = WithPrice<AnyCoin>;
+
+const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, name, symbol, price }) => {
   return (
     <motion.div
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
@@ -66,13 +64,18 @@ export function Asset({ logoURI, name, symbol, price }: WithPrice<AnyCoin>) {
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="diatype-sm-bold">${price}</p>
+        <p className="diatype-sm-bold">${price.humanizedPrice}</p>
       </div>
     </motion.div>
   );
-}
+};
 
-export function Block({ height, hash }: { height: number; hash: string }) {
+type SearchBlockItemProps = {
+  height: number;
+  hash: string;
+};
+
+const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
     <motion.div
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
@@ -81,7 +84,7 @@ export function Block({ height, hash }: { height: number; hash: string }) {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
-          <img src="/images/emojis/simple/map.svg" alt="test" className="w-12 h-12" />
+          <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="diatype-m-medium">#{height} Block</p>
@@ -90,9 +93,14 @@ export function Block({ height, hash }: { height: number; hash: string }) {
       </div>
     </motion.div>
   );
-}
+};
 
-export function Transaction({ height, hash }: { height: number; hash: string }) {
+type SearchTransactionItemProps = {
+  height: number;
+  hash: string;
+};
+
+const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
     <motion.div
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
@@ -101,7 +109,7 @@ export function Transaction({ height, hash }: { height: number; hash: string }) 
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
-          <img src="/images/emojis/simple/map.svg" alt="test" className="w-12 h-12" />
+          <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <TruncateText className="flex gap-2 diatype-m-medium" text={hash} end={20} />
@@ -111,4 +119,78 @@ export function Transaction({ height, hash }: { height: number; hash: string }) 
       </div>
     </motion.div>
   );
-}
+};
+
+type SearchContractItemProps = {
+  contract: ContractInfo & { name: string; address: Address };
+};
+
+const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
+  const { name, address } = contract;
+  const { isMd } = useMediaQuery();
+  return (
+    <motion.div
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      variants={childVariants}
+      key={name}
+    >
+      <div className="flex items-center gap-4">
+        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+          <img src="/images/emojis/detailed/factory.svg" alt="test" className="w-12 h-12" />
+        </div>
+        <div className="flex flex-col">
+          <p className="flex gap-2 diatype-m-medium">{name}</p>
+          {isMd ? (
+            <p className="diatype-sm-regular text-gray-500">{address}</p>
+          ) : (
+            <TruncateText className="diatype-sm-regular text-gray-500" text={address} end={20} />
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+type SearchAccountItemProps = {
+  account: Account;
+};
+
+const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
+  const { isMd } = useMediaQuery();
+  const { username, address, type } = account;
+
+  const name = `${username} - ${type} #${account?.index}`;
+
+  return (
+    <motion.div
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      variants={childVariants}
+      key={address}
+    >
+      <div className="flex items-center gap-4">
+        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+          <img src={`/images/emojis/simple/${type}.svg`} alt={type} className="w-12 h-12" />
+        </div>
+        <div className="flex flex-col">
+          <p className="flex gap-2 diatype-m-medium">{name}</p>
+          {isMd ? (
+            <p className="diatype-sm-regular text-gray-500">{address}</p>
+          ) : (
+            <TruncateText className="diatype-sm-regular text-gray-500" text={address} end={20} />
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const ExportComponent = Object.assign(Root, {
+  Applet: AppletItem,
+  Asset: AssetItem,
+  Block: BlockItem,
+  Transaction: TransactionItem,
+  Account: AccountItem,
+  Contract: ContractItem,
+});
+
+export { ExportComponent as SearchItem };

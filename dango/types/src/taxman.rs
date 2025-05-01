@@ -1,4 +1,7 @@
-use grug::{Addr, Coins, Denom, Udec128};
+use {
+    grug::{Addr, Coins, Denom, Udec128},
+    std::collections::BTreeMap,
+};
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
@@ -8,6 +11,7 @@ pub struct Config {
 }
 
 #[grug::derive(Serde)]
+#[derive(Copy)]
 pub enum FeeType {
     /// Gas Fee.
     Gas,
@@ -41,7 +45,11 @@ pub enum ExecuteMsg {
     /// Can only be called by the chain's owner.
     Configure { new_cfg: Config },
     /// Forward protocol fee to the taxman.
-    Pay { user: Addr, ty: FeeType },
+    Pay {
+        #[serde(rename = "type")]
+        ty: FeeType,
+        payments: BTreeMap<Addr, Coins>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]

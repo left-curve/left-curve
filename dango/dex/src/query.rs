@@ -1,12 +1,15 @@
 use {
-    crate::{ORDERS, PAIRS, RESERVES, core},
-    dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
-        PairUpdate, QueryMsg, ReservesResponse,
+    crate::{ORDERS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
+    dango_types::{
+        account_factory::Username,
+        dex::{
+            OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
+            PairUpdate, QueryMsg, ReservesResponse,
+        },
     },
     grug::{
         Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
-        Order as IterationOrder, StdResult,
+        Number, NumberConst, Order as IterationOrder, StdResult, Timestamp, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -68,6 +71,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {
             let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
             input.to_json_value()
+        },
+        QueryMsg::Volume { user, since } => {
+            let res = query_volume(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
         },
     }
     .map_err(Into::into)
@@ -247,4 +258,64 @@ fn query_orders_by_user(
             }))
         })
         .collect()
+}
+
+#[inline]
+fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Uint128> {
+    let volume_now = VOLUMES
+        .prefix(&user)
+        .values(ctx.storage, None, None, IterationOrder::Descending)
+        .next()
+        .transpose()?
+        .unwrap_or(Uint128::ZERO);
+
+    let volume_since = if let Some(since) = since {
+        VOLUMES
+            .prefix(&user)
+            .values(
+                ctx.storage,
+                None,
+                Some(Bound::Inclusive(since)),
+                IterationOrder::Descending,
+            )
+            .next()
+            .transpose()?
+            .unwrap_or(Uint128::ZERO)
+    } else {
+        Uint128::ZERO
+    };
+
+    Ok(volume_now.checked_sub(volume_since)?)
+}
+
+#[inline]
+fn query_volume_by_user(
+    ctx: ImmutableCtx,
+    user: Username,
+    since: Option<Timestamp>,
+) -> StdResult<Uint128> {
+    let volume_now = VOLUMES_BY_USER
+        .prefix(&user)
+        .values(ctx.storage, None, None, IterationOrder::Descending)
+        .next()
+        .transpose()?
+        .unwrap_or(Uint128::ZERO);
+
+    let volume_since = if let Some(since) = since {
+        VOLUMES_BY_USER
+            .prefix(&user)
+            .values(
+                ctx.storage,
+                None,
+                Some(Bound::Inclusive(since)),
+                IterationOrder::Descending,
+            )
+            .next()
+            .transpose()?
+            .unwrap_or(Uint128::ZERO)
+    } else {
+        Uint128::ZERO
+    };
+
+    Ok(volume_now.checked_sub(volume_since)?)
 }

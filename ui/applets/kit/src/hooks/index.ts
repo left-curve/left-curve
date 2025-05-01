@@ -1,4 +1,5 @@
-export * from "./useMediaQuery";
+export { useMediaQuery } from "./useMediaQuery";
+export { useDOMRef } from "./useDOMRef";
 export { useDebounce, useClickAway, useMeasure } from "react-use";
 export { useInputs } from "./useInputs";
 export { useControlledState } from "./useControlledState";

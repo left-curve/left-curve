@@ -43,7 +43,11 @@ pub struct OrdersMatched {
 #[grug::derive(Serde)]
 #[grug::event("order_filled")]
 pub struct OrderFilled {
+    pub user: Addr,
     pub order_id: OrderId,
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
     /// The price at which the order was executed.
     pub clearing_price: Udec128,
     /// The amount (measured in base asset) that was filled.

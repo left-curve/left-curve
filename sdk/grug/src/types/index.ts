@@ -73,20 +73,7 @@ export type {
   CodeStatus,
 } from "./code.js";
 
-export type {
-  Coin,
-  Coins,
-  Funds,
-  Denom,
-  AnyCoin,
-  BaseCoin,
-  CoinFee,
-  AlloyCoin,
-  NativeCoin,
-  ContractCoin,
-  CoinGeckoId,
-  WithPrice,
-} from "./coin.js";
+export type { Denom, Coin, Coins, Funds } from "./coins.js";
 
 export type {
   ClientConfig,
@@ -123,6 +110,7 @@ export type {
   Failure,
   Success,
   Result,
+  Option,
 } from "./utils.js";
 
 export type {

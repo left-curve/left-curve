@@ -1,14 +1,13 @@
-import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import type { KeyHash } from "@left-curve/dango/types";
-import { wait } from "@left-curve/dango/utils";
+import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { forwardRef } from "react";
 import { m } from "~/paraglide/messages";
 
+import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
+
+import type { KeyHash } from "@left-curve/dango/types";
 interface Props {
   keyHash: KeyHash;
 }
@@ -49,12 +48,12 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
           <IconTrash />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">{m["settings.keyManagment.managment.delete.title"]()}</h3>
+          <h3 className="h4-bold">{m["settings.keyManagement.management.delete.title"]()}</h3>
           <p className="text-gray-500 diatype-m-regular">
-            {m["settings.keyManagment.managment.delete.description"]()}
+            {m["settings.keyManagement.management.delete.description"]()}
           </p>
           <p className="text-gray-500 diatype-m-regular">
-            {m["settings.keyManagment.managment.delete.warning"]()}
+            {m["settings.keyManagement.management.delete.warning"]()}
           </p>
         </div>
       </div>

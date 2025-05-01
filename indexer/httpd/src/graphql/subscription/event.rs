@@ -40,13 +40,19 @@ impl EventSubscription {
             .unwrap_or_default();
 
         Ok(
-            once(async move { Self::get_events(app_ctx, latest_block_height).await }).chain(
-                app_ctx.pubsub.subscribe_block_minted().await?.then(
+            once(async move { Self::get_events(app_ctx, latest_block_height).await })
+                .chain(app_ctx.pubsub.subscribe_block_minted().await?.then(
                     move |block_height| async move {
                         Self::get_events(app_ctx, block_height as i64).await
                     },
-                ),
-            ),
+                ))
+                .filter_map(|events| async move {
+                    if events.is_empty() {
+                        None
+                    } else {
+                        Some(events)
+                    }
+                }),
         )
     }
 }

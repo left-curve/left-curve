@@ -21,8 +21,6 @@ type PasskeyConnectorParameters = {
 };
 
 export function passkey(parameters: PasskeyConnectorParameters = {}) {
-  let _isAuthorized = false;
-
   const { icon } = parameters;
 
   return createConnector<undefined>(({ transport, emitter, getUsername, chain }) => {
@@ -54,7 +52,6 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const keys = await getKeysByUsername(client, { username });
 
         if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
-        _isAuthorized = true;
 
         const accountsInfo = await getAccountsByUsername(client, { username });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
@@ -64,7 +61,6 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
-        _isAuthorized = false;
         emitter.emit("disconnect");
       },
       async getClient() {
@@ -127,7 +123,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         });
       },
       async isAuthorized() {
-        return _isAuthorized;
+        return true;
       },
       async signArbitrary(payload) {
         const { message } = payload;

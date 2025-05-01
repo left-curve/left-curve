@@ -1,20 +1,23 @@
 use {
-    crate::{BalanceTracker, InstantiateOutcome, UploadAndInstantiateOutcome, UploadOutcome},
+    crate::{
+        BalanceTracker, InstantiateOutcome, MakeBlockOutcome, UploadAndInstantiateOutcome,
+        UploadOutcome,
+    },
     grug_app::{
-        App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
-        ProposalPreparer, Vm,
+        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm,
     },
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Coins, Config,
-        Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, Query, QueryResponse, Signer, StdError, Tx, TxOutcome, UnsignedTx,
+        Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
+        Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
+        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, Signer, StdError, StdResult, Tx,
+        TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
-    std::{collections::BTreeMap, fmt::Debug},
+    std::collections::BTreeMap,
 };
 
 pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
@@ -208,12 +211,12 @@ where
     }
 
     /// Make a new block without any transaction.
-    pub fn make_empty_block(&mut self) -> BlockOutcome {
+    pub fn make_empty_block(&mut self) -> MakeBlockOutcome {
         self.make_block(vec![])
     }
 
     /// Make a new block with the given transactions.
-    pub fn make_block(&mut self, txs: Vec<Tx>) -> BlockOutcome {
+    pub fn make_block(&mut self, txs: Vec<Tx>) -> MakeBlockOutcome {
         // Advance block height and time
         self.block.height += 1;
         self.block.timestamp = self.block.timestamp + self.block_time;
@@ -228,11 +231,11 @@ where
             .do_prepare_proposal(raw_txs, usize::MAX)
             .into_iter()
             .map(|raw_tx| (raw_tx.deserialize_json().unwrap(), raw_tx.hash256()))
-            .collect();
+            .collect::<Vec<_>>();
 
         let block = Block {
             info: self.block,
-            txs,
+            txs: txs.clone(),
         };
 
         // Call ABCI `FinalizeBlock` method
@@ -245,14 +248,14 @@ where
             panic!("fatal error while committing block: {err}");
         });
 
-        block_outcome
+        MakeBlockOutcome { txs, block_outcome }
     }
 
     /// Execute a single transaction.
     pub fn send_transaction(&mut self, tx: Tx) -> TxOutcome {
         let mut block_outcome = self.make_block(vec![tx]);
 
-        block_outcome.tx_outcomes.pop().unwrap()
+        block_outcome.block_outcome.tx_outcomes.pop().unwrap()
     }
 
     /// Sign a transaction with the default gas limit.
@@ -616,6 +619,11 @@ where
             Message::migrate(contract, new_code_hash, msg).unwrap(),
         )
     }
+
+    /// Return a `QuerierWrapper` object.
+    pub fn querier(&self) -> QuerierWrapper {
+        QuerierWrapper::new(self)
+    }
 }
 
 impl<DB, VM, PP, ID> Querier for TestSuite<DB, VM, PP, ID>
@@ -626,10 +634,10 @@ where
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    type Error = AppError;
-
-    fn query_chain(&self, req: Query) -> AppResult<QueryResponse> {
-        self.app.do_query_app(req, 0, false)
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        self.app
+            .do_query_app(req, 0, false)
+            .map_err(|err| StdError::host(err.to_string()))
     }
 }
 
@@ -642,28 +650,19 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
     Self: Querier,
 {
-    pub fn query_balance<D>(
-        &self,
-        address: &dyn Addressable,
-        denom: D,
-    ) -> Result<Uint128, <Self as Querier>::Error>
+    pub fn query_balance<D>(&self, address: &dyn Addressable, denom: D) -> StdResult<Uint128>
     where
         D: TryInto<Denom>,
-        <D as TryInto<Denom>>::Error: Debug,
+        StdError: From<D::Error>,
     {
-        let denom = denom.try_into().unwrap();
-        self.query_chain(Query::balance(address.address(), denom))
-            .map(|res| res.as_balance().amount)
+        let address = address.address();
+        let denom = denom.try_into()?;
+        <Self as QuerierExt>::query_balance(self, address, denom)
     }
 
-    pub fn query_balances(&self, account: &dyn Addressable) -> AppResult<Coins> {
-        self.app
-            .do_query_app(
-                Query::balances(account.address(), None, Some(u32::MAX)),
-                0, // zero means to use the latest height
-                false,
-            )
-            .map(|res| res.as_balances())
+    pub fn query_balances(&self, account: &dyn Addressable) -> StdResult<Coins> {
+        let address = account.address();
+        <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
     pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {

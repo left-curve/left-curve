@@ -14,7 +14,6 @@ actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
 dango-genesis           = { workspace = true }
-dango-httpd             = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["tracing"] }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true }
@@ -47,6 +46,7 @@ dango-account-factory = { workspace = true, features = ["library"] }
 dango-auth            = { workspace = true }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-httpd           = { workspace = true }
+dango-lending         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-warp            = { workspace = true, features = ["library"] }
