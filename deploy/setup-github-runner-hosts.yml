@@ -3,6 +3,8 @@
   become: yes
   vars:
     runner_user: github
+  roles:
+    - rust
   tasks:
     - name: Ensure '{{ runner_user }}' user exists
       user:

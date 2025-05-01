@@ -1,6 +1,6 @@
 - hosts: all
+  become: true
   vars:
-    ansible_user: root
   roles:
     - common
     - users

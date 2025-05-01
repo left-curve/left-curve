@@ -1,8 +1,5 @@
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
-[dango]
-192.168.64.4 hostname=dango1
-
 [github_runners]
-15.204.196.152 ansible_user=github
+15.204.196.152 hostname=ovh1 ansible_user=debian

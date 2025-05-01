@@ -17,6 +17,5 @@ setup:
 
 # Run the github runner installation playbooks
 install-runners:
-    source .venv/bin/activate && ansible-playbook -i inventory playbook.yml
     source .venv/bin/activate && ansible-playbook -i inventory setup-github-runner-hosts.yml
     source .venv/bin/activate && ansible-playbook -i inventory install-github-runner-hosts.yml

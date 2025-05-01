@@ -1,0 +1,28 @@
+- name: Ensure curl is installed
+  apt:
+    name: curl
+    state: present
+    update_cache: yes
+
+- name: Install rustup (Rust toolchain installer)
+  become: false
+  shell: |
+    curl https://sh.rustup.rs -sSf | sh -s -- -y
+  args:
+    creates: "{{ ansible_env.HOME }}/.cargo/bin/rustc"
+
+- name: Add cargo bin path to profile
+  lineinfile:
+    path: ~/.profile
+    line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    create: yes
+
+- name: Install base packages
+  apt:
+    name:
+      - build-essential
+      - libssl-dev
+      - clang
+      - pkg-config
+    state: present
+    update_cache: yes
