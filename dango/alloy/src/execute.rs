@@ -42,6 +42,7 @@ fn set_mapping(ctx: MutableCtx, mapping: BTreeMap<Denom, Part>) -> anyhow::Resul
 }
 
 fn alloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response> {
+    // Convert the underlying denoms to alloyed denoms.
     let alloyed_coins = ctx
         .funds
         .iter()
@@ -60,6 +61,8 @@ fn alloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response> 
         .collect::<Result<BTreeMap<_, _>, _>>()
         .map(Coins::new_unchecked)?; // Unchecked is ok here because we know the denom is valid and amount is non-zero.
 
+    // 1. Mint the alloyed tokens.
+    // 2. Do the `and_then` action, if specified.
     Ok(Response::new()
         .add_message({
             let bank = ctx.querier.query_bank()?;
@@ -86,6 +89,7 @@ fn alloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response> 
 }
 
 fn dealloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response> {
+    // Convert the alloyed denoms to underlying denoms.
     let underlying_coins = ctx
         .funds
         .iter()
@@ -105,7 +109,8 @@ fn dealloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response
         .map(Coins::new_unchecked)?;
 
     // 1. Burn the received alloyed coins.
-    // 2. Do the action, or refund the underlying coins to the caller.
+    // 2. Do the `and_then` action, if specified; otherwise, refund the underlying
+    //    coins to the caller.
     Ok(Response::new()
         .add_message({
             let bank = ctx.querier.query_bank()?;
