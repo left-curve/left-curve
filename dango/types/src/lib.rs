@@ -1,5 +1,6 @@
 pub mod account;
 pub mod account_factory;
+pub mod alloy;
 pub mod auth;
 pub mod bank;
 pub mod config;

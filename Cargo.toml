@@ -2,6 +2,7 @@
 members = [
   "config-parser",
   "dango/account/*",
+  "dango/alloy",
   "dango/auth",
   "dango/bank",
   "dango/cli",
@@ -159,6 +160,7 @@ dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
 dango-account-multi         = { path = "dango/account/multi" }
 dango-account-spot          = { path = "dango/account/spot" }
+dango-alloy                 = { path = "dango/alloy" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }

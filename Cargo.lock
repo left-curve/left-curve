@@ -3266,6 +3266,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-alloy"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-auth"
 version = "0.0.0"
 dependencies = [
@@ -3369,6 +3378,7 @@ dependencies = [
  "dango-account-margin",
  "dango-account-multi",
  "dango-account-spot",
+ "dango-alloy",
  "dango-bank",
  "dango-dex",
  "dango-lending",

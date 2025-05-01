@@ -21,11 +21,3 @@ use {grug::Part, std::sync::LazyLock};
 /// - `hyp/xrp/xrp`
 /// - `hyp/sol/bonk`
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hyp"));
-
-/// The subnamespace used for alloyed tokens.
-///
-/// E.g.,
-///
-/// - `hyp/all/eth`
-/// - `hyp/all/usdc`
-pub static ALLOY_SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("all"));

@@ -16,7 +16,7 @@ use {
     },
     grug::{
         Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128, btree_map, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Part, Timestamp, Udec128, btree_map, coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -333,6 +333,10 @@ where
         },
         max_orphan_age: Duration::from_seconds(7 * 24 * 60 * 60),
         metadatas: btree_map! {},
+        alloys: btree_map! {
+            ETH_DENOM.clone() => Part::new_unchecked("eth"),
+            SOL_DENOM.clone() => Part::new_unchecked("sol"),
+        },
         pairs: vec![
             PairUpdate {
                 base_denom: DANGO_DENOM.clone(),

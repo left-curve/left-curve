@@ -15,6 +15,7 @@ dango-account-factory = { workspace = true, features = ["library"] }
 dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-multi   = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
+dango-alloy           = { workspace = true }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-dex             = { workspace = true, features = ["library"] }
 dango-lending         = { workspace = true, features = ["library"] }

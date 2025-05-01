@@ -115,6 +115,9 @@ fn main() {
         },
         max_orphan_age: Duration::from_weeks(1),
         metadatas: btree_map! {},
+        alloys: btree_map! {
+            // TODO: add alloy mappings
+        },
         pairs: vec![
             PairUpdate {
                 base_denom: DANGO_DENOM.clone(),
