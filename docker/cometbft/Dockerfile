@@ -17,9 +17,18 @@ RUN git clone --branch $COMETBFT_GIT_TAG --depth 1 https://github.com/cometbft/c
 
 FROM debian:bookworm-slim AS runtime
 
+ARG USERNAME=cometbft
+ENV USERNAME=${USERNAME}
+
 LABEL org.opencontainers.image.description="CometBFT runtime for Dango"
 
+RUN useradd --create-home --shell /bin/bash $USERNAME
+
 COPY --from=builder /go/bin/cometbft /usr/local/bin/
+RUN chown $USERNAME:$USERNAME /usr/local/bin/cometbft
+
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
 # Expose the Tendermint p2p (26656), RPC (26657), and ABCI (26658) ports.
 EXPOSE 26656 26657 26658
