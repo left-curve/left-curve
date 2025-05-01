@@ -2,7 +2,6 @@ name: Rust
 
 
 env:
-  COMETBFT_GIT_TAG: v0.38.17
   GIT_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 on:

@@ -16,7 +16,7 @@ services:
     tty: true
 
   dango:
-    image: leftcurve/dango:0.0.0-alpha.8
+    image: ghcr.io/left-curve/left-curve/dango:latest
     depends_on:
       - db
     ports:
@@ -34,7 +34,7 @@ services:
     tty: true
 
   cometbft:
-    image: leftcurve/cometbft:0.38.17
+    image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
     depends_on:
       - dango
     ports:

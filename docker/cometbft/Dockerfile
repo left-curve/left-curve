@@ -1,6 +1,7 @@
 FROM golang:1.24-bookworm AS builder
 
-LABEL org.opencontainers.image.description "CometBFT builder for Dango"
+LABEL org.opencontainers.image.description="CometBFT builder for Dango"
+LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 # Install dependencies.
 RUN apt update && apt install git make

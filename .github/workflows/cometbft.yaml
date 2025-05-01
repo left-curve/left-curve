@@ -1,0 +1,46 @@
+name: Build & Push CometBFT image
+
+env:
+  COMETBFT_GIT_TAG: v0.38.17
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-cometbft:
+    permissions:
+      packages: write
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if Docker image already exists
+        id: check-image
+        run: |
+          if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
+            echo "Image with tag ${{ env.COMETBFT_GIT_TAG }} already exists, skipping build."
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "Image does not exist, proceeding with build."
+            echo "skip_build=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Build and push Docker image
+        if: steps.check-image.outputs.skip_build == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/cometbft
+          build-args: |
+            COMETBFT_GIT_TAG=${{ env.COMETBFT_GIT_TAG }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+          push: true
