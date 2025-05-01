@@ -45,6 +45,13 @@ jobs:
           toolchain: nightly
           components: rustfmt
 
+      - name: Check rustup environment
+        run: |
+          rustup show
+          echo "CARGO_HOME=$CARGO_HOME"
+          echo "PATH=$PATH"
+          ls -la $CARGO_HOME/bin
+
       # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
       # - uses: actions/cache@v4
       #   with:
