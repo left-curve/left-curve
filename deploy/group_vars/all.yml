@@ -1,3 +1,6 @@
 ssh_users:
   - penso
+  - rhaki
+  - larry
+  - zexsor
 deploy_user: deploy

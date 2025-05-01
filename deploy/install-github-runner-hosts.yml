@@ -1,0 +1,13 @@
+- name: Install GitHub Actions runners
+  hosts: github_runners
+  become: no
+  remote_user: "{{ runner_user }}"
+  vars:
+    github_actions_runner_version: "latest"
+    github_actions_runner_name_prefix: "runner"
+    github_actions_runner_count: "{{ ansible_processor_vcpus }}"
+    github_actions_runner_token: "<your-token>"
+    github_actions_runner_url: "https://github.com/left-curve"
+    github_actions_runner_workdir: "/home/{{ runner_user }}/_work"
+  roles:
+    - MonolithProjects.github_actions_runner

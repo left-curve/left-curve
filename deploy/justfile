@@ -4,6 +4,18 @@ set positional-arguments
 default:
   @just --list
 
-# Delete all local git branches except for main
 provision:
   ansible-playbook -i inventory playbook.yml
+
+
+# Set up Python environment and install Ansible + role
+setup:
+    python3 -m venv .venv
+    source .venv/bin/activate && pip install --upgrade pip
+    source .venv/bin/activate && pip install ansible
+    source .venv/bin/activate && ansible-galaxy install MonolithProjects.github_actions_runner
+
+# Run the runner installation playbook
+install-runners:
+    source .venv/bin/activate && ansible-playbook -i hosts setup-host.yml
+    source .venv/bin/activate && ansible-playbook -i hosts install-runners.yml

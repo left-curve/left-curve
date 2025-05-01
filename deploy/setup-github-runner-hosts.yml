@@ -1,0 +1,23 @@
+- name: Prepare host for GitHub runners
+  hosts: github_runners
+  become: yes
+  vars:
+    runner_user: github
+  tasks:
+    - name: Ensure '{{ runner_user }}' user exists
+      user:
+        name: "{{ runner_user }}"
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Install required packages
+      apt:
+        name: [curl, tar]
+        update_cache: yes
+
+    - name: Ensure '{{ runner_user }}' owns its home directory
+      file:
+        path: "/home/{{ runner_user }}"
+        owner: "{{ runner_user }}"
+        group: "{{ runner_user }}"
+        recurse: yes
