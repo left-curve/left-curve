@@ -1,8 +1,6 @@
 use {
-    crate::lending::{InterestRateModel, NAMESPACE, SUBNAMESPACE},
-    grug::{
-        Denom, MathResult, Number, NumberConst, StdResult, Timestamp, Udec128, Udec256, Uint128,
-    },
+    crate::lending::InterestRateModel,
+    grug::{MathResult, Number, NumberConst, StdResult, Timestamp, Udec128, Uint128},
 };
 
 /// Seconds in a year, assuming 365 days.
@@ -11,17 +9,17 @@ pub const SECONDS_PER_YEAR: u128 = 31536000;
 /// Configurations and state of a market.
 #[grug::derive(Serde, Borsh)]
 pub struct Market {
-    /// The LP token denom that is minted when coins are deposited on the supply
-    /// side.
-    pub supply_lp_denom: Denom,
     /// The current interest rate model of this market.
     pub interest_rate_model: InterestRateModel,
-    /// The total amount of coins borrowed from this market scaled by the
+    /// The total amount of coins borrowed from this market, scaled by the
     /// borrow index.
-    pub total_borrowed_scaled: Udec256,
+    pub total_borrowed_scaled: Uint128,
     /// The current borrow index of this market. This is used to calculate the
     /// interest accrued on borrows.
     pub borrow_index: Udec128,
+    /// The total amount of coins supplied to this market, scaled by the supply
+    /// index.
+    pub total_supplied_scaled: Uint128,
     /// The current supply index of this market. This is used to calculate the
     /// interest accrued on deposits.
     pub supply_index: Udec128,
@@ -32,36 +30,15 @@ pub struct Market {
 }
 
 impl Market {
-    pub fn new(
-        underlying_denom: &Denom,
-        interest_rate_model: InterestRateModel,
-    ) -> StdResult<Self> {
+    pub fn new(interest_rate_model: InterestRateModel) -> StdResult<Self> {
         Ok(Self {
-            supply_lp_denom: underlying_denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
             interest_rate_model,
-            total_borrowed_scaled: Udec256::ZERO,
+            total_borrowed_scaled: Uint128::ZERO,
             borrow_index: Udec128::ONE,
+            total_supplied_scaled: Uint128::ZERO,
             supply_index: Udec128::ONE,
             last_update_time: Timestamp::ZERO,
             pending_protocol_fee_scaled: Uint128::ZERO,
-        })
-    }
-
-    /// Immutably adds the given amount to the scaled total borrowed and returns
-    /// the new market state.
-    pub fn add_borrowed(self, amount_scaled: Udec256) -> MathResult<Self> {
-        Ok(Self {
-            total_borrowed_scaled: self.total_borrowed_scaled.checked_add(amount_scaled)?,
-            ..self
-        })
-    }
-
-    /// Immutably deducts the given amount from the scaled total borrowed and
-    /// returns the new market state.
-    pub fn deduct_borrowed(self, amount_scaled: Udec256) -> MathResult<Self> {
-        Ok(Self {
-            total_borrowed_scaled: self.total_borrowed_scaled.checked_sub(amount_scaled)?,
-            ..self
         })
     }
 

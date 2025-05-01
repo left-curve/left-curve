@@ -1,15 +1,8 @@
 use {
     crate::lending::{InterestRateModel, Market},
-    grug::{Addr, Coins, Denom, NonEmpty, Part},
-    std::{collections::BTreeMap, sync::LazyLock},
+    grug::{Addr, Coins, Denom, NonEmpty},
+    std::collections::BTreeMap,
 };
-
-/// The namespace that tokens associated with lending will be minted under.
-/// The lending contract must be granted admin power over this namespace.
-pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("lending"));
-
-/// Sub-namespace that liquidity share tokens will be minted under.
-pub static SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("pool"));
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
@@ -23,9 +16,8 @@ pub enum ExecuteMsg {
     /// Deposit tokens into the lending pool.
     /// Sender must attach one or more supported tokens and nothing else.
     Deposit {},
-    /// Withdraw tokens from the lending pool by redeeming LP tokens.
-    /// Sender must attach one or more LP tokens and nothing else.
-    Withdraw {},
+    /// Withdraw tokens from the lending pool.
+    Withdraw(NonEmpty<Coins>),
     /// Borrow coins from the lending pool.
     /// Sender must be a margin account.
     Borrow(NonEmpty<Coins>),
@@ -47,19 +39,22 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
-    /// Query the debt of a single margin account.
+    /// Query the deposit of a single lender.
+    #[returns(Coins)]
+    Asset { account: Addr },
+    /// Enumerate deposits of all lenders.
+    #[returns(BTreeMap<Addr, Coins>)]
+    Assets {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
+    /// Query the debt of a single borrower.
     #[returns(Coins)]
     Debt { account: Addr },
-    /// Enumerate debts of all margin accounts.
+    /// Enumerate debts of all borrowers.
     #[returns(BTreeMap<Addr, Coins>)]
     Debts {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-    /// Converts the supplied amount of underlying tokens to LP tokens.
-    #[returns(Coins)]
-    SimulateDeposit { underlying: Coins },
-    /// Converts the supplied amount of LP tokens to the underlying tokens.
-    #[returns(Coins)]
-    SimulateWithdraw { lp_tokens: Coins },
 }
