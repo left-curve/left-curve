@@ -10,21 +10,33 @@ on:
     branches: [main]
 
 jobs:
+  check-image:
+    runs-on: self-hosted
+    outputs:
+      skip_build: ${{ steps.check.outputs.skip_build }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: check
+        run: |
+          if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip_build=false" >> $GITHUB_OUTPUT
+          fi
+
   build-cometbft:
+    needs: check-image
+    if: needs.check-image.outputs.skip_build == 'false'
     permissions:
       packages: write
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check if Docker image already exists
-        id: check-image
-        run: |
-          if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
-            echo "Image with tag ${{ env.COMETBFT_GIT_TAG }} already exists, skipping job."
-            exit 0
-          fi
-
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
