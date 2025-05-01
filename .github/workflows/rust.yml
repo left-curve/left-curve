@@ -64,7 +64,7 @@ jobs:
       #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run rustfmt checks
-        run: cargo +nightly fmt --check --all
+        run: rustup run nightly cargo fmt --check --all
 
   test:
     needs: [format]
