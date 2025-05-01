@@ -20,7 +20,7 @@ use {
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
         QuerierExt, QuerierWrapper, Response, StdResult, Storage, StorageQuerier, SudoCtx, Udec128,
-        Uint128, UniqueVec,
+        Uint128, UniqueVec, coins,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -301,8 +301,7 @@ fn provide_liquidity(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom: pair.lp_denom,
-                amount: lp_mint_amount,
+                coins: coins! { pair.lp_denom => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
         )?
@@ -351,8 +350,7 @@ fn withdraw_liquidity(
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: pair.lp_denom,
-                    amount: lp_burn_amount,
+                    coins: coins! { pair.lp_denom => lp_burn_amount },
                 },
                 Coins::new(), // No funds needed for burning
             )?
