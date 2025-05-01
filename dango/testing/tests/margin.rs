@@ -172,20 +172,14 @@ fn mint_coins(
     address: Addr,
     coins: Coins,
 ) {
-    for coin in coins {
-        suite
-            .execute(
-                &mut accounts.owner,
-                contracts.bank,
-                &dango_types::bank::ExecuteMsg::Mint {
-                    to: address,
-                    amount: coin.amount,
-                    denom: coin.denom,
-                },
-                Coins::new(),
-            )
-            .should_succeed();
-    }
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &dango_types::bank::ExecuteMsg::Mint { to: address, coins },
+            Coins::new(),
+        )
+        .should_succeed();
 }
 
 /// Helper function to register a fixed price for a collateral
