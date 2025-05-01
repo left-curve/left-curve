@@ -15,7 +15,8 @@ setup:
     source .venv/bin/activate && pip install ansible
     source .venv/bin/activate && ansible-galaxy install MonolithProjects.github_actions_runner
 
-# Run the runner installation playbook
+# Run the github runner installation playbooks
 install-runners:
-    source .venv/bin/activate && ansible-playbook -i hosts setup-host.yml
-    source .venv/bin/activate && ansible-playbook -i hosts install-runners.yml
+    source .venv/bin/activate && ansible-playbook -i inventory playbook.yml
+    source .venv/bin/activate && ansible-playbook -i inventory setup-github-runner-hosts.yml
+    source .venv/bin/activate && ansible-playbook -i inventory install-github-runner-hosts.yml

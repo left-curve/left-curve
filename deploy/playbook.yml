@@ -6,21 +6,6 @@
     - users
     - docker
 
-- hosts: github_runners
-  become: yes
-  vars:
-    github_actions_runner_version: "2.323.0"
-    github_actions_runner_architecture: "amd64"  # or "x64" depending on your host
-    github_actions_runner_repo: "left-curve/left-curve"
-    github_actions_runner_token: "{{ lookup('env', 'GH_RUNNER_TOKEN') }}"
-    github_actions_runner_name: "ovh-1"
-    # github_actions_runner_labels: "self-hosted,Linux,X64"
-    github_actions_runner_concurrent: 1
-    github_actions_runner_install_dir: "/home/github/actions-runner"
-
-  roles:
-    - MonolithProjects.github_actions_runner
-
 # - hosts: builder
 #   become: true
 #   roles:
