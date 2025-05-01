@@ -3,8 +3,8 @@ use {
     anyhow::ensure,
     dango_types::dex::{CurveInvariant, PairParams},
     grug::{
-        Coin, CoinPair, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
+        StdResult, Udec128, Uint128,
     },
 };
 
@@ -93,6 +93,46 @@ pub trait PassiveLiquidityPool {
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
+
+    /// Reflect the curve onto the orderbook.
+    ///
+    /// ## Inputs
+    ///
+    /// - `base_denom`: The base asset of the pool.
+    /// - `quote_denom`: The quote asset of the pool.
+    /// - `reserves`: The current pool reserves.
+    /// - `spread`: The spread between the ask and bid.
+    ///
+    /// ## Outputs
+    ///
+    /// - A tuple of two vectors of orders to place on the orderbook. The first vector
+    ///   contains the bids, the second contains the asks, specified as a tuple of
+    ///   (price, amount).
+    fn reflect_curve(
+        &self,
+        base_denom: Denom,
+        quote_denom: Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<(Vec<(Udec128, Uint128)>, Vec<(Udec128, Uint128)>)>;
+
+    /// Returns the spot price of the pool at the current reserves, given as the number
+    /// of quote asset units per base asset unit.
+    ///
+    /// ## Inputs
+    ///
+    /// - `base_denom`: The base asset of the pool.
+    /// - `quote_denom`: The quote asset of the pool.
+    /// - `reserves`: The current pool reserves.
+    ///
+    /// ## Outputs
+    ///
+    /// - The spot price of the pool.
+    fn spot_price(
+        &self,
+        base_denom: &Denom,
+        quote_denom: &Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<Udec128>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -254,6 +294,85 @@ impl PassiveLiquidityPool for PairParams {
 
         Ok((reserve, input))
     }
+
+    fn reflect_curve(
+        &self,
+        base_denom: Denom,
+        quote_denom: Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<(Vec<(Udec128, Uint128)>, Vec<(Udec128, Uint128)>)> {
+        let base_reserves = reserves.amount_of(&base_denom)?;
+        let quote_reserves = reserves.amount_of(&quote_denom)?;
+
+        let price = self.spot_price(&base_denom, &quote_denom, reserves)?;
+
+        // Calculate the starting price for the ask and bid side respectively. We
+        // place the spread symmetrically around the spot price.
+        let swap_fee_rate = self.swap_fee_rate.into_inner();
+        let starting_price_ask = price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
+        let starting_price_bid = price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
+
+        let mut bids = Vec::with_capacity(self.order_depth as usize);
+        let mut asks = Vec::with_capacity(self.order_depth as usize);
+        let mut amount_bid_prev = Uint128::ZERO;
+        let mut amount_ask_prev = Uint128::ZERO;
+        for i in 1..(self.order_depth + 1) {
+            // Calculate the price that is `i` price steps of size `order_spacing`
+            // on the ask and bid side of the spot price respectively.
+            let delta_p = self
+                .order_spacing
+                .checked_mul(Udec128::checked_from_ratio(i as u128, Uint128::ONE)?)?;
+            let price_ask = starting_price_ask.checked_add(delta_p)?;
+            let price_bid = starting_price_bid.checked_sub(delta_p)?;
+
+            // Calculate the amount of base that the pool will trade from the
+            // current spot price to `price_ask` and `price_bid` respectively.
+            let (amount_ask, amount_bid) = match self.curve_invariant {
+                CurveInvariant::Xyk => {
+                    let amount_ask =
+                        base_reserves.checked_sub(quote_reserves.checked_div_dec(price_ask)?)?;
+                    let amount_bid = quote_reserves
+                        .checked_div_dec(price_bid)?
+                        .checked_sub(base_reserves)?;
+                    (amount_ask, amount_bid)
+                },
+            };
+
+            // Calculate the difference in the amount as compared to the previous iteration.
+            // I.e. the amount that the pool would trade between the previous price and the
+            // current price, which is the amount of the order to place at the current price.
+            // Only place orders if the amount is positive.
+            let amount_bid_diff = amount_bid.checked_sub(amount_bid_prev)?;
+            if amount_bid_diff > Uint128::ZERO {
+                bids.push((price_bid, amount_bid_diff));
+            }
+
+            let amount_ask_diff = amount_ask.checked_sub(amount_ask_prev)?;
+            if amount_ask_diff > Uint128::ZERO {
+                asks.push((price_ask, amount_ask_diff));
+            }
+
+            // Update the previous amounts for the next iteration.
+            amount_bid_prev = amount_bid;
+            amount_ask_prev = amount_ask;
+        }
+
+        Ok((bids, asks))
+    }
+
+    fn spot_price(
+        &self,
+        base_denom: &Denom,
+        quote_denom: &Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<Udec128> {
+        let base_reserves = reserves.amount_of(base_denom)?;
+        let quote_reserves = reserves.amount_of(quote_denom)?;
+
+        match self.curve_invariant {
+            CurveInvariant::Xyk => Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?),
+        }
+    }
 }
 
 fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
@@ -261,5 +380,195 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
         a - b
     } else {
         b - a
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use {
+        dango_types::constants::{ETH_DENOM, USDC_DENOM},
+        grug::{Bounded, coins},
+    };
+
+    use super::*;
+
+    use {grug::Coins, test_case::test_case};
+
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::ONE,
+        10,
+        Udec128::ZERO,
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 200 * 10000000,
+        },
+        vec![
+            (Udec128::new_percent(19900), Uint128::from(50251)),
+            (Udec128::new_percent(19800), Uint128::from(50759)),
+            (Udec128::new_percent(19700), Uint128::from(51274)),
+            (Udec128::new_percent(19600), Uint128::from(51797)),
+            (Udec128::new_percent(19500), Uint128::from(52329)),
+            (Udec128::new_percent(19400), Uint128::from(52868)),
+            (Udec128::new_percent(19300), Uint128::from(53416)),
+            (Udec128::new_percent(19200), Uint128::from(53972)),
+            (Udec128::new_percent(19100), Uint128::from(54538)),
+            (Udec128::new_percent(19000), Uint128::from(55112)),
+        ],
+        vec![
+            (Udec128::new_percent(20100), Uint128::from(49751)),
+            (Udec128::new_percent(20200), Uint128::from(49259)),
+            (Udec128::new_percent(20300), Uint128::from(48773)),
+            (Udec128::new_percent(20400), Uint128::from(48295)),
+            (Udec128::new_percent(20500), Uint128::from(47824)),
+            (Udec128::new_percent(20600), Uint128::from(47360)),
+            (Udec128::new_percent(20700), Uint128::from(46902)),
+            (Udec128::new_percent(20800), Uint128::from(46451)),
+            (Udec128::new_percent(20900), Uint128::from(46007)),
+            (Udec128::new_percent(21000), Uint128::from(45568)),
+        ],
+        1 ; "xyk pool balance 1:200 tick size 1 no fee")]
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::ONE,
+        10,
+        Udec128::new_percent(1),
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 200 * 10000000,
+        },
+        vec![
+            (Udec128::new_percent(19700), Uint128::from(152284)),
+            (Udec128::new_percent(19600), Uint128::from(51797)),
+            (Udec128::new_percent(19500), Uint128::from(52329)),
+            (Udec128::new_percent(19400), Uint128::from(52868)),
+            (Udec128::new_percent(19300), Uint128::from(53416)),
+            (Udec128::new_percent(19200), Uint128::from(53972)),
+            (Udec128::new_percent(19100), Uint128::from(54538)),
+            (Udec128::new_percent(19000), Uint128::from(55112)),
+            (Udec128::new_percent(18900), Uint128::from(55694)),
+            (Udec128::new_percent(18800), Uint128::from(56287)),
+        ],
+        vec![
+            (Udec128::new_percent(20300), Uint128::from(147783)),
+            (Udec128::new_percent(20400), Uint128::from(48295)),
+            (Udec128::new_percent(20500), Uint128::from(47824)),
+            (Udec128::new_percent(20600), Uint128::from(47360)),
+            (Udec128::new_percent(20700), Uint128::from(46902)),
+            (Udec128::new_percent(20800), Uint128::from(46451)),
+            (Udec128::new_percent(20900), Uint128::from(46007)),
+            (Udec128::new_percent(21000), Uint128::from(45568)),
+            (Udec128::new_percent(21100), Uint128::from(45137)),
+            (Udec128::new_percent(21200), Uint128::from(44711)),
+        ],
+        1 ; "xyk pool balance 1:200 tick size 1 one percent fee")]
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::new_percent(1),
+        10,
+        Udec128::ZERO,
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_percent(99), Uint128::from(101010)),
+            (Udec128::new_percent(98), Uint128::from(103072)),
+            (Udec128::new_percent(97), Uint128::from(105197)),
+            (Udec128::new_percent(96), Uint128::from(107388)),
+            (Udec128::new_percent(95), Uint128::from(109649)),
+            (Udec128::new_percent(94), Uint128::from(111982)),
+            (Udec128::new_percent(93), Uint128::from(114390)),
+            (Udec128::new_percent(92), Uint128::from(116877)),
+            (Udec128::new_percent(91), Uint128::from(119446)),
+            (Udec128::new_percent(90), Uint128::from(122100)),
+        ],
+        vec![
+            (Udec128::new_percent(101), Uint128::from(99010)),
+            (Udec128::new_percent(102), Uint128::from(97069)),
+            (Udec128::new_percent(103), Uint128::from(95184)),
+            (Udec128::new_percent(104), Uint128::from(93353)),
+            (Udec128::new_percent(105), Uint128::from(91575)),
+            (Udec128::new_percent(106), Uint128::from(89847)),
+            (Udec128::new_percent(107), Uint128::from(88168)),
+            (Udec128::new_percent(108), Uint128::from(86535)),
+            (Udec128::new_percent(109), Uint128::from(84947)),
+            (Udec128::new_percent(110), Uint128::from(83403)),
+        ],
+        1 ; "xyk pool balance 1:1 no fee")]
+    #[test_case(
+        CurveInvariant::Xyk,
+        Udec128::new_percent(1),
+        10,
+        Udec128::new_percent(1),
+        coins! {
+            ETH_DENOM.clone() => 10000000,
+            USDC_DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_percent(98), Uint128::from(204081)),
+            (Udec128::new_percent(97), Uint128::from(105196)),
+            (Udec128::new_percent(96), Uint128::from(107388)),
+            (Udec128::new_percent(95), Uint128::from(109649)),
+            (Udec128::new_percent(94), Uint128::from(111982)),
+            (Udec128::new_percent(93), Uint128::from(114390)),
+            (Udec128::new_percent(92), Uint128::from(116877)),
+            (Udec128::new_percent(91), Uint128::from(119445)),
+            (Udec128::new_percent(90), Uint128::from(122100)),
+            (Udec128::new_percent(89), Uint128::from(124843)),
+        ],
+        vec![
+            (Udec128::new_percent(102), Uint128::from(196078)),
+            (Udec128::new_percent(103), Uint128::from(95184)),
+            (Udec128::new_percent(104), Uint128::from(93353)),
+            (Udec128::new_percent(105), Uint128::from(91575)),
+            (Udec128::new_percent(106), Uint128::from(89847)),
+            (Udec128::new_percent(107), Uint128::from(88168)),
+            (Udec128::new_percent(108), Uint128::from(86535)),
+            (Udec128::new_percent(109), Uint128::from(84947)),
+            (Udec128::new_percent(110), Uint128::from(83403)),
+            (Udec128::new_percent(111), Uint128::from(81900)),
+        ],
+        1 ; "xyk pool balance 1:1 one percent fee")]
+    fn curve_on_orderbook(
+        curve_invariant: CurveInvariant,
+        order_spacing: Udec128,
+        order_depth: u64,
+        swap_fee_rate: Udec128,
+        pool_liquidity: Coins,
+        expected_bids: Vec<(Udec128, Uint128)>,
+        expected_asks: Vec<(Udec128, Uint128)>,
+        order_size_tolerance: u128,
+    ) {
+        let pair = PairParams {
+            curve_invariant,
+            order_spacing,
+            order_depth,
+            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        let (bids, asks) = pair
+            .reflect_curve(
+                ETH_DENOM.clone(),
+                USDC_DENOM.clone(),
+                &pool_liquidity.try_into().unwrap(),
+            )
+            .unwrap();
+
+        for (bid, expected_bid) in bids.iter().zip(expected_bids.iter()) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert!(
+                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
+            );
+        }
+
+        for (ask, expected_ask) in asks.iter().zip(expected_asks.iter()) {
+            assert_eq!(ask.0, expected_ask.0);
+            assert!(
+                ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
+            );
+        }
     }
 }

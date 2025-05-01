@@ -341,6 +341,8 @@ where
                     lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
             PairUpdate {
@@ -350,6 +352,8 @@ where
                     lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
             PairUpdate {
@@ -359,6 +363,8 @@ where
                     lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
             PairUpdate {
@@ -368,6 +374,8 @@ where
                     lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    order_depth: 100,
+                    order_spacing: Udec128::new_bps(1),
                 },
             },
         ],
