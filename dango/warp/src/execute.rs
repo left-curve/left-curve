@@ -140,8 +140,7 @@ fn transfer_remote(
             cfg.bank,
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
-                denom: token.denom.clone(),
-                amount: token.amount,
+                coins: coins! { token.denom.clone() => token.amount },
             },
             Coins::new(),
         )?;
@@ -189,8 +188,7 @@ fn transfer_remote(
                 cfg.bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: token.denom.clone(),
-                    amount: token.amount,
+                    coins: coins! { token.denom.clone() => token.amount },
                 },
                 Coins::new(),
             )?)
@@ -263,8 +261,7 @@ fn handle(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: ctx.contract,
-                    denom,
-                    amount: body.amount,
+                    coins: coins! { denom => body.amount },
                 },
                 Coins::new(),
             )?;
@@ -288,8 +285,7 @@ fn handle(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: body.recipient.try_into()?,
-                    denom: denom.clone(),
-                    amount: body.amount,
+                    coins: coins! { denom.clone() => body.amount },
                 },
                 Coins::new(),
             )?
