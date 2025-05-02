@@ -35,6 +35,8 @@ jobs:
   format:
     name: Format
     runs-on: [self-hosted]
+    container:
+      image: rust:slim
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -44,14 +46,6 @@ jobs:
         with:
           toolchain: nightly
           components: rustfmt
-
-      - name: Check rustup environment
-        run: |
-          rustup show
-          echo "CARGO_HOME=$CARGO_HOME"
-          echo "PATH=$PATH"
-          ls -la $CARGO_HOME/bin
-          printenv | sort
 
       # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
       # - uses: actions/cache@v4
@@ -109,6 +103,11 @@ jobs:
             ${HOME}/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install OpenSSL dependencies
+        run: |
+          apt-get update
+          apt-get install -y pkg-config libssl-dev ca-certificates
 
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
