@@ -37,6 +37,8 @@ jobs:
   format:
     name: Format
     runs-on: [self-hosted]
+    container:
+      image: rust:slim
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -65,6 +67,10 @@ jobs:
     needs: [format]
     name: Lint + Test
     runs-on: self-hosted
+    container:
+      image: ghcr.io/left-curve/left-curve/native-builder
+    permissions:
+      packages: read
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
