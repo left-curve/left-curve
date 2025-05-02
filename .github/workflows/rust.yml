@@ -106,11 +106,6 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install OpenSSL dependencies
-        run: |
-          apt-get update
-          apt-get install -y pkg-config libssl-dev ca-certificates
-
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
