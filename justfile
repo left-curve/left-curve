@@ -69,5 +69,6 @@ docker-build-builder-images:
   docker manifest create ghcr.io/left-curve/left-curve/native-builder:latest \
     --amend ghcr.io/left-curve/left-curve/native-builder:amd64 \
     --amend ghcr.io/left-curve/left-curve/native-builder:arm64
+
   # Push the manifest
   docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest
