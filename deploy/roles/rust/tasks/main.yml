@@ -9,24 +9,24 @@
     state: present
     update_cache: yes
 
-- name: Install rustup system-wide
+- name: Install rustup
+  become: true
+  become_user: "{{ runner_user }}"
   shell: |
-    curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   args:
-    creates: /usr/local/cargo/bin/rustc
     executable: /bin/bash
-  environment:
-    CARGO_HOME: /usr/local/cargo
-    RUSTUP_HOME: /usr/local/rustup
 
 - name: Install Rust components
+  become: true
+  become_user: "{{ runner_user }}"
   shell: |
     source /etc/profile
     rustup component add clippy rustfmt rust-src
     rustup component add rustfmt clippy rust-src --toolchain nightly
   environment:
-    CARGO_HOME: /usr/local/cargo
-    RUSTUP_HOME: /usr/local/rustup
-    PATH: /usr/local/cargo/bin:{{ ansible_env.PATH }}
+    CARGO_HOME: /home/{{ runner_user }}/.cargo
+    RUSTUP_HOME: /home/{{ runner_user }}/.rustup
+    PATH: /home/{{ runner_user }}/.cargo/bin:{{ ansible_env.PATH }}
   args:
     executable: /bin/bash

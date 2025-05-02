@@ -14,6 +14,8 @@
         marker: "# {mark} GitHub Runner Env Vars"
         block: |
           Environment="PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          Environment="CARGO_HOME=/home/{{ runner_user }}/.cargo"
+          Environment="RUSTUP_HOME=/home/{{ runner_user }}/.rustup"
       notify:
         - Reload systemd
         - Restart github-actions-runner
