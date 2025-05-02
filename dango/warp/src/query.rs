@@ -1,10 +1,11 @@
 use {
     crate::{MAILBOX, ROUTES},
-    dango_types::warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
+    dango_types::warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem},
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
     },
     hyperlane_types::{
+        Addr32,
         mailbox::Domain,
         recipients::{RecipientQuery, RecipientQueryResponse},
     },
@@ -42,7 +43,7 @@ fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
 }
 
 #[inline]
-fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: Domain) -> StdResult<Route> {
+fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: Domain) -> StdResult<Addr32> {
     ROUTES.load(ctx.storage, (&denom, destination_domain))
 }
 
@@ -61,11 +62,11 @@ fn query_routes(
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit as usize)
         .map(|res| {
-            let ((denom, destination_domain), route) = res?;
+            let ((denom, destination_domain), recipient) = res?;
             Ok(QueryRoutesResponseItem {
                 denom,
                 destination_domain,
-                route,
+                recipient,
             })
         })
         .collect()

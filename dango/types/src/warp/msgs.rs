@@ -1,7 +1,8 @@
 use {
-    crate::{token_minter::HookTransferRemote, warp::Route},
+    crate::token_minter::HookTransferRemote,
     grug::{Addr, Denom},
     hyperlane_types::{
+        Addr32,
         mailbox::Domain,
         recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
     },
@@ -15,12 +16,12 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Define the recipient contract and withdrawal fee rate for a token on a
+    /// Define the recipient contract for a token on a
     /// destination domain.
     SetRoute {
         denom: Denom,
         destination_domain: Domain,
-        route: Route,
+        recipient: Addr32,
     },
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
@@ -33,7 +34,7 @@ pub enum QueryMsg {
     #[returns(Addr)]
     Mailbox {},
     /// Query the recipient contract for a token on a destination domain.
-    #[returns(Route)]
+    #[returns(Addr32)]
     Route {
         denom: Denom,
         destination_domain: Domain,
@@ -59,5 +60,5 @@ pub struct QueryRoutesPageParam {
 pub struct QueryRoutesResponseItem {
     pub denom: Denom,
     pub destination_domain: Domain,
-    pub route: Route,
+    pub recipient: Addr32,
 }

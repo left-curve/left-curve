@@ -4,12 +4,6 @@ use {
     hyperlane_types::Addr32,
 };
 
-#[grug::derive(Serde, Borsh)]
-pub struct Route {
-    pub address: Addr32,
-    pub fee: Uint128,
-}
-
 /// The message to be sent via Hyperlane mailbox.
 #[derive(Debug)]
 pub struct TokenMessage {

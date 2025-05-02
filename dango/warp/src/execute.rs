@@ -4,7 +4,7 @@ use {
     dango_types::{
         config::AppConfig,
         token_minter::{self, DestinationAddr, DestinationChain, HookTransferRemote},
-        warp::{ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage},
+        warp::{ExecuteMsg, Handle, InstantiateMsg, TokenMessage},
     },
     grug::{Coin, Coins, Denom, HexBinary, Message, MutableCtx, QuerierExt, Response, StdResult},
     hyperlane_types::{
@@ -27,8 +27,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SetRoute {
             denom,
             destination_domain,
-            route,
-        } => set_route(ctx, denom, destination_domain, route),
+            recipient,
+        } => set_route(ctx, denom, destination_domain, recipient),
         ExecuteMsg::Recipient(RecipientMsg::Handle {
             origin_domain,
             sender,
@@ -47,15 +47,15 @@ fn set_route(
     ctx: MutableCtx,
     denom: Denom,
     destination_domain: Domain,
-    route: Route,
+    recipient: Addr32,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "only chain owner can call `set_route`"
     );
 
-    ROUTES.save(ctx.storage, (&denom, destination_domain), &route)?;
-    REVERSE_ROUTES.save(ctx.storage, (destination_domain, route.address), &denom)?;
+    ROUTES.save(ctx.storage, (&denom, destination_domain), &recipient)?;
+    REVERSE_ROUTES.save(ctx.storage, (destination_domain, recipient), &denom)?;
 
     Ok(Response::new())
 }
@@ -86,14 +86,14 @@ fn hook_transfer_remote(
         bail!("only Hyperlane types are supported");
     };
 
-    let route = ROUTES.load(ctx.storage, (&token.denom, destination_domain))?;
+    let message_recipient = ROUTES.load(ctx.storage, (&token.denom, destination_domain))?;
 
     Ok(Response::new().add_message(Message::execute(
         MAILBOX.load(ctx.storage)?,
         &mailbox::ExecuteMsg::Dispatch {
             destination_domain,
             // Note, this is the message recipient, not the token recipient.
-            recipient: route.address,
+            recipient: message_recipient,
             body: TokenMessage {
                 recipient,
                 amount: token.amount,
