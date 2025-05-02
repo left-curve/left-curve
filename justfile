@@ -61,6 +61,7 @@ optimize:
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
 
 # ------------------------------- Cross Builder --------------------------------
+
 docker-build-builder-images:
   docker buildx bake --push
 
