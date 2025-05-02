@@ -29,6 +29,8 @@ const meta: Meta<typeof Tabs> = {
   args: {
     keys: ["Token", "Pools", "Earn"],
     defaultKey: "Pools",
+    color: "green",
+    fullWidth: false,
   },
   parameters: {
     layout: "centered",
