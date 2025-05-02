@@ -73,7 +73,7 @@ jobs:
       DB_HOST: postgres
     # services:
     #   postgres:
-    #     image: postgres
+    #     image: postgres:17
     #     env:
     #       POSTGRES_PASSWORD: postgres
     #     options: >-
@@ -178,6 +178,11 @@ jobs:
               echo "Unsupported matrix ${{ matrix.arch }}"
               exit 1
           fi
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
