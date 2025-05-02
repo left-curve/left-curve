@@ -1,10 +1,8 @@
 use {
-    actix_web::{error::ErrorInternalServerError, get, web, Error, HttpResponse, Responder},
     crate::context::Context,
+    actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
     indexer_sql::entity,
-    sea_orm::{
-        EntityTrait, Order, QueryOrder
-    },
+    sea_orm::{EntityTrait, Order, QueryOrder},
 };
 
 #[get("/")]
@@ -32,11 +30,12 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         .order_by(entity::blocks::Column::BlockHeight, Order::Desc)
         .one(&app_ctx.db)
         .await
-        .map_err(ErrorInternalServerError)?.map(|b| b.block_height as u64);
+        .map_err(ErrorInternalServerError)?
+        .map(|b| b.block_height as u64);
 
     Ok(HttpResponse::Ok().json(HealthResponse {
         block_height,
-        indexed_block_height
+        indexed_block_height,
     }))
 }
 
