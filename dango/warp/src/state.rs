@@ -1,6 +1,6 @@
 use {
     dango_types::warp::Route,
-    grug::{Addr, Denom, Item, Map, Uint128},
+    grug::{Addr, Denom, Item, Map},
     hyperlane_types::{Addr32, mailbox::Domain},
 };
 

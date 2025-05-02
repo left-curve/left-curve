@@ -11,20 +11,25 @@ use {
     },
     grug::{
         Addr, Coin, Coins, Denom, Inner, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        QuerierExt, Response, StdResult, SudoCtx, btree_map, coins,
+        QuerierExt, Response, StdResult, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
+    for (denom, (bridge_addr, fee)) in msg.denoms {
+        // Save the denom and its corresponding bridge address and fee.
+        DENOMS.save(ctx.storage, &denom, &bridge_addr)?;
+        FEES.save(ctx.storage, &denom, &fee)?;
+    }
+
     Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::RegisterDenom { denom, bridge_addr } => register_denom(ctx, denom, bridge_addr),
         ExecuteMsg::TransferRemote {
             destination_chain,
             recipient,
@@ -36,16 +41,27 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             alloyed_denom,
         } => set_alloy(ctx, underlying_denom, destination_chain, alloyed_denom),
         ExecuteMsg::SetRateLimits(limits) => set_rate_limits(ctx, limits),
+        ExecuteMsg::RegisterDenom {
+            denom,
+            bridge_addr,
+            fee,
+        } => register_denom(ctx, denom, bridge_addr, fee),
     }
 }
 
-fn register_denom(ctx: MutableCtx, denom: Denom, bridge: Addr) -> anyhow::Result<Response> {
+fn register_denom(
+    ctx: MutableCtx,
+    denom: Denom,
+    bridge: Addr,
+    fee: Uint128,
+) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 
     DENOMS.save(ctx.storage, &denom, &bridge)?;
+    FEES.save(ctx.storage, &denom, &fee)?;
 
     Ok(Response::new())
 }

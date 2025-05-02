@@ -7,7 +7,7 @@ use {
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
         oracle::{self, PriceSource},
-        taxman, vesting, warp,
+        taxman, token_minter, vesting, warp,
     },
     grug::{
         Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper, Denom, Duration,
@@ -38,6 +38,7 @@ pub struct Contracts {
     pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
+    pub token_minter: Addr,
     pub vesting: Addr,
     pub warp: Addr,
 }
@@ -54,6 +55,7 @@ pub struct Codes<T> {
     pub lending: T,
     pub oracle: T,
     pub taxman: T,
+    pub token_minter: T,
     pub vesting: T,
     pub warp: T,
 }
@@ -192,10 +194,10 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_warp::query))
         .build();
 
-    let token_minter = ContractBuilder::new(Box::new(token_minter::instantiate))
-        .with_execute(Box::new(token_minter::execute))
-        .with_query(Box::new(token_minter::query))
-        .with_cron_execute(Box::new(token_minter::cron_execute))
+    let token_minter = ContractBuilder::new(Box::new(dango_token_minter::instantiate))
+        .with_execute(Box::new(dango_token_minter::execute))
+        .with_query(Box::new(dango_token_minter::query))
+        .with_cron_execute(Box::new(dango_token_minter::cron_execute))
         .build();
 
     Codes {
@@ -209,6 +211,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         lending,
         oracle,
         taxman,
+        token_minter,
         vesting,
         warp,
     }
@@ -232,6 +235,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
+    let token_minter = fs::read(artifacts_dir.join("dango_token_minter.wasm"))?;
     let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
 
     Ok(Codes {
@@ -247,6 +251,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         taxman,
         vesting,
         warp,
+        token_minter,
     })
 }
 
@@ -293,6 +298,7 @@ where
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
+    let token_minter_code_hash = upload(&mut msgs, codes.token_minter);
 
     // Instantiate account factory.
     let users = genesis_users
@@ -467,6 +473,16 @@ where
         "dango/vesting",
     )?;
 
+    let token_minter = instantiate(
+        &mut msgs,
+        token_minter_code_hash,
+        &token_minter::InstantiateMsg {
+            denoms: btree_map! {},
+        },
+        "dango/token_minter",
+        "dango/token_minter",
+    )?;
+
     let contracts = Contracts {
         account_factory,
         bank,
@@ -477,6 +493,7 @@ where
         taxman,
         vesting,
         warp,
+        token_minter,
     };
 
     let permissions = Permissions {
@@ -506,6 +523,7 @@ where
             oracle,
             taxman,
             warp,
+            token_minter,
         },
         ..Default::default()
     };

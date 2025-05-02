@@ -5,13 +5,16 @@ use {
 };
 
 #[grug::derive(Serde)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub denoms: BTreeMap<Denom, (Addr, Uint128)>,
+}
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     RegisterDenom {
         denom: Denom,
         bridge_addr: Addr,
+        fee: Uint128,
     },
     /// Register an alloyed token.
     SetAlloy {

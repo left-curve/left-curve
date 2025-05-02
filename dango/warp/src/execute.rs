@@ -66,6 +66,16 @@ fn hook_transfer_remote(
     recipient: DestinationAddr,
     token: Coin,
 ) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender
+            == ctx
+                .querier
+                .query_app_config::<AppConfig>()?
+                .addresses
+                .token_minter,
+        "only token_minter can call `hook_transfer_remote`"
+    );
+
     let (
         DestinationChain::Hyperlane {
             domain: destination_domain,

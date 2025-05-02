@@ -1,7 +1,9 @@
 use {
-    crate::ALLOYS,
+    crate::{ALLOYS, OUTBOUND_QUOTAS},
     dango_types::token_minter::QueryMsg,
-    grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{
+        Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Uint128,
+    },
     std::collections::BTreeMap,
 };
 
@@ -13,8 +15,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         QueryMsg::Alloys { start_after, limit } => {
             query_alloys(ctx, start_after, limit)?.to_json_value()
         },
-        QueryMsg::OutboundQuota { denom } => todo!(),
-        QueryMsg::OutboundQuotas { start_after, limit } => todo!(),
+        QueryMsg::OutboundQuota { denom } => query_outbound_quota(ctx, denom)?.to_json_value(),
+        QueryMsg::OutboundQuotas { start_after, limit } => {
+            query_outbound_quotas(ctx, start_after, limit)?.to_json_value()
+        },
     }
 }
 
@@ -33,6 +37,26 @@ fn query_alloys(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     ALLOYS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .collect()
+}
+
+#[inline]
+fn query_outbound_quota(ctx: ImmutableCtx, denom: Denom) -> StdResult<Uint128> {
+    OUTBOUND_QUOTAS.load(ctx.storage, &denom)
+}
+
+#[inline]
+fn query_outbound_quotas(
+    ctx: ImmutableCtx,
+    start_after: Option<Denom>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Denom, Uint128>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    OUTBOUND_QUOTAS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit as usize)
         .collect()
