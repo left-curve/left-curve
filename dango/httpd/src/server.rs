@@ -13,6 +13,7 @@ where
 {
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
+            .service(routes::index::up)
             .service(routes::api::blocks::block_info_by_height)
             .service(routes::api::blocks::block_result_by_height)
             .service(graphql::graphql_route())
