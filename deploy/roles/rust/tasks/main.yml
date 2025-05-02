@@ -16,17 +16,16 @@
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   args:
     executable: /bin/bash
+    creates: /home/{{ runner_user }}/.cargo/bin/rustup
 
 - name: Install Rust components
   become: true
   become_user: "{{ runner_user }}"
   shell: |
     source /etc/profile
+    export PATH=$CARGO_HOME/bin:$PATH
+    . "$HOME/.cargo/env"
     rustup component add clippy rustfmt rust-src
     rustup component add rustfmt clippy rust-src --toolchain nightly
-  environment:
-    CARGO_HOME: /home/{{ runner_user }}/.cargo
-    RUSTUP_HOME: /home/{{ runner_user }}/.rustup
-    PATH: /home/{{ runner_user }}/.cargo/bin:{{ ansible_env.PATH }}
   args:
     executable: /bin/bash
