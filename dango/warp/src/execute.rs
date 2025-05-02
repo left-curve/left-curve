@@ -2,7 +2,7 @@ use {
     crate::{MAILBOX, OUTBOUND_QUOTAS, RATE_LIMITS, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
     dango_types::{
-        DangoQuerier, alloy, bank,
+        DangoQuerier, bank, gateway,
         taxman::{self, FeeType},
         warp::{
             ExecuteMsg, Handle, InstantiateMsg, NAMESPACE, RateLimit, Route, TokenMessage,
@@ -208,7 +208,7 @@ fn handle(
     // Otherwise, it's a collateral, release the collateral.
     Ok(Response::new()
         .add_messages(if denom.namespace() == Some(&NAMESPACE) {
-            let alloy = ctx.querier.query_alloy()?;
+            let gateway = ctx.querier.query_gateway()?;
             let underlying_coins = coins! { denom.clone() => body.amount };
             vec![
                 Message::execute(
@@ -220,9 +220,9 @@ fn handle(
                     Coins::new(),
                 )?,
                 Message::execute(
-                    alloy,
-                    &alloy::ExecuteMsg::Alloy {
-                        and_then: Some(alloy::Action::Transfer(body.recipient.try_into()?)),
+                    gateway,
+                    &gateway::ExecuteMsg::Alloy {
+                        and_then: Some(gateway::Action::Transfer(body.recipient.try_into()?)),
                     },
                     underlying_coins,
                 )?,

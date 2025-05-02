@@ -2,8 +2,8 @@ use {
     crate::{ALLOYED_TO_UNDERLYING, UNDERLYING_TO_ALLOYED},
     anyhow::{anyhow, ensure},
     dango_types::{
-        alloy::{Action, ExecuteMsg, InstantiateMsg, NAMESPACE},
         bank,
+        gateway::{Action, ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
     grug::{Coins, Denom, Message, MutableCtx, Part, QuerierExt as _, Response},
     std::collections::BTreeMap,

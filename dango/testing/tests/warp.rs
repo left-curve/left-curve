@@ -5,8 +5,8 @@ use {
         setup_test_with_indexer,
     },
     dango_types::{
-        alloy,
         constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
+        gateway,
         warp::{self, RateLimit, Route, TokenMessage},
     },
     dango_warp::ROUTES,
@@ -181,8 +181,8 @@ fn send_burning_synth() {
     suite
         .execute(
             &mut accounts.user1,
-            contracts.alloy,
-            &alloy::ExecuteMsg::Alloy { and_then: None },
+            contracts.gateway,
+            &gateway::ExecuteMsg::Alloy { and_then: None },
             Coins::one(ETH_DENOM.clone(), 12345).unwrap(),
         )
         .should_succeed();
@@ -193,9 +193,9 @@ fn send_burning_synth() {
     suite
         .execute(
             &mut accounts.user1,
-            contracts.alloy,
-            &alloy::ExecuteMsg::Dealloy {
-                and_then: Some(alloy::Action::Execute {
+            contracts.gateway,
+            &gateway::ExecuteMsg::Dealloy {
+                and_then: Some(gateway::Action::Execute {
                     contract: contracts.warp,
                     msg: warp::ExecuteMsg::TransferRemote {
                         destination_domain: MOCK_REMOTE_DOMAIN,

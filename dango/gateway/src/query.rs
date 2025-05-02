@@ -1,6 +1,6 @@
 use {
     crate::{ALLOYED_TO_UNDERLYING, UNDERLYING_TO_ALLOYED},
-    dango_types::alloy::QueryMsg,
+    dango_types::gateway::QueryMsg,
     grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };

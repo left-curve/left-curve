@@ -1,11 +1,11 @@
 use {
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt, Username},
-        alloy,
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         dex::{self, PairUpdate},
+        gateway,
         lending::{self, InterestRateModel},
         oracle::{self, PriceSource},
         taxman, vesting, warp,
@@ -33,9 +33,9 @@ pub type Addresses = BTreeMap<Username, Addr>;
 #[grug::derive(Serde)]
 pub struct Contracts {
     pub account_factory: Addr,
-    pub alloy: Addr,
     pub bank: Addr,
     pub dex: Addr,
+    pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
@@ -50,9 +50,9 @@ pub struct Codes<T> {
     pub account_margin: T,
     pub account_multi: T,
     pub account_spot: T,
-    pub alloy: T,
     pub bank: T,
     pub dex: T,
+    pub gateway: T,
     pub hyperlane: Hyperlane<T>,
     pub lending: T,
     pub oracle: T,
@@ -141,11 +141,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_reply(Box::new(dango_account_spot::reply))
         .build();
 
-    let alloy = ContractBuilder::new(Box::new(dango_alloy::instantiate))
-        .with_execute(Box::new(dango_alloy::execute))
-        .with_query(Box::new(dango_alloy::query))
-        .build();
-
     let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
         .with_execute(Box::new(dango_bank::execute))
         .with_query(Box::new(dango_bank::query))
@@ -157,6 +152,11 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_execute(Box::new(dango_dex::execute))
         .with_cron_execute(Box::new(dango_dex::cron_execute))
         .with_query(Box::new(dango_dex::query))
+        .build();
+
+    let gateway = ContractBuilder::new(Box::new(dango_gateway::instantiate))
+        .with_execute(Box::new(dango_gateway::execute))
+        .with_query(Box::new(dango_gateway::query))
         .build();
 
     let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))
@@ -208,9 +208,9 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         account_margin,
         account_multi,
         account_spot,
-        alloy,
         bank,
         dex,
+        gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
@@ -229,9 +229,9 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
     let account_multi = fs::read(artifacts_dir.join("dango_account_multi.wasm"))?;
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
-    let alloy = fs::read(artifacts_dir.join("dango_alloy.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let dex = fs::read(artifacts_dir.join("dango_dex.wasm"))?;
+    let gateway = fs::read(artifacts_dir.join("dango_gateway.wasm"))?;
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
@@ -246,9 +246,9 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_margin,
         account_multi,
         account_spot,
-        alloy,
         bank,
         dex,
+        gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
@@ -292,9 +292,9 @@ where
     let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
     let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
-    let alloy_code_hash = upload(&mut msgs, codes.alloy);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
+    let gateway_code_hash = upload(&mut msgs, codes.gateway);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
@@ -415,13 +415,13 @@ where
         "dango/lending",
     )?;
 
-    // Instantiate the alloy contract.
-    let alloy = instantiate(
+    // Instantiate the gateway contract.
+    let gateway = instantiate(
         &mut msgs,
-        alloy_code_hash,
-        &alloy::InstantiateMsg { mapping: alloys },
-        "dango/alloy",
-        "dango/alloy",
+        gateway_code_hash,
+        &gateway::InstantiateMsg { mapping: alloys },
+        "dango/gateway",
+        "dango/gateway",
     )?;
 
     // Create the `balances` map needed for instantiating bank.
@@ -444,8 +444,8 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces: btree_map! {
-                alloy::NAMESPACE.clone()   => alloy,
                 dex::NAMESPACE.clone()     => dex,
+                gateway::NAMESPACE.clone() => gateway,
                 lending::NAMESPACE.clone() => lending,
                 warp::NAMESPACE.clone()    => warp,
             },
@@ -490,9 +490,9 @@ where
 
     let contracts = Contracts {
         account_factory,
-        alloy,
         bank,
         dex,
+        gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
@@ -522,8 +522,8 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
-            alloy,
             dex,
+            gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,

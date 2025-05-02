@@ -2,12 +2,12 @@
 members = [
   "config-parser",
   "dango/account/*",
-  "dango/alloy",
   "dango/auth",
   "dango/bank",
   "dango/cli",
   "dango/client",
   "dango/dex",
+  "dango/gateway",
   "dango/genesis",
   "dango/httpd",
   "dango/indexer/sql",
@@ -160,12 +160,12 @@ dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
 dango-account-multi         = { path = "dango/account/multi" }
 dango-account-spot          = { path = "dango/account/spot" }
-dango-alloy                 = { path = "dango/alloy" }
 dango-amm                   = { path = "dango/amm" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
+dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/httpd" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
