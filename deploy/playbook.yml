@@ -5,3 +5,8 @@
     - common
     - users
     - docker
+
+- hosts: db
+  become: true
+  roles:
+    - postgres

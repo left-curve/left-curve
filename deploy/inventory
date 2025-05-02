@@ -3,3 +3,6 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [github_runners]
 15.204.196.152 hostname=ovh1 ansible_user=debian
+
+[db]
+15.204.196.152 ansible_user=debian

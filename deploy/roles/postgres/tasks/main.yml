@@ -1,0 +1,40 @@
+- name: install docker & python3-docker
+  apt:
+    name:
+      - docker.io
+      - python3-docker
+    state: present
+    update_cache: yes
+  become: true
+
+- name: add deploy to docker group
+  user:
+    name: "{{ deploy_user }}"
+    groups: docker
+    append: yes
+  become: true
+
+- name: ensure postgres data dir exists
+  file:
+    path: "{{ data_dir }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0755"
+  become: true
+
+- name: run Postgres container as deploy
+  community.docker.docker_container:
+    name: "{{ container_name }}"
+    image: "postgres:{{ psql_version }}"
+    env:
+      POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
+      POSTGRES_PASSWORD: "{{ db_password }}"
+    volumes:
+      - "{{ data_dir }}:/var/lib/postgresql/data"
+    published_ports:
+      - "{{ host_port }}:5432"
+    restart: always
+    state: started
+  become: true
+  become_user: "{{ deploy_user }}"
