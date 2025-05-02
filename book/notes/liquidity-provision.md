@@ -12,7 +12,7 @@ $$
 
 Here, $f$ is a fee rate we charge on the amount of LP tokens mint. Without this fee, the following exploit would be possible: provide unbalanced liquidity, then immediately withdraw balanced liquidity. This effectively achieves a fee-less swap.
 
-The fee rate should be a function over $(A, B, c, d)$, **reflecting how unbalance the user liquidity is**:
+The fee rate should be a function over $(A, B, a, b)$, **reflecting how unbalance the user liquidity is**:
 
 - If user liquidity is prefectly balanced, that is, $\frac{a}{A} = \frac{b}{B}$, fee rate should be zero: $f(A, B, a ,b) = 0$.
 - If user liquidity is prefertly unbalanced, that is, **one-sided** (e.g. $a \ne 0$ but $b = 0$), then the fee rate should be a value such that if the attack is carried out, the output is equal to doing a swap normally.
@@ -48,7 +48,7 @@ where $r = \frac{I'}{I}$, which represents how much the invariant increases as a
 In the second scenario, the user does a swap of $\Delta a$ amount of A into $(1 - s) \Delta b$ amount of B, where $s$ is the swap fee rate, which is a constant. The swap must satisfy the invariant:
 
 $$
-I(A, B) = I(A + \Delta a, B - (1 - s) \Delta b)
+I(A, B) = I(A + \Delta a, B - \Delta b)
 $$
 
 The user now has $A - \Delta a$ amount of A and $B + (1 - s) \Delta b$ amount of B.
