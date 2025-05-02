@@ -1,0 +1,24 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-token-minter"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# If enabled, Wasm exports won't be created. This allows this contract to be
+# imported into other contracts as a library.
+library = []
+
+[dependencies]
+anyhow          = { workspace = true }
+dango-types     = { workspace = true }
+grug            = { workspace = true }
+hyperlane-types = { workspace = true }

@@ -9,6 +9,7 @@ pub mod lending;
 pub mod oracle;
 mod querier;
 pub mod taxman;
+pub mod token_minter;
 pub mod vesting;
 pub mod warp;
 

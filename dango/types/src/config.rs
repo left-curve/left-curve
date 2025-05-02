@@ -55,6 +55,7 @@ pub struct AppAddresses {
     pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
+    pub token_minter: Addr,
     pub warp: Addr,
 }
 
@@ -69,6 +70,7 @@ impl Default for AppAddresses {
             lending: Addr::mock(0),
             oracle: Addr::mock(0),
             taxman: Addr::mock(0),
+            token_minter: Addr::mock(0),
             warp: Addr::mock(0),
         }
     }

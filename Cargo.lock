@@ -3374,6 +3374,7 @@ dependencies = [
  "dango-lending",
  "dango-oracle",
  "dango-taxman",
+ "dango-token-minter",
  "dango-types",
  "dango-vesting",
  "dango-warp",
@@ -3539,6 +3540,16 @@ dependencies = [
  "test-case",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "dango-token-minter"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "hyperlane-types",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 use {
-    crate::{ALLOYS, MAILBOX, ROUTES},
+    crate::{MAILBOX, ROUTES},
     dango_types::warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -8,7 +8,6 @@ use {
         mailbox::Domain,
         recipients::{RecipientQuery, RecipientQueryResponse},
     },
-    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -29,20 +28,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_routes(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::Alloy { underlying_denom } => {
-            let res = query_alloy(ctx, underlying_denom)?;
-            res.to_json_value()
-        },
-        QueryMsg::Alloys { start_after, limit } => {
-            let res = query_alloys(ctx, start_after, limit)?;
-            res.to_json_value()
-        },
         QueryMsg::Recipient(RecipientQuery::InterchainSecurityModule {}) => {
             let ism = query_interchain_security_module(ctx);
             let res = RecipientQueryResponse::InterchainSecurityModule(ism);
             res.to_json_value()
         },
-        _ => todo!(),
     }
 }
 
@@ -78,26 +68,6 @@ fn query_routes(
                 route,
             })
         })
-        .collect()
-}
-
-#[inline]
-fn query_alloy(ctx: ImmutableCtx, underlying_denom: Denom) -> StdResult<Denom> {
-    ALLOYS.load(ctx.storage, &underlying_denom)
-}
-
-#[inline]
-fn query_alloys(
-    ctx: ImmutableCtx,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<Denom, Denom>> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
-
-    ALLOYS
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(limit as usize)
         .collect()
 }
 

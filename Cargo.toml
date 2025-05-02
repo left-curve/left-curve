@@ -16,6 +16,7 @@ members = [
   "dango/proposal-preparer",
   "dango/taxman",
   "dango/testing",
+  "dango/token-minter",
   "dango/types",
   "dango/vesting",
   "dango/warp",
@@ -175,6 +176,7 @@ dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-token-factory         = { path = "dango/token-factory" }
+dango-token-minter          = { path = "dango/token-minter" }
 dango-types                 = { path = "dango/types" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }

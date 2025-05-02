@@ -190,7 +190,12 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
     let warp = ContractBuilder::new(Box::new(dango_warp::instantiate))
         .with_execute(Box::new(dango_warp::execute))
         .with_query(Box::new(dango_warp::query))
-        .with_cron_execute(Box::new(dango_warp::cron_execute))
+        .build();
+
+    let token_minter = ContractBuilder::new(Box::new(token_minter::instantiate))
+        .with_execute(Box::new(token_minter::execute))
+        .with_query(Box::new(token_minter::query))
+        .with_cron_execute(Box::new(token_minter::cron_execute))
         .build();
 
     Codes {
