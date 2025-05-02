@@ -1,6 +1,5 @@
 name: Rust
 
-
 env:
   COMETBFT_GIT_TAG: v0.38.17
   GIT_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -96,15 +95,15 @@ jobs:
       #   run: |
       #     createdb -U postgres -h postgres "$PGDATABASE"
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${HOME}/.cargo/bin/
-            ${HOME}/.cargo/registry/index/
-            ${HOME}/.cargo/registry/cache/
-            ${HOME}/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      # - uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ${HOME}/.cargo/bin/
+      #       ${HOME}/.cargo/registry/index/
+      #       ${HOME}/.cargo/registry/cache/
+      #       ${HOME}/.cargo/git/db/
+      #       target/
+      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
