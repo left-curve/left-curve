@@ -136,8 +136,8 @@ strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
-tendermint              = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
-tendermint-rpc          = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
+tendermint              = "0.40.4"
+tendermint-rpc          = "0.40.4"
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
@@ -145,7 +145,7 @@ tokio                   = { version = "1", features = ["full"] }
 tokio-stream            = { version = "0.1", features = ["sync"] }
 toml                    = "0.8"
 tower                   = "0.5"
-tower-abci              = { git = "https://github.com/left-curve/tower-abci.git", rev = "6ba8190" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
+tower-abci              = "0.19"
 tracing                 = "0.1"
 tracing-actix-web       = "0.7"
 tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
