@@ -8,7 +8,7 @@ use {
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         lending::InterestRateModel,
         oracle::PriceSource,
-        taxman,
+        perps, taxman,
     },
     grug::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, Timestamp, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
@@ -28,6 +28,7 @@ pub struct Contracts {
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
+    pub perps: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
@@ -45,6 +46,7 @@ pub struct Codes<T> {
     pub hyperlane: Hyperlane<T>,
     pub lending: T,
     pub oracle: T,
+    pub perps: T,
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
@@ -64,6 +66,7 @@ pub struct GenesisOption {
     pub hyperlane: HyperlaneOption,
     pub lending: LendingOption,
     pub oracle: OracleOption,
+    pub perps: PerpsOption,
     pub vesting: VestingOption,
 }
 
@@ -126,6 +129,8 @@ pub struct OracleOption {
     /// Pyth Lazer trusted signers: public key and expiration timestamp.
     pub pyth_trusted_signers: BTreeMap<Binary, Timestamp>,
 }
+
+pub type PerpsOption = perps::InstantiateMsg;
 
 pub struct VestingOption {
     /// Cliff for Dango token unlocking.
