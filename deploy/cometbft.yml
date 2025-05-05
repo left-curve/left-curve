@@ -1,0 +1,13 @@
+- hosts: cometbft
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars:
+    cometbft_target_dir: "{{ ansible_env.HOME }}/cometbft"
+    COMETBFT_NODE_KEY: "{{ lookup('env','COMETBFT_NODE_KEY') }}"
+    COMETBFT_VALIDATOR_ADDRESS: "{{ lookup('env','COMETBFT_VALIDATOR_ADDRESS') }}"
+    COMETBFT_VALIDATOR_PUB_KEY: "{{ lookup('env','COMETBFT_VALIDATOR_PUB_KEY') }}"
+    COMETBFT_VALIDATOR_PRIVATE_KEY: "{{ lookup('env','COMETBFT_VALIDATOR_PRIVATE_KEY') }}"
+  collections:
+    - community.docker
+  roles:
+    - cometbft

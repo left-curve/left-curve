@@ -1,0 +1,33 @@
+- name: Ensure target dir exists
+  file:
+    path: "{{ cometbft_target_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - config
+    - data
+
+- name: Copy all files from cometbft role
+  copy:
+    src: "{{ playbook_dir }}/roles/cometbft/files/"
+    dest: "{{ cometbft_target_dir }}/config/"
+    mode: '0644'
+
+- name: Render all templates from cometbft role
+  template:
+    src: "{{ item }}"
+    dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
+  loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/*', wantlist=True) }}"
+
+- name: Deploy cometbft container
+  docker_container:
+    name: cometbft
+    image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "127.0.0.1:26657:26657"
+    volumes:
+      - "{{ cometbft_target_dir }}/config:/home/cometbft/.cometbft/config"
+      - "{{ cometbft_target_dir }}/data:/home/cometbft/.cometbft/data"
+    tty: true
