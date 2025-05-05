@@ -8,7 +8,7 @@ use {
     },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
+        GrugOption, HyperlaneOption, LendingOption, OracleOption, PerpsOption, VestingOption,
     },
     dango_types::{
         auth::Key,
@@ -17,6 +17,7 @@ use {
         dex::{CurveInvariant, PairParams, PairUpdate},
         gateway::{Remote, WithdrawalFee},
         lending::InterestRateModel,
+        perps::PerpsMarketParams,
         taxman,
     },
     grug::{
@@ -175,6 +176,7 @@ impl Preset for GenesisOption {
             hyperlane: Preset::preset_test(),
             lending: Preset::preset_test(),
             oracle: Preset::preset_test(),
+            perps: Preset::preset_test(),
             vesting: Preset::preset_test(),
         }
     }
@@ -491,6 +493,27 @@ impl Preset for OracleOption {
         OracleOption {
             pyth_price_sources: PYTH_PRICE_SOURCES.clone(),
             wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+        }
+    }
+}
+
+impl Preset for PerpsOption {
+    fn preset_test() -> Self {
+        PerpsOption {
+            perps_vault_denom: usdc::DENOM.clone(),
+            perps_market_params: btree_map! {
+                dango::DENOM.clone() => PerpsMarketParams {
+                    denom: dango::DENOM.clone(),
+                    trading_enabled: true,
+                    max_long_oi: Uint128::new(1_000_000),
+                    max_short_oi: Uint128::new(1_000_000),
+                    position_open_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
+                    position_close_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
+                    min_position_size: Uint128::new(100),
+                    skew_scale: Uint128::new(100),
+                    max_funding_velocity: Udec128::new_bps(10),
+                },
+            },
         }
     }
 }

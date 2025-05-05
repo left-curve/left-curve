@@ -88,6 +88,11 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_oracle::query))
             .build();
 
+        let perps = ContractBuilder::new(Box::new(dango_perps::instantiate))
+            .with_execute(Box::new(dango_perps::execute))
+            .with_query(Box::new(dango_perps::query))
+            .build();
+
         let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
             .with_execute(Box::new(dango_lending::execute))
             .with_query(Box::new(dango_lending::query))
@@ -121,6 +126,7 @@ impl GenesisCodes for RustVm {
             hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,
+            perps,
             taxman,
             vesting,
             warp,
@@ -146,6 +152,7 @@ impl GenesisCodes for WasmVm {
         let va = fs::read(artifacts_dir.join("hyperlane_va.wasm")).unwrap();
         let lending = fs::read(artifacts_dir.join("dango_lending.wasm")).unwrap();
         let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm")).unwrap();
+        let perps = fs::read(artifacts_dir.join("dango_perps.wasm")).unwrap();
         let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm")).unwrap();
         let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm")).unwrap();
         let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm")).unwrap();
@@ -161,6 +168,7 @@ impl GenesisCodes for WasmVm {
             hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,
+            perps,
             taxman,
             vesting,
             warp,

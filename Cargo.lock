@@ -3383,6 +3383,7 @@ dependencies = [
  "dango-gateway",
  "dango-lending",
  "dango-oracle",
+ "dango-perps",
  "dango-taxman",
  "dango-types",
  "dango-vesting",
@@ -3493,6 +3494,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-perps"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-proposal-preparer"
 version = "0.0.0"
 dependencies = [
@@ -3538,6 +3548,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-lending",
  "dango-oracle",
+ "dango-perps",
  "dango-proposal-preparer",
  "dango-types",
  "digest 0.10.7",

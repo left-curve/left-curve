@@ -15,6 +15,7 @@ members = [
   "dango/lending",
   "dango/mocks/*",
   "dango/oracle",
+  "dango/perps",
   "dango/proposal-preparer",
   "dango/taxman",
   "dango/testing",
@@ -176,6 +177,7 @@ dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
 dango-mock-httpd            = { path = "dango/mock/httpd" }
 dango-oracle                = { path = "dango/oracle" }
+dango-perps                 = { path = "dango/perps" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }

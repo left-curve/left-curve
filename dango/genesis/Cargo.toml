@@ -20,6 +20,7 @@ dango-dex             = { workspace = true, features = ["library"] }
 dango-gateway         = { workspace = true, features = ["library"] }
 dango-lending         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
+dango-perps           = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-vesting         = { workspace = true, features = ["library"] }

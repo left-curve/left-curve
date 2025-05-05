@@ -40,6 +40,7 @@ where
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
+    let perps_code_hash = upload(&mut msgs, codes.perps);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
@@ -238,6 +239,15 @@ where
         "dango/oracle",
     )?;
 
+    // Instantiate the perps contract.
+    let perps = instantiate(
+        &mut msgs,
+        perps_code_hash,
+        &opt.perps,
+        "dango/perps",
+        "dango/perps",
+    )?;
+
     // Instantiate the vesting contract.
     let vesting = instantiate(
         &mut msgs,
@@ -258,6 +268,7 @@ where
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
+        perps,
         taxman,
         vesting,
         warp,
@@ -286,6 +297,7 @@ where
             hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,
+            perps,
             taxman,
             warp,
         },
