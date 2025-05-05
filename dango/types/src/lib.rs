@@ -7,6 +7,7 @@ pub mod constants;
 pub mod dex;
 pub mod lending;
 pub mod oracle;
+pub mod perps;
 mod querier;
 pub mod taxman;
 pub mod vesting;

@@ -4,10 +4,11 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
+        constants::USDC_DENOM,
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
         oracle::{self, PriceSource},
-        taxman, vesting, warp,
+        perps, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper, Denom, Duration,
@@ -37,6 +38,7 @@ pub struct Contracts {
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
+    pub perps: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
@@ -53,6 +55,7 @@ pub struct Codes<T> {
     pub hyperlane: Hyperlane<T>,
     pub lending: T,
     pub oracle: T,
+    pub perps: T,
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
@@ -170,6 +173,11 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_oracle::query))
         .build();
 
+    let perps = ContractBuilder::new(Box::new(dango_perps::instantiate))
+        .with_execute(Box::new(dango_perps::execute))
+        .with_query(Box::new(dango_perps::query))
+        .build();
+
     let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
         .with_execute(Box::new(dango_lending::execute))
         .with_query(Box::new(dango_lending::query))
@@ -203,6 +211,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
+        perps,
         taxman,
         vesting,
         warp,
@@ -225,6 +234,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
+    let perps = fs::read(artifacts_dir.join("dango_perps.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
     let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
@@ -239,6 +249,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
+        perps,
         taxman,
         vesting,
         warp,
@@ -285,6 +296,7 @@ where
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
+    let perps_code_hash = upload(&mut msgs, codes.perps);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
@@ -451,6 +463,18 @@ where
         "dango/oracle",
     )?;
 
+    // Instantiate the perps contract.
+    let perps = instantiate(
+        &mut msgs,
+        perps_code_hash,
+        &perps::InstantiateMsg {
+            perps_vault_denom: USDC_DENOM.clone(),
+            perps_market_params: btree_map! {},
+        },
+        "dango/perps",
+        "dango/perps",
+    )?;
+
     let vesting = instantiate(
         &mut msgs,
         vesting_code_hash,
@@ -469,6 +493,7 @@ where
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
+        perps,
         taxman,
         vesting,
         warp,
