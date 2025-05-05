@@ -5,8 +5,8 @@ use {
     grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Query, QueryClient,
-        QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
+        Hash256, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
+        SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
     std::{fmt::Display, str::FromStr},

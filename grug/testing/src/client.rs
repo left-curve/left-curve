@@ -100,6 +100,10 @@ where
     pub async fn set_block_time(&self, block_time: grug_types::Duration) {
         self.suite.lock().await.block_time = block_time;
     }
+
+    pub async fn chain_id(&self) -> String {
+        self.suite.lock().await.chain_id.clone()
+    }
 }
 
 #[async_trait]

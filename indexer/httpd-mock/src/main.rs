@@ -11,9 +11,8 @@ use {
     tokio::sync::Mutex,
     tracing::Level,
 };
-
-#[tokio::test(flavor = "multi_thread")]
-async fn mock() {
+#[tokio::main]
+async fn main() {
     setup_tracing_subscriber(Level::INFO);
 
     let codes = build_rust_codes();
@@ -44,12 +43,7 @@ async fn mock() {
     let mock_client =
         MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::OnBroadcast);
 
-    let context = Context::new(
-        indexer_context,
-        Arc::new(suite),
-        Arc::new(mock_client),
-        indexer_path,
-    );
+    let context = Context::new(indexer_context, suite, Arc::new(mock_client), indexer_path);
 
     indexer_httpd::server::run_server("127.0.0.1", 8080, None, context, config_app, build_schema)
         .await
