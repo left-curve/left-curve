@@ -12,9 +12,7 @@ setup:
   python3 -m venv .venv
   source .venv/bin/activate && pip install --upgrade pip
   source .venv/bin/activate && pip install ansible
-  source .venv/bin/activate && ansible-galaxy install MonolithProjects.github_actions_runner
-  source .venv/bin/activate && ansible-galaxy collection install community.docker
-  source .venv/bin/activate && ansible-galaxy role install artis3n.tailscale
+  source .venv/bin/activate && ansible-galaxy collection install -r requirements.yml
 
 # Run the github runner installation playbooks
 install-runners:
