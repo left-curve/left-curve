@@ -47,22 +47,43 @@
     state: present
     update_cache: yes
 
+- name: Refresh network facts
+  setup:
+    gather_subset:
+      - network
 - ufw: state=reset
 - ufw: default=allow direction=outgoing
 - ufw: default=deny direction=incoming
-- ufw:
+- name: Allow SSH on non-tailscale when no tailscale0 exists
+  ufw:
     rule: allow
     direction: in
     port: "{{ item }}"
     proto: tcp
-  with_items: ['ssh']
+  loop:
+    - ssh
+    # mosh
+    - '60000:61000'
+  when: "'tailscale0' not in ansible_facts.interfaces"
+- name: Allow SSH only on tailscale0
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    interface: tailscale0
+    proto: tcp
+  loop:
+    - ssh
+    # mosh
+    - '60000:61000'
+  when: "'tailscale0' in ansible_facts.interfaces"
 - ufw:
     rule: allow
     direction: in
     port: "{{ item }}"
     proto: udp
-  # mosh and tailscale
-  with_items: ['60000:61000', '41641']
+  # Tailscale
+  with_items: ['41641']
 - ufw: logging=low
 - ufw: state=enabled
 

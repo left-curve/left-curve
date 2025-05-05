@@ -1,28 +1,6 @@
 - hosts: all
   become: true
-  vars:
-    tailscale_auth_key: "{{ lookup('env','TAILSCALE_AUTH_KEY') }}"
   roles:
     - common
     - users
     - docker
-
-- hosts: all
-  become: true
-  vars:
-    tailscale_auth_key: "{{ lookup('env','TAILSCALE_AUTH_KEY') }}"
-  roles:
-    - tailscale
-
-- hosts: db
-  become: true
-  roles:
-    - postgres
-
-- hosts: cometbft
-  become: true
-  become_user: "{{ deploy_user }}"
-  vars:
-    cometbft_target_dir: "{{ ansible_env.HOME }}/cometbft/config"
-  roles:
-    - cometbft

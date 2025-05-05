@@ -5,30 +5,3 @@
       vars:
         tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY') }}"
         tailscale_args: "--ssh"
-  tasks:
-    - name: Wait for tailscale0 to appear
-      wait_for:
-        path: /sys/class/net/tailscale0
-        state: present
-        timeout: 30
-
-    - name: Refresh network facts
-      setup:
-        gather_subset:
-          - network
-
-    - name: Allow SSH only on tailscale0
-      ufw:
-        rule: allow
-        direction: in
-        interface: tailscale0
-        port: 22
-        proto: tcp
-      when: "'tailscale0' in ansible_facts.interfaces"
-
-    - name: Remove generic SSH allow
-      ufw:
-        rule: allow
-        port: 22
-        proto: tcp
-        state: disabled
