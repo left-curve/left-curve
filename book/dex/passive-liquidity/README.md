@@ -55,7 +55,7 @@ Following this logic, we can devise the following algorithm to work out all the 
 - Move on to the "bin" at price $p_0 = p_{\mathrm{m}} + \frac{1}{2} p_{\mathrm{s}}$ (marginal price plus the half spread).
   - This is the price at which the pool will place its first SELL order.
   - Using the approach discussed above, find the total order size between the prices $p_0$ and $p_{\mathrm{m}}$. This is the size of the order to be place here.
-- Move on to the next "bin", at price $p_1 = p + \Delta p$.
+- Move on to the next "bin", at price $p_1 = p_0 + \Delta p$.
   - Using the approach discussed above, find the total order size between the prices $p_1$ and $p_0$.
   - Subtract the total order size between $p_{\mathrm{m}}$ and $p_0$, this is the order size to be placed here.
 - Do the same for $p_2$, $p_3$, ... until liquidity runs out (total order size $\ge x_0$).
