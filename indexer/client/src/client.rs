@@ -149,11 +149,11 @@ impl BroadcastClient for HttpClient {
             .post_graphql(broadcast_tx_sync::Variables {
                 tx: tx.to_json_string()?,
             })
-            .await?;
+            .await?
+            .broadcast_tx_sync
+            .deserialize_json()?;
 
-        let outcome = response.broadcast_tx_sync.deserialize_json()?;
-
-        Ok(outcome)
+        Ok(response)
     }
 }
 
