@@ -1,6 +1,7 @@
 use {
     crate::context::Context,
     actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
+    async_graphql::futures_util::TryFutureExt,
     indexer_sql::entity,
     sea_orm::{EntityTrait, Order, QueryOrder},
 };
@@ -22,7 +23,8 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     let block_height = app_ctx
         .grug_app
         .last_finalized_block()
-        .map_err(ErrorInternalServerError)?
+        .map_err(ErrorInternalServerError)
+        .await?
         .height;
 
     // This ensures than the database is up
