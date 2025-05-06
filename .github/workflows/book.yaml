@@ -36,9 +36,7 @@ jobs:
           toolchain: stable
 
       - name: Install mdbook and mdbook-katex
-        run: |
-          cargo install mdbook
-          cargo install mdbook-katex
+        run: cargo install mdbook mdbook-katex
 
       - name: Build book
         run: mdbook build
