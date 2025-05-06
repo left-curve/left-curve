@@ -4,6 +4,12 @@
 
 ---
 
+# Dango DEX
+
+- [Passive liquidity](dex/passive-liquidity/README.md)
+
+---
+
 # Notes
 
 - [Bounded values](notes/bounded-values.md)
