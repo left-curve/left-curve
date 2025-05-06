@@ -1,9 +1,28 @@
 use {
     crate::{BitArray, hash_internal_node, hash_leaf_node},
-    grug_types::{
-        Hash256, MembershipProof, NonMembershipProof, Order, Proof, ProofError, ProofNode,
-    },
+    grug_types::{Hash256, MembershipProof, NonMembershipProof, Order, Proof, ProofNode},
+    thiserror::Error,
 };
+
+#[derive(Debug, Error)]
+pub enum ProofError {
+    #[error("incorrect proof type, expect {expect}, got {actual}")]
+    IncorrectProofType {
+        expect: &'static str,
+        actual: &'static str,
+    },
+
+    #[error("root hash mismatch! computed: {computed}, actual: {actual}")]
+    RootHashMismatch { computed: Hash256, actual: Hash256 },
+
+    // TODO: add more details to the error message?
+    #[error("expecting child to not exist but it exists")]
+    UnexpectedChild,
+
+    // TODO: add more details to the error message?
+    #[error("expecting bitarrays to share a common prefix but they do not")]
+    NotCommonPrefix,
+}
 
 pub fn verify_proof(
     root_hash: Hash256,

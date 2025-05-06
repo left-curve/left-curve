@@ -17,7 +17,6 @@ version       = { workspace = true }
 tendermint = ["dep:tendermint", "tendermint-rpc"]
 
 [dependencies]
-anyhow         = { workspace = true }
 bnum           = { workspace = true, features = ["borsh"] }
 borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
 data-encoding  = { workspace = true }

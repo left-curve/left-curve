@@ -32,7 +32,7 @@ impl<T, E, P> Client<E, P> for T where
 }
 
 #[derive(Clone)]
-pub struct ClientWrapper<E = anyhow::Error, P = Proof> {
+pub struct ClientWrapper<E, P = Proof> {
     pub client: Arc<dyn Client<E, P>>,
 }
 
