@@ -2,9 +2,7 @@
 
 Dango DEX is a fully onchain limit order book (LOB) exchange. It uses [frequent batch auctions (FBAs)][fba], executed at the end of each block, to match orders. Otherwise, it's not dissimilar to other LOB exchanges, e.g. Hyperliquid.
 
-A major downside of LOBs vs AMMs is that **market making on LOBs requires a high level of sophistication, making it infeasible to average retail investors**. As such, new LOB exchanges often need to enter into deals with professional market makers (MMs) to provide liquidity. This makes bootstrapping a new LOB exchange very challenging.
-
-From the perspective of an unsophisticated investor who wishes to provide liquidity _complete passively_ on major spot pairs (BTC-USD, ETH-USD, etc.), as of this time, their only options are Uniswap V3 (full range) and Curve V2. However, LP'ing on these AMMs have proven to be generally not profitable due to arbitrage trades.
+A major downside of LOBs vs AMMs is that **market making on LOBs requires a high level of sophistication, making it infeasible to average retail investors**. From the perspective of an unsophisticated investor who wishes to provide liquidity _complete passively_ on major spot pairs (BTC-USD, ETH-USD, etc.), as of this time, their only options are Uniswap V3 (full range) and Curve V2. However, LP'ing on these AMMs have proven to be generally not profitable due to arbitrage trades.
 
 Loss from arbitrage trades, measured by [loss-versus-rebalancing (LVR)][lvr], occurs when there's another, more liquid venue for trading the same pair, where price discovery primarily takes place. In crypto, this is typically the CEXs: Binance, Coinbase, Kraken, etc. Suppose BTC-USD is trading at 95,000. Then, upon a favorable news, it jumps to 96,000 on Binance. However, AMMs are completely passive--they never actively adjust quotes based on the news. As such, an arbitrageur can buy BTC at the stale price of 95,000 from the AMM, then sell on Binance for 96,000. LPs in the AMM takes the worse side of the trade. Over time, such losses accumulate and more often than not, outpace the gains from fees.
 
@@ -116,7 +114,7 @@ To reduce the chance of this happening, we plan to employ the following:
 
 ## Open questions
 
-- A Professional market maker usually doesn't place orders around the oracle price, but rather computes a "reservation price" based on the oracle price as well as his current inventory. Additionally, he usually doesn't use equal spread on both sides, but rather skewed spreads based on inventory. A classic model for computing these is that by [Avellaneda and Stoikov][avellaneda]. Our model do not do these.
+- A market maker usually doesn't place orders around the oracle price, but rather computes a "reservation price" based on the oracle price as well as his current inventory. Additionally, he usually doesn't use equal spread on both sides, but rather skewed spreads based on inventory. A classic model for computing these is that by [Avellaneda and Stoikov][avellaneda]. Our model do not do these.
 - Whereas Solidly is the simplest concentrated liquidity curve (simpler than Curve V1 or V2), it's still quite computationally heavy. We need to solve a quartic (4th degree polynomial) equation using Newton's method, for each "bin", each block. We would like to explore simpler concentrated liquidity curves.
 
 [fba]: https://academic.oup.com/qje/article/130/4/1547/1916146
