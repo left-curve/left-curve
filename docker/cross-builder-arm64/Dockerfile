@@ -1,5 +1,6 @@
 FROM rust:bookworm
 
+LABEL org.opencontainers.image.description="Dango cross builder"
 LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 RUN dpkg --add-architecture arm64 && \

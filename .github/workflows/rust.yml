@@ -1,8 +1,10 @@
 name: Rust
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
-  COMETBFT_GIT_TAG: v0.38.17
   GIT_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 on:
@@ -14,27 +16,36 @@ on:
     paths:
       - ".github/workflows/rust.yml"
       - "dango/**"
+      - "docker/**"
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
   pull_request:
     branches:
       - "*"
     paths:
       - ".github/workflows/rust.yml"
       - "dango/**"
+      - "docker/**"
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
 
 jobs:
   format:
     name: Format
     runs-on: [self-hosted]
+    # Don't use this, it raises permissions issues on self hosted runners
+    # container:
+    #   image: rust:slim
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -63,6 +74,11 @@ jobs:
     needs: [format]
     name: Lint + Test
     runs-on: self-hosted
+    # Don't use this, it raises permissions issues on self hosted runners
+    # container:
+    #   image: ghcr.io/left-curve/left-curve/native-builder
+    # permissions:
+    #   packages: read
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
@@ -173,6 +189,11 @@ jobs:
               echo "Unsupported matrix ${{ matrix.arch }}"
               exit 1
           fi
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross

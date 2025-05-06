@@ -1,5 +1,6 @@
 FROM rust:bookworm
 
+LABEL org.opencontainers.image.description="Dango native builder"
 LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 RUN apt-get update && apt-get install -y \

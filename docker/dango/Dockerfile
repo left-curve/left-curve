@@ -7,12 +7,20 @@ LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 ARG TARGET_ARCH
 ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT
+ARG USERNAME=dango
+ENV USERNAME=${USERNAME}
 
 RUN apt-get update && \
     apt-get install -y libssl-dev pkg-config libsqlite3-0 && \
     rm -rf /var/lib/apt/lists/*
 
-COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/dango
+RUN useradd --create-home --shell /bin/bash $USERNAME
+
+COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/
+RUN chown $USERNAME:$USERNAME /usr/local/bin/dango
+
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
 # Expose the indexer httpd (8080) and Tendermint ABCI (26658) ports.
 EXPOSE 8080 26658

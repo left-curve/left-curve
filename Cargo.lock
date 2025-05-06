@@ -9396,8 +9396,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint"
-version = "0.40.3"
-source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
+version = "0.40.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc997743ecfd4864bbca8170d68d9b2bee24653b034210752c2d883ef4b838b1"
 dependencies = [
  "bytes",
  "digest 0.10.7",
@@ -9423,8 +9424,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-config"
-version = "0.40.3"
-source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
+version = "0.40.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "069d1791f9b02a596abcd26eb72003b2e9906c6169a60fa82ffc080dd3a43fda"
 dependencies = [
  "flex-error",
  "serde",
@@ -9436,8 +9438,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-proto"
-version = "0.40.3"
-source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
+version = "0.40.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2c40e13d39ca19082d8a7ed22de7595979350319833698f8b1080f29620a094"
 dependencies = [
  "bytes",
  "flex-error",
@@ -9450,8 +9453,9 @@ dependencies = [
 
 [[package]]
 name = "tendermint-rpc"
-version = "0.40.3"
-source = "git+https://github.com/left-curve/tendermint-rs.git?rev=2e323c8#2e323c89088394593b4450f4a20f914434ac0ec4"
+version = "0.40.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35e0569a4b4cc42ff00df5a665be2858a39ff79df4790b176f1cd0e169bc0fc2"
 dependencies = [
  "async-trait",
  "bytes",
@@ -9860,7 +9864,8 @@ dependencies = [
 [[package]]
 name = "tower-abci"
 version = "0.19.1"
-source = "git+https://github.com/left-curve/tower-abci.git?rev=6ba8190#6ba81903150128456c7c2949ca484972621c4e00"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f20500d25342b86338bc9e053694dd199e9dafbc1044126a54ce378bfbbcfa5"
 dependencies = [
  "bytes",
  "futures",
