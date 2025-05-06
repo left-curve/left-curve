@@ -75,6 +75,10 @@ async fn create_block() -> anyhow::Result<(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn graphql_returns_block() -> anyhow::Result<()> {
+    // NOTE: It's necessary to capture the client in a variable named `_client`
+    // here. It can't be named just an underscore (`_`) or dropped (`..`).
+    // Otherwise, the indexer is dropped and the test fails.
+    // You can see multiple instances of this throughout this file.
     let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
