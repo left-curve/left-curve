@@ -1,6 +1,6 @@
 use {
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction, Vout},
-    grug::{Addr, Counter, Empty, Hash256, IndexedMap, Item, Map, Uint128, UniqueIndex},
+    grug::{Addr, Counter, Empty, Hash256, IndexedMap, Item, Map, Set, Uint128, UniqueIndex},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -25,6 +25,10 @@ pub const UTXOS: IndexedMap<(Uint128, Hash256, Vout), Empty, UtxoIndexes> =
     IndexedMap::new("utxo", UtxoIndexes {
         transaction_hash: UniqueIndex::new(|(_, hash, _), _| *hash, "utxo", "utxo__hash"),
     });
+
+/// UTXOs that have been processed by the multisig.
+/// This is used to prevent double spending.
+pub const PROCESSED_UTXOS: Set<(Hash256, Vout)> = Set::new("processed_utxo");
 
 /// Outbound transactions that have not received threshold number of signatures.
 ///

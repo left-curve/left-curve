@@ -1,5 +1,8 @@
 use {
-    crate::{CONFIG, INBOUNDS, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
+    crate::{
+        CONFIG, INBOUNDS, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
+        UTXOS,
+    },
     anyhow::ensure,
     dango_types::{
         bank,
@@ -95,7 +98,7 @@ fn observe_inbound(
     );
 
     ensure!(
-        !UTXOS.idx.transaction_hash.has(ctx.storage, hash),
+        !PROCESSED_UTXOS.has(ctx.storage, (hash, vout)),
         "transaction `{hash}` already exists in UTXO set"
     );
 
@@ -114,6 +117,7 @@ fn observe_inbound(
     //
     // Otherwise, simply save the voters set, then we're done.
     let (maybe_msg, maybe_event) = if voters.len() >= cfg.threshold as usize {
+        PROCESSED_UTXOS.insert(ctx.storage, (hash, vout))?;
         UTXOS.save(ctx.storage, (amount, hash, vout), &Empty {})?;
         INBOUNDS.remove(ctx.storage, inbound);
 
