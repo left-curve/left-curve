@@ -22,6 +22,7 @@ mod ffi;
 mod hash;
 mod hashers;
 mod imports;
+mod jellyfish_merkle;
 mod json;
 mod length_bounded;
 mod lengthy;
@@ -42,9 +43,9 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
-    encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
-    length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
-    serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
+    encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*, jellyfish_merkle::*,
+    json::*, length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*,
+    result::*, serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
