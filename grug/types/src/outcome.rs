@@ -248,7 +248,7 @@ pub struct BlockOutcome {
     pub tx_outcomes: Vec<TxOutcome>,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BroadcastTxOutcome {
     pub tx_hash: Hash256,
     pub check_tx: CheckTxOutcome,
@@ -298,7 +298,7 @@ pub struct BroadcastTxSuccess {
     pub check_tx: CheckTxSuccess,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SearchTxOutcome {
     pub hash: Hash256,
     pub height: u64,

@@ -9,6 +9,7 @@ pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpRespon
     let block_height = app_ctx
         .grug_app
         .last_finalized_block()
+        .await
         .map_err(ErrorInternalServerError)?
         .height;
 
@@ -42,6 +43,7 @@ pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, E
     let block_height = app_ctx
         .grug_app
         .last_finalized_block()
+        .await
         .map_err(ErrorInternalServerError)?
         .height;
 
