@@ -1,0 +1,46 @@
+# Based on:
+# https://github.com/rust-lang/mdBook/wiki/Automated-Deployment%3A-GitHub-Actions
+# https://github.com/peaceiris/actions-gh-pages?tab=readme-ov-file#%EF%B8%8F-mdbook-rust
+
+name: Book
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/book.yaml
+      - book/**
+      - book.toml
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # To push a branch
+      pages: write    # To push to a GitHub Pages site
+      id-token: write # To update the deployment status
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      # This builds mdbook from source, which is really slow.
+      # We should consider using: https://github.com/peaceiris/actions-mdbook
+      # but it doesn't support the katex preprocessor.
+      - name: Install mdbook and preprocessors
+        run: cargo install mdbook mdbook-katex
+
+      - name: Build book
+        run: mdbook build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/book/

@@ -16,22 +16,28 @@ on:
     paths:
       - ".github/workflows/rust.yml"
       - "dango/**"
+      - "docker/**"
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
   pull_request:
     branches:
       - "*"
     paths:
       - ".github/workflows/rust.yml"
       - "dango/**"
+      - "docker/**"
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
 
 jobs:
   format:
