@@ -1,3 +1,16 @@
+# Delete existing
+# - name: Stop and remove old Postgres container
+#   community.docker.docker_container:
+#     name: "{{ container_name }}"
+#     state: absent
+#
+# - name: ✂️ Delete host data directory so Postgres re-initializes
+#   become: true
+#   become_user: root
+#   ansible.builtin.file:
+#     path: "{{ data_dir }}"
+#     state: absent
+
 - name: install docker & python3-docker
   apt:
     name:
@@ -14,14 +27,12 @@
     append: yes
   become: true
 
-- name: ensure postgres data dir exists
-  file:
-    path: "{{ data_dir }}"
-    state: directory
-    owner: "{{ deploy_user }}"
-    group: "{{ deploy_user }}"
-    mode: "0755"
-  become: true
+- name: Abort if DB password is empty
+  assert:
+    that:
+      - db_password is defined
+      - db_password | length > 0
+    fail_msg: "DB_PASSWORD must be set and non-empty, aborting deployment."
 
 - name: run Postgres container as deploy
   community.docker.docker_container:

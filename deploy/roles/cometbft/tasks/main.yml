@@ -10,7 +10,7 @@
 - name: Copy all files from cometbft role
   copy:
     src: "{{ playbook_dir }}/roles/cometbft/files/config"
-    dest: "{{ cometbft_target_dir }}/config"
+    dest: "{{ cometbft_target_dir }}"
     mode: '0644'
 
 - name: Copy validator state only if missing
@@ -39,9 +39,8 @@
     name: cometbft
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
-    # To force pulling the same tag again
-    # pull: always
-    # recreate: true
+    pull: always           # always pull the image
+    recreate: true         # destroy+recreate if anything changes
     restart_policy: unless-stopped
     state: started
     env:
