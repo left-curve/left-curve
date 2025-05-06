@@ -15,7 +15,6 @@ async-trait        = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
-grug-jmt           = { workspace = true }
 grug-math          = { workspace = true }
 grug-mock-account  = { workspace = true, features = ["library"] }
 grug-mock-bank     = { workspace = true, features = ["library"] }

@@ -32,7 +32,6 @@ futures                 = { workspace = true }
 grug-app                = { workspace = true, features = ["abci", "tracing"] }
 grug-client             = { workspace = true }
 grug-db-disk            = { workspace = true }
-grug-jmt                = { workspace = true }
 grug-types              = { workspace = true }
 grug-vm-hybrid          = { workspace = true }
 hex                     = { workspace = true }
@@ -48,6 +47,3 @@ tower                   = { workspace = true, features = ["full"] }
 tower-abci              = { workspace = true }
 tracing                 = { workspace = true }
 tracing-subscriber      = { workspace = true }
-
-[dev-dependencies]
-assertor = { workspace = true }

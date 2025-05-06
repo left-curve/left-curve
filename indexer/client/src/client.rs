@@ -5,8 +5,8 @@ use {
     grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        CheckTxOutcome, GenericResult, Hash256, JsonDeExt, JsonSerExt, Query, QueryClient,
-        QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
+        Hash256, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
+        SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
     std::{fmt::Display, str::FromStr},
@@ -45,7 +45,12 @@ impl HttpClient {
         V: Variables + Serialize,
     {
         let query = V::Query::build_query(variables);
-        let response = self.inner.post(&self.endpoint).json(&query).send().await?;
+        let response = self
+            .inner
+            .post(format!("{}/graphql", self.endpoint))
+            .json(&query)
+            .send()
+            .await?;
 
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
 
@@ -62,7 +67,7 @@ impl HttpClient {
 #[async_trait]
 impl QueryClient for HttpClient {
     type Error = anyhow::Error;
-    type Proof = grug_jmt::Proof;
+    type Proof = grug_types::Proof;
 
     async fn query_app(
         &self,
@@ -144,22 +149,11 @@ impl BroadcastClient for HttpClient {
             .post_graphql(broadcast_tx_sync::Variables {
                 tx: tx.to_json_string()?,
             })
-            .await?;
+            .await?
+            .broadcast_tx_sync
+            .deserialize_json()?;
 
-        Ok(BroadcastTxOutcome {
-            tx_hash: Hash256::from_str(&response.broadcast_tx_sync.hash)?,
-            check_tx: CheckTxOutcome {
-                gas_limit: 0,
-                gas_used: 0,
-                result: into_generic_result(
-                    response.broadcast_tx_sync.code,
-                    response.broadcast_tx_sync.log,
-                ),
-                events: Binary::from_str(&response.broadcast_tx_sync.data)?
-                    .into_inner()
-                    .deserialize_json()?,
-            },
-        })
+        Ok(response)
     }
 }
 
@@ -168,21 +162,12 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let response: tendermint_rpc::endpoint::tx::Response = self
+        let response: SearchTxOutcome = self
             .get(format!("api/tendermint/search_tx/{hash}"))
             .await?
             .json()
             .await?;
-        let outcome = SearchTxOutcome::from_tm_query_tx_response(response)?;
 
-        Ok(outcome)
-    }
-}
-
-fn into_generic_result(code: i64, log: String) -> GenericResult<()> {
-    if code == 0 {
-        Ok(())
-    } else {
-        Err(log)
+        Ok(response)
     }
 }

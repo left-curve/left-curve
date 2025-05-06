@@ -16,7 +16,8 @@ use {
     },
     grug::{
         Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128, btree_map, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, TendermintRpcClient, Timestamp, Udec128,
+        btree_map, coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -83,6 +84,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         codes,
         ProposalPreparer::new_with_cache(),
         NullIndexer,
+        TestOption::default(),
     )
 }
 
@@ -119,12 +121,15 @@ pub fn setup_test_with_indexer() -> (
         codes,
         ProposalPreparer::new_with_cache(),
         indexer,
+        TestOption::default(),
     );
+
+    let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let httpd_context = Context::new(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
-        "http://localhost:26657",
+        consensus_client,
         indexer_path,
     );
 
@@ -150,6 +155,7 @@ pub fn setup_test_naive() -> (
         codes,
         NaiveProposalPreparer,
         NullIndexer,
+        TestOption::default(),
     )
 }
 
@@ -180,7 +186,14 @@ pub fn setup_benchmark_hybrid(
         codes.vesting.to_bytes().hash256(),
     ]);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+        TestOption::default(),
+    )
 }
 
 /// Set up a `TestSuite` with `DiskDb`, `WasmVm`, `NaiveProposalPreparer`, and
@@ -201,15 +214,23 @@ pub fn setup_benchmark_wasm(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+        TestOption::default(),
+    )
 }
 
-fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
+pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
     pp: PP,
     indexer: ID,
+    test_opt: TestOption,
 ) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
@@ -391,7 +412,7 @@ where
         vm,
         pp,
         indexer,
-        MOCK_CHAIN_ID.to_string(),
+        test_opt.chain_id.unwrap_or(MOCK_CHAIN_ID.to_string()),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -416,4 +437,16 @@ where
     };
 
     (suite, accounts, codes, contracts)
+}
+
+#[derive(Default)]
+pub struct TestOption {
+    pub chain_id: Option<String>,
+}
+
+impl TestOption {
+    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
+        self.chain_id = Some(chain_id.to_string());
+        self
+    }
 }

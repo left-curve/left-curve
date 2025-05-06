@@ -3,12 +3,13 @@ use {
     assertor::*,
     grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
-    grug_testing::{TestAccounts, TestBuilder, TestSuite, setup_tracing_subscriber},
-    grug_types::{Coins, Denom, JsonSerExt, ResultExt},
+    grug_testing::{MockClient, TestAccounts, TestBuilder, setup_tracing_subscriber},
+    grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
     indexer_httpd::{
         context::Context,
         graphql::types::{block::Block, event::Event, message::Message, transaction::Transaction},
+        traits::QueryApp,
     },
     indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
     indexer_testing::{
@@ -17,12 +18,12 @@ use {
     },
     serde_json::json,
     std::{str::FromStr, sync::Arc},
-    tokio::sync::mpsc,
+    tokio::sync::{Mutex, mpsc},
 };
 
 async fn create_block() -> anyhow::Result<(
     Context,
-    TestSuite<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
     TestAccounts,
 )> {
     setup_tracing_subscriber(tracing::Level::INFO);
@@ -37,40 +38,48 @@ async fn create_block() -> anyhow::Result<(
     let context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+    let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000)?)
         .set_owner("owner")
         .build();
 
-    let httpd_context = Context::new(
-        context,
-        Arc::new(suite.app.clone_without_indexer()),
-        "http://localhost:26657",
-        indexer_path,
-    );
+    let chain_id = suite.chain_id().await?;
 
-    let to = accounts["owner"].address;
+    let suite = Arc::new(Mutex::new(suite));
 
-    assert_that!(suite.app.indexer.indexing).is_true();
+    let mock_client =
+        MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::OnBroadcast);
 
-    suite
-        .send_message_with_gas(
+    let sender = accounts["sender"].address;
+
+    mock_client
+        .send_message(
             &mut accounts["sender"],
-            2000,
-            grug_types::Message::transfer(to, Coins::one(denom.clone(), 2_000)?)?,
+            grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?,
+            grug_types::GasOption::Predefined { gas_limit: 2000 },
+            &chain_id,
         )
-        .should_succeed();
+        .await?;
 
-    // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite.lock().await.app.indexer.wait_for_finish();
 
-    Ok((httpd_context, suite, accounts))
+    assert_that!(suite.lock().await.app.indexer.indexing).is_true();
+
+    let client = Arc::new(mock_client);
+
+    let httpd_context = Context::new(context, suite, client.clone(), indexer_path);
+
+    Ok((httpd_context, client, accounts))
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn graphql_returns_block() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    // NOTE: It's necessary to capture the client in a variable named `_client`
+    // here. It can't be named just an underscore (`_`) or dropped (`..`).
+    // Otherwise, the indexer is dropped and the test fails.
+    // You can see multiple instances of this throughout this file.
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Block($height: Int) {
@@ -116,7 +125,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn api_returns_block() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let local_set = tokio::task::LocalSet::new();
 
@@ -167,7 +176,7 @@ async fn api_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_last_block() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Block {
@@ -206,7 +215,7 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Block {
@@ -254,7 +263,7 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Blocks {
@@ -298,7 +307,7 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transactions() -> anyhow::Result<()> {
-    let (httpd_context, _, accounts) = create_block().await?;
+    let (httpd_context, _client, accounts) = create_block().await?;
 
     let graphql_query = r#"
       query Transactions {
@@ -345,7 +354,7 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_nested_events() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Transactions {
@@ -396,7 +405,7 @@ async fn graphql_returns_nested_events() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_messages() -> anyhow::Result<()> {
-    let (httpd_context, _, accounts) = create_block().await?;
+    let (httpd_context, _client, accounts) = create_block().await?;
 
     let graphql_query = r#"
       query Messages {
@@ -443,7 +452,7 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_events() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Events {
@@ -490,7 +499,7 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
-    let (httpd_context, mut suite, mut accounts) = create_block().await?;
+    let (httpd_context, client, mut accounts) = create_block().await?;
 
     let graphql_query = r#"
       subscription Block {
@@ -515,16 +524,19 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     tokio::spawn(async move {
         while rx.recv().await.is_some() {
             let to = accounts["owner"].address;
+            let chain_id = client.chain_id().await;
 
-            suite
-                .send_message_with_gas(
+            client
+                .send_message(
                     &mut accounts["sender"],
-                    2000,
                     grug_types::Message::transfer(
                         to,
                         Coins::one(Denom::from_str("ugrug")?, 2_000)?,
                     )?,
+                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    &chain_id,
                 )
+                .await
                 .should_succeed();
 
             // Enabling this here will cause the test to hang
@@ -574,7 +586,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
-    let (httpd_context, mut suite, mut accounts) = create_block().await?;
+    let (httpd_context, client, mut accounts) = create_block().await?;
 
     let graphql_query = r#"
       subscription Transactions {
@@ -605,16 +617,19 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     tokio::spawn(async move {
         while rx.recv().await.is_some() {
             let to = accounts["owner"].address;
+            let chain_id = client.chain_id().await;
 
-            suite
-                .send_message_with_gas(
+            client
+                .send_message(
                     &mut accounts["sender"],
-                    2000,
                     grug_types::Message::transfer(
                         to,
                         Coins::one(Denom::from_str("ugrug")?, 2_000)?,
                     )?,
+                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    &chain_id,
                 )
+                .await
                 .should_succeed();
 
             // Enabling this here will cause the test to hang
@@ -667,7 +682,7 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
-    let (httpd_context, mut suite, mut accounts) = create_block().await?;
+    let (httpd_context, client, mut accounts) = create_block().await?;
 
     let graphql_query = r#"
       subscription Messages {
@@ -697,15 +712,19 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
         while rx.recv().await.is_some() {
             let to = accounts["owner"].address;
 
-            suite
-                .send_message_with_gas(
+            let chain_id = client.chain_id().await;
+
+            client
+                .send_message(
                     &mut accounts["sender"],
-                    2000,
                     grug_types::Message::transfer(
                         to,
                         Coins::one(Denom::from_str("ugrug")?, 2_000)?,
                     )?,
+                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    &chain_id,
                 )
+                .await
                 .should_succeed();
 
             // Enabling this here will cause the test to hang
@@ -770,7 +789,7 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
-    let (httpd_context, mut suite, mut accounts) = create_block().await?;
+    let (httpd_context, client, mut accounts) = create_block().await?;
 
     let graphql_query = r#"
       subscription Events {
@@ -800,15 +819,19 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
         while rx.recv().await.is_some() {
             let to = accounts["owner"].address;
 
-            suite
-                .send_message_with_gas(
+            let chain_id = client.chain_id().await;
+
+            client
+                .send_message(
                     &mut accounts["sender"],
-                    2000,
                     grug_types::Message::transfer(
                         to,
                         Coins::one(Denom::from_str("ugrug")?, 2_000)?,
                     )?,
+                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    &chain_id,
                 )
+                .await
                 .should_succeed();
 
             // Enabling this here will cause the test to hang
@@ -861,7 +884,7 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_query_app() -> anyhow::Result<()> {
-    let (httpd_context, ..) = create_block().await?;
+    let (httpd_context, _client, ..) = create_block().await?;
 
     let graphql_query = r#"
       query QueryApp($request: String!, $height: Int!) {

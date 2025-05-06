@@ -1,5 +1,5 @@
 use {
-    crate::traits::QueryApp,
+    crate::traits::{ConsensusClient, QueryApp},
     indexer_sql::{indexer_path::IndexerPath, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
@@ -10,25 +10,22 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
     pub grug_app: Arc<dyn QueryApp + Send + Sync>,
-    pub tendermint_endpoint: String,
+    pub consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
     pub indexer_path: IndexerPath,
 }
 
 impl Context {
-    pub fn new<T>(
+    pub fn new(
         ctx: indexer_sql::Context,
         grug_app: Arc<dyn QueryApp + Send + Sync>,
-        tendermint_endpoint: T,
+        consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
         indexer_path: IndexerPath,
-    ) -> Self
-    where
-        T: ToString,
-    {
+    ) -> Self {
         Self {
             db: ctx.db,
             pubsub: ctx.pubsub,
             grug_app,
-            tendermint_endpoint: tendermint_endpoint.to_string(),
+            consensus_client,
             indexer_path,
         }
     }

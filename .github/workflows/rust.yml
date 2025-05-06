@@ -17,11 +17,14 @@ on:
       - ".github/workflows/rust.yml"
       - "deploy/**"
       - "dango/**"
+      - "docker/**"
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
   pull_request:
     branches:
       - "*"
@@ -29,11 +32,14 @@ on:
       - ".github/workflows/rust.yml"
       - "deploy/**"
       - "dango/**"
+      - "docker/**"
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
 
 jobs:
   format:

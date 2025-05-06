@@ -4,7 +4,7 @@ import type { Config } from "@left-curve/store/types";
 
 const dango = devnet;
 
-const GRAPHQL_URI =
+export const GRAPHQL_URI =
   import.meta.env.PUBLIC_ENVIRONMENT === "local"
     ? import.meta.env.PUBLIC_GRAPHQL_URI
     : dango.urls.indexer;
@@ -15,33 +15,33 @@ export const config: Config = createConfig({
   transport: graphql(GRAPHQL_URI, { batch: true }),
   coins: {
     [dango.id]: {
-      "hyp/btc/btc": {
+      "hyp/all/btc": {
         type: "native",
         name: "Bitcoin",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
         symbol: "BTC",
-        denom: "hyp/btc/btc",
+        denom: "hyp/all/btc",
         decimals: 6,
         coingeckoId: "bitcoin",
       },
-      "hyp/eth/eth": {
+      "hyp/all/eth": {
         type: "native",
         name: "Ether",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
         symbol: "ETH",
-        denom: "hyp/eth/eth",
+        denom: "hyp/all/eth",
         decimals: 6,
         coingeckoId: "ethereum",
       },
-      "hyp/xrp/xrp": {
+      "hyp/all/xrp": {
         type: "native",
         name: "Ripple",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/xrpl/images/xrp.svg",
         symbol: "XRP",
-        denom: "hyp/xrp/xrp",
+        denom: "hyp/all/xrp",
         decimals: 6,
         coingeckoId: "ripple",
       },
@@ -55,13 +55,13 @@ export const config: Config = createConfig({
         decimals: 6,
         coingeckoId: "usd-coin",
       },
-      "hyp/sol/sol": {
+      "hyp/all/sol": {
         type: "native",
         name: "Solana",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
         symbol: "SOL",
-        denom: "hyp/sol/sol",
+        denom: "hyp/all/sol",
         decimals: 6,
         coingeckoId: "solana",
       },

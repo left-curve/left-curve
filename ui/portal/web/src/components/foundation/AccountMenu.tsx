@@ -76,7 +76,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
           ) : null}
           <AnimatePresence mode="wait">
             <motion.div
-              className="flex flex-col items-center h-full w-full"
+              className="flex flex-col items-center h-full w-full px-4"
               key={account.address}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -126,7 +126,7 @@ export const Desktop: React.FC = () => {
     <div
       ref={menuRef}
       className={twMerge(
-        "transition-all lg:absolute fixed top-0 flex h-[92vh] justify-end z-50 duration-300 w-full lg:max-w-[360px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
+        "transition-all lg:absolute fixed top-0 flex h-[92vh] justify-end z-50 duration-300 w-full lg:max-w-[376px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
         isSidebarVisible ? "right-0" : "right-[-50vw]",
         isQuestBannerVisible ? "h-[92vh]" : "h-[100svh]",
       )}
