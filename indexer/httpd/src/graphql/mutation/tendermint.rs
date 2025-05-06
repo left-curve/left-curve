@@ -12,7 +12,7 @@ impl TendermintMutation {
     async fn broadcast_tx_sync(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "The base64 encoded transaction to broadcast")] tx: String,
+        #[graphql(desc = "Json string of the transaction to broadcast")] tx: String,
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
