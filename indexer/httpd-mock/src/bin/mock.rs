@@ -7,6 +7,7 @@ async fn main() {
         BlockCreation::OnBroadcast,
         None,
         SetupValues::default(),
+        true,
     )
     .await
     .unwrap();

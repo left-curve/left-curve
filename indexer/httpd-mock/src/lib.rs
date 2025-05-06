@@ -19,13 +19,14 @@ pub async fn run_mock_httpd(
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
     values: SetupValues,
+    keep_blocks: bool,
 ) -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
 
     let codes = build_rust_codes();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
-        .with_keep_blocks(true)
+        .with_keep_blocks(keep_blocks)
         .with_memory_database()
         .with_tmpdir()
         .with_hooks(dango_indexer_sql::hooks::Hooks)
