@@ -18,10 +18,14 @@ pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked([NAMESP
 
 /// Bitcoin address of the P2WPKH (pay to witness public key hash) type, which
 /// is 20-bytes long.
+// TODO: There are other types of Bitcoin addresses.
 pub type BitcoinAddress = HexByteArray<20>;
 
 /// An Secp256k1 signature.
 pub type BitcoinSignature = ByteArray<64>;
+
+/// The index of the output in a Bitcoin transaction.
+pub type Vout = u32;
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
@@ -53,7 +57,7 @@ pub struct Config {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Transaction {
-    pub inputs: BTreeMap<Hash256, Uint128>,
+    pub inputs: BTreeMap<(Hash256, Vout), Uint128>,
     pub outputs: BTreeMap<BitcoinAddress, Uint128>,
     pub fee: Uint128,
 }
@@ -86,6 +90,8 @@ pub enum ExecuteMsg {
     ObserveInbound {
         /// The Bitcoin transaction hash.
         transaction_hash: Hash256,
+        /// The transaction's output index.
+        vout: Vout,
         /// The transaction's UTXO amount.
         amount: Uint128,
         /// The recipient of the inbound transfer.

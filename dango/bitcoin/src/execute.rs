@@ -6,7 +6,7 @@ use {
         bitcoin::{
             BitcoinAddress, BitcoinSignature, DENOM, ExecuteMsg, INPUT_SIZE, InboundConfirmed,
             InstantiateMsg, OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed, OutboundRequested,
-            Transaction,
+            Transaction, Vout,
         },
         taxman::{self, FeeType},
     },
@@ -41,9 +41,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         } => update_config(ctx, sats_per_vbyte, outbound_fee, outbound_strategy),
         ExecuteMsg::ObserveInbound {
             transaction_hash,
+            vout,
             amount,
             recipient,
-        } => observe_inbound(ctx, transaction_hash, amount, recipient),
+        } => observe_inbound(ctx, transaction_hash, vout, amount, recipient),
         ExecuteMsg::Withdraw { recipient } => withdraw(ctx, recipient),
         ExecuteMsg::AuthorizeOutbound { id, signature } => authorize_outbound(ctx, id, signature),
     }
@@ -82,6 +83,7 @@ fn update_config(
 fn observe_inbound(
     ctx: MutableCtx,
     hash: Hash256,
+    vout: Vout,
     amount: Uint128,
     recipient: Option<Addr>,
 ) -> anyhow::Result<Response> {
@@ -97,7 +99,7 @@ fn observe_inbound(
         "transaction `{hash}` already exists in UTXO set"
     );
 
-    let inbound = (hash, amount, recipient);
+    let inbound = (hash, vout, amount, recipient);
     let mut voters = INBOUNDS.may_load(ctx.storage, inbound)?.unwrap_or_default();
 
     ensure!(
@@ -112,7 +114,7 @@ fn observe_inbound(
     //
     // Otherwise, simply save the voters set, then we're done.
     let (maybe_msg, maybe_event) = if voters.len() >= cfg.threshold as usize {
-        UTXOS.save(ctx.storage, (amount, hash), &Empty {})?;
+        UTXOS.save(ctx.storage, (amount, hash, vout), &Empty {})?;
         INBOUNDS.remove(ctx.storage, inbound);
 
         let maybe_msg = if let Some(recipient) = recipient {
@@ -229,9 +231,9 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             break;
         }
 
-        let (amount, hash) = res?;
+        let (amount, hash, vout) = res?;
 
-        inputs.insert(hash, amount);
+        inputs.insert((hash, vout), amount);
         sum.checked_add_assign(amount)?;
 
         fee += INPUT_SIZE * cfg.sats_per_vbyte;
@@ -246,8 +248,8 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     }
 
     // Delete the chosen UTXOs.
-    for (hash, amount) in &inputs {
-        UTXOS.remove(ctx.storage, (*amount, *hash))?;
+    for ((hash, vout), amount) in &inputs {
+        UTXOS.remove(ctx.storage, (*amount, *hash, *vout))?;
     }
 
     let (id, _) = NEXT_OUTBOUND_ID.increment(ctx.storage)?;
