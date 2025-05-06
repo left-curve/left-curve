@@ -39,15 +39,15 @@
     name: cometbft
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
-    state: started
     # To force pulling the same tag again
     # pull: always
     # recreate: true
     restart_policy: unless-stopped
+    state: started
     env:
       HOME: /app
     ports:
-      - "127.0.0.1:26657:26657"
+      - "127.0.0.1:{{ host_port }}:26657"
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     tty: true

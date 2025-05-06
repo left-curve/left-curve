@@ -25,6 +25,9 @@ deploy-cometbft:
 deploy-tailscale:
   ansible-playbook tailscale.yml
 
+deploy-db:
+  ansible-playbook db.yml
+
 cometbft-logs:
   ansible cometbft -m shell -a "docker logs cometbft -f"
 

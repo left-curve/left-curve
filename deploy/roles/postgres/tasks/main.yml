@@ -33,8 +33,8 @@
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
     published_ports:
-      - "{{ host_port }}:5432"
-    restart: always
+      - "127.0.0.1:{{ host_port }}:5432"
+    restart_policy: unless-stopped
     state: started
   become: true
   become_user: "{{ deploy_user }}"
