@@ -39,6 +39,9 @@ jobs:
       - name: Build book
         run: mdbook build
 
+      - name: Create CNAME file
+        run: echo "docs.dango.exchange" > ./target/book/CNAME
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
