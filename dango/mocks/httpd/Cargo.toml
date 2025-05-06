@@ -19,7 +19,7 @@ dango-testing           = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-testing            = { workspace = true }
 grug-vm-rust            = { workspace = true }
-indexer-httpd           = { workspace = true, features = ["testing"] }
+indexer-httpd           = { workspace = true, features = ["testing", "tracing"] }
 indexer-sql             = { workspace = true, features = ["tracing"] }
 tokio                   = { workspace = true }
 tracing                 = { workspace = true }
