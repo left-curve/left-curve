@@ -73,7 +73,7 @@ const SearchMenu: React.FC = () => {
           className={twMerge(
             "flex-col bg-rice-25 rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:-top-5 flex-1 lg:[box-shadow:0px_2px_6px_0px_#C7C2B666] transition-all duration-300",
             !isLg && isSearchBarVisible
-              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-white p-4 gap-4"
+              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-white-100 p-4 gap-4"
               : "",
           )}
         >
@@ -163,7 +163,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
           className="menu w-full overflow-hidden"
         >
           <motion.div
-            className="p-1 w-full flex items-center flex-col gap-1"
+            className="lg:p-1 w-full flex items-center flex-col gap-1"
             variants={{
               hidden: {},
               visible: {
