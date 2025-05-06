@@ -35,7 +35,7 @@ COPY --from=builder /go/bin/cometbft /usr/local/bin/
 
 # USER $USERNAME
 # WORKDIR /home/$USERNAME
-WORKDIR /app
+# WORKDIR /app
 
 # Expose the Tendermint p2p (26656), RPC (26657), and ABCI (26658) ports.
 EXPOSE 26656 26657 26658

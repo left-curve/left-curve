@@ -1,9 +1,3 @@
-- name: Lookup deploy user’s UID/GID
-  getent:
-    database: passwd
-    key: "{{ deploy_user }}"
-  register: deploy_info
-
 - name: Ensure target dir exists
   file:
     path: "{{ cometbft_target_dir }}/{{ item }}"
@@ -32,26 +26,25 @@
     dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
   loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/*', wantlist=True) }}"
 
-- name: Ensure host dirs owned by deploy
-  file:
-    path: "{{ item }}"
-    owner: "{{ deploy_info.getent[0].uid }}"
-    group: "{{ deploy_info.getent[0].gid }}"
-    state: directory
-  loop:
-    - "{{ cometbft_target_dir }}/config"
-    - "{{ cometbft_target_dir }}/data"
+# - name: Ensure host dirs owned by deploy
+#   file:
+#     path: "{{ cometbft_target_dir }}"
+#     state: directory
+#     owner: "{{ ansible_user_uid }}"
+#     group: "{{ ansible_user_gid }}"
+#     recurse: yes
 
 - name: Deploy cometbft container
   docker_container:
     name: cometbft
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
-    user: "{{ deploy_info.getent[0].uid }}:{{ deploy_info.getent[0].gid }}"
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     state: started
+    pull: always
+    recreate: true
     restart_policy: unless-stopped
     ports:
       - "127.0.0.1:26657:26657"
     volumes:
-      - "{{ cometbft_target_dir }}/config:/home/cometbft/.cometbft/config"
-      - "{{ cometbft_target_dir }}/data:/home/cometbft/.cometbft/data"
+      - "{{ cometbft_target_dir }}:/root/.cometbft"
     tty: true
