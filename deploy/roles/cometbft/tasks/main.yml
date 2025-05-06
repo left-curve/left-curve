@@ -1,3 +1,9 @@
+- name: Lookup deploy user’s UID/GID
+  getent:
+    database: passwd
+    key: "{{ deploy_user }}"
+  register: deploy_info
+
 - name: Ensure target dir exists
   file:
     path: "{{ cometbft_target_dir }}/{{ item }}"
@@ -9,9 +15,16 @@
 
 - name: Copy all files from cometbft role
   copy:
-    src: "{{ playbook_dir }}/roles/cometbft/files/"
-    dest: "{{ cometbft_target_dir }}/config/"
+    src: "{{ playbook_dir }}/roles/cometbft/files/config"
+    dest: "{{ cometbft_target_dir }}/config"
     mode: '0644'
+
+- name: Copy validator state only if missing
+  copy:
+    src: "{{ playbook_dir }}/roles/cometbft/files/data/priv_validator_state.json"
+    dest: "{{ cometbft_target_dir }}/data/priv_validator_state.json"
+    mode: '0644'
+    force: no
 
 - name: Render all templates from cometbft role
   template:
@@ -19,10 +32,21 @@
     dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
   loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/*', wantlist=True) }}"
 
+- name: Ensure host dirs owned by deploy
+  file:
+    path: "{{ item }}"
+    owner: "{{ deploy_info.getent[0].uid }}"
+    group: "{{ deploy_info.getent[0].gid }}"
+    state: directory
+  loop:
+    - "{{ cometbft_target_dir }}/config"
+    - "{{ cometbft_target_dir }}/data"
+
 - name: Deploy cometbft container
   docker_container:
     name: cometbft
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
+    user: "{{ deploy_info.getent[0].uid }}:{{ deploy_info.getent[0].gid }}"
     state: started
     restart_policy: unless-stopped
     ports:

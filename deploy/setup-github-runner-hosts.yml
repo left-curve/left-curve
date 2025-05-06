@@ -1,8 +1,6 @@
 - name: Prepare host for GitHub runners
   hosts: github_runners
   become: yes
-  vars:
-    runner_user: github
   roles:
     - rust
   tasks:

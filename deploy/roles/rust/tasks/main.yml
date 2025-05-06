@@ -27,5 +27,6 @@
     . "$HOME/.cargo/env"
     rustup component add clippy rustfmt rust-src
     rustup component add rustfmt clippy rust-src --toolchain nightly
+    cargo install mdbook
   args:
     executable: /bin/bash
