@@ -48,6 +48,3 @@ tower                   = { workspace = true, features = ["full"] }
 tower-abci              = { workspace = true }
 tracing                 = { workspace = true }
 tracing-subscriber      = { workspace = true }
-
-[dev-dependencies]
-assertor = { workspace = true }
