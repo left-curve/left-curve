@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 interface Props {
   trigger: React.ReactNode | string;
   menu: React.ReactNode;
-  className?: {
+  classNames?: {
     base?: string;
     trigger?: string;
     menu?: string;
@@ -14,13 +14,13 @@ interface Props {
   showArrow?: boolean;
 }
 
-export const Popover: React.FC<Props> = ({ menu, trigger, className, showArrow = true }) => {
+export const Popover: React.FC<Props> = ({ menu, trigger, classNames, showArrow = true }) => {
   return (
-    <HPopover className={twMerge("relative group w-fit", className?.base)}>
+    <HPopover className={twMerge("relative group w-fit", classNames?.base)}>
       {({ open }) => (
         <>
           <PopoverButton
-            className={twMerge("flex items-center gap-2 outline-none", className?.trigger)}
+            className={twMerge("flex items-center gap-2 outline-none", classNames?.trigger)}
           >
             {trigger}
             {showArrow && (
@@ -32,7 +32,7 @@ export const Popover: React.FC<Props> = ({ menu, trigger, className, showArrow =
 
           <PopoverPanel
             anchor="bottom"
-            className={twMerge("flex flex-col absolute z-50 p-2", className?.menu)}
+            className={twMerge("flex flex-col absolute z-50 p-2", classNames?.menu)}
           >
             <motion.div
               layout="size"
