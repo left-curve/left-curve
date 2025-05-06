@@ -1,14 +1,9 @@
-<div align="center">
-  <img src="left-curve.svg" alt="grug" width="200" style="margin: 1em 0;">
-</div>
+![banner](wall_1.jpg)
 
 Welcome, stranger!
 
-This is the Left Curve Book, everything about the Left Curve Stack:
+This is **the Dango Book**, everything about one place for all DeFi.
 
-- [Grug](https://grug.build), an execution environment for blockchains;
-- [Dango](https://dango.exchange), a DeFi app-chain built on Grug.
-
+> - [Follow us on Twitter](https://x.com/dangoXchg)
 > - [Join our Discord server](https://discord.gg/4uB9UDzYhz)
-> - [Read the whitepaper](https://grug.build/whitepaper)
-> - [GitHub](https://github.com/left-curve/left-curve)
+> - [Check out source code on GitHub](https://github.com/left-curve/left-curve)

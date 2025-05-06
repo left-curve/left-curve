@@ -1,7 +1,5 @@
 [Greeting](README.md)
 
-- [Audits](audits/README.md)
-
 ---
 
 # Dango DEX
@@ -10,7 +8,13 @@
 
 ---
 
-# Notes
+# Audits
+
+- [List of audits completed](audits/README.md)
+
+---
+
+# Unorganized notes
 
 - [Bounded values](notes/bounded-values.md)
 - [Exports](notes/exports.md)
