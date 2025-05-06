@@ -1,4 +1,4 @@
-use {dango_httpd_mock::run_mock_httpd, dango_testing::SetupValues, grug_testing::BlockCreation};
+use {dango_mock_httpd::run_mock_httpd, dango_testing::SetupValues, grug_testing::BlockCreation};
 
 #[tokio::main]
 async fn main() {

@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "dango-httpd-mock"
+name          = "dango-mock-httpd"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
