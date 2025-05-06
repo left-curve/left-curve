@@ -8,11 +8,11 @@ pub use {block::*, broadcast::*, options::*, query::*, search_tx::*};
 
 use {
     crate::{
-        Binary, BroadcastTxOutcome, Proof, Query, QueryResponse, StdError, Tx, TxOutcome,
-        UnsignedTx,
+        Binary, Block, BlockOutcome, BroadcastTxOutcome, Hash256, Proof, Query, QueryResponse,
+        SearchTxOutcome, StdError, Tx, TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
-    std::{ops::Deref, sync::Arc},
+    std::sync::Arc,
 };
 
 pub trait Client<E, P>:
@@ -81,10 +81,24 @@ impl<E, P> BroadcastClient for ClientWrapper<E, P> {
     }
 }
 
-impl<E, P> Deref for ClientWrapper<E, P> {
-    type Target = dyn Client<E, P>;
+#[async_trait]
+impl<E, P> BlockClient for ClientWrapper<E, P> {
+    type Error = E;
 
-    fn deref(&self) -> &Self::Target {
-        self.client.as_ref()
+    async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
+        self.client.query_block(height).await
+    }
+
+    async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
+        self.client.query_block_outcome(height).await
+    }
+}
+
+#[async_trait]
+impl<E, P> SearchTxClient for ClientWrapper<E, P> {
+    type Error = E;
+
+    async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
+        self.client.search_tx(hash).await
     }
 }
