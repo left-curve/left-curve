@@ -31,9 +31,8 @@ deploy-tailscale:
 deploy-db:
   ansible-playbook db.yml
 
-cometbft-logs:
+logs-cometbft:
   ansible cometbft -m shell -a "docker logs cometbft -f"
 
-cometbft-init-key:
-  # Used to create a validator key
-  cometbft gen_validator --home ~/cometbft/
+logs-dango:
+  ansible dango -m shell -a "docker logs dango -f"

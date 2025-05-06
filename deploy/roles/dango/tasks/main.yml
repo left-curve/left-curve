@@ -43,6 +43,12 @@
     dest: "{{ dango_target_dir }}"
     mode: '0644'
 
+- name: Ensure backend network exists
+  community.docker.docker_network:
+    name: backend
+    driver: bridge
+    state: present
+
 - name: Deploy dango container
   docker_container:
     name: dango
@@ -54,8 +60,8 @@
     state: started
     env:
       HOME: /app
-      INDEXER__DATABASE_URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ db_host }}:{{ db_port }}/{{ dango_db_name }}"
-      SENTRY__ENABLED: false
+      INDEXER__DATABASE_URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ dango_db_host }}:{{ db_port }}/{{ dango_db_name }}"
+      SENTRY__ENABLED: "false"
       SENTRY__DSN: "https://your-dsn-here"
       SENTRY__ENVIRONMENT: "production"
     ports:
@@ -63,3 +69,19 @@
     volumes:
       - "{{ dango_target_dir }}:/app/.dango"
     tty: true
+
+- name: Ensure backend network exists
+  community.docker.docker_network:
+    name: backend
+    driver: bridge
+    state: present
+
+- name: Connect Postgres and Dango containers to backend network
+  community.docker.docker_network:
+    name: backend
+    state: present
+    connected:
+      - postgres
+      - dango
+      - cometbft
+    appends: yes
