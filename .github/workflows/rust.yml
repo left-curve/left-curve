@@ -20,7 +20,10 @@ on:
       - "hyperlane/**"
       - "indexer/**"
       - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
   pull_request:
     branches:
       - "*"
@@ -31,7 +34,10 @@ on:
       - "hyperlane/**"
       - "indexer/**"
       - "docker/**"
-      - "**.toml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "clippy.toml"
+      - "rustfmt.toml"
 
 jobs:
   format:
