@@ -3410,6 +3410,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-httpd-mock"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-genesis",
+ "dango-httpd",
+ "dango-indexer-sql",
+ "dango-proposal-preparer",
+ "dango-testing",
+ "grug-db-memory",
+ "grug-testing",
+ "grug-vm-rust",
+ "indexer-httpd",
+ "indexer-sql",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "dango-indexer-sql"
 version = "0.0.0"
 dependencies = [
@@ -5632,25 +5651,6 @@ dependencies = [
  "tracing-actix-web",
  "tracing-subscriber",
  "uuid",
-]
-
-[[package]]
-name = "indexer-httpd-mock"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-genesis",
- "dango-httpd",
- "dango-indexer-sql",
- "dango-proposal-preparer",
- "dango-testing",
- "grug-db-memory",
- "grug-testing",
- "grug-vm-rust",
- "indexer-httpd",
- "indexer-sql",
- "tokio",
- "tracing",
 ]
 
 [[package]]
