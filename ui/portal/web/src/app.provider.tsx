@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/react";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
+import { GRAPHQL_URI } from "../store.config";
 import { router } from "./app.router";
 
 import type { AnyCoin } from "@left-curve/store/types";
@@ -134,7 +135,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     if (!username) return;
     let client: GraphqlSubscriptionClient | undefined;
     (async () => {
-      client = createClient({ url: chain.urls.indexer });
+      client = createClient({ url: GRAPHQL_URI });
       const subscription = client.iterate({
         query: `subscription($address: String) {
           sentTransfers: transfers(fromAddress: $address) {
