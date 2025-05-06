@@ -65,17 +65,12 @@
     # mosh
     - '60000:61000'
   when: "'tailscale0' not in ansible_facts.interfaces"
-- name: Allow SSH only on tailscale0
+- name: Allow any port on tailscale0
   ufw:
     rule: allow
     direction: in
-    port: "{{ item }}"
     interface: tailscale0
     proto: tcp
-  loop:
-    - ssh
-    # mosh
-    - '60000:61000'
   when: "'tailscale0' in ansible_facts.interfaces"
 - ufw:
     rule: allow

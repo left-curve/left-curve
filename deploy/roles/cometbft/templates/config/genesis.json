@@ -520,12 +520,12 @@
   "initial_height": "0",
   "validators": [
     {
-      "address": "46A0677D50B16FC3F584C9EC65526ACC9B87F93F",
+      "address": "{{ COMETBFT_VALIDATOR_ADDRESS }}",
       "name": "",
       "power": "10",
       "pub_key": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "eDmyCM4XJc+lU/1EOIoznpfDSaPDOUKnyJHUHuXM5OU="
+        "value": "{{ COMETBFT_VALIDATOR_PUB_KEY }}"
       }
     }
   ]

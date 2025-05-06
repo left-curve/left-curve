@@ -46,7 +46,9 @@
     env:
       HOME: /app
     ports:
-      - "127.0.0.1:{{ host_port }}:26657"
+      # - "127.0.0.1:{{ host_port }}:26656"
+      # - "127.0.0.1:{{ host_port }}:26657"
+      # - "127.0.0.1:{{ host_port }}:26658"
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     tty: true

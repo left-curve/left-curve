@@ -1,3 +1,10 @@
+- name: Install nginx as a proxy
+  become: true
+  become_user: root
+  apt:
+    name: nginx
+    state: present
+
 - name: Install psycopg2 so Ansible can talk to Postgres
   become: true
   become_user: root
@@ -65,7 +72,8 @@
       SENTRY__DSN: "https://your-dsn-here"
       SENTRY__ENVIRONMENT: "production"
     ports:
-      - "127.0.0.1:{{ host_port }}:8080"
+      - "127.0.0.1:8080:8080"
+      # - "127.0.0.1:26658:26658"
     volumes:
       - "{{ dango_target_dir }}:/app/.dango"
     tty: true
