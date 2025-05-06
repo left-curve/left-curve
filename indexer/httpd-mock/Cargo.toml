@@ -10,6 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+anyhow                  = { workspace = true }
 dango-genesis           = { workspace = true }
 dango-httpd             = { workspace = true }
 dango-indexer-sql       = { workspace = true }

@@ -5638,6 +5638,7 @@ dependencies = [
 name = "indexer-httpd-mock"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",

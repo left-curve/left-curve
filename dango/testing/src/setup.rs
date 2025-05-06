@@ -84,6 +84,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         codes,
         ProposalPreparer::new_with_cache(),
         NullIndexer,
+        SetupValues::default(),
     )
 }
 
@@ -120,6 +121,7 @@ pub fn setup_test_with_indexer() -> (
         codes,
         ProposalPreparer::new_with_cache(),
         indexer,
+        SetupValues::default(),
     );
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
@@ -153,6 +155,7 @@ pub fn setup_test_naive() -> (
         codes,
         NaiveProposalPreparer,
         NullIndexer,
+        SetupValues::default(),
     )
 }
 
@@ -183,7 +186,14 @@ pub fn setup_benchmark_hybrid(
         codes.vesting.to_bytes().hash256(),
     ]);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+        SetupValues::default(),
+    )
 }
 
 /// Set up a `TestSuite` with `DiskDb`, `WasmVm`, `NaiveProposalPreparer`, and
@@ -204,7 +214,14 @@ pub fn setup_benchmark_wasm(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+        SetupValues::default(),
+    )
 }
 
 pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
@@ -213,6 +230,7 @@ pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     codes: Codes<T>,
     pp: PP,
     indexer: ID,
+    values: SetupValues,
 ) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
@@ -394,7 +412,7 @@ where
         vm,
         pp,
         indexer,
-        MOCK_CHAIN_ID.to_string(),
+        values.chain_id.unwrap_or(MOCK_CHAIN_ID.to_string()),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -419,4 +437,16 @@ where
     };
 
     (suite, accounts, codes, contracts)
+}
+
+#[derive(Default)]
+pub struct SetupValues {
+    pub chain_id: Option<String>,
+}
+
+impl SetupValues {
+    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
+        self.chain_id = Some(chain_id.to_string());
+        self
+    }
 }
