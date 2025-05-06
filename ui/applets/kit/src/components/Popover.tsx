@@ -7,7 +7,7 @@ import { useClickAway } from "react-use";
 interface Props {
   trigger: React.ReactNode | string;
   menu: React.ReactNode;
-  className?: {
+  classNames?: {
     base: string;
     trigger?: string;
     menu?: string;
@@ -15,7 +15,7 @@ interface Props {
   showArrow?: boolean;
 }
 
-export const Popover: React.FC<Props> = ({ menu, trigger, className, showArrow = true }) => {
+export const Popover: React.FC<Props> = ({ menu, trigger, classNames, showArrow = true }) => {
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -39,7 +39,7 @@ export const Popover: React.FC<Props> = ({ menu, trigger, className, showArrow =
         <motion.button
           ref={triggerRef}
           onClick={() => setOpen((prev) => !prev)}
-          className={twMerge("flex items-center gap-2 outline-none", className?.trigger)}
+          className={twMerge("flex items-center gap-2 outline-none", classNames?.trigger)}
         >
           {trigger}
           {showArrow && (
@@ -52,7 +52,7 @@ export const Popover: React.FC<Props> = ({ menu, trigger, className, showArrow =
             ref={panelRef}
             className={twMerge(
               "left-0 xl:left-1/2 xl:-translate-x-1/2 flex flex-col absolute z-50 bg-rice-25 rounded-lg h-fit p-4 shadow-card-shadow",
-              className?.menu,
+              classNames?.menu,
             )}
           >
             <motion.div layout="size">
