@@ -4,7 +4,7 @@ import type { Config } from "@left-curve/store/types";
 
 const dango = devnet;
 
-const GRAPHQL_URI =
+export const GRAPHQL_URI =
   import.meta.env.PUBLIC_ENVIRONMENT === "local"
     ? import.meta.env.PUBLIC_GRAPHQL_URI
     : dango.urls.indexer;
