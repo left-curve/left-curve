@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Children, cloneElement, isValidElement } from "react";
+import { Children, cloneElement } from "react";
 import { useControlledState } from "#hooks/useControlledState.js";
 import { twMerge } from "#utils/twMerge.js";
 import { tv } from "tailwind-variants";
@@ -14,7 +14,6 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   keys?: string[];
   selectedTab?: string;
   layoutId: string;
-  keyComponent?: { key: string; component: React.ReactNode }[];
 }
 
 export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
@@ -26,7 +25,6 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   fullWidth,
   layoutId,
   color,
-  keyComponent,
 }) => {
   const tabs = keys ? keys : Children.toArray(children);
   const [activeTab, setActiveTab] = useControlledState(selectedTab, onTabChange, () => {
@@ -49,7 +47,6 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
         const isActive = elemKey === activeTab;
-        const customComponent = keyComponent?.find((kc) => kc.key === elemKey)?.component;
 
         return (
           <motion.button
@@ -64,7 +61,6 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
                 isActive={isActive}
                 color={color}
                 fullWidth={fullWidth}
-                customComponent={isValidElement(customComponent) ? customComponent : undefined}
               />
             ) : (
               cloneElement(e as React.ReactElement, { isActive })
@@ -118,7 +114,6 @@ const tabsVariants = tv({
 
 export interface TabProps extends VariantProps<typeof tabVariants> {
   title: string;
-  customComponent?: React.ReactNode;
 }
 
 export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
@@ -127,16 +122,13 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
   fullWidth,
   title,
   children,
-  customComponent,
 }) => {
   const styles = tabVariants({
     color,
     isActive,
     fullWidth,
   });
-  return (
-    <div className={twMerge(styles)}>{customComponent ? customComponent : (children ?? title)}</div>
-  );
+  return <p className={twMerge(styles)}>{children ? children : title}</p>;
 };
 
 const tabVariants = tv({
@@ -165,32 +157,32 @@ const tabVariants = tv({
     {
       isActive: true,
       color: "green",
-      class: "text-black placeholder:text-black",
+      class: "text-black",
     },
     {
       isActive: false,
       color: "green",
-      class: "text-gray-300 placeholder:text-gray-300",
+      class: "text-gray-300",
     },
     {
       isActive: true,
       color: "light-green",
-      class: "text-white-100 placeholder:text-white-100",
+      class: "text-white-100",
     },
     {
       isActive: false,
       color: "light-green",
-      class: "text-gray-300 placeholder:text-gray-300",
+      class: "text-gray-300",
     },
     {
       isActive: true,
       color: "line-red",
-      class: "text-red-bean-400 placeholder:text-red-bean-400",
+      class: "text-red-bean-400",
     },
     {
       isActive: false,
       color: "line-red",
-      class: "text-gray-300 placeholder:text-gray-300",
+      class: "text-gray-300",
     },
   ],
 });
