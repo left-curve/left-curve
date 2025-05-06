@@ -25,6 +25,7 @@ pub async fn run_mock_httpd(
     let codes = build_rust_codes();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+        .with_keep_blocks(true)
         .with_memory_database()
         .with_tmpdir()
         .with_hooks(dango_indexer_sql::hooks::Hooks)
