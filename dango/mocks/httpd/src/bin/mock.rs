@@ -1,4 +1,4 @@
-use dango_mock_httpd::{BlockCreation, SetupValues};
+use dango_mock_httpd::{BlockCreation, TestOption};
 
 #[tokio::main]
 async fn main() {
@@ -6,7 +6,7 @@ async fn main() {
         8080,
         BlockCreation::OnBroadcast,
         None,
-        SetupValues::default(),
+        TestOption::default(),
         true,
     )
     .await

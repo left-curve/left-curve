@@ -12,13 +12,13 @@ use {
     tracing::Level,
 };
 
-pub use {dango_testing::SetupValues, grug_testing::BlockCreation};
+pub use {dango_testing::TestOption, grug_testing::BlockCreation};
 
 pub async fn run(
     port: u16,
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
-    values: SetupValues,
+    test_opt: TestOption,
     keep_blocks: bool,
 ) -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
@@ -44,7 +44,7 @@ pub async fn run(
         codes,
         ProposalPreparer::new(),
         indexer,
-        values,
+        test_opt,
     );
 
     let suite = Arc::new(Mutex::new(suite));

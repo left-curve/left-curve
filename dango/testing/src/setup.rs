@@ -84,7 +84,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         codes,
         ProposalPreparer::new_with_cache(),
         NullIndexer,
-        SetupValues::default(),
+        TestOption::default(),
     )
 }
 
@@ -121,7 +121,7 @@ pub fn setup_test_with_indexer() -> (
         codes,
         ProposalPreparer::new_with_cache(),
         indexer,
-        SetupValues::default(),
+        TestOption::default(),
     );
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
@@ -155,7 +155,7 @@ pub fn setup_test_naive() -> (
         codes,
         NaiveProposalPreparer,
         NullIndexer,
-        SetupValues::default(),
+        TestOption::default(),
     )
 }
 
@@ -192,7 +192,7 @@ pub fn setup_benchmark_hybrid(
         codes,
         NaiveProposalPreparer,
         NullIndexer,
-        SetupValues::default(),
+        TestOption::default(),
     )
 }
 
@@ -220,7 +220,7 @@ pub fn setup_benchmark_wasm(
         codes,
         NaiveProposalPreparer,
         NullIndexer,
-        SetupValues::default(),
+        TestOption::default(),
     )
 }
 
@@ -230,7 +230,7 @@ pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     codes: Codes<T>,
     pp: PP,
     indexer: ID,
-    values: SetupValues,
+    test_opt: TestOption,
 ) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
@@ -412,7 +412,7 @@ where
         vm,
         pp,
         indexer,
-        values.chain_id.unwrap_or(MOCK_CHAIN_ID.to_string()),
+        test_opt.chain_id.unwrap_or(MOCK_CHAIN_ID.to_string()),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -440,11 +440,11 @@ where
 }
 
 #[derive(Default)]
-pub struct SetupValues {
+pub struct TestOption {
     pub chain_id: Option<String>,
 }
 
-impl SetupValues {
+impl TestOption {
     pub fn with_chain_id(mut self, chain_id: &str) -> Self {
         self.chain_id = Some(chain_id.to_string());
         self
