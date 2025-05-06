@@ -1,0 +1,455 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Overview - The Dango Book</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Everything about Dango">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Dango Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/left-curve/left-curve" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="networks"><a class="header" href="#networks">Networks</a></h1>
+<p>Dango mainnet, testnets, and devnets.</p>
+<h2 id="how-to-spin-up-a-devnet"><a class="header" href="#how-to-spin-up-a-devnet">How to spin up a devnet</a></h2>
+<h3 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h3>
+<ul>
+<li>Linux (we use Ubuntu 24.04)</li>
+<li>Docker</li>
+<li>Rust 1.80+</li>
+<li>Go</li>
+</ul>
+<h3 id="steps"><a class="header" href="#steps">Steps</a></h3>
+<ol>
+<li>
+<p>Compile dango:</p>
+<pre><code class="language-bash">git clone https://github.com/left-curve/left-curve.git
+cd left-curve
+cargo install --path dango/cli
+dango --version
+</code></pre>
+</li>
+<li>
+<p>Compile cometbft:</p>
+<pre><code class="language-bash">git clone https://github.com/cometbft/cometbft.git
+cd cometbft
+make install
+cometbft version
+</code></pre>
+</li>
+<li>
+<p>Initialize the <code>~/.dango</code> directory:</p>
+<pre><code class="language-bash">dango init
+</code></pre>
+</li>
+<li>
+<p>Initialize the <code>~/.cometbft</code> directory:</p>
+<pre><code class="language-bash">cometbft init
+</code></pre>
+</li>
+<li>
+<p>Create genesis state. Provide chain ID and genesis time as positional arguments:</p>
+<pre><code class="language-bash">cd left-curve
+cargo run -p dango-genesis --example build_genesis -- dev-5 2025-02-25T21:00:00Z
+</code></pre>
+<p>Genesis should be written into <code>~/.cometbft/config/genesis.json</code></p>
+</li>
+<li>
+<p>Create systemd service for postgresql:</p>
+<pre><code class="language-ini">[Unit]
+Description=PostgreSQL
+After=network.target
+
+[Service]
+Type=simple
+User=larry
+Group=docker
+WorkingDirectory=/home/larry/workspace/left-curve/indexer
+ExecStart=/usr/bin/docker compose up db
+ExecStop=/usr/bin/docker compose down db
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Save this as <code>/etc/systemd/system/postgresql.service</code>.</p>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>
+<p><code>WorkingDirectory</code> should be the directory where the <code>docker-compose.yml</code> is located.</p>
+</li>
+<li>
+<p>The <code>User</code> should be added to the <code>docker</code> group:</p>
+<pre><code class="language-bash">sudo usermod -aG docker larry
+</code></pre>
+</li>
+</ul>
+</li>
+<li>
+<p>Create systemd service for dango:</p>
+<pre><code class="language-ini">[Unit]
+Description=Dango
+After=network.target
+
+[Service]
+Type=simple
+User=larry
+ExecStart=/home/larry/.cargo/bin/dango start
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Save this as <code>/etc/systemd/system/dango.service</code>.</p>
+</li>
+<li>
+<p>Create systemd service for cometbft:</p>
+<pre><code class="language-ini">[Unit]
+Description=CometBFT
+After=network.target
+
+[Service]
+Type=simple
+User=larry
+ExecStart=/home/larry/.go/bin/cometbft start
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Save this as <code>/etc/systemd/system/cometbft.service</code>.</p>
+</li>
+<li>
+<p>Refresh systemd:</p>
+<pre><code class="language-bash">sudo systemctl daemon-reload
+</code></pre>
+</li>
+<li>
+<p>Start postgresql:</p>
+<pre><code class="language-bash">sudo systemctl start postgresql
+</code></pre>
+</li>
+<li>
+<p>Create database for the indexer:</p>
+<pre><code class="language-bash">cd left-curve/indexer
+createdb -h localhost -U postgres grug_dev
+</code></pre>
+</li>
+<li>
+<p>Start dango:</p>
+<pre><code class="language-bash">sudo systemctl start dango
+</code></pre>
+</li>
+<li>
+<p>Start cometbft:</p>
+<pre><code class="language-bash">sudo systemctl start cometbft
+</code></pre>
+<p><strong>Note:</strong> when starting, start in this order: postgresql, dango, cometbft. When terminating, do it in the reverse order.</p>
+</li>
+</ol>
+<h3 id="killing-existing-devnet-and-start-a-new-one"><a class="header" href="#killing-existing-devnet-and-start-a-new-one">Killing existing devnet and start a new one</a></h3>
+<ol>
+<li>
+<p>Stop dango and cometbft services (no need to stop postgresql):</p>
+<pre><code class="language-bash">sudo systemctl stop cometbft
+sudo systemctl stop dango
+</code></pre>
+</li>
+<li>
+<p>Reset cometbft:</p>
+<pre><code class="language-bash">cometbft unsafe-reset-all
+</code></pre>
+</li>
+<li>
+<p>Reset dango:</p>
+<pre><code class="language-bash">dango db reset
+</code></pre>
+</li>
+<li>
+<p>Reset indexer DB:</p>
+<pre><code class="language-bash">dropdb -h localhost -U postgres grug_dev
+createdb -h localhost -U postgres grug_dev
+</code></pre>
+</li>
+<li>
+<p>Delete indexer saved blocks:</p>
+<pre><code class="language-bash">rm -rfv ~/.dango/indexer
+</code></pre>
+</li>
+<li>
+<p>Restart the services:</p>
+<pre><code class="language-bash">sudo systemctl start dango
+sudo systemctl start cometbft
+</code></pre>
+</li>
+</ol>
+<h2 id="test-accounts"><a class="header" href="#test-accounts">Test accounts</a></h2>
+<p>Each devnet comes with 10 genesis users: <code>owner</code> and <code>user{1-9}</code>. They use Secp256k1 public keys derived from seed phrases with derivation path <code>m/44'/60'/0'/0/0</code>.</p>
+<p><strong>Do NOT use these keys in production!!!</strong></p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>owner</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>0278f7b7d93da9b5a62e28434184d1c337c2c28d4ced291793215ab6ee89d7fff8</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>success away current amateur  choose crystal busy labor cost genius industry cement rhythm refuse whale admit meadow truck edge tiger melt flavor weapon august</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user1</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>a5122c0729c1fae8587e3cc07ae952cb77dfccc049efd5be1d2168cbe946ca18</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>03bcf89d5d4f18048f0662d359d17a2dbbb08a80b1705bc10c0b953f21fb9e1911</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>auction popular sample armed lecture leader novel control muffin grunt ceiling alcohol pulse lunch eager chimney quantum attend deny copper stumble write suggest aspect</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user2</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>cac7b4ced59cf0bfb14c373272dfb3d4447c7cd5aea732ea6ff69e19f85d34c4</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>02d309ba716f271b1083e24a0b9d438ef7ae0505f63451bc1183992511b3b1d52d</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>noodle walk produce road repair tornado leisure trip hold bomb curve live feature satoshi avocado ask pitch there decrease guitar swarm hybrid alarm make</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user3</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>cf6bb15648a3a24976e2eeffaae6201bc3e945335286d273bb491873ac7c3141</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>alley honey observe various success garbage area include demise age cash foster model royal kingdom section place lend frozen loyal layer pony october blush</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user4</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>024a23e7a6f85e942a4dbedb871c366a1fdad6d0b84e670125991996134c270df2</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>foot loyal damp alien better first glue supply claw author jar know holiday slam main siren paper transfer cram breeze glow forest word giant</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user5</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>03da86b1cd6fd20350a0b525118eef939477c0fe3f5052197cd6314ed72f9970ad</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>cliff ramp foot thrive scheme almost notice wreck base naive warfare horse plug limb keep steel tone over season basic answer post exchange wreck</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user6</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>4d3658519dd8a8227764f64c6724b840ffe29f1ca456f5dfdd67f834e10aae34</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>03428b179a075ff2142453c805a71a63b232400cc33c8e8437211e13e2bd1dec4c</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>spring repeat dog spider dismiss bring media orphan process cycle soft divorce pencil parade hill plate message bamboo kid fun dose celery table unknown</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user7</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>82de24ba8e1bc4511ae10ce3fbe84b4bb8d7d8abc9ba221d7d3cf7cd0a85131f</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>028d4d7265d5838190842ada2573ef9edfc978dec97ca59ce48cf1dd19352a4407</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>indoor welcome kite echo gloom glance gossip finger cake entire laundry citizen employ total aim inmate parade grace end foot truly park autumn pelican</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user8</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>02a888b140a836cd71a5ef9bc7677a387a2a4272343cf40722ab9e85d5f8aa21bd</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>moon inmate unique oil cupboard tube cigar subway index survey anger night know piece laptop labor capable term ivory bright nice during pattern floor</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user9</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>bird okay punch bridge peanut tonight solar stereo then oil clever flock thought example equip juice twenty unfold reform dragon various gossip design artefact</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../notes/transaction-lifecycle.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../networks/dev-1.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../notes/transaction-lifecycle.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../networks/dev-1.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

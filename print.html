@@ -1,0 +1,1464 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>The Dango Book</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Everything about Dango">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Dango Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/left-curve/left-curve" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p><img src="wall_1.jpg" alt="banner" /></p>
+<p>Welcome, stranger!</p>
+<p>This is <strong>the Dango Book</strong>, everything about one place for all DeFi.</p>
+<blockquote>
+<ul>
+<li><a href="https://x.com/dangoXchg">Follow us on Twitter</a></li>
+<li><a href="https://discord.gg/4uB9UDzYhz">Join our Discord server</a></li>
+<li><a href="https://github.com/left-curve/left-curve">Check out source code on GitHub</a></li>
+</ul>
+</blockquote>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="passive-liquidity-on-dango-dex"><a class="header" href="#passive-liquidity-on-dango-dex">Passive liquidity on Dango DEX</a></h1>
+<p>Dango DEX is a fully onchain limit order book (LOB) exchange. It uses <a href="https://academic.oup.com/qje/article/130/4/1547/1916146">frequent batch auctions (FBAs)</a>, executed at the end of each block, to match orders. Otherwise, it's not dissimilar to other LOB exchanges, e.g. Hyperliquid.</p>
+<p>A major downside of LOBs vs AMMs is that <strong>market making on LOBs requires a high level of sophistication, making it infeasible to average retail investors</strong>. As such, new LOB exchanges often need to enter into deals with professional market makers (MMs) to provide liquidity. This makes bootstrapping a new LOB exchange very challenging.</p>
+<p>From the perspective of an unsophisticated investor who wishes to provide liquidity <em>complete passively</em> on major spot pairs (BTC-USD, ETH-USD, etc.), as of this time, their only options are Uniswap V3 (full range) and Curve V2. However, LP'ing on these AMMs have proven to be generally not profitable due to arbitrage trades.</p>
+<p>Loss from arbitrage trades, measured by <a href="https://arxiv.org/abs/2208.06046">loss-versus-rebalancing (LVR)</a>, occurs when there's another, more liquid venue for trading the same pair, where price discovery primarily takes place. In crypto, this is typically the CEXs: Binance, Coinbase, Kraken, etc. Suppose BTC-USD is trading at 95,000. Then, upon a favorable news, it jumps to 96,000 on Binance. However, AMMs are completely passive--they never actively adjust quotes based on the news. As such, an arbitrageur can buy BTC at the stale price of 95,000 from the AMM, then sell on Binance for 96,000. LPs in the AMM takes the worse side of the trade. Over time, such losses accumulate and more often than not, outpace the gains from fees.</p>
+<h2 id="the-objective"><a class="header" href="#the-objective">The objective</a></h2>
+<p>Create a passive liquidity pool that provides liquidity on Dango DEX, with the following properties:</p>
+<ul>
+<li>It will <strong>place limit orders in the LOB following a predefined strategy, such as an oracle-informed AMM curve</strong>.</li>
+<li>It aims to be the <strong>backstop liquidity</strong>. Meaning, it doesn't need to quote aggressively with super tight spreads. We anticipate professional MMs will take that role. The pool will quote wider (thus taking less risk), and be the backstop in case a big trade eats up all the orders from MMs.</li>
+<li>It targets majors (BTC, ETH, SOL, etc.) and should be <strong>LVR-resistant</strong>. At Dango, we want to maximize the benefit of LPs by discouraging arbitrage flow.</li>
+<li>It <strong>doesn't aim to be resistant to impermanent loss (IL)</strong>. However, once we ship perpetual futures trading on Dango, we imagine there will be actively managed "vaults" that combine the LP pool and hedging strategies using perps.</li>
+</ul>
+<h2 id="order-placement"><a class="header" href="#order-placement">Order placement</a></h2>
+<p>Let's discuss how the pool may determine what orders to place in the LOB. Let's think of the simplest strategy: the constant product curve ("xyk curve").</p>
+<p>Consider a BTC-USD pool that currently contains $x$ units of BTC (the "base asset") and $y$ units of USD (the "quote asset"). The state of the pool can be considered a point on the curve $I(x, y) = x y = K$, where $K$ is a constant that quantifies how much liquidity there is in the pool. When a trade happens, the state moves to a different point on the same curve (that is, without considering any fee).</p>
+<p>Generally, for any AMM curve $I(x, y)$, we define the concept of <strong>marginal price</strong> as:</p>
+<p>$$
+p_{\mathrm{m}} (x, y) = - \frac{\mathrm{d}y}{\mathrm{d}x} = \frac{\frac{\partial I}{\partial{x}}}{\frac{\partial I}{\partial y}}
+$$</p>
+<p>For the xyk curve, this is:</p>
+<p>$$
+p_{\mathrm{m}} (x, y) = \frac{y}{x}
+$$</p>
+<p>$p_{\mathrm{m}}$ is the price, denoted as the units of quote asset per one unit of base asset (that is, $y$ over $x$), of trading an infinitesimal amount of one asset to the other. On a graph, it is the slope of the tangent line that touches the curve at the point $(x, y)$.</p>
+<p><img src="dex/passive-liquidity/./1.png" alt="1" /></p>
+<p>Let's imagine the pool starts from the state of $(x_0 = 5, y_0 = 2)$; marginal price $p_{\mathrm{m}} (x_0, y_0) = 0.4$ USD per BTC.</p>
+<p>At this time, if a trader swaps 2 units of USD to 2.5 units of BTC, the state would move to the point $(x_1 = 2.5, y_1 = 4)$, marginal price $p_{\mathrm{m}} (x_1, y_1) = 1.6$ USD per BTC.</p>
+<p>We interpret this as follows: <strong>under the state of $(x = 5, y = 2)$ and following the strategy defined by the xyk curve, the pool offers to sell 2.5 units of BTC over the price range of 0.4--1.6 USD per BTC</strong>.</p>
+<p>Translating this to the context of orderbook, this means <strong>the pool would place SELL orders of sizes totalling 2.5 units of BTC between the prices 0.4 and 1.6</strong>.</p>
+<p>Following this logic, we can devise the following algorithm to work out all the SELL orders that the pool would place:</p>
+<ul>
+<li>The pool is parameterized by spread $p_{\mathrm{s}}$ and "bin size" $\Delta p$.</li>
+<li>Start from the marginal price $p_{\mathrm{m}} (x_0, y_0)$ (we denote this simply as $p_{\mathrm{m}}$ from here on).
+<ul>
+<li>The pool would not place any order here. We say the total order size here is zero.</li>
+</ul>
+</li>
+<li>Move on to the "bin" at price $p_0 = p_{\mathrm{m}} + \frac{1}{2} p_{\mathrm{s}}$ (marginal price plus the half spread).
+<ul>
+<li>This is the price at which the pool will place its first SELL order.</li>
+<li>Using the approach discussed above, find the total order size between the prices $p_0$ and $p_{\mathrm{m}}$. This is the size of the order to be place here.</li>
+</ul>
+</li>
+<li>Move on to the next "bin", at price $p_1 = p + \Delta p$.
+<ul>
+<li>Using the approach discussed above, find the total order size between the prices $p_1$ and $p_0$.</li>
+<li>Subtract the total order size between $p_{\mathrm{m}}$ and $p_0$, this is the order size to be placed here.</li>
+</ul>
+</li>
+<li>Do the same for $p_2$, $p_3$, ... until liquidity runs out (total order size $\ge x_0$).</li>
+</ul>
+<p>With the same approach, we can work out all the BUY orders for prices below $p_{\mathrm{m}}$.</p>
+<p>For the xyk curve, the orders are visualized as follows (based on the state $x_0 = 1$, $y_0 = 200$ and parameters $p_{\mathrm{s}} = 0.2$, $\Delta p = 0.1$):</p>
+<p><img src="dex/passive-liquidity/../../papers/dango-dex/1-xyk.png" alt="xyk" /></p>
+<p>We see the pool places orders of roughtly the same size across a wide price range. That is, the liquidity isn't concentrated.</p>
+<p>As example for a concentrated liquidity curve, the Solidly curve $I(x, y) = x^3 y + x y^3$ results in the following orders:</p>
+<p><img src="dex/passive-liquidity/../../papers/dango-dex/2-solidly.png" alt="solidly" /></p>
+<p>As we see, liquidity is significantly more concentrated here.</p>
+<h2 id="tackling-arbitrage-loss"><a class="header" href="#tackling-arbitrage-loss">Tackling arbitrage loss</a></h2>
+<p>In order to discourage arbitrage flow, <strong>the pool needs to actively adjusts its quote based on the prices trading at other more liquid venues</strong> (the CEXs, in our case).</p>
+<p>To achieve this, we simply introduce an oracle price term into the AMM invariant. Suppose the oracle price is $p$. Instead of $I(x, y)$, we simply use the curve:</p>
+<p>$$
+I_{\mathrm{oracle}}(x, y, p) = I \left( x, \frac{y}{p} \right)
+$$</p>
+<p>The xyk and Solidly curves become the following, respectively:</p>
+<p>$$
+I_{\mathrm{oracle}}(x, y, p) = x \left( \frac{y}{p} \right)
+$$</p>
+<p>$$
+I_{\mathrm{oracle}}(x, y, p) = x^3 \left( \frac{y}{p} \right) + x \left( \frac{y}{p} \right)^3
+$$</p>
+<p>Following the same example with Solidly above, but set oracle price to $p = 210$ (higher than the margin price of 200), the orders become:</p>
+<p><img src="dex/passive-liquidity/../../papers/dango-dex/3-solidly-price-jump.png" alt="solidly-price-jump" /></p>
+<p>As we see, the pool now quotes around the price of 210. It places bigger orders on the SELL side than the BUY side, demonstrating that it has a tendency to reduce its holding of the base asset, so that its inventory goes closer the ratio of 1:210 as the oracle indicates.</p>
+<h2 id="oracle-risk"><a class="header" href="#oracle-risk">Oracle risk</a></h2>
+<p>The biggest risk of an oracle-informed AMM is that the oracle reports incorrect prices. For example, if BTC is trading at 95,000, but the oracle says the price is 0.0001, then traders are able to buy BTC from Dango at around 0.0001, resulting in almost total loss for our LPs.</p>
+<p>To reduce the chance of this happening, we plan to employ the following:</p>
+<ul>
+<li>Use a low latency oracle, specifically <a href="https://www.pyth.network/">Pyth's 10 ms or 50 ms feed</a>.</li>
+<li>Pyth prices come with a confidence range, meaning a range it thinks there's a 95% probability the true price is in. Our parameter $p_{\mathrm{s}}$ should be configured to be similar or larger than this.</li>
+<li>Make the oracle a part of our block building logic. A block is invalid if it doesn't contain an oracle price. The block producer must submit the price in a transaction on the top of the block.</li>
+<li>The LP pool is given priority to adjust its orders in response to the oracle price before anyone else. Specifically, since we use FBA, the LP pool is allowed to adjust its orders prior to the auction.</li>
+<li>Implement circuit breakers, that if triggered, the LP pool would cancel all its orders and do nothing, until the situation goes back to normal. These can include:
+<ul>
+<li>Oracle price is too old (older than a given threshold).</li>
+<li>Oracle price makes too big of a jump (e.g. it goes from 95,000 to 0.0001).</li>
+</ul>
+</li>
+</ul>
+<h2 id="open-questions"><a class="header" href="#open-questions">Open questions</a></h2>
+<ul>
+<li>A Professional market maker usually doesn't place orders around the oracle price, but rather computes a "reservation price" based on the oracle price as well as his current inventory. Additionally, he usually doesn't use equal spread on both sides, but rather skewed spreads based on inventory. A classic model for computing these is that by <a href="https://www.tandfonline.com/doi/abs/10.1080/14697680701381228">Avellaneda and Stoikov</a>. Our model do not do these.</li>
+<li>Whereas Solidly is the simplest concentrated liquidity curve (simpler than Curve V1 or V2), it's still quite computationally heavy. We need to solve a quartic (4th degree polynomial) equation using Newton's method, for each "bin", each block. We would like to explore simpler concentrated liquidity curves.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="audits"><a class="header" href="#audits">Audits</a></h1>
+<p>A list of audits we have completed so far:</p>
+<div class="table-wrapper"><table><thead><tr><th>Time</th><th>Auditor</th><th>Subject</th><th>Links</th></tr></thead><tbody>
+<tr><td>2025-04-07</td><td><a href="https://x.com/zellic_io">Zellic</a></td><td><a href="https://x.com/hyperlane">Hyperlane</a></td><td><a href="audits/./20250407-zellic-hyperlane.pdf">report</a></td></tr>
+<tr><td>2025-04-02</td><td><a href="https://x.com/zellic_io">Zellic</a></td><td>Account and authentication system</td><td><a href="audits/./20250402-zellic-account-system-and-auth.pdf">report</a></td></tr>
+<tr><td>2024-10-25</td><td><a href="https://x.com/zellic_io">Zellic</a></td><td><a href="https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/">Jellyfish Merkle Tree</a> (JMT)</td><td><a href="audits/./20241025-zellic-jmt.pdf">report</a></td></tr>
+<tr><td>Q4 2024</td><td><a href="https://x.com/informalinc">Informal Systems</a></td><td>Formal specification of JMT in <a href="https://github.com/informalsystems/quint">Quint</a></td><td><a href="https://informal.systems/blog/jellyfish-merkle-tree-quint-2025">blog</a> • <a href="audits/../../grug/jellyfish-merkle/spec/">spec</a></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h2 id="bounded-values"><a class="header" href="#bounded-values">Bounded values</a></h2>
+<p>A common situation developers find themselves in is their contract needs to take a value that must been within a certain bound.</p>
+<p>For example, a fee rate should be within the range of 0~1. It doesn't make sense to charge more than 100% fee. Whenever a fee rate is provided, the contract needs to verify it's within the bounds, throwing error if not:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::derive(Serde)]
+struct InstantiateMsg {
+    pub fee_rate: Udec256,
+}
+
+#[grug::export]
+fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -&gt; anyhow::Result&lt;Response&gt; {
+    ensure!(
+        Udec256::ZERO &lt;= fee_rate &amp;&amp; fee_rate &lt; Udec256::ONE,
+        "fee rate is out of bounds"
+    );
+
+    Ok(Response::new())
+}
+<span class="boring">}</span></code></pre></pre>
+<p>We call this an <strong>imperative</strong> approach for working with bounded values.</p>
+<p>The problem with this is that the declaration and validation of <code>fee_rate</code> are in two places, often in two separate files. Sometimes developers simply forget to do the validation.</p>
+<p>Instead, Grug encourages a <strong>declarative</strong> approach. We declare the valid range of a value at the time we define it, utilizing the <code>Bounded</code> type and <code>Bounds</code> trait:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use grug::{Bounded, Bounds};
+use std::ops::Bound;
+
+struct FeeRateBounds;
+
+impl Bounds&lt;Udec256&gt; for FeeRateBounds {
+    const MIN: Bound&lt;Udec256&gt; = Bound::Inclusive(Udec256::ZERO);
+    const MAX: Bound&lt;Udec256&gt; = Bound::Exclusive(Udec256::ONE);
+}
+
+type FeeRate = Bounded&lt;Udec256, FeeRateBounds&gt;;
+
+#[grug::derive(Serde)]
+struct InstantiateMsg {
+    pub fee_rate: FeeRate,
+}
+
+#[grug::export]
+fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -&gt; anyhow::Result&lt;Response&gt; {
+    // No need to validate the fee rate here.
+    // Its bounds are already verified when `msg` is deserialized!
+
+    Ok(Response::new())
+}
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="entry-points"><a class="header" href="#entry-points">Entry points</a></h1>
+<p>Each Grug smart contract presents several predefined Wasm export functions known as <strong>entry points</strong>. The state machine (also referred to as the <strong>host</strong>) executes or makes queries at contracts by calling these functions. Some of the entry points are mandatory, while the others are optional. The Grug standard library provides an <code>#[grug::export]</code> macro which helps defining entry points.</p>
+<p>This page lists all supported entry points, in <em>Rust pseudo-code</em>.</p>
+<h2 id="memory"><a class="header" href="#memory">Memory</a></h2>
+<p>These two are auto-implemented. They are used by the host to load data into the Wasm memory. The contract programmer should not try modifying them.</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[no_mangle]
+extern "C" fn allocate(capacity: u32) -&gt; u32;
+
+#[no_mangle]
+extern "C" fn deallocate(region_ptr: u32);
+<span class="boring">}</span></code></pre></pre>
+<h2 id="basic"><a class="header" href="#basic">Basic</a></h2>
+<p>These are basic entry points that pretty much every contract may need to implement.</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn execute(ctx: MutableCtx, msg: ExecuteMsg) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn migrate(ctx: MutableCtx, msg: MigrateMsg) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn receive(ctx: MutableCtx) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn reply(ctx: SudoCtx, msg: ReplyMsg, result: SubMsgResult) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn query(ctx: ImmutableCtx, msg: QueryMsg) -&gt; Result&lt;Binary&gt;;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="fee"><a class="header" href="#fee">Fee</a></h2>
+<p>In Grug, gas fees are handled by a smart contract called the <strong>taxman</strong>. It must implement the following two exports:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn withhold_fee(ctx: AuthCtx, tx: Tx) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: Outcome) -&gt; Result&lt;Response&gt;;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="authentication"><a class="header" href="#authentication">Authentication</a></h2>
+<p>These are entry points that a contract needs in order to be able to initiate transactions.</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn authenticate(ctx: AuthCtx, tx: Tx) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn backrun(ctx: AuthCtx, tx: Tx) -&gt; Result&lt;Response&gt;;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="bank"><a class="header" href="#bank">Bank</a></h2>
+<p>In Grug, tokens balances and transfers are handled by a contract known as the <strong>bank</strong>. It must implement the following two exports:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn bank_execute(ctx: SudoCtx, msg: BankMsg) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -&gt; Result&lt;BankQueryResponse&gt;;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="cronjobs"><a class="header" href="#cronjobs">Cronjobs</a></h2>
+<p>The chain's owner can appoint a number of contracts to be automatically invoked at regular time intervals. Each such contract must implement the following entry point:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn cron_execute(ctx: SudoCtx) -&gt; Result&lt;Response&gt;;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="ibc"><a class="header" href="#ibc">IBC</a></h2>
+<p>Contracts that are to be used as IBC light clients must implement the following entry point:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn ibc_client_query(ctx: ImmutableCtx, msg: IbcClientQuery) -&gt; Result&lt;IbcClientQueryResponse&gt;;
+<span class="boring">}</span></code></pre></pre>
+<p>Contracts that are to be used as IBC applications must implement the following entry points:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[grug::export]
+fn ibc_packet_receive(ctx: MutableCtx, msg: IbcPacketReceiveMsg) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn ibc_packet_ack(ctx: MutableCtx, msg: IbcPacketAckMsg) -&gt; Result&lt;Response&gt;;
+
+#[grug::export]
+fn ibc_packet_timeout(ctx: MutableCtx, msg: IbcPacketTimeoutMsg) -&gt; Result&lt;Response&gt;;
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="extension-traits"><a class="header" href="#extension-traits">Extension traits</a></h1>
+<p>In Grug, we make use of the <strong>extension trait</strong> pattern, which is well explained by <a href="https://youtu.be/qrf52BVaZM8">this video</a>.</p>
+<p>To put it simply, a Rust library has two options on how to ship a functionality: <em>to ship a function</em>, or <em>to ship a trait</em>.</p>
+<p>For instance, suppose our library needs to ship the functionality of converting Rust values to strings.</p>
+<h2 id="shipping-a-function"><a class="header" href="#shipping-a-function">Shipping a function</a></h2>
+<p>The library exports a function:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn to_json_string&lt;T&gt;(data: &amp;T) -&gt; String
+where
+    T: serde::Serialize,
+{
+    serde_json::to_string(data).unwrap_or_else(|err| {
+        panic!("failed to serialize to JSON string: {err}");
+    })
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The consumer imports the function:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use grug::to_json_string;
+
+let my_string = to_json_string(&amp;my_data)?;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="shipping-a-trait"><a class="header" href="#shipping-a-trait">Shipping a trait</a></h2>
+<p>The library exports a trait, and implements the trait for all eligible types.</p>
+<p>The trait is typically named <code>{...}Ext</code> where "Ext" stands for <em>extension</em>, because the effectively extends the functionality of types that implement it.</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait JsonSerExt {
+    fn to_json_string(&amp;self) -&gt; String;
+}
+
+impl&lt;T&gt; JsonSerExt for T
+where
+    T: serde::Serialize,
+{
+    fn to_json_string(&amp;self) -&gt; String {
+        serde_json::to_string(data).unwrap_or_else(|err| {
+            panic!("failed to serialize to JSON string: {err}");
+        })
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The consumer imports the trait:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use grug::JsonSerExt;
+
+let my_string = my_data.to_json_string()?;
+<span class="boring">}</span></code></pre></pre>
+<h2 id="extension-traits-in-grug"><a class="header" href="#extension-traits-in-grug">Extension traits in Grug</a></h2>
+<p>We think the consumer's syntax with extension traits is often more readable than with functions. Therefore we use this pattern extensively in Grug.</p>
+<p>In <a href="notes/../../crates/types">grug-types</a>, we define functionalities related to hashing and serialization with following traits:</p>
+<ul>
+<li><code>Borsh{Ser,De}Ext</code></li>
+<li><code>Proto{Ser,De}Ext</code></li>
+<li><code>Json{Ser,De}Ext</code></li>
+<li><code>HashExt</code></li>
+</ul>
+<p>Additionally, there are the following in <a href="notes/../../crates/apps">grug-apps</a>, which provides gas metering capability to storage primitives including <code>Item</code> and <code>Map</code>, but they are only for internal use and not exported:</p>
+<ul>
+<li><code>MeteredStorage</code></li>
+<li><code>MeteredItem</code></li>
+<li><code>MeteredMap</code></li>
+<li><code>MeteredIterator</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="gas"><a class="header" href="#gas">Gas</a></h1>
+<p>Some thoughts on how we define gas cost in Grug.</p>
+<p>The Wasmer runtime provides a <a href="https://docs.rs/wasmer-middlewares/latest/wasmer_middlewares/metering/struct.Metering.html"><code>Metering</code></a> middleware that measures how many "points" a Wasm function call consumes.</p>
+<p>The question is how to associate Wasmer points to the chain's gas units.</p>
+<h2 id="cosmwasms-approach"><a class="header" href="#cosmwasms-approach">CosmWasm's approach</a></h2>
+<p>As documented <a href="https://github.com/CosmWasm/cosmwasm/blob/main/docs/GAS.md">here</a>, CosmWasm's approach is as follows:</p>
+<ol>
+<li>
+<p>Perform a benchmark to measure how many "points" Wasmer can execute per second. Then, set a target amount of gas per second (they use 10^12 gas per second). Between these two numbers, CosmWasm decides that 1 Wasmer point is to equal 170 gas units.</p>
+</li>
+<li>
+<p>Perform another benchmark to measure how much time it takes for the host to execute each host function (e.g. <code>addr_validate</code> or <code>secp256k1_verify</code>). Based on this, assign a proper gas cost for each host function.</p>
+</li>
+<li>
+<p>Divide CosmWasm gas by a constant factor of 100 to arrive at Cosmos SDK gas.</p>
+</li>
+</ol>
+<h2 id="our-approach"><a class="header" href="#our-approach">Our approach</a></h2>
+<p>For us, defining gas cost is easier, because we don't have a Cosmos SDK to deal with.</p>
+<ol>
+<li>
+<p>We skip step 1, and simply set 1 Wasmer point = 1 Grug gas unit.</p>
+</li>
+<li>
+<p>We perform the same benchmarks to set proper gas costs for host functions.</p>
+</li>
+<li>
+<p>We skip this step as well.</p>
+</li>
+</ol>
+<blockquote>
+<p>In summary,</p>
+<ul>
+<li>1 Cosmos SDK gas = 100 CosmWasm gas</li>
+<li>1 Wasmer point = 170 CosmWasm gas</li>
+<li>1 Wasmer point = 1 Grug gas</li>
+</ul>
+</blockquote>
+<h2 id="benchmark-results"><a class="header" href="#benchmark-results">Benchmark results</a></h2>
+<p>Benchmarks were performed on a MacBook Pro with the M2 Pro CPU.</p>
+<p>Relevant code can be found in <a href="notes/../../crates/vm/wasm/benches/">crates/vm/wasm/benches</a> and <a href="notes/../../crates/crypto/benches/">crates/crypto/benches</a>.</p>
+<h3 id="wasmer-points-per-second"><a class="header" href="#wasmer-points-per-second">Wasmer points per second</a></h3>
+<p>This corresponds to the step 1 above. This benchmark is irrelevant for our decision making (as we simply set 1 Wasmer point = 1 Grug gas unit), but we still perform it for good measure.</p>
+<div class="table-wrapper"><table><thead><tr><th>Iterations</th><th>Points</th><th>Time (ms)</th></tr></thead><tbody>
+<tr><td>200,000</td><td>159,807,119</td><td>15.661</td></tr>
+<tr><td>400,000</td><td>319,607,119</td><td>31.663</td></tr>
+<tr><td>600,000</td><td>479,407,119</td><td>47.542</td></tr>
+<tr><td>800,000</td><td>639,207,119</td><td>62.783</td></tr>
+<tr><td>1,000,000</td><td>799,007,154</td><td>78.803</td></tr>
+</tbody></table>
+</div>
+<p>Extrapolating to 1 second, we arrive at that <code>WasmVm</code> executes 10,026,065,176 points per second. Let's round this to 10^10 points per second, for simplicity.</p>
+<p>If we were to target 10^12 gas units per second as CosmWasm does (we don't), this would mean 10^12 / 10^10 = 100 gas units per Wasmer point.</p>
+<p>This is roughly in the same ballpark as CosmWasm's result (170 gas units per Wasmer point). The results are of course not directly comparable because they were done using different CPUs, but the numbers being within one degree of magnitude suggests the two VMs are similar in performance.</p>
+<p>As said before, we set 1 Wasmer point = 1 gas unit, so we're doing 10^10 gas per second.</p>
+<h3 id="single-signature-verification"><a class="header" href="#single-signature-verification">Single signature verification</a></h3>
+<p>Time for verifying one signature:</p>
+<div class="table-wrapper"><table><thead><tr><th>Verifier</th><th>Time (ms)</th><th>Gas Per Verify</th></tr></thead><tbody>
+<tr><td><code>secp256r1_verify</code></td><td>0.188</td><td>1,880,000</td></tr>
+<tr><td><code>secp256k1_verify</code></td><td>0.077</td><td>770,000</td></tr>
+<tr><td><code>secp256k1_pubkey_recover</code></td><td>0.158</td><td>1,580,000</td></tr>
+<tr><td><code>ed25519_verify</code></td><td>0.041</td><td>410,000</td></tr>
+</tbody></table>
+</div>
+<p>We have established that 1 second corresponds to 10^10 gas units. Therefore, <code>secp256k1_verify</code> costing 0.188 millisecond means it should cost $10^{10} \times 0.077 \times 10^{-3}$ = 770,000 gas.</p>
+<p>This is comparable to CosmWasm's value.</p>
+<h3 id="batch-signature-verification"><a class="header" href="#batch-signature-verification">Batch signature verification</a></h3>
+<p><code>ed25519_batch_verify</code> time for various batch sizes:</p>
+<div class="table-wrapper"><table><thead><tr><th>Batch Size</th><th>Time (ms)</th></tr></thead><tbody>
+<tr><td>25</td><td>0.552</td></tr>
+<tr><td>50</td><td>1.084</td></tr>
+<tr><td>75</td><td>1.570</td></tr>
+<tr><td>100</td><td>2.096</td></tr>
+<tr><td>125</td><td>2.493</td></tr>
+<tr><td>150</td><td>2.898</td></tr>
+</tbody></table>
+</div>
+<p>Linear regression shows there's a flat cost 0.134 ms (1,340,000 gas) plus 0.0188 ms (188,000 gas) per item.</p>
+<h3 id="hashes"><a class="header" href="#hashes">Hashes</a></h3>
+<p>Time (ms) for the host to perform hashes on inputs of various sizes:</p>
+<div class="table-wrapper"><table><thead><tr><th>Hasher</th><th>200 kB</th><th>400 kB</th><th>600 kB</th><th>800 kB</th><th>1,000 kB</th><th>Gas Per Byte</th></tr></thead><tbody>
+<tr><td><code>sha2_256</code></td><td>0.544</td><td>1.086</td><td>1.627</td><td>2.201</td><td>2.718</td><td>27</td></tr>
+<tr><td><code>sha2_512</code></td><td>0.330</td><td>0.678</td><td>0.996</td><td>1.329</td><td>1.701</td><td>16</td></tr>
+<tr><td><code>sha3_256</code></td><td>0.298</td><td>0.606</td><td>0.918</td><td>1.220</td><td>1.543</td><td>15</td></tr>
+<tr><td><code>sha3_512</code></td><td>0.614</td><td>1.129</td><td>1.719</td><td>2.328</td><td>2.892</td><td>28</td></tr>
+<tr><td><code>keccak256</code></td><td>0.312</td><td>0.605</td><td>0.904</td><td>1.222</td><td>1.534</td><td>15</td></tr>
+<tr><td><code>blake2s_256</code></td><td>0.305</td><td>0.632</td><td>0.907</td><td>1.212</td><td>1.526</td><td>15</td></tr>
+<tr><td><code>blake2b_512</code></td><td>0.180</td><td>0.364</td><td>0.552</td><td>0.719</td><td>0.917</td><td>9</td></tr>
+<tr><td><code>blake3</code></td><td>0.105</td><td>0.221</td><td>0.321</td><td>0.411</td><td>0.512</td><td>5</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="generate-dependency-graph"><a class="header" href="#generate-dependency-graph">Generate dependency graph</a></h1>
+<div align="center">
+  <img src="notes/dependency.svg">
+</div>
+<p>Dependency relations of the crates in this repository are described by the following <a href="https://graphviz.org/">Graphviz</a> code:</p>
+<pre><code class="language-graphviz">digraph G {
+  node [fontname="Helvetica" style=filled fillcolor=yellow];
+
+  account -&gt; ffi;
+  account -&gt; storage;
+  account -&gt; types;
+
+  bank -&gt; ffi;
+  bank -&gt; storage;
+  bank -&gt; types;
+
+  taxman -&gt; bank;
+  taxman -&gt; ffi;
+  taxman -&gt; storage;
+  taxman -&gt; types;
+
+  testing -&gt; app;
+  testing -&gt; account;
+  testing -&gt; bank;
+  testing -&gt; crypto;
+  testing -&gt; "db/memory";
+  testing -&gt; taxman;
+  testing -&gt; types;
+  testing -&gt; "vm/rust";
+
+  app -&gt; storage;
+  app -&gt; types;
+
+  client -&gt; jmt;
+  client -&gt; types;
+
+  "db/disk" -&gt; app;
+  "db/disk" -&gt; jmt;
+  "db/disk" -&gt; types;
+
+  "db/memory" -&gt; app;
+  "db/memory" -&gt; jmt;
+  "db/memory" -&gt; types;
+
+  ffi -&gt; types;
+
+  jmt -&gt; storage;
+  jmt -&gt; types;
+
+  std -&gt; client;
+  std -&gt; ffi;
+  std -&gt; macros;
+  std -&gt; storage;
+  std -&gt; testing;
+  std -&gt; types;
+
+  storage -&gt; types;
+
+  "vm/rust" -&gt; app;
+  "vm/rust" -&gt; crypto;
+  "vm/rust" -&gt; types;
+
+  "vm/wasm" -&gt; app;
+  "vm/wasm" -&gt; crypto;
+  "vm/wasm" -&gt; types;
+}
+</code></pre>
+<p>Install <a href="https://formulae.brew.sh/formula/graphviz">Graphviz CLI</a> on macOS:</p>
+<pre><code class="language-bash">brew install graphviz
+</code></pre>
+<p>Generate SVG from a file:</p>
+<pre><code class="language-bash">dot -Tsvg input.dot
+</code></pre>
+<p>Generate SVG from stdin:</p>
+<pre><code class="language-bash">echo 'digraph { a -&gt; b }' | dot -Tsvg &gt; output.svg
+</code></pre>
+<p>Alternatively, use the <a href="http://magjac.com/graphviz-visual-editor/">online visual editor</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="indexed-map"><a class="header" href="#indexed-map">Indexed map</a></h1>
+<p>An <code>IndexedMap</code> is a map where each record is indexed not only by the primary key, but also by one or more other indexes.</p>
+<p>For example, consider limit orders in an oracle-based perpetual futures protocol. For simplicity, let's just think about <em>buy</em> orders:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Order {
+    pub trader: Addr,
+    pub limit_price: Udec256,
+    pub expiration: Timestamp,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>For each order, we generate a unique <code>OrderId</code>, which can be an incrementing number, and store orders in a map indexed by the IDs:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>const ORDERS: Map&lt;OrderId, Order&gt; = Map::new("order");
+<span class="boring">}</span></code></pre></pre>
+<p>During the block, users submit orders. Then, at the end of the block (utilizing the <code>after_block</code> function), a contract is called to do two things:</p>
+<ul>
+<li>Find all buy orders with limit prices below the oracle price; execute these orders.</li>
+<li>Find all orders with expiration time earlier than the current block time; delete these orders.</li>
+</ul>
+<p>To achieve this, the orders need to be indexed by not only the order IDs, but also their limit prices and expiration times.</p>
+<p>For this, we can convert <code>Orders</code> to the following <code>IndexedMap</code>:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[index_list]
+struct OrderIndexes&lt;'a&gt; {
+    pub limit_price: MultiIndex&lt;'a, OrderId, Udec256, Order&gt;,
+    pub expiration: MultiIndex&lt;'a, OrderId, Timestamp, Order&gt;,
+}
+
+const ORDERS: IndexedMap&lt;OrderId, Order, OrderIndexes&gt; = IndexedMap::new("orders", OrderIndexes {
+    limit_price: MultiIndex::new(
+        |order| *order.limit_price,
+        "owners",
+        "orders__price",
+    ),
+    expiration: MultiIndex::new(
+        |order| *order.expiration,
+        "owners",
+        "orders__exp",
+    ),
+});
+<span class="boring">}</span></code></pre></pre>
+<p>Here we use <code>MultiIndex</code>, which is an index type where multiple records in the map can have the same index. This is the appropriate choice here, since surely it's possible that two orders have the same limit price or expiration.</p>
+<p>However, in cases where indexes are supposed to be unique (no two records shall have the same index), <code>UniqueIndex</code> can be used. It will throw an error if you attempt to save two records with the same index.</p>
+<p>To find all orders whose limit prices are below the oracle price:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn find_fillable_orders(
+    storage: &amp;dyn Storage,
+    oracle_price: Udec256,
+) -&gt; StdResult&lt;Vec&lt;(OrderId, Order)&gt;&gt; {
+    ORDERS
+        .idx
+        .limit_price
+        .range(storage, None, Some(oracle_price), Order::Ascending)
+        .map(|item| {
+            // This iterator includes the limit price, which we don't need.
+            let (_limit_price, order_id, order) = item?;
+            Ok((order_id, order))
+        })
+        .collect()
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Similarly, find and purge all orders whose expiration is before the current block time:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn purge_expired_orders(
+    storage: &amp;mut dyn Storage,
+    block_time: Timestamp,
+) -&gt; StdResult&lt;()&gt; {
+    // We need to first collect order IDs into a vector, because the iteration
+    // holds an immutable reference to `storage`, while the removal operations
+    // require a mutable reference to it, which can't exist at the same time.
+    let order_ids = ORDERS
+        .index
+        .expiration
+        .range(storage, None, Some(block_time), Order::Ascending)
+        .map(|item| {
+            let (_, order_id, _) = item?;
+            Ok(order_id)
+        })
+        .collect::&lt;StdResult&lt;Vec&lt;OrderId&gt;&gt;&gt;()?;
+
+    for order_id in order_ids {
+        ORDERS.remove(storage, order_id);
+    }
+
+    Ok(())
+}
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="liquidity-provision"><a class="header" href="#liquidity-provision">Liquidity provision</a></h1>
+<p>Given a liquidity pool consisting of two assets, A and B, and the invariant $I(A, B)$, where $A$ and $B$ are the amounts of the two assets in the pool (the "<strong>pool reserve</strong>"). For simplicity, we denote this as $I$.</p>
+<p>Suppose a user provides liquidity with amounts $a$ and $b$. After the liquidity is added, the invariant value is $I(A + a, B + b)$. For simplicity, we denote this as $I'$.</p>
+<p>Suppose before adding the liquidity, the supply of LP token is $L$. We mint user new LP tokens of the following amount:</p>
+<p>$$
+l = (1 - f) \left( \frac{I'}{I} - 1 \right) L
+$$</p>
+<p>Here, $f$ is a fee rate we charge on the amount of LP tokens mint. Without this fee, the following exploit would be possible: provide unbalanced liquidity, then immediately withdraw balanced liquidity. This effectively achieves a fee-less swap.</p>
+<p>The fee rate should be a function over $(A, B, a, b)$, <strong>reflecting how unbalance the user liquidity is</strong>:</p>
+<ul>
+<li>If user liquidity is prefectly balanced, that is, $\frac{a}{A} = \frac{b}{B}$, fee rate should be zero: $f(A, B, a ,b) = 0$.</li>
+<li>If user liquidity is prefertly unbalanced, that is, <strong>one-sided</strong> (e.g. $a \ne 0$ but $b = 0$), then the fee rate should be a value such that if the attack is carried out, the output is equal to doing a swap normally.</li>
+</ul>
+<p>Our objective for the rest of this article, is to <strong>work out the expression of the fee function</strong> $f(A, B, a, b)$.</p>
+<h2 id="fee-rate"><a class="header" href="#fee-rate">Fee rate</a></h2>
+<p>Consider the case where the user liquidity is unbalanced. Without losing generality, let's suppose $\frac{a}{A} &gt; \frac{b}{B}$. That is, the user provides a more than abundant amount of A, and a less than sufficient amount of B.</p>
+<h3 id="scenario-1"><a class="header" href="#scenario-1">Scenario 1</a></h3>
+<p>In the first scenario, the user withdraws liquidity immediately after provision. He would get:</p>
+<p>$$
+\frac{l}{L + l} (A + a)
+$$</p>
+<p>$$
+\frac{l}{L + l} (B + b)
+$$</p>
+<p>Here, $\frac{l}{L + l}$ is the portion of the pool's liquidity owned by the user. We can work out its expression as:</p>
+<p>$$
+\frac{l}{L + l} = \frac{\frac{I'}{I} - 1}{\frac{I'}{I} - f} = \frac{r - 1}{r - f}
+$$</p>
+<p>where $r = \frac{I'}{I}$, which represents how much the invariant increases as a result of the added liquidity.</p>
+<h3 id="scenario-2"><a class="header" href="#scenario-2">Scenario 2</a></h3>
+<p>In the second scenario, the user does a swap of $\Delta a$ amount of A into $(1 - s) \Delta b$ amount of B, where $s$ is the swap fee rate, which is a constant. The swap must satisfy the invariant:</p>
+<p>$$
+I(A, B) = I(A + \Delta a, B - \Delta b)
+$$</p>
+<p>The user now has $A - \Delta a$ amount of A and $B + (1 - s) \Delta b$ amount of B.</p>
+<p>As discussed in the previous section, we must choose a fee rate $f$ <strong>such that the two scenarios are equivalent</strong>. This means the user ends up with the same amount of A and B in both scenarios:</p>
+<p>$$
+\frac{r - 1}{r - f} (A + a) = A - \Delta a
+$$</p>
+<p>$$
+\frac{r - 1}{r - f} (B + b) = B + (1 - s) \Delta b
+$$</p>
+<p>We can rearrange these into a cleaner form:</p>
+<p>$$
+\frac{A + a}{A - \Delta a} = \frac{B + b}{B + (1 - s) \Delta b}
+$$</p>
+<p>$$
+f = r - (r - 1) \frac{A + a}{A - \Delta a} = r - (r - 1) \frac{B + b}{B + (1 - s) \Delta b}
+$$</p>
+<p>We can use the first equation to work out either $\Delta a$ or $\Delta b$, and put it into the second equation to get $f$.</p>
+<h2 id="xyk-pool"><a class="header" href="#xyk-pool">Xyk pool</a></h2>
+<p>The xyk pool has the invariant:</p>
+<p>$$
+I(A, B) = A B
+$$</p>
+<p>Our previous system of equations takes the form:</p>
+<p>$$
+A B = (A + \Delta a) (B - \Delta b)
+$$</p>
+<p>$$
+\frac{A + a}{A - \Delta a} = \frac{B + b}{B + (1 - s) \Delta b}
+$$</p>
+<p>$$
+f = r - (r - 1) \frac{A + a}{A - \Delta a}
+$$</p>
+<blockquote>
+<p>TODO...</p>
+</blockquote>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="margin-account-health"><a class="header" href="#margin-account-health">Margin account: health</a></h1>
+<p>The <a href="https://github.com/left-curve/left-curve/tree/main/dango/lending">dango-lending</a> contract stores a <strong>collateral power</strong> for each collateral asset, and a <code>Market</code> for each borrowable asset:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>const COLLATERAL_POWERS: Item&lt;BTreeMap&lt;Denom, Udec128&gt;&gt; = Item::new("collateral_power");
+
+const MARKETS: Map&lt;&amp;Denom, Market&gt; = Map::new("market");
+<span class="boring">}</span></code></pre></pre>
+<ul>
+<li>An asset may be a collateral asset but not a borrowable asset, e.g. wstETH, stATOM, LP tokens. But typically all borrowable assets are also collateral assets, such that when a margin account borrows an asset, this asset counts both as collateral and debt.</li>
+<li>Collateral powers are to be bounded in the range <code>[0, 1)</code>. An asset with lower volatility and more abundant liquidity gets bigger collateral power, vise versa.</li>
+<li>We may store all collateral powers in a single <code>Item&lt;BTreeMap&lt;Denom, Udec128&gt;&gt;</code> if we don't expect to support too many collateral assets.</li>
+</ul>
+<p>Suppose:</p>
+<ul>
+<li>a margin account has collateral assets $A_1, A_2, \dots, A_n$ and debts $B_1, B_2, \dots, B_m$</li>
+<li>the price of an asset $X$ is $P_X$</li>
+<li>the collateral power of an asset $X$ is $C_X$</li>
+</ul>
+<p>The account's <strong>utilization</strong> is:</p>
+<p>$$
+U = \frac{ \sum_{j=1}^m P_{B_j} B_j }{ \sum_{i=1}^n C_{A_i} P_{A_i} A_i }
+$$</p>
+<p>In the <code>backrun</code> function, the margin account asserts $U \leq 1$. If not true, it throws an error to revert the transaction.</p>
+<p>The frontend should additionally have a <code>max_ltv</code>, somewhat smaller than 1, such as 95%. It should warn or prevent users from doing anything that results in their utilization going bigger than this, such that their account isn't instantly liquidated.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="math"><a class="header" href="#math">Math</a></h1>
+<p>Rust's primitive number types are insufficient for smart contract use cases, for three main reasons:</p>
+<ol>
+<li>
+<p>Rust only provides up to 128-bit integers, while developers often have to deal with 256- or even 512-bit integers. For example, Ethereum uses 256-bit integers to store ETH and ERC-20 balances, so if a chain has bridged assets from Ethereum, their amounts may need to be expressed in 256-bit integers. If the amounts of two such asset are to be multiplied together (which is common in AMMs), 512-bit integers may be necessary.</p>
+</li>
+<li>
+<p>Rust does not provide <a href="https://en.wikipedia.org/wiki/Fixed-point_arithmetic">fixed-point decimal</a> types, which are commonly used in financial applications (we don't want to deal with precision issues with floating-point numbers such as <code>0.1</code> + <code>0.2</code> = <code>0.30000000000000004</code>). Additionally, there are concerns over <a href="https://randomascii.wordpress.com/2013/07/16/floating-point-determinism/">floating-point non-determinism</a>, hence it's often disabled in blockchains.</p>
+</li>
+<li>
+<p>Grug uses JSON encoding for data that go in or out of contracts. However, JSON specification (<a href="https://datatracker.ietf.org/doc/html/rfc7159">RFC 7159</a>) only guarantees support for integer numbers up to <code>(2**53)-1</code>. Any number type that may go beyond this limit needs to be serialized to JSON strings instead.</p>
+</li>
+</ol>
+<h2 id="numbers-in-grug"><a class="header" href="#numbers-in-grug">Numbers in Grug</a></h2>
+<p>Grug provides a number of number types for use in smart contracts. They are built with the following two primitive types:</p>
+<div class="table-wrapper"><table><thead><tr><th>type</th><th>description</th></tr></thead><tbody>
+<tr><td><code>Int&lt;U&gt;</code></td><td>integer</td></tr>
+<tr><td><code>Dec&lt;U&gt;</code></td><td>fixed-point decimal</td></tr>
+</tbody></table>
+</div>
+<p>It is, however, not recommended to use these types directly. Instead, Grug exports the following type alises:</p>
+<div class="table-wrapper"><table><thead><tr><th>alias</th><th>type</th><th>description</th></tr></thead><tbody>
+<tr><td><code>Uint64</code></td><td><code>Int&lt;u64&gt;</code></td><td>64-bit unsigned integer</td></tr>
+<tr><td><code>Uint128</code></td><td><code>Int&lt;u128&gt;</code></td><td>128-bit unsigned integer</td></tr>
+<tr><td><code>Uint256</code></td><td><code>Int&lt;U256&gt;</code></td><td>256-bit unsigned integer</td></tr>
+<tr><td><code>Uint512</code></td><td><code>Int&lt;U512&gt;</code></td><td>512-bit unsigned integer</td></tr>
+<tr><td><code>Int64</code></td><td><code>Int&lt;i64&gt;&gt;</code></td><td>64-bit signed integer</td></tr>
+<tr><td><code>Int128</code></td><td><code>Int&lt;i128&gt;&gt;</code></td><td>128-bit signed integer</td></tr>
+<tr><td><code>Int256</code></td><td><code>Int&lt;I256&gt;&gt;</code></td><td>256-bit signed integer</td></tr>
+<tr><td><code>Int512</code></td><td><code>Int&lt;I512&gt;&gt;</code></td><td>512-bit signed integer</td></tr>
+<tr><td><code>Udec128</code></td><td><code>Dec&lt;i128&gt;</code></td><td>128-bit unsigned fixed-point number with 18 decimal places</td></tr>
+<tr><td><code>Udec256</code></td><td><code>Dec&lt;I256&gt;</code></td><td>256-bit unsigned fixed-point number with 18 decimal places</td></tr>
+<tr><td><code>Dec128</code></td><td><code>Dec&lt;i128&gt;&gt;</code></td><td>128-bit signed fixed-point number with 18 decimal places</td></tr>
+<tr><td><code>Dec256</code></td><td><code>Dec&lt;I256&gt;&gt;</code></td><td>256-bit signed fixed-point number with 18 decimal places</td></tr>
+</tbody></table>
+</div>
+<p>where <code>{U,I}{256,512}</code> are from the <a href="https://github.com/left-curve/bnum/tree/v0.11.0-grug">bnum</a> library.</p>
+<h2 id="traits"><a class="header" href="#traits">Traits</a></h2>
+<div class="table-wrapper"><table><thead><tr><th></th><th><code>Uint64</code></th><th><code>Uint128</code></th><th><code>Uint256</code></th><th><code>Uint512</code></th><th><code>Int64</code></th><th><code>Int128</code></th><th><code>Int256</code></th><th><code>Int512</code></th><th><code>Udec128</code></th><th><code>Udec256</code></th><th><code>Dec128</code></th><th><code>Dec256</code></th></tr></thead><tbody>
+<tr><td><code>Bytable</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>Decimal</code></td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>FixedPoint</code></td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>Fraction</code></td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>Inner</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>Integer</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><code>IntoDec</code></td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><code>IntoInt</code></td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>IsZero</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>MultiplyFraction</code></td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><code>MultiplyRatio</code></td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><code>NextNumber</code></td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>✅</td><td>❌</td><td>✅</td><td>❌</td></tr>
+<tr><td><code>Number</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>NumberConst</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>PrevNumber</code></td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>✅</td><td>❌</td><td>✅</td></tr>
+<tr><td><code>Sign</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>Signed</code></td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>Unsigned</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="nonces-and-unordered-transactions"><a class="header" href="#nonces-and-unordered-transactions">Nonces and unordered transactions</a></h1>
+<p><strong>Nonce</strong> is a mechanism to prevent <strong>replay attacks</strong>.</p>
+<p>Suppose Alice sends 100 coins to Bob on a blockchain that doesn't employ such a mechanism. An attacker can observe this transaction (tx) confirmed onchain, then broadcasts it again. Despite the second time this tx is not broadcasted by Alice, it does contain a valid signature from Alice, so it will be accepted again. Thus, total 200 coins would leave Alice's wallet, despite she only consents to sending 100. This can be repeated until all coins are drained from Alice's wallet.</p>
+<p>To prevent this,</p>
+<ul>
+<li>each tx should include a nonce, and</li>
+<li>the account should internally track the nonce it expects to see from the next tx.</li>
+</ul>
+<p>The first time an account sends a tx, the tx should include a nonce of $0$; the second time, $1$; so on. Suppose Alice's first tx has a nonce of $N$. If the attacker attempts to broadcast it again, the tx would be rejected by the mempool, because Alice's account expects a nonce of $N + 1$.</p>
+<blockquote>
+<p>The above describes <strong>same-chain replay attack</strong>. There is also <strong>cross-chain replay attack</strong>, where an attacker observes a tx on chain A, and broadcasts it again on chain B. To prevent this, transactions include a <strong>chain ID</strong> besides nonce.</p>
+</blockquote>
+<h2 id="the-problem"><a class="header" href="#the-problem">The problem</a></h2>
+<p>The drawback of this naïve approach to handling nonces is <em>it enforces a strict ordering of all txs</em>, which doesn't do well in use cases where users are expected to submit txs with high frequency. Consider this situation:</p>
+<ul>
+<li>Alice's account currently expects a nonce of $N$;</li>
+<li>Alice sends a tx (let's call this tx A) with nonce $N$;</li>
+<li>Alice immediately sends another tx (B) with nonce $N + 1$;</li>
+<li>due to network delays, tx B arrives on the block builder earlier than A.</li>
+</ul>
+<p>Here, the block builder would reject tx B from entering the mempool, because it expects a nonce of $N$, while tx B comes with $N + 1$. When tx A later arrives, it will be accepted. The result is Alice submits two txs, but only one makes it into a block.</p>
+<p>Imagine Alice is trading on an order book exchange and wants to cancel two active limit orders. These actions are not correlated – there's no reason we must cancel one first then the other. So Alice click buttons to cancel the two in quick succession. However, only one ends up being canceled; she has to retry canceling the other one. Bad UX!</p>
+<h2 id="hyperliquids-solution"><a class="header" href="#hyperliquids-solution">HyperLiquid's solution</a></h2>
+<p>As described <a href="https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets">here</a>.</p>
+<p>In HyperLiquid, an account can have many <strong>session keys</strong>, each of which has its own nonce. In our case, to simplify things, let's just have one nonce for each account (across all session keys).</p>
+<p>Instead of tracking a single nonce, <em>the account tracks the most recent $X$ nonces it has seen</em> (let's call these the <code>SEEN_NONCES</code>). HyperLiquid uses $X = 20$, while for simplicity in the discussion below let's use $X = 5$.</p>
+<p>Suppose Alice's account has the following <code>SEEN_NONCES</code>: $[5, 6, 7, 9, 10]$. $8$ is missing because it got lost due to network problems.</p>
+<p>Now, Alice broadcasts two txs in quick succession, with nonces $11$ and $12$. Due to network delays, $12$ arrives at the block builder first.</p>
+<p>The account will carry out the following logic:</p>
+<ul>
+<li><strong>accept the tx if its nonce is newer than the oldest nonce in <code>SEEN_NONCES</code>, and not already in <code>SEEN_NONCES</code></strong>;</li>
+<li>insert the tx's nonce into <code>SEEN_NONCES</code>.</li>
+</ul>
+<p>When $12$ arrives first, it's accepted, and <code>SEEN_NONCES</code> is updated to: $[6, 7, 9, 10, 12]$. ($5$ is removed because we only keep the most recent $X = 5$ nonces.)</p>
+<p>When $11$ arrives later, it's also accepted, with <code>SEEN_NONCES</code> updated to: $[7, 9, 10, 11, 12]$.</p>
+<p>This solves the UX problem we mentioned in the previous section.</p>
+<h2 id="transaction-expiry"><a class="header" href="#transaction-expiry">Transaction expiry</a></h2>
+<p>Now suppose tx $8$ finally arrives. Since it was created a long while ago, it's most likely not relevant any more. However, following the account's logic, it will still be accepted.</p>
+<p>To prevent this, we should add an <code>expiry</code> parameter into the tx metadata. If the expiry is earlier than the current block time, the tx is rejected, regardless of the nonce rule.</p>
+<p><code>expiry</code> can be either a block height or timestamp. For Dango's use case, timestamp probably makes more sense.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="transaction-lifecycle"><a class="header" href="#transaction-lifecycle">Transaction lifecycle</a></h1>
+<p>A Grug transaction (tx) is defined by the following struct:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Tx {
+    pub sender: Addr,
+    pub gas_limit: u64,
+    pub msgs: Vec&lt;Message&gt;,
+    pub data: Json,
+    pub credential: Json,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Explanation of the fields:</p>
+<h4 id="sender"><a class="header" href="#sender">Sender</a></h4>
+<p>The account that sends this tx, who will perform authentication and (usually) pay the tx fee.</p>
+<h4 id="gas-limit"><a class="header" href="#gas-limit">Gas limit</a></h4>
+<p>The maximum amount of gas requested for executing this tx.</p>
+<p>If gas of this amount is exhausted at any point, execution is aborted and state changes discarded.<sup class="footnote-reference" id="fr-1-1"><a href="#footnote-1">1</a></sup></p>
+<h4 id="messages"><a class="header" href="#messages">Messages</a></h4>
+<p>A list of <code>Message</code>s to be executed.</p>
+<p>They are executed in the specified order and <em>atomically</em>, meaning they either succeed altogether, or fail altogether; a single failed message failing leads to the entire tx aborted.<sup class="footnote-reference" id="fr-2-1"><a href="#footnote-2">2</a></sup></p>
+<h4 id="data"><a class="header" href="#data">Data</a></h4>
+<p>Auxilliary data to attach to the tx.</p>
+<p>An example use case of this is if the chain accepts multiple tokens for fee payment, the sender can specify here which denom to use:</p>
+<pre><code class="language-json">{
+  "data": {
+    "fee_denom": "uatom"
+  }
+}
+</code></pre>
+<p>The <strong>taxman</strong> contract, which handles fees, should be programmed to deserialize this data, and use appropriate logics to handle the fee (e.g. swap the tokens on a DEX).</p>
+<h4 id="credential"><a class="header" href="#credential">Credential</a></h4>
+<p>An arbitrary data to prove the tx was composed by the rightful owner of the sender account. Most commonly, this is a cryptographic signature.</p>
+<p>Note that <code>data</code> is an opaque <code>grug::Json</code> (which is an alias to <code>serde_json::Value</code>) instead of a concrete type. This is because Grug does not attempt to intrepret or do anything about the credential. It's all up to the sender account. Different accounts may expect different credential types.</p>
+<p>Next we discuss the full lifecycle of a transaction.</p>
+<h2 id="simulation"><a class="header" href="#simulation">Simulation</a></h2>
+<p>The user have specified <code>sender</code>, <code>msgs</code>, and <code>data</code> fields by interacting with a webapp. The next step now is to determine an appropriate <code>gas_limit</code>.</p>
+<p>For some simple txs, we can make a reasonably good guess of gas consumption. For example, a tx consisting of a single <code>Message::Transfer</code> of a single coin should consume just under 1,000,000 gas (of which 770,000 is for Secp256k1 signature verification).</p>
+<p>However, for more complex txs, it's necessary to query a node to <strong>simulate</strong> its gas consumption.</p>
+<p>To do this, compose an <code>UnsignedTx</code> value:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct UnsignedTx {
+    pub sender: Addr,
+    pub msgs: Vec&lt;Message&gt;,
+    pub data: Json,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>which is basically <code>Tx</code> but lacks the <code>gas_limit</code> and <code>credential</code> fields.</p>
+<p>Then, invoke the ABCI <code>Query</code> method with the string <code>"/simulate"</code> as <code>path</code>:</p>
+<ul>
+<li>Using the Rust SDK, this can be done with the <code>grug_sdk::Client::simulate</code> method.</li>
+<li>Using the CLI, append the <code>--simulate</code> to the <code>tx</code> subcommand.</li>
+</ul>
+<p>The <code>App</code> will run <em>the entire tx</em> in <strong>simulation mode</strong>, and return an <code>Outcome</code> value:</p>
+<pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Outcome {
+    pub gas_limit: Option&lt;u64&gt;,
+    pub gas_used: u64,
+    pub result: GenericResult&lt;Vec&lt;Event&gt;&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>This includes the amount of gas used, and if the tx succeeded, the events that were emitted; or, in case the tx failed, the error message.</p>
+<p>Two things to note:</p>
+<ul>
+<li>In simulation mode, certain steps in authentication are skipped, such as signature verification (we haven't signed the tx yet at this point). This means gas consumption is underestimated. Since we know an Secp256k1 verification costs 770,000 gas, it's advisable to add this amount manually.</li>
+<li>The max amount of gas the simulation can consume is the node's query gas limit, which is an offchain parameter chosen individually by each node. If the node has a low query gas limit (e.g. if the node is not intended to serve heavy query requests), the simulation may fail.</li>
+</ul>
+<h2 id="checktx"><a class="header" href="#checktx">CheckTx</a></h2>
+<p>Now we know the gas limit, the user will sign the tx, and we create the <code>Tx</code> value and broadcast it to a node.</p>
+<p>Tendermint will now call the ABCI <code>CheckTx</code> method, and decide whether to accept the tx into mempool or not, based on the result.</p>
+<p>When serving a <code>CheckTx</code> request, the <code>App</code> doesn't execute the entire tx. This is because while some messages may fail at this time, they may succeed during <code>FinalizeBlock</code>, as the chain's state would have changed.</p>
+<p>Therefore, instead, the <code>App</code> only performs the first two steps:</p>
+<ol>
+<li>Call the taxman's <code>withhold_fee</code> method. This ensures the tx's sender has enough fund to afford the tx fee.</li>
+<li>Call the sender's <code>authenticate</code> method in normal (i.e. non-simulation) mode. Here the sender performs authentication (which is skipped in simulation mode).</li>
+</ol>
+<p>Tendermint will reject the tx if <code>CheckTx</code> fails (meaning, either <code>withfold_fee</code> or <code>authenticate</code> fails), or if the tx's gas limit is bigger than the block gas limit (it can't fit in a block). Otherwise, it's inserted into the mempool.</p>
+<h2 id="finalizeblock"><a class="header" href="#finalizeblock">FinalizeBlock</a></h2>
+<p>In <code>FinalizeBlock</code>, the entire tx processing flow is performed, which is:</p>
+<ol>
+<li>
+<p>Call taxman's <code>withhold_fee</code> method.</p>
+<p>This MUST succeed (if it would fail, it should have failed during <code>CheckTx</code> such that the tx is rejected from entering mempool). If does fail for some reason (e.g. a previous tx in the block drained the sender's wallet, so it can no longer affored the fee), the processing is aborted and all state changes discarded.</p>
+</li>
+<li>
+<p>Call sender's <code>authenticate</code> method.</p>
+<p>If fails, discard state changes from step 2 (keeping those from step 1), then jump to step 5.</p>
+</li>
+<li>
+<p>Loop through the messages, execute one by one.</p>
+<p>If any fails, discard state changes from step 2-3, then jump to step 5.</p>
+</li>
+<li>
+<p>Call sender's <code>backrun</code> method.</p>
+<p>If fails, discard state changes from step 2-4, then jump to step 5.</p>
+</li>
+<li>
+<p>Call taxman's <code>finalize_fee</code> method.</p>
+<p>This MUST succeed (the bank and taxman contracts should be programmed in a way that ensures this). If it does fail for some reason, discard all state changes for all previous steps and abort.</p>
+</li>
+</ol>
+<blockquote>
+<p>TODO: make a flow chart</p>
+</blockquote>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Simulate</th><th>CheckTx</th><th>FinalizeBlock</th></tr></thead><tbody>
+<tr><td>Input type</td><td><code>UnsignedTx</code></td><td><code>Tx</code></td><td><code>Tx</code></td></tr>
+<tr><td>Call taxman <code>withhold_fee</code></td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Call sender <code>authenticate</code></td><td>Yes, in simulation mode</td><td>Yes, in normal mode</td><td>Yes, in normal mode</td></tr>
+<tr><td>Execute messages</td><td>Yes</td><td>No</td><td>Yes</td></tr>
+<tr><td>Call sender <code>backrun</code></td><td>Yes</td><td>No</td><td>Yes</td></tr>
+<tr><td>Call taxman <code>finalize_fee</code></td><td>Yes</td><td>No</td><td>Yes</td></tr>
+</tbody></table>
+</div><hr>
+<ol class="footnote-definition"><li id="footnote-1">
+<p>Transaction fee is still deducted. See the discussion on fee handling later in the article. <a href="#fr-1-1">↩</a></p>
+</li>
+<li id="footnote-2">
+<p>This said, a <code>SubMessage</code> can fail without aborting the tx, if it's configured as such (with <code>SubMessage::reply_on</code> set to <code>ReplyOn::Always</code> or <code>ReplyOn::Error</code>). <a href="#fr-2-1">↩</a></p>
+</li>
+</ol><div style="break-before: page; page-break-before: always;"></div><h1 id="networks"><a class="header" href="#networks">Networks</a></h1>
+<p>Dango mainnet, testnets, and devnets.</p>
+<h2 id="how-to-spin-up-a-devnet"><a class="header" href="#how-to-spin-up-a-devnet">How to spin up a devnet</a></h2>
+<h3 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h3>
+<ul>
+<li>Linux (we use Ubuntu 24.04)</li>
+<li>Docker</li>
+<li>Rust 1.80+</li>
+<li>Go</li>
+</ul>
+<h3 id="steps"><a class="header" href="#steps">Steps</a></h3>
+<ol>
+<li>
+<p>Compile dango:</p>
+<pre><code class="language-bash">git clone https://github.com/left-curve/left-curve.git
+cd left-curve
+cargo install --path dango/cli
+dango --version
+</code></pre>
+</li>
+<li>
+<p>Compile cometbft:</p>
+<pre><code class="language-bash">git clone https://github.com/cometbft/cometbft.git
+cd cometbft
+make install
+cometbft version
+</code></pre>
+</li>
+<li>
+<p>Initialize the <code>~/.dango</code> directory:</p>
+<pre><code class="language-bash">dango init
+</code></pre>
+</li>
+<li>
+<p>Initialize the <code>~/.cometbft</code> directory:</p>
+<pre><code class="language-bash">cometbft init
+</code></pre>
+</li>
+<li>
+<p>Create genesis state. Provide chain ID and genesis time as positional arguments:</p>
+<pre><code class="language-bash">cd left-curve
+cargo run -p dango-genesis --example build_genesis -- dev-5 2025-02-25T21:00:00Z
+</code></pre>
+<p>Genesis should be written into <code>~/.cometbft/config/genesis.json</code></p>
+</li>
+<li>
+<p>Create systemd service for postgresql:</p>
+<pre><code class="language-ini">[Unit]
+Description=PostgreSQL
+After=network.target
+
+[Service]
+Type=simple
+User=larry
+Group=docker
+WorkingDirectory=/home/larry/workspace/left-curve/indexer
+ExecStart=/usr/bin/docker compose up db
+ExecStop=/usr/bin/docker compose down db
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Save this as <code>/etc/systemd/system/postgresql.service</code>.</p>
+<p><strong>Notes:</strong></p>
+<ul>
+<li>
+<p><code>WorkingDirectory</code> should be the directory where the <code>docker-compose.yml</code> is located.</p>
+</li>
+<li>
+<p>The <code>User</code> should be added to the <code>docker</code> group:</p>
+<pre><code class="language-bash">sudo usermod -aG docker larry
+</code></pre>
+</li>
+</ul>
+</li>
+<li>
+<p>Create systemd service for dango:</p>
+<pre><code class="language-ini">[Unit]
+Description=Dango
+After=network.target
+
+[Service]
+Type=simple
+User=larry
+ExecStart=/home/larry/.cargo/bin/dango start
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Save this as <code>/etc/systemd/system/dango.service</code>.</p>
+</li>
+<li>
+<p>Create systemd service for cometbft:</p>
+<pre><code class="language-ini">[Unit]
+Description=CometBFT
+After=network.target
+
+[Service]
+Type=simple
+User=larry
+ExecStart=/home/larry/.go/bin/cometbft start
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Save this as <code>/etc/systemd/system/cometbft.service</code>.</p>
+</li>
+<li>
+<p>Refresh systemd:</p>
+<pre><code class="language-bash">sudo systemctl daemon-reload
+</code></pre>
+</li>
+<li>
+<p>Start postgresql:</p>
+<pre><code class="language-bash">sudo systemctl start postgresql
+</code></pre>
+</li>
+<li>
+<p>Create database for the indexer:</p>
+<pre><code class="language-bash">cd left-curve/indexer
+createdb -h localhost -U postgres grug_dev
+</code></pre>
+</li>
+<li>
+<p>Start dango:</p>
+<pre><code class="language-bash">sudo systemctl start dango
+</code></pre>
+</li>
+<li>
+<p>Start cometbft:</p>
+<pre><code class="language-bash">sudo systemctl start cometbft
+</code></pre>
+<p><strong>Note:</strong> when starting, start in this order: postgresql, dango, cometbft. When terminating, do it in the reverse order.</p>
+</li>
+</ol>
+<h3 id="killing-existing-devnet-and-start-a-new-one"><a class="header" href="#killing-existing-devnet-and-start-a-new-one">Killing existing devnet and start a new one</a></h3>
+<ol>
+<li>
+<p>Stop dango and cometbft services (no need to stop postgresql):</p>
+<pre><code class="language-bash">sudo systemctl stop cometbft
+sudo systemctl stop dango
+</code></pre>
+</li>
+<li>
+<p>Reset cometbft:</p>
+<pre><code class="language-bash">cometbft unsafe-reset-all
+</code></pre>
+</li>
+<li>
+<p>Reset dango:</p>
+<pre><code class="language-bash">dango db reset
+</code></pre>
+</li>
+<li>
+<p>Reset indexer DB:</p>
+<pre><code class="language-bash">dropdb -h localhost -U postgres grug_dev
+createdb -h localhost -U postgres grug_dev
+</code></pre>
+</li>
+<li>
+<p>Delete indexer saved blocks:</p>
+<pre><code class="language-bash">rm -rfv ~/.dango/indexer
+</code></pre>
+</li>
+<li>
+<p>Restart the services:</p>
+<pre><code class="language-bash">sudo systemctl start dango
+sudo systemctl start cometbft
+</code></pre>
+</li>
+</ol>
+<h2 id="test-accounts"><a class="header" href="#test-accounts">Test accounts</a></h2>
+<p>Each devnet comes with 10 genesis users: <code>owner</code> and <code>user{1-9}</code>. They use Secp256k1 public keys derived from seed phrases with derivation path <code>m/44'/60'/0'/0/0</code>.</p>
+<p><strong>Do NOT use these keys in production!!!</strong></p>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>owner</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>0278f7b7d93da9b5a62e28434184d1c337c2c28d4ced291793215ab6ee89d7fff8</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>success away current amateur  choose crystal busy labor cost genius industry cement rhythm refuse whale admit meadow truck edge tiger melt flavor weapon august</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user1</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>a5122c0729c1fae8587e3cc07ae952cb77dfccc049efd5be1d2168cbe946ca18</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>03bcf89d5d4f18048f0662d359d17a2dbbb08a80b1705bc10c0b953f21fb9e1911</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>auction popular sample armed lecture leader novel control muffin grunt ceiling alcohol pulse lunch eager chimney quantum attend deny copper stumble write suggest aspect</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user2</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>cac7b4ced59cf0bfb14c373272dfb3d4447c7cd5aea732ea6ff69e19f85d34c4</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>02d309ba716f271b1083e24a0b9d438ef7ae0505f63451bc1183992511b3b1d52d</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>noodle walk produce road repair tornado leisure trip hold bomb curve live feature satoshi avocado ask pitch there decrease guitar swarm hybrid alarm make</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user3</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>cf6bb15648a3a24976e2eeffaae6201bc3e945335286d273bb491873ac7c3141</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>alley honey observe various success garbage area include demise age cash foster model royal kingdom section place lend frozen loyal layer pony october blush</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user4</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>024a23e7a6f85e942a4dbedb871c366a1fdad6d0b84e670125991996134c270df2</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>foot loyal damp alien better first glue supply claw author jar know holiday slam main siren paper transfer cram breeze glow forest word giant</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user5</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>03da86b1cd6fd20350a0b525118eef939477c0fe3f5052197cd6314ed72f9970ad</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>cliff ramp foot thrive scheme almost notice wreck base naive warfare horse plug limb keep steel tone over season basic answer post exchange wreck</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user6</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>4d3658519dd8a8227764f64c6724b840ffe29f1ca456f5dfdd67f834e10aae34</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>03428b179a075ff2142453c805a71a63b232400cc33c8e8437211e13e2bd1dec4c</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>spring repeat dog spider dismiss bring media orphan process cycle soft divorce pencil parade hill plate message bamboo kid fun dose celery table unknown</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user7</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>82de24ba8e1bc4511ae10ce3fbe84b4bb8d7d8abc9ba221d7d3cf7cd0a85131f</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>028d4d7265d5838190842ada2573ef9edfc978dec97ca59ce48cf1dd19352a4407</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>indoor welcome kite echo gloom glance gossip finger cake entire laundry citizen employ total aim inmate parade grace end foot truly park autumn pelican</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user8</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>02a888b140a836cd71a5ef9bc7677a387a2a4272343cf40722ab9e85d5f8aa21bd</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>moon inmate unique oil cupboard tube cigar subway index survey anger night know piece laptop labor capable term ivory bright nice during pattern floor</td></tr>
+</tbody></table>
+</div><br>
+<div class="table-wrapper"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td><strong>Username</strong></td><td><code>user9</code></td></tr>
+<tr><td><strong>Private</strong></td><td><code>c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3</code></td></tr>
+<tr><td><strong>Public</strong></td><td><code>0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52</code></td></tr>
+<tr><td><strong>Mnemonic</strong></td><td>bird okay punch bridge peanut tonight solar stereo then oil clever flock thought example equip juice twenty unfold reform dragon various gossip design artefact</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dev-1"><a class="header" href="#dev-1">dev-1</a></h1>
+<ul>
+<li>Genesis time: 6 October 2024</li>
+<li>Commit: <a href="https://github.com/left-curve/left-curve/tree/e450584"><code>e450584</code></a></li>
+<li>Docker image: <a href="https://hub.docker.com/layers/leftcurve/devnet/0.1.0/images/sha256-2e1ef7fa6b60339cd9000e18c0806e3af1b1c9c52bb80465da0aee61f8896316">leftcurve/devnet:0.1.0</a></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Contract</th><th>Address</th></tr></thead><tbody>
+<tr><td><code>account_factory</code></td><td><code>0xc4a812037bb86a576cc7a672e23f972b17d02cfe</code></td></tr>
+<tr><td><code>amm</code></td><td><code>0x1d4789f7ad482ac101a787678321460662e7c4da</code></td></tr>
+<tr><td><code>bank</code></td><td><code>0x420acd39b946b5a7ff2c2d0153a545abed26014a</code></td></tr>
+<tr><td><code>fee_recipient</code></td><td><code>0x1e94e30f113f0f39593f5a509898835720882674</code></td></tr>
+<tr><td><code>ibc_transfer</code></td><td><code>0xf5ade15343d5cd59b3db4d82a3af328d78f68fb5</code></td></tr>
+<tr><td><code>owner</code></td><td><code>0x1e94e30f113f0f39593f5a509898835720882674</code></td></tr>
+<tr><td><code>taxman</code></td><td><code>0x3b999093832cbd133c19fa16fe6d9bbc7fdc3dd3</code></td></tr>
+<tr><td><code>token_factory</code></td><td><code>0x01006b941f3a2fdc6c695d6a32418db19892730d</code></td></tr>
+<tr><td><code>user1</code></td><td><code>0x64b06061df3518a384b83b56e025cbce1d522ea9</code></td></tr>
+<tr><td><code>user2</code></td><td><code>0xf675f9827a44764facb06e64c212ad669368c971</code></td></tr>
+<tr><td><code>user3</code></td><td><code>0x712c90c5eac193cd9ff32d521c26f46e690cde59</code></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dev-2"><a class="header" href="#dev-2">dev-2</a></h1>
+<ul>
+<li>Genesis time: 12 October 2024</li>
+<li>Commit: <a href="https://github.com/left-curve/left-curve/tree/1f62285"><code>1f62285</code></a></li>
+<li>Docker image: <a href="https://hub.docker.com/layers/leftcurve/devnet/0.2.0/images/sha256-fceb0d67426371c970679fa0f620a54f2ff4bb36fad496222107854a9f3191c3">leftcurve/devnet:0.2.0</a></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Contract</th><th>Address</th></tr></thead><tbody>
+<tr><td><code>account_factory</code></td><td><code>0x49713b307b964100357bc58284afe3d267def819</code></td></tr>
+<tr><td><code>amm</code></td><td><code>0x28b4ad941e8c54e5d4096b37770d9416507a3b2d</code></td></tr>
+<tr><td><code>bank</code></td><td><code>0x73414af7dd7af63f0ece9a39fc0a613502893d88</code></td></tr>
+<tr><td><code>fee_recipient</code></td><td><code>0x239c425f1f55ee8c5b41fc4553e2e48736f790be</code></td></tr>
+<tr><td><code>ibc_transfer</code></td><td><code>0xac45408f2c78997a4402fc37b55d75e5364f559b</code></td></tr>
+<tr><td><code>owner</code></td><td><code>0x239c425f1f55ee8c5b41fc4553e2e48736f790be</code></td></tr>
+<tr><td><code>taxman</code></td><td><code>0x6fae8b4dceda6e93fe203d10bd20a531e93ef2c0</code></td></tr>
+<tr><td><code>token_factory</code></td><td><code>0x78f06530a0cc8f68f0e628f7d42943ae08fe66f1</code></td></tr>
+<tr><td><code>user1</code></td><td><code>0x28aa381993107c2df23c710e7de29dded8ade20f</code></td></tr>
+<tr><td><code>user2</code></td><td><code>0x9774355e46c76821387e79f1f14d8bd93e8136c4</code></td></tr>
+<tr><td><code>user3</code></td><td><code>0xf51bd88758d51c67c92ad8ec5abfe3e64df9c954</code></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dev-3"><a class="header" href="#dev-3">dev-3</a></h1>
+<p>We're no longer using Docker for devnets starting from this one.</p>
+<ul>
+<li>Genesis time: 19 November 2024</li>
+<li>Dango version: <a href="https://github.com/left-curve/left-curve/tree/1dc94ce"><code>1dc94ce</code></a></li>
+<li>Cometbft version: <a href="https://github.com/cometbft/cometbft/releases/tag/v0.38.15"><code>0.38.15+e8eb5bdc0</code></a></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Contract</th><th>Address</th></tr></thead><tbody>
+<tr><td><code>account_factory</code></td><td><code>0x7f3a53d1f240e043a105fb59eac2cc10496bfb92</code></td></tr>
+<tr><td><code>amm</code></td><td><code>0xd32f60aadbd34057dd298dfb6ff2f9c3ee7af25b</code></td></tr>
+<tr><td><code>bank</code></td><td><code>0x929a99d0881f07e03d5f91b5ad2a1fc188f64ea1</code></td></tr>
+<tr><td><code>ibc_transfer</code></td><td><code>0xfd802a93e35647c5cbd3c85e5816d1994490271e</code></td></tr>
+<tr><td><code>lending</code></td><td><code>0x5981ae625871c498afda8e9a52e3abf5f5486578</code></td></tr>
+<tr><td><code>oracle</code></td><td><code>0x9ec674c981c0ec87a74dd7c4e9788d21003a2f79</code></td></tr>
+<tr><td><code>owner</code></td><td><code>0xb86b2d96971c32f68241df04691479edb6a9cd3b</code></td></tr>
+<tr><td><code>taxman</code></td><td><code>0xc61778845039a412574258694dd04976064ec159</code></td></tr>
+<tr><td><code>token_factory</code></td><td><code>0x1cc2f67b1a73e59e1be4d9c4cf8de7a93088ea79</code></td></tr>
+<tr><td><code>user1</code></td><td><code>0x384ba320f302804a0a03bfc8bb171f35d8b84f01</code></td></tr>
+<tr><td><code>user2</code></td><td><code>0x0d0c9e26d70fdf9336331bae0e0378381e0af988</code></td></tr>
+<tr><td><code>user3</code></td><td><code>0x0addd2dd7f18d49ce6261bc4431ad77bd9c46336</code></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dev-4"><a class="header" href="#dev-4">dev-4</a></h1>
+<p>We're no longer using Docker for devnets starting from this one.</p>
+<ul>
+<li>Genesis time: 14 January 2025</li>
+<li>Dango version: <a href="https://github.com/left-curve/left-curve/tree/379cde3"><code>379cde3</code></a></li>
+<li>Cometbft version: <a href="https://github.com/cometbft/cometbft/releases/tag/v0.38.16"><code>0.38.16+84f981e93</code></a></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Contract</th><th>Address</th></tr></thead><tbody>
+<tr><td><code>account_factory</code></td><td><code>0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b</code></td></tr>
+<tr><td><code>amm</code></td><td><code>0xd68b93d22f71d44ee2603d70b8901e00197f601a</code></td></tr>
+<tr><td><code>bank</code></td><td><code>0x2f3d763027f30db0250de65d037058c8bcbd3352</code></td></tr>
+<tr><td><code>hyperlane/fee</code></td><td><code>0x1820557f629fa72caf0cab710640e44c9826deb2</code></td></tr>
+<tr><td><code>hyperlane/ism</code></td><td><code>0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7</code></td></tr>
+<tr><td><code>hyperlane/mailbox</code></td><td><code>0x51e5de0593d0ea0647a93925c91dafb98c36738f</code></td></tr>
+<tr><td><code>hyperlane/merkle</code></td><td><code>0x0f4f47e2bd07b308bd1b3b4b93d72412e874ca8a</code></td></tr>
+<tr><td><code>hyperlane/warp</code></td><td><code>0x6c7bb6ed728a83469f57afa1000ca7ecd67652c3</code></td></tr>
+<tr><td><code>ibc_transfer</code></td><td><code>0x9dab5ef15ecc5ac2a26880ee0a40281745508a74</code></td></tr>
+<tr><td><code>lending</code></td><td><code>0x21a3382e007b2b1bc622ffad0782abaec6cf34c7</code></td></tr>
+<tr><td><code>oracle</code></td><td><code>0x5008fe31cf74b45f7f67c4184804cd6fe75ddeb2</code></td></tr>
+<tr><td><code>owner</code></td><td><code>0x695c7afd829abae6fe6552afec2f8e88d10b65e4</code></td></tr>
+<tr><td><code>taxman</code></td><td><code>0xe14d4b7bfca615e47a0f6addaf166b7fe0816c68</code></td></tr>
+<tr><td><code>token_factory</code></td><td><code>0x62ae059a9e0f15f3899538e2f2b4befc8b35fb97</code></td></tr>
+<tr><td><code>user1</code></td><td><code>0xcf8c496fb3ff6abd98f2c2b735a0a148fed04b54</code></td></tr>
+<tr><td><code>user2</code></td><td><code>0x36e8118e115302889d538ae58c111ba88a2a715b</code></td></tr>
+<tr><td><code>user3</code></td><td><code>0x653d34960867de3c1dbab7052f3e0508d50a8f9c</code></td></tr>
+<tr><td><code>user4</code></td><td><code>0xf69004c943cbde86bfe636a1e82035c15b81ba23</code></td></tr>
+<tr><td><code>user5</code></td><td><code>0x10864a72a54c1674f24594ec2e6fed9f256512f5</code></td></tr>
+<tr><td><code>user6</code></td><td><code>0x9ee6bcecd0a7e9b0b49b1e4049f35cb366f8c42d</code></td></tr>
+<tr><td><code>user7</code></td><td><code>0x8639d6370570161d9d6f9470a93820da915fa204</code></td></tr>
+<tr><td><code>user8</code></td><td><code>0x4f60cb4f5f11432f1d825bafd6498986e5f1521b</code></td></tr>
+<tr><td><code>user9</code></td><td><code>0x5017dae9b68860f36aae72f653efb1d63d632a97</code></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dev-5"><a class="header" href="#dev-5">dev-5</a></h1>
+<ul>
+<li>Genesis time: 25 February 2025</li>
+<li>Dango version: <a href="https://github.com/left-curve/left-curve/tree/75a9966"><code>75a9966</code></a></li>
+<li>Cometbft version: <a href="https://github.com/cometbft/cometbft/releases/tag/v0.38.17"><code>0.38.17+d03254d35</code></a></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Contract</th><th>Address</th></tr></thead><tbody>
+<tr><td><code>account_factory</code></td><td><code>0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b</code></td></tr>
+<tr><td><code>bank</code></td><td><code>0xb75a9c68d94f42c65287e0f9529e387ce133b3dc</code></td></tr>
+<tr><td><code>dex</code></td><td><code>0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f</code></td></tr>
+<tr><td><code>hyperlane/fee</code></td><td><code>0x1820557f629fa72caf0cab710640e44c9826deb2</code></td></tr>
+<tr><td><code>hyperlane/ism</code></td><td><code>0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7</code></td></tr>
+<tr><td><code>hyperlane/mailbox</code></td><td><code>0x51e5de0593d0ea0647a93925c91dafb98c36738f</code></td></tr>
+<tr><td><code>hyperlane/merkle</code></td><td><code>0x0f4f47e2bd07b308bd1b3b4b93d72412e874ca8a</code></td></tr>
+<tr><td><code>hyperlane/va</code></td><td><code>0x938f2cab274baff29ed1515f205df1c58464afc9</code></td></tr>
+<tr><td><code>lending</code></td><td><code>0x53373c59e508bd6cb903e3c00b7b224d2180982f</code></td></tr>
+<tr><td><code>oracle</code></td><td><code>0x37e32bfe0cc6d70bea6d146f6ee10b29c307f68b</code></td></tr>
+<tr><td><code>owner</code></td><td><code>0x33361de42571d6aa20c37daa6da4b5ab67bfaad9</code></td></tr>
+<tr><td><code>taxman</code></td><td><code>0x29ddd3dbf76f09d8a9bc972a3004bf7c6da54176</code></td></tr>
+<tr><td><code>vesting</code></td><td><code>0x69ee3f5f2a8300c96d008865c2b2df4e40ec48cc</code></td></tr>
+<tr><td><code>user1</code></td><td><code>0x01bba610cbbfe9df0c99b8862f3ad41b2f646553</code></td></tr>
+<tr><td><code>user2</code></td><td><code>0x0fbc6c01f7c334500f465ba456826c890f3c8160</code></td></tr>
+<tr><td><code>user3</code></td><td><code>0xf75d080e41925c12bff714eda6ab74330482561b</code></td></tr>
+<tr><td><code>user4</code></td><td><code>0x5a7213b5a8f12e826e88d67c083be371a442689c</code></td></tr>
+<tr><td><code>user5</code></td><td><code>0xa20a0e1a71b82d50fc046bc6e3178ad0154fd184</code></td></tr>
+<tr><td><code>user6</code></td><td><code>0x365a389d8571b681d087ee8f7eecf1ff710f59c8</code></td></tr>
+<tr><td><code>user7</code></td><td><code>0x2b83168508f82b773ee9496f462db9ebd9fca817</code></td></tr>
+<tr><td><code>user8</code></td><td><code>0xbed1fa8569d5a66935dea5a179b77ac06067de32</code></td></tr>
+<tr><td><code>user9</code></td><td><code>0x6f95c4f169f38f598dd571084daa5c799c5743de</code></td></tr>
+<tr><td><code>warp</code></td><td><code>0x00d4f0a556bfeaa12e1451d74830cf483153af91</code></td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+    </div>
+    </body>
+</html>

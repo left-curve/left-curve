@@ -1,0 +1,302 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Gas - The Dango Book</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Everything about Dango">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Dango Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/left-curve/left-curve" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="gas"><a class="header" href="#gas">Gas</a></h1>
+<p>Some thoughts on how we define gas cost in Grug.</p>
+<p>The Wasmer runtime provides a <a href="https://docs.rs/wasmer-middlewares/latest/wasmer_middlewares/metering/struct.Metering.html"><code>Metering</code></a> middleware that measures how many "points" a Wasm function call consumes.</p>
+<p>The question is how to associate Wasmer points to the chain's gas units.</p>
+<h2 id="cosmwasms-approach"><a class="header" href="#cosmwasms-approach">CosmWasm's approach</a></h2>
+<p>As documented <a href="https://github.com/CosmWasm/cosmwasm/blob/main/docs/GAS.md">here</a>, CosmWasm's approach is as follows:</p>
+<ol>
+<li>
+<p>Perform a benchmark to measure how many "points" Wasmer can execute per second. Then, set a target amount of gas per second (they use 10^12 gas per second). Between these two numbers, CosmWasm decides that 1 Wasmer point is to equal 170 gas units.</p>
+</li>
+<li>
+<p>Perform another benchmark to measure how much time it takes for the host to execute each host function (e.g. <code>addr_validate</code> or <code>secp256k1_verify</code>). Based on this, assign a proper gas cost for each host function.</p>
+</li>
+<li>
+<p>Divide CosmWasm gas by a constant factor of 100 to arrive at Cosmos SDK gas.</p>
+</li>
+</ol>
+<h2 id="our-approach"><a class="header" href="#our-approach">Our approach</a></h2>
+<p>For us, defining gas cost is easier, because we don't have a Cosmos SDK to deal with.</p>
+<ol>
+<li>
+<p>We skip step 1, and simply set 1 Wasmer point = 1 Grug gas unit.</p>
+</li>
+<li>
+<p>We perform the same benchmarks to set proper gas costs for host functions.</p>
+</li>
+<li>
+<p>We skip this step as well.</p>
+</li>
+</ol>
+<blockquote>
+<p>In summary,</p>
+<ul>
+<li>1 Cosmos SDK gas = 100 CosmWasm gas</li>
+<li>1 Wasmer point = 170 CosmWasm gas</li>
+<li>1 Wasmer point = 1 Grug gas</li>
+</ul>
+</blockquote>
+<h2 id="benchmark-results"><a class="header" href="#benchmark-results">Benchmark results</a></h2>
+<p>Benchmarks were performed on a MacBook Pro with the M2 Pro CPU.</p>
+<p>Relevant code can be found in <a href="../../crates/vm/wasm/benches/">crates/vm/wasm/benches</a> and <a href="../../crates/crypto/benches/">crates/crypto/benches</a>.</p>
+<h3 id="wasmer-points-per-second"><a class="header" href="#wasmer-points-per-second">Wasmer points per second</a></h3>
+<p>This corresponds to the step 1 above. This benchmark is irrelevant for our decision making (as we simply set 1 Wasmer point = 1 Grug gas unit), but we still perform it for good measure.</p>
+<div class="table-wrapper"><table><thead><tr><th>Iterations</th><th>Points</th><th>Time (ms)</th></tr></thead><tbody>
+<tr><td>200,000</td><td>159,807,119</td><td>15.661</td></tr>
+<tr><td>400,000</td><td>319,607,119</td><td>31.663</td></tr>
+<tr><td>600,000</td><td>479,407,119</td><td>47.542</td></tr>
+<tr><td>800,000</td><td>639,207,119</td><td>62.783</td></tr>
+<tr><td>1,000,000</td><td>799,007,154</td><td>78.803</td></tr>
+</tbody></table>
+</div>
+<p>Extrapolating to 1 second, we arrive at that <code>WasmVm</code> executes 10,026,065,176 points per second. Let's round this to 10^10 points per second, for simplicity.</p>
+<p>If we were to target 10^12 gas units per second as CosmWasm does (we don't), this would mean 10^12 / 10^10 = 100 gas units per Wasmer point.</p>
+<p>This is roughly in the same ballpark as CosmWasm's result (170 gas units per Wasmer point). The results are of course not directly comparable because they were done using different CPUs, but the numbers being within one degree of magnitude suggests the two VMs are similar in performance.</p>
+<p>As said before, we set 1 Wasmer point = 1 gas unit, so we're doing 10^10 gas per second.</p>
+<h3 id="single-signature-verification"><a class="header" href="#single-signature-verification">Single signature verification</a></h3>
+<p>Time for verifying one signature:</p>
+<div class="table-wrapper"><table><thead><tr><th>Verifier</th><th>Time (ms)</th><th>Gas Per Verify</th></tr></thead><tbody>
+<tr><td><code>secp256r1_verify</code></td><td>0.188</td><td>1,880,000</td></tr>
+<tr><td><code>secp256k1_verify</code></td><td>0.077</td><td>770,000</td></tr>
+<tr><td><code>secp256k1_pubkey_recover</code></td><td>0.158</td><td>1,580,000</td></tr>
+<tr><td><code>ed25519_verify</code></td><td>0.041</td><td>410,000</td></tr>
+</tbody></table>
+</div>
+<p>We have established that 1 second corresponds to 10^10 gas units. Therefore, <code>secp256k1_verify</code> costing 0.188 millisecond means it should cost $10^{10} \times 0.077 \times 10^{-3}$ = 770,000 gas.</p>
+<p>This is comparable to CosmWasm's value.</p>
+<h3 id="batch-signature-verification"><a class="header" href="#batch-signature-verification">Batch signature verification</a></h3>
+<p><code>ed25519_batch_verify</code> time for various batch sizes:</p>
+<div class="table-wrapper"><table><thead><tr><th>Batch Size</th><th>Time (ms)</th></tr></thead><tbody>
+<tr><td>25</td><td>0.552</td></tr>
+<tr><td>50</td><td>1.084</td></tr>
+<tr><td>75</td><td>1.570</td></tr>
+<tr><td>100</td><td>2.096</td></tr>
+<tr><td>125</td><td>2.493</td></tr>
+<tr><td>150</td><td>2.898</td></tr>
+</tbody></table>
+</div>
+<p>Linear regression shows there's a flat cost 0.134 ms (1,340,000 gas) plus 0.0188 ms (188,000 gas) per item.</p>
+<h3 id="hashes"><a class="header" href="#hashes">Hashes</a></h3>
+<p>Time (ms) for the host to perform hashes on inputs of various sizes:</p>
+<div class="table-wrapper"><table><thead><tr><th>Hasher</th><th>200 kB</th><th>400 kB</th><th>600 kB</th><th>800 kB</th><th>1,000 kB</th><th>Gas Per Byte</th></tr></thead><tbody>
+<tr><td><code>sha2_256</code></td><td>0.544</td><td>1.086</td><td>1.627</td><td>2.201</td><td>2.718</td><td>27</td></tr>
+<tr><td><code>sha2_512</code></td><td>0.330</td><td>0.678</td><td>0.996</td><td>1.329</td><td>1.701</td><td>16</td></tr>
+<tr><td><code>sha3_256</code></td><td>0.298</td><td>0.606</td><td>0.918</td><td>1.220</td><td>1.543</td><td>15</td></tr>
+<tr><td><code>sha3_512</code></td><td>0.614</td><td>1.129</td><td>1.719</td><td>2.328</td><td>2.892</td><td>28</td></tr>
+<tr><td><code>keccak256</code></td><td>0.312</td><td>0.605</td><td>0.904</td><td>1.222</td><td>1.534</td><td>15</td></tr>
+<tr><td><code>blake2s_256</code></td><td>0.305</td><td>0.632</td><td>0.907</td><td>1.212</td><td>1.526</td><td>15</td></tr>
+<tr><td><code>blake2b_512</code></td><td>0.180</td><td>0.364</td><td>0.552</td><td>0.719</td><td>0.917</td><td>9</td></tr>
+<tr><td><code>blake3</code></td><td>0.105</td><td>0.221</td><td>0.321</td><td>0.411</td><td>0.512</td><td>5</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../notes/extension-traits.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../notes/generate-dependency-graph.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../notes/extension-traits.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../notes/generate-dependency-graph.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
