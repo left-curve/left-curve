@@ -53,7 +53,7 @@
 - name: Deploy dango container
   docker_container:
     name: dango
-    image: ghcr.io/left-curve/left-curve/dango:latest
+    image: "ghcr.io/left-curve/left-curve/dango:{{ dango_image_tag }}"
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always           # always pull the image
     recreate: true         # destroy+recreate if anything changes
