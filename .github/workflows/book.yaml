@@ -35,7 +35,10 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install mdbook and mdbook-katex
+      # This builds mdbook from source, which is really slow.
+      # We should consider using: https://github.com/peaceiris/actions-mdbook
+      # but it doesn't support the katex preprocessor.
+      - name: Install mdbook and preprocessors
         run: cargo install mdbook mdbook-katex
 
       - name: Build book
