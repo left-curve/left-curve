@@ -4,7 +4,7 @@ use {
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
     grug_db_memory::MemDb,
-    grug_testing::{BlockCreation, MockClient, setup_tracing_subscriber},
+    grug_testing::{MockClient, setup_tracing_subscriber},
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
     std::sync::Arc,
@@ -12,9 +12,9 @@ use {
     tracing::Level,
 };
 
-pub use dango_testing::SetupValues;
+pub use {dango_testing::SetupValues, grug_testing::BlockCreation};
 
-pub async fn run_mock_httpd(
+pub async fn run(
     port: u16,
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,

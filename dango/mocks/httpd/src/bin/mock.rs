@@ -1,8 +1,8 @@
-use {dango_mock_httpd::run_mock_httpd, dango_testing::SetupValues, grug_testing::BlockCreation};
+use dango_mock_httpd::{BlockCreation, SetupValues};
 
 #[tokio::main]
 async fn main() {
-    run_mock_httpd(
+    dango_mock_httpd::run(
         8080,
         BlockCreation::OnBroadcast,
         None,
