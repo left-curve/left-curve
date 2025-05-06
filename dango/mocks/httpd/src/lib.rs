@@ -28,6 +28,7 @@ pub async fn run(
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_keep_blocks(keep_blocks)
         .with_memory_database()
+        .with_sqlx_pubsub()
         .with_tmpdir()
         .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()?;
