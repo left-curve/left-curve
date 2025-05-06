@@ -49,3 +49,17 @@
     state: started
   become: true
   become_user: "{{ deploy_user }}"
+
+- name: Ensure backend network exists
+  community.docker.docker_network:
+    name: backend
+    driver: bridge
+    state: present
+
+- name: Connect Postgres and Dango containers to backend network
+  community.docker.docker_network:
+    name: backend
+    state: present
+    connected:
+      - postgres
+    appends: yes

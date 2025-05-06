@@ -21,3 +21,11 @@
         owner: "{{ runner_user }}"
         group: "{{ runner_user }}"
         recurse: yes
+
+    - name: Adding runner user users to group docker
+      become: true
+      user:
+        name: "{{ runner_user }}"
+        append: true
+        groups:
+          - docker

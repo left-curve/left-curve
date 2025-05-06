@@ -50,3 +50,17 @@
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     tty: true
+
+- name: Ensure backend network exists
+  community.docker.docker_network:
+    name: backend
+    driver: bridge
+    state: present
+
+- name: Connect Postgres and Dango containers to backend network
+  community.docker.docker_network:
+    name: backend
+    state: present
+    connected:
+      - cometbft
+    appends: yes

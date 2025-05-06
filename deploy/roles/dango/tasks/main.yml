@@ -81,7 +81,5 @@
     name: backend
     state: present
     connected:
-      - postgres
       - dango
-      - cometbft
     appends: yes
