@@ -1,9 +1,10 @@
+#[cfg(feature = "testing")]
+use grug_testing::TestSuite;
 use {
     async_trait::async_trait,
     grug_app::{
         App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
-    grug_testing::TestSuite,
     grug_types::{BlockInfo, BroadcastClient, JsonDeExt, JsonSerExt, SearchTxClient},
 };
 
@@ -77,6 +78,7 @@ where
     }
 }
 
+#[cfg(feature = "testing")]
 #[async_trait]
 impl<DB, VM, PP, ID> QueryApp for TestSuite<DB, VM, PP, ID>
 where

@@ -13,6 +13,7 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
+testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
 
 [dependencies]
@@ -29,7 +30,7 @@ chrono                  = { workspace = true }
 clap                    = { workspace = true }
 grug-app                = { workspace = true }
 grug-math               = { workspace = true }
-grug-testing            = { workspace = true }
+grug-testing            = { workspace = true, optional = true }
 grug-types              = { workspace = true }
 indexer-sql             = { workspace = true }
 itertools               = { workspace = true }

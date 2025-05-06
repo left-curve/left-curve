@@ -4,7 +4,7 @@ use {dango_testing::SetupValues, grug_testing::BlockCreation, indexer_httpd_mock
 async fn main() {
     run_mock_httpd(
         8080,
-        BlockCreation::OnBroadcast,
+        BlockCreation::Timed,
         None,
         SetupValues::default(),
         true,
