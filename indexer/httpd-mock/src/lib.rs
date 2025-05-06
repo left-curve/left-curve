@@ -40,7 +40,7 @@ pub async fn run_mock_httpd(
         db.clone(),
         vm.clone(),
         codes,
-        ProposalPreparer::new_with_cache(),
+        ProposalPreparer::new(),
         indexer,
         values,
     );
