@@ -1,7 +1,7 @@
-use dango_mock_httpd::{BlockCreation, TestOption};
+use dango_mock_httpd::{BlockCreation, Error, TestOption};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Error> {
     dango_mock_httpd::run(
         8080,
         BlockCreation::OnBroadcast,
@@ -10,5 +10,4 @@ async fn main() {
         true,
     )
     .await
-    .unwrap();
 }

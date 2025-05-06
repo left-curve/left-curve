@@ -12,7 +12,7 @@ use {
     tracing::Level,
 };
 
-pub use {dango_testing::TestOption, grug_testing::BlockCreation};
+pub use {dango_testing::TestOption, grug_testing::BlockCreation, indexer_httpd::error::Error};
 
 pub async fn run(
     port: u16,
@@ -20,7 +20,7 @@ pub async fn run(
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     keep_blocks: bool,
-) -> anyhow::Result<()> {
+) -> Result<(), Error> {
     setup_tracing_subscriber(Level::INFO);
 
     let codes = build_rust_codes();
@@ -61,7 +61,5 @@ pub async fn run(
         config_app,
         build_schema,
     )
-    .await?;
-
-    Ok(())
+    .await
 }
