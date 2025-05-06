@@ -35,7 +35,7 @@ export const Popover: React.FC<Props> = ({ menu, trigger, className, showArrow =
   }, [open]);
 
   return (
-    <div ref={popoverRef} className="relative group border w-fit">
+    <div ref={popoverRef} className="relative group w-fit">
       <>
         <motion.button
           ref={triggerRef}
