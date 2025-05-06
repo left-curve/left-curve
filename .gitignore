@@ -65,3 +65,4 @@ book/papers/**/*.synctex.gz
 networks/**/configs/cometbft/config/addrbook.json
 networks/**/configs/cometbft/config/write-file-atomic-*
 networks/**/data
+.gitattributes
