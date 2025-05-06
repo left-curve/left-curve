@@ -158,7 +158,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="gas"><a class="header" href="#gas">Gas</a></h1>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+<h1 id="gas"><a class="header" href="#gas">Gas</a></h1>
 <p>Some thoughts on how we define gas cost in Grug.</p>
 <p>The Wasmer runtime provides a <a href="https://docs.rs/wasmer-middlewares/latest/wasmer_middlewares/metering/struct.Metering.html"><code>Metering</code></a> middleware that measures how many "points" a Wasm function call consumes.</p>
 <p>The question is how to associate Wasmer points to the chain's gas units.</p>
@@ -222,7 +223,7 @@
 <tr><td><code>ed25519_verify</code></td><td>0.041</td><td>410,000</td></tr>
 </tbody></table>
 </div>
-<p>We have established that 1 second corresponds to 10^10 gas units. Therefore, <code>secp256k1_verify</code> costing 0.188 millisecond means it should cost $10^{10} \times 0.077 \times 10^{-3}$ = 770,000 gas.</p>
+<p>We have established that 1 second corresponds to 10^10 gas units. Therefore, <code>secp256k1_verify</code> costing 0.188 millisecond means it should cost <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8974em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mord"><span class="mord">0</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">10</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">0.077</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord">1</span><span class="mord"><span class="mord">0</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">3</span></span></span></span></span></span></span></span></span></span></span></span> = 770,000 gas.</p>
 <p>This is comparable to CosmWasm's value.</p>
 <h3 id="batch-signature-verification"><a class="header" href="#batch-signature-verification">Batch signature verification</a></h3>
 <p><code>ed25519_batch_verify</code> time for various batch sizes:</p>

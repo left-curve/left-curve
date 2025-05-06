@@ -158,7 +158,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2 id="bounded-values"><a class="header" href="#bounded-values">Bounded values</a></h2>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+<h2 id="bounded-values"><a class="header" href="#bounded-values">Bounded values</a></h2>
 <p>A common situation developers find themselves in is their contract needs to take a value that must been within a certain bound.</p>
 <p>For example, a fee rate should be within the range of 0~1. It doesn't make sense to charge more than 100% fee. Whenever a fee rate is provided, the contract needs to verify it's within the bounds, throwing error if not:</p>
 <pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]

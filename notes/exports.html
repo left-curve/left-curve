@@ -158,7 +158,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="entry-points"><a class="header" href="#entry-points">Entry points</a></h1>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+<h1 id="entry-points"><a class="header" href="#entry-points">Entry points</a></h1>
 <p>Each Grug smart contract presents several predefined Wasm export functions known as <strong>entry points</strong>. The state machine (also referred to as the <strong>host</strong>) executes or makes queries at contracts by calling these functions. Some of the entry points are mandatory, while the others are optional. The Grug standard library provides an <code>#[grug::export]</code> macro which helps defining entry points.</p>
 <p>This page lists all supported entry points, in <em>Rust pseudo-code</em>.</p>
 <h2 id="memory"><a class="header" href="#memory">Memory</a></h2>
