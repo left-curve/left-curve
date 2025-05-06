@@ -1,4 +1,3 @@
-import { Popover as HPopover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { IconChevronDown } from "./icons/IconChevronDown";
 import { twMerge } from "#utils/twMerge.js";
 import { AnimatePresence, motion } from "framer-motion";
