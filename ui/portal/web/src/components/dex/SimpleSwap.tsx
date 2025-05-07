@@ -1,4 +1,10 @@
-import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
+import {
+  createContext,
+  numberMask,
+  twMerge,
+  useInputs,
+  useWatchEffect,
+} from "@left-curve/applets-kit";
 import { useSimpleSwap as state, useAccount, useBalances, usePrices } from "@left-curve/store";
 
 import {
@@ -12,7 +18,7 @@ import {
 
 import { m } from "~/paraglide/messages";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 import type { UseSimpleSwapParameters } from "@left-curve/store";
 import type { PropsWithChildren } from "react";
 import type React from "react";
@@ -66,17 +72,43 @@ export const SimpleSwapForm: React.FC = () => {
   const { settings } = useApp();
   const { account } = useAccount();
   const { register, setValue, inputs } = useInputs();
-  const { coins, pairs, quote, base, isReverse, direction, toggleDirection, changeQuote } =
-    useSimpleSwap();
+  const {
+    coins,
+    pairs,
+    quote,
+    base,
+    isReverse,
+    direction,
+    toggleDirection,
+    changeQuote,
+    simulation,
+  } = useSimpleSwap();
   const { data: balances } = useBalances({ address: account?.address });
   const { getPrice } = usePrices();
   const { formatNumberOptions } = settings;
+  const { simulate } = simulation;
 
   const baseBalance = formatUnits(balances?.[base.denom] || 0, base.decimals);
   const quoteBalance = formatUnits(balances?.[quote.denom] || 0, quote.decimals);
 
-  const baseAmount = inputs.base?.value || 0;
-  const quoteAmount = inputs.selectedCoin?.value || 0;
+  const baseAmount = inputs.base?.value || "0";
+  const quoteAmount = inputs.quote?.value || "0";
+
+  useWatchEffect(inputs.base?.value, async (v) => {
+    const output = await simulate({
+      amount: parseUnits(baseAmount, base.decimals).toString(),
+      denom: base.denom,
+    });
+    if (output) setValue("quote", formatUnits(output.amount, quote.decimals));
+  });
+
+  useWatchEffect(inputs.quote?.value, async (v) => {
+    const output = await simulate({
+      amount: parseUnits(quoteAmount, quote.decimals).toString(),
+      denom: quote.denom,
+    });
+    if (output) setValue("base", formatUnits(output.amount, base.decimals));
+  });
 
   return (
     <div
@@ -203,11 +235,13 @@ export const SimpleSwapForm: React.FC = () => {
 };
 
 const SimpleSwapDetails: React.FC = () => {
+  const { slippage } = useSimpleSwap();
+
   return (
     <div className="flex flex-col gap-1 w-full">
       <div className="flex w-full gap-2 items-center justify-between">
         <p className="text-gray-500 diatype-sm-regular">Fee ({0}%)</p>
-        <p className="text-gray-700 diatype-sm-medium">0</p>
+        <p className="text-gray-700 diatype-sm-medium">$0</p>
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
         <p className="text-gray-500 diatype-sm-regular">Price Impact</p>
@@ -215,7 +249,7 @@ const SimpleSwapDetails: React.FC = () => {
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
         <p className="text-gray-500 diatype-sm-regular">Max slippage</p>
-        <p className="text-gray-700 diatype-sm-medium">0.50%</p>
+        <p className="text-gray-700 diatype-sm-medium">{Number(slippage) * 100}%</p>
       </div>
     </div>
   );

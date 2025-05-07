@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-
+import { useMemo, useRef, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
+import { usePublicClient } from "./usePublicClient.js";
+import { useStorage } from "./useStorage.js";
 
+import type { Coin } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
 
 const BASE_DENOM = "USDC";
@@ -18,6 +20,11 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const { from, to } = parameters.pair;
   const { coins } = useConfig();
   const { data: config, ...pairs } = useAppConfig();
+
+  const client = usePublicClient();
+
+  const simulationInput = useRef<Coin | null>(null);
+  const [slippage, setSlippage] = useStorage("simpleSwap.slippage", { initialValue: "0.01" });
 
   const changeQuote = (quote: string) => {
     const newPair = isReverse ? { from: quote, to } : { from, to: quote };
@@ -48,6 +55,8 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const baseCoin = coinsBySymbol[isReverse ? to : from];
   const quoteCoin = coinsBySymbol[isReverse ? from : to];
 
+  const pair = config?.pairs?.[quoteCoin.denom];
+
   const statistics = useQuery({
     queryKey: ["pair_statistics"],
     initialData: { tvl: "-", apy: "-", volume: "-" },
@@ -56,8 +65,27 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     },
   });
 
+  const simulation = useQuery({
+    enabled: false,
+    queryKey: ["pair_simulation"],
+    queryFn: async () => {
+      if (!simulationInput.current || !pair) return null;
+      return await client.simulateSwapExactAmountIn({
+        input: simulationInput.current,
+        route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
+      });
+    },
+  });
+
+  const simulate = async (input: Coin) => {
+    simulationInput.current = input;
+    const { data } = await simulation.refetch();
+    return data;
+  };
+
   return {
     coins,
+    pair,
     pairs: { ...pairs, data: config?.pairs || {} },
     statistics,
     quote: quoteCoin,
@@ -66,5 +94,11 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     direction,
     toggleDirection,
     changeQuote,
+    slippage,
+    setSlippage,
+    simulation: {
+      simulate,
+      ...simulation,
+    },
   };
 }
