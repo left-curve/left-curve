@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useAccount } from "./useAccount.js";
 import { useAppConfig } from "./useAppConfig.js";
-import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
-import { usePrices } from "./usePrices.js";
 
 import type { AnyCoin } from "../types/coin.js";
+
+const BASE_DENOM = "USDC";
 
 export type UseSimpleSwapParameters = {
   pair: { from: string; to: string };
@@ -21,18 +20,18 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const { data: config, ...pairs } = useAppConfig();
 
   const changeQuote = (quote: string) => {
-    const newPair = isReverse ? { from: quote, to: from } : { from, to: quote };
+    const newPair = isReverse ? { from: quote, to } : { from, to: quote };
     onChangePair(newPair);
   };
 
   const [direction, setDirection] = useState<"reverse" | "normal">(
-    from === "USDC" ? "normal" : "reverse",
+    from === BASE_DENOM ? "normal" : "reverse",
   );
 
   const toggleDirection = () => {
     const newPair = { from: to, to: from };
     onChangePair(newPair);
-    setDirection((prev) => (prev === "normal" ? "reverse" : "normal"));
+    setDirection(isReverse ? "normal" : "reverse");
   };
 
   const isReverse = direction === "reverse";
@@ -48,8 +47,6 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
 
   const baseCoin = coinsBySymbol[isReverse ? to : from];
   const quoteCoin = coinsBySymbol[isReverse ? from : to];
-
-  useEffect(() => {}, [parameters.pair]);
 
   const statistics = useQuery({
     queryKey: ["pair_statistics"],
