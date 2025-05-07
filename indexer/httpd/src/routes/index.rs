@@ -4,6 +4,7 @@ use {
     async_graphql::futures_util::TryFutureExt,
     indexer_sql::entity,
     sea_orm::{EntityTrait, Order, QueryOrder},
+    grug_app::GIT_COMMIT,
 };
 
 #[get("/")]
@@ -12,9 +13,10 @@ pub async fn index() -> impl Responder {
 }
 
 #[derive(serde::Serialize, Default)]
-struct HealthResponse {
+struct HealthResponse<'a> {
     block_height: u64,
     indexed_block_height: Option<u64>,
+    git_commit: &'a str,
 }
 
 #[get("/up")]
@@ -38,6 +40,7 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     Ok(HttpResponse::Ok().json(HealthResponse {
         block_height,
         indexed_block_height,
+        git_commit: GIT_COMMIT,
     }))
 }
 

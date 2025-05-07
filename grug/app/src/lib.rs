@@ -16,8 +16,9 @@ mod state;
 mod submessage;
 mod traits;
 mod vm;
+mod git_info;
 
 pub use crate::{
     app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*,
-    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
+    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*, git_info::*,
 };

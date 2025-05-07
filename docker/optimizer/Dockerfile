@@ -19,9 +19,9 @@ RUN echo "Cloning commit: $GIT_COMMIT" \
   && git remote add origin https://github.com/left-curve/left-curve.git \
   && git fetch --depth 1 origin $GIT_COMMIT \
   && git checkout FETCH_HEAD \
-  && cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in \
-  && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs \
-  && rm dango/cli/src/git_info.rs.in \
+  && cp grug/app/src/git_info.rs grug/app/src/git_info.rs.in \
+  && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" grug/app/src/git_info.rs.in > grug/app/src/git_info.rs \
+  && rm grug/app/src/git_info.rs.in \
   && cargo install --path dango/cli \
   && cd .. \
   && rm -rf left-curve
