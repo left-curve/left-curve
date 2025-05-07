@@ -113,6 +113,8 @@ export {
   useAppConfig,
 } from "./hooks/useAppConfig.js";
 
+export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
