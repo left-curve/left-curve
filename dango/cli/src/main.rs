@@ -15,9 +15,9 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
+    grug_app::GIT_COMMIT,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
-    grug_app::GIT_COMMIT,
 };
 
 #[derive(Parser)]

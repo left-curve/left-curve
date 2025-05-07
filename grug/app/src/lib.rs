@@ -6,6 +6,7 @@ mod error;
 mod event;
 mod execute;
 mod gas;
+mod git_info;
 mod indexer;
 mod macros;
 mod proposal_preparer;
@@ -16,9 +17,9 @@ mod state;
 mod submessage;
 mod traits;
 mod vm;
-mod git_info;
 
 pub use crate::{
-    app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*,
-    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*, git_info::*,
+    app::*, buffer::*, error::*, event::*, execute::*, gas::*, git_info::*, indexer::*,
+    proposal_preparer::*, providers::*, query::*, shared::*, state::*, submessage::*, traits::*,
+    vm::*,
 };
