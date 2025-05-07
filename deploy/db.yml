@@ -1,4 +1,5 @@
 - hosts: db
   become: true
   roles:
+    - docker
     - postgres
