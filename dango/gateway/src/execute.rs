@@ -228,6 +228,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     for (denom, limit) in RATE_LIMITS.load(ctx.storage)? {
         let supply = ctx.querier.query_supply(denom.clone())?;
         let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+
         OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
     }
 
