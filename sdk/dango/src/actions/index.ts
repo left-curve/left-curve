@@ -50,6 +50,10 @@ export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js
 /* -------------------------------------------------------------------------- */
 
 export {
+  // queries
+  type GetAppConfigParameters,
+  type GetAppConfigReturnType,
+  getAppConfig,
   // mutations
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -233,9 +237,6 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export {
-  type GetAppConfigParameters,
-  type GetAppConfigReturnType,
-  getAppConfig,
   type GetBalanceParameters,
   type GetBalanceReturnType,
   getBalance,

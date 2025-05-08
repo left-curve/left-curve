@@ -471,6 +471,22 @@
       "addAccount": "Add Account"
     }
   },
+  "dex": {
+    "fee": "Fee",
+    "apy": "APY",
+    "tvl": "TVL",
+    "24h": "24h",
+    "simpleSwap": {
+      "swapSuccessfully": "Swap Successfully",
+      "youGet": "You get",
+      "youSwap": "You swap",
+      "priceImpact": "Price Impact",
+      "slippage": "Max Slippage",
+      "errors": {
+        "failure": "Swap failed"
+      }
+    }
+  },
   "validations": {
     "errors": {
       "amountIsRequired": "Amount is required",

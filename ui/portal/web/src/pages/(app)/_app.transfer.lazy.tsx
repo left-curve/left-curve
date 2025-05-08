@@ -59,8 +59,7 @@ function TransferApplet() {
   });
 
   const { account, isConnected } = useAccount();
-  const chainId = useChainId();
-  const config = useConfig();
+  const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
 
   const { isMd } = useMediaQuery();
@@ -73,7 +72,6 @@ function TransferApplet() {
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
-  const coins = config.coins[chainId];
   const selectedCoin = coins[selectedDenom];
 
   const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);

@@ -11,12 +11,10 @@ export type AssetsTableProps = {
 };
 
 export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
-  const { coins: allCoins, state } = useConfig();
+  const { coins } = useConfig();
   const { settings } = useApp();
   const { getPrice } = usePrices();
   const { formatNumberOptions } = settings;
-
-  const coins = allCoins[state.chainId];
 
   const data = Object.entries(balances).map(([denom, amount]) => {
     const coin = coins[denom];
