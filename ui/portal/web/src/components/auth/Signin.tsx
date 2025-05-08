@@ -90,7 +90,7 @@ const UsernameStep: React.FC = () => {
   });
 
   return (
-    <div className="flex items-center justify-center flex-col gap-8">
+    <div className="flex items-center justify-center flex-col gap-8 px-2 lg:px-0">
       <div className="flex flex-col gap-7 items-center justify-center">
         <img
           src="./favicon.svg"
@@ -106,7 +106,7 @@ const UsernameStep: React.FC = () => {
             showRemove={true}
             onClick={(username) => fillUsername(username)}
           />
-          <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="secondary">
+          <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="primary">
             {m["signin.useAnotherAccount"]()}
           </Button>
         </>
@@ -165,7 +165,7 @@ const UsernameStep: React.FC = () => {
           ) : null}
         </form>
       )}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center w-full gap-4 lg:gap-0">
         {isMd ? (
           <div className="flex justify-center items-center">
             <p>{m["signin.noAccount"]()}</p>
@@ -174,7 +174,7 @@ const UsernameStep: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <Button as={Link} fullWidth variant="link" to="/">
+          <Button as={Link} fullWidth variant="secondary" to="/">
             {m["signin.continueWithoutSignin"]()}
           </Button>
         )}
@@ -215,7 +215,7 @@ const CredentialStep: React.FC = () => {
 
   return (
     <>
-      <div className="flex items-center justify-center flex-col gap-8 px-4 lg:px-0">
+      <div className="flex items-center justify-center flex-col gap-8 px-2 lg:px-0">
         <div className="flex flex-col gap-7 items-center justify-center">
           <img
             src="./favicon.svg"
