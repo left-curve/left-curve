@@ -5,9 +5,17 @@ use {
 };
 
 #[grug::derive(Serde)]
+pub struct WithdrawalFee {
+    pub denom: Denom,
+    pub remote: Remote,
+    pub fee: Uint128,
+}
+
+#[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub routes: BTreeSet<(Part, Addr, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
+    pub withdrawal_fees: Vec<WithdrawalFee>,
 }
 
 #[grug::derive(Serde)]
@@ -21,6 +29,8 @@ pub enum ExecuteMsg {
     SetRoutes(BTreeSet<(Part, Addr, Remote)>),
     /// Set rate limit for the routes.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
+    /// Set withdrawal fees for the denoms.
+    SetWithdrawalFees(Vec<WithdrawalFee>),
     /// Receive a token transfer from a remote chain.
     ///
     /// Can only be called by contracts for which has been assigned a

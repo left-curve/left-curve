@@ -1,16 +1,18 @@
 use {
-    crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES},
+    crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote,
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst,
-        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, coins,
+        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map,
+        coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -19,6 +21,7 @@ use {
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     _set_routes(ctx.storage, msg.routes)?;
     _set_rate_limits(ctx.storage, msg.rate_limits)?;
+    _set_withdrawal_fees(ctx.storage, msg.withdrawal_fees)?;
 
     Ok(Response::new())
 }
@@ -28,6 +31,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::SetRoutes(mapping) => set_routes(ctx, mapping),
         ExecuteMsg::SetRateLimits(rate_limits) => set_rate_limits(ctx, rate_limits),
+        ExecuteMsg::SetWithdrawalFees(withdrawal_fees) => set_withdrawal_fees(ctx, withdrawal_fees),
         ExecuteMsg::ReceiveRemote {
             remote,
             amount,
@@ -82,6 +86,31 @@ fn _set_rate_limits(
     Ok(())
 }
 
+fn set_withdrawal_fees(
+    ctx: MutableCtx,
+    withdrawal_fees: Vec<WithdrawalFee>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can set withdrawal fees"
+    );
+
+    _set_withdrawal_fees(ctx.storage, withdrawal_fees)?;
+
+    Ok(Response::new())
+}
+
+fn _set_withdrawal_fees(
+    storage: &mut dyn Storage,
+    withdrawal_fees: Vec<WithdrawalFee>,
+) -> StdResult<()> {
+    for WithdrawalFee { denom, remote, fee } in withdrawal_fees {
+        WITHDRAWAL_FEES.save(storage, (&denom, remote), &fee)?;
+    }
+
+    Ok(())
+}
+
 fn receive_remote(
     ctx: MutableCtx,
     remote: Remote,
@@ -119,10 +148,23 @@ fn receive_remote(
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
     // The user must have sent exactly one coin.
-    let coin = ctx.funds.into_one_coin()?;
+    let mut coin = ctx.funds.into_one_coin()?;
 
     // Find the bridge contract corresponding to the (denom, remote) tuple.
     let bridge = REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
+
+    // Deduct the withdrawal fee.
+    let maybe_fee = WITHDRAWAL_FEES.may_load(ctx.storage, (&coin.denom, remote))?;
+
+    if let Some(fee) = maybe_fee {
+        coin.amount.checked_sub_assign(fee).map_err(|_| {
+            anyhow!(
+                "withdrawal amount not sufficient to cover fee: {} < {}",
+                coin.amount,
+                fee
+            )
+        })?;
+    }
 
     // Reduce the reserve.
     RESERVES.update(ctx.storage, (bridge, remote), |reserve| {
@@ -148,16 +190,33 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })
     })?;
 
-    // Call the bridge contract to make the remote transfer.
-    Ok(Response::new().add_message(Message::execute(
-        bridge,
-        &bridge::ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
-            remote,
-            amount: coin.amount,
-            recipient,
-        }),
-        Coins::new(),
-    )?))
+    // 1. Call the bridge contract to make the remote transfer.
+    // 2. Pay fee to the taxman.
+    Ok(Response::new()
+        .add_message(Message::execute(
+            bridge,
+            &bridge::ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
+                remote,
+                amount: coin.amount,
+                recipient,
+            }),
+            Coins::new(),
+        )?)
+        .may_add_message(if let Some(fee) = maybe_fee {
+            let taxman = ctx.querier.query_taxman()?;
+            Some(Message::execute(
+                taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Withdraw,
+                    payments: btree_map! {
+                        ctx.sender => coins! { coin.denom => fee },
+                    },
+                },
+                Coins::new(),
+            )?)
+        } else {
+            None
+        }))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
