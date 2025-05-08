@@ -31,7 +31,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = ({ description, img, title }
           <img src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
-          <p className="diatype-lg-medium">{title}</p>
+          <p className="diatype-lg-medium text-gray-700">{title}</p>
           <p className="diatype-m-regular text-gray-500">{description}</p>
         </div>
       </div>
@@ -64,7 +64,7 @@ const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, name, symbol, price })
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="diatype-sm-bold">${price.humanizedPrice}</p>
+        <p className="diatype-sm-bold">${price}</p>
       </div>
     </motion.div>
   );
