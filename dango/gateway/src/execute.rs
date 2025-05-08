@@ -190,8 +190,11 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })
     })?;
 
+    let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
+
     // 1. Call the bridge contract to make the remote transfer.
-    // 2. Pay fee to the taxman.
+    // 2. Burn the alloyed token to be transferred.
+    // 3. Pay fee to the taxman.
     Ok(Response::new()
         .add_message(Message::execute(
             bridge,
@@ -202,8 +205,15 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             }),
             Coins::new(),
         )?)
+        .add_message(Message::execute(
+            bank,
+            &bank::ExecuteMsg::Burn {
+                from: ctx.contract,
+                coins: coin.clone().into(),
+            },
+            Coins::new(),
+        )?)
         .may_add_message(if let Some(fee) = maybe_fee {
-            let taxman = ctx.querier.query_taxman()?;
             Some(Message::execute(
                 taxman,
                 &taxman::ExecuteMsg::Pay {
