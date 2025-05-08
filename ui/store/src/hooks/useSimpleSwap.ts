@@ -5,8 +5,9 @@ import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useStorage } from "./useStorage.js";
 
-import type { Coin } from "@left-curve/dango/types";
+import type { Coin, PairUpdate } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
+import { usePrices } from "./usePrices.js";
 
 const BASE_DENOM = "USDC";
 
@@ -15,11 +16,20 @@ export type UseSimpleSwapParameters = {
   onChangePair: (pair: { from: string; to: string }) => void;
 };
 
+export type SimpleSwapInfo = {
+  input: Coin;
+  pair: PairUpdate;
+  priceImpact: number;
+  fee: number;
+  slippage: string;
+};
+
 export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const { onChangePair } = parameters;
   const { from, to } = parameters.pair;
   const { coins } = useConfig();
   const { data: config, ...pairs } = useAppConfig();
+  const { getPrice } = usePrices();
 
   const client = usePublicClient();
 
@@ -83,6 +93,21 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     return data;
   };
 
+  const priceImpact = useMemo(() => {
+    if (!simulationInput.current || !simulation.data) return 0;
+    const inputPrice = getPrice(simulationInput.current.amount, simulationInput.current.denom);
+    const outputPrice = getPrice(simulation.data.amount, simulation.data.denom);
+    return (inputPrice - outputPrice) / inputPrice;
+  }, [simulation.data]);
+
+  const fee = useMemo(() => {
+    if (!simulationInput.current || !simulation.data) return 0;
+    return (
+      Math.round(getPrice(simulationInput.current.amount, simulationInput.current.denom)) *
+      Number(pair?.params.swapFeeRate)
+    );
+  }, [simulation.data]);
+
   return {
     coins,
     pair,
@@ -92,12 +117,15 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     base: baseCoin,
     isReverse,
     direction,
+    priceImpact,
+    fee,
     toggleDirection,
     changeQuote,
     slippage,
     setSlippage,
     simulation: {
       simulate,
+      input: simulationInput.current,
       ...simulation,
     },
   };
