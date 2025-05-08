@@ -33,30 +33,6 @@ use {
     std::{path::PathBuf, str::FromStr, sync::Arc},
 };
 
-pub const MOCK_CHAIN_ID: &str = "mock-1";
-pub const MOCK_GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
-
-pub const OWNER_PRIVATE_KEY: [u8; 32] =
-    hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
-pub const USER1_PRIVATE_KEY: [u8; 32] =
-    hex!("a5122c0729c1fae8587e3cc07ae952cb77dfccc049efd5be1d2168cbe946ca18");
-pub const USER2_PRIVATE_KEY: [u8; 32] =
-    hex!("cac7b4ced59cf0bfb14c373272dfb3d4447c7cd5aea732ea6ff69e19f85d34c4");
-pub const USER3_PRIVATE_KEY: [u8; 32] =
-    hex!("cf6bb15648a3a24976e2eeffaae6201bc3e945335286d273bb491873ac7c3141");
-pub const USER4_PRIVATE_KEY: [u8; 32] =
-    hex!("126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6");
-pub const USER5_PRIVATE_KEY: [u8; 32] =
-    hex!("fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7");
-pub const USER6_PRIVATE_KEY: [u8; 32] =
-    hex!("4d3658519dd8a8227764f64c6724b840ffe29f1ca456f5dfdd67f834e10aae34");
-pub const USER7_PRIVATE_KEY: [u8; 32] =
-    hex!("82de24ba8e1bc4511ae10ce3fbe84b4bb8d7d8abc9ba221d7d3cf7cd0a85131f");
-pub const USER8_PRIVATE_KEY: [u8; 32] =
-    hex!("ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9");
-pub const USER9_PRIVATE_KEY: [u8; 32] =
-    hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
-
 pub type TestSuite<
     PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,

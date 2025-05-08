@@ -25,6 +25,7 @@ dango-types           = { workspace = true }
 dango-vesting         = { workspace = true, features = ["library"] }
 dango-warp            = { workspace = true, features = ["library"] }
 grug                  = { workspace = true }
+hex-literal           = { workspace = true }
 hyperlane-ism         = { workspace = true, features = ["library"] }
 hyperlane-mailbox     = { workspace = true, features = ["library"] }
 hyperlane-types       = { workspace = true }
@@ -33,8 +34,7 @@ pyth-types            = { workspace = true }
 serde                 = { workspace = true }
 
 [dev-dependencies]
-bip32       = { workspace = true }
-hex         = { workspace = true }
-hex-literal = { workspace = true }
-home        = { workspace = true }
-rand        = { workspace = true }
+bip32 = { workspace = true }
+hex   = { workspace = true }
+home  = { workspace = true }
+rand  = { workspace = true }

@@ -4,11 +4,13 @@ use {
         account_factory::{self, AccountType, NewUserSalt},
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
+        constants::dango,
         dex, gateway, lending, oracle, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
-        JsonSerExt, Message, Permission, Permissions, ResultExt, StdResult, btree_map, btree_set,
+        IsZero, JsonSerExt, Message, Permission, Permissions, ResultExt, StdResult, btree_map,
+        btree_set, coins,
     },
     hyperlane_types::{isms, mailbox, va},
     serde::Serialize,
@@ -180,10 +182,10 @@ where
         .into_iter()
         .zip(&addresses)
         .filter_map(|((_, user), (_, address))| {
-            if user.balances.is_empty() {
-                None
+            if user.dango_balance.is_non_zero() {
+                Some((*address, coins! { dango::DENOM => user.dango_balance }))
             } else {
-                Some((*address, user.balances))
+                None
             }
         })
         .collect();

@@ -10,7 +10,7 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part},
+    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
@@ -19,6 +19,11 @@ use {
 pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
 
 pub type Addresses = BTreeMap<Username, Addr>;
+
+pub struct Secp256k1KeyPair {
+    pub public: [u8; 33],
+    pub private: [u8; 32],
+}
 
 #[grug::derive(Serde)]
 pub struct Contracts {
@@ -53,7 +58,8 @@ pub struct Codes<T> {
 pub struct GenesisUser {
     pub key: Key,
     pub key_hash: Hash256,
-    pub balances: Coins,
+    pub dango_balance: Uint128,
+    pub bridged_balances: Coins,
 }
 
 pub struct GenesisOption<T> {
@@ -100,7 +106,7 @@ pub struct DexOption {
 }
 
 pub struct GatewayOption {
-    pub routes: BTreeSet<(Part, Addr, Remote)>,
+    pub routes: BTreeSet<(Part, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub rate_limit_refresh_period: Duration,
     pub withdrawal_fees: Vec<WithdrawalFee>,

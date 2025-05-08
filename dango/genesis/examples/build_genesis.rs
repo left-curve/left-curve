@@ -19,26 +19,6 @@ use {
 
 // Private keys of devnet test accounts.
 // See docs for the seed phrases of these keys.
-const PK_OWNER: [u8; 33] =
-    hex!("0278f7b7d93da9b5a62e28434184d1c337c2c28d4ced291793215ab6ee89d7fff8");
-const PK_USER1: [u8; 33] =
-    hex!("03bcf89d5d4f18048f0662d359d17a2dbbb08a80b1705bc10c0b953f21fb9e1911");
-const PK_USER2: [u8; 33] =
-    hex!("02d309ba716f271b1083e24a0b9d438ef7ae0505f63451bc1183992511b3b1d52d");
-const PK_USER3: [u8; 33] =
-    hex!("024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0");
-const PK_USER4: [u8; 33] =
-    hex!("024a23e7a6f85e942a4dbedb871c366a1fdad6d0b84e670125991996134c270df2");
-const PK_USER5: [u8; 33] =
-    hex!("03da86b1cd6fd20350a0b525118eef939477c0fe3f5052197cd6314ed72f9970ad");
-const PK_USER6: [u8; 33] =
-    hex!("03428b179a075ff2142453c805a71a63b232400cc33c8e8437211e13e2bd1dec4c");
-const PK_USER7: [u8; 33] =
-    hex!("028d4d7265d5838190842ada2573ef9edfc978dec97ca59ce48cf1dd19352a4407");
-const PK_USER8: [u8; 33] =
-    hex!("02a888b140a836cd71a5ef9bc7677a387a2a4272343cf40722ab9e85d5f8aa21bd");
-const PK_USER9: [u8; 33] =
-    hex!("0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52");
 
 fn main() {
     // Read CLI arguments.
