@@ -34,15 +34,15 @@ export function useUsernames(): UseUsernamesReturnType {
   }, []);
 
   const addUsername = useCallback((username: string) => {
-    setUsernameInfo((prevUsernames) => {
-      const userExists = !!prevUsernames[username];
-      const updatedUser = {
+    setUsernameInfo((usernames) => {
+      const userInfo = usernames[username] || {};
+      const newUserInfo = {
+        ...userInfo,
         lastLogin: new Date(),
-        accounts: userExists ? prevUsernames[username].accounts : {},
       };
       return {
-        ...prevUsernames,
-        [username]: updatedUser,
+        ...usernames,
+        [username]: newUserInfo,
       };
     });
   }, []);
