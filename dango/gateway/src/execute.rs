@@ -128,7 +128,7 @@ fn receive_remote(
 
     // Increase the outbound quota.
     OUTBOUND_QUOTAS.may_update(ctx.storage, &denom, |maybe_quota| {
-        let quota = maybe_quota.unwrap_or(Uint128::MAX);
+        let quota = maybe_quota.unwrap_or(Uint128::ZERO);
         Ok::<_, StdError>(quota.checked_add(amount)?)
     })?;
 
