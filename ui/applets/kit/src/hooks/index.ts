@@ -7,7 +7,6 @@ export { useWatchEffect } from "./useWatch";
 export { useCountdown } from "./useCountdown";
 
 export {
-  type UseAccountNameParameters,
-  type UseAccountNameReturnType,
-  useAccountName,
+  type UseUserNameReturnType,
+  useUsernames,
 } from "./useAccountName";
