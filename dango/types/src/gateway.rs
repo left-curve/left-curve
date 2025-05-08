@@ -23,6 +23,11 @@ pub use {
     remote::*,
 };
 
-use {grug::Part, std::sync::LazyLock};
+use {
+    grug::{Bounded, Part, Udec128, ZeroInclusiveOneExclusive},
+    std::sync::LazyLock,
+};
 
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("gateway"));
+
+pub type RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>;

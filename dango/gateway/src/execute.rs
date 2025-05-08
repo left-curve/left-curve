@@ -1,23 +1,24 @@
 use {
-    crate::{RESERVES, REVERSE_ROUTES, ROUTES},
-    anyhow::ensure,
+    crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES},
+    anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Remote,
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote,
             bridge::{self, BridgeMsg},
         },
     },
     grug::{
-        Addr, Coins, Denom, Message, MutableCtx, Number, NumberConst, Part, QuerierExt, Response,
-        StdError, StdResult, Uint128, coins,
+        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst,
+        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, coins,
     },
-    std::collections::BTreeSet,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    _set_routes(ctx, msg.routes)?;
+    _set_routes(ctx.storage, msg.routes)?;
+    _set_rate_limits(ctx.storage, msg.rate_limits)?;
 
     Ok(Response::new())
 }
@@ -26,6 +27,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::SetRoutes(mapping) => set_routes(ctx, mapping),
+        ExecuteMsg::SetRateLimits(rate_limits) => set_rate_limits(ctx, rate_limits),
         ExecuteMsg::ReceiveRemote {
             remote,
             amount,
@@ -38,24 +40,46 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
-        "you don't have the right, O you don't have the right"
+        "only the owner can set routes"
     );
 
-    _set_routes(ctx, routes)?;
+    _set_routes(ctx.storage, routes)?;
 
     Ok(Response::new())
 }
 
-fn _set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> StdResult<Response> {
+fn _set_routes(storage: &mut dyn Storage, routes: BTreeSet<(Part, Addr, Remote)>) -> StdResult<()> {
     for (part, bridge, remote) in routes {
         let denom = Denom::from_parts([NAMESPACE.clone(), part])?;
 
-        ROUTES.save(ctx.storage, (bridge, remote), &denom)?;
-        REVERSE_ROUTES.save(ctx.storage, (&denom, remote), &bridge)?;
-        RESERVES.save(ctx.storage, (bridge, remote), &Uint128::ZERO)?;
+        ROUTES.save(storage, (bridge, remote), &denom)?;
+        REVERSE_ROUTES.save(storage, (&denom, remote), &bridge)?;
     }
 
+    Ok(())
+}
+
+fn set_rate_limits(
+    ctx: MutableCtx,
+    rate_limits: BTreeMap<Denom, RateLimit>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can set rate limits"
+    );
+
+    _set_rate_limits(ctx.storage, rate_limits)?;
+
     Ok(Response::new())
+}
+
+fn _set_rate_limits(
+    storage: &mut dyn Storage,
+    rate_limits: BTreeMap<Denom, RateLimit>,
+) -> StdResult<()> {
+    RATE_LIMITS.save(storage, &rate_limits)?;
+
+    Ok(())
 }
 
 fn receive_remote(
@@ -67,9 +91,16 @@ fn receive_remote(
     // Find the alloyed denom of the given bridge contract and remote.
     let denom = ROUTES.load(ctx.storage, (ctx.sender, remote))?;
 
-    // Increase the reserve corresponding to the (bridge, remote) tuple.
-    RESERVES.update(ctx.storage, (ctx.sender, remote), |reserve| {
+    // Increase the reserve.
+    RESERVES.may_update(ctx.storage, (ctx.sender, remote), |maybe_reserve| {
+        let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
         Ok::<_, StdError>(reserve.checked_add(amount)?)
+    })?;
+
+    // Increase the outbound quota.
+    OUTBOUND_QUOTAS.may_update(ctx.storage, &denom, |maybe_quota| {
+        let quota = maybe_quota.unwrap_or(Uint128::MAX);
+        Ok::<_, StdError>(quota.checked_add(amount)?)
     })?;
 
     // Mint the alloyed token to the recipient.
@@ -93,9 +124,28 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     // Find the bridge contract corresponding to the (denom, remote) tuple.
     let bridge = REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
 
-    // Reduce the reserve corresponding to the (bridge, remote) tuple.
-    RESERVES.update(ctx.storage, (bridge, remote), |reserve| -> StdResult<_> {
-        Ok::<_, StdError>(reserve.checked_sub(coin.amount)?)
+    // Reduce the reserve.
+    RESERVES.update(ctx.storage, (bridge, remote), |reserve| {
+        reserve.checked_sub(coin.amount).map_err(|_| {
+            anyhow!(
+                "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
+                bridge,
+                remote,
+                reserve,
+                coin.amount
+            )
+        })
+    })?;
+
+    // Reduce the outbound quota.
+    OUTBOUND_QUOTAS.update(ctx.storage, &coin.denom, |quote| {
+        quote.checked_sub(coin.amount).map_err(|_| {
+            anyhow!(
+                "insufficient outbound quota! denom: {}, amount: {}",
+                coin.denom,
+                coin.amount
+            )
+        })
     })?;
 
     // Call the bridge contract to make the remote transfer.
@@ -108,4 +158,19 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         }),
         Coins::new(),
     )?))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+    // Clear the quotas for the previous 24-hour window.
+    OUTBOUND_QUOTAS.clear(ctx.storage, None, None);
+
+    // Set quotes for the next 24-hour window.
+    for (denom, limit) in RATE_LIMITS.load(ctx.storage)? {
+        let supply = ctx.querier.query_supply(denom.clone())?;
+        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
+    }
+
+    Ok(Response::new())
 }

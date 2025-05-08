@@ -1,12 +1,13 @@
 use {
-    super::{Addr32, Remote},
+    super::{Addr32, RateLimit, Remote},
     grug::{Addr, Denom, Part, Uint128},
-    std::collections::BTreeSet,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub routes: BTreeSet<(Part, Addr, Remote)>,
+    pub rate_limits: BTreeMap<Denom, RateLimit>,
 }
 
 #[grug::derive(Serde)]
@@ -18,6 +19,8 @@ pub enum ExecuteMsg {
     /// Not that this is append-only, meaning you can't change or remove an
     /// existing route.
     SetRoutes(BTreeSet<(Part, Addr, Remote)>),
+    /// Set rate limit for the routes.
+    SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Receive a token transfer from a remote chain.
     ///
     /// Can only be called by contracts for which has been assigned a
@@ -40,4 +43,7 @@ pub enum QueryMsg {
     /// Given an alloyed denom and the remote, find the bridge contract that handles it.
     #[returns(Option<Addr>)]
     ReverseRoute { denom: Denom, remote: Remote },
+    /// Query the withdraw rate limits.
+    #[returns(BTreeMap<Denom, RateLimit>)]
+    RateLimits {},
 }
