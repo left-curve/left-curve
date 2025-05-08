@@ -154,7 +154,7 @@ export const SimpleSwapForm: React.FC = () => {
           },
           mask: numberMask,
         })}
-        label={isReverse ? "You get" : "You swap"}
+        label={isReverse ? m["dex.simpleSwap.youGet"]() : m["dex.simpleSwap.youSwap"]()}
         classNames={{
           base: "z-20",
           inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
@@ -186,7 +186,7 @@ export const SimpleSwapForm: React.FC = () => {
                 {m["common.max"]()}
               </Button>
             </div>
-            <p className="">
+            <p>
               {getPrice(baseAmount, base.denom, {
                 format: true,
                 formatOptions: formatNumberOptions,
@@ -208,7 +208,7 @@ export const SimpleSwapForm: React.FC = () => {
         isDisabled={isLoading}
         placeholder="0"
         onFocus={() => setActiveInput("quote")}
-        label={isReverse ? "You swap" : "You get"}
+        label={isReverse ? m["dex.simpleSwap.youSwap"]() : m["dex.simpleSwap.youGet"]()}
         {...register("quote", {
           strategy: "onChange",
           validate: (v) => {
@@ -248,7 +248,7 @@ export const SimpleSwapForm: React.FC = () => {
                 {m["common.max"]()}
               </Button>
             </div>
-            <p className="">
+            <p>
               {" "}
               {getPrice(quoteAmount, quote.denom, {
                 format: true,
