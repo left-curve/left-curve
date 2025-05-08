@@ -20,7 +20,7 @@ import { m } from "~/paraglide/messages";
 
 import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 import type { UseSimpleSwapParameters } from "@left-curve/store";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useEffect, useState } from "react";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -84,6 +84,7 @@ export const SimpleSwapForm: React.FC = () => {
     simulation,
   } = useSimpleSwap();
   const { data: balances } = useBalances({ address: account?.address });
+  const [activeInput, setActiveInput] = useState<"base" | "quote">();
   const { getPrice } = usePrices();
   const { formatNumberOptions } = settings;
   const { simulate } = simulation;
@@ -94,21 +95,34 @@ export const SimpleSwapForm: React.FC = () => {
   const baseAmount = inputs.base?.value || "0";
   const quoteAmount = inputs.quote?.value || "0";
 
-  useWatchEffect(inputs.base?.value, async (v) => {
-    const output = await simulate({
-      amount: parseUnits(baseAmount, base.decimals).toString(),
-      denom: base.denom,
-    });
-    if (output) setValue("quote", formatUnits(output.amount, quote.decimals));
-  });
+  useEffect(() => {
+    if ((baseAmount === "0" && quoteAmount === "0") || !activeInput) return;
+    (async () => {
+      const request =
+        activeInput === "base"
+          ? {
+              amount: baseAmount,
+              input: base,
+              target: "quote",
+              output: quote,
+            }
+          : {
+              amount: quoteAmount,
+              input: quote,
+              target: "base",
+              output: base,
+            };
 
-  useWatchEffect(inputs.quote?.value, async (v) => {
-    const output = await simulate({
-      amount: parseUnits(quoteAmount, quote.decimals).toString(),
-      denom: quote.denom,
-    });
-    if (output) setValue("base", formatUnits(output.amount, base.decimals));
-  });
+      const output = await simulate({
+        amount: parseUnits(request.amount, request.input.decimals).toString(),
+        denom: request.input.denom,
+      });
+
+      if (output) {
+        setValue(request.target, formatUnits(output.amount, request.output.decimals));
+      }
+    })();
+  }, [baseAmount, quoteAmount, quote, base]);
 
   return (
     <div
@@ -119,6 +133,7 @@ export const SimpleSwapForm: React.FC = () => {
       <IconGear className="w-[18px] h-[18px] absolute right-0 top-0" />
       <Input
         placeholder="0"
+        onFocus={() => setActiveInput("base")}
         {...register("base", {
           strategy: "onChange",
           validate: (v) => {
@@ -178,6 +193,7 @@ export const SimpleSwapForm: React.FC = () => {
       </button>
       <Input
         placeholder="0"
+        onFocus={() => setActiveInput("quote")}
         label={isReverse ? "You swap" : "You get"}
         {...register("quote", {
           strategy: "onChange",
