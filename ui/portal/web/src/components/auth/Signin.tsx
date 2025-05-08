@@ -70,7 +70,7 @@ const UsernameStep: React.FC = () => {
 
   const client = usePublicClient();
 
-  const fillUsername = (username: string) => {
+  const setUsername = (username: string) => {
     setData({ username, sessionKey: useSessionKey });
     nextStep();
   };
@@ -84,7 +84,7 @@ const UsernameStep: React.FC = () => {
       if (numberOfAccounts === 0) {
         setError("username", m["signin.errors.usernameNotExist"]());
       } else {
-        fillUsername(username);
+        setUsername(username);
       }
     },
   });
@@ -104,7 +104,7 @@ const UsernameStep: React.FC = () => {
           <UsernamesList
             usernames={usernamesInfo}
             showRemove={true}
-            onClick={(username) => fillUsername(username)}
+            onClick={(username) => setUsername(username)}
           />
           <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="primary">
             {m["signin.useAnotherAccount"]()}
