@@ -1,7 +1,10 @@
-use grug::{Denom, Map};
+use {
+    dango_types::gateway::Remote,
+    grug::{Addr, Denom, Map, Uint128},
+};
 
-// underlying denom => alloyed denom
-pub const UNDERLYING_TO_ALLOYED: Map<&Denom, Denom> = Map::new("a");
+pub const ROUTES: Map<(Addr, Remote), Denom> = Map::new("route");
 
-// alloyed denom => underlying denom
-pub const ALLOYED_TO_UNDERLYING: Map<&Denom, Denom> = Map::new("b");
+pub const REVERSE_ROUTES: Map<(&Denom, Remote), Addr> = Map::new("reverse_route");
+
+pub const RESERVES: Map<(Addr, Remote), Uint128> = Map::new("reserve");

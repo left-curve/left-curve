@@ -1,131 +1,111 @@
 use {
-    crate::{ALLOYED_TO_UNDERLYING, UNDERLYING_TO_ALLOYED},
-    anyhow::{anyhow, ensure},
+    crate::{RESERVES, REVERSE_ROUTES, ROUTES},
+    anyhow::ensure,
     dango_types::{
         bank,
-        gateway::{Action, ExecuteMsg, InstantiateMsg, NAMESPACE},
+        gateway::{
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Remote,
+            bridge::{self, BridgeMsg},
+        },
     },
-    grug::{Coins, Denom, Message, MutableCtx, Part, QuerierExt as _, Response},
-    std::collections::BTreeMap,
+    grug::{
+        Addr, Coins, Denom, Message, MutableCtx, Number, NumberConst, Part, QuerierExt, Response,
+        StdError, StdResult, Uint128, coins,
+    },
+    std::collections::BTreeSet,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    set_mapping(ctx, msg.mapping)
+    _set_routes(ctx, msg.routes)?;
+
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::SetMapping(mapping) => {
-            ensure!(
-                ctx.sender == ctx.querier.query_owner()?,
-                "you don't have the right, O you don't have the right"
-            );
-
-            set_mapping(ctx, mapping)
-        },
-        ExecuteMsg::Alloy { and_then } => alloy(ctx, and_then),
-        ExecuteMsg::Dealloy { and_then } => dealloy(ctx, and_then),
+        ExecuteMsg::SetRoutes(mapping) => set_routes(ctx, mapping),
+        ExecuteMsg::ReceiveRemote {
+            remote,
+            amount,
+            recipient,
+        } => receive_remote(ctx, remote, amount, recipient),
+        ExecuteMsg::TransferRemote { remote, recipient } => transfer_remote(ctx, remote, recipient),
     }
 }
 
-fn set_mapping(ctx: MutableCtx, mapping: BTreeMap<Denom, Part>) -> anyhow::Result<Response> {
-    for (underlying_denom, alloyed_subdenom) in mapping {
-        let alloyed_denom = Denom::from_parts([NAMESPACE.clone(), alloyed_subdenom])?;
+fn set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
 
-        UNDERLYING_TO_ALLOYED.save(ctx.storage, &underlying_denom, &alloyed_denom)?;
-        ALLOYED_TO_UNDERLYING.save(ctx.storage, &alloyed_denom, &underlying_denom)?;
+    _set_routes(ctx, routes)?;
+
+    Ok(Response::new())
+}
+
+fn _set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> StdResult<Response> {
+    for (part, bridge, remote) in routes {
+        let denom = Denom::from_parts([NAMESPACE.clone(), part])?;
+
+        ROUTES.save(ctx.storage, (bridge, remote), &denom)?;
+        REVERSE_ROUTES.save(ctx.storage, (&denom, remote), &bridge)?;
+        RESERVES.save(ctx.storage, (bridge, remote), &Uint128::ZERO)?;
     }
 
     Ok(Response::new())
 }
 
-fn alloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response> {
-    // Convert the underlying denoms to alloyed denoms.
-    let alloyed_coins = ctx
-        .funds
-        .iter()
-        .map(|underlying_coin| -> anyhow::Result<_> {
-            let alloyed_denom = UNDERLYING_TO_ALLOYED
-                .may_load(ctx.storage, &underlying_coin.denom)?
-                .ok_or_else(|| {
-                    anyhow!(
-                        "no alloyed denom found for underlying denom `{}`",
-                        underlying_coin.denom
-                    )
-                })?;
+fn receive_remote(
+    ctx: MutableCtx,
+    remote: Remote,
+    amount: Uint128,
+    recipient: Addr,
+) -> anyhow::Result<Response> {
+    // Find the alloyed denom of the given bridge contract and remote.
+    let denom = ROUTES.load(ctx.storage, (ctx.sender, remote))?;
 
-            Ok((alloyed_denom, *underlying_coin.amount))
-        })
-        .collect::<Result<BTreeMap<_, _>, _>>()
-        .map(Coins::new_unchecked)?; // Unchecked is ok here because we know the denom is valid and amount is non-zero.
+    // Increase the reserve corresponding to the (bridge, remote) tuple.
+    RESERVES.update(ctx.storage, (ctx.sender, remote), |reserve| {
+        Ok::<_, StdError>(reserve.checked_add(amount)?)
+    })?;
 
-    // 1. Mint the alloyed tokens.
-    // 2. Do the `and_then` action, if specified.
-    Ok(Response::new()
-        .add_message({
-            let bank = ctx.querier.query_bank()?;
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::Mint {
-                    // Mint to the alloy contract itself if there's an `and_then`
-                    // action to do. Otherwise, just mint to the caller.
-                    to: if and_then.is_some() {
-                        ctx.contract
-                    } else {
-                        ctx.sender
-                    },
-                    coins: alloyed_coins.clone(),
-                },
-                Coins::new(),
-            )?
-        })
-        .may_add_message(if let Some(action) = and_then {
-            Some(action.into_message(alloyed_coins))
-        } else {
-            None
-        }))
+    // Mint the alloyed token to the recipient.
+    Ok(Response::new().add_message({
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::Mint {
+                to: recipient,
+                coins: coins! { denom => amount },
+            },
+            Coins::new(),
+        )?
+    }))
 }
 
-fn dealloy(ctx: MutableCtx, and_then: Option<Action>) -> anyhow::Result<Response> {
-    // Convert the alloyed denoms to underlying denoms.
-    let underlying_coins = ctx
-        .funds
-        .iter()
-        .map(|alloyed_coin| -> anyhow::Result<_> {
-            let underlying_denom = ALLOYED_TO_UNDERLYING
-                .may_load(ctx.storage, &alloyed_coin.denom)?
-                .ok_or_else(|| {
-                    anyhow!(
-                        "no underlying denom found for alloyed denom `{}`",
-                        alloyed_coin.denom
-                    )
-                })?;
+fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
+    // The user must have sent exactly one coin.
+    let coin = ctx.funds.into_one_coin()?;
 
-            Ok((underlying_denom, *alloyed_coin.amount))
-        })
-        .collect::<Result<BTreeMap<_, _>, _>>()
-        .map(Coins::new_unchecked)?;
+    // Find the bridge contract corresponding to the (denom, remote) tuple.
+    let bridge = REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
 
-    // 1. Burn the received alloyed coins.
-    // 2. Do the `and_then` action, if specified; otherwise, refund the underlying
-    //    coins to the caller.
-    Ok(Response::new()
-        .add_message({
-            let bank = ctx.querier.query_bank()?;
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::Burn {
-                    from: ctx.contract,
-                    coins: ctx.funds.clone(),
-                },
-                Coins::new(),
-            )?
-        })
-        .add_message(if let Some(action) = and_then {
-            action.into_message(underlying_coins)
-        } else {
-            Message::transfer(ctx.sender, underlying_coins)?
-        }))
+    // Reduce the reserve corresponding to the (bridge, remote) tuple.
+    RESERVES.update(ctx.storage, (bridge, remote), |reserve| -> StdResult<_> {
+        Ok::<_, StdError>(reserve.checked_sub(coin.amount)?)
+    })?;
+
+    // Call the bridge contract to make the remote transfer.
+    Ok(Response::new().add_message(Message::execute(
+        bridge,
+        &bridge::ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
+            remote,
+            amount: coin.amount,
+            recipient,
+        }),
+        Coins::new(),
+    )?))
 }
