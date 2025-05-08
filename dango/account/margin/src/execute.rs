@@ -9,12 +9,11 @@ use {
             InstantiateMsg,
             margin::{ExecuteMsg, HealthResponse, Liquidate},
         },
-        config::AppConfig,
         dex, lending,
     },
     grug::{
         AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
-        Number, NumberConst, QuerierExt, Response, StdResult, Tx, Udec128,
+        Number, NumberConst, Response, StdResult, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -46,8 +45,14 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
-    let health =
-        core::query_and_compute_health(ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
+    let mut oracle_querier = OracleQuerier::new(ctx.querier.query_dango_config()?.addresses.oracle);
+    let health = core::query_and_compute_health(
+        ctx.querier,
+        &mut oracle_querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        None,
+    )?;
 
     // After executing all messages in the transactions, the account must have
     // a utilization rate no greater than one. Otherwise, we throw an error to
@@ -70,7 +75,8 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 }
 
 pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Response> {
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
 
     // Query account health
     let HealthResponse {
@@ -83,6 +89,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         ..
     } = core::query_and_compute_health(
         ctx.querier,
+        &mut oracle_querier,
         ctx.contract,
         ctx.block.timestamp,
         Some(ctx.funds.clone()),
@@ -140,9 +147,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     // Calculate the maximum debt that can be repaid based on the balance of the
     // chosen collateral.
-    let collateral_price =
-        ctx.querier
-            .query_price(app_cfg.addresses.oracle, &collateral_denom, None)?;
+    let collateral_price = oracle_querier.query_price(&ctx.querier, &collateral_denom, None)?;
     let liquidation_collateral_value = collateral_price.value_of_unit_amount(
         collaterals
             .amount_of(&collateral_denom)
@@ -170,9 +175,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     for coin in ctx.funds {
         let debt_amount = debts.amount_of(&coin.denom);
-        let price = ctx
-            .querier
-            .query_price(app_cfg.addresses.oracle, &coin.denom, None)?;
+        let price = oracle_querier.query_price(&ctx.querier, &coin.denom, None)?;
         let debt_value = price.value_of_unit_amount(debt_amount)?;
 
         let max_repay_for_denom = if repaid_debt_value.checked_add(debt_value)? > debt_repay_value {

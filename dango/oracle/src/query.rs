@@ -1,6 +1,9 @@
 use {
     crate::{GUARDIAN_SETS, OracleQuerier, PRICE_SOURCES},
-    dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
+    dango_types::{
+        DangoQuerier,
+        oracle::{PrecisionedPrice, PriceSource, QueryMsg},
+    },
     grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
@@ -14,7 +17,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             Ok(res.to_json_value()?)
         },
         QueryMsg::Prices { start_after, limit } => {
-            let res = query_prices(ctx, start_after, limit);
+            let res = query_prices(ctx, start_after, limit)?;
             Ok(res.to_json_value()?)
         },
         QueryMsg::PriceSource { denom } => {
@@ -37,18 +40,23 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    ctx.querier.query_price(ctx.contract, &denom, None)
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+    oracle_querier.query_price(&ctx.querier, &denom, None)
 }
 
 fn query_prices(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> BTreeMap<Denom, PrecisionedPrice> {
+) -> anyhow::Result<BTreeMap<Denom, PrecisionedPrice>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    PRICE_SOURCES
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+
+    Ok(PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .filter_map(|res| {
@@ -56,13 +64,12 @@ fn query_prices(
             // no price has been uploaded onchain yet.
             // Instead of throwing a "data not found" error, we simply skip it.
             let (denom, price_source) = res.ok()?;
-            let price = ctx
-                .querier
-                .query_price(ctx.contract, &denom, Some(price_source))
+            let price = oracle_querier
+                .query_price(&ctx.querier, &denom, Some(price_source))
                 .ok()?;
             Some((denom, price))
         })
-        .collect()
+        .collect())
 }
 
 fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceSource> {
