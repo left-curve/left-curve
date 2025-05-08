@@ -1,34 +1,114 @@
 use {
-    grug::Denom,
-    std::{str::FromStr, sync::LazyLock},
+    grug::{Denom, Part},
+    std::sync::LazyLock,
 };
 
-pub static ATOM_DENOM: LazyLock<Denom> =
-    LazyLock::new(|| Denom::from_str("hyp/atom/atom").unwrap());
+pub mod atom {
+    use super::*;
 
-pub static BCH_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/bch/bch").unwrap());
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("atom"));
 
-pub static BNB_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/bnb/bnb").unwrap());
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "atom"]));
+}
 
-pub static BTC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/btc/btc").unwrap());
+pub mod bch {
+    use super::*;
 
-pub static DANGO_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("dango").unwrap());
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("bch"));
 
-pub static DOGE_DENOM: LazyLock<Denom> =
-    LazyLock::new(|| Denom::from_str("hyp/doge/doge").unwrap());
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "bch"]));
+}
 
-pub static ETH_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/eth").unwrap()); // TODO: update this to alloyed denom
+pub mod bnb {
+    use super::*;
 
-pub static LTC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/ltc/ltc").unwrap());
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("bnb"));
 
-pub static SHIB_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/shib").unwrap());
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "bnb"]));
+}
 
-pub static SOL_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/sol/sol").unwrap());
+pub mod btc {
+    use super::*;
 
-pub static SUI_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/sui/sui").unwrap());
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("btc"));
 
-pub static USDC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/usdc").unwrap()); // TODO: update this to alloyed denom
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "btc"]));
+}
 
-pub static WBTC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/wbtc").unwrap());
+pub mod dango {
+    use super::*;
 
-pub static XRP_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/xrp/xrp").unwrap());
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["dango"]));
+}
+
+pub mod doge {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("doge"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "doge"]));
+}
+
+pub mod eth {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("eth"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "eth"]));
+}
+
+pub mod ltc {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("ltc"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "ltc"]));
+}
+
+pub mod shib {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("shib"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "shib"]));
+}
+
+pub mod sol {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("sol"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "sol"]));
+}
+
+pub mod sui {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("sui"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "sui"]));
+}
+
+pub mod usdc {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("usdc"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "usdc"]));
+}
+
+pub mod wbtc {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("wbtc"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "wbtc"]));
+}
+
+pub mod xrp {
+    use super::*;
+
+    pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("xrp"));
+
+    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["bridge", "xrp"]));
+}
