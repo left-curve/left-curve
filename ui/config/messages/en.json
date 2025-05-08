@@ -208,6 +208,11 @@
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
+    "forgotUsername": "Forgot my username",
+    "useAnotherAccount": "Use another account",
+    "rememberUsername": {
+      "lastLogin": "Last login: {time}"
+    },
     "errors": {
       "failedSignInWithDesktop": "Failed to sign in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
