@@ -1,19 +1,8 @@
 use {
     anyhow::ensure,
-    grug::{
-        Bounded, Bytable, HexBinary, Inner, NextNumber, PrevNumber, Udec128, Uint128, Uint256,
-        ZeroInclusiveOneExclusive,
-    },
+    grug::{Bytable, HexBinary, Inner, NextNumber, PrevNumber, Uint128, Uint256},
     hyperlane_types::Addr32,
 };
-
-pub type RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>;
-
-#[grug::derive(Serde, Borsh)]
-pub struct Route {
-    pub address: Addr32,
-    pub fee: Uint128,
-}
 
 /// The message to be sent via Hyperlane mailbox.
 #[derive(Debug)]

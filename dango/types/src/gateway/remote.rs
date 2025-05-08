@@ -7,10 +7,7 @@ use {
 #[derive(Copy, PartialOrd, Ord)]
 pub enum Remote {
     /// Indicates the token was received through Hyperlane's Warp protocol.
-    Warp {
-        origin_domain: Domain,
-        sender: Addr32,
-    },
+    Warp { domain: Domain, contract: Addr32 },
     /// Indicates the token was received through Dango's proprietary bitcoin bridge.
     Bitcoin,
 }
@@ -24,18 +21,15 @@ impl PrimaryKey for Remote {
 
     fn raw_keys(&self) -> Vec<grug::RawKey> {
         let bytes = match self {
-            Remote::Warp {
-                origin_domain,
-                sender,
-            } => {
+            Remote::Warp { domain, contract } => {
                 // tag:           1 byte
                 // origin domain: 4 bytes
                 // sender:        4 bytes
                 // totor:         9 bytes
                 let mut bytes = Vec::with_capacity(9);
                 bytes.push(0);
-                bytes.extend(origin_domain.to_be_bytes());
-                bytes.extend(sender.into_inner());
+                bytes.extend(domain.to_be_bytes());
+                bytes.extend(contract.into_inner());
                 bytes
             },
             Remote::Bitcoin => {
@@ -68,8 +62,8 @@ impl PrimaryKey for Remote {
                 let sender = Addr32::from_inner(sender_raw);
 
                 Ok(Remote::Warp {
-                    origin_domain,
-                    sender,
+                    domain: origin_domain,
+                    contract: sender,
                 })
             },
             1 => {
