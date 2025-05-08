@@ -13,14 +13,14 @@ type UsernamesInfo = {
   };
 };
 
-export type UseUserNameReturnType = {
+export type UseUsernamesReturnType = {
   usernames: Username[];
   info: UsernamesInfo;
   removeUsername: (name: string) => void;
   addUsername: (name: string) => void;
 };
 
-export function useUsernames(): UseUserNameReturnType {
+export function useUsernames(): UseUsernamesReturnType {
   const [usernameInfo, setUsernameInfo] = useStorage<UsernamesInfo>("app.usernames", {
     initialValue: {},
   });
