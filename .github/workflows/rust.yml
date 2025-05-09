@@ -299,6 +299,7 @@ jobs:
           pipx install ansible
           pipx ensurepath
           ln -f -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
           cd deploy
           ansible-galaxy collection install -r requirements.yml
       - name: Run Ansible playbook
