@@ -52,8 +52,11 @@
     gather_subset:
       - network
 - ufw: state=reset
+  tags: setup
 - ufw: default=allow direction=outgoing
+  tags: setup
 - ufw: default=deny direction=incoming
+  tags: setup
 - name: Allow SSH on non-tailscale when no tailscale0 exists
   ufw:
     rule: allow
@@ -80,7 +83,9 @@
   # Tailscale
   with_items: ['41641']
 - ufw: logging=low
+  tags: setup
 - ufw: state=enabled
+  tags: setup
 
 - copy:
     src: "jail.local"

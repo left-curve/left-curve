@@ -4,8 +4,11 @@ set positional-arguments
 default:
   @just --list
 
-provision:
+cold-provision:
   ansible-playbook playbook.yml
+
+provision:
+  ansible-playbook playbook.yml --skip-tags setup
 
 # Set up Python environment and install Ansible + role
 setup:
