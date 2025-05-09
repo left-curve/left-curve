@@ -22,7 +22,7 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   children,
   ...props
 }: IndicatorProps<C>) => {
-  const { eventBus } = useApp();
+  const { notifier } = useApp();
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [indicator, setIndicator] = useState<keyof typeof Indicators>("spinner");
 
@@ -30,7 +30,7 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   const WrapperComponent = as ?? "button";
 
   useEffect(() => {
-    const unsubscribe = eventBus.subscribe("submit_tx", ({ isSubmitting, txResult }) => {
+    const unsubscribe = notifier.subscribe("submit_tx", ({ isSubmitting, txResult }) => {
       if (isSubmitting) {
         setIndicator("spinner");
         setIsSubmittingTx(isSubmitting);

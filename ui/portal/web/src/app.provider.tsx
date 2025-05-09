@@ -9,7 +9,7 @@ import { router } from "./app.router";
 
 import type { AnyCoin } from "@left-curve/store/types";
 
-export type EventBusMap = {
+export type NotificationsMap = {
   submit_tx:
     | { isSubmitting: true; txResult?: never }
     | { isSubmitting: false; txResult: { hasSucceeded: boolean; message: string } };
@@ -22,10 +22,10 @@ export type EventBusMap = {
   };
 };
 
-export type Notifications<key extends keyof EventBusMap = keyof EventBusMap> = {
+export type Notifications<key extends keyof NotificationsMap = keyof NotificationsMap> = {
   createdAt: number;
   type: string;
-  data: EventBusMap[key];
+  data: NotificationsMap[key];
 };
 
 export type Subscription = {
@@ -38,12 +38,12 @@ export type Subscription = {
   };
 };
 
-export const eventBus = createEventBus<EventBusMap>();
+export const notifier = createEventBus<NotificationsMap>();
 
 type AppState = {
   router: typeof router;
   config: ReturnType<typeof useAppConfig>;
-  eventBus: typeof eventBus;
+  notifier: typeof notifier;
   notifications: { type: string; data: any; createdAt: number }[];
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
@@ -68,7 +68,7 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const { chain, coins } = useConfig();
+  const { coins } = useConfig();
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -172,9 +172,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
             ...transfer,
             type: isSent ? "sent" : "received",
             coin,
-          } as EventBusMap["transfer"];
+          } as NotificationsMap["transfer"];
 
-          eventBus.publish("transfer", notification);
+          notifier.publish("transfer", notification);
           pushNotification({
             type: "transfer",
             data: notification,
@@ -193,7 +193,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       value={{
         router,
         config,
-        eventBus,
+        notifier,
         notifications,
         isSidebarVisible,
         setSidebarVisibility,
