@@ -43,14 +43,13 @@ import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
+import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
 import { captureException } from "@sentry/react";
-import { add } from "date-fns";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -100,14 +99,24 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
               </div>
               {children}
               {activeStep === 0 ? (
-                <div className="flex items-center gap-1">
-                  <p>{m["signup.alreadyHaveAccount"]()}</p>
+                <div className="w-full flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <p>{m["signup.alreadyHaveAccount"]()}</p>
+                    <Button
+                      variant="link"
+                      autoFocus={false}
+                      onClick={() => navigate({ to: "/signin" })}
+                    >
+                      {m["common.signin"]()}
+                    </Button>
+                  </div>
                   <Button
+                    fullWidth
+                    className="p-0 h-fit"
                     variant="link"
-                    autoFocus={false}
-                    onClick={() => navigate({ to: "/signin" })}
+                    onClick={() => navigate({ to: "/forgot-username" })}
                   >
-                    {m["common.signin"]()}
+                    {m["signin.forgotUsername"]()}
                   </Button>
                 </div>
               ) : null}
