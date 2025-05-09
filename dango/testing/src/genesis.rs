@@ -13,8 +13,8 @@ use {
         taxman,
     },
     grug::{
-        Bounded, Coin, ContractWrapper, Denom, Duration, HashExt, LengthBounded, Udec128, Uint128,
-        btree_map, btree_set, coins,
+        Bounded, Coin, ContractWrapper, Denom, Duration, HashExt, LengthBounded, NumberConst,
+        Udec128, Uint128, btree_map, btree_set, coins,
     },
     hyperlane_types::constants::{arbitrum, base, ethereum, optimism, solana},
     pyth_types::constants::GUARDIAN_SETS,
@@ -49,7 +49,7 @@ impl Preset for GrugOption {
             owner_username: owner::USERNAME.clone(),
             fee_cfg: taxman::Config {
                 fee_denom: usdc::DENOM.clone(),
-                fee_rate: Udec128::new_percent(25), // 0.25 uusdc per gas unit
+                fee_rate: Udec128::ZERO, // Use zero gas price for testing.
             },
             max_orphan_age: Duration::from_weeks(1),
         }
