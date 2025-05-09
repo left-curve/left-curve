@@ -2,17 +2,13 @@
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [github_runners]
-# 15.204.196.152 hostname=ovh1 ansible_user=debian
 100.96.253.40 hostname=ovh1 ansible_user=debian
 
 [db]
-# 15.204.196.152 ansible_user=debian
 100.96.253.40 ansible_user=debian
 
 [cometbft]
-# 15.204.196.152 ansible_user=debian
 100.96.253.40 ansible_user=debian
 
 [dango]
-# 15.204.196.152 ansible_user=debian
 100.96.253.40 ansible_user=debian

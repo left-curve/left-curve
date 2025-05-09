@@ -281,6 +281,7 @@ jobs:
           fi
 
   deploy-dango:
+    # if: github.ref == 'refs/heads/main'
     permissions:
       packages: read
     needs: [push-manifest]
@@ -290,7 +291,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
       - name: Install Ansible & Docker SDK
         run: pip install ansible community.docker
       - name: Start SSH agent
