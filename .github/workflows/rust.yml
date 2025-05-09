@@ -312,4 +312,4 @@ jobs:
         run: |
           cd deploy
           pipx ensurepath
-          ansible-playbook dango.yml --skip-tags setup
+          ansible-playbook dango.yml --skip-tags setup -e dango_image_tag=${{ env.GIT_COMMIT }}
