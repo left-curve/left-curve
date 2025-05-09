@@ -167,7 +167,12 @@ where
         &mut msgs,
         gateway_code_hash,
         &gateway::InstantiateMsg {
-            routes: opt.gateway.routes,
+            routes: opt
+                .gateway
+                .warp_routes
+                .into_iter()
+                .map(|(part, remote)| (part, warp, remote))
+                .collect(),
             rate_limits: opt.gateway.rate_limits,
             withdrawal_fees: opt.gateway.withdrawal_fees,
         },
