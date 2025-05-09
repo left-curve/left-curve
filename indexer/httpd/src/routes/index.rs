@@ -43,21 +43,3 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         git_commit: GIT_COMMIT,
     }))
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use actix_web::http::StatusCode;
-//     use actix_web::test;
-//
-//     #[actix_web::test]
-//     async fn returns_200() -> Result<(), anyhow::Error> {
-//         let app = test::init_service(create_test_app(test_ctx).await).await;
-//
-//         let req = test::TestRequest::get().uri("/up").to_request();
-//
-//         let resp = test::call_service(&app, req).await;
-//         assert_eq!(resp.status(), StatusCode::OK);
-//
-//         Ok(())
-//     }
-// }

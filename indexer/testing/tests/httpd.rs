@@ -927,7 +927,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
+#[ignore = "this test will be fixed later"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn up_returns_200() -> anyhow::Result<()> {
     let (httpd_context, ..) = create_block().await?;

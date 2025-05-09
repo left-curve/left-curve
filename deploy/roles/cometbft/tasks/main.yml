@@ -26,14 +26,6 @@
     dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
   loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/config/*', wantlist=True) }}"
 
-# - name: Ensure host dirs owned by deploy
-#   file:
-#     path: "{{ cometbft_target_dir }}"
-#     state: directory
-#     owner: "{{ ansible_user_uid }}"
-#     group: "{{ ansible_user_gid }}"
-#     recurse: yes
-
 - name: Ensure backend network exists
   community.docker.docker_network:
     name: backend
@@ -53,7 +45,7 @@
       HOME: /app
     ports:
       # ufw rules
-      - "127.0.0.1:{{ host_port }}:26656"
+      # - "127.0.0.1:{{ host_port }}:26656"
       # - "127.0.0.1:{{ host_port }}:26657"
       # - "127.0.0.1:{{ host_port }}:26658"
     volumes:
