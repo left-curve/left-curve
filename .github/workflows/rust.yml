@@ -15,6 +15,7 @@ on:
       - "develop"
     paths:
       - ".github/workflows/rust.yml"
+      - "deploy/**"
       - "dango/**"
       - "docker/**"
       - "grug/**"
@@ -29,6 +30,7 @@ on:
       - "*"
     paths:
       - ".github/workflows/rust.yml"
+      - "deploy/**"
       - "dango/**"
       - "docker/**"
       - "grug/**"
@@ -68,7 +70,7 @@ jobs:
       #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run rustfmt checks
-        run: cargo +nightly fmt --check --all
+        run: rustup run nightly cargo fmt --check --all
 
   test:
     needs: [format]
@@ -84,7 +86,7 @@ jobs:
       DB_HOST: postgres
     # services:
     #   postgres:
-    #     image: postgres
+    #     image: postgres:17
     #     env:
     #       POSTGRES_PASSWORD: postgres
     #     options: >-
@@ -106,15 +108,15 @@ jobs:
       #   run: |
       #     createdb -U postgres -h postgres "$PGDATABASE"
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${HOME}/.cargo/bin/
-            ${HOME}/.cargo/registry/index/
-            ${HOME}/.cargo/registry/cache/
-            ${HOME}/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      # - uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ${HOME}/.cargo/bin/
+      #       ${HOME}/.cargo/registry/index/
+      #       ${HOME}/.cargo/registry/cache/
+      #       ${HOME}/.cargo/git/db/
+      #       target/
+      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
@@ -205,9 +207,9 @@ jobs:
 
       - name: Set GIT_COMMIT
         run: |
-          cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in
-          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs
-          rm dango/cli/src/git_info.rs.in
+          cp grug/app/src/git_info.rs grug/app/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/app/src/git_info.rs.in > grug/app/src/git_info.rs
+          rm grug/app/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@v3
 
@@ -277,3 +279,42 @@ jobs:
 
             docker manifest push ghcr.io/left-curve/left-curve/dango:latest
           fi
+
+  deploy-dango:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      packages: read
+    needs: [push-manifest]
+    runs-on: [self-hosted]
+    env:
+      DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check DEPLOY_KEY is set
+        run: |
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "Missing DEPLOY_KEY secret"
+            exit 1
+          fi
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+      - name: Ensure ~/.local/bin is in PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install Ansible & Docker SDK
+        run: |
+          pipx install ansible
+          pipx ensurepath
+          ln -f -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
+          cd deploy
+          ansible-galaxy collection install -r requirements.yml
+      - name: Run Ansible playbook
+        run: |
+          cd deploy
+          pipx ensurepath
+          ansible-playbook dango.yml \
+            --skip-tags setup \
+            -e dango_image_tag=${{ env.GIT_COMMIT }} \
+            -e "dango_db_password=$DANGO_DB_PASSWORD"

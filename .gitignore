@@ -43,6 +43,7 @@ ui/config/project.inlang/*
 # Envs
 **/.env
 **/*.vars
+.envrc
 
 # Workers
 **/.wrangler

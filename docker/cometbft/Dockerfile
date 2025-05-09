@@ -17,18 +17,25 @@ RUN git clone --branch $COMETBFT_GIT_TAG --depth 1 https://github.com/cometbft/c
 
 FROM debian:bookworm-slim AS runtime
 
-ARG USERNAME=cometbft
-ENV USERNAME=${USERNAME}
-
 LABEL org.opencontainers.image.description="CometBFT runtime for Dango"
 
-RUN useradd --create-home --shell /bin/bash $USERNAME
+# I changed my mind, adding a user with a specific UID/GID (in this case
+# 1001/1001) is a pain because the files created from within that container
+# will belong to that UID/GID, which may be different from the host current
+# user.
+# Instead we'll run as root, like official Debian images, and it's up to whoever
+# is using this docker image to use the `--user` docker feature to not run as
+# root.
+# ARG USERNAME=cometbft
+# ENV USERNAME=${USERNAME}
+# RUN useradd --create-home --shell /bin/bash $USERNAME
 
 COPY --from=builder /go/bin/cometbft /usr/local/bin/
-RUN chown $USERNAME:$USERNAME /usr/local/bin/cometbft
+# RUN chown $USERNAME:$USERNAME /usr/local/bin/cometbft
 
-USER $USERNAME
-WORKDIR /home/$USERNAME
+# USER $USERNAME
+# WORKDIR /home/$USERNAME
+# WORKDIR /app
 
 # Expose the Tendermint p2p (26656), RPC (26657), and ABCI (26658) ports.
 EXPOSE 26656 26657 26658

@@ -1,0 +1,11 @@
+- hosts: dango
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars:
+    # default to the current commit SHA, but can be overridden using:
+    # `ansible-playbook dango.yml -e dango_image_tag=latest`
+    dango_image_tag: "{{ lookup('pipe','git rev-parse HEAD') }}"
+  collections:
+    - community.docker
+  roles:
+    - dango

@@ -1,0 +1,53 @@
+- name: Update and upgrade apt packages
+  become: true
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Add Docker GPG Key
+  become: true
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+
+- name: Add Docker Repository
+  become: true
+  shell:
+    cmd: echo "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+- name: Update and upgrade apt packages
+  become: true
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Update apt and install docker-ce
+  become: true
+  apt:
+    state: latest
+    update_cache: yes
+    name: ['docker-ce', 'docker-ce-cli', 'containerd.io', 'docker-buildx-plugin', 'docker-compose-plugin', 'apparmor']
+
+- name: Adding deploy user to group docker
+  become: true
+  user:
+    append: true
+    name: '{{ ansible_env.USER }}'
+    groups:
+      - docker
+
+- name: Adding ssh users to group docker
+  become: true
+  user:
+    name: "{{ item }}"
+    append: true
+    groups:
+      - docker
+  with_items: "{{ ssh_users }}"
+
+- name: Allow docker for any user to avoid reboot
+  become: true
+  file:
+    path: /var/run/docker.sock
+    mode: '0666'

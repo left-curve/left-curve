@@ -1,0 +1,10 @@
+---
+dango_target_dir: "{{ ansible_env.HOME }}/dango"
+dango_db_user: dango
+dango_db_name: dango_production
+dango_db_password: "{{ lookup('env','DANGO_DB_PASSWORD') }}"
+db_pass: "{{ lookup('env','DB_PASSWORD') }}"
+db_user: "{{ lookup('env','DB_USER', default='postgres') }}"
+db_host: "127.0.0.1"
+db_port: 5432
+dango_db_host: "postgres"

@@ -926,3 +926,32 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
         })
         .await?
 }
+
+#[ignore = "this test will be fixed later"]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn up_returns_200() -> anyhow::Result<()> {
+    let (httpd_context, ..) = create_block().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let up_response: serde_json::Value = call_api(app, "/up").await?;
+
+                assert_that!(
+                    up_response
+                        .get("block_height")
+                        .and_then(|bh| bh.as_u64())
+                        .unwrap_or_default()
+                )
+                .is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
