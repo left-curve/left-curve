@@ -295,9 +295,11 @@ jobs:
       - name: Install Ansible & Docker SDK
         run: |
           pipx install ansible
+          pipx ensurepath
           cd deploy
           ansible-galaxy collection install -r requirements.yml
       - name: Run Ansible playbook
         run: |
           cd deploy
+          pipx ensurepath
           ansible-playbook dango.yml --skip-tags setup
