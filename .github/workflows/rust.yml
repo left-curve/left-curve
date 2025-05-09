@@ -279,3 +279,25 @@ jobs:
 
             docker manifest push ghcr.io/left-curve/left-curve/dango:latest
           fi
+
+  deploy-dango:
+    permissions:
+      packages: read
+    needs: [push-manifest]
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install Ansible & Docker SDK
+        run: pip install ansible community.docker
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+      - name: Run Ansible playbook
+        run: |
+          cd deploy
+          ansible-playbook dango.yml --skip-tags setup
