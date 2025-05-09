@@ -13,10 +13,22 @@ version       = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
+dango-account-factory   = { workspace = true, features = ["library"] }
+dango-account-margin    = { workspace = true, features = ["library"] }
+dango-account-multi     = { workspace = true, features = ["library"] }
+dango-account-spot      = { workspace = true, features = ["library"] }
+dango-bank              = { workspace = true, features = ["library"] }
+dango-dex               = { workspace = true, features = ["library"] }
+dango-gateway           = { workspace = true, features = ["library"] }
 dango-genesis           = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["tracing"] }
+dango-lending           = { workspace = true, features = ["library"] }
+dango-oracle            = { workspace = true, features = ["library"] }
 dango-proposal-preparer = { workspace = true }
+dango-taxman            = { workspace = true, features = ["library"] }
 dango-types             = { workspace = true }
+dango-vesting           = { workspace = true, features = ["library"] }
+dango-warp              = { workspace = true, features = ["library"] }
 digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
@@ -27,7 +39,10 @@ grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
+hyperlane-ism           = { workspace = true, features = ["library"] }
+hyperlane-mailbox       = { workspace = true, features = ["library"] }
 hyperlane-types         = { workspace = true }
+hyperlane-va            = { workspace = true, features = ["library"] }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true, features = ["tracing"] }
 k256                    = { workspace = true }
@@ -39,30 +54,24 @@ serde_json              = { workspace = true }
 sha2                    = { workspace = true }
 
 [dev-dependencies]
-anyhow                = { workspace = true }
-assertor              = { workspace = true }
-bip32                 = { workspace = true }
-chrono                = { workspace = true }
-criterion             = { workspace = true }
-dango-account-factory = { workspace = true, features = ["library"] }
-dango-auth            = { workspace = true }
-dango-bank            = { workspace = true, features = ["library"] }
-dango-httpd           = { workspace = true }
-dango-lending         = { workspace = true, features = ["library"] }
-dango-oracle          = { workspace = true, features = ["library"] }
-dango-types           = { workspace = true }
-dango-warp            = { workspace = true, features = ["library"] }
-hex                   = { workspace = true }
-home                  = { workspace = true }
-indexer-disk-saver    = { workspace = true }
-indexer-testing       = { workspace = true }
-proptest              = { workspace = true }
-rand                  = { workspace = true }
-reqwest               = { workspace = true, features = ["json"] }
-serde_json            = { workspace = true }
-test-case             = { workspace = true }
-tokio                 = { workspace = true, features = ["full"] }
-tracing               = { workspace = true }
+anyhow             = { workspace = true }
+assertor           = { workspace = true }
+bip32              = { workspace = true }
+chrono             = { workspace = true }
+criterion          = { workspace = true }
+dango-auth         = { workspace = true }
+dango-httpd        = { workspace = true }
+hex                = { workspace = true }
+home               = { workspace = true }
+indexer-disk-saver = { workspace = true }
+indexer-testing    = { workspace = true }
+proptest           = { workspace = true }
+rand               = { workspace = true }
+reqwest            = { workspace = true, features = ["json"] }
+serde_json         = { workspace = true }
+test-case          = { workspace = true }
+tokio              = { workspace = true, features = ["full"] }
+tracing            = { workspace = true }
 
 [[bench]]
 harness = false

@@ -5,7 +5,7 @@ use {
     },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption, build_rust_codes,
+        GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
     },
     dango_types::{
         auth::Key,
@@ -16,8 +16,8 @@ use {
         taxman,
     },
     grug::{
-        Bounded, Coin, ContractWrapper, Denom, Duration, HashExt, LengthBounded, NumberConst,
-        Udec128, Uint128, btree_map, btree_set, coins,
+        Bounded, Coin, Denom, Duration, HashExt, LengthBounded, NumberConst, Udec128, Uint128,
+        btree_map, btree_set, coins,
     },
     hyperlane_types::{
         constants::{arbitrum, base, ethereum, optimism, solana},
@@ -32,10 +32,9 @@ pub trait Preset {
     fn preset_test() -> Self;
 }
 
-impl Preset for GenesisOption<ContractWrapper> {
+impl Preset for GenesisOption {
     fn preset_test() -> Self {
         GenesisOption {
-            codes: build_rust_codes(),
             grug: Preset::preset_test(),
             account: Preset::preset_test(),
             bank: Preset::preset_test(),

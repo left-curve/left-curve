@@ -1,18 +1,16 @@
 use {
     crate::{
-        Preset, TestAccount, TestAccounts,
+        DangoCodes, Preset, TestAccount, TestAccounts,
         constants::{
             MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner, user1, user2, user3, user4, user5, user6,
             user7, user8, user9,
         },
     },
-    dango_genesis::{
-        Codes, Contracts, GenesisOption, build_genesis, build_rust_codes, read_wasm_files,
-    },
+    dango_genesis::{Codes, Contracts, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
     grug::{
-        Binary, BlockInfo, ContractWrapper, Duration, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
-        HashExt, TendermintRpcClient,
+        BlockInfo, ContractWrapper, Duration, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, HashExt,
+        TendermintRpcClient,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -23,7 +21,7 @@ use {
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
-    std::{path::PathBuf, sync::Arc},
+    std::sync::Arc,
 };
 
 pub type TestSuite<
@@ -63,6 +61,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         RustVm::new(),
         ProposalPreparer::new_with_cache(),
         NullIndexer,
+        RustVm::dango_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )
@@ -98,6 +97,7 @@ pub fn setup_test_with_indexer() -> (
         vm.clone(),
         ProposalPreparer::new_with_cache(),
         indexer,
+        RustVm::dango_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     );
@@ -130,6 +130,7 @@ pub fn setup_test_naive() -> (
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,
+        RustVm::dango_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )
@@ -148,7 +149,7 @@ pub fn setup_benchmark_hybrid(
     Codes<ContractWrapper>,
     Contracts,
 ) {
-    let codes = build_rust_codes();
+    let codes = HybridVm::dango_codes();
     let db = DiskDb::open(dir).unwrap();
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
@@ -156,10 +157,16 @@ pub fn setup_benchmark_hybrid(
         codes.account_multi.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
+        codes.dex.to_bytes().hash256(),
+        codes.gateway.to_bytes().hash256(),
+        codes.hyperlane.ism.to_bytes().hash256(),
+        codes.hyperlane.mailbox.to_bytes().hash256(),
+        codes.hyperlane.va.to_bytes().hash256(),
         codes.lending.to_bytes().hash256(),
         codes.oracle.to_bytes().hash256(),
         codes.taxman.to_bytes().hash256(),
         codes.vesting.to_bytes().hash256(),
+        codes.warp.to_bytes().hash256(),
     ]);
 
     setup_suite_with_db_and_vm(
@@ -167,8 +174,9 @@ pub fn setup_benchmark_hybrid(
         vm,
         NaiveProposalPreparer,
         NullIndexer,
+        codes,
         TestOption::default(),
-        GenesisOption::preset_test().with_codes(codes),
+        GenesisOption::preset_test(),
     )
 }
 
@@ -185,8 +193,6 @@ pub fn setup_benchmark_wasm(
     Codes<Vec<u8>>,
     Contracts,
 ) {
-    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
-        .unwrap();
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
@@ -195,29 +201,34 @@ pub fn setup_benchmark_wasm(
         vm,
         NaiveProposalPreparer,
         NullIndexer,
+        WasmVm::dango_codes(),
         TestOption::default(),
-        GenesisOption::preset_test().with_codes(codes),
+        GenesisOption::preset_test(),
     )
 }
 
-pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
+pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID>(
     db: DB,
     vm: VM,
     pp: PP,
     indexer: ID,
+    codes: Codes<VM::Code>,
     test_opt: TestOption,
-    genesis_opt: GenesisOption<T>,
-) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
+    genesis_opt: GenesisOption,
+) -> (
+    TestSuite<PP, DB, VM, ID>,
+    TestAccounts,
+    Codes<VM::Code>,
+    Contracts,
+)
 where
-    T: Clone + Into<Binary>,
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + DangoCodes + Clone + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    let codes = genesis_opt.codes.clone();
-    let (genesis_state, contracts, addresses) = build_genesis(genesis_opt).unwrap();
+    let (genesis_state, contracts, addresses) = build_genesis(codes.clone(), genesis_opt).unwrap();
 
     // TODO: here, create mock validator sets and append bridging messages to the genesis state.
 

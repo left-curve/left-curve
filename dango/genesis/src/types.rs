@@ -56,8 +56,7 @@ pub struct GenesisUser {
     pub dango_balance: Uint128,
 }
 
-pub struct GenesisOption<T> {
-    pub codes: Codes<T>,
+pub struct GenesisOption {
     pub grug: GrugOption,
     pub account: AccountOption,
     pub bank: BankOption,
@@ -67,23 +66,6 @@ pub struct GenesisOption<T> {
     pub lending: LendingOption,
     pub oracle: OracleOption,
     pub vesting: VestingOption,
-}
-
-impl<T> GenesisOption<T> {
-    pub fn with_codes<T1>(self, codes: Codes<T1>) -> GenesisOption<T1> {
-        GenesisOption {
-            codes,
-            grug: self.grug,
-            account: self.account,
-            bank: self.bank,
-            dex: self.dex,
-            gateway: self.gateway,
-            hyperlane: self.hyperlane,
-            lending: self.lending,
-            oracle: self.oracle,
-            vesting: self.vesting,
-        }
-    }
 }
 
 pub struct GrugOption {

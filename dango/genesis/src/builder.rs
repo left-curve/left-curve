@@ -1,5 +1,5 @@
 use {
-    crate::{Addresses, Contracts, GenesisOption},
+    crate::{Addresses, Codes, Contracts, GenesisOption},
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt},
         bank,
@@ -19,7 +19,8 @@ use {
 
 /// Create the Dango genesis state given a genesis config.
 pub fn build_genesis<T>(
-    opt: GenesisOption<T>,
+    codes: Codes<T>,
+    opt: GenesisOption,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
@@ -27,21 +28,21 @@ where
     let mut msgs = Vec::new();
 
     // Upload all the codes and compute code hashes.
-    let account_factory_code_hash = upload(&mut msgs, opt.codes.account_factory);
-    let account_margin_code_hash = upload(&mut msgs, opt.codes.account_margin);
-    let account_multi_code_hash = upload(&mut msgs, opt.codes.account_multi);
-    let account_spot_code_hash = upload(&mut msgs, opt.codes.account_spot);
-    let bank_code_hash = upload(&mut msgs, opt.codes.bank);
-    let dex_code_hash = upload(&mut msgs, opt.codes.dex);
-    let gateway_code_hash = upload(&mut msgs, opt.codes.gateway);
-    let hyperlane_ism_code_hash = upload(&mut msgs, opt.codes.hyperlane.ism);
-    let hyperlane_mailbox_code_hash = upload(&mut msgs, opt.codes.hyperlane.mailbox);
-    let hyperlane_va_code_hash = upload(&mut msgs, opt.codes.hyperlane.va);
-    let lending_code_hash = upload(&mut msgs, opt.codes.lending);
-    let oracle_code_hash = upload(&mut msgs, opt.codes.oracle);
-    let taxman_code_hash = upload(&mut msgs, opt.codes.taxman);
-    let vesting_code_hash = upload(&mut msgs, opt.codes.vesting);
-    let warp_code_hash = upload(&mut msgs, opt.codes.warp);
+    let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
+    let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
+    let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
+    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
+    let bank_code_hash = upload(&mut msgs, codes.bank);
+    let dex_code_hash = upload(&mut msgs, codes.dex);
+    let gateway_code_hash = upload(&mut msgs, codes.gateway);
+    let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
+    let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
+    let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
+    let lending_code_hash = upload(&mut msgs, codes.lending);
+    let oracle_code_hash = upload(&mut msgs, codes.oracle);
+    let taxman_code_hash = upload(&mut msgs, codes.taxman);
+    let vesting_code_hash = upload(&mut msgs, codes.vesting);
+    let warp_code_hash = upload(&mut msgs, codes.warp);
 
     // Instantiate account factory.
     let users = opt
