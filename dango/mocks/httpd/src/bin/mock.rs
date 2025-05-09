@@ -1,4 +1,8 @@
-use dango_mock_httpd::{BlockCreation, Error, TestOption};
+use {
+    dango_genesis::GenesisOption,
+    dango_mock_httpd::{BlockCreation, Error, TestOption},
+    dango_testing::Preset,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -7,6 +11,7 @@ async fn main() -> Result<(), Error> {
         BlockCreation::OnBroadcast,
         None,
         TestOption::default(),
+        GenesisOption::preset_test(),
         true,
     )
     .await

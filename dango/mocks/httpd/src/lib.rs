@@ -1,10 +1,11 @@
 use {
-    dango_genesis::build_rust_codes,
+    dango_genesis::GenesisOption,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
     grug_db_memory::MemDb,
     grug_testing::{MockClient, setup_tracing_subscriber},
+    grug_types::Binary,
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
     std::sync::Arc,
@@ -14,16 +15,18 @@ use {
 
 pub use {dango_testing::TestOption, grug_testing::BlockCreation, indexer_httpd::error::Error};
 
-pub async fn run(
+pub async fn run<T>(
     port: u16,
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
+    genesis_opt: GenesisOption<T>,
     keep_blocks: bool,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    T: Clone + Into<Binary>,
+{
     setup_tracing_subscriber(Level::INFO);
-
-    let codes = build_rust_codes();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_keep_blocks(keep_blocks)
@@ -41,10 +44,10 @@ pub async fn run(
     let (suite, ..) = setup_suite_with_db_and_vm(
         db.clone(),
         vm.clone(),
-        codes,
         ProposalPreparer::new(),
         indexer,
         test_opt,
+        genesis_opt,
     );
 
     let suite = Arc::new(Mutex::new(suite));

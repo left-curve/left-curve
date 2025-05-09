@@ -58,15 +58,13 @@ impl TestOption {
 ///
 /// Used for running regular tests.
 pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contracts) {
-    let codes = build_rust_codes();
-
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        codes,
         ProposalPreparer::new_with_cache(),
         NullIndexer,
         TestOption::default(),
+        GenesisOption::preset_test(),
     )
 }
 
@@ -83,8 +81,6 @@ pub fn setup_test_with_indexer() -> (
     ),
     Context,
 ) {
-    let codes = build_rust_codes();
-
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
         .with_hooks(dango_indexer_sql::hooks::Hooks)
@@ -100,10 +96,10 @@ pub fn setup_test_with_indexer() -> (
     let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
         db.clone(),
         vm.clone(),
-        codes,
         ProposalPreparer::new_with_cache(),
         indexer,
         TestOption::default(),
+        GenesisOption::preset_test(),
     );
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
@@ -129,15 +125,13 @@ pub fn setup_test_naive() -> (
     Codes<ContractWrapper>,
     Contracts,
 ) {
-    let codes = build_rust_codes();
-
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        codes,
         NaiveProposalPreparer,
         NullIndexer,
         TestOption::default(),
+        GenesisOption::preset_test(),
     )
 }
 
@@ -171,10 +165,10 @@ pub fn setup_benchmark_hybrid(
     setup_suite_with_db_and_vm(
         db,
         vm,
-        codes,
         NaiveProposalPreparer,
         NullIndexer,
         TestOption::default(),
+        GenesisOption::preset_test().with_codes(codes),
     )
 }
 
@@ -199,20 +193,20 @@ pub fn setup_benchmark_wasm(
     setup_suite_with_db_and_vm(
         db,
         vm,
-        codes,
         NaiveProposalPreparer,
         NullIndexer,
         TestOption::default(),
+        GenesisOption::preset_test().with_codes(codes),
     )
 }
 
 pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     db: DB,
     vm: VM,
-    codes: Codes<T>,
     pp: PP,
     indexer: ID,
     test_opt: TestOption,
+    genesis_opt: GenesisOption<T>,
 ) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
@@ -222,8 +216,8 @@ where
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    let (genesis_state, contracts, addresses) =
-        build_genesis(GenesisOption::preset_test()).unwrap();
+    let codes = genesis_opt.codes.clone();
+    let (genesis_state, contracts, addresses) = build_genesis(genesis_opt).unwrap();
 
     // TODO: here, create mock validator sets and append bridging messages to the genesis state.
 

@@ -69,6 +69,23 @@ pub struct GenesisOption<T> {
     pub vesting: VestingOption,
 }
 
+impl<T> GenesisOption<T> {
+    pub fn with_codes<T1>(self, codes: Codes<T1>) -> GenesisOption<T1> {
+        GenesisOption {
+            codes,
+            grug: self.grug,
+            account: self.account,
+            bank: self.bank,
+            dex: self.dex,
+            gateway: self.gateway,
+            hyperlane: self.hyperlane,
+            lending: self.lending,
+            oracle: self.oracle,
+            vesting: self.vesting,
+        }
+    }
+}
+
 pub struct GrugOption {
     /// A username whose genesis spot account is to be appointed as the owner.
     /// We expect to transfer ownership to a multisig account afterwards.
