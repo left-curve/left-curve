@@ -1,23 +1,18 @@
 use {
-    crate::{MOCK_LOCAL_DOMAIN, TestAccount, TestAccounts},
+    crate::{
+        Preset, TestAccount, TestAccounts,
+        constants::{
+            MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner, user1, user2, user3, user4, user5, user6,
+            user7, user8, user9,
+        },
+    },
     dango_genesis::{
-        Codes, Contracts, GenesisConfig, GenesisUser, build_genesis, build_rust_codes,
-        read_wasm_files,
+        Codes, Contracts, GenesisOption, build_genesis, build_rust_codes, read_wasm_files,
     },
     dango_proposal_preparer::ProposalPreparer,
-    dango_types::{
-        constants::{
-            BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,
-            WBTC_DENOM,
-        },
-        dex::{CurveInvariant, PairParams, PairUpdate},
-        lending::InterestRateModel,
-        taxman,
-    },
     grug::{
-        Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Part, TendermintRpcClient, Timestamp, Udec128,
-        btree_map, coins,
+        Binary, BlockInfo, ContractWrapper, Duration, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        HashExt, TendermintRpcClient,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -25,12 +20,10 @@ use {
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
-    hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
-    pyth_types::GUARDIAN_SETS,
-    std::{path::PathBuf, str::FromStr, sync::Arc},
+    std::{path::PathBuf, sync::Arc},
 };
 
 pub type TestSuite<
@@ -46,6 +39,19 @@ pub type TestSuiteWithIndexer<
     VM = RustVm,
     ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
 > = grug::TestSuite<DB, VM, PP, ID>;
+
+/// Configurable options for setting up a test.
+#[derive(Default)]
+pub struct TestOption {
+    pub chain_id: Option<String>,
+}
+
+impl TestOption {
+    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
+        self.chain_id = Some(chain_id.to_string());
+        self
+    }
+}
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
 /// `ContractWrapper` codes.
@@ -216,176 +222,19 @@ where
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    let owner = TestAccount::new_from_private_key("owner", OWNER_PRIVATE_KEY);
-    let user1 = TestAccount::new_from_private_key("user1", USER1_PRIVATE_KEY);
-    let user2 = TestAccount::new_from_private_key("user2", USER2_PRIVATE_KEY);
-    let user3 = TestAccount::new_from_private_key("user3", USER3_PRIVATE_KEY);
-    let user4 = TestAccount::new_from_private_key("user4", USER4_PRIVATE_KEY);
-    let user5 = TestAccount::new_from_private_key("user5", USER5_PRIVATE_KEY);
-    let user6 = TestAccount::new_from_private_key("user6", USER6_PRIVATE_KEY);
-    let user7 = TestAccount::new_from_private_key("user7", USER7_PRIVATE_KEY);
-    let user8 = TestAccount::new_from_private_key("user8", USER8_PRIVATE_KEY);
-    let user9 = TestAccount::new_from_private_key("user9", USER9_PRIVATE_KEY);
+    let owner = TestAccount::new_from_private_key(owner::USERNAME.clone(), owner::PRIVATE_KEY);
+    let user1 = TestAccount::new_from_private_key(user1::USERNAME.clone(), user1::PRIVATE_KEY);
+    let user2 = TestAccount::new_from_private_key(user2::USERNAME.clone(), user2::PRIVATE_KEY);
+    let user3 = TestAccount::new_from_private_key(user3::USERNAME.clone(), user3::PRIVATE_KEY);
+    let user4 = TestAccount::new_from_private_key(user4::USERNAME.clone(), user4::PRIVATE_KEY);
+    let user5 = TestAccount::new_from_private_key(user5::USERNAME.clone(), user5::PRIVATE_KEY);
+    let user6 = TestAccount::new_from_private_key(user6::USERNAME.clone(), user6::PRIVATE_KEY);
+    let user7 = TestAccount::new_from_private_key(user7::USERNAME.clone(), user7::PRIVATE_KEY);
+    let user8 = TestAccount::new_from_private_key(user8::USERNAME.clone(), user8::PRIVATE_KEY);
+    let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
 
-    let (genesis_state, contracts, addresses) = build_genesis(GenesisConfig {
-        codes: codes.clone(),
-        users: btree_map! {
-            owner.username.clone() => GenesisUser {
-                key: owner.key(),
-                key_hash: owner.key_hash(),
-                // Some of the tests depend on the number of tokens, so careful
-                // when changing these. They may break tests...
-                //
-                // In reality, it's not possible that anyone has Hyperlane synth
-                // synth tokens in genesis. We add this just for testing purpose.
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000,
-                    ETH_DENOM.clone()   => 100_000_000_000_000,
-                    BTC_DENOM.clone()   => 100_000_000_000_000,
-                },
-            },
-            user1.username.clone() => GenesisUser {
-                key: user1.key(),
-                key_hash: user1.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                    WBTC_DENOM.clone()  => 100_000_000_000_000,
-                    ETH_DENOM.clone()   => 100_000_000_000_000,
-                    BTC_DENOM.clone()   => 100_000_000_000_000,
-                }
-            },
-            user2.username.clone() => GenesisUser {
-                key: user2.key(),
-                key_hash: user2.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                    BTC_DENOM.clone()   => 100_000_000_000_000,
-                },
-            },
-            user3.username.clone() => GenesisUser {
-                key: user3.key(),
-                key_hash: user3.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-            user4.username.clone() => GenesisUser {
-                key: user4.key(),
-                key_hash: user4.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-            user5.username.clone() => GenesisUser {
-                key: user5.key(),
-                key_hash: user5.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-            user6.username.clone() => GenesisUser {
-                key: user6.key(),
-                key_hash: user6.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-            user7.username.clone() => GenesisUser {
-                key: user7.key(),
-                key_hash: user7.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-            user8.username.clone() => GenesisUser {
-                key: user8.key(),
-                key_hash: user8.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-            user9.username.clone() => GenesisUser {
-                key: user9.key(),
-                key_hash: user9.key_hash(),
-                balances: coins! {
-                    DANGO_DENOM.clone() => 100_000_000_000_000,
-                    USDC_DENOM.clone()  => 100_000_000_000_000,
-                },
-            },
-        },
-        account_factory_minimum_deposit: coins! { USDC_DENOM.clone() => 10_000_000 },
-        owner: owner.username.clone(),
-        fee_cfg: taxman::Config {
-            fee_denom: USDC_DENOM.clone(),
-            fee_rate: Udec128::ZERO,
-        },
-        max_orphan_age: Duration::from_seconds(7 * 24 * 60 * 60),
-        metadatas: btree_map! {},
-        alloys: btree_map! {
-            ETH_DENOM.clone() => Part::new_unchecked("eth"),
-            SOL_DENOM.clone() => Part::new_unchecked("sol"),
-        },
-        pairs: vec![
-            PairUpdate {
-                base_denom: DANGO_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                params: PairParams {
-                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                    curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
-                },
-            },
-            PairUpdate {
-                base_denom: BTC_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                params: PairParams {
-                    lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-                    curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
-                },
-            },
-            PairUpdate {
-                base_denom: ETH_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                params: PairParams {
-                    lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
-                    curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
-                },
-            },
-            PairUpdate {
-                base_denom: SOL_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                params: PairParams {
-                    lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
-                    curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
-                },
-            },
-        ],
-        markets: btree_map! {
-            USDC_DENOM.clone() => InterestRateModel::mock(),
-            WBTC_DENOM.clone() => InterestRateModel::mock(),
-        },
-        price_sources: PYTH_PRICE_SOURCES.clone(),
-        unlocking_cliff: Duration::from_weeks(4 * 9),
-        unlocking_period: Duration::from_weeks(4 * 27),
-        wormhole_guardian_sets: GUARDIAN_SETS.clone(),
-        hyperlane_local_domain: MOCK_LOCAL_DOMAIN,
-        hyperlane_ism_validator_sets: btree_map! {},
-        hyperlane_va_announce_fee_per_byte: Coin::new(USDC_DENOM.clone(), 100).unwrap(),
-        warp_routes: btree_map! {},
-    })
-    .unwrap();
+    let (genesis_state, contracts, addresses) =
+        build_genesis(GenesisOption::preset_test()).unwrap();
 
     let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
@@ -417,16 +266,4 @@ where
     };
 
     (suite, accounts, codes, contracts)
-}
-
-#[derive(Default)]
-pub struct TestOption {
-    pub chain_id: Option<String>,
-}
-
-impl TestOption {
-    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
-        self.chain_id = Some(chain_id.to_string());
-        self
-    }
 }

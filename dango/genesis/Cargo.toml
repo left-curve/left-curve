@@ -32,9 +32,3 @@ hyperlane-types       = { workspace = true }
 hyperlane-va          = { workspace = true, features = ["library"] }
 pyth-types            = { workspace = true }
 serde                 = { workspace = true }
-
-[dev-dependencies]
-bip32 = { workspace = true }
-hex   = { workspace = true }
-home  = { workspace = true }
-rand  = { workspace = true }

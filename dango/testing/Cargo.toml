@@ -41,6 +41,8 @@ sha2                    = { workspace = true }
 [dev-dependencies]
 anyhow                = { workspace = true }
 assertor              = { workspace = true }
+bip32                 = { workspace = true }
+chrono                = { workspace = true }
 criterion             = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-auth            = { workspace = true }
@@ -50,6 +52,8 @@ dango-lending         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-warp            = { workspace = true, features = ["library"] }
+hex                   = { workspace = true }
+home                  = { workspace = true }
 indexer-disk-saver    = { workspace = true }
 indexer-testing       = { workspace = true }
 proptest              = { workspace = true }

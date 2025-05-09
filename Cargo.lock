@@ -3372,7 +3372,6 @@ name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "bip32",
  "dango-account-factory",
  "dango-account-margin",
  "dango-account-multi",
@@ -3387,15 +3386,12 @@ dependencies = [
  "dango-vesting",
  "dango-warp",
  "grug",
- "hex",
  "hex-literal",
- "home",
  "hyperlane-ism",
  "hyperlane-mailbox",
  "hyperlane-types",
  "hyperlane-va",
  "pyth-types",
- "rand 0.8.5",
  "serde",
 ]
 
@@ -3526,6 +3522,8 @@ dependencies = [
  "anyhow",
  "assertor",
  "async-graphql",
+ "bip32",
+ "chrono",
  "criterion",
  "dango-account-factory",
  "dango-auth",
@@ -3547,7 +3545,9 @@ dependencies = [
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
+ "hex",
  "hex-literal",
+ "home",
  "hyperlane-types",
  "indexer-disk-saver",
  "indexer-httpd",
@@ -4595,7 +4595,6 @@ name = "grug-app"
 version = "0.0.0"
 dependencies = [
  "borsh 1.5.6",
- "chrono",
  "data-encoding",
  "grug-math",
  "grug-storage",
@@ -4813,6 +4812,7 @@ dependencies = [
  "async-trait",
  "bnum",
  "borsh 1.5.6",
+ "chrono",
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
