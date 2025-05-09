@@ -12,7 +12,7 @@
 
     - name: Install required packages
       apt:
-        name: [curl, tar]
+        name: [curl, tar, pipx, python3, python3-pip]
         update_cache: yes
 
     - name: Ensure '{{ runner_user }}' owns its home directory
@@ -29,3 +29,9 @@
         append: true
         groups:
           - docker
+
+    - name: Install just CLI
+      ansible.builtin.shell: |
+        curl -sL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      args:
+        creates: /usr/local/bin/just
