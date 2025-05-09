@@ -42,249 +42,249 @@ on:
       - "rustfmt.toml"
 
 jobs:
-  # format:
-  #   name: Format
-  #   runs-on: [self-hosted]
-  #   # Don't use this, it raises permissions issues on self hosted runners
-  #   # container:
-  #   #   image: rust:slim
-  #   steps:
-  #     - name: Checkout sources
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: nightly
-  #         components: rustfmt
-  #
-  #     # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
-  #     # - uses: actions/cache@v4
-  #     #   with:
-  #     #     path: |
-  #     #       ${HOME}/.cargo/bin/
-  #     #       ${HOME}/.cargo/registry/index/
-  #     #       ${HOME}/.cargo/registry/cache/
-  #     #       ${HOME}/.cargo/git/db/
-  #     #       target/
-  #     #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-  #
-  #     - name: Run rustfmt checks
-  #       run: rustup run nightly cargo fmt --check --all
-  #
-  # test:
-  #   needs: [format]
-  #   name: Lint + Test
-  #   runs-on: self-hosted
-  #   # Don't use this, it raises permissions issues on self hosted runners
-  #   # container:
-  #   #   image: ghcr.io/left-curve/left-curve/native-builder
-  #   # permissions:
-  #   #   packages: read
-  #   env:
-  #     PGDATABASE: grug_test
-  #     DB_HOST: postgres
-  #   # services:
-  #   #   postgres:
-  #   #     image: postgres:17
-  #   #     env:
-  #   #       POSTGRES_PASSWORD: postgres
-  #   #     options: >-
-  #   #       --health-cmd pg_isready
-  #   #       --health-interval 10s
-  #   #       --health-timeout 5s
-  #   #       --health-retries 5
-  #   steps:
-  #     - name: Checkout sources
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #         components: clippy
-  #
-  #     # - name: Create database
-  #     #   run: |
-  #     #     createdb -U postgres -h postgres "$PGDATABASE"
-  #
-  #     # - uses: actions/cache@v4
-  #     #   with:
-  #     #     path: |
-  #     #       ${HOME}/.cargo/bin/
-  #     #       ${HOME}/.cargo/registry/index/
-  #     #       ${HOME}/.cargo/registry/cache/
-  #     #       ${HOME}/.cargo/git/db/
-  #     #       target/
-  #     #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-  #
-  #     - name: Run clippy
-  #       run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
-  #
-  #     - name: Run tests
-  #       run: cargo test --all-features
-  #       env:
-  #         RUST_BACKTRACE: 1
-  #
-  # build:
-  #   timeout-minutes: 20
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       arch: [amd64, arm64]
-  #       runner: [self-hosted]
-  #         # when needing to try on all runner types
-  #         # - [self-hosted, Linux]
-  #         # - [self-hosted, macOS]
-  #   name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
-  #   runs-on: ${{ matrix.runner }}
-  #   needs: [test]
-  #   permissions:
-  #     packages: write
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #
-  #     - name: Set build config
-  #       id: config
-  #       run: |
-  #         set -euo pipefail
-  #         if [[ "${{ matrix.arch }}" == "amd64" ]]; then
-  #           if [[ "${{ runner.arch }}" == "X64" ]]; then
-  #             echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
-  #             echo "arch=x86_64" >> $GITHUB_OUTPUT
-  #           elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-  #             # if [[ "${{ runner.os }}" == "macOS" ]]; then
-  #             #   echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}, cross doesn't work with this config (sadly). We should fix this."
-  #             #   exit 1
-  #             # fi
-  #
-  #             echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
-  #             echo "arch=arm64" >> $GITHUB_OUTPUT
-  #           else
-  #             echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
-  #             exit 1
-  #           fi
-  #           echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
-  #           echo "platform=linux/amd64" >> $GITHUB_OUTPUT
-  #           echo "suffix=amd64" >> $GITHUB_OUTPUT
-  #         elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
-  #           if [[ "${{ runner.arch }}" == "X64" ]]; then
-  #             echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
-  #           elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
-  #             if [[ "${{ runner.os }}" == "macOS" ]]; then
-  #               echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
-  #             elif [[ "${{ runner.os }}" == "Linux" ]]; then
-  #               # NOTE: I could use a native-builder in such case, but using cross to keep consistency
-  #               echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
-  #             else
-  #               echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
-  #               exit 1
-  #             fi
-  #           else
-  #             echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
-  #             exit 1
-  #           fi
-  #           echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
-  #           echo "platform=linux/arm64" >> $GITHUB_OUTPUT
-  #           echo "suffix=arm64" >> $GITHUB_OUTPUT
-  #         else
-  #             echo "Unsupported matrix ${{ matrix.arch }}"
-  #             exit 1
-  #         fi
-  #
-  #     - name: Install toolchain
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #
-  #     - name: Install cross
-  #       run: cargo install cross --git https://github.com/cross-rs/cross
-  #
-  #     - name: Write Cross.toml
-  #       run: |
-  #         echo "[target.${{ steps.config.outputs.target }}]" > Cross.toml
-  #         echo "image = \"${{ steps.config.outputs.image }}\"" >> Cross.toml
-  #
-  #     - name: Set GIT_COMMIT
-  #       run: |
-  #         cp grug/app/src/git_info.rs grug/app/src/git_info.rs.in
-  #         sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/app/src/git_info.rs.in > grug/app/src/git_info.rs
-  #         rm grug/app/src/git_info.rs.in
-  #
-  #     - uses: docker/setup-buildx-action@v3
-  #
-  #     - uses: docker/login-action@v3
-  #       with:
-  #         registry: ghcr.io
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-  #
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: .cross-cache
-  #         key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
-  #
-  #     - name: pull cross docker builder image
-  #       run: |
-  #         docker pull ${{ steps.config.outputs.image }}
-  #
-  #     - name: build binary with cross
-  #       run: |
-  #         set -euo pipefail
-  #         mkdir -p .cross-cache/${{ steps.config.outputs.target }}
-  #         CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
-  #         cross build --target ${{ steps.config.outputs.target }} --release --verbose
-  #
-  #     - name: build docker image
-  #       run: |
-  #         set -euo pipefail
-  #         docker buildx build \
-  #           --push \
-  #           --platform ${{ steps.config.outputs.platform }} \
-  #           --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
-  #           --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
-  #           --provenance=false \
-  #           -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
-  #           -f docker/dango/Dockerfile .
-  #
-  #     - name: Ensure Dango works
-  #       run: |
-  #         docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
-  #
-  # push-manifest:
-  #   permissions:
-  #     packages: write
-  #   needs: [build]
-  #   runs-on: [self-hosted]
-  #   steps:
-  #     - name: Log in to GHCR
-  #       uses: docker/login-action@v3
-  #       with:
-  #         registry: ghcr.io
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-  #
-  #     - name: Create and push multi-arch Docker manifest
-  #       run: |
-  #         docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
-  #           --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-  #           --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-  #
-  #         docker manifest push ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
-  #
-  #         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-  #           docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
-  #             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
-  #             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
-  #
-  #           docker manifest push ghcr.io/left-curve/left-curve/dango:latest
-  #         fi
+  format:
+    name: Format
+    runs-on: [self-hosted]
+    # Don't use this, it raises permissions issues on self hosted runners
+    # container:
+    #   image: rust:slim
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
+      # - uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ${HOME}/.cargo/bin/
+      #       ${HOME}/.cargo/registry/index/
+      #       ${HOME}/.cargo/registry/cache/
+      #       ${HOME}/.cargo/git/db/
+      #       target/
+      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run rustfmt checks
+        run: rustup run nightly cargo fmt --check --all
+
+  test:
+    needs: [format]
+    name: Lint + Test
+    runs-on: self-hosted
+    # Don't use this, it raises permissions issues on self hosted runners
+    # container:
+    #   image: ghcr.io/left-curve/left-curve/native-builder
+    # permissions:
+    #   packages: read
+    env:
+      PGDATABASE: grug_test
+      DB_HOST: postgres
+    # services:
+    #   postgres:
+    #     image: postgres:17
+    #     env:
+    #       POSTGRES_PASSWORD: postgres
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      # - name: Create database
+      #   run: |
+      #     createdb -U postgres -h postgres "$PGDATABASE"
+
+      # - uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ${HOME}/.cargo/bin/
+      #       ${HOME}/.cargo/registry/index/
+      #       ${HOME}/.cargo/registry/cache/
+      #       ${HOME}/.cargo/git/db/
+      #       target/
+      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run clippy
+        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all-features
+        env:
+          RUST_BACKTRACE: 1
+
+  build:
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        runner: [self-hosted]
+          # when needing to try on all runner types
+          # - [self-hosted, Linux]
+          # - [self-hosted, macOS]
+    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    runs-on: ${{ matrix.runner }}
+    needs: [test]
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set build config
+        id: config
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            if [[ "${{ runner.arch }}" == "X64" ]]; then
+              echo "image=ghcr.io/left-curve/left-curve/native-builder:amd64" >> $GITHUB_OUTPUT
+              echo "arch=x86_64" >> $GITHUB_OUTPUT
+            elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
+              # if [[ "${{ runner.os }}" == "macOS" ]]; then
+              #   echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}, cross doesn't work with this config (sadly). We should fix this."
+              #   exit 1
+              # fi
+
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-amd64" >> $GITHUB_OUTPUT
+              echo "arch=arm64" >> $GITHUB_OUTPUT
+            else
+              echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              exit 1
+            fi
+            echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+            echo "platform=linux/amd64" >> $GITHUB_OUTPUT
+            echo "suffix=amd64" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            if [[ "${{ runner.arch }}" == "X64" ]]; then
+              echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+            elif [[ "${{ runner.arch }}" == "ARM64" ]]; then
+              if [[ "${{ runner.os }}" == "macOS" ]]; then
+                echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+              elif [[ "${{ runner.os }}" == "Linux" ]]; then
+                # NOTE: I could use a native-builder in such case, but using cross to keep consistency
+                echo "image=ghcr.io/left-curve/left-curve/cross-builder-arm64" >> $GITHUB_OUTPUT
+              else
+                echo "Unsupported runner OS for ARM64: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+                exit 1
+              fi
+            else
+              echo "Unsupported runner: OS=${{ runner.os }}, Arch=${{ runner.arch }}"
+              exit 1
+            fi
+            echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+            echo "platform=linux/arm64" >> $GITHUB_OUTPUT
+            echo "suffix=arm64" >> $GITHUB_OUTPUT
+          else
+              echo "Unsupported matrix ${{ matrix.arch }}"
+              exit 1
+          fi
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Write Cross.toml
+        run: |
+          echo "[target.${{ steps.config.outputs.target }}]" > Cross.toml
+          echo "image = \"${{ steps.config.outputs.image }}\"" >> Cross.toml
+
+      - name: Set GIT_COMMIT
+        run: |
+          cp grug/app/src/git_info.rs grug/app/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/app/src/git_info.rs.in > grug/app/src/git_info.rs
+          rm grug/app/src/git_info.rs.in
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/cache@v4
+        with:
+          path: .cross-cache
+          key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: pull cross docker builder image
+        run: |
+          docker pull ${{ steps.config.outputs.image }}
+
+      - name: build binary with cross
+        run: |
+          set -euo pipefail
+          mkdir -p .cross-cache/${{ steps.config.outputs.target }}
+          CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
+          cross build --target ${{ steps.config.outputs.target }} --release --verbose
+
+      - name: build docker image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --push \
+            --platform ${{ steps.config.outputs.platform }} \
+            --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
+            --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
+            --provenance=false \
+            -t ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
+            -f docker/dango/Dockerfile .
+
+      - name: Ensure Dango works
+        run: |
+          docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
+
+  push-manifest:
+    permissions:
+      packages: write
+    needs: [build]
+    runs-on: [self-hosted]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch Docker manifest
+        run: |
+          docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
+            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
+            --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+
+          docker manifest push ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango:latest \
+              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
+
+            docker manifest push ghcr.io/left-curve/left-curve/dango:latest
+          fi
 
   deploy-dango:
     # if: github.ref == 'refs/heads/main'
     permissions:
       packages: read
-    # needs: [push-manifest]
+    needs: [push-manifest]
     runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v4
