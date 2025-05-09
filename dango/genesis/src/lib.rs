@@ -4,6 +4,7 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
+        constants::{BTC_DENOM, DANGO_DENOM, ETH_DENOM, SOL_DENOM, USDC_DENOM},
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
         oracle::{self, PriceSource},
@@ -12,7 +13,7 @@ use {
     grug::{
         Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper, Denom, Duration,
         GENESIS_SENDER, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission,
-        Permissions, ResultExt, StdResult, btree_map, btree_set,
+        Permissions, ResultExt, StdResult, btree_map, btree_set, coins,
     },
     hyperlane_types::{
         Addr32,
@@ -386,7 +387,9 @@ where
     let dex = instantiate(
         &mut msgs,
         dex_code_hash,
-        &dex::InstantiateMsg { pairs },
+        &dex::InstantiateMsg {
+            pairs: pairs.clone(),
+        },
         "dango/dex",
         "dango/dex",
     )?;
@@ -401,17 +404,30 @@ where
     )?;
 
     // Create the `balances` map needed for instantiating bank.
-    let balances = genesis_users
-        .into_iter()
-        .zip(&addresses)
-        .filter_map(|((_, user), (_, address))| {
-            if user.balances.is_empty() {
-                None
-            } else {
-                Some((*address, user.balances))
-            }
-        })
-        .collect();
+    let mut balances: BTreeMap<grug::EncodedBytes<[u8; 20], grug::AddrEncoder>, Coins> =
+        genesis_users
+            .into_iter()
+            .zip(&addresses)
+            .filter_map(|((_, user), (_, address))| {
+                if user.balances.is_empty() {
+                    None
+                } else {
+                    Some((*address, user.balances))
+                }
+            })
+            .collect();
+
+    // Add Genesis_user to balances BtreeMap
+    balances.insert(
+        GENESIS_SENDER,
+        coins!(
+                       DANGO_DENOM.clone() => 30_000_000_000,
+                        USDC_DENOM.clone()  => 100_000_000_000_000,
+                        BTC_DENOM.clone()   => 100_000_000_000_000,
+                        ETH_DENOM.clone()  => 100_000_000_000_000,
+                        SOL_DENOM.clone()  => 100_000_000_000_000,
+        ),
+    );
 
     // Instantiate the bank contract.
     let bank = instantiate(
@@ -461,6 +477,24 @@ where
         "dango/vesting",
         "dango/vesting",
     )?;
+
+    // Provide liquidity to the DEX.
+    for PairUpdate {
+        base_denom,
+        quote_denom,
+        ..
+    } in pairs
+    {
+        execute(
+            &mut msgs,
+            dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            },
+            coins! { base_denom => 100_000_000, quote_denom => 100_000_000 },
+        )?;
+    }
 
     let contracts = Contracts {
         account_factory,
@@ -551,4 +585,12 @@ where
     )?);
 
     Ok(address)
+}
+
+fn execute<M>(msgs: &mut Vec<Message>, contract: Addr, msg: &M, funds: Coins) -> anyhow::Result<()>
+where
+    M: Serialize,
+{
+    msgs.push(Message::execute(contract, msg, funds)?);
+    Ok(())
 }

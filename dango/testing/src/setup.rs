@@ -361,7 +361,7 @@ where
                 params: PairParams {
                     lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)), // TODO: set to non-zero
                 },
             },
             PairUpdate {
@@ -370,7 +370,7 @@ where
                 params: PairParams {
                     lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)), // TODO: set to non-zero
                 },
             },
             PairUpdate {
@@ -379,7 +379,7 @@ where
                 params: PairParams {
                     lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)), // TODO: set to non-zero
                 },
             },
             PairUpdate {
@@ -388,7 +388,7 @@ where
                 params: PairParams {
                     lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
                     curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)), // TODO: set to non-zero
                 },
             },
         ],
