@@ -1,5 +1,8 @@
 use {
-    crate::constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
+    crate::constants::{
+        MOCK_HYPERLANE_DANGO_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES, owner, user1, user2,
+        user3, user4, user5, user6, user7, user8, user9,
+    },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
         GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption, build_rust_codes,
@@ -16,7 +19,10 @@ use {
         Bounded, Coin, ContractWrapper, Denom, Duration, HashExt, LengthBounded, NumberConst,
         Udec128, Uint128, btree_map, btree_set, coins,
     },
-    hyperlane_types::constants::{arbitrum, base, ethereum, optimism, solana},
+    hyperlane_types::{
+        constants::{arbitrum, base, ethereum, optimism, solana},
+        isms::multisig::ValidatorSet,
+    },
     pyth_types::constants::GUARDIAN_SETS,
     std::str::FromStr,
 };
@@ -315,10 +321,20 @@ impl Preset for GatewayOption {
 
 impl Preset for HyperlaneOption {
     fn preset_test() -> Self {
+        // We use the same mock validator set for all remote domains.
+        let mock_validator_set = ValidatorSet {
+            threshold: 2,
+            validators: MOCK_HYPERLANE_VALIDATOR_ADDRESSES.into_iter().collect(),
+        };
+
         HyperlaneOption {
-            local_domain: 88888888,
+            local_domain: MOCK_HYPERLANE_DANGO_DOMAIN,
             ism_validator_sets: btree_map! {
-                // TODO
+                arbitrum::DOMAIN => mock_validator_set.clone(),
+                base::DOMAIN     => mock_validator_set.clone(),
+                ethereum::DOMAIN => mock_validator_set.clone(),
+                optimism::DOMAIN => mock_validator_set.clone(),
+                solana::DOMAIN   => mock_validator_set,
             },
             va_announce_fee_per_byte: Coin {
                 denom: usdc::DENOM.clone(),

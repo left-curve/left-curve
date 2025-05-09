@@ -3386,7 +3386,6 @@ dependencies = [
  "dango-vesting",
  "dango-warp",
  "grug",
- "hex-literal",
  "hyperlane-ism",
  "hyperlane-mailbox",
  "hyperlane-types",
