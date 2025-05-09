@@ -119,6 +119,13 @@
       "description": "Create subaccounts.",
       "path": "/create-account",
       "keywords": "account,create,register"
+    },
+    "4": {
+      "img": "/images/emojis/simple/spot.svg",
+      "title": "Simple Swap",
+      "description": "Swap tokens",
+      "path": "/swap",
+      "keywords": "swap,trade,simple"
     }
   },
   "explorer": {
