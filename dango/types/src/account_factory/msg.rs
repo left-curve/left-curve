@@ -7,7 +7,7 @@ use {
     },
     grug::{Addr, Coins, Hash256, JsonSerExt, Op, SignData, StdError, StdResult},
     sha2::Sha256,
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 /// Information about a user. Used in query response.
@@ -113,6 +113,12 @@ pub enum QueryMsg {
     /// Query a single user by username.
     #[returns(User)]
     User { username: Username },
+    #[returns(BTreeSet<Username>)]
+    UsersByKey {
+        key_hash: Hash256,
+        start_after: Option<Username>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde)]
