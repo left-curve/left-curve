@@ -100,14 +100,24 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
               </div>
               {children}
               {activeStep === 0 ? (
-                <div className="flex items-center gap-1">
-                  <p>{m["signup.alreadyHaveAccount"]()}</p>
+                <div className="w-full flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <p>{m["signup.alreadyHaveAccount"]()}</p>
+                    <Button
+                      variant="link"
+                      autoFocus={false}
+                      onClick={() => navigate({ to: "/signin" })}
+                    >
+                      {m["common.signin"]()}
+                    </Button>
+                  </div>
                   <Button
+                    fullWidth
+                    className="p-0 h-fit"
                     variant="link"
-                    autoFocus={false}
-                    onClick={() => navigate({ to: "/signin" })}
+                    onClick={() => navigate({ to: "/forgot-username" })}
                   >
-                    {m["common.signin"]()}
+                    {m["signin.forgotUsername"]()}
                   </Button>
                 </div>
               ) : null}

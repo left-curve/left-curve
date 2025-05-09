@@ -192,7 +192,12 @@ const UsernameStep: React.FC = () => {
             {m["signin.continueWithoutSignin"]()}
           </Button>
         )}
-        <Button fullWidth variant="link" className="p-0 h-fit">
+        <Button
+          fullWidth
+          className="p-0 h-fit"
+          variant="link"
+          onClick={() => navigate({ to: "/forgot-username" })}
+        >
           {m["signin.forgotUsername"]()}
         </Button>
       </div>
