@@ -288,11 +288,12 @@ jobs:
     runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v4
-      - name: Fail if DEPLOY_KEY is not set
-        if: ${{ secrets.DEPLOY_KEY == '' }}
+      - name: Check DEPLOY_KEY is set
         run: |
-          echo "Missing DEPLOY_KEY secret"
-          exit 1
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "Missing DEPLOY_KEY secret"
+            exit 1
+          fi
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.7.0
         with:
