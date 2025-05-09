@@ -1,6 +1,6 @@
 use {
     crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
-    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner},
+    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, hash_map},
     grug_app::Shared,
     grug_crypto::Identity256,
     hyperlane_types::{
@@ -12,6 +12,7 @@ use {
         multisig_hash,
     },
     k256::ecdsa::SigningKey,
+    std::collections::HashMap,
 };
 
 /// Utilities related to Ethereum.
@@ -51,23 +52,23 @@ pub mod eth_utils {
     }
 }
 
-pub struct MockValidatorSets {
-    pub arbitrum: MockValidatorSet,
-    pub base: MockValidatorSet,
-    pub ethereum: MockValidatorSet,
-    pub optimism: MockValidatorSet,
-    pub solana: MockValidatorSet,
-}
+pub struct MockValidatorSets(HashMap<Domain, MockValidatorSet>);
 
 impl MockValidatorSets {
     pub fn new_preset() -> Self {
-        Self {
-            arbitrum: MockValidatorSet::new_preset(arbitrum::DOMAIN),
-            base: MockValidatorSet::new_preset(base::DOMAIN),
-            ethereum: MockValidatorSet::new_preset(ethereum::DOMAIN),
-            optimism: MockValidatorSet::new_preset(optimism::DOMAIN),
-            solana: MockValidatorSet::new_preset(solana::DOMAIN),
-        }
+        Self(hash_map! {
+            arbitrum::DOMAIN => MockValidatorSet::new_preset(arbitrum::DOMAIN),
+            base::DOMAIN     => MockValidatorSet::new_preset(base::DOMAIN),
+            ethereum::DOMAIN => MockValidatorSet::new_preset(ethereum::DOMAIN),
+            optimism::DOMAIN => MockValidatorSet::new_preset(optimism::DOMAIN),
+            solana::DOMAIN   => MockValidatorSet::new_preset(solana::DOMAIN),
+        })
+    }
+
+    pub fn get(&self, domain: Domain) -> &MockValidatorSet {
+        self.0.get(&domain).unwrap_or_else(|| {
+            panic!("[MockValidatorSets]: no mock validator set found for domain `{domain}`");
+        })
     }
 }
 
