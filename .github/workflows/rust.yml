@@ -286,6 +286,8 @@ jobs:
       packages: read
     needs: [push-manifest]
     runs-on: [self-hosted]
+    env:
+      DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - name: Check DEPLOY_KEY is set
@@ -312,4 +314,7 @@ jobs:
         run: |
           cd deploy
           pipx ensurepath
-          ansible-playbook dango.yml --skip-tags setup -e dango_image_tag=${{ env.GIT_COMMIT }}
+          ansible-playbook dango.yml \
+            --skip-tags setup \
+            -e dango_image_tag=${{ env.GIT_COMMIT }} \
+            -e "dango_db_password=$DANGO_DB_PASSWORD"
