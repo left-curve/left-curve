@@ -16,7 +16,11 @@ export const Modals = {
   ConfirmSend: "confirm-send",
   ConfirmAccount: "confirm-account",
   SignWithDesktop: "sign-with-desktop",
-  SwapSummary: "swap-summary",
+  ConfirmSwap: "confirm-swap",
+};
+
+export type ModalRef = {
+  triggerOnClose: () => void;
 };
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
@@ -49,11 +53,11 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
-  [Modals.SwapSummary]: {
-    header: "Swap",
+  [Modals.ConfirmSwap]: {
+    header: m["dex.swap"](),
     component: lazy(() =>
-      import("./SwapSummary").then(({ SwapSummary }) => ({
-        default: SwapSummary,
+      import("./ConfirmSwap").then(({ ConfirmSwap }) => ({
+        default: ConfirmSwap,
       })),
     ),
   },

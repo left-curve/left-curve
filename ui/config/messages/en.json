@@ -20,6 +20,7 @@
     "hi": "Hi",
     "to": "To",
     "error": "Error",
+    "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
@@ -488,6 +489,8 @@
     "apy": "APY",
     "tvl": "TVL",
     "24h": "24h",
+    "swap": "Swap",
+    "swapping": "Swapping",
     "simpleSwap": {
       "swapSuccessfully": "Swap Successfully",
       "youGet": "You get",
