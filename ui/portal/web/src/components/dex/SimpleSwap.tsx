@@ -39,7 +39,7 @@ const [SimpleSwapProvider, useSimpleSwap] = createContext<{
   name: "SimpleSwapContext",
 });
 
-const Root: React.FC<PropsWithChildren<UseSimpleSwapParameters>> = ({
+const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> = ({
   children,
   ...parameters
 }) => {
@@ -81,7 +81,7 @@ const Root: React.FC<PropsWithChildren<UseSimpleSwapParameters>> = ({
           .catch(() => {
             eventBus.publish("submit_tx", {
               isSubmitting: false,
-              txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
+              txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
             });
             return false;
           });
@@ -377,7 +377,7 @@ const SimpleSwapTrigger: React.FC = () => {
   );
 };
 
-export const SimpleSwap = Object.assign(Root, {
+export const SimpleSwap = Object.assign(SimpleSwapContainer, {
   Header: SimpleSwapHeader,
   Form: SimpleSwapForm,
   Details: SimpleSwapDetails,
