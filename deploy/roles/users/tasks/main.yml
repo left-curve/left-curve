@@ -38,9 +38,10 @@
 - name: Copy ssh keys for deploy user
   authorized_key:
     user: "{{ deploy_user }}"
-    ssh_key_path: "deploy.pub"
     state: present
     key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
+  vars:
+    ssh_key_path: "deploy.pub"
 
 - name: Ensure .ssh directory exists for deploy_user
   file:
