@@ -35,9 +35,9 @@
     ssh_key_path: "{{ item }}.pub"
   with_items: "{{ ssh_users }}"
 
-- name: Copy ssh keys for deploy user
+- name: Copy deploy ssh keys user
   authorized_key:
-    user: "{{ deploy_user }}"
+    user: "{{ ansible_user }}"
     state: present
     key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
   vars:
