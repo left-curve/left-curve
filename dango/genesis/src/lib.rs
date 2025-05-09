@@ -30,16 +30,47 @@ pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
 pub type Addresses = BTreeMap<Username, Addr>;
 
 #[grug::derive(Serde)]
-pub struct Contracts {
-    pub account_factory: Addr,
-    pub bank: Addr,
-    pub dex: Addr,
-    pub hyperlane: Hyperlane<Addr>,
-    pub lending: Addr,
-    pub oracle: Addr,
-    pub taxman: Addr,
-    pub vesting: Addr,
-    pub warp: Addr,
+pub struct Contracts<T = Addr> {
+    pub account_factory: T,
+    pub bank: T,
+    pub dex: T,
+    pub hyperlane: Hyperlane<T>,
+    pub lending: T,
+    pub oracle: T,
+    pub taxman: T,
+    pub vesting: T,
+    pub warp: T,
+}
+
+impl Contracts<Hash256> {
+    pub fn into_array(self: Contracts<Hash256>) -> [Hash256; 11] {
+        let Contracts {
+            account_factory,
+            bank,
+            dex,
+            hyperlane,
+            lending,
+            oracle,
+            taxman,
+            vesting,
+            warp,
+        } = self;
+
+        let Hyperlane { ism, mailbox, va } = hyperlane;
+        [
+            account_factory,
+            bank,
+            dex,
+            ism,
+            mailbox,
+            va,
+            lending,
+            oracle,
+            taxman,
+            vesting,
+            warp,
+        ]
+    }
 }
 
 #[derive(Clone, Copy)]

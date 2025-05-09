@@ -6,6 +6,7 @@ use {
     },
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
+        config::Hyperlane,
         constants::{
             BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,
             WBTC_DENOM,
@@ -174,17 +175,25 @@ pub fn setup_benchmark_hybrid(
 ) {
     let codes = build_rust_codes();
     let db = DiskDb::open(dir).unwrap();
-    let vm = HybridVm::new(wasm_cache_size, [
-        codes.account_factory.to_bytes().hash256(),
-        codes.account_margin.to_bytes().hash256(),
-        codes.account_multi.to_bytes().hash256(),
-        codes.account_spot.to_bytes().hash256(),
-        codes.bank.to_bytes().hash256(),
-        codes.lending.to_bytes().hash256(),
-        codes.oracle.to_bytes().hash256(),
-        codes.taxman.to_bytes().hash256(),
-        codes.vesting.to_bytes().hash256(),
-    ]);
+    let vm = HybridVm::new(
+        wasm_cache_size,
+        Contracts {
+            account_factory: codes.account_factory.to_bytes().hash256(),
+            bank: codes.bank.to_bytes().hash256(),
+            dex: codes.dex.to_bytes().hash256(),
+            hyperlane: Hyperlane {
+                ism: codes.hyperlane.ism.to_bytes().hash256(),
+                mailbox: codes.hyperlane.mailbox.to_bytes().hash256(),
+                va: codes.hyperlane.va.to_bytes().hash256(),
+            },
+            lending: codes.lending.to_bytes().hash256(),
+            oracle: codes.oracle.to_bytes().hash256(),
+            taxman: codes.taxman.to_bytes().hash256(),
+            vesting: codes.vesting.to_bytes().hash256(),
+            warp: codes.warp.to_bytes().hash256(),
+        }
+        .into_array(),
+    );
 
     setup_suite_with_db_and_vm(
         db,
