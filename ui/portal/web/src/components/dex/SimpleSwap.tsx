@@ -24,29 +24,102 @@ import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curv
 import { useMutation } from "@tanstack/react-query";
 import { type PropsWithChildren, useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
+import { Modals } from "../modals/RootModal";
 
 import type { Address } from "@left-curve/dango/types";
 import type { UseSimpleSwapParameters } from "@left-curve/store";
+import type { UseMutationResult } from "@tanstack/react-query";
 import type React from "react";
 
 const [SimpleSwapProvider, useSimpleSwap] = createContext<{
   state: ReturnType<typeof state>;
+  submission: UseMutationResult<undefined, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
-  isLoading: boolean;
-  setIsLoading: (b: boolean) => void;
 }>({
   name: "SimpleSwapContext",
 });
 
-const Root: React.FC<PropsWithChildren<UseSimpleSwapParameters>> = ({
+const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> = ({
   children,
   ...parameters
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const simpleSwapState = state(parameters);
+  const controllers = useInputs();
+  const { eventBus, settings, showModal } = useApp();
+  const { account } = useAccount();
+  const { data: signingClient } = useSigningClient();
+  const { reset } = controllers;
+  const { refetch: refreshBalances } = useBalances({ address: account?.address });
+  const { pair, simulation, fee, coins } = simpleSwapState;
+  const { formatNumberOptions } = settings;
+
+  const submission = useMutation({
+    mutationFn: async () => {
+      if (!signingClient) throw new Error("error: no signing client");
+      if (!pair) throw new Error("error: no pair");
+      if (!simulation.input || !simulation.data) throw new Error("error: no simulation");
+      eventBus.publish("submit_tx", { isSubmitting: true });
+
+      try {
+        const { promise, resolve: confirmSwap, reject: rejectSwap } = withResolvers();
+        showModal(Modals.ConfirmSwap, {
+          input: {
+            coin: coins[simulation.input.denom],
+            amount: simulation.input.amount,
+          },
+          output: {
+            coin: coins[simulation.data.denom],
+            amount: simulation.data.amount,
+          },
+          fee: formatNumber(fee, { ...formatNumberOptions, currency: "usd" }),
+          confirmSwap,
+          rejectSwap,
+        });
+
+        const response = await promise
+          .then(() => true)
+          .catch(() => {
+            eventBus.publish("submit_tx", {
+              isSubmitting: false,
+              txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
+            });
+            return false;
+          });
+        if (!response) return undefined;
+
+        await signingClient.swapExactAmountIn({
+          sender: account!.address as Address,
+          route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
+          input: simulation.input,
+        });
+
+        reset();
+        toast.success({ title: m["dex.simpleSwap.swapSuccessfully"]() });
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: true, message: m["dex.simpleSwap.swapSuccessfully"]() },
+        });
+        refreshBalances();
+      } catch (e) {
+        console.error(e);
+        eventBus.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
+        });
+        toast.error(
+          {
+            title: m["dex.simpleSwap.errors.failure"](),
+          },
+          {
+            duration: Number.POSITIVE_INFINITY,
+          },
+        );
+      }
+    },
+  });
+
   return (
-    <SimpleSwapProvider
-      value={{ state: state(parameters), controllers: useInputs(), isLoading, setIsLoading }}
-    >
+    <SimpleSwapProvider value={{ state: simpleSwapState, controllers, submission }}>
       {children}
     </SimpleSwapProvider>
   );
@@ -90,13 +163,14 @@ export const SimpleSwapForm: React.FC = () => {
   const { settings } = useApp();
   const { coins } = useConfig();
   const { account } = useAccount();
-  const { state, controllers, isLoading } = useSimpleSwap();
+  const { state, controllers, submission } = useSimpleSwap();
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
   const { getPrice } = usePrices();
 
   const { isReverse, direction, base, quote, pairs, changeQuote, toggleDirection } = state;
   const { register, setValue, inputs } = controllers;
+  const { isPending } = submission;
   const { formatNumberOptions } = settings;
   const { simulate } = state.simulation;
 
@@ -137,13 +211,18 @@ export const SimpleSwapForm: React.FC = () => {
 
   return (
     <form
+      id="simple-swap-form"
       className={twMerge("flex flex-col items-center relative", {
         "flex-col-reverse": direction === "reverse",
       })}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submission.mutate();
+      }}
     >
       <IconGear className="w-[18px] h-[18px] absolute right-0 top-0" />
       <Input
-        isDisabled={isLoading}
+        isDisabled={isPending}
         placeholder="0"
         onFocus={() => setActiveInput("base")}
         {...register("base", {
@@ -198,14 +277,14 @@ export const SimpleSwapForm: React.FC = () => {
 
       <button
         type="button"
-        disabled={isLoading}
+        disabled={isPending}
         className="flex items-center justify-center border border-gray-300 rounded-full h-5 w-5 cursor-pointer mt-4"
         onClick={() => toggleDirection()}
       >
         <IconArrowDown className="h-3 w-3 text-gray-300" />
       </button>
       <Input
-        isDisabled={isLoading}
+        isDisabled={isPending}
         placeholder="0"
         onFocus={() => setActiveInput("quote")}
         label={isReverse ? m["dex.simpleSwap.youSwap"]() : m["dex.simpleSwap.youGet"]()}
@@ -291,92 +370,14 @@ const SimpleSwapDetails: React.FC = () => {
 };
 
 const SimpleSwapTrigger: React.FC = () => {
-  const { eventBus, showModal } = useApp();
-  const { account } = useAccount();
-  const { data: signingClient } = useSigningClient();
-  const { state, controllers, isLoading, setIsLoading } = useSimpleSwap();
-  const { reset } = controllers;
-  const { refetch: refreshBalances } = useBalances({ address: account?.address });
-  const { pair, simulation } = state;
-
-  const { mutateAsync: swap } = useMutation({
-    mutationFn: async () => {
-      if (!signingClient) throw new Error("error: no signing client");
-      if (!pair) throw new Error("error: no pair");
-      if (!simulation.input) throw new Error("error: no simulation input");
-      eventBus.publish("submit_tx", { isSubmitting: true });
-      try {
-        setIsLoading(true);
-
-        /*
-        const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
-
-        const response = await promise
-          .then(() => true)
-          .catch(() => {
-            eventBus.publish("submit_tx", {
-              isSubmitting: false,
-              txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
-            });
-            return false;
-          });
-
-        if (!response) return undefined;
-        */
-
-        await signingClient.swapExactAmountIn({
-          sender: account!.address as Address,
-          route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
-          input: simulation.input,
-        });
-
-        reset();
-        toast.success({ title: m["dex.simpleSwap.swapSuccessfully"]() });
-        eventBus.publish("submit_tx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["dex.simpleSwap.swapSuccessfully"]() },
-        });
-        refreshBalances();
-      } catch (e) {
-        console.error(e);
-        eventBus.publish("submit_tx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
-        });
-        toast.error(
-          {
-            title: m["dex.simpleSwap.errors.failure"](),
-          },
-          {
-            duration: Number.POSITIVE_INFINITY,
-          },
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-  });
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        swap();
-      }
-    };
-    addEventListener("keydown", handleKeyDown);
-    return () => {
-      removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
   return (
-    <Button fullWidth size="md" isLoading={isLoading} onClick={() => swap()}>
+    <Button fullWidth size="md" type="submit" form="simple-swap-form">
       Swap
     </Button>
   );
 };
 
-export const SimpleSwap = Object.assign(Root, {
+export const SimpleSwap = Object.assign(SimpleSwapContainer, {
   Header: SimpleSwapHeader,
   Form: SimpleSwapForm,
   Details: SimpleSwapDetails,
