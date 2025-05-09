@@ -188,7 +188,9 @@ where
         .zip(&addresses)
         .filter_map(|((_, user), (_, address))| {
             if user.dango_balance.is_non_zero() {
-                Some((*address, coins! { dango::DENOM => user.dango_balance }))
+                Some((*address, coins! {
+                    dango::DENOM.clone() => user.dango_balance,
+                }))
             } else {
                 None
             }
