@@ -112,7 +112,7 @@ export type CreateConnectorFn<
       getAccounts(): Promise<readonly Account[]>;
       getClient(): Promise<SignerClient<transport>>;
       isAuthorized(): Promise<boolean>;
-      switchChain?(parameters: { chainId: string }): Promise<Chain>;
+      switchChain?(parameters: { chainId: string }): Promise<void>;
       onAccountsChanged?(accounts: string[]): void;
       onChainChanged?(chainId: string): void;
       onConnect?(connectInfo: { chainId: string }): void;
