@@ -17,6 +17,7 @@ export const Modals = {
   ConfirmAccount: "confirm-account",
   SignWithDesktop: "sign-with-desktop",
   ConfirmSwap: "confirm-swap",
+  RenewSession: "renew-session",
 };
 
 export type ModalRef = {
@@ -58,6 +59,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("./ConfirmSwap").then(({ ConfirmSwap }) => ({
         default: ConfirmSwap,
+      })),
+    ),
+  },
+  [Modals.RenewSession]: {
+    component: lazy(() =>
+      import("./RenewSession").then(({ RenewSession }) => ({
+        default: RenewSession,
       })),
     ),
   },
