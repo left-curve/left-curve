@@ -8,10 +8,11 @@ import { m } from "~/paraglide/messages";
 interface Props {
   action: (method: string) => void;
   isPending: boolean;
-  mode: "signup" | "signin";
+  mode: "signup" | "signin" | "forgot-username";
+  expanded?: boolean;
 }
 
-export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
+export const AuthOptions: React.FC<Props> = ({ action, isPending, mode, expanded }) => {
   const connectors = useConnectors();
 
   return (
@@ -20,7 +21,10 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
         <IconPasskey className="w-6 h-6" />
         <p className="min-w-20"> {m["common.signWithPasskey"]({ action: mode })}</p>
       </Button>
-      <ExpandOptions showOptionText={m["common.signWithWallet"]({ action: mode })}>
+      <ExpandOptions
+        showOptionText={m["common.signWithWallet"]({ action: mode })}
+        expanded={expanded}
+      >
         {connectors.length > 2 ? (
           connectors.map((connector) => {
             if (["passkey", "session"].includes(connector.type)) return null;
