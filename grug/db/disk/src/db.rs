@@ -1,8 +1,8 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{Buffer, Db, PrunableDb},
+    grug_app::{Db, PrunableDb},
     grug_jmt::MerkleTree,
-    grug_types::{Batch, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
