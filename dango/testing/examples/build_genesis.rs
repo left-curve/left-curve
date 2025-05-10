@@ -5,17 +5,18 @@
 use {
     dango_genesis::{GenesisOption, build_genesis},
     dango_testing::{
-        Preset,
+        GenesisCodes, Preset,
         constants::{MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP},
     },
     grug::{Inner, Json, JsonDeExt, JsonSerExt},
+    grug_vm_hybrid::HybridVm,
     home::home_dir,
     std::fs,
 };
 
 fn main() {
     let (genesis_state, contracts, addresses) =
-        build_genesis(GenesisOption::preset_test()).unwrap();
+        build_genesis(HybridVm::genesis_codes(), GenesisOption::preset_test()).unwrap();
 
     println!(
         "genesis_state = {}",

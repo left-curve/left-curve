@@ -8,17 +8,18 @@ use {
     std::{fs, path::Path},
 };
 
-/// Get the binary codes for Dango smart contracts.
-pub trait DangoCodes {
+/// Get the binary codes for Dango smart contracts, for use in building the
+/// genesis state.
+pub trait GenesisCodes {
     type Code: Clone + Into<Binary>;
 
-    fn dango_codes() -> Codes<Self::Code>;
+    fn genesis_codes() -> Codes<Self::Code>;
 }
 
-impl DangoCodes for RustVm {
+impl GenesisCodes for RustVm {
     type Code = ContractWrapper;
 
-    fn dango_codes() -> Codes<ContractWrapper> {
+    fn genesis_codes() -> Codes<ContractWrapper> {
         let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
             .with_execute(Box::new(dango_account_factory::execute))
             .with_query(Box::new(dango_account_factory::query))
@@ -126,10 +127,10 @@ impl DangoCodes for RustVm {
     }
 }
 
-impl DangoCodes for WasmVm {
+impl GenesisCodes for WasmVm {
     type Code = Vec<u8>;
 
-    fn dango_codes() -> Codes<Vec<u8>> {
+    fn genesis_codes() -> Codes<Vec<u8>> {
         let artifacts_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../artifacts");
 
         let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm")).unwrap();
@@ -166,10 +167,10 @@ impl DangoCodes for WasmVm {
     }
 }
 
-impl DangoCodes for HybridVm {
-    type Code = <RustVm as DangoCodes>::Code;
+impl GenesisCodes for HybridVm {
+    type Code = <RustVm as GenesisCodes>::Code;
 
-    fn dango_codes() -> Codes<Self::Code> {
-        RustVm::dango_codes()
+    fn genesis_codes() -> Codes<Self::Code> {
+        RustVm::genesis_codes()
     }
 }

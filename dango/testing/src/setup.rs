@@ -1,6 +1,6 @@
 use {
     crate::{
-        DangoCodes, Preset, TestAccount, TestAccounts,
+        GenesisCodes, Preset, TestAccount, TestAccounts,
         constants::{
             MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner, user1, user2, user3, user4, user5, user6,
             user7, user8, user9,
@@ -61,7 +61,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         RustVm::new(),
         ProposalPreparer::new_with_cache(),
         NullIndexer,
-        RustVm::dango_codes(),
+        RustVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )
@@ -97,7 +97,7 @@ pub fn setup_test_with_indexer() -> (
         vm.clone(),
         ProposalPreparer::new_with_cache(),
         indexer,
-        RustVm::dango_codes(),
+        RustVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     );
@@ -130,7 +130,7 @@ pub fn setup_test_naive() -> (
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,
-        RustVm::dango_codes(),
+        RustVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )
@@ -149,7 +149,7 @@ pub fn setup_benchmark_hybrid(
     Codes<ContractWrapper>,
     Contracts,
 ) {
-    let codes = HybridVm::dango_codes();
+    let codes = HybridVm::genesis_codes();
     let db = DiskDb::open(dir).unwrap();
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
@@ -201,7 +201,7 @@ pub fn setup_benchmark_wasm(
         vm,
         NaiveProposalPreparer,
         NullIndexer,
-        WasmVm::dango_codes(),
+        WasmVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )
@@ -223,7 +223,7 @@ pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID>(
 )
 where
     DB: Db,
-    VM: Vm + DangoCodes + Clone + 'static,
+    VM: Vm + GenesisCodes + Clone + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
