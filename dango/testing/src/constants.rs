@@ -2,7 +2,8 @@ use {
     dango_types::account_factory::Username, grug::Timestamp, hex_literal::hex, std::sync::LazyLock,
 };
 
-pub const MOCK_CHAIN_ID: &str = "mock-1";
+// Re-use the same mock chain ID from Grug test suite.
+pub use grug::MOCK_CHAIN_ID;
 
 pub const MOCK_GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
 
