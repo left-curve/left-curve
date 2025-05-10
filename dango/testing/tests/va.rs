@@ -1,18 +1,13 @@
 use {
-    dango_testing::{BridgeOp, TestOption, generate_random_key, setup_test},
-    dango_types::{
-        constants::{dango, usdc},
-        gateway::Remote,
-    },
+    dango_testing::{generate_random_key, setup_test},
+    dango_types::constants::{dango, usdc},
     grug::{
         Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, JsonDeExt, QuerierExt,
-        ResultExt, SearchEvent, Uint128, UniqueVec, btree_set, coins,
+        ResultExt, SearchEvent, UniqueVec, btree_set, coins,
     },
     hyperlane_testing::{constants::MOCK_HYPERLANE_LOCAL_DOMAIN, eth_utils},
     hyperlane_types::{
-        announcement_hash,
-        constants::ethereum,
-        domain_hash, eip191_hash,
+        announcement_hash, domain_hash, eip191_hash,
         mailbox::Domain,
         va::{self, Announce, VA_DOMAIN_KEY},
     },
@@ -65,31 +60,7 @@ impl MockAnnouncement {
 
 #[test]
 fn test_announce() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test(TestOption {
-        // Accounts "owner" and "user2" will need to accounce their validators.
-        // They need some USDC to do so.
-        bridge_ops: Some(|accounts| {
-            vec![
-                BridgeOp {
-                    remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
-                    },
-                    amount: Uint128::new(50000),
-                    recipient: accounts.owner.address(),
-                },
-                BridgeOp {
-                    remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
-                    },
-                    amount: Uint128::new(50000),
-                    recipient: accounts.user2.address(),
-                },
-            ]
-        }),
-        ..Default::default()
-    });
+    let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
 
     let mut validators_expected = BTreeSet::new();
     let mut storage_locations_expected = BTreeMap::new();

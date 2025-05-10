@@ -1,5 +1,11 @@
 use {
-    crate::constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
+    crate::{
+        BridgeOp, TestOption,
+        constants::{
+            DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner,
+            user1, user2, user3, user4, user5, user6, user7, user8, user9,
+        },
+    },
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
         GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
@@ -13,8 +19,9 @@ use {
         taxman,
     },
     grug::{
-        Bounded, Coin, Denom, Duration, HashExt, LengthBounded, NumberConst, Udec128, Uint128,
-        btree_map, btree_set, coins,
+        Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Udec128, Uint128, btree_map,
+        btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -30,6 +37,50 @@ use {
 /// Describing a data that has a preset value for testing purposes.
 pub trait Preset {
     fn preset_test() -> Self;
+}
+
+impl Preset for TestOption {
+    fn preset_test() -> Self {
+        TestOption {
+            chain_id: MOCK_CHAIN_ID.to_string(),
+            block_time: MOCK_BLOCK_TIME,
+            default_gas_limit: DEFAULT_GAS_LIMIT,
+            genesis_block: BlockInfo {
+                hash: GENESIS_BLOCK_HASH,
+                height: GENESIS_BLOCK_HEIGHT,
+                timestamp: MOCK_GENESIS_TIMESTAMP,
+            },
+            // By default, give owner, user1, user2 each 100k USDC from Ethereum.
+            bridge_ops: |accounts| {
+                vec![
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.owner.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user1.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user2.address(),
+                    },
+                ]
+            },
+        }
+    }
 }
 
 impl Preset for GenesisOption {

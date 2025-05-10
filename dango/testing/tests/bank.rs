@@ -1,5 +1,5 @@
 use {
-    dango_testing::{BridgeOp, TestOption, setup_test_naive},
+    dango_testing::setup_test_naive,
     dango_types::{
         bank::{
             OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
@@ -7,31 +7,16 @@ use {
             TransferOrphaned,
         },
         constants::{dango, usdc},
-        gateway::Remote,
     },
     grug::{
         Addressable, BalanceChange, CheckedContractEvent, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, Uint128, addr, btree_map, coins,
+        SearchEvent, addr, btree_map, coins,
     },
-    hyperlane_types::constants::ethereum,
 };
 
 #[test]
 fn batch_transfer() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
-        // Give the owner some USDC from Ethereum to spend.
-        bridge_ops: Some(|accounts| {
-            vec![BridgeOp {
-                remote: Remote::Warp {
-                    domain: ethereum::DOMAIN,
-                    contract: ethereum::USDC_WARP,
-                },
-                amount: Uint128::new(1000),
-                recipient: accounts.owner.address(),
-            }]
-        }),
-        ..Default::default()
-    });
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Create two non-existent recipient addresses.
     let dead1 = addr!("000000000000000000000000000000000000dead");

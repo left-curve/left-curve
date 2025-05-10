@@ -1,10 +1,7 @@
 use {
     crate::{
         Preset, TestAccount, TestAccounts,
-        constants::{
-            MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner, user1, user2, user3, user4, user5, user6,
-            user7, user8, user9,
-        },
+        constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
@@ -13,8 +10,8 @@ use {
         warp,
     },
     grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, Message, TendermintRpcClient, Uint128,
+        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
+        Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -31,13 +28,21 @@ use {
 };
 
 /// Configurable options for setting up a test.
-#[derive(Default)]
 pub struct TestOption {
-    pub chain_id: Option<String>,
+    pub chain_id: String,
+    pub block_time: Duration,
+    pub default_gas_limit: u64,
+    pub genesis_block: BlockInfo,
     /// A function that takes a list of test accounts that will be created, and
     /// returns a list of incoming bridge transfers to be appended to the
     /// genesis state.
-    pub bridge_ops: Option<fn(&TestAccounts) -> Vec<BridgeOp>>,
+    pub bridge_ops: fn(&TestAccounts) -> Vec<BridgeOp>,
+}
+
+impl Default for TestOption {
+    fn default() -> Self {
+        Preset::preset_test()
+    }
 }
 
 /// A bridge operation to be included in the genesis state.
@@ -296,24 +301,22 @@ where
     // in the genesis state. We should generate this based on the `genesis_opt`.
     let validator_sets = MockValidatorSets::new_preset();
 
-    if let Some(bridge_ops) = test_opt.bridge_ops {
-        for op in bridge_ops(&accounts) {
-            match op.remote {
-                Remote::Warp { domain, contract } => {
-                    genesis_state.msgs.push(build_genesis_warp_msg(
-                        &contracts,
-                        &validator_sets,
-                        domain,
-                        local_domain,
-                        contract,
-                        op.amount,
-                        op.recipient,
-                    ));
-                },
-                Remote::Bitcoin => {
-                    todo!("bitcoin bridge isn't supported yet");
-                },
-            }
+    for op in (test_opt.bridge_ops)(&accounts) {
+        match op.remote {
+            Remote::Warp { domain, contract } => {
+                genesis_state.msgs.push(build_genesis_warp_msg(
+                    &contracts,
+                    &validator_sets,
+                    domain,
+                    local_domain,
+                    contract,
+                    op.amount,
+                    op.recipient,
+                ));
+            },
+            Remote::Bitcoin => {
+                todo!("bitcoin bridge isn't supported yet");
+            },
         }
     }
 
@@ -322,14 +325,10 @@ where
         vm,
         pp,
         indexer,
-        test_opt.chain_id.unwrap_or(MOCK_CHAIN_ID.to_string()),
-        Duration::from_millis(250),
-        1_000_000,
-        BlockInfo {
-            hash: GENESIS_BLOCK_HASH,
-            height: GENESIS_BLOCK_HEIGHT,
-            timestamp: MOCK_GENESIS_TIMESTAMP,
-        },
+        test_opt.chain_id,
+        test_opt.block_time,
+        test_opt.default_gas_limit,
+        test_opt.genesis_block,
         genesis_state,
     );
 
