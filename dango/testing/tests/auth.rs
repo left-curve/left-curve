@@ -15,7 +15,7 @@ use {
 /// which is set to 100.
 #[test]
 fn first_nonce_too_big() {
-    let (suite, accounts, ..) = setup_test_naive();
+    let (suite, accounts, ..) = setup_test_naive(Default::default());
 
     // User attempts to send their first tx with nonce 101. Should fail.
     {

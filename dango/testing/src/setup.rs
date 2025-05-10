@@ -34,17 +34,10 @@ use {
 #[derive(Default)]
 pub struct TestOption {
     pub chain_id: Option<String>,
-    /// A function that takes a list of contracts and test accounts that will be
-    /// created during genesis, and returns a list of incoming bridge transfers
-    /// to be included in the genesis state.
-    pub bridge_ops: Option<fn(&Contracts, &TestAccounts) -> Vec<BridgeOp>>,
-}
-
-impl TestOption {
-    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
-        self.chain_id = Some(chain_id.to_string());
-        self
-    }
+    /// A function that takes a list of test accounts that will be created, and
+    /// returns a list of incoming bridge transfers to be appended to the
+    /// genesis state.
+    pub bridge_ops: Option<fn(&TestAccounts) -> Vec<BridgeOp>>,
 }
 
 /// A bridge operation to be included in the genesis state.
@@ -72,7 +65,9 @@ pub type TestSuiteWithIndexer<
 /// `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
-pub fn setup_test() -> (
+pub fn setup_test(
+    test_opt: TestOption,
+) -> (
     TestSuite,
     TestAccounts,
     Codes<ContractWrapper>,
@@ -85,7 +80,32 @@ pub fn setup_test() -> (
         ProposalPreparer::new_with_cache(),
         NullIndexer,
         RustVm::genesis_codes(),
-        TestOption::default(),
+        test_opt,
+        GenesisOption::preset_test(),
+    )
+}
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and
+/// `ContractWrapper` codes.
+///
+/// Used for running tests that don't require an oracle feed. For such cases, we
+/// avoid adding the proposal preparer that will pull price feeds from Pyth API.
+pub fn setup_test_naive(
+    test_opt: TestOption,
+) -> (
+    TestSuite<NaiveProposalPreparer>,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+) {
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        NaiveProposalPreparer,
+        NullIndexer,
+        RustVm::genesis_codes(),
+        test_opt,
         GenesisOption::preset_test(),
     )
 }
@@ -140,29 +160,6 @@ pub fn setup_test_with_indexer() -> (
         contracts,
         validator_sets,
         httpd_context,
-    )
-}
-
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and
-/// `ContractWrapper` codes.
-///
-/// Used for running tests that don't require an oracle feed. For such cases, we
-/// avoid adding the proposal preparer that will pull price feeds from Pyth API.
-pub fn setup_test_naive() -> (
-    TestSuite<NaiveProposalPreparer>,
-    TestAccounts,
-    Codes<ContractWrapper>,
-    Contracts,
-    MockValidatorSets,
-) {
-    setup_suite_with_db_and_vm(
-        MemDb::new(),
-        RustVm::new(),
-        NaiveProposalPreparer,
-        NullIndexer,
-        RustVm::genesis_codes(),
-        TestOption::default(),
-        GenesisOption::preset_test(),
     )
 }
 
@@ -300,7 +297,7 @@ where
     let validator_sets = MockValidatorSets::new_preset();
 
     if let Some(bridge_ops) = test_opt.bridge_ops {
-        for op in bridge_ops(&contracts, &accounts) {
+        for op in bridge_ops(&accounts) {
             match op.remote {
                 Remote::Warp { domain, contract } => {
                     genesis_state.msgs.push(build_genesis_warp_msg(
