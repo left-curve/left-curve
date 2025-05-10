@@ -115,6 +115,16 @@ impl Duration {
     }
 }
 
+#[cfg(feature = "rfc3339")]
+impl Timestamp {
+    pub fn to_rfc3339_string(&self) -> String {
+        // This panics if the timestamp (as nanoseconds) overflows `i64` range.
+        // But that'd be 500 years or so from now...
+        chrono::DateTime::from_timestamp_nanos(self.into_nanos() as i64)
+            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
+    }
+}
+
 impl Inner for Duration {
     type U = Udec128_9;
 

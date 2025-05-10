@@ -1,7 +1,7 @@
 use {
     dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
-        constants::{DANGO_DENOM, USDC_DENOM},
+        constants::{dango, usdc},
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
     },
     grug::{
@@ -12,13 +12,16 @@ use {
     std::sync::LazyLock,
 };
 
-static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new(DANGO_DENOM.clone(), 100).unwrap());
+static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin {
+    denom: dango::DENOM.clone(),
+    amount: Uint128::new(100),
+});
 
 const ONE_MONTH: Duration = Duration::from_weeks(4);
 const ONE_DAY: Duration = Duration::from_days(1);
 
 fn setup_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
-    let (suite, accounts, _codes, contracts) = setup_test_naive();
+    let (suite, accounts, _codes, contracts, _) = setup_test_naive(Default::default());
 
     (suite, accounts, contracts.vesting)
 }
@@ -60,7 +63,7 @@ fn non_owner_creating_position() {
                     period: Duration::from_seconds(0),
                 },
             },
-            Coins::one(DANGO_DENOM.clone(), 100).unwrap(),
+            Coins::one(dango::DENOM.clone(), 100).unwrap(),
         )
         .should_fail_with_error("you don't have the right");
 }
@@ -81,11 +84,11 @@ fn not_dango_token() {
                     period: Duration::from_seconds(0),
                 },
             },
-            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
+            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
         )
         .should_fail_with_error(StdError::invalid_payment(
-            DANGO_DENOM.clone(),
-            USDC_DENOM.clone(),
+            dango::DENOM.clone(),
+            usdc::DENOM.clone(),
         ));
 }
 

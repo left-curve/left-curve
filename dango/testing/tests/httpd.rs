@@ -13,7 +13,7 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
-        constants::USDC_DENOM,
+        constants::usdc,
     },
     grug::{Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
     indexer_httpd::context::Context,
@@ -29,7 +29,7 @@ use {
 async fn graphql_returns_transfer() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((mut suite, mut accounts, _, contracts), httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -37,7 +37,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -122,7 +122,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((mut suite, mut accounts, _, contracts), httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -130,7 +130,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -173,7 +173,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                         accounts.user1.username.clone(),
                     )),
                 },
-                Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+                Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )?];
 
             suite
@@ -251,7 +251,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((mut suite, mut accounts, _, contracts), httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -259,7 +259,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -305,7 +305,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                         accounts.user1.username.clone(),
                     )),
                 },
-                Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+                Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
             )?];
 
             suite

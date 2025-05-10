@@ -1,5 +1,5 @@
 use {
-    dango_genesis::build_rust_codes,
+    dango_genesis::{GenesisCodes, GenesisOption},
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
@@ -19,12 +19,11 @@ pub async fn run(
     block_creation: BlockCreation,
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
+    genesis_opt: GenesisOption,
     keep_blocks: bool,
     database_url: Option<String>,
 ) -> Result<(), Error> {
     setup_tracing_subscriber(Level::INFO);
-
-    let codes = build_rust_codes();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
 
@@ -44,16 +43,14 @@ pub async fn run(
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
-    let db = MemDb::new();
-    let vm = RustVm::new();
-
     let (suite, ..) = setup_suite_with_db_and_vm(
-        db.clone(),
-        vm.clone(),
-        codes,
+        MemDb::new(),
+        RustVm::new(),
         ProposalPreparer::new(),
         indexer,
+        RustVm::genesis_codes(),
         test_opt,
+        genesis_opt,
     );
 
     let suite = Arc::new(Mutex::new(suite));

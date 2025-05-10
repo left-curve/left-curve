@@ -29,6 +29,14 @@ impl Username {
 
         self.0.len() as _
     }
+
+    /// Create a new `Username` without checking its validity.
+    pub fn new_unchecked<T>(username: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self(username.into())
+    }
 }
 
 impl Inner for Username {

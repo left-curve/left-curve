@@ -4,13 +4,13 @@ use {
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::PYTH_URL,
+    pyth_types::constants::PYTH_URL,
     std::{thread::sleep, time::Duration},
 };
 
 #[test]
 fn handler() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test(Default::default());
 
     // Ensure there are all cache file for the PythIds in oracle and retrieve them if not presents.
     // This is needed since the PythPPHandler create a thread to get the data from Pyth and if the

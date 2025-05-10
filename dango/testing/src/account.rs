@@ -17,7 +17,7 @@ use {
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
     sha2::Sha256,
-    std::{array, collections::BTreeMap, str::FromStr},
+    std::{array, collections::BTreeMap},
 };
 
 /// Accounts available for testing purposes.
@@ -96,20 +96,19 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         (sk, Key::Secp256k1(pk))
     }
 
-    pub fn new_random(username: &str) -> Self {
+    pub fn new_random(username: Username) -> Self {
         let sk = SigningKey::random(&mut OsRng);
 
         Self::new(username, sk)
     }
 
-    pub fn new_from_private_key(username: &str, sk_bytes: [u8; 32]) -> Self {
+    pub fn new_from_private_key(username: Username, sk_bytes: [u8; 32]) -> Self {
         let sk = SigningKey::from_bytes(&sk_bytes.into()).unwrap();
 
         Self::new(username, sk)
     }
 
-    pub fn new(username: &str, sk: SigningKey) -> Self {
-        let username = Username::from_str(username).unwrap();
+    pub fn new(username: Username, sk: SigningKey) -> Self {
         let pk = sk
             .verifying_key()
             .to_encoded_point(true)

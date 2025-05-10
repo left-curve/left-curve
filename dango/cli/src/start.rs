@@ -6,7 +6,7 @@ use {
     anyhow::anyhow,
     clap::Parser,
     config_parser::parse_config,
-    dango_genesis::build_rust_codes,
+    dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, AppError, Db, Indexer, NullIndexer},
@@ -33,8 +33,10 @@ impl StartCmd {
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
 
+        // Create Rust VM contract codes.
+        let codes = HybridVm::genesis_codes();
+
         // Create hybird VM.
-        let codes = build_rust_codes();
         let vm = HybridVm::new(cfg.grug.wasm_cache_capacity, [
             codes.account_factory.to_bytes().hash256(),
             codes.account_margin.to_bytes().hash256(),
@@ -42,6 +44,7 @@ impl StartCmd {
             codes.account_spot.to_bytes().hash256(),
             codes.bank.to_bytes().hash256(),
             codes.dex.to_bytes().hash256(),
+            codes.gateway.to_bytes().hash256(),
             codes.hyperlane.ism.to_bytes().hash256(),
             codes.hyperlane.mailbox.to_bytes().hash256(),
             codes.hyperlane.va.to_bytes().hash256(),

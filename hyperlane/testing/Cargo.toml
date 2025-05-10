@@ -1,0 +1,17 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "hyperlane-testing"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+grug            = { workspace = true }
+grug-crypto     = { workspace = true }
+hex-literal     = { workspace = true }
+hyperlane-types = { workspace = true }
+k256            = { workspace = true }

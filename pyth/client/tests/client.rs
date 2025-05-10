@@ -13,8 +13,8 @@ use {
     grug::{JsonSerExt, NonEmpty, setup_tracing_subscriber},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::{
-        ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, LatestVaaBinaryResponse,
-        LatestVaaResponse, PYTH_URL,
+        LatestVaaBinaryResponse, LatestVaaResponse,
+        constants::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
     },
     rand::Rng,
     std::{
