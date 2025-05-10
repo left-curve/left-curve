@@ -1,5 +1,8 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
+    crate::{
+        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX,
+        REVERSE_KEYS,
+    },
     dango_types::{
         account_factory::{
             Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
@@ -11,7 +14,7 @@ use {
         Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order,
         StdResult, Storage,
     },
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -59,6 +62,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::User { username } => {
             let res = query_user(ctx.storage, username)?;
+            res.to_json_value()
+        },
+        QueryMsg::UsersByKey {
+            key_hash,
+            start_after,
+            limit,
+        } => {
+            let res = query_users_by_key(ctx.storage, key_hash, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -165,4 +176,20 @@ fn query_user(storage: &dyn Storage, username: Username) -> StdResult<User> {
     let accounts = query_accounts_by_user(storage, &username)?;
 
     Ok(User { keys, accounts })
+}
+
+fn query_users_by_key(
+    storage: &dyn Storage,
+    key_hash: Hash256,
+    start_after: Option<Username>,
+    limit: Option<u32>,
+) -> StdResult<BTreeSet<Username>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    REVERSE_KEYS
+        .prefix(key_hash)
+        .keys(storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect()
 }
