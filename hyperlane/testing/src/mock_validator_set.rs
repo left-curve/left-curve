@@ -3,8 +3,7 @@ use {
         constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
         eth_utils,
     },
-    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared, hash_map},
-    grug_crypto::Identity256,
+    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Shared, hash_map},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree,
         constants::{arbitrum, base, ethereum, optimism, solana},
@@ -106,11 +105,8 @@ impl MockValidatorSet {
             .validators
             .iter()
             .map(|sk| {
-                let (signature, recovery_id) = sk
-                    .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
-                    .unwrap();
-
-                HexByteArray::from_inner(eth_utils::pack_signature(signature, recovery_id))
+                let signature = eth_utils::sign(multisig_hash, sk);
+                HexByteArray::from_inner(signature)
             })
             .collect();
 
