@@ -8,9 +8,13 @@ use {
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
+    dango_types::{
+        gateway::{Domain, Remote},
+        warp,
+    },
     grug::{
-        BlockInfo, ContractWrapper, Duration, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, HashExt,
-        TendermintRpcClient,
+        Addr, BlockInfo, Coins, ContractWrapper, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, Message, TendermintRpcClient, Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -18,11 +22,37 @@ use {
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
+    hyperlane_testing::MockValidatorSets,
+    hyperlane_types::{Addr32, mailbox},
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
     std::sync::Arc,
 };
+
+/// Configurable options for setting up a test.
+#[derive(Default)]
+pub struct TestOption {
+    pub chain_id: Option<String>,
+    /// A function that takes a list of contracts and test accounts that will be
+    /// created during genesis, and returns a list of incoming bridge transfers
+    /// to be included in the genesis state.
+    pub bridge_ops: Option<fn(&Contracts, &TestAccounts) -> Vec<BridgeOp>>,
+}
+
+impl TestOption {
+    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
+        self.chain_id = Some(chain_id.to_string());
+        self
+    }
+}
+
+/// A bridge operation to be included in the genesis state.
+pub struct BridgeOp {
+    pub remote: Remote,
+    pub amount: Uint128,
+    pub recipient: Addr,
+}
 
 pub type TestSuite<
     PP = ProposalPreparer<PythClientCache>,
@@ -38,24 +68,17 @@ pub type TestSuiteWithIndexer<
     ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
-/// Configurable options for setting up a test.
-#[derive(Default)]
-pub struct TestOption {
-    pub chain_id: Option<String>,
-}
-
-impl TestOption {
-    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
-        self.chain_id = Some(chain_id.to_string());
-        self
-    }
-}
-
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
 /// `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
-pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contracts) {
+pub fn setup_test() -> (
+    TestSuite,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+) {
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
@@ -72,12 +95,11 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
 ///
 /// Used for running tests that require an indexer.
 pub fn setup_test_with_indexer() -> (
-    (
-        TestSuiteWithIndexer,
-        TestAccounts,
-        Codes<ContractWrapper>,
-        Contracts,
-    ),
+    TestSuiteWithIndexer,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
     Context,
 ) {
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
@@ -92,7 +114,7 @@ pub fn setup_test_with_indexer() -> (
     let db = MemDb::new();
     let vm = RustVm::new();
 
-    let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
+    let (suite, accounts, codes, contracts, validator_sets) = setup_suite_with_db_and_vm(
         db.clone(),
         vm.clone(),
         ProposalPreparer::new_with_cache(),
@@ -111,7 +133,14 @@ pub fn setup_test_with_indexer() -> (
         indexer_path,
     );
 
-    ((suite, accounts, codes, contracts), httpd_context)
+    (
+        suite,
+        accounts,
+        codes,
+        contracts,
+        validator_sets,
+        httpd_context,
+    )
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and
@@ -124,6 +153,7 @@ pub fn setup_test_naive() -> (
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
+    MockValidatorSets,
 ) {
     setup_suite_with_db_and_vm(
         MemDb::new(),
@@ -148,6 +178,7 @@ pub fn setup_benchmark_hybrid(
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
+    MockValidatorSets,
 ) {
     let db = DiskDb::open(dir).unwrap();
     let codes = HybridVm::genesis_codes();
@@ -192,6 +223,7 @@ pub fn setup_benchmark_wasm(
     TestAccounts,
     Codes<Vec<u8>>,
     Contracts,
+    MockValidatorSets,
 ) {
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
@@ -220,6 +252,7 @@ pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID>(
     TestAccounts,
     Codes<VM::Code>,
     Contracts,
+    MockValidatorSets,
 )
 where
     DB: Db,
@@ -228,9 +261,64 @@ where
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    let (genesis_state, contracts, addresses) = build_genesis(codes.clone(), genesis_opt).unwrap();
+    let local_domain = genesis_opt.hyperlane.local_domain;
 
-    // TODO: here, create mock validator sets and append bridging messages to the genesis state.
+    // Build the genesis state.
+    let (mut genesis_state, contracts, addresses) =
+        build_genesis(codes.clone(), genesis_opt).unwrap();
+
+    // Create the test accounts.
+    let accounts = {
+        let owner = TestAccount::new_from_private_key(owner::USERNAME.clone(), owner::PRIVATE_KEY);
+        let user1 = TestAccount::new_from_private_key(user1::USERNAME.clone(), user1::PRIVATE_KEY);
+        let user2 = TestAccount::new_from_private_key(user2::USERNAME.clone(), user2::PRIVATE_KEY);
+        let user3 = TestAccount::new_from_private_key(user3::USERNAME.clone(), user3::PRIVATE_KEY);
+        let user4 = TestAccount::new_from_private_key(user4::USERNAME.clone(), user4::PRIVATE_KEY);
+        let user5 = TestAccount::new_from_private_key(user5::USERNAME.clone(), user5::PRIVATE_KEY);
+        let user6 = TestAccount::new_from_private_key(user6::USERNAME.clone(), user6::PRIVATE_KEY);
+        let user7 = TestAccount::new_from_private_key(user7::USERNAME.clone(), user7::PRIVATE_KEY);
+        let user8 = TestAccount::new_from_private_key(user8::USERNAME.clone(), user8::PRIVATE_KEY);
+        let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
+
+        TestAccounts {
+            owner: owner.set_address(&addresses),
+            user1: user1.set_address(&addresses),
+            user2: user2.set_address(&addresses),
+            user3: user3.set_address(&addresses),
+            user4: user4.set_address(&addresses),
+            user5: user5.set_address(&addresses),
+            user6: user6.set_address(&addresses),
+            user7: user7.set_address(&addresses),
+            user8: user8.set_address(&addresses),
+            user9: user9.set_address(&addresses),
+        }
+    };
+
+    // Create the mock validator sets.
+    // TODO: For now, we always use the preset mock. It may not match the ones
+    // in the genesis state. We should generate this based on the `genesis_opt`.
+    let validator_sets = MockValidatorSets::new_preset();
+
+    if let Some(bridge_ops) = test_opt.bridge_ops {
+        for op in bridge_ops(&contracts, &accounts) {
+            match op.remote {
+                Remote::Warp { domain, contract } => {
+                    genesis_state.msgs.push(build_genesis_warp_msg(
+                        &contracts,
+                        &validator_sets,
+                        domain,
+                        local_domain,
+                        contract,
+                        op.amount,
+                        op.recipient,
+                    ));
+                },
+                Remote::Bitcoin => {
+                    todo!("bitcoin bridge isn't supported yet");
+                },
+            }
+        }
+    }
 
     let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
@@ -248,29 +336,40 @@ where
         genesis_state,
     );
 
-    let owner = TestAccount::new_from_private_key(owner::USERNAME.clone(), owner::PRIVATE_KEY);
-    let user1 = TestAccount::new_from_private_key(user1::USERNAME.clone(), user1::PRIVATE_KEY);
-    let user2 = TestAccount::new_from_private_key(user2::USERNAME.clone(), user2::PRIVATE_KEY);
-    let user3 = TestAccount::new_from_private_key(user3::USERNAME.clone(), user3::PRIVATE_KEY);
-    let user4 = TestAccount::new_from_private_key(user4::USERNAME.clone(), user4::PRIVATE_KEY);
-    let user5 = TestAccount::new_from_private_key(user5::USERNAME.clone(), user5::PRIVATE_KEY);
-    let user6 = TestAccount::new_from_private_key(user6::USERNAME.clone(), user6::PRIVATE_KEY);
-    let user7 = TestAccount::new_from_private_key(user7::USERNAME.clone(), user7::PRIVATE_KEY);
-    let user8 = TestAccount::new_from_private_key(user8::USERNAME.clone(), user8::PRIVATE_KEY);
-    let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
+    (suite, accounts, codes, contracts, validator_sets)
+}
 
-    let accounts = TestAccounts {
-        owner: owner.set_address(&addresses),
-        user1: user1.set_address(&addresses),
-        user2: user2.set_address(&addresses),
-        user3: user3.set_address(&addresses),
-        user4: user4.set_address(&addresses),
-        user5: user5.set_address(&addresses),
-        user6: user6.set_address(&addresses),
-        user7: user7.set_address(&addresses),
-        user8: user8.set_address(&addresses),
-        user9: user9.set_address(&addresses),
+fn build_genesis_warp_msg(
+    contracts: &Contracts,
+    validator_sets: &MockValidatorSets,
+    origin_domain: Domain,
+    destination_domain: Domain,
+    sender: Addr32,
+    amount: Uint128,
+    recipient: Addr,
+) -> Message {
+    let validator_set = validator_sets.get(origin_domain);
+
+    let warp_msg = warp::TokenMessage {
+        recipient: recipient.into(),
+        amount,
+        metadata: Default::default(), // Metadata isn't supported yet.
     };
 
-    (suite, accounts, codes, contracts)
+    let (raw_message, raw_metadata) = validator_set.sign(
+        sender,
+        destination_domain,
+        contracts.warp,
+        warp_msg.encode(),
+    );
+
+    Message::execute(
+        contracts.hyperlane.mailbox,
+        &mailbox::ExecuteMsg::Process {
+            raw_message,
+            raw_metadata,
+        },
+        Coins::new(),
+    )
+    .unwrap()
 }
