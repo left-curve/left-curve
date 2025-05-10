@@ -23,12 +23,12 @@ fn batch_transfer() {
     let dead2 = addr!("00000000000000000000000000000000deaddead");
 
     suite.balances().record_many([
-        accounts.owner.address(),
-        accounts.user1.address(),
-        accounts.user2.address(),
-        contracts.bank,
-        dead1,
-        dead2,
+        &accounts.owner.address(),
+        &accounts.user1.address(),
+        &accounts.user2.address(),
+        &contracts.bank,
+        &dead1,
+        &dead2,
     ]);
 
     // Owner makes a multi-send to users 1, 2, and the non-existent recipient.
@@ -52,6 +52,7 @@ fn batch_transfer() {
         .events;
 
     // Check the emitted events are correct.
+    // `sent` events:
     {
         let sends = events
             .clone()
@@ -62,6 +63,7 @@ fn batch_transfer() {
             .into_iter()
             .map(|e| e.event.data.deserialize_json::<Sent>().unwrap())
             .collect::<Vec<_>>();
+
         assert!(vectors_have_same_elements(sends, vec![
             Sent {
                 user: accounts.owner.address(),
@@ -93,7 +95,10 @@ fn batch_transfer() {
                 },
             },
         ]));
+    }
 
+    // `received` events:
+    {
         let receives = events
             .clone()
             .search_event::<CheckedContractEvent>()
@@ -103,6 +108,7 @@ fn batch_transfer() {
             .into_iter()
             .map(|e| e.event.data.deserialize_json::<Received>().unwrap())
             .collect::<Vec<_>>();
+
         assert!(vectors_have_same_elements(receives, vec![
             Received {
                 user: accounts.user1.address(),
@@ -134,7 +140,10 @@ fn batch_transfer() {
                 },
             },
         ]));
+    }
 
+    // `transfer_orphaned` events:
+    {
         let orphans = events
             .search_event::<CheckedContractEvent>()
             .with_predicate(|e| e.ty == "transfer_orphaned")
@@ -143,6 +152,7 @@ fn batch_transfer() {
             .into_iter()
             .map(|e| e.event.data.deserialize_json::<TransferOrphaned>().unwrap())
             .collect::<Vec<_>>();
+
         assert!(vectors_have_same_elements(orphans, vec![
             TransferOrphaned {
                 from: accounts.owner.address(),
@@ -163,36 +173,30 @@ fn batch_transfer() {
 
     // Check the balance changes.
     {
-        suite
-            .balances()
-            .should_change(accounts.owner.address(), btree_map! {
-                dango::DENOM.clone() => BalanceChange::Decreased(700),
-                usdc::DENOM.clone() => BalanceChange::Decreased(800),
-            });
+        suite.balances().should_change(&accounts.owner, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(700),
+            usdc::DENOM.clone() => BalanceChange::Decreased(800),
+        });
 
-        suite
-            .balances()
-            .should_change(accounts.user1.address(), btree_map! {
-                dango::DENOM.clone() => BalanceChange::Increased(100),
-            });
+        suite.balances().should_change(&accounts.user1, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(100),
+        });
 
-        suite
-            .balances()
-            .should_change(accounts.user2.address(), btree_map! {
-                dango::DENOM.clone() => BalanceChange::Increased(200),
-                usdc::DENOM.clone() => BalanceChange::Increased(300),
-            });
+        suite.balances().should_change(&accounts.user2, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(200),
+            usdc::DENOM.clone() => BalanceChange::Increased(300),
+        });
 
         // The token that are supposed to go to the non-existing accounts should
         // have been withheld in the bank contract as orphaned transfers.
-        suite.balances().should_change(contracts.bank, btree_map! {
+        suite.balances().should_change(&contracts.bank, btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(400),
             usdc::DENOM.clone() => BalanceChange::Increased(500),
         });
 
         // The non-existing accounts should have no balance.
-        suite.balances().should_change(dead1, btree_map! {});
-        suite.balances().should_change(dead2, btree_map! {});
+        suite.balances().should_change(&dead1, btree_map! {});
+        suite.balances().should_change(&dead2, btree_map! {});
     }
 
     // The orphaned transfers should have been recorded.
