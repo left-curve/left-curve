@@ -20,8 +20,8 @@ type UseSearchBarParameters = {
   debounceMs?: number;
 };
 
-const defaultApplets = Array.from(
-  { length: 4 },
+const applets = Array.from(
+  { length: Object.keys(m).filter((k) => k.includes("applet")).length / 5 },
   (_, i) =>
     ({
       title: m[`applets.${i as 0}.title`](),
@@ -31,6 +31,8 @@ const defaultApplets = Array.from(
       path: m[`applets.${i as 0}.path`](),
     }) as AppletMetadata,
 );
+
+const defaultApplets = applets.slice(0, 4);
 
 const noResult: SearchBarResult = {
   block: undefined,
@@ -71,7 +73,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
 
       setSearchResult({
         applets: fuzzysort
-          .go(searchText, defaultApplets, {
+          .go(searchText, applets, {
             threshold: 0.5,
             all: false,
             keys: ["title", "description", (obj: AppletMetadata) => obj.keywords?.join()],

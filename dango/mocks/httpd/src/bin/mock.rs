@@ -8,6 +8,7 @@ async fn main() -> Result<(), Error> {
         None,
         TestOption::default(),
         true,
+        None,
     )
     .await
 }

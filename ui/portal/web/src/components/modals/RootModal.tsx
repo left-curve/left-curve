@@ -16,6 +16,11 @@ export const Modals = {
   ConfirmSend: "confirm-send",
   ConfirmAccount: "confirm-account",
   SignWithDesktop: "sign-with-desktop",
+  ConfirmSwap: "confirm-swap",
+};
+
+export type ModalRef = {
+  triggerOnClose: () => void;
 };
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
@@ -45,6 +50,14 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("./SignWithDesktop").then(({ SignWithDesktop }) => ({
         default: SignWithDesktop,
+      })),
+    ),
+  },
+  [Modals.ConfirmSwap]: {
+    header: m["dex.swap"](),
+    component: lazy(() =>
+      import("./ConfirmSwap").then(({ ConfirmSwap }) => ({
+        default: ConfirmSwap,
       })),
     ),
   },

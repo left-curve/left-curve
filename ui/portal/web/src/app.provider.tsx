@@ -1,9 +1,10 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { createEventBus, useAccount, useConfig, useStorage } from "@left-curve/store";
+import { createEventBus, useAccount, useAppConfig, useConfig, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
+import { GRAPHQL_URI } from "../store.config";
 import { router } from "./app.router";
 
 import type { AnyCoin } from "@left-curve/store/types";
@@ -41,6 +42,7 @@ export const eventBus = createEventBus<EventBusMap>();
 
 type AppState = {
   router: typeof router;
+  config: ReturnType<typeof useAppConfig>;
   eventBus: typeof eventBus;
   notifications: { type: string; data: any; createdAt: number }[];
   isSidebarVisible: boolean;
@@ -66,8 +68,7 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const { chain, coins: chainsCoins } = useConfig();
-  const coins = chainsCoins[chain.id];
+  const { chain, coins } = useConfig();
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -90,6 +91,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       },
     },
   });
+
+  // App Config
+  const config = useAppConfig();
 
   // App notifications
   const [notifications, setNotifications] = useStorage<
@@ -134,7 +138,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     if (!username) return;
     let client: GraphqlSubscriptionClient | undefined;
     (async () => {
-      client = createClient({ url: chain.urls.indexer });
+      client = createClient({ url: GRAPHQL_URI });
       const subscription = client.iterate({
         query: `subscription($address: String) {
           sentTransfers: transfers(fromAddress: $address) {
@@ -188,6 +192,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     <AppContext.Provider
       value={{
         router,
+        config,
         eventBus,
         notifications,
         isSidebarVisible,

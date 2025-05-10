@@ -1,4 +1,4 @@
-import { CheckCircleIcon, Spinner, XCircleIcon, twMerge } from "@left-curve/applets-kit";
+import { IconCheckedCircle, IconCloseCircle, Spinner, twMerge } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -7,8 +7,8 @@ import type { PropsWithChildren } from "react";
 
 const Indicators = {
   spinner: Spinner,
-  success: CheckCircleIcon,
-  error: XCircleIcon,
+  success: IconCheckedCircle,
+  error: IconCloseCircle,
 };
 
 type IndicatorProps<C extends React.ElementType = React.ElementType> = PropsWithChildren<
@@ -50,8 +50,8 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
         size="sm"
         color="current"
         className={twMerge({
-          "stroke-2 stroke-status-success w-6 h-6": indicator === "success",
-          "stroke-2 stroke-red-bean-400 w-6 h-6": indicator === "error",
+          "text-green-bean-300 w-6 h-6": indicator === "success",
+          "text-red-bean-300 w-6 h-6": indicator === "error",
         })}
       />
     </WrapperComponent>

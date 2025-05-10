@@ -67,7 +67,7 @@ impl HttpClient {
 #[async_trait]
 impl QueryClient for HttpClient {
     type Error = anyhow::Error;
-    type Proof = grug_jmt::Proof;
+    type Proof = grug_types::Proof;
 
     async fn query_app(
         &self,

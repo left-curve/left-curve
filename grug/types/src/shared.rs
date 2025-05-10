@@ -1,5 +1,5 @@
 use {
-    grug_types::{Batch, Order, Record, Storage, extend_one_byte},
+    crate::{Batch, Order, Record, Storage, extend_one_byte},
     std::{
         fmt::Display,
         mem::replace,
@@ -236,7 +236,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage};
+    use {super::*, crate::MockStorage};
 
     fn mock_records(min: u32, max: u32, order: Order) -> Vec<Record> {
         let mut records = vec![];

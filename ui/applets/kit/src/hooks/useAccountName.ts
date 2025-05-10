@@ -1,26 +1,56 @@
-import type { Account } from "@left-curve/dango/types";
-import { useAccount, useStorage } from "@left-curve/store";
+import { useStorage } from "@left-curve/store";
+import { useCallback } from "react";
 
-export type UseAccountNameParameters = {
-  account?: Account;
+import type { Username } from "@left-curve/dango/types";
+type UsernamesInfo = {
+  [username: string]: {
+    lastLogin?: Date;
+    accounts?: {
+      [address: string]: {
+        name: string;
+      };
+    };
+  };
 };
 
-export type UseAccountNameReturnType = [string, (name: string) => void];
+export type UseUsernamesReturnType = {
+  usernames: Username[];
+  info: UsernamesInfo;
+  removeUsername: (name: string) => void;
+  addUsername: (name: string) => void;
+};
 
-export function useAccountName(
-  parameters: UseAccountNameParameters = {},
-): UseAccountNameReturnType {
-  const { account: acc } = useAccount();
-  const [names, setNames] = useStorage<Record<string, string>>("account_names", {
+export function useUsernames(): UseUsernamesReturnType {
+  const [usernameInfo, setUsernameInfo] = useStorage<UsernamesInfo>("app.usernames", {
     initialValue: {},
   });
 
-  const account = parameters.account || acc;
+  const removeUsername = useCallback((username: string) => {
+    setUsernameInfo((prevUsernames) => {
+      const newUsernames = { ...prevUsernames };
+      delete newUsernames[username];
+      return newUsernames;
+    });
+  }, []);
 
-  const name = !account ? "" : names[account?.address] || `${account.type} #${account.index}`;
-  const setName = (name: string) => {
-    if (!account) return;
-    setNames({ ...names, [account.address]: name });
+  const addUsername = useCallback((username: string) => {
+    setUsernameInfo((usernames) => {
+      const userInfo = usernames[username] || {};
+      const newUserInfo = {
+        ...userInfo,
+        lastLogin: new Date(),
+      };
+      return {
+        ...usernames,
+        [username]: newUserInfo,
+      };
+    });
+  }, []);
+
+  return {
+    usernames: Object.keys(usernameInfo),
+    info: usernameInfo,
+    removeUsername,
+    addUsername,
   };
-  return [name, setName];
 }

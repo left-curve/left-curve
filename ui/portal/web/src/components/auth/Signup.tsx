@@ -5,6 +5,7 @@ import {
   IconLeft,
   ResizerContainer,
   Stepper,
+  useUsernames,
   useWizard,
 } from "@left-curve/applets-kit";
 import {
@@ -49,6 +50,7 @@ import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
 import { captureException } from "@sentry/react";
+import { add } from "date-fns";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -370,6 +372,7 @@ const Username: React.FC = () => {
 
 const Signin: React.FC = () => {
   const navigate = useNavigate();
+  const { addUsername } = useUsernames();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
   const { settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
@@ -382,6 +385,7 @@ const Signin: React.FC = () => {
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
+        addUsername(username);
         done();
       },
       onError: (err) => {
