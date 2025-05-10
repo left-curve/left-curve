@@ -1,12 +1,12 @@
 use {
     crate::{
-        GenesisCodes, Preset, TestAccount, TestAccounts,
+        Preset, TestAccount, TestAccounts,
         constants::{
             MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner, user1, user2, user3, user4, user5, user6,
             user7, user8, user9,
         },
     },
-    dango_genesis::{Codes, Contracts, GenesisOption, build_genesis},
+    dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
     grug::{
         BlockInfo, ContractWrapper, Duration, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, HashExt,

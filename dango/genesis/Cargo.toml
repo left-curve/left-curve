@@ -10,9 +10,27 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow          = { workspace = true }
-dango-types     = { workspace = true }
-grug            = { workspace = true }
-hyperlane-types = { workspace = true }
-pyth-types      = { workspace = true }
-serde           = { workspace = true }
+anyhow                = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-account-margin  = { workspace = true, features = ["library"] }
+dango-account-multi   = { workspace = true, features = ["library"] }
+dango-account-spot    = { workspace = true, features = ["library"] }
+dango-bank            = { workspace = true, features = ["library"] }
+dango-dex             = { workspace = true, features = ["library"] }
+dango-gateway         = { workspace = true, features = ["library"] }
+dango-lending         = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
+dango-taxman          = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+dango-vesting         = { workspace = true, features = ["library"] }
+dango-warp            = { workspace = true, features = ["library"] }
+grug                  = { workspace = true }
+grug-vm-hybrid        = { workspace = true }
+grug-vm-rust          = { workspace = true }
+grug-vm-wasm          = { workspace = true }
+hyperlane-ism         = { workspace = true, features = ["library"] }
+hyperlane-mailbox     = { workspace = true, features = ["library"] }
+hyperlane-types       = { workspace = true }
+hyperlane-va          = { workspace = true, features = ["library"] }
+pyth-types            = { workspace = true }
+serde                 = { workspace = true }

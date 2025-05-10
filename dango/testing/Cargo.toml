@@ -13,22 +13,10 @@ version       = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
-dango-account-factory   = { workspace = true, features = ["library"] }
-dango-account-margin    = { workspace = true, features = ["library"] }
-dango-account-multi     = { workspace = true, features = ["library"] }
-dango-account-spot      = { workspace = true, features = ["library"] }
-dango-bank              = { workspace = true, features = ["library"] }
-dango-dex               = { workspace = true, features = ["library"] }
-dango-gateway           = { workspace = true, features = ["library"] }
 dango-genesis           = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["tracing"] }
-dango-lending           = { workspace = true, features = ["library"] }
-dango-oracle            = { workspace = true, features = ["library"] }
 dango-proposal-preparer = { workspace = true }
-dango-taxman            = { workspace = true, features = ["library"] }
 dango-types             = { workspace = true }
-dango-vesting           = { workspace = true, features = ["library"] }
-dango-warp              = { workspace = true, features = ["library"] }
 digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
@@ -39,11 +27,8 @@ grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
-hyperlane-ism           = { workspace = true, features = ["library"] }
-hyperlane-mailbox       = { workspace = true, features = ["library"] }
 hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
-hyperlane-va            = { workspace = true, features = ["library"] }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true, features = ["tracing"] }
 k256                    = { workspace = true }

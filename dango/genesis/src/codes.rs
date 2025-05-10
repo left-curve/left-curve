@@ -1,5 +1,5 @@
 use {
-    dango_genesis::Codes,
+    crate::Codes,
     dango_types::config::Hyperlane,
     grug::{Binary, ContractBuilder, ContractWrapper},
     grug_vm_hybrid::HybridVm,
