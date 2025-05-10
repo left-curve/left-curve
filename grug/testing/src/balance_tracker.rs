@@ -35,14 +35,14 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     /// Record the current balance of a list of accounts.
-    pub fn record_many<I, A>(&mut self, accounts: I)
+    pub fn record_many<'a, I, A>(&mut self, accounts: I)
     where
-        I: IntoIterator<Item = A>,
-        A: Addressable,
+        I: IntoIterator<Item = &'a A>,
+        A: Addressable + 'a,
     {
         let new_balances = accounts
             .into_iter()
-            .map(|addr| (addr.address(), self.suite.query_balances(&addr).unwrap()))
+            .map(|addr| (addr.address(), self.suite.query_balances(addr).unwrap()))
             // collect is needed to avoid borrowing issues
             .collect::<BTreeMap<_, _>>();
 
@@ -50,7 +50,7 @@ where
     }
 
     /// Record the current balance of a single account.
-    pub fn record<A>(&mut self, account: A)
+    pub fn record<A>(&mut self, account: &A)
     where
         A: Addressable,
     {
@@ -70,7 +70,7 @@ where
     }
 
     /// Refresh the balance of a single account.
-    pub fn refresh<A>(&mut self, account: A)
+    pub fn refresh<A>(&mut self, account: &A)
     where
         A: Addressable,
     {
@@ -85,7 +85,7 @@ where
     }
 
     /// Get the changes in balances of an account since the last recorded balances.
-    pub fn changes<A>(&self, account: A) -> BTreeMap<Denom, BalanceChange>
+    pub fn changes<A>(&self, account: &A) -> BTreeMap<Denom, BalanceChange>
     where
         A: Addressable,
     {
@@ -119,11 +119,10 @@ where
     }
 
     /// Assert a list of balance changes for an account.
-    pub fn should_change<A>(&self, account: A, changes: BTreeMap<Denom, BalanceChange>)
+    pub fn should_change<A>(&self, account: &A, changes: BTreeMap<Denom, BalanceChange>)
     where
         A: Addressable,
     {
-        let account = account.address();
         let delta = self.changes(account);
 
         for (denom, change) in changes {
@@ -131,7 +130,10 @@ where
             if change != *diff {
                 panic!(
                     "incorrect balance! account: {}, denom: {}, expected: {:?}, actual: {:?}",
-                    account, denom, change, diff
+                    account.address(),
+                    denom,
+                    change,
+                    diff
                 );
             }
         }
