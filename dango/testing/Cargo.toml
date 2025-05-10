@@ -47,6 +47,7 @@ chrono             = { workspace = true }
 criterion          = { workspace = true }
 dango-auth         = { workspace = true }
 dango-httpd        = { workspace = true }
+dango-oracle       = { workspace = true, features = ["library"] }
 hex                = { workspace = true }
 home               = { workspace = true }
 indexer-disk-saver = { workspace = true }

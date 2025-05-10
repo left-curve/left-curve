@@ -3531,6 +3531,7 @@ dependencies = [
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
+ "dango-oracle",
  "dango-proposal-preparer",
  "dango-types",
  "digest 0.10.7",
