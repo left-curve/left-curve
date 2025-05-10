@@ -3,20 +3,20 @@
 //! environment as the tests.
 
 use {
-    dango_genesis::{GenesisOption, build_genesis},
+    dango_genesis::{GenesisCodes, GenesisOption, build_genesis},
     dango_testing::{
-        GenesisCodes, Preset,
+        Preset,
         constants::{MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP},
     },
     grug::{Inner, Json, JsonDeExt, JsonSerExt},
-    grug_vm_hybrid::HybridVm,
+    grug_vm_rust::RustVm,
     home::home_dir,
     std::fs,
 };
 
 fn main() {
     let (genesis_state, contracts, addresses) =
-        build_genesis(HybridVm::genesis_codes(), GenesisOption::preset_test()).unwrap();
+        build_genesis(RustVm::genesis_codes(), GenesisOption::preset_test()).unwrap();
 
     println!(
         "genesis_state = {}",

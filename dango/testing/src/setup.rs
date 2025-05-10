@@ -149,8 +149,8 @@ pub fn setup_benchmark_hybrid(
     Codes<ContractWrapper>,
     Contracts,
 ) {
-    let codes = HybridVm::genesis_codes();
     let db = DiskDb::open(dir).unwrap();
+    let codes = HybridVm::genesis_codes();
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
         codes.account_margin.to_bytes().hash256(),
