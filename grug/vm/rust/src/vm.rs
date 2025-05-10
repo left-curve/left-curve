@@ -268,10 +268,10 @@ impl Instance for RustInstance {
 mod tests {
     use {
         crate::{ContractBuilder, RustVm},
-        grug_app::{GasTracker, Instance, QuerierProviderImpl, Shared, StorageProvider, Vm},
+        grug_app::{GasTracker, Instance, QuerierProviderImpl, StorageProvider, Vm},
         grug_types::{
             Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
-            Storage, Timestamp,
+            Shared, Storage, Timestamp,
         },
         test_case::test_case,
     };

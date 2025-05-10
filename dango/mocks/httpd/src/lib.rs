@@ -22,15 +22,23 @@ pub async fn run<T>(
     test_opt: TestOption,
     genesis_opt: GenesisOption<T>,
     keep_blocks: bool,
-) -> Result<(), Error>
-where
-    T: Clone + Into<Binary>,
-{
+    database_url: Option<String>,
+) -> Result<(), Error> {
     setup_tracing_subscriber(Level::INFO);
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let codes = build_rust_codes();
+
+    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
+
+    let indexer = if let Some(url) = database_url {
+        indexer.with_database_url(url)
+    } else {
+        indexer.with_memory_database()
+    };
+
+    let indexer = indexer
         .with_keep_blocks(keep_blocks)
-        .with_memory_database()
+        .with_sqlx_pubsub()
         .with_tmpdir()
         .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()?;

@@ -13,6 +13,7 @@ async fn main() -> Result<(), Error> {
         TestOption::default(),
         GenesisOption::preset_test(),
         true,
+        None,
     )
     .await
 }

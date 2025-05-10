@@ -20,6 +20,7 @@
     "hi": "Hi",
     "to": "To",
     "error": "Error",
+    "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
@@ -119,6 +120,13 @@
       "description": "Create subaccounts.",
       "path": "/create-account",
       "keywords": "account,create,register"
+    },
+    "4": {
+      "img": "/images/emojis/simple/spot.svg",
+      "title": "Simple Swap",
+      "description": "Swap tokens",
+      "path": "/swap",
+      "keywords": "swap,trade,simple"
     }
   },
   "explorer": {
@@ -208,6 +216,11 @@
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
+    "forgotUsername": "Forgot my username",
+    "useAnotherAccount": "Use another account",
+    "rememberUsername": {
+      "lastLogin": "Last login: {time}"
+    },
     "errors": {
       "failedSignInWithDesktop": "Failed to sign in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
@@ -469,6 +482,24 @@
     "accounts": {
       "otherAccounts": "Other Accounts",
       "addAccount": "Add Account"
+    }
+  },
+  "dex": {
+    "fee": "Fee",
+    "apy": "APY",
+    "tvl": "TVL",
+    "24h": "24h",
+    "swap": "Swap",
+    "swapping": "Swapping",
+    "simpleSwap": {
+      "swapSuccessfully": "Swap Successfully",
+      "youGet": "You get",
+      "youSwap": "You swap",
+      "priceImpact": "Price Impact",
+      "slippage": "Max Slippage",
+      "errors": {
+        "failure": "Swap failed"
+      }
     }
   },
   "validations": {

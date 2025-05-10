@@ -116,7 +116,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     type Error = anyhow::Error;
-    type Proof = grug_jmt::Proof;
+    type Proof = grug_types::Proof;
 
     async fn query_app(
         &self,

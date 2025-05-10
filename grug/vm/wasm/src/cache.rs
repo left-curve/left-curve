@@ -1,8 +1,7 @@
 use {
     crate::VmResult,
     clru::CLruCache,
-    grug_app::Shared,
-    grug_types::Hash256,
+    grug_types::{Hash256, Shared},
     std::num::NonZeroUsize,
     wasmer::{Engine, Module},
 };

@@ -19,8 +19,8 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
     const { hideModal, settings } = useApp();
     const { formatNumberOptions } = settings;
 
-    const { coins, state } = useConfig();
-    const coin = coins[state.chainId][denom];
+    const { coins } = useConfig();
+    const coin = coins[denom];
 
     const { getPrice } = usePrices();
 
