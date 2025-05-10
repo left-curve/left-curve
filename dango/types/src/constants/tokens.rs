@@ -6,7 +6,7 @@ use {
 pub mod dango {
     use super::*;
 
-    pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["dango"]));
+    pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["dango"]));
 }
 
 macro_rules! define_denom {
@@ -14,9 +14,9 @@ macro_rules! define_denom {
         pub mod $name {
             use super::*;
 
-            pub const SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked(stringify!($name)));
+            pub static SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked(stringify!($name)));
 
-            pub const DENOM: LazyLock<Denom> = LazyLock::new(|| {
+            pub static DENOM: LazyLock<Denom> = LazyLock::new(|| {
                 Denom::from_parts([crate::gateway::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
             });
         }

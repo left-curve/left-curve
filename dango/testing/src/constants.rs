@@ -19,7 +19,8 @@ macro_rules! mock_user {
         pub mod $username {
             use super::*;
 
-            pub const USERNAME: LazyLock<Username> = LazyLock::new(|| Username::new_unchecked(stringify!($username)));
+            pub static USERNAME: LazyLock<Username> = LazyLock::new(|| Username::new_unchecked(stringify!($username)));
+
             pub const PUBLIC_KEY: [u8; 33] = hex!($vk);
             pub const PRIVATE_KEY: [u8; 32] = hex!($sk);
         }
