@@ -1,8 +1,5 @@
 use {
-    crate::constants::{
-        MOCK_HYPERLANE_DANGO_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES, owner, user1, user2,
-        user3, user4, user5, user6, user7, user8, user9,
-    },
+    crate::constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
     dango_genesis::{
         AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
         GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
@@ -18,6 +15,9 @@ use {
     grug::{
         Bounded, Coin, Denom, Duration, HashExt, LengthBounded, NumberConst, Udec128, Uint128,
         btree_map, btree_set, coins,
+    },
+    hyperlane_testing::constants::{
+        MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
     },
     hyperlane_types::{
         constants::{arbitrum, base, ethereum, optimism, solana},
@@ -327,7 +327,7 @@ impl Preset for HyperlaneOption {
         };
 
         HyperlaneOption {
-            local_domain: MOCK_HYPERLANE_DANGO_DOMAIN,
+            local_domain: MOCK_HYPERLANE_LOCAL_DOMAIN,
             ism_validator_sets: btree_map! {
                 arbitrum::DOMAIN => mock_validator_set.clone(),
                 base::DOMAIN     => mock_validator_set.clone(),

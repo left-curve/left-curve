@@ -41,6 +41,7 @@ grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-ism           = { workspace = true, features = ["library"] }
 hyperlane-mailbox       = { workspace = true, features = ["library"] }
+hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
 hyperlane-va            = { workspace = true, features = ["library"] }
 indexer-httpd           = { workspace = true }

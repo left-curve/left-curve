@@ -3542,6 +3542,7 @@ dependencies = [
  "home",
  "hyperlane-ism",
  "hyperlane-mailbox",
+ "hyperlane-testing",
  "hyperlane-types",
  "hyperlane-va",
  "indexer-disk-saver",
@@ -5328,6 +5329,18 @@ dependencies = [
  "anyhow",
  "grug",
  "hyperlane-types",
+]
+
+[[package]]
+name = "hyperlane-testing"
+version = "0.0.0"
+dependencies = [
+ "grug",
+ "grug-app",
+ "grug-crypto",
+ "hex-literal",
+ "hyperlane-types",
+ "k256",
 ]
 
 [[package]]
