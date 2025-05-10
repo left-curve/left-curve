@@ -2,10 +2,7 @@ use {
     dango_oracle::PRICES,
     dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
-        constants::{
-            ATOM_DENOM, BNB_DENOM, BTC_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM,
-            USDC_DENOM, WBTC_DENOM, XRP_DENOM,
-        },
+        constants::{atom, bnb, btc, doge, eth, sol, usdc, xrp},
         oracle::{ExecuteMsg, PrecisionlessPrice, Price, QueryPriceRequest},
     },
     grug::{
@@ -15,30 +12,39 @@ use {
     grug_app::NaiveProposalPreparer,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, PythId, PythVaa,
-        SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
+        PythId, PythVaa,
+        constants::{
+            ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, SOL_USD_ID,
+            USDC_USD_ID, XRP_USD_ID,
+        },
     },
     std::{cmp::Ordering, collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
-/// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
-/// - price: **6864578657006**
-/// - publish_time: **1730804420**
-const VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBnC+7yOL2qsxrpxHzhTnaruVWTSfjBRIF7sk1bJUZzj3s7wZyytPTHtoxXFQaFFSCgVpCXeLdeHuN3ZM2LOvQMAAMOXaxpZYUuwjEhbN8yP3wfgSDdaFgiS0Abr1Hyf29BX1sYEEH82xUVspIdEv7DBves+XjKJWWnZ51De4KMmDqgAQR9ExeR/D3QbvfFarB73jLQ+QKGS0tb50229RyjKCHv2VbRJL5go04kePmSqLjqjhBn/IBx2Rr1W16DF9fKV2h+AAaPsmegjpPIfPIDZwqMcgvNfXqG77+8RYSH95azsCTMEFOaQVtJGJbjQUWdSrlqXukLgxIxf6yKdzp7sOBNFFVdAAhXAe1EFhONyQgWDnViECw7DbvmwNtjJ2xM/DslvZ2RJVA46pZ5St6IKyK2Ucqq/0Hu2nC1CEB39Rtcvu0Sm6DCAQpyh2KzwK+i9CtzyZNYfRFn+esWmnSHpoZrBYLgxayqtRIiTPetE3hudyHUxm4xk7CfcBrRD8uThsny1YHeiQpiAQtcR4XqjxUWHNLXsMaqaF3B/pskIjxVjWEiDkJCIpqoJFn8tktkDh00XREbZ68SUhUQQ1/S6icJLUIQt2Rf4cy5AAwJVyMi0NmjVs0X5NYzwO1Uk6Yfx96HQtibi9gPiCR4gXTW0udFzqvQ2u2xiiXonGjmaRMW86hm/6kx08d341PTAQ2ypzyZJiPhPZAo4I2IJtdjkq72uyR4lL1kqaIGupLxtCq36i1tD61Yjt3HRruBuVvHqjC60xDvWIVQL6UAHAu9AQ7wH5SeZ1ra473yrfVGIEtuGSh0iITJ3Tnzh+4IJMdnvjFARCrxHLmne50gjYcG+CQYSHl/TJ+fElFtiDx43ouGABCT8qRJAJYpusR2A1mGXDX/oBSq0NoaKKr7u4c8zLDsLWUudBRRVkDS4281f+GuQupa5eRPKdDHXt40lFY5V+FWABEcD+ka2buu8h4ZAK9gWcOhe9Ms0COktqchnwS3oZV7lXXcZM1K+LKc+gKshOln7r3JC1UrkcjJa6gy9v5Ka9YTARIYLaAd0TkttKtK9hoALKRTkEqpqgtvBLqJA9qW1UDYoAZksJo2X0th7lFdIZJQsCIkDxqedbuS1H7EQ7Im6XUHAGcp+sQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFcADhAUFVV1YAAAAAAAp8yzcAACcQXNrQIBXy4Cs6ul3jv4wlMishtwkBAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAY+SMW67gAAAAI/1aJY////+AAAAABnKfrEAAAAAGcp+sQAAAY+IAqHoAAAAAIKJkDECnJa8p4N3HJckOG0/XBHQ4HSCFfFvzHVwHvYJ9V5NPKGlOHwUp0GbOXWbNIMhSmoX+hk8FUMlP6NlHHbf8S2YxVixm+nMOOrhtH9+3bMQQh26XE6/E5UIoNgScjtRRQ32qtHxrU1ezhAhHmTAAD07E8S/ACc8F8xjDAZgLgjSFLHptczUSe1wR5IrrbZQRQhERagNdCcBUp8S5wl7VAQBPqprw5ZZ6dvI0y/P8UaldqRoa8eN47BbGvH/12oNzfcUiLjHCFciAwc";
+// Get Pyth data using the API:
+// - https://hermes.pyth.network/api/get_price_feed?id=[price_feed_id]&publish_time=[publish_time_in_unix_timestamp]
+// - https://hermes.pyth.network/api/get_vaa?id=[price_feed_id]&publish_time=[publish_time_in_unix_timestamp]
 
-/// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
-/// - price: **7131950295749**
-/// - publish_time: **1730209108**
-const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw/qtQ/jX44qUBV+Du+woo5lWLrE1ttnAPfwv9aftKy/r0pz0OdAQP25Bjy5Hx3MaOEF49sx+OrA6fxSNtBIxEkZ/wqznQAvlNE86loIz2osKoAWYeCg9FjU/8A2CmZZhcyXb4Cf+beAQSN829+7wKOw6tdMnKwtiYKdXL1yo1uP10iZ3EhU2M4cxrD0xYKA0pkb9hmhRo+zHrOY9pyTGXAsz7FjlI+gvgCAQa5MiGBgMRLFGW0fTd+bqc+isCQDbhgm/99yNkVaDt40ASST8CfH5zp4Xim5l5Yhs+/HMpeFSuTNULeDXsTO2FaAAjaPzeC8Bie6n154BaKA+45xn0lDa0epmVZs16zVCkKczSUNVG5e5VZe6N8edT+dVicoZYT9tgHJn2WDIjcpRv7AAsc0fdXE42zolp1Dhg1XVL5oe6NeTZi2Beu2ecv5FkvtCwm9dytTv6C359wJqUZLbZVaqOU9CEVbBvTzbKAm/tQAAx12qSCdkLtlJZAmhhrCvW56375q1Dy74L417r+GhDgYRqPCNWyaY7azRFfOwahxc9ECZgHj1aJg0bk395+JhTnAQ2K/IC6aRcSpPd+SfbWnfPtdJTdJFw5QCS50FbBfxxmqBTcG8E8fyYyCz5SGC8rtXgrBi+cQZe8FgW4CoLXXxC+AQ7TotPy0p9aHpwlIrXvu9B2nThByrwd4icwnOfQsUDHcG65PXWvu9nc1o5EK6SImnv+AmIu+RID2MnyTavsGEMpAA/XdQHG8mkgdWlZ1w7fg2MBs3fa0VxIlKc1DuaBdZVZEjrnB4gE15oqMZ21Bt8ji6r6J+ar/9K46EUeYC2t6CuBARDpRTI9ZZlh0MvxIbxRkuAgtRTv8oNrSz4sQJMNbhWdswTmqQQMZjtdJwGWepaAGhnEiuF/JgIr20AnDxCWbolgABGwVILVFDCHnLV54/bIdXUEiigPZvsKcDxLpOoJ722xZT1cXwXoBmwQ2lXQxGOjyj8VvgAt2kZJNbGc77+pmsqdABIFwK9Dc5BLxz+dXztA5bPMcEKkfZ18t7HPZ9BVQN7f1Cw4XcBZDSRR0MM6tqeBYvLJZhDMbt2Ax0m0+RlzQTZyAWcg5VQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFWSo1AUFVV1YAAAAAAApl86sAACcQTdtYrFsURmdX9JeZM/nLGOdGy18BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZ8iV0qxQAAAAIvYnVX////+AAAAABnIOVUAAAAAGcg5VQAAAZ3rChYAAAAAAIykC3MCknCJZOvI3H3Ijt5NftDL77S253kTxg9ywpWvf3kzbZeQqXixw7K/fcAEWCww773jqhfS4CdRyUc38SMv+DhHywJbnUSyzFEWOTBVmVuvEtt6xWOTDMifAi8cAX0cBtZOyeIeLytWSqkMVYhtbm0gKCLnjtBEKLg/zEHSL48Ndm9VTihIpe8REto4Pf2MjlxRY6Smgw2TMZCJTCEj2869KzQsQhVSH4VmOJNJpevlYaqeFmJ7WDOC1tFWrVulGSZ/nIt63NKB+JP";
+/// - asset: BTC-USD
+/// - id: `0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43`
+/// - price: `6874484759622`
+/// - publish_time: `1730804420` (newer than `VAA_2`)
+const VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQCcOi+hJ/yXuwFGhbNZuHWJOkYjF5s9LSRt0Y5hxb4NsxhlI7ACopeSsDE2gzNQx7B9ttrjtlVoojyNojkZW6gMAANzL+bMmo1R177GxmrK5+pdk5p8WJ0Ma7tHzz6/0Qpxw0i3Ompvj7+RulfIOnXKuqOcBCTSwTlk/ORgtOExIlUxAAQanXTR9nmps1gdBsXypwpI9+MJHeRaXRFRCTZAXZ3yJwL7CCYMbLc7gEVjKHlcza9nW4WbQzD9gizNz6y38kEXAAZmh7DytS72sivVU4Yh6+Oehithu7r6l5IPK4teinQ1gg9F89+SlKn9Y66ua8RfsFg0Aq97lLZK3xXEMms+7KFGAQggk74AariGC6+rwJ3xtVudtK8sG9X6Nb1u5YIO54/CckbdStm6A70VwYxx0ipUF/sKv+jVM4qpOUf9RzBpK7x7AQpiPs1IBwNQdsGIWClk9Hl9wanAP6j72KOB6klxxbMOAXrJTq+nqVEH3Q+pLEF023bpN00T+h9Uv6RS6orZRR8WAAup2fZAibgwJFDON39VXm3miz/biMyObbAtg4KXlGJJbkeHsdCe9WmCewP6OHSRd8U3zqgO895/e8nKQCwAI+2+AQ34VzNIFYz8BrNjPHfaPAOJDJD4uIJtcc3cqIPGBlUtDQIpZ8t04wM52Q9HSvlccMetPUAd+33xGhHVwOGlfrf2AQ6A3RBpZncC/cNA+xIzRXkeuv5Clc7Mi7RVOvEU9qacHAR03/+YPIvfCoqom62gvZneouvjI4t024WtUMYk/SS1AQ+sNZm0d9CiUUv3/8wQA2You7oUqhGyKhCeN8LHJG5q5wj5oA80zQWGyJIFPb1m9Z1zFgLpD8fbnpx+GL8zcKvQABBey7usumroT11PS4qojzgOX8wXQrlGq9h3ArytYSra4AD68UcVlogUvm8vOEaPOAUOolSiDpQGQESoeQU5aV7hABGW+0LI5vWl4IKfKp7BCeRwNzYDpjakRnaDst2EqCdYGk5J2M2KNc0M7YFPpMI3KipHJaKqVxpR46mYA/oBcmRZARLeIcwyU/IsTBW32MJfvjV1NPboTHvrkLgPjAwzbnCs2wClWGA5HCRz8JBo3KNId0Ss1Qf0O4tjsE4q9VOR3/pDAGcp+sQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFcADfAUFVV1YAAAAAAAp8yzUAACcQgoeGpiDCic4NIzrM5kpVCCwrHscBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAZAlzjcRgAAAAC6bl+r////+AAAAABnKfrEAAAAAGcp+sMAAAZAecSVQAAAAADqMpj0Cv023fUYzNkP+nDFgJnmLkV6UfLSe4N4x8IBYYceZhJ+Tf8gU9sr6LZqen524pNyeAR0BX7LKymw6MBzE/OHD/rWwb8CQA1dPOUCGOrKYyiLpg64c/JsvzP3m8bU+TgoyM6INtSWKMUG64u1VHNVyEhG6678eNuEnk9vo1DaPxm+hQ/+6vjfB2goVzlDc7XxAwMis9WWgontBXMmltVo8EUdFXQALsLE74dnZYz2p5d4POgi0TSdgkCpSKEPmKz37zuTQuqQedl7";
+
+/// - asset: BTC-USD
+/// - id: `0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43`
+/// - price: `7140518251230`
+/// - publish_time: `1730209108` (older than `VAA_1`)
+const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQCjLDRdqK3N7OQYMpyXtLW6NKSo3YCfYuACOY0+dqOVhFSUy/G9IE2V4lAtgw45G+gnTiYzvqAzI+Nsn/CqiXhTAAIG9CeuTb3mHRhTMvuKIovaNiaqGByiEcGgktVrzGFDuiDUCz6gLHYpo4fvMu3VntsrR0D/fJEE6MKsQ5fkqnxmAAP8omFTZqYdLehi92469mNVP34lPIvgKe+4uS+DoGSEHCaQ3FvdCwNh/wrzlYzSIfCSpR4wiRmDQD8M3OGjTq8SAAS9mHRePZ9DIkuKNKdTNJg4Sfj4v8P+tgI8P12sEkrMkAoBeRe3SDs3+E+bp2QF9vD2zbkpZ8CFLeGykR3rRCqyAAbSPt1zSDnqW60YvS6irWN37lN9Z7PDs5n0pk/52Zq5lS2eni8JZrw3CMu/T0sHC1eLwzXOSztGlRj+6HwvEFOqAAiJzRd5pn0sZbv2vvv6Ot2+E/ZYSaSSz1MO2p3BGDpWomVqDPCyMRsSZHOqAs1YCPHD1fSspK1IBw+EWdSWOrILAAqe3YuGv5rwe2Kk8FWKpgAyI0+0R9CYm3Kt6GOpixST2zLdOFymTCYmVUbmPUVjlB+6Fb0jo4IVXkOT19mZkMqKAAvyP9U1p4QaaU52R1sod0Fj8Ub2MWJGsxpJ841cH2h6FmteTBYLft8NKW2GIatJsEOtylVoT6fvHTgz8A4wgf1VAQw4HfkNRPXNRdyQLNlkTFbAk/kSHLL1UD8nKCauZHoGonNAWh9qvZimaGfmOD4uiKppUd+ZhMMvsXDtijNzhuy6AQ2clWsOjtX/cIHYXKQarWNkjpAcTGtYxWKvUR3HKm1xLyix6MTMBDe8DgsUu64bK+9h6NzJERgrKTn6LPCmdelZAQ6SU9niLq7hdRssDBOOWq1MoCTVlrIRgj1PzU2cz1IqsUrX6FNZKzy7TR1aEGAGdP4F5HZQ8EDG3Asd1g7cfX/OAQ8O+izE/1/ehjrpaUkbswwEPWZUjlRaWlDA/tfxHGuhEXEoQA9XNObJbVlTnQ5qIMG8L9IpHeiscg/ix7qlVBTCARHn1hu4yxqwmE2KnxckZ27glAFIzWnGw4lmM0LJ2bwF7XLprLSpbtWepW++FXiXQZyIN9w+WWmq/SmbN8qWvBgkAGcg5VQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFWSo0AUFVV1YAAAAAAApl86oAACcQyn8+aUYc39L5VyEjcX80wtkEAzEBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAZ+iA3K3gAAAAEkZi9F////+AAAAABnIOVUAAAAAGcg5VMAAAZ5MEd5gAAAAAEC5k7gCtpb6OPLmKjcp4u0Hp6m6S4AMylc/ct/p8EMdXifhgspJtnrp8/EAkaySBRkp3r0WWDhLdjMneaKbjE2JI1pP52yG4Fpuq5NDMRdZDUXZZE00xaK2MFLQ0YgHU7ik6wSd0WMYkcni/OpimZSpiWoGl9LZnGwfpXjRyLeKGU6BCG38rquwNi32y2fAzvgf5FUUVDVC3WQDnWUB4+J/nbP646X24XJwE+ecDE/AMNwYki4Eq+Rhnobfk7JItlRJiqiCLcJC7CMeHiY";
 
 /// BTC_USD_ID
-/// This data have same publish_time but different price and different sequence,
+/// This data have same `publish_time` but different price and different sequence,
 /// to test the update logic inside the oracle.
 const OLD_VAA: &str = "UE5BVQEAAAADuAEAAAAEDQC1PrJvEJdrAATLXCaO9KPKy8jg60pFB+/dG5WeLIjHyw8uUxNF/UQ54R2oBxGF97NHwHRZtF0/Sra0XBijMAuOAALeIiPvZN3bcnWRMAqSwZCUYN/SZ79xHQhJQ07rM85SHVzUYMo5LCiuV1h0O9tvA5kmyABfyV2a3Y7eQZoroInKAAN6LJGqKqSo6ZaSCMVBZ+6tQ+Tr4+IgUrzlxIg/kCfZoVZbgTKiBmt1iDhcLkwC+bWOxHpHloqISFpPJOXDuCBGAAT9vCGgUCSflqT/muUoQ5qFtC14RaTWjVw6CKINncZntA2cN/yJw6A+Xs5U/DU+bmN35PxGzD6q7FjFb5X9qbqhAQZ/wwZDiZCdVa3ra9I6CQ+e6SSulXxUTj/bZFd+5ijKpR0CCOIa+aqYIUyACSGjh2HZdo4b74kGEWmBU84qHkszAAg1p30sJ8vyw9W38JrZd+OnOBfxiii0Y12+xZWbzdWrfibFvYiuJkxGdWm+G5pUie+hrgC8rv/Gr37Vup6U2JOIAQvMUewdWzGDQ4RdJlG9JE46eZwY6+tXVvcPN3HWGpialyJUtpbFzU2A+lYiP1U+me1HX+LsUXLLgtxCyUYfSvY1AQwBEE2estPGKI3D55X+U5lazI5vLEbqN+3Ek9HfChwr0VDHpvtOcxvxFAuC7A05KkgtJ2DlDGqQzjSCMIqLunhLAQ0ImWBmzfbh71buxjRd3pcx2u0vBr22b3hZmdvgosd4kQUYiXmQqqSdYEUAsYsI8lS6IY5tKmmt5Ne3Db1cfkLiAQ5fwFgtmfxP9vhNzQH9wSDy3uGWeTY8QT6Nth4WorwqPwHIoLJ5GoPQmhmQ+Lamm1iRZkHkeiWMcJFmrXvjMs60AQ9t6nrW9X8iPHXhJidZkc30tXZTbte6HFu4wd+d2r9P/DrmqeuX0Z1ImR1h3PXhO8+llZcYymepesPG7oYYdNebARDK6B2HQ+YqZy39uLSvv9Ixc5PAFVE3Es69ZOIIzyNqPhO3XnlPYBPpBuC9bzXhxacenfk9++YnO7wsVTAjarfmARG5FUbdJ3/pnJC1hfeXgDg9ZWu1vhXSJAPgOpJLlIhvaTgZk7JWSMBaOALtD8yaea6t16LM4XDzdeWrUdGFgBLAAGfUI2QAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAHG0BzAUFVV1YAAAAAAAwoR/4AACcQHJX9oR7eAJ3kDAJmGcmHXSG1M8QBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAeXyVYyXAAAAAC5aSAk////+AAAAABn1CNkAAAAAGfUI2MAAAeRixECAAAAAAC1MsVIDGVIb4bQKzzTbGYwasa37r9mN/OGqfaDpf2gg0Je0EyRbd7dDLTzEhSNqJBsntjW9sMHHu0TOkqpJI7ygjPSNAO2qbAU4lj8KAUFRZ1hP4SISP2UX0V5NrhALGOCWnTQErcCdy6Gm6orqVJhq/jLQ0Jljvzq9N38b/tmDKeyzJl3MufHg80fBOppdw5W4zJg54UZl1gqb6JGeE5vMPDoze5fZ2UbOWtcwS/HfHEq0JvH3z9zbS5Kt8brXfQbODqiWLmHQPIf+w+xe147+bsQ/2jd3Kigq7h6O1wbrI8xHT1QhxhdBItjPhUO7U6SCAW+5A==";
 const NEW_VAA: &str = "UE5BVQEAAAADuAEAAAAEDQDJVzkTXJ/xX0Z6yCF9CeCDwGIskGvr0dgHi5DHq+ZiWHS/fqNgstRz7U0k50dTMJak7JOmQePRMWa0abZ4OQv8AQJEfiU38lpjC5mwmbFkdiNU7M3FxdcmEyXqCWHclPbJEDyfgDYamXDQfIbsEzjtf959ZGhbqjmqWQ86zkOcU6pEAANeXPg2UPUQvAiP1l6HDQhkcgu8VHiNJorAWboTw+LwtwotgE4JuvZFCCcNI/gbdFND+Cf7kDulUMd+SNXxlcWLAASXfzh0K3S79739gQXlJ7lK5jdv33I4U70Ma+5COdN5MkhPP+wcYc4ZNCNkC6GhwMknxmbDGcxUVlge9CmdmBfLAAYQ/2bhKpo4fdPHExfK9gl74JGIDkkJMv8D9OXjVQBVEnutA2ucSYtFFmdPoFW8Od4k5vrO0XiVnpajYdhtA/DNAQh0nCn4dmbGvp5uQfRTQ+b7IivCtOSusaIIlN0ippA1E0pxERsyngqICHH4NJazflsgqWbo6KxzuTf7UkMEEF9gAQrhy+VQDRgIjUns3BLueS3DstsrBkKaglXFtqjM+GSU5l+8vqGOSl2gLGU3KCOLYt5FKzrr9BenG+Fr2DKfHHuQAAwPN3YKI48TY7o0d7dKws5Uv9IG2ILMF7+SZU1gd4/ydjSpYADn6msqab1d9+q+tkaW5DPi1f+p93Wh3Kr8eYygAQ3LCDbzf7z/nsDesRUmEyv944SYqa+AHOEWDAMhNfu6qgM8DkvJROK6vcgF9+SrfJN/0W+l3RCR1GfRyTMSMFLtAA6n1JaDtwLbcmgmCfnDIzeP2HF8LktHJiHNxSbAtFLFjneL+8fz69eSBqEX8Szm7vWWTkuVzLfVPoqfSzDsFdsNAA8ds4VTQTUvVMTRr6OUDkYZmFFHf9S6Z9Aan94Fr08CT0k7jv80Csk6sfa55Zd5e+/llRR4YOVtC0SXfKtmhmnIABDIgEd/lNqC8c8s5A9sJwklvjbdDheNroZ1A3hCBq017CqGHjweC1Cd3byISTVpV+Rpl4Hg8VK3R+PgaNwRwT1vARHeO2usqEiKywPA+GgMGfQSYOkYXQkzZ80CB0i37KHgIlbqrDaBYzE/WD/0ugcetCE2saF2quy2+eVddIeazgfWAGfUI2QAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAHG0B0AUFVV1YAAAAAAAwoR/8AACcQ6c3sPfMBZYx5zE2zbC46nih06gIBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAeXzlFGBwAAAAC7lRp5////+AAAAABn1CNkAAAAAGfUI2QAAAeRi0Zp4AAAAAC1MvW4DEFMNDUv+h3foglPFliT76Pd9cXmhIjNtClQyN06tX+QlUXpaO/a8IRr/9eZMk1j8T/WdU1ITKEvwDSbkpCWAsqvPeRstBPAtUZvVYk9BkTVCcES9uDSDc9jFPlJBp23zY1+TZb1wC8bZjn+qhDAM7kytlpRBMLGLuJWmqGEOheF82gcxQNlG+V+sh9lxwHJekKJiW0Ni/PxM53JqM/o6M+MtkYZIgLRL8nrDSGG4DxSJ/iIvl9fgTfa8tmWGI+pw96LtQw4GywuNjFAKbdHpaHNSiV/uNB22f7MoV1I8rscwQLmrRbopdKLYQRHGk3apg==";
 
 fn setup_oracle_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
-    let (suite, accounts, _, contracts) = setup_test_naive();
+    let (suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
     (suite, accounts, contracts.oracle)
 }
 
@@ -61,18 +67,18 @@ fn oracle() {
 
         let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: WBTC_DENOM.clone(),
+                denom: btc::DENOM.clone(),
             })
             .unwrap();
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("71319.50295749").unwrap()
+            Udec128::from_str("71405.18251230").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("71110.59200000").unwrap()
+            Udec128::from_str("71175.70800000").unwrap()
         );
 
         assert_eq!(current_price.precision(), 8);
@@ -80,7 +86,7 @@ fn oracle() {
         assert_eq!(current_price.timestamp, 1730209108);
     }
 
-    // Push an updated_price
+    // Push an updated price
     {
         suite
             .execute(
@@ -95,18 +101,18 @@ fn oracle() {
 
         let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: WBTC_DENOM.clone(),
+                denom: btc::DENOM.clone(),
             })
             .unwrap();
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("68645.78657006").unwrap()
+            Udec128::from_str("68744.84759622").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("68638.95300000").unwrap()
+            Udec128::from_str("68739.90600000").unwrap()
         );
 
         assert_eq!(current_price.timestamp, 1730804420);
@@ -127,18 +133,18 @@ fn oracle() {
 
         let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: WBTC_DENOM.clone(),
+                denom: btc::DENOM.clone(),
             })
             .unwrap();
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("68645.78657006").unwrap()
+            Udec128::from_str("68744.84759622").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("68638.95300000").unwrap()
+            Udec128::from_str("68739.90600000").unwrap()
         );
 
         assert_eq!(current_price.timestamp, 1730804420);
@@ -152,15 +158,14 @@ fn multiple_vaas() {
     let pyth_client = PythClientCache::new(PYTH_URL).unwrap();
 
     let id_denoms = btree_map! {
-        ATOM_USD_ID => ATOM_DENOM.clone(),
-        BNB_USD_ID  => BNB_DENOM.clone(),
-        DOGE_USD_ID => DOGE_DENOM.clone(),
-        ETH_USD_ID  => ETH_DENOM.clone(),
-        SHIB_USD_ID => SHIB_DENOM.clone(),
-        SOL_USD_ID  => SOL_DENOM.clone(),
-        USDC_USD_ID => USDC_DENOM.clone(),
-        BTC_USD_ID  => BTC_DENOM.clone(),
-        XRP_USD_ID  => XRP_DENOM.clone(),
+        ATOM_USD_ID => atom::DENOM.clone(),
+        BNB_USD_ID  => bnb::DENOM.clone(),
+        BTC_USD_ID  => btc::DENOM.clone(),
+        DOGE_USD_ID => doge::DENOM.clone(),
+        ETH_USD_ID  => eth::DENOM.clone(),
+        SOL_USD_ID  => sol::DENOM.clone(),
+        USDC_USD_ID => usdc::DENOM.clone(),
+        XRP_USD_ID  => xrp::DENOM.clone(),
     };
 
     let ids = NonEmpty::new_unchecked(id_denoms.keys().cloned().collect::<Vec<_>>());
