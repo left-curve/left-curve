@@ -3,8 +3,7 @@ use {
         constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
         eth_utils,
     },
-    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, hash_map},
-    grug_app::Shared,
+    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared, hash_map},
     grug_crypto::Identity256,
     hyperlane_types::{
         Addr32, IncrementalMerkleTree,
