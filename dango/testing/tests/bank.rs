@@ -11,14 +11,13 @@ use {
     },
     grug::{
         Addressable, BalanceChange, CheckedContractEvent, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, Uint128, addr, btree_map, coins, setup_tracing_subscriber,
+        SearchEvent, Uint128, addr, btree_map, coins,
     },
     hyperlane_types::constants::ethereum,
 };
 
 #[test]
 fn batch_transfer() {
-    setup_tracing_subscriber(tracing::Level::INFO);
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
         // Give the owner some USDC from Ethereum to spend.
         bridge_ops: Some(|accounts| {
