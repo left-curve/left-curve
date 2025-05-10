@@ -51,6 +51,7 @@ impl Default for AppConfig {
 pub struct AppAddresses {
     pub account_factory: Addr,
     pub dex: Addr,
+    pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
@@ -65,6 +66,7 @@ impl Default for AppAddresses {
         AppAddresses {
             account_factory: Addr::mock(0),
             dex: Addr::mock(0),
+            gateway: Addr::mock(0),
             hyperlane: Hyperlane::default(),
             lending: Addr::mock(0),
             oracle: Addr::mock(0),

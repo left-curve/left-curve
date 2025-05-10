@@ -5,13 +5,14 @@ use {
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         dex::{self, PairUpdate},
+        gateway,
         lending::{self, InterestRateModel},
         oracle::{self, PriceSource},
         taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper, Denom, Duration,
-        GENESIS_SENDER, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission,
+        GENESIS_SENDER, GenesisState, Hash256, HashExt, JsonSerExt, Message, Part, Permission,
         Permissions, ResultExt, StdResult, btree_map, btree_set,
     },
     hyperlane_types::{
@@ -34,6 +35,7 @@ pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,
     pub dex: Addr,
+    pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
@@ -50,6 +52,7 @@ pub struct Codes<T> {
     pub account_spot: T,
     pub bank: T,
     pub dex: T,
+    pub gateway: T,
     pub hyperlane: Hyperlane<T>,
     pub lending: T,
     pub oracle: T,
@@ -83,6 +86,8 @@ pub struct GenesisConfig<T> {
     pub max_orphan_age: Duration,
     /// Metadata of tokens.
     pub metadatas: BTreeMap<Denom, bank::Metadata>,
+    /// Mapping from underlying denoms to alloyed subdenoms.
+    pub alloys: BTreeMap<Denom, Part>,
     /// Initial Dango DEX trading pairs.
     pub pairs: Vec<PairUpdate>,
     /// Initial Dango lending markets.
@@ -149,6 +154,11 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_dex::query))
         .build();
 
+    let gateway = ContractBuilder::new(Box::new(dango_gateway::instantiate))
+        .with_execute(Box::new(dango_gateway::execute))
+        .with_query(Box::new(dango_gateway::query))
+        .build();
+
     let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))
         .with_execute(Box::new(hyperlane_ism::execute))
         .with_query(Box::new(hyperlane_ism::query))
@@ -200,6 +210,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         account_spot,
         bank,
         dex,
+        gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
@@ -220,6 +231,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let dex = fs::read(artifacts_dir.join("dango_dex.wasm"))?;
+    let gateway = fs::read(artifacts_dir.join("dango_gateway.wasm"))?;
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
@@ -236,6 +248,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_spot,
         bank,
         dex,
+        gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
@@ -255,6 +268,7 @@ pub fn build_genesis<T>(
         fee_cfg,
         max_orphan_age,
         metadatas,
+        alloys,
         pairs,
         markets,
         price_sources,
@@ -280,6 +294,7 @@ where
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
+    let gateway_code_hash = upload(&mut msgs, codes.gateway);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
@@ -400,6 +415,15 @@ where
         "dango/lending",
     )?;
 
+    // Instantiate the gateway contract.
+    let gateway = instantiate(
+        &mut msgs,
+        gateway_code_hash,
+        &gateway::InstantiateMsg { mapping: alloys },
+        "dango/gateway",
+        "dango/gateway",
+    )?;
+
     // Create the `balances` map needed for instantiating bank.
     let balances = genesis_users
         .into_iter()
@@ -421,6 +445,7 @@ where
             balances,
             namespaces: btree_map! {
                 dex::NAMESPACE.clone()     => dex,
+                gateway::NAMESPACE.clone() => gateway,
                 lending::NAMESPACE.clone() => lending,
                 warp::NAMESPACE.clone()    => warp,
             },
@@ -451,6 +476,7 @@ where
         "dango/oracle",
     )?;
 
+    // Instantiate the vesting contract.
     let vesting = instantiate(
         &mut msgs,
         vesting_code_hash,
@@ -466,6 +492,7 @@ where
         account_factory,
         bank,
         dex,
+        gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
@@ -496,6 +523,7 @@ where
         addresses: AppAddresses {
             account_factory,
             dex,
+            gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,

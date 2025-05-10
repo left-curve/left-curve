@@ -14,7 +14,7 @@ macro_rules! addr32 {
 /// Hyperlane addresses are left-padded to 32 bytes. See:
 /// <https://docs.hyperlane.xyz/docs/reference/messaging/send#:~:text=Recipient%20addresses%20are%20left%2Dpadded>
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, PartialOrd, Ord)]
 pub struct Addr32(EncodedBytes<[u8; 32], HexEncoder>);
 
 impl Addr32 {
