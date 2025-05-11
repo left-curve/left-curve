@@ -117,7 +117,7 @@ fn index_account_creations() {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    // The transfer should have been indexed.
+    // The account should have been indexed.
     suite
         .app
         .indexer
