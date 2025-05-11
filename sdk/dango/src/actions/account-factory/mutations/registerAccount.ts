@@ -2,6 +2,7 @@ import { getAppConfig } from "@left-curve/sdk";
 import { getMembersTypedData } from "../../../utils/typedData.js";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
+import { getAction } from "@left-curve/sdk/actions";
 import type { Address, Funds, Transport, TxParameters } from "@left-curve/sdk/types";
 import type {
   AccountConfig,
@@ -28,7 +29,9 @@ export async function registerAccount<transport extends Transport>(
   const { gasLimit } = txParameters;
   const msg = { registerAccount: { params: config } };
 
-  const { addresses } = await getAppConfig<AppConfig>(client);
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const typedData: TypedDataParameter = {
     type: [{ name: "register_account", type: "RegisterAccount" }],

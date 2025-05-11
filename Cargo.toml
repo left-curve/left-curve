@@ -12,6 +12,7 @@ members = [
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
+  "dango/mocks/*",
   "dango/oracle",
   "dango/proposal-preparer",
   "dango/taxman",
@@ -105,7 +106,7 @@ hex                     = "0.4"
 hex-literal             = "0.4" # requires rust edition 2024 in order to upgrade to v1
 home                    = "0.5"
 ics23                   = "0.12"
-itertools               = "0"
+itertools               = "0.14"
 k256                    = "0.13"
 lzma-rs                 = "0.3"
 num_cpus                = "1"
@@ -136,8 +137,8 @@ strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
-tendermint              = "0.40"
-tendermint-rpc          = "0.40"
+tendermint              = "0.40.4"
+tendermint-rpc          = "0.40.4"
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
@@ -170,6 +171,7 @@ dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
+dango-mock-httpd            = { path = "dango/mock/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }

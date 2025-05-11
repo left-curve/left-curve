@@ -35,6 +35,7 @@ export type SolidityTypes =
 
 export type DomainType = [
   { name: "name"; type: "string" },
+  { name: "chainId"; type: "uint256" },
   { name: "verifyingContract"; type: "address" },
 ];
 
@@ -81,6 +82,7 @@ export type EIP712Message = {
 
 export type EIP712Domain = {
   name: string;
+  chainId: number;
   verifyingContract: Address;
 };
 

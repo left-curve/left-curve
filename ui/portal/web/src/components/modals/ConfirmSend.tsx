@@ -1,11 +1,4 @@
-import {
-  Button,
-  IconButton,
-  IconClose,
-  Skeleton,
-  TruncateText,
-  forwardRef,
-} from "@left-curve/applets-kit";
+import { Button, IconButton, IconClose, Skeleton, TruncateText } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
 import type { Address } from "@left-curve/dango/types";
@@ -13,7 +6,7 @@ import { formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle } from "react";
 import { m } from "~/paraglide/messages";
 
 type ConfirmSendProps = {
@@ -28,9 +21,9 @@ export const ConfirmSend = forwardRef(
   ({ amount, denom, to, confirmSend, rejectSend }: ConfirmSendProps, ref) => {
     const { hideModal, settings } = useApp();
     const { formatNumberOptions } = settings;
-    const { coins, state } = useConfig();
+    const { coins } = useConfig();
     const client = usePublicClient();
-    const coin = coins[state.chainId][denom];
+    const coin = coins[denom];
 
     const { data: username, isLoading } = useQuery({
       queryKey: ["username", to],

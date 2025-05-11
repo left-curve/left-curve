@@ -40,7 +40,9 @@ export async function registerUser<transport extends Transport>(
 ): RegisterUserReturnType {
   const { username, keyHash, key, seed, signature } = parameters;
 
-  const { addresses } = await getAppConfig<AppConfig>(client);
+  const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
+
+  const { addresses } = await getAppConfigAction<AppConfig>({});
 
   const registerMsg = {
     registerUser: {
@@ -60,9 +62,9 @@ export async function registerUser<transport extends Transport>(
     },
   };
 
-  const action = getAction(client, simulate, "simulate");
+  const simulateAction = getAction(client, simulate, "simulate");
 
-  const { gasUsed } = await action({
+  const { gasUsed } = await simulateAction({
     simulate: { sender: addresses.accountFactory, msgs: [executeMsg], data: null },
   });
 

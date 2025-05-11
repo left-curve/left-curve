@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
-        Number, QuerierExt, Response, StdResult, SudoCtx, coins,
+        Number, QuerierExt, Response, StdResult, SudoCtx, btree_map, coins,
     },
     hyperlane_types::{
         Addr32,
@@ -140,8 +140,7 @@ fn transfer_remote(
             cfg.bank,
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
-                denom: token.denom.clone(),
-                amount: token.amount,
+                coins: coins! { token.denom.clone() => token.amount },
             },
             Coins::new(),
         )?;
@@ -189,8 +188,7 @@ fn transfer_remote(
                 cfg.bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: token.denom.clone(),
-                    amount: token.amount,
+                    coins: coins! { token.denom.clone() => token.amount },
                 },
                 Coins::new(),
             )?)
@@ -201,8 +199,10 @@ fn transfer_remote(
             Some(Message::execute(
                 cfg.taxman,
                 &taxman::ExecuteMsg::Pay {
-                    user: ctx.sender,
                     ty: FeeType::Withdraw,
+                    payments: btree_map! {
+                        ctx.sender => coins! { token.denom.clone() => route.fee },
+                    },
                 },
                 coins! { token.denom.clone() => route.fee },
             )?)
@@ -261,8 +261,7 @@ fn handle(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: ctx.contract,
-                    denom,
-                    amount: body.amount,
+                    coins: coins! { denom => body.amount },
                 },
                 Coins::new(),
             )?;
@@ -286,8 +285,7 @@ fn handle(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: body.recipient.try_into()?,
-                    denom: denom.clone(),
-                    amount: body.amount,
+                    coins: coins! { denom.clone() => body.amount },
                 },
                 Coins::new(),
             )?

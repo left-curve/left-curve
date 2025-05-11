@@ -1,5 +1,6 @@
 mod config;
 mod db;
+mod git_info;
 mod home_directory;
 mod indexer;
 mod keys;
@@ -72,6 +73,8 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
         .init();
+
+    tracing::info!("Using GIT version {}", git_info::GIT_COMMIT);
 
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {

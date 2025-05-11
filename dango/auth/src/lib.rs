@@ -1,7 +1,7 @@
 use {
     alloy::{
         dyn_abi::{Eip712Domain, TypedData},
-        primitives::{U160, address},
+        primitives::{U160, U256, address, uint},
     },
     anyhow::{bail, ensure},
     base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
@@ -32,6 +32,17 @@ pub mod account_factory {
 
     pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
 }
+
+/// The [EIP-155](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md)
+/// chain ID of Ethereum mainnet.
+///
+/// The [EIP-712](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md#definition-of-domainseparator)
+/// standard requires the `chainId` field in the domain. Some wallets enforce
+/// this requirement.
+///
+/// Since Dango isn't an EVM chain and hence doesn't have an EIP-155 chain ID,
+/// we use that of Ethereum mainnet for compatibility.
+pub const EIP155_CHAIN_ID: U256 = uint!(0x1_U256);
 
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: usize = 20;
@@ -109,7 +120,7 @@ pub fn authenticate_tx(
     verify_nonce_and_signature(ctx, tx, Some(factory), Some(metadata))
 }
 
-/// Ensure the nonce is acceptible and the signature is authentic.
+/// Ensure the nonce is acceptable and the signature is authentic.
 ///
 /// Compared to [`authenticate_tx`](crate::authenticate_tx), this function skips
 /// the part of verifying the username.
@@ -310,6 +321,8 @@ pub fn verify_signature(
                 resolver,
                 domain: Eip712Domain {
                     name: domain.name,
+                    // We use Ethereum's EIP-155 chainId (0x1) for compatibility.
+                    chain_id: Some(EIP155_CHAIN_ID),
                     verifying_contract,
                     ..Default::default()
                 },
@@ -505,7 +518,7 @@ mod tests {
 
     #[test]
     fn eip712_authentication() {
-        let user_address = Addr::from_str("0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d").unwrap();
+        let user_address = Addr::from_str("0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50").unwrap();
         let user_username = Username::from_str("javier").unwrap();
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
@@ -543,8 +556,8 @@ mod tests {
               "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
               "signature": {
                 "eip712": {
-                  "sig": "4h1wRoW6SJ1ZbVEp8DIwnJ5OV24QUdyGDOrney+Qbc0/PoTTi5wXRvN/LjB+iuGliyK08DGwu1udd8W3m385NRw=",
-                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoibm9uY2UiLCJ0eXBlIjoidWludDMyIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiLCJ0eXBlIjoiQ29pbjAifV0sIkNvaW4wIjpbeyJuYW1lIjoiaHlwL2V0aC91c2RjIiwidHlwZSI6InN0cmluZyJ9XX0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsImRvbWFpbiI6eyJuYW1lIjoiZGFuZ28iLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4YjY2MjI3Y2Y0ZWE4MDBiNmIxOWFlZDE5ODM5NWZkMGEyZDgwZWUxZCJ9LCJtZXNzYWdlIjp7InNlbmRlciI6IjB4YjY2MjI3Y2Y0ZWE4MDBiNmIxOWFlZDE5ODM5NWZkMGEyZDgwZWUxZCIsImRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
+                  "sig": "cpcxIOxKLlBx2QongOl+8LbntUx7YR6mQIcmsT9fvngwfGesFvEaHYPOh4namgfXKlipm7OSoJWdUaw7fdFGJBw=",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoibm9uY2UiLCJ0eXBlIjoidWludDMyIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiLCJ0eXBlIjoiQ29pbjAifV0sIkNvaW4wIjpbeyJuYW1lIjoiaHlwL2V0aC91c2RjIiwidHlwZSI6InN0cmluZyJ9XX0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsImRvbWFpbiI6eyJuYW1lIjoiZGFuZ28iLCJjaGFpbklkIjoxLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4Mzg1YTk3ZmFlYWJlNGFkYzZjNWJjYWMyZmYzNjI3ZTYwYmEyM2I1MCJ9LCJtZXNzYWdlIjp7InNlbmRlciI6IjB4Mzg1YTk3ZmFlYWJlNGFkYzZjNWJjYWMyZmYzNjI3ZTYwYmEyM2I1MCIsImRhdGEiOnsiY2hhaW5faWQiOiJkZXYtNiIsInVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjB9LCJnYXNfbGltaXQiOjI0NDgxMzksIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyIweDMzMzYxZGU0MjU3MWQ2YWEyMGMzN2RhYTZkYTRiNWFiNjdiZmFhZDkiOnsiaHlwL2V0aC91c2RjIjoiMTAwMDAwMCJ9fX1dfX0="
                 }
               }
             }
@@ -564,7 +577,7 @@ mod tests {
               }
             }
           ],
-          "sender": "0xb66227cf4ea800b6b19aed198395fd0a2d80ee1d"
+          "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -734,7 +747,7 @@ mod tests {
 
     #[test]
     fn session_key_with_eip712_authentication() {
-        let user_address = Addr::from_str("0x632b2917552dc07fca89d285d6108ae1d1229771").unwrap();
+        let user_address = Addr::from_str("0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50").unwrap();
         let user_username = Username::from_str("javier").unwrap();
         let user_keyhash =
             Hash256::from_str("7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165")
@@ -774,16 +787,16 @@ mod tests {
                 "key_hash": "7D8FB7895BEAE0DF16E3E5F6FA7EB10CDE735E5B7C9A79DFCD8DD32A6BDD2165",
                 "signature": {
                   "eip712": {
-                    "sig": "6P23dAiy3wW/c3c89cuNX7W86M0o33HKo/XE/2R03Okr/+dZmClCh6COg4Jt+lGRo0dJyN48LgSpobP9O9vm6xs=",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBMW51SWtwOXB6R0RaQXFBL1Z4S1U2a2tyNXpvWmNrZzRVL2FtVW9EUGVsaCIsImV4cGlyZV9hdCI6IjE3NDM3OTc5NjU1MjMifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                    "sig": "SQvtngWCBODJSQuLloFTFK/QFRV0qGq0UTYs/4u/j8xhItf7R5Y2Is74XxlCwC+lCvHk1B0e6Sfdt8TQc8SNWRw=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBN0V5TThVMXVmOHlna3pwNHMrdVZ1djQ0ZStUdFVqdE9qQVczSHphNk96dCIsImV4cGlyZV9hdCI6IjE3NDU1OTY3MTYzODMifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
                   }
                 }
               },
               "session_info": {
-                "expire_at": "1743797965523",
-                "session_key": "A1nuIkp9pzGDZAqA/VxKU6kkr5zoZckg4U/amUoDPelh"
+                "expire_at": "1745596716383",
+                "session_key": "A7EyM8U1uf8ygkzp4s+uVuv44e+TtUjtOjAW3Hza6Ozt"
               },
-              "session_signature": "s8ogzBV5zMy+zR742gYfykg8x1IfAavliQE3DlnOgRoIzSNhyItHXcL2TDzOV+v9YnLMHYnDlHVMyruNEDjT3g=="
+              "session_signature": "l/NvC8O4fXo32avZppBL8ICO39QEdQijYu9AVKLQLGB0iXSxfp/vb8JWWvMNnKlivDNoTlGHpgVFQysl6IJc4g=="
             }
           },
           "data": {
@@ -801,7 +814,7 @@ mod tests {
               }
             }
           ],
-          "sender": "0x632b2917552dc07fca89d285d6108ae1d1229771"
+          "sender": "0x385a97faeabe4adc6c5bcac2ff3627e60ba23b50"
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
@@ -818,8 +831,8 @@ mod tests {
 
         let signature = r#"{
           "eip712": {
-            "sig": "S+o4kpODT5h+ZDIf9w52j0UzaWASEdel7loxoWR5iWUM7SIAXAJXKEQAjZHeoerKESImMkhgYD4AIvlf4H/5pRw=",
-            "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsidXNlcm5hbWUiOiJqYXZpZXJfdGVzdCIsImNoYWluX2lkIjoiZGV2LTYifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn1dfX0="
+            "sig": "ZmeW546igJejAskWXr/2o0WhOgpDbNlTiBnScGeNHLdDlS5qSpTtkTkffnMxLYTCfQ900RtNs+oV8zmfNtveDxs=",
+            "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsidXNlcm5hbWUiOiJqYXZpZXJfdGVzdCIsImNoYWluX2lkIjoiZGV2LTYifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn1dfX0="
           }
         }"#.deserialize_json::<Signature>().unwrap();
 

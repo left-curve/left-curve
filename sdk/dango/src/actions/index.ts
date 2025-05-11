@@ -18,6 +18,13 @@ export {
 } from "./app/index.js";
 
 export {
+  type DexMutationActions,
+  dexMutationActions,
+  type DexQueryActions,
+  dexQueryActions,
+} from "./dex/dexActions.js";
+
+export {
   type AccountFactoryMutationActions,
   accountFactoryMutationActions,
   type AccountFactoryQueryActions,
@@ -43,6 +50,10 @@ export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js
 /* -------------------------------------------------------------------------- */
 
 export {
+  // queries
+  type GetAppConfigParameters,
+  type GetAppConfigReturnType,
+  getAppConfig,
   // mutations
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -94,12 +105,6 @@ export {
   type GetAllAccountInfoParameters,
   type GetAllAccountInfoReturnType,
   getAllAccountInfo,
-  type GetDepositParameters,
-  type GetDepositReturnType,
-  getDeposit,
-  type GetDepositsParameters,
-  type GetDepositsReturnType,
-  getDeposits,
   type GetKeyParameters,
   type GetKeyReturnType,
   getKey,
@@ -109,9 +114,6 @@ export {
   type GetKeysByUsernameParameters,
   type GetKeysByUsernameReturnType,
   getKeysByUsername,
-  type GetNextAccountAddressParameters,
-  type GetNextAccountAddressReturnType,
-  getNextAccountAddress,
   type GetNextAccountIndexParameters,
   type GetNextAccountIndexReturnType,
   getNextAccountIndex,
@@ -179,13 +181,62 @@ export {
 } from "./indexer/queryIndexer.js";
 
 /* -------------------------------------------------------------------------- */
+/*                                 Dex Actions                                */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetPairsParameters,
+  type GetPairsReturnType,
+  getPairs,
+} from "./dex/queries/getPairs.js";
+
+export {
+  type GetPairParameters,
+  type GetPairReturnType,
+  getPair,
+} from "./dex/queries/getPair.js";
+
+export {
+  type SimulateSwapExactAmountOutParameters,
+  type SimulateSwapExactAmountOutReturnType,
+  simulateSwapExactAmountOut,
+} from "./dex/queries/simulateSwapExactAmountOut.js";
+
+export {
+  type SimulateSwapExactAmountInParameters,
+  type SimulateSwapExactAmountInReturnType,
+  simulateSwapExactAmountIn,
+} from "./dex/queries/simulateSwapExactAmountIn.js";
+
+export {
+  type ProvideLiquidityParameters,
+  type ProvideLiquidityReturnType,
+  provideLiquidity,
+} from "./dex/mutations/provideLiquidity.js";
+
+export {
+  type WithdrawLiquidityParameters,
+  type WithdrawLiquidityReturnType,
+  withdrawLiquidity,
+} from "./dex/mutations/withdrawLiquidity.js";
+
+export {
+  type SwapExactAmountOutParameters,
+  type SwapExactAmountOutReturnType,
+  swapExactAmountOut,
+} from "./dex/mutations/swapExactAmountOut.js";
+
+export {
+  type SwapExactAmountInParameters,
+  type SwapExactAmountInReturnType,
+  swapExactAmountIn,
+} from "./dex/mutations/swapExactAmountIn.js";
+
+/* -------------------------------------------------------------------------- */
 /*                           Re-export Grug Actions                           */
 /* -------------------------------------------------------------------------- */
 
 export {
-  type GetAppConfigParameters,
-  type GetAppConfigReturnType,
-  getAppConfig,
   type GetBalanceParameters,
   type GetBalanceReturnType,
   getBalance,

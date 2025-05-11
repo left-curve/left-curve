@@ -414,13 +414,11 @@ mod tests {
             Environment, GAS_PER_OPERATION, VmResult, WasmVm, db_read, db_remove, db_remove_range,
             db_scan, db_write, debug, read_from_memory, write_to_memory,
         },
-        grug_app::{
-            APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, Shared, StorageProvider,
-        },
+        grug_app::{APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, StorageProvider},
         grug_crypto::{Identity256, Identity512},
         grug_types::{
             Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
-            Query, QueryResponse, ResultExt, Storage, Timestamp, encode_sections, json,
+            Query, QueryResponse, ResultExt, Shared, Storage, Timestamp, encode_sections, json,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},

@@ -16,9 +16,24 @@ use {
         taxman,
     },
     grug::{
-        Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, GenesisState, HashExt, NumberConst, Timestamp, Udec128, btree_map,
+        Binary,
+        BlockInfo,
+        Bounded,
+        Coin,
+        ContractWrapper,
+        Denom,
+        Duration,
+        GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT,
+        GenesisState,
+        HashExt,
+        NumberConst,
+        Timestamp,
+        Udec128,
+        btree_map,
         coins,
+        // GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, TendermintRpcClient, Timestamp, Udec128,
+        // btree_map, coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -85,6 +100,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         codes,
         ProposalPreparer::new_with_cache(),
         NullIndexer,
+        TestOption::default(),
     )
 }
 
@@ -130,12 +146,15 @@ pub fn setup_test_with_indexer() -> (
         genesis_state,
         accounts,
         contracts,
+        // TestOption::default(),
     );
+
+    let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let httpd_context = Context::new(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
-        "http://localhost:26657",
+        consensus_client,
         indexer_path,
     );
 
@@ -161,6 +180,7 @@ pub fn setup_test_naive() -> (
         codes,
         NaiveProposalPreparer,
         NullIndexer,
+        TestOption::default(),
     )
 }
 
@@ -191,7 +211,14 @@ pub fn setup_benchmark_hybrid(
         codes.vesting.to_bytes().hash256(),
     ]);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+        TestOption::default(),
+    )
 }
 
 /// Set up a `TestSuite` with `DiskDb`, `WasmVm`, `NaiveProposalPreparer`, and
@@ -212,7 +239,14 @@ pub fn setup_benchmark_wasm(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+        TestOption::default(),
+    )
 }
 
 fn build_accounts_and_genesis<T>(
@@ -240,9 +274,14 @@ where
                 key_hash: owner.key_hash(),
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
+                //
+                // In reality, it's not possible that anyone has Hyperlane synth
+                // synth tokens in genesis. We add this just for testing purpose.
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000,
+                    ETH_DENOM.clone()   => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 },
             },
             user1.username.clone() => GenesisUser {
@@ -251,10 +290,9 @@ where
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
-                    // In reality, it's not possible that anyone has Hyperlane
-                    // synth tokens in genesis. We add this just for testing purpose.
-                    WBTC_DENOM.clone() => 100_000_000_000_000,
-                    ETH_DENOM.clone()  => 100_000_000_000_000,
+                    WBTC_DENOM.clone()  => 100_000_000_000_000,
+                    ETH_DENOM.clone()   => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 }
             },
             user2.username.clone() => GenesisUser {
@@ -263,6 +301,7 @@ where
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
+                    BTC_DENOM.clone()   => 100_000_000_000_000,
                 },
             },
             user3.username.clone() => GenesisUser {
@@ -369,8 +408,8 @@ where
             },
         ],
         markets: btree_map! {
-            USDC_DENOM.clone() => InterestRateModel::default(),
-            WBTC_DENOM.clone() => InterestRateModel::default(),
+            USDC_DENOM.clone() => InterestRateModel::mock(),
+            WBTC_DENOM.clone() => InterestRateModel::mock(),
         },
         price_sources: PYTH_PRICE_SOURCES.clone(),
         unlocking_cliff: Duration::from_weeks(4 * 9),
@@ -405,6 +444,7 @@ fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     codes: Codes<T>,
     pp: PP,
     indexer: ID,
+    test_opt: TestOption,
 ) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
@@ -421,7 +461,7 @@ where
         vm,
         pp,
         indexer,
-        MOCK_CHAIN_ID.to_string(),
+        test_opt.chain_id.unwrap_or(MOCK_CHAIN_ID.to_string()),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -470,4 +510,16 @@ where
     );
 
     (suite, accounts, codes, contracts)
+}
+
+#[derive(Default)]
+pub struct TestOption {
+    pub chain_id: Option<String>,
+}
+
+impl TestOption {
+    pub fn with_chain_id(mut self, chain_id: &str) -> Self {
+        self.chain_id = Some(chain_id.to_string());
+        self
+    }
 }

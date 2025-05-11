@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import React from "react";
 
-import { AccordionItem, IconCopy, twMerge } from "@left-curve/applets-kit";
+import { AccordionItem, TextCopy, twMerge } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
@@ -61,7 +61,7 @@ const Details: React.FC = () => {
       <div className="flex gap-1 items-center">
         <p className="diatype-md-medium text-gray-500">Tx hash:</p>
         <p>{hash}</p>
-        <IconCopy className="w-4 h-4 text-gray-500" copyText={hash} />
+        <TextCopy className="w-4 h-4 text-gray-500" copyText={hash} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="flex items-center gap-1">

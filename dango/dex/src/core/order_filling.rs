@@ -1,7 +1,7 @@
 use {
     crate::Order,
     dango_types::dex::{Direction, OrderId},
-    grug::{IsZero, MultiplyFraction, NumberConst, StdResult, Udec128, Uint128},
+    grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
 
 #[derive(Debug)]
@@ -19,6 +19,10 @@ pub struct FillingOutcome {
     pub refund_base: Uint128,
     /// Amount of quote asset that should be refunded to the trader.
     pub refund_quote: Uint128,
+    /// Fee charged in base asset.
+    pub fee_base: Uint128,
+    /// Fee charged in quote asset.
+    pub fee_quote: Uint128,
 }
 
 /// Clear the orders given a clearing price and volume.
@@ -27,10 +31,30 @@ pub fn fill_orders(
     asks: Vec<((Udec128, OrderId), Order)>,
     clearing_price: Udec128,
     volume: Uint128,
+    current_block_height: u64,
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len() + asks.len());
-    outcome.extend(fill_bids(bids, clearing_price, volume)?);
-    outcome.extend(fill_asks(asks, clearing_price, volume)?);
+
+    outcome.extend(fill_bids(
+        bids,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
+    )?);
+
+    outcome.extend(fill_asks(
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
+    )?);
+
     Ok(outcome)
 }
 
@@ -39,6 +63,9 @@ fn fill_bids(
     bids: Vec<((Udec128, OrderId), Order)>,
     clearing_price: Udec128,
     mut volume: Uint128,
+    current_block_height: u64,
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len());
 
@@ -48,6 +75,20 @@ fn fill_bids(
         order.remaining -= filled;
         volume -= filled;
 
+        // Calculate fee based on whether the order is a maker or taker.
+        //
+        // An order is considered a maker, if it was created in an earlier block.
+        // In other words, the liquidity already existed in the book at the
+        // beginning of the current block.
+        let fee_rate = if order.created_at_block_height < current_block_height {
+            maker_fee_rate
+        } else {
+            taker_fee_rate
+        };
+
+        // For bids, the fee is paid in base asset.
+        let fee_base = filled.checked_mul_dec_ceil(fee_rate)?;
+
         outcome.push(FillingOutcome {
             order_direction: Direction::Bid,
             order_price,
@@ -55,10 +96,13 @@ fn fill_bids(
             order,
             filled,
             cleared: order.remaining.is_zero(),
-            refund_base: filled,
+            // Reduce the base refund by the fee amount.
+            refund_base: filled.checked_sub(fee_base)?,
             // If the order is filled at a price better than the limit price,
             // we need to refund the trader the unused quote asset.
             refund_quote: filled.checked_mul_dec_floor(order_price - clearing_price)?,
+            fee_base,
+            fee_quote: Uint128::ZERO,
         });
 
         if volume.is_zero() {
@@ -74,6 +118,9 @@ fn fill_asks(
     asks: Vec<((Udec128, OrderId), Order)>,
     clearing_price: Udec128,
     mut volume: Uint128,
+    current_block_height: u64,
+    maker_fee: Udec128,
+    taker_fee: Udec128,
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
 
@@ -83,6 +130,17 @@ fn fill_asks(
         order.remaining -= filled;
         volume -= filled;
 
+        // Calculate fee based on whether the order is a maker or taker.
+        let fee_rate = if order.created_at_block_height < current_block_height {
+            maker_fee
+        } else {
+            taker_fee
+        };
+
+        // For asks, the fee is paid in quote asset.
+        let quote_amount = filled.checked_mul_dec_floor(clearing_price)?;
+        let fee_quote = quote_amount.checked_mul_dec_ceil(fee_rate)?;
+
         outcome.push(FillingOutcome {
             order_direction: Direction::Ask,
             order_price,
@@ -91,7 +149,10 @@ fn fill_asks(
             filled,
             cleared: order.remaining.is_zero(),
             refund_base: Uint128::ZERO,
-            refund_quote: filled.checked_mul_dec_floor(clearing_price)?,
+            // Reduce the quote refund by the fee amount.
+            refund_quote: quote_amount.checked_sub(fee_quote)?,
+            fee_base: Uint128::ZERO,
+            fee_quote,
         });
 
         if volume.is_zero() {

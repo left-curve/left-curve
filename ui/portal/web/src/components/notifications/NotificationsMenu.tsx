@@ -44,8 +44,8 @@ export const NotificationsMenu: React.FC<Props> = ({ buttonRef }) => {
         </Button>
       </div>
       <NotificationsList
-        notifications={[]}
         className="max-h-[41rem] overflow-y-scroll scrollbar-none"
+        maxNotifications={5}
       />
     </div>
   );

@@ -2,7 +2,7 @@ import {
   Button,
   IconBell,
   IconGear,
-  ProfileIcon,
+  IconProfile,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -14,8 +14,9 @@ import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
-import { HamburgerMenu } from "./HamburguerMenu";
+import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
+import { TxIndicator } from "./TxIndicator";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -65,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           )}
         >
           <SearchMenu />
-          {!isSearchBarVisible ? <HamburgerMenu /> : null}
+          {!isSearchBarVisible ? <Hamburger /> : null}
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
           <Button
@@ -80,15 +81,17 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           </Button>
 
           {isConnected ? (
-            <Button
-              ref={buttonNotificationsRef}
-              variant="utility"
-              size="lg"
-              data-status={linkStatus("/notifications")}
-              onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
-            >
-              <IconBell className="w-6 h-6 text-rice-700" />
-            </Button>
+            <TxIndicator as={Button} variant="utility" size="lg">
+              <Button
+                ref={buttonNotificationsRef}
+                variant="utility"
+                size="lg"
+                data-status={linkStatus("/notifications")}
+                onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
+              >
+                <IconBell className="w-6 h-6 text-rice-700" />
+              </Button>
+            </TxIndicator>
           ) : null}
           <Button
             dng-connect-button="true"
@@ -100,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <>
-                <ProfileIcon className="w-6 h-6" />
+                <IconProfile className="w-6 h-6" />
                 <span className="italic font-exposure font-bold">{account?.username}</span>
               </>
             ) : (

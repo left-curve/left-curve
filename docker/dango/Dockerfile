@@ -1,18 +1,26 @@
-FROM rust:1.85.0-slim
+FROM debian:bookworm-slim
 
-# Install dependencies.
-RUN apt update && apt install -y clang git libssl-dev pkg-config
+LABEL org.opencontainers.image.description="Dango docker image"
+LABEL org.opencontainers.image.revision=$GIT_COMMIT
+LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
-# Version of the left-curve monorepo.
-ARG LEFT_CURVE_GIT_COMMIT="c3e91a2"
+ARG TARGET_ARCH
+ARG GIT_COMMIT
+ENV GIT_COMMIT=$GIT_COMMIT
+ARG USERNAME=dango
+ENV USERNAME=${USERNAME}
 
-# Download dango source code, build, then delete.
-RUN git clone https://github.com/left-curve/left-curve.git \
-  && cd left-curve \
-  && git checkout $LEFT_CURVE_GIT_COMMIT \
-  && cargo install --path dango/cli \
-  && cd .. \
-  && rm -rf left-curve
+RUN apt-get update && \
+    apt-get install -y libssl-dev pkg-config libsqlite3-0 && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash $USERNAME
+
+COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/
+RUN chown $USERNAME:$USERNAME /usr/local/bin/dango
+
+USER $USERNAME
+WORKDIR /home/$USERNAME
 
 # Expose the indexer httpd (8080) and Tendermint ABCI (26658) ports.
 EXPOSE 8080 26658

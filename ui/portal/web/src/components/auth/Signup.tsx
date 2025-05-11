@@ -5,6 +5,7 @@ import {
   IconLeft,
   ResizerContainer,
   Stepper,
+  useUsernames,
   useWizard,
 } from "@left-curve/applets-kit";
 import {
@@ -49,6 +50,7 @@ import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
 import { captureException } from "@sentry/react";
+import { add } from "date-fns";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -266,7 +268,7 @@ const Username: React.FC = () => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
 
-        const { addresses } = await client.getAppConfig<AppConfig>();
+        const { addresses } = await client.getAppConfig();
         const accountCodeHash = await client.getAccountTypeCodeHash({
           accountType: AccountType.Spot,
         });
@@ -293,7 +295,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(`https://devnet.dango.exchange/faucet/mint/${address}`);
+        const response = await fetch(`${import.meta.env.PUBLIC_FAUCET_URI}/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
@@ -370,6 +372,7 @@ const Username: React.FC = () => {
 
 const Signin: React.FC = () => {
   const navigate = useNavigate();
+  const { addUsername } = useUsernames();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
   const { settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
@@ -382,13 +385,14 @@ const Signin: React.FC = () => {
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
+        addUsername(username);
         done();
       },
       onError: (err) => {
         console.error(err);
         toast.error({
           title: m["common.error"](),
-          description: m["signin.errors.failedSigingIn"](),
+          description: m["signin.errors.failedSigningIn"](),
         });
       },
     },

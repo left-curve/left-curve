@@ -1,7 +1,6 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
-    grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, StdResult},
-    grug_app::Shared,
+    grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::PythId,
     reqwest::IntoUrl,
@@ -77,7 +76,7 @@ where
 
     //  TODO: optimize this by using the raw WasmScan query.
     /// Retrieve the Pyth ids from the Oracle contract.
-    pub fn pyth_ids(querier: &QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
+    pub fn pyth_ids(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
         let new_ids = querier
             .query_wasm_smart(oracle, QueryPriceSourcesRequest {
                 start_after: None,
@@ -160,7 +159,7 @@ where
         ));
     }
 
-    pub fn update_stream(&mut self, querier: &QuerierWrapper, oracle: Addr) -> StdResult<()> {
+    pub fn update_stream(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
         // Retrieve the Pyth ids from the Oracle contract.
         let pyth_ids = Self::pyth_ids(querier, oracle)?;
 

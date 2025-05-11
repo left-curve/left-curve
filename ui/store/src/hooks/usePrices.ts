@@ -1,33 +1,27 @@
-import type { AnyCoin, CoinGeckoId, Denom, Funds, Prettify } from "@left-curve/dango/types";
+import type { Denom, Funds, Price } from "@left-curve/dango/types";
 import { type FormatNumberOptions, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
 
-import { createStorage } from "../storages/createStorage.js";
-import type { Storage } from "../types/storage.js";
+import type { AnyCoin } from "../types/coin.js";
+import { usePublicClient } from "./usePublicClient.js";
 
 export type UsePricesParameters = {
   refetchInterval?: number;
   formatter?: (amount: number, options: FormatNumberOptions) => string;
-  currencies?: string[];
-  defaultCurrency?: string;
   defaultFormatOptions?: FormatNumberOptions;
   coins?: Record<Denom, AnyCoin>;
-  storage?: Storage<{ prices: Prices }>;
 };
-
-type Prices = Record<Denom, Prettify<AnyCoin & { prices: Record<string, number> }>>;
 
 type FormatOptions<T> = {
   formatOptions?: FormatNumberOptions;
-  currency?: string;
   format?: T;
 };
 
 export function usePrices(parameters: UsePricesParameters = {}) {
+  const client = usePublicClient();
+
   const {
-    defaultCurrency = "USD",
-    currencies = ["USD", "EUR"],
     refetchInterval = 60 * 1000 * 5,
     formatter = formatNumber,
     defaultFormatOptions = {
@@ -36,95 +30,60 @@ export function usePrices(parameters: UsePricesParameters = {}) {
       language: navigator.language,
       mask: 1,
     },
-    storage = createStorage<{ prices: Prices }>({
-      key: "cache_query",
-      storage:
-        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
-    }),
   } = parameters;
   const config = useConfig();
 
-  const coins = parameters.coins || config.coins[config.state.chainId];
+  const coins = parameters.coins || config.coins;
 
   function getPrice<T extends boolean = false>(
     amount: number | string,
     denom: string,
     options?: FormatOptions<T>,
   ): T extends true ? string : number {
-    const {
-      currency = defaultCurrency,
-      formatOptions = defaultFormatOptions,
-      format = false,
-    } = options || {};
+    const { formatOptions = defaultFormatOptions, format = false } = options || {};
+
     const price = (() => {
-      const indexCurrency = currency.toLowerCase();
-      if (!data || !data?.[denom]?.prices?.[indexCurrency]) return 0;
-      return Number(amount) * data[denom].prices[indexCurrency];
+      if (!prices || !prices?.[denom]?.humanizedPrice) return 0;
+      return Number(amount) * Number(prices[denom].humanizedPrice);
     })();
 
-    return (format ? formatter(price, { ...formatOptions, currency }) : price) as T extends true
-      ? string
-      : number;
+    return (
+      format ? formatter(price, { ...formatOptions, currency: "usd" }) : price
+    ) as T extends true ? string : number;
   }
 
   function calculateBalance<T extends boolean = false>(
     balances: Funds,
     options?: FormatOptions<T>,
   ): T extends true ? string : number {
-    const {
-      currency = defaultCurrency,
-      formatOptions = defaultFormatOptions,
-      format = false,
-    } = options || {};
+    const { formatOptions = defaultFormatOptions, format = false } = options || {};
     const totalValue = Object.entries(balances).reduce((total, [denom, amount]) => {
       const price = getPrice(formatUnits(amount, coins[denom].decimals), denom, {
-        currency,
         formatOptions,
         format: false,
       });
       total += price;
       return total;
     }, 0);
-    return (
-      format ? formatter(totalValue, { ...formatOptions, currency }) : totalValue
-    ) as T extends true ? string : number;
+    return (format ? formatter(totalValue, { ...formatOptions }) : totalValue) as T extends true
+      ? string
+      : number;
   }
 
-  const { data, ...rest } = useQuery<Prices>({
-    enabled: typeof window !== "undefined",
-    queryKey: ["prices", coins, currencies],
+  const { data: prices, ...rest } = useQuery({
+    queryKey: ["prices", coins],
     queryFn: async () => {
-      const coinsByCoingeckoId = Object.fromEntries(
-        Object.values(coins).map((c) => [c.coingeckoId, c]),
-      );
+      const prices = await client.getPrices();
 
-      const coinPrices = await (async () => {
-        if (window.location.protocol !== "https:") {
-          return Object.keys(coinsByCoingeckoId).reduce((acc, key) => {
-            const usd = Math.random() * 100_000;
-            acc[key] = { usd, eur: usd * 0.95 };
-            return acc;
-          }, Object.create({}));
-        }
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(coinsByCoingeckoId).join(",")}&vs_currencies=${currencies.join(",")}`,
-        );
-        const coinPrices: Record<CoinGeckoId, Record<string, number>> = await response.json();
-        return coinPrices;
-      })();
-
-      const prices: Prices = Object.entries(coins).reduce((acc, [denom, info]) => {
-        const prices = coinPrices[info.coingeckoId || ""] || { usd: 0, eur: 0 };
-        acc[denom] = { ...info, prices: prices };
+      return Object.entries(prices).reduce((acc, [denom, coin]) => {
+        if (denom.includes("usdc")) acc["hyp/eth/usdc"] = coin;
+        else acc[`hyp/all/${denom.split("/")[2]}`] = coin;
         return acc;
-      }, Object.create({}));
-
-      storage.setItem("prices", prices);
-      return prices;
+      }, Object.create({})) as Record<Denom, Price>;
     },
-    initialData: storage.getItem("prices", {}) as Prices,
+    staleTime: 1000 * 60 * 5,
     refetchInterval,
   });
 
-  return { data, ...rest, calculateBalance, getPrice };
+  return { prices, ...rest, calculateBalance, getPrice };
 }

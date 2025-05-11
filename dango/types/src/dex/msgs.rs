@@ -1,8 +1,27 @@
 use {
-    crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, CoinPair, Denom, Udec128, Uint128},
+    crate::{
+        account_factory::Username,
+        dex::{Direction, OrderId, PairParams, PairUpdate},
+    },
+    grug::{
+        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Uint128, UniqueVec,
+    },
     std::collections::{BTreeMap, BTreeSet},
 };
+
+/// A series of liquidity pools for performing swaps.
+///
+/// The route must not contain loops, e.g. asset A -> B -> A. In other words,
+/// the pair IDs must be unique.
+///
+/// Additionally, we enforce a maximum length of 2. This is to prevent the DoS
+/// attack of submitting swaps of extremely long routes.
+///
+/// 2 is a reasonable number, because at launch, all the trading pairs we plan to
+/// support comes with USDC as the quote asset. As such, it's possible to go
+/// from any one asset to any other in no more than 2 hops. If we plan to support
+/// non-USDC quoted pairs, the maximum route length can be adjusted.
+pub type SwapRoute = MaxLength<UniqueVec<PairId>, 2>;
 
 /// A request to create a new limit order.
 ///
@@ -71,6 +90,30 @@ pub enum ExecuteMsg {
         base_denom: Denom,
         quote_denom: Denom,
     },
+    /// Perform an instant swap directly in the passive liquidity pools, with an
+    /// exact amount of input asset.
+    ///
+    /// User must send exactly one asset, which must be either the base or quote
+    /// asset of the first pair in the `route`.
+    ///
+    /// User may specify a minimum amount of output, for slippage control.
+    SwapExactAmountIn {
+        route: SwapRoute,
+        minimum_output: Option<Uint128>,
+    },
+    /// Perform an instant swap directly in the passive liqudiity pools, with an
+    /// exact amount of output asset.
+    ///
+    /// User must send exactly one asset, which must be either the base or quote
+    /// asset of the first pair in the `route`.
+    ///
+    /// Slippage control is implied by the input amount. If required input is
+    /// less than what user sends, the excess is refunded. Otherwise, if required
+    /// input more than what user sends, the swap fails.
+    SwapExactAmountOut {
+        route: SwapRoute,
+        output: NonZero<Coin>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -84,7 +127,7 @@ pub enum QueryMsg {
     /// Enumerate all trading pairs and their parameters.
     #[returns(Vec<PairUpdate>)]
     Pairs {
-        start_after: Option<PairPageParam>,
+        start_after: Option<PairId>,
         limit: Option<u32>,
     },
     /// Query the passive liquidity pool reserve of a single trading pair,
@@ -96,7 +139,7 @@ pub enum QueryMsg {
     /// Enumerate all passive liquidity pool reserves.
     #[returns(Vec<ReservesResponse>)]
     Reserves {
-        start_after: Option<PairPageParam>,
+        start_after: Option<PairId>,
         limit: Option<u32>,
     },
     /// Query a single active order by ID.
@@ -123,11 +166,40 @@ pub enum QueryMsg {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
+    /// Simulate a swap with exact input.
+    #[returns(Coin)]
+    SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
+    /// Simulate a swap with exact output.
+    #[returns(Coin)]
+    SimulateSwapExactAmountOut {
+        route: SwapRoute,
+        output: NonZero<Coin>,
+    },
+    /// Returns the trading volume of a user address since the specified timestamp.
+    #[returns(Uint128)]
+    Volume {
+        /// The user's address to query trading volume for.
+        user: Addr,
+        /// The start timestamp to query trading volume for. If not provided,
+        /// user's total trading volume will be returned.
+        since: Option<Timestamp>,
+    },
+    /// Returns the trading volume of a username since the specified timestamp.
+    #[returns(Uint128)]
+    VolumeByUser {
+        /// The username to query trading volume for.
+        user: Username,
+        /// The start timestamp to query trading volume for. If not provided,
+        /// username's total trading volume will be returned.
+        since: Option<Timestamp>,
+    },
 }
 
-/// Pagination parameters of the `QueryMsg::Pairs` query.
+/// Identifier of a trading pair. Consists of the base asset and quote asset
+/// denominations.
 #[grug::derive(Serde)]
-pub struct PairPageParam {
+#[derive(Hash)]
+pub struct PairId {
     pub base_denom: Denom,
     pub quote_denom: Denom,
 }
@@ -135,7 +207,7 @@ pub struct PairPageParam {
 /// Response type of the `QueryMsg::Reserves` query.
 #[grug::derive(Serde)]
 pub struct ReservesResponse {
-    pub pair: PairPageParam,
+    pub pair: PairId,
     pub reserve: CoinPair,
 }
 

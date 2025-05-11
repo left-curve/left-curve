@@ -81,21 +81,6 @@ impl Coins {
         self.0.len()
     }
 
-    /// Return an immutable reference to the inner B-tree map.
-    pub fn inner(&self) -> &BTreeMap<Denom, Uint128> {
-        &self.0
-    }
-
-    /// Return a mutable reference to the inner B-tree map.
-    pub fn inner_mut(&mut self) -> &mut BTreeMap<Denom, Uint128> {
-        &mut self.0
-    }
-
-    /// Consume self, return the inner B-tree map as owned value.
-    pub fn into_inner(self) -> BTreeMap<Denom, Uint128> {
-        self.0
-    }
-
     /// Return whether there is a non-zero amount of the given denom.
     pub fn has(&self, denom: &Denom) -> bool {
         self.0.contains_key(denom)
@@ -346,6 +331,18 @@ impl Coins {
     // because users may use it to perform illegal actions, such as setting a
     // denom's amount to zero. use increase_amount and decrease_amount methods
     // instead.
+}
+
+impl Inner for Coins {
+    type U = BTreeMap<Denom, Uint128>;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
+    }
 }
 
 // cast a string of the following format to Coins:

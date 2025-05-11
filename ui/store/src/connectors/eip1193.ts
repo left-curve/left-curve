@@ -11,6 +11,8 @@ import type { Address } from "@left-curve/dango/types";
 import type { ConnectorId } from "../types/connector.js";
 import type { EIP1193Provider } from "../types/eip1193.js";
 
+const ETHEREUM_HEX_CHAIN_ID = "0x1";
+
 type EIP1193ConnectorParameters = {
   id: ConnectorId;
   name?: string;
@@ -19,8 +21,6 @@ type EIP1193ConnectorParameters = {
 };
 
 export function eip1193(parameters: EIP1193ConnectorParameters) {
-  let _isAuthorized = false;
-
   const {
     id = "metamask",
     name = "Ethereum Provider",
@@ -43,6 +43,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         });
 
         const provider = await this.getProvider();
+        await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
         const accountsInfo = await getAccountsByUsername(client, { username });
         const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
           toAccount({ username, address: address as Address, info: accountInfo }),
@@ -62,7 +63,6 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
-        _isAuthorized = false;
         emitter.emit("disconnect");
       },
       async getClient() {
@@ -110,13 +110,25 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           toAccount({ username, address: address as Address, info: accountInfo }),
         );
       },
+      async switchChain({ chainId }) {
+        const provider = await this.getProvider();
+
+        await provider.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId }],
+        });
+      },
       async isAuthorized() {
-        return _isAuthorized;
+        const provider = await this.getProvider();
+        await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
+        const [controllerAddress] = await provider.request({ method: "eth_accounts" });
+        return !!controllerAddress;
       },
       async signArbitrary(payload) {
         const { types, primaryType, message } = payload;
 
         const provider = await this.getProvider();
+        await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
         const typedData = composeArbitraryTypedData({ message, types, primaryType });
@@ -142,6 +154,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async signTx(signDoc) {
         try {
           const provider = await this.getProvider();
+          await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
           const signData = JSON.stringify(signDoc);

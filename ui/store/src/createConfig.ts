@@ -11,8 +11,18 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { AnyCoin, Client, Transport } from "@left-curve/dango/types";
+import type {
+  AccountTypes,
+  AppConfig,
+  Client,
+  Denom,
+  Hex,
+  PairUpdate,
+  PublicClient,
+  Transport,
+} from "@left-curve/dango/types";
 
+import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
 import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
@@ -93,6 +103,33 @@ export function createConfig<
 
     _client = client;
     return client;
+  }
+
+  let _appConfig:
+    | (AppConfig & {
+        accountFactory: { codeHashes: Record<AccountTypes, Hex> };
+        pairs: Record<Denom, PairUpdate>;
+      })
+    | undefined;
+
+  async function getAppConfig() {
+    if (_appConfig) return _appConfig;
+    const client = getClient() as PublicClient;
+    const [appConfig, codeHashes, pairs] = await Promise.all([
+      client.getAppConfig(),
+      client.getAccountTypeCodeHashes(),
+      client.getPairs(),
+    ]);
+
+    _appConfig = {
+      ...appConfig,
+      accountFactory: { codeHashes },
+      pairs: pairs.reduce((acc, pair) => {
+        acc[pair.baseDenom] = pair;
+        return acc;
+      }, Object.create({})),
+    };
+    return _appConfig;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -287,6 +324,7 @@ export function createConfig<
       return connectors.getState();
     },
     storage,
+    getAppConfig,
     getClient,
     get state() {
       return store.getState();

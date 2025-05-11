@@ -140,6 +140,7 @@ fn sends(c: &mut Criterion) {
             |(_dir, mut suite, txs)| {
                 suite
                     .make_block(txs)
+                    .block_outcome
                     .tx_outcomes
                     .into_iter()
                     .all(|outcome| outcome.result.is_ok());
@@ -164,6 +165,7 @@ fn sends(c: &mut Criterion) {
             |(_dir, mut suite, txs)| {
                 suite
                     .make_block(txs)
+                    .block_outcome
                     .tx_outcomes
                     .into_iter()
                     .all(|outcome| outcome.result.is_ok());

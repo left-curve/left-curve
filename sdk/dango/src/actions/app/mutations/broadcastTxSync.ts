@@ -1,5 +1,10 @@
-import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
-import type { Prettify, Transport, Tx, TxData, UnsignedTx } from "@left-curve/sdk/types";
+import {
+  camelCaseJsonDeserialization,
+  encodeBase64,
+  serialize,
+  snakeCaseJsonSerialization,
+} from "@left-curve/sdk/encoding";
+import type { Chain, Prettify, Transport, Tx, TxData, UnsignedTx } from "@left-curve/sdk/types";
 
 import { withRetry } from "@left-curve/sdk/utils";
 import type { DangoClient, Signer } from "../../../types/index.js";
@@ -25,44 +30,54 @@ export async function broadcastTxSync<transport extends Transport>(
   const { tx } = parameters;
   const { transport } = client;
 
-  const txBase64 = encodeBase64(serialize(tx));
-
   const result = await (async () => {
     if (transport.type !== "http-graphql") {
       return await transport.request({
         method: "broadcast_tx_sync",
         params: {
-          tx: txBase64,
+          tx: encodeBase64(serialize(tx)),
         },
       });
     }
 
     const document = `
       mutation broadcastTxSyncResult($tx: String!) {
-          broadcastTxSync(tx: $tx) {
-            hash
-            log
-            code
-          }
-        }
+          broadcastTxSync(tx: $tx)
+      }
     `;
 
-    const response = await queryIndexer(client, {
+    const { broadcastTxSync } = await queryIndexer<
+      {
+        broadcastTxSync: string;
+      },
+      Chain,
+      Signer | undefined
+    >(client, {
       document,
-      variables: { tx: txBase64 },
+      variables: { tx: snakeCaseJsonSerialization(tx) },
     });
-
-    const { broadcastTxSync: result } = response as unknown as {
-      broadcastTxSync: TxData & { hash: Uint8Array };
+    const { checkTx, txHash } = camelCaseJsonDeserialization(broadcastTxSync) as {
+      txHash: string;
+      checkTx: {
+        gaslimit: number;
+        gasUsed: number;
+        result: { Ok: null } | { Error: string };
+      };
     };
 
-    return result;
+    const result = Object.keys(checkTx.result)[0];
+
+    return {
+      code: result === "Ok" ? 0 : 1,
+      log: checkTx.result[result as keyof typeof checkTx.result],
+      hash: txHash,
+    };
   })();
 
-  const { code, codespace, log } = result;
+  const { code, log } = result;
 
   if (code === 1) {
-    throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
+    throw new Error(`failed to broadcast tx! code: ${code}, log: ${log}`);
   }
 
   await withRetry(
@@ -76,7 +91,6 @@ export async function broadcastTxSync<transport extends Transport>(
           if (!tx) throw new Error(`Transaction not found: ${hash}`);
 
           if (tx.tx_result.code === 1) {
-            const { codespace, code, log } = tx.tx_result;
             abort(tx.tx_result.data || "Transaction failed");
           }
           return tx;
@@ -85,5 +99,5 @@ export async function broadcastTxSync<transport extends Transport>(
     { delay: 500, retryCount: 30 },
   );
 
-  return result;
+  return result as unknown as BroadcastTxSyncReturnType;
 }
