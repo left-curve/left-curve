@@ -27,29 +27,17 @@ export type ModalRef = {
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
     component: lazy(() => import("./AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
-    options: {
-      allowClosing: true,
-    },
   },
   [Modals.RemoveKey]: {
     component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
-    options: {
-      allowClosing: true,
-    },
   },
   [Modals.QRConnect]: {
     component: lazy(() => import("./QRConnect").then(({ QRConnect }) => ({ default: QRConnect }))),
-    options: {
-      allowClosing: true,
-    },
   },
   [Modals.ConfirmSend]: {
     component: lazy(() =>
       import("./ConfirmSend").then(({ ConfirmSend }) => ({ default: ConfirmSend })),
     ),
-    options: {
-      allowClosing: true,
-    },
   },
   [Modals.ConfirmAccount]: {
     component: lazy(() =>
@@ -57,9 +45,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
         default: ConfirmAccount,
       })),
     ),
-    options: {
-      allowClosing: true,
-    },
   },
   [Modals.SignWithDesktop]: {
     component: lazy(() =>
@@ -69,7 +54,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     ),
     options: {
       header: m["common.signin"](),
-      allowClosing: true,
     },
   },
   [Modals.ConfirmSwap]: {
@@ -80,7 +64,6 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     ),
     options: {
       header: m["dex.swap"](),
-      allowClosing: true,
     },
   },
   [Modals.RenewSession]: {
@@ -90,16 +73,16 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
     options: {
-      allowClosing: false,
+      disableClosing: true,
     },
   },
 };
 
 type ModalDefinition = {
   component: React.LazyExoticComponent<React.ForwardRefExoticComponent<any>>;
-  options: {
+  options?: {
     header?: string;
-    allowClosing?: boolean;
+    disableClosing?: boolean;
   };
 };
 
@@ -113,7 +96,7 @@ export const RootModal: React.FC = () => {
 
   const { modal: activeModal, props: modalProps } = modal;
 
-  const { component: Modal, options } =
+  const { component: Modal, options = {} } =
     useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
 
   const closeModal = () => {
@@ -127,7 +110,7 @@ export const RootModal: React.FC = () => {
   if (!isMd) {
     return (
       <Sheet
-        disableDrag={!options.allowClosing}
+        disableDrag={options.disableClosing}
         ref={sheetRef}
         isOpen={!!activeModal}
         onClose={closeModal}
@@ -152,7 +135,7 @@ export const RootModal: React.FC = () => {
             </Suspense>
           </Sheet.Content>
         </Sheet.Container>
-        <Sheet.Backdrop onTap={() => options.allowClosing && closeModal()} />
+        <Sheet.Backdrop onTap={() => !options.disableClosing && closeModal()} />
       </Sheet>
     );
   }
@@ -162,7 +145,7 @@ export const RootModal: React.FC = () => {
       <motion.div
         ref={overlayRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current && options.allowClosing) closeModal();
+          if (e.target === overlayRef.current && !options.disableClosing) closeModal();
         }}
         className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}
