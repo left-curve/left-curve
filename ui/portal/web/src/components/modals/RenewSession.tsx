@@ -1,12 +1,11 @@
 import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import { Button, IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
 import { useAccount, useSessionKey } from "@left-curve/store";
-
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
 export const RenewSession = forwardRef<undefined>(() => {
   const { connector } = useAccount();
@@ -35,7 +34,7 @@ export const RenewSession = forwardRef<undefined>(() => {
           fullWidth
           variant="primary"
           onClick={() => [
-            createSessionKey({ expireAt: Date.now() + TWENTY_FOUR_HOURS }),
+            createSessionKey({ expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION }),
             hideModal(),
           ]}
         >
