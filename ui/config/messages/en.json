@@ -500,8 +500,7 @@
       "swapSuccessfully": "Swap Successfully",
       "youGet": "You get",
       "youSwap": "You swap",
-      "priceImpact": "Price Impact",
-      "slippage": "Max Slippage",
+      "rate": "Rate",
       "errors": {
         "failure": "Swap failed"
       }

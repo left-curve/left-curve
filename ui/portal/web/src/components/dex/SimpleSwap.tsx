@@ -8,14 +8,7 @@ import {
   useSigningClient,
 } from "@left-curve/store";
 
-import {
-  Badge,
-  Button,
-  CoinSelector,
-  IconArrowDown,
-  IconGear,
-  Input,
-} from "@left-curve/applets-kit";
+import { Badge, Button, CoinSelector, IconArrowDown, Input } from "@left-curve/applets-kit";
 import { toast } from "../foundation/Toast";
 
 import { m } from "~/paraglide/messages";
@@ -220,7 +213,6 @@ export const SimpleSwapForm: React.FC = () => {
         submission.mutate();
       }}
     >
-      <IconGear className="w-[18px] h-[18px] absolute right-0 top-0" />
       <Input
         isDisabled={isPending}
         placeholder="0"
@@ -260,7 +252,10 @@ export const SimpleSwapForm: React.FC = () => {
                 variant="secondary"
                 size="xs"
                 className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                onClick={() => setValue("base", baseBalance)}
+                onClick={() => {
+                  setActiveInput("base");
+                  setValue("base", baseBalance);
+                }}
               >
                 {m["common.max"]()}
               </Button>
@@ -322,7 +317,10 @@ export const SimpleSwapForm: React.FC = () => {
                 variant="secondary"
                 size="xs"
                 className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                onClick={() => setValue("quote", quoteBalance)}
+                onClick={() => {
+                  setActiveInput("quote");
+                  setValue("quote", quoteBalance);
+                }}
               >
                 {m["common.max"]()}
               </Button>
@@ -342,10 +340,17 @@ export const SimpleSwapForm: React.FC = () => {
 };
 
 const SimpleSwapDetails: React.FC = () => {
+  const { account } = useAccount();
   const { settings } = useApp();
-  const { state } = useSimpleSwap();
-  const { pair, priceImpact, fee, slippage } = state;
+  const { state, controllers } = useSimpleSwap();
+  const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
+  const { input, data } = simulation;
+
+  if (!input || !data || !account || input.amount === "0") return <div />;
+
+  const inputCoin = coins[input.denom];
+  const outputCoin = coins[data.denom];
 
   return (
     <div className="flex flex-col gap-1 w-full">
@@ -358,12 +363,18 @@ const SimpleSwapDetails: React.FC = () => {
         </p>
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.priceImpact"]()}</p>
-        <p className="text-gray-700 diatype-sm-medium">{priceImpact.toFixed(5)}%</p>
-      </div>
-      <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.slippage"]()}</p>
-        <p className="text-gray-700 diatype-sm-medium">{Number(slippage) * 100}%</p>
+        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.rate"]()}</p>
+        <p className="text-gray-700 diatype-sm-medium">
+          1 {inputCoin.symbol} ≈{" "}
+          {formatNumber(
+            formatUnits(
+              Math.round(Number(data.amount) / Number(controllers.inputs.quote.value || 0)),
+              outputCoin.decimals,
+            ) || 0,
+            formatNumberOptions,
+          )}{" "}
+          {outputCoin.symbol}
+        </p>
       </div>
     </div>
   );
