@@ -62,6 +62,7 @@ impl StartCmd {
                 .with_sqlx_pubsub()
                 .with_hooks(dango_indexer_sql::hooks::Hooks {
                     contract_addrs: ContractAddrs {
+                        // TODO: how to figure out the account factory address?
                         account_factory: grug_types::Addr::mock(0),
                     },
                 })
@@ -77,7 +78,9 @@ impl StartCmd {
                 let app = App::new(
                     db.clone(),
                     vm.clone(),
+                    // NOTE: better if I have a NullProposalPreparer here?
                     ProposalPreparer::new(),
+                    // NOTE: might break when sending transactions through httpd
                     NullIndexer,
                     cfg.grug.query_gas_limit,
                 );

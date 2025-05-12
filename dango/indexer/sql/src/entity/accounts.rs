@@ -16,10 +16,10 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(unique)]
     pub username: String,
-    pub index: i32,
+    // pub index: i32,
     #[sea_orm(unique)]
     pub address: String,
-    pub eth_address: Option<String>,
+    // pub eth_address: Option<String>,
     pub account_type: AccountType,
     pub created_at: DateTime,
     pub created_block_height: i64,

@@ -28,7 +28,7 @@ impl From<entity::accounts::AccountType> for AccountType {
 pub struct Account {
     pub username: String,
     pub address: String,
-    pub eth_address: Option<String>,
+    // pub eth_address: Option<String>,
     pub account_type: AccountType,
     pub created_at: DateTime<Utc>,
     pub created_block_height: u64,
@@ -40,7 +40,7 @@ impl From<entity::accounts::Model> for Account {
             created_at: Utc.from_utc_datetime(&item.created_at),
             username: item.username,
             address: item.address,
-            eth_address: item.eth_address,
+            // eth_address: item.eth_address,
             account_type: item.account_type.into(),
             created_block_height: item.created_block_height as u64,
         }

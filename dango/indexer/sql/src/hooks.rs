@@ -37,9 +37,9 @@ pub struct Hooks {
 struct AccountDetails {
     username: account_factory::Username,
     address: Option<Addr>,
-    eth_address: Option<ByteArray<33>>,
     params: Option<AccountParams>,
     account_type: Option<AccountType>,
+    public_key: Option<Key>,
 }
 
 #[async_trait]
@@ -164,6 +164,12 @@ impl Hooks {
         let mut detected_accounts: HashMap<account_factory::Username, AccountDetails> =
             HashMap::new();
 
+        // NOTE:
+        // The kind of operations which needs to be executed after are :
+        // - UserRegistered: a username, key and key hash. We should create an account entry.
+        // - AccountRegistered: an address, username, We should create an account entry.
+        // - KeyUpdated: a username, key and key hash. We should update the account entry with the new key.
+
         for tx in block.block_outcome.tx_outcomes.iter() {
             if tx.result.is_err() {
                 #[cfg(feature = "tracing")]
@@ -183,7 +189,6 @@ impl Hooks {
                 };
 
                 match event.ty.as_str() {
-                    // Search for new user registration
                     account_factory::UserRegistered::EVENT_NAME => {
                         let Ok(event) = event
                             .data
@@ -192,19 +197,16 @@ impl Hooks {
                             continue;
                         };
 
-                        // TODO: can the eth address be in the event data?
-
                         let _account = detected_accounts.entry(event.username.clone()).or_insert(
                             AccountDetails {
                                 address: None,
                                 username: event.username,
-                                eth_address: None,
                                 params: None,
                                 account_type: None,
+                                public_key: Some(event.key),
                             },
                         );
                     },
-                    // Quest: Create a new account
                     account_factory::AccountRegistered::EVENT_NAME => {
                         let Ok(event) = event
                             .data
@@ -220,9 +222,9 @@ impl Hooks {
                                 AccountDetails {
                                     address: None,
                                     username: params.owner.clone(),
-                                    eth_address: None,
                                     params: None,
                                     account_type: None,
+                                    public_key: None,
                                 },
                             );
 
@@ -236,7 +238,6 @@ impl Hooks {
                             account.params = Some(event.params);
                         }
                     },
-                    // Detect Sepck256k1 key update
                     account_factory::KeyUpdated::EVENT_NAME => {
                         let Ok(event) =
                             event.data.deserialize_json::<account_factory::KeyUpdated>()
@@ -244,18 +245,23 @@ impl Hooks {
                             continue;
                         };
 
-                        if let Op::Insert(Key::Secp256k1(key)) = event.key {
-                            let account = detected_accounts
-                                .entry(event.username.clone())
-                                .or_insert(AccountDetails {
-                                    address: None,
-                                    username: event.username,
-                                    eth_address: None,
-                                    params: None,
-                                    account_type: None,
-                                });
+                        match event.key {
+                            Op::Insert(key) => {
+                                let account = detected_accounts
+                                    .entry(event.username.clone())
+                                    .or_insert(AccountDetails {
+                                        address: None,
+                                        username: event.username,
+                                        params: None,
+                                        account_type: None,
+                                        public_key: None,
+                                    });
 
-                            account.eth_address = Some(key);
+                                account.public_key = Some(key);
+                            },
+                            Op::Delete => {
+                                // TODO: how are public key deleted?
+                            },
                         }
                     },
                     _ => {},
@@ -344,9 +350,9 @@ impl Hooks {
                         if let Some(address) = account.address {
                             model.address = Set(address.to_string());
                         }
-                        if let Some(eth_address) = account.eth_address {
-                            model.eth_address = Set(Some(eth_address.to_string()));
-                        }
+                        // if let Some(eth_address) = account.eth_address {
+                        //     model.eth_address = Set(Some(eth_address.to_string()));
+                        // }
                         model.save(&txn).await?;
                     },
                     // We found existing account with this address, updating username
@@ -355,9 +361,9 @@ impl Hooks {
                             (*existing_account_by_address).clone().into();
                         model.username = Set(account.username.inner().clone());
 
-                        if let Some(eth_address) = account.eth_address {
-                            model.eth_address = Set(Some(eth_address.to_string()));
-                        }
+                        // if let Some(eth_address) = account.eth_address {
+                        //     model.eth_address = Set(Some(eth_address.to_string()));
+                        // }
                         model.save(&txn).await?;
                     },
                     // We found no existing account
@@ -367,14 +373,14 @@ impl Hooks {
                                 id: Set(Uuid::new_v4()),
                                 username: Set(account.username.inner().clone()),
                                 // TODO: get the index value
-                                index: Set(0),
+                                // index: Set(0),
                                 address: Set(account
                                     .address
                                     .map(|address| address.to_string())
                                     .unwrap_or_default()),
-                                eth_address: Set(account
-                                    .eth_address
-                                    .map(|address| address.to_string())),
+                                // eth_address: Set(account
+                                //     .eth_address
+                                //     .map(|address| address.to_string())),
                                 account_type: Set(account_type.clone()),
                                 created_block_height: Set(block.block.info.height as i64),
                                 created_at: Set(created_at),
@@ -397,9 +403,9 @@ impl Hooks {
                             let mut model: entity::accounts::ActiveModel =
                                 (*existing_account_by_address).clone().into();
 
-                            if let Some(eth_address) = account.eth_address {
-                                model.eth_address = Set(Some(eth_address.to_string()));
-                            }
+                            // if let Some(eth_address) = account.eth_address {
+                            //     model.eth_address = Set(Some(eth_address.to_string()));
+                            // }
                             model.save(&txn).await?;
                         }
                     },

@@ -20,11 +20,30 @@ pub enum Account {
     Table,
     Id,
     Username,
-    Index,
+    // Index,
     #[allow(clippy::enum_variant_names)]
     AccountType,
+    // Can this be changed later?
     Address,
+    // NOTE: should it be PublicKey or just removed?
     EthAddress,
     CreatedBlockHeight,
     CreatedAt,
+}
+
+#[derive(DeriveIden)]
+pub enum AccountsPublicKeys {
+    #[sea_orm(iden = "accounts_public_keys")]
+    Table,
+    AccountId,
+    PublicKeyId,
+}
+
+#[derive(DeriveIden)]
+pub enum PublicKeys {
+    #[sea_orm(iden = "public_keys")]
+    Table,
+    Id,
+    // Unique index
+    PublicKey,
 }
