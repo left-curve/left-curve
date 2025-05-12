@@ -51,7 +51,8 @@ impl Preset for TestOption {
                 height: GENESIS_BLOCK_HEIGHT,
                 timestamp: MOCK_GENESIS_TIMESTAMP,
             },
-            // By default, give owner, user1, user2 each 100k USDC from Ethereum.
+            // By default, give owner, user1, user2 each 100k USDC from Ethereum
+            // and user1 1000 WETH from Ethereum.
             bridge_ops: |accounts| {
                 vec![
                     BridgeOp {
@@ -77,6 +78,14 @@ impl Preset for TestOption {
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user2.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::WETH_WARP,
+                        },
+                        amount: Uint128::new(1000 * 10u128.pow(18)), /* 1000 WETH, 18 decimal precision */
+                        recipient: accounts.user1.address(),
                     },
                 ]
             },
@@ -400,6 +409,7 @@ impl Preset for LendingOption {
         LendingOption {
             markets: btree_map! {
                 usdc::DENOM.clone() => InterestRateModel::mock(),
+                eth::DENOM.clone() => InterestRateModel::mock(),
             },
         }
     }
