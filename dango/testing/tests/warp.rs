@@ -1,105 +1,30 @@
 use {
     assertor::*,
     dango_gateway::REVERSE_ROUTES,
-    dango_genesis::Contracts,
-    dango_testing::{TestSuite, setup_test, setup_test_with_indexer},
+    dango_testing::{HyperlaneTestSuite, TestSuite, setup_test, setup_test_with_indexer},
     dango_types::{
-        constants::{dango, eth, sol, usdc},
-        gateway::{self, Domain, Remote},
+        constants::{sol, usdc},
+        gateway::{self, Remote},
         warp::{self, TokenMessage},
     },
     grug::{
-        Addr, Addressable, BalanceChange, Coin, Coins, Denom, Duration, Hash256, HashExt,
-        HexBinary, JsonSerExt, MathError, NumberConst, QuerierExt, ResultExt, Signer, StdError,
-        Udec128, Uint128, btree_map, coins, setup_tracing_subscriber,
+        Addr, Addressable, BalanceChange, Coin, Coins, Denom, Duration, HashExt, NumberConst,
+        QuerierExt, ResultExt, StdError, Udec128, Uint128, btree_map, coins,
     },
-    hyperlane_testing::{MockValidatorSets, constants::MOCK_HYPERLANE_LOCAL_DOMAIN},
+    hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32,
         constants::{ethereum, solana},
         mailbox::{self, MAILBOX_VERSION, Message},
     },
     sea_orm::EntityTrait,
-    std::{
-        ops::{Deref, DerefMut},
-        str::FromStr,
-    },
+    std::{ops::DerefMut, str::FromStr},
 };
-
-struct WarpTestSuite {
-    suite: TestSuite,
-    validator_sets: MockValidatorSets,
-    mailbox: Addr,
-    warp: Addr,
-}
-
-impl Deref for WarpTestSuite {
-    type Target = TestSuite;
-
-    fn deref(&self) -> &Self::Target {
-        &self.suite
-    }
-}
-
-impl DerefMut for WarpTestSuite {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.suite
-    }
-}
-
-impl WarpTestSuite {
-    fn new(suite: TestSuite, validator_sets: MockValidatorSets, contracts: &Contracts) -> Self {
-        Self {
-            suite,
-            validator_sets,
-            mailbox: contracts.hyperlane.mailbox,
-            warp: contracts.warp,
-        }
-    }
-
-    fn receive_warp_transfer(
-        &mut self,
-        relayer: &mut dyn Signer,
-        origin_domain: Domain,
-        origin_warp: Addr32,
-        recipient: Addr,
-        amount: Uint128,
-    ) -> Hash256 {
-        // Mock validator set signs the message.
-        let (message_id, raw_message, raw_metadata) = self.validator_sets.get(origin_domain).sign(
-            origin_warp,
-            MOCK_HYPERLANE_LOCAL_DOMAIN,
-            self.warp,
-            TokenMessage {
-                recipient: recipient.into(),
-                amount,
-                metadata: Default::default(),
-            }
-            .encode(),
-        );
-
-        // Deliver the message to Dango mailbox.
-        self.suite
-            .execute(
-                relayer,
-                self.mailbox,
-                &mailbox::ExecuteMsg::Process {
-                    raw_message,
-                    raw_metadata,
-                },
-                Coins::new(),
-            )
-            .should_succeed();
-
-        // Return the message ID.
-        message_id
-    }
-}
 
 #[test]
 fn receiving_remote() {
     let (suite, mut accounts, _, contracts, validator_sets) = setup_test(Default::default());
-    let mut suite = WarpTestSuite::new(suite, validator_sets, &contracts);
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     const MOCK_RECEIVE_AMOUNT: u128 = 88;
 
@@ -272,7 +197,7 @@ fn sending_remote_incorrect_route() {
 #[test]
 fn sending_remote_insufficient_reserve() {
     let (suite, mut accounts, _, contracts, validator_sets) = setup_test(Default::default());
-    let mut suite = WarpTestSuite::new(suite, validator_sets, &contracts);
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     const MOCK_SOLANA_RECIPIENT: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
