@@ -8,7 +8,11 @@ import { useSessionKey } from "./useSessionKey.js";
 export type UseSigninParameters = {
   username: string;
   connectors?: UseConnectorsReturnType;
-  sessionKey?: boolean;
+  sessionKey?:
+    | {
+        expireAt: number;
+      }
+    | false;
   mutation?: UseMutationParameters<void, Error, { connectorId: string }>;
 };
 
@@ -36,11 +40,9 @@ export function useSignin(parameters: UseSigninParameters) {
       const keyPair = Secp256k1.makeKeyPair();
       const publicKey = keyPair.getPublicKey();
 
-      const expireAt = Date.now() + 1000 * 60 * 60 * 24;
-
       const sessionInfo = {
         sessionKey: encodeBase64(publicKey),
-        expireAt: expireAt.toString(),
+        expireAt: sessionKey.expireAt.toString(),
       };
 
       const { credential } = await connector.signArbitrary({

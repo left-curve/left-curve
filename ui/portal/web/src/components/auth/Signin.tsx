@@ -28,6 +28,7 @@ import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
@@ -206,7 +207,7 @@ const CredentialStep: React.FC = () => {
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey,
+    sessionKey: sessionKey && { expireAt: DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
