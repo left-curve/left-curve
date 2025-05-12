@@ -51,9 +51,7 @@ function SettingsComponent() {
                 {m["settings.session.remaining"]()}
               </span>
             </p>
-            <div>
-              <SessionCountdown />
-            </div>
+            <SessionCountdown />
           </div>
           <p className="text-gray-500 diatype-sm-regular pl-10 max-w-96 pb-2">
             {m["settings.session.description"]()}
