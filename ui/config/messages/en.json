@@ -426,6 +426,12 @@
     "title": "Settings",
     "display": "Display",
     "language": "Language",
+    "session": {
+      "title": "Session",
+      "description": "For security reasons, each login session lasts 24 hours. You will need to log in again once your session expires.",
+      "remaining": "Remaining time",
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+    },
     "languages": [
       {
         "declarations": ["input language"],
