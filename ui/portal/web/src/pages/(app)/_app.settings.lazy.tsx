@@ -4,19 +4,20 @@ import {
   IconButton,
   IconChevronDown,
   IconFormatNumber,
+  IconInfo,
   IconLanguage,
   IconMobile,
   Select,
-  Tab,
-  Tabs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { useAccount, useSessionKey } from "@left-curve/store";
 import { Modals } from "~/components/modals/RootModal";
 import { KeyManagement } from "~/components/settings/KeyManagement";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
+import { useState } from "react";
+import { SessionCountdown } from "~/components/settings/SessionCountdown";
 
 export const Route = createLazyFileRoute("/(app)/_app/settings")({
   component: SettingsComponent,
@@ -28,6 +29,7 @@ function SettingsComponent() {
   const { isConnected } = useAccount();
   const { showModal, changeSettings, settings } = useApp();
   const { formatNumberOptions } = settings;
+  const { session } = useSessionKey();
 
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
@@ -39,6 +41,25 @@ function SettingsComponent() {
         )}
         <span className="h3-bold text-gray-900">{m["settings.title"]()}</span>
       </h2>
+      {session ? (
+        <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
+          <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.session.title"]()}</h3>
+          <div className="flex items-center justify-between pt-2 rounded-md">
+            <p className="flex items-center justify-center gap-2 px-2">
+              <IconInfo className="text-gray-500" />
+              <span className="diatype-m-bold text-gray-700">
+                {m["settings.session.remaining"]()}
+              </span>
+            </p>
+            <div>
+              <SessionCountdown />
+            </div>
+          </div>
+          <p className="text-gray-500 diatype-sm-regular pl-10 max-w-96 pb-2">
+            {m["settings.session.description"]()}
+          </p>
+        </div>
+      ) : null}
       <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
         <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.display"]()}</h3>
         <div className="flex items-center justify-between py-2 rounded-md">
