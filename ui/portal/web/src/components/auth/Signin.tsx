@@ -110,6 +110,9 @@ const UsernameStep: React.FC = () => {
           <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="primary">
             {m["signin.useAnotherAccount"]()}
           </Button>
+          <Button as={Link} fullWidth variant="secondary" to="/">
+            {m["signin.continueWithoutSignin"]()}
+          </Button>
           <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
             <div className="flex items-center gap-2 flex-col">
               <Checkbox
