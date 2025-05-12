@@ -1,12 +1,18 @@
 use {
-    crate::{PERPS_MARKET_PARAMS, PERPS_MARKETS, PERPS_VAULT, PERPS_VAULT_DEPOSITS, core},
+    crate::{
+        PERPS_MARKET_PARAMS, PERPS_MARKETS, PERPS_POSITIONS, PERPS_VAULT, PERPS_VAULT_DEPOSITS,
+        core,
+    },
     anyhow::{bail, ensure},
-    dango_types::perps::{
-        ExecuteMsg, InstantiateMsg, PerpsMarketParams, PerpsMarketState, PerpsVaultState,
+    dango_account_factory::ACCOUNTS,
+    dango_oracle::OracleQuerier,
+    dango_types::{
+        DangoQuerier,
+        perps::{ExecuteMsg, InstantiateMsg, PerpsMarketParams, PerpsMarketState, PerpsVaultState},
     },
     grug::{
         Coins, Denom, Int128, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt,
-        Response, Uint128,
+        Response, Sign, Signed, StorageQuerier, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -42,6 +48,23 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::BatchUpdateOrders { orders } => batch_update_orders(ctx, orders),
         ExecuteMsg::UpdatePerpsMarketParams { params } => update_perps_market_params(ctx, params),
     }
+}
+
+fn update_perps_market_params(
+    ctx: MutableCtx,
+    params: BTreeMap<Denom, PerpsMarketParams>,
+) -> anyhow::Result<Response> {
+    // Ensure the sender is the contract admin
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    for (denom, params) in params {
+        PERPS_MARKET_PARAMS.save(ctx.storage, &denom, &params)?;
+    }
+
+    Ok(Response::new())
 }
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -110,25 +133,57 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
 }
 
 fn batch_update_orders(
-    _ctx: MutableCtx,
-    _orders: BTreeMap<Denom, Int128>,
+    ctx: MutableCtx,
+    orders: BTreeMap<Denom, Int128>,
 ) -> anyhow::Result<Response> {
+    let account_factory = ctx.querier.query_account_factory()?;
+
+    // Ensure sender is a margin account.
+    // An an optimization, use raw instead of smart query.
+    ensure!(
+        ctx.querier
+            .query_wasm_path(account_factory, &ACCOUNTS.path(ctx.sender))?
+            .params
+            .is_margin(),
+        "only margin accounts can update orders"
+    );
+
+    for (denom, amount) in orders {
+        let market_params = PERPS_MARKET_PARAMS.load(ctx.storage, &denom)?;
+
+        let current_pos = PERPS_POSITIONS.may_load(ctx.storage, (&ctx.sender, &denom))?;
+        match current_pos {
+            Some(pos) => {
+                todo!()
+            },
+            None => {
+                create_position(&ctx, denom, amount, &market_params)?;
+            },
+        }
+    }
+
     Ok(Response::new())
 }
 
-fn update_perps_market_params(
-    ctx: MutableCtx,
-    params: BTreeMap<Denom, PerpsMarketParams>,
+fn create_position(
+    ctx: &MutableCtx,
+    denom: Denom,
+    amount: Int128,
+    params: &PerpsMarketParams,
 ) -> anyhow::Result<Response> {
-    // Ensure the sender is the contract admin
+    let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
+
+    // Ensure trading is enabled
     ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "you don't have the right, O you don't have the right"
+        params.trading_enabled,
+        "trading is not enabled for this market"
     );
 
-    for (denom, params) in params {
-        PERPS_MARKET_PARAMS.save(ctx.storage, &denom, &params)?;
-    }
+    // Query the oracle for the price
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let price = oracle_querier.query_price(&denom, None)?;
+    let position_value =
+        price.value_of_unit_amount(amount.checked_abs()?.checked_into_unsigned()?)?;
 
     Ok(Response::new())
 }
