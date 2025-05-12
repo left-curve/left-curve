@@ -27,17 +27,29 @@ export type ModalRef = {
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.AddKey]: {
     component: lazy(() => import("./AddKey").then(({ AddKeyModal }) => ({ default: AddKeyModal }))),
+    options: {
+      allowClosing: true,
+    },
   },
   [Modals.RemoveKey]: {
     component: lazy(() => import("./RemoveKey").then(({ RemoveKey }) => ({ default: RemoveKey }))),
+    options: {
+      allowClosing: true,
+    },
   },
   [Modals.QRConnect]: {
     component: lazy(() => import("./QRConnect").then(({ QRConnect }) => ({ default: QRConnect }))),
+    options: {
+      allowClosing: true,
+    },
   },
   [Modals.ConfirmSend]: {
     component: lazy(() =>
       import("./ConfirmSend").then(({ ConfirmSend }) => ({ default: ConfirmSend })),
     ),
+    options: {
+      allowClosing: true,
+    },
   },
   [Modals.ConfirmAccount]: {
     component: lazy(() =>
@@ -45,22 +57,31 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
         default: ConfirmAccount,
       })),
     ),
+    options: {
+      allowClosing: true,
+    },
   },
   [Modals.SignWithDesktop]: {
-    header: m["common.signin"](),
     component: lazy(() =>
       import("./SignWithDesktop").then(({ SignWithDesktop }) => ({
         default: SignWithDesktop,
       })),
     ),
+    options: {
+      header: m["common.signin"](),
+      allowClosing: true,
+    },
   },
   [Modals.ConfirmSwap]: {
-    header: m["dex.swap"](),
     component: lazy(() =>
       import("./ConfirmSwap").then(({ ConfirmSwap }) => ({
         default: ConfirmSwap,
       })),
     ),
+    options: {
+      header: m["dex.swap"](),
+      allowClosing: true,
+    },
   },
   [Modals.RenewSession]: {
     component: lazy(() =>
@@ -68,12 +89,18 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
         default: RenewSession,
       })),
     ),
+    options: {
+      allowClosing: false,
+    },
   },
 };
 
 type ModalDefinition = {
-  header?: string;
   component: React.LazyExoticComponent<React.ForwardRefExoticComponent<any>>;
+  options: {
+    header?: string;
+    allowClosing?: boolean;
+  };
 };
 
 export const RootModal: React.FC = () => {
@@ -86,7 +113,7 @@ export const RootModal: React.FC = () => {
 
   const { modal: activeModal, props: modalProps } = modal;
 
-  const { component: Modal, header } =
+  const { component: Modal, options } =
     useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
 
   const closeModal = () => {
@@ -100,6 +127,7 @@ export const RootModal: React.FC = () => {
   if (!isMd) {
     return (
       <Sheet
+        disableDrag={!options.allowClosing}
         ref={sheetRef}
         isOpen={!!activeModal}
         onClose={closeModal}
@@ -108,12 +136,12 @@ export const RootModal: React.FC = () => {
       >
         <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
           <Sheet.Header>
-            {header ? (
+            {options.header ? (
               <div className="flex items-center justify-between w-full">
                 <Button variant="link" onClick={hideModal}>
                   {m["common.cancel"]()}
                 </Button>
-                <p className="mt-1 text-gray-500 font-semibold">{header}</p>
+                <p className="mt-1 text-gray-500 font-semibold">{options.header}</p>
                 <div className="w-[66px]" />
               </div>
             ) : null}
@@ -124,7 +152,7 @@ export const RootModal: React.FC = () => {
             </Suspense>
           </Sheet.Content>
         </Sheet.Container>
-        <Sheet.Backdrop onTap={closeModal} />
+        <Sheet.Backdrop onTap={() => options.allowClosing && closeModal()} />
       </Sheet>
     );
   }
@@ -134,7 +162,7 @@ export const RootModal: React.FC = () => {
       <motion.div
         ref={overlayRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current) closeModal();
+          if (e.target === overlayRef.current && options.allowClosing) closeModal();
         }}
         className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}

@@ -1,26 +1,25 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
-import { Button, IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
+import { Button, IconKey } from "@left-curve/applets-kit";
 import { useAccount, useSessionKey } from "@left-curve/store";
 
 export const RenewSession = forwardRef<undefined>(() => {
   const { connector } = useAccount();
   const { hideModal } = useApp();
-  const { createSessionKey } = useSessionKey();
+  const { createSessionKey, session } = useSessionKey();
+
+  useEffect(() => {
+    if (session && Date.now() < Number(session.sessionInfo.expireAt)) {
+      hideModal();
+    }
+  }, [session]);
 
   return (
     <div className="flex flex-col bg-white-100 rounded-xl relative max-w-[400px]">
-      <IconButton
-        className="hidden lg:block absolute right-2 top-2"
-        variant="link"
-        onClick={hideModal}
-      >
-        <IconClose />
-      </IconButton>
       <div className="p-4 flex flex-col gap-4">
         <div className="w-12 h-12 rounded-full bg-green-bean-100 flex items-center justify-center text-green-bean-600">
           <IconKey />
@@ -33,10 +32,7 @@ export const RenewSession = forwardRef<undefined>(() => {
         <Button
           fullWidth
           variant="primary"
-          onClick={() => [
-            createSessionKey({ expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION }),
-            hideModal(),
-          ]}
+          onClick={() => createSessionKey({ expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION })}
         >
           {m["common.signin"]()}
         </Button>

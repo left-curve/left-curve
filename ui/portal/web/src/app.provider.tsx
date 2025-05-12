@@ -1,11 +1,19 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { createEventBus, useAccount, useAppConfig, useConfig, useStorage } from "@left-curve/store";
+import {
+  createEventBus,
+  useAccount,
+  useAppConfig,
+  useConfig,
+  useSessionKey,
+  useStorage,
+} from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
 import { GRAPHQL_URI } from "../store.config";
 import { router } from "./app.router";
+import { Modals } from "./components/modals/RootModal";
 
 import type { AnyCoin } from "@left-curve/store/types";
 
@@ -132,6 +140,26 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       });
     }
   }, [username]);
+
+  // Track session key expiration
+  const { session } = useSessionKey();
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (
+        (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+        settings.useSessionKey &&
+        connector &&
+        connector.type !== "session"
+      ) {
+        if (modal.modal !== Modals.RenewSession) {
+          showModal(Modals.RenewSession);
+        }
+      }
+    }, 1000);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [session, modal]);
 
   // Track notifications
   useEffect(() => {
