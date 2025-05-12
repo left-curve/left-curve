@@ -8,14 +8,7 @@ import {
   useSigningClient,
 } from "@left-curve/store";
 
-import {
-  Badge,
-  Button,
-  CoinSelector,
-  IconArrowDown,
-  IconGear,
-  Input,
-} from "@left-curve/applets-kit";
+import { Badge, Button, CoinSelector, IconArrowDown, Input } from "@left-curve/applets-kit";
 import { toast } from "../foundation/Toast";
 
 import { m } from "~/paraglide/messages";
@@ -29,6 +22,7 @@ import { Modals } from "../modals/RootModal";
 import type { Address } from "@left-curve/dango/types";
 import type { UseSimpleSwapParameters } from "@left-curve/store";
 import type { UseMutationResult } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type React from "react";
 
 const [SimpleSwapProvider, useSimpleSwap] = createContext<{
@@ -162,7 +156,7 @@ const SimpleSwapHeader: React.FC = () => {
 export const SimpleSwapForm: React.FC = () => {
   const { settings } = useApp();
   const { coins } = useConfig();
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const { state, controllers, submission } = useSimpleSwap();
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
@@ -220,7 +214,6 @@ export const SimpleSwapForm: React.FC = () => {
         submission.mutate();
       }}
     >
-      <IconGear className="w-[18px] h-[18px] absolute right-0 top-0" />
       <Input
         isDisabled={isPending}
         placeholder="0"
@@ -228,6 +221,7 @@ export const SimpleSwapForm: React.FC = () => {
         {...register("base", {
           strategy: "onChange",
           validate: (v) => {
+            if (!isConnected) return true;
             if (Number(v) > Number(baseBalance)) return m["validations.errors.insufficientFunds"]();
             return true;
           },
@@ -260,7 +254,10 @@ export const SimpleSwapForm: React.FC = () => {
                 variant="secondary"
                 size="xs"
                 className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                onClick={() => setValue("base", baseBalance)}
+                onClick={() => {
+                  setActiveInput("base");
+                  setValue("base", baseBalance);
+                }}
               >
                 {m["common.max"]()}
               </Button>
@@ -291,6 +288,7 @@ export const SimpleSwapForm: React.FC = () => {
         {...register("quote", {
           strategy: "onChange",
           validate: (v) => {
+            if (!isConnected) return true;
             if (Number(v) > Number(quoteBalance))
               return m["validations.errors.insufficientFunds"]();
             return true;
@@ -322,7 +320,10 @@ export const SimpleSwapForm: React.FC = () => {
                 variant="secondary"
                 size="xs"
                 className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                onClick={() => setValue("quote", quoteBalance)}
+                onClick={() => {
+                  setActiveInput("quote");
+                  setValue("quote", quoteBalance);
+                }}
               >
                 {m["common.max"]()}
               </Button>
@@ -342,10 +343,21 @@ export const SimpleSwapForm: React.FC = () => {
 };
 
 const SimpleSwapDetails: React.FC = () => {
+  const { isConnected } = useAccount();
   const { settings } = useApp();
-  const { state } = useSimpleSwap();
-  const { pair, priceImpact, fee, slippage } = state;
+  const { state, controllers } = useSimpleSwap();
+  const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
+  const { input, data } = simulation;
+
+  if (!input || !data || !isConnected || input.amount === "0") return <div />;
+
+  const inputCoin = coins[input.denom];
+  const outputCoin = coins[data.denom];
+
+  const inputAmount = formatUnits(input.amount, inputCoin.decimals);
+
+  const outputAmount = formatUnits(data.amount, outputCoin.decimals);
 
   return (
     <div className="flex flex-col gap-1 w-full">
@@ -358,21 +370,30 @@ const SimpleSwapDetails: React.FC = () => {
         </p>
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.priceImpact"]()}</p>
-        <p className="text-gray-700 diatype-sm-medium">{priceImpact.toFixed(5)}%</p>
-      </div>
-      <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.slippage"]()}</p>
-        <p className="text-gray-700 diatype-sm-medium">{Number(slippage) * 100}%</p>
+        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.rate"]()}</p>
+        <p className="text-gray-700 diatype-sm-medium">
+          1 {inputCoin.symbol} ≈{" "}
+          {formatNumber(Number(outputAmount) / Number(inputAmount), {
+            ...formatNumberOptions,
+            maxFractionDigits: outputCoin.decimals,
+          })}{" "}
+          {outputCoin.symbol}
+        </p>
       </div>
     </div>
   );
 };
 
 const SimpleSwapTrigger: React.FC = () => {
-  return (
+  const { isConnected } = useAccount();
+
+  return isConnected ? (
     <Button fullWidth size="md" type="submit" form="simple-swap-form">
       Swap
+    </Button>
+  ) : (
+    <Button fullWidth size="md" as={Link} to="/signin">
+      {m["common.signin"]()}
     </Button>
   );
 };
