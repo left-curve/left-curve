@@ -16,6 +16,7 @@ use {
         constants::{PYTH_PRICE_SOURCES, btc, dango, eth, sol, usdc},
         dex::{CurveInvariant, PairParams, PairUpdate},
         gateway::{Remote, WithdrawalFee},
+        lending::InterestRateModel,
         taxman,
     },
     grug::{
@@ -398,7 +399,7 @@ impl Preset for LendingOption {
     fn preset_test() -> Self {
         LendingOption {
             markets: btree_map! {
-                // TODO
+                usdc::DENOM.clone() => InterestRateModel::mock(),
             },
         }
     }
