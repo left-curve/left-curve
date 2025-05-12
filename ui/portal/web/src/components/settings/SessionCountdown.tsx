@@ -37,7 +37,7 @@ function FlipUnit({ value, label }: FlipUnitProps) {
             exit={{ y: 20, opacity: 0 }}
             transition={{
               duration: 0.6,
-              ease: [0.4, 0, 0.2, 1],
+              ease: [1, 0, 0.4, 1],
             }}
           >
             {padded}
