@@ -210,7 +210,7 @@ const CredentialStep: React.FC = () => {
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey: sessionKey && { expireAt: DEFAULT_SESSION_EXPIRATION },
+    sessionKey: sessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
