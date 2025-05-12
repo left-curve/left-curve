@@ -22,6 +22,7 @@ import { Modals } from "../modals/RootModal";
 import type { Address } from "@left-curve/dango/types";
 import type { UseSimpleSwapParameters } from "@left-curve/store";
 import type { UseMutationResult } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type React from "react";
 
 const [SimpleSwapProvider, useSimpleSwap] = createContext<{
@@ -155,7 +156,7 @@ const SimpleSwapHeader: React.FC = () => {
 export const SimpleSwapForm: React.FC = () => {
   const { settings } = useApp();
   const { coins } = useConfig();
-  const { account } = useAccount();
+  const { account, isConnected } = useAccount();
   const { state, controllers, submission } = useSimpleSwap();
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
@@ -220,6 +221,7 @@ export const SimpleSwapForm: React.FC = () => {
         {...register("base", {
           strategy: "onChange",
           validate: (v) => {
+            if (!isConnected) return true;
             if (Number(v) > Number(baseBalance)) return m["validations.errors.insufficientFunds"]();
             return true;
           },
@@ -286,6 +288,7 @@ export const SimpleSwapForm: React.FC = () => {
         {...register("quote", {
           strategy: "onChange",
           validate: (v) => {
+            if (!isConnected) return true;
             if (Number(v) > Number(quoteBalance))
               return m["validations.errors.insufficientFunds"]();
             return true;
@@ -340,17 +343,21 @@ export const SimpleSwapForm: React.FC = () => {
 };
 
 const SimpleSwapDetails: React.FC = () => {
-  const { account } = useAccount();
+  const { isConnected } = useAccount();
   const { settings } = useApp();
   const { state, controllers } = useSimpleSwap();
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
   const { input, data } = simulation;
 
-  if (!input || !data || !account || input.amount === "0") return <div />;
+  if (!input || !data || !isConnected || input.amount === "0") return <div />;
 
   const inputCoin = coins[input.denom];
   const outputCoin = coins[data.denom];
+
+  const inputAmount = formatUnits(input.amount, inputCoin.decimals);
+
+  const outputAmount = formatUnits(data.amount, outputCoin.decimals);
 
   return (
     <div className="flex flex-col gap-1 w-full">
@@ -366,13 +373,10 @@ const SimpleSwapDetails: React.FC = () => {
         <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.rate"]()}</p>
         <p className="text-gray-700 diatype-sm-medium">
           1 {inputCoin.symbol} ≈{" "}
-          {formatNumber(
-            formatUnits(
-              Math.round(Number(data.amount) / Number(controllers.inputs.quote.value || 0)),
-              outputCoin.decimals,
-            ) || 0,
-            formatNumberOptions,
-          )}{" "}
+          {formatNumber(Number(outputAmount) / Number(inputAmount), {
+            ...formatNumberOptions,
+            maxFractionDigits: outputCoin.decimals,
+          })}{" "}
           {outputCoin.symbol}
         </p>
       </div>
@@ -381,9 +385,15 @@ const SimpleSwapDetails: React.FC = () => {
 };
 
 const SimpleSwapTrigger: React.FC = () => {
-  return (
+  const { isConnected } = useAccount();
+
+  return isConnected ? (
     <Button fullWidth size="md" type="submit" form="simple-swap-form">
       Swap
+    </Button>
+  ) : (
+    <Button fullWidth size="md" as={Link} to="/signin">
+      {m["common.signin"]()}
     </Button>
   );
 };
