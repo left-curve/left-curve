@@ -1,4 +1,4 @@
-use grug::{Bounded, Denom, Timestamp, Udec128, Uint128, ZeroInclusiveOneExclusive};
+use grug::{Bounded, Denom, Int128, Timestamp, Udec128, Uint128, ZeroInclusiveOneExclusive};
 
 /// The state of the perps vault
 #[grug::derive(Serde, Borsh)]
@@ -47,4 +47,21 @@ pub struct PerpsMarketParams {
     /// How fast the funding rate can change. See:
     /// <https://docs.synthetix.io/exchange/perps-basics/funding/technical-details>
     pub max_funding_velocity: Udec128,
+}
+
+/// The state of a perps position.
+#[grug::derive(Serde, Borsh)]
+pub struct PerpsPosition {
+    /// The denom of the position.
+    pub denom: Denom,
+    /// The size of the position.
+    pub size: Int128,
+    /// The entry price of the position.
+    pub entry_price: Udec128,
+    /// The entry execution price of the position.
+    pub entry_execution_price: Udec128,
+    /// The skew at the time of entry.
+    pub entry_skew: Udec128,
+    /// The realized pnl of the position.
+    pub realized_pnl: Int128,
 }

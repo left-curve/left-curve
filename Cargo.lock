@@ -3498,6 +3498,8 @@ name = "dango-perps"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-account-factory",
+ "dango-oracle",
  "dango-types",
  "grug",
 ]

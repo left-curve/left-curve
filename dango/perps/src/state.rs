@@ -1,5 +1,5 @@
 use {
-    dango_types::perps::{PerpsMarketParams, PerpsMarketState, PerpsVaultState},
+    dango_types::perps::{PerpsMarketParams, PerpsMarketState, PerpsPosition, PerpsVaultState},
     grug::{Addr, Denom, Item, Map, Uint128},
 };
 
@@ -14,3 +14,6 @@ pub const PERPS_MARKETS: Map<&Denom, PerpsMarketState> = Map::new("perps_market"
 
 /// The perps market params. The key is the denom of the market.
 pub const PERPS_MARKET_PARAMS: Map<&Denom, PerpsMarketParams> = Map::new("perps_market_params");
+
+/// The perps positions. The key is the owner address and the denom of the market.
+pub const PERPS_POSITIONS: Map<(&Addr, &Denom), PerpsPosition> = Map::new("perps_positions");
