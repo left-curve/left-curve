@@ -207,6 +207,11 @@
       "accountName": "Account Name",
       "accountBalance": "Account Balance",
       "getStarted": "Get Started!"
+    },
+    "renewSession": {
+      "title": "Session expired",
+      "description": "For your security, each login session expires after 24 hours. Please sign in again.",
+      "stayLogout": "Stay logged out"
     }
   },
   "signin": {
