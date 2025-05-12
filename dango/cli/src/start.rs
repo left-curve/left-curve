@@ -8,6 +8,7 @@ use {
     config_parser::parse_config,
     dango_genesis::build_rust_codes,
     dango_httpd::{graphql::build_schema, server::config_app},
+    dango_indexer_sql::hooks::ContractAddrs,
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_client::TendermintRpcClient,
@@ -33,7 +34,7 @@ impl StartCmd {
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
 
-        // Create hybird VM.
+        // Create hybrid VM.
         let codes = build_rust_codes();
         let vm = HybridVm::new(cfg.grug.wasm_cache_capacity, [
             codes.account_factory.to_bytes().hash256(),
@@ -59,24 +60,33 @@ impl StartCmd {
                 .with_database_url(&cfg.indexer.database_url)
                 .with_dir(app_dir.indexer_dir())
                 .with_sqlx_pubsub()
-                .with_hooks(dango_indexer_sql::hooks::Hooks)
+                .with_hooks(dango_indexer_sql::hooks::Hooks {
+                    contract_addrs: ContractAddrs {
+                        account_factory: grug_types::Addr::mock(0),
+                    },
+                })
                 .build()
                 .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
-            let app = App::new(
-                db.clone(),
-                vm.clone(),
-                ProposalPreparer::new(),
-                NullIndexer,
-                cfg.grug.query_gas_limit,
-            );
+            let indexer_path = indexer.indexer_path.clone();
+            let indexer_context = indexer.context.clone();
 
             if cfg.indexer.httpd.enabled {
+                // This app instance allows the httpd daemon to interact with the chain
+                // but it doesn't need to have an indexer at all.
+                let app = App::new(
+                    db.clone(),
+                    vm.clone(),
+                    ProposalPreparer::new(),
+                    NullIndexer,
+                    cfg.grug.query_gas_limit,
+                );
+
                 let httpd_context = Context::new(
-                    indexer.context.clone(),
+                    indexer_context,
                     Arc::new(app),
                     Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
-                    indexer.indexer_path.clone(),
+                    indexer_path,
                 );
 
                 // NOTE: If the httpd was heavily used, it would be better to

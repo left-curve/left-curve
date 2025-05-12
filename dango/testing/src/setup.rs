@@ -1,3 +1,4 @@
+use grug::TendermintRpcClient;
 use {
     crate::{MOCK_LOCAL_DOMAIN, TestAccount, TestAccounts},
     dango_genesis::{
@@ -438,7 +439,7 @@ where
     (genesis_state, accounts, codes, contracts)
 }
 
-fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
+pub fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
