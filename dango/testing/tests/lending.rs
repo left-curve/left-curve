@@ -3,7 +3,7 @@ use {
     dango_lending::{
         calculate_rates, total_borrowed, total_supplied, update_indices, utilization_rate,
     },
-    dango_testing::{TestAccount, TestAccounts, TestOption, TestSuite, setup_test_naive},
+    dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         account::{margin::CollateralPower, single},
         account_factory::AccountParams,
@@ -105,9 +105,7 @@ fn cant_transfer_to_lending() {
 
 #[test]
 fn update_markets_works() {
-    let (mut suite, mut accounts, _codes, contracts, _) = setup_test_naive(TestOption {
-        ..Default::default()
-    });
+    let (mut suite, mut accounts, _codes, contracts, _) = setup_test_naive(Default::default());
 
     // Ensure USDC market already exists.
     suite
