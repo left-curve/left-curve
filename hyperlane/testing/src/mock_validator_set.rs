@@ -79,15 +79,15 @@ impl MockValidatorSet {
     /// Pretend a given message have been dispatched at the Mailbox contract on
     /// the domain. Sign signatures to testify for this message.
     ///
-    /// Return the raw message and metadata that can be submitted to the Mailbox
-    /// contract on Dango for processing.
+    /// Return the message ID, raw message, and raw metadata that can be
+    /// submitted to the Mailbox contract on Dango for processing.
     pub fn sign(
         &self,
         sender: Addr32,
         destination_domain: Domain, // This should be the domain of Dango.
         recipient: Addr,
         body: HexBinary,
-    ) -> (HexBinary, HexBinary) {
+    ) -> (Hash256, HexBinary, HexBinary) {
         // Insert the message into the Merkle tree.
         let (raw_message, message_id, merkle_root, merkle_index) =
             self.new_message(sender, destination_domain, recipient, body);
@@ -119,7 +119,7 @@ impl MockValidatorSet {
         }
         .encode();
 
-        (raw_message, raw_metadata)
+        (message_id, raw_message, raw_metadata)
     }
 
     /// Increment the nonce and insert the message into the merkle tree.

@@ -3529,6 +3529,7 @@ dependencies = [
  "criterion",
  "dango-account-factory",
  "dango-auth",
+ "dango-gateway",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
