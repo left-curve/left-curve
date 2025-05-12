@@ -1,23 +1,29 @@
 import { useEffect, useState } from "react";
 
-export function useCountdown(targetDate?: number | string | Date) {
+type UseCountdownParameters = {
+  date?: number | string | Date;
+  withPad?: boolean;
+};
+
+export function useCountdown(parameters: UseCountdownParameters) {
+  const { date, withPad } = parameters;
   const calculateTimeLeft = () => {
-    if (!targetDate) return { days: "-", hours: "-", minutes: "-", seconds: "-" };
-    const difference = +new Date(targetDate) - +new Date();
+    if (!date) return { days: "-", hours: "-", minutes: "-", seconds: "-" };
+    const difference = +new Date(date) - +new Date();
     if (difference <= 0) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
     }
 
-    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((difference / (1000 * 60)) % 60);
-    const seconds = Math.floor((difference / 1000) % 60);
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24)).toString();
+    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24).toString();
+    const minutes = Math.floor((difference / (1000 * 60)) % 60).toString();
+    const seconds = Math.floor((difference / 1000) % 60).toString();
 
     return {
-      days: days < 10 ? `0${days}` : days.toString(),
-      hours: hours < 10 ? `0${hours}` : hours.toString(),
-      minutes: minutes < 10 ? `0${minutes}` : minutes.toString(),
-      seconds: seconds < 10 ? `0${seconds}` : seconds.toString(),
+      days: withPad ? days.padStart(2, "0") : days,
+      hours: withPad ? hours.padStart(2, "0") : hours,
+      minutes: withPad ? minutes.padStart(2, "0") : minutes,
+      seconds: withPad ? seconds.padStart(2, "0") : seconds,
     };
   };
 
@@ -29,7 +35,7 @@ export function useCountdown(targetDate?: number | string | Date) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [targetDate]);
+  }, [date]);
 
   return timeLeft;
 }
