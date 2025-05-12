@@ -159,7 +159,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [session, modal]);
+  }, [session, modal, settings.useSessionKey, connector]);
 
   // Track notifications
   useEffect(() => {
