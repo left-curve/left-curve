@@ -40,26 +40,27 @@ serde_json              = { workspace = true }
 sha2                    = { workspace = true }
 
 [dev-dependencies]
-anyhow             = { workspace = true }
-assertor           = { workspace = true }
-bip32              = { workspace = true }
-chrono             = { workspace = true }
-criterion          = { workspace = true }
-dango-auth         = { workspace = true }
-dango-httpd        = { workspace = true }
-dango-lending      = { workspace = true, features = ["library"] }
-dango-oracle       = { workspace = true, features = ["library"] }
-hex                = { workspace = true }
-home               = { workspace = true }
-indexer-disk-saver = { workspace = true }
-indexer-testing    = { workspace = true }
-proptest           = { workspace = true }
-rand               = { workspace = true }
-reqwest            = { workspace = true, features = ["json"] }
-serde_json         = { workspace = true }
-test-case          = { workspace = true }
-tokio              = { workspace = true, features = ["full"] }
-tracing            = { workspace = true }
+anyhow                = { workspace = true }
+assertor              = { workspace = true }
+bip32                 = { workspace = true }
+chrono                = { workspace = true }
+criterion             = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-auth            = { workspace = true }
+dango-httpd           = { workspace = true }
+dango-lending         = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
+hex                   = { workspace = true }
+home                  = { workspace = true }
+indexer-disk-saver    = { workspace = true }
+indexer-testing       = { workspace = true }
+proptest              = { workspace = true }
+rand                  = { workspace = true }
+reqwest               = { workspace = true, features = ["json"] }
+serde_json            = { workspace = true }
+test-case             = { workspace = true }
+tokio                 = { workspace = true, features = ["full"] }
+tracing               = { workspace = true }
 
 [[bench]]
 harness = false

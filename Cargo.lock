@@ -3527,6 +3527,7 @@ dependencies = [
  "bip32",
  "chrono",
  "criterion",
+ "dango-account-factory",
  "dango-auth",
  "dango-genesis",
  "dango-httpd",
