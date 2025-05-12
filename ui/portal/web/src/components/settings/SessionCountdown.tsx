@@ -27,33 +27,26 @@ type FlipUnitProps = {
 };
 
 function FlipUnit({ value, label }: FlipUnitProps) {
-  const padded1 = String(value).split("")[0];
-  const padded2 = String(value).split("")[1];
+  const padded = String(value);
 
   return (
     <div className="flex min-w-[30px] gap-[1px] items-center justify-center">
-      <AnimatePresence mode="popLayout">
-        <motion.div
-          key={padded1 + label}
-          initial={{ y: -10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 10, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {padded1}
-        </motion.div>
-      </AnimatePresence>
-      <AnimatePresence mode="popLayout">
-        <motion.div
-          key={padded2 + label}
-          initial={{ y: -10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 10, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {padded2}
-        </motion.div>
-      </AnimatePresence>
+      <div className="relative h-4 w-full overflow-hidden flex items-center justify-center">
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={padded}
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{
+              duration: 0.6,
+              ease: [0.4, 0, 0.2, 1],
+            }}
+          >
+            {padded}
+          </motion.div>
+        </AnimatePresence>
+      </div>
       <div>{label}</div>
     </div>
   );
