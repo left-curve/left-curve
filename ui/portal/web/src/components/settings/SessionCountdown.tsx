@@ -1,10 +1,7 @@
 import type React from "react";
-import { useEffect, useState } from "react";
-
-import { intervalToDuration, type Duration } from "date-fns";
 import { useSessionKey } from "@left-curve/store";
 import { m } from "~/paraglide/messages";
-import { Skeleton, twMerge, useCountdown } from "@left-curve/applets-kit";
+import { useCountdown } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 
 export const SessionCountdown: React.FC = () => {

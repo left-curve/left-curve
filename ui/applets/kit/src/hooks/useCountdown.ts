@@ -14,10 +14,10 @@ export function useCountdown(targetDate?: number | string | Date) {
     const seconds = Math.floor((difference / 1000) % 60);
 
     return {
-      days: days < 10 ? `0${days}` : days,
-      hours: hours < 10 ? `0${hours}` : hours,
-      minutes: minutes < 10 ? `0${minutes}` : minutes,
-      seconds: seconds < 10 ? `0${seconds}` : seconds,
+      days: days < 10 ? `0${days}` : days.toString(),
+      hours: hours < 10 ? `0${hours}` : hours.toString(),
+      minutes: minutes < 10 ? `0${minutes}` : minutes.toString(),
+      seconds: seconds < 10 ? `0${seconds}` : seconds.toString(),
     };
   };
 
