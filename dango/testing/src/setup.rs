@@ -352,12 +352,14 @@ fn build_genesis_warp_msg(
         metadata: Default::default(), // Metadata isn't supported yet.
     };
 
-    let (_, raw_message, raw_metadata) = validator_set.sign(
-        sender,
-        destination_domain,
-        contracts.warp,
-        warp_msg.encode(),
-    );
+    let (_, raw_message, raw_metadata) = validator_set
+        .unwrap_or_else(|| panic!("no mock validator set found for domain `{origin_domain}`"))
+        .sign(
+            sender,
+            destination_domain,
+            contracts.warp,
+            warp_msg.encode(),
+        );
 
     Message::execute(
         contracts.hyperlane.mailbox,

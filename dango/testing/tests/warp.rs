@@ -28,13 +28,15 @@ fn receiving_remote() {
 
     const MOCK_RECEIVE_AMOUNT: u128 = 88;
 
-    let message_id = suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::SOL_WARP,
-        accounts.user1.address(),
-        Uint128::new(MOCK_RECEIVE_AMOUNT),
-    );
+    let message_id = suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::SOL_WARP,
+            &accounts.user1,
+            Uint128::new(MOCK_RECEIVE_AMOUNT),
+        )
+        .should_succeed();
 
     // The message should have been recorded as received.
     suite
@@ -231,13 +233,15 @@ fn sending_remote_insufficient_reserve() {
         ));
 
     // User2 receives some USDC so that we have sufficient reserve.
-    suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::USDC_WARP,
-        accounts.user2.address(),
-        Uint128::new(SEND_AMOUNT + 100), // A little more than sufficient amount.
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &accounts.user2,
+            Uint128::new(SEND_AMOUNT + 100), // A little more than sufficient amount.
+        )
+        .should_succeed();
 
     // User1 tries to withdraw again. Should succeed.
     suite

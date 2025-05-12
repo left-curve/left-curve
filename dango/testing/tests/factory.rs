@@ -35,13 +35,15 @@ fn user_onboarding() {
     );
 
     // Make the initial deposit.
-    suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::USDC_WARP,
-        &user,
-        10_000_000,
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // The transfer should be an orphaned transfer. The bank contract should be
     // holding the 10 USDC.
@@ -136,13 +138,15 @@ fn onboarding_existing_user() {
         );
 
         // Make the initial deposit.
-        suite.receive_warp_transfer(
-            &mut accounts.owner,
-            solana::DOMAIN,
-            solana::USDC_WARP,
-            &user,
-            10_000_000,
-        );
+        suite
+            .receive_warp_transfer(
+                &mut accounts.owner,
+                solana::DOMAIN,
+                solana::USDC_WARP,
+                &user,
+                10_000_000,
+            )
+            .should_succeed();
 
         // Send the register user message with account factory.
         let tx = Tx {
@@ -237,13 +241,15 @@ fn onboarding_without_deposit() {
         ));
 
     // Make a deposit but not enough.
-    suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::USDC_WARP,
-        &user,
-        7_000_000,
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            7_000_000,
+        )
+        .should_succeed();
 
     // Try again, should fail.
     suite
@@ -251,13 +257,15 @@ fn onboarding_without_deposit() {
         .should_fail_with_error("minumum deposit not satisfied");
 
     // Make a deposit of the minimum amount.
-    suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::USDC_WARP,
-        &user,
-        3_000_000,
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            3_000_000,
+        )
+        .should_succeed();
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
@@ -281,13 +289,15 @@ fn update_key() {
     );
 
     // Make the initial deposit.
-    suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::USDC_WARP,
-        &user,
-        10_000_000,
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -413,13 +423,15 @@ fn malicious_register_user() {
     );
 
     // User makes deposit.
-    suite.receive_warp_transfer(
-        &mut accounts.owner,
-        solana::DOMAIN,
-        solana::USDC_WARP,
-        &user,
-        10_000_000,
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // The frontend instructs the user to sign this.
     let user_signature = user

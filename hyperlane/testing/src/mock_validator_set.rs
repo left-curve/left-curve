@@ -29,10 +29,8 @@ impl MockValidatorSets {
         })
     }
 
-    pub fn get(&self, domain: Domain) -> &MockValidatorSet {
-        self.0.get(&domain).unwrap_or_else(|| {
-            panic!("[MockValidatorSets]: no mock validator set found for domain `{domain}`");
-        })
+    pub fn get(&self, domain: Domain) -> Option<&MockValidatorSet> {
+        self.0.get(&domain)
     }
 }
 

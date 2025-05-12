@@ -1,7 +1,8 @@
 use {
+    anyhow::anyhow,
     dango_genesis::Contracts,
     dango_types::{gateway::Domain, warp::TokenMessage},
-    grug::{Addr, Addressable, Coins, Hash256, ResultExt, Signer, TestSuite, Uint128},
+    grug::{Addr, Addressable, Coins, Hash256, Signer, TestSuite, Uint128},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
@@ -80,23 +81,31 @@ where
         origin_warp: Addr32,
         recipient: &R,
         amount: A,
-    ) -> Hash256
+    ) -> anyhow::Result<Hash256>
     where
         R: Addressable,
         A: Into<Uint128>,
     {
         // Mock validator set signs the message.
-        let (message_id, raw_message, raw_metadata) = self.validator_sets.get(origin_domain).sign(
-            origin_warp,
-            MOCK_HYPERLANE_LOCAL_DOMAIN,
-            self.warp,
-            TokenMessage {
-                recipient: recipient.address().into(),
-                amount: amount.into(),
-                metadata: Default::default(),
-            }
-            .encode(),
-        );
+        let (message_id, raw_message, raw_metadata) = self
+            .validator_sets
+            .get(origin_domain)
+            .ok_or_else(|| {
+                anyhow!(
+                    "[HyperlaneTestSuite]: no mock validator set found for domain `{origin_domain}`"
+                )
+            })?
+            .sign(
+                origin_warp,
+                MOCK_HYPERLANE_LOCAL_DOMAIN,
+                self.warp,
+                TokenMessage {
+                    recipient: recipient.address().into(),
+                    amount: amount.into(),
+                    metadata: Default::default(),
+                }
+                .encode(),
+            );
 
         // Deliver the message to Dango mailbox.
         self.suite
@@ -109,9 +118,10 @@ where
                 },
                 Coins::new(),
             )
-            .should_succeed();
+            .result
+            .map_err(|err| anyhow!(err))?;
 
         // Return the message ID.
-        message_id
+        Ok(message_id)
     }
 }
