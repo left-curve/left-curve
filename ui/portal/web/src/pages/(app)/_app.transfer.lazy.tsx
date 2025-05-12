@@ -5,14 +5,7 @@ import {
   parseUnits,
   withResolvers,
 } from "@left-curve/dango/utils";
-import {
-  useAccount,
-  useBalances,
-  useChainId,
-  useConfig,
-  usePrices,
-  useSigningClient,
-} from "@left-curve/store";
+import { useAccount, useBalances, useConfig, usePrices, useSigningClient } from "@left-curve/store";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -48,7 +41,7 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 function TransferApplet() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal, eventBus } = useApp();
+  const { settings, showModal, notifier } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
@@ -88,7 +81,7 @@ function TransferApplet() {
   >({
     mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
-      eventBus.publish("submit_tx", { isSubmitting: true });
+      notifier.publish("submit_tx", { isSubmitting: true });
       try {
         const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
@@ -105,7 +98,7 @@ function TransferApplet() {
         const response = await promise
           .then(() => true)
           .catch(() => {
-            eventBus.publish("submit_tx", {
+            notifier.publish("submit_tx", {
               isSubmitting: false,
               txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
             });
@@ -125,7 +118,7 @@ function TransferApplet() {
 
         reset();
         toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
         });
@@ -133,7 +126,7 @@ function TransferApplet() {
         queryClient.invalidateQueries({ queryKey: ["quests", account] });
       } catch (e) {
         console.error(e);
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
         });

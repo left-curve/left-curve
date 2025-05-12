@@ -28,6 +28,7 @@ import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
@@ -109,6 +110,16 @@ const UsernameStep: React.FC = () => {
           <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="primary">
             {m["signin.useAnotherAccount"]()}
           </Button>
+          <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+            <div className="flex items-center gap-2 flex-col">
+              <Checkbox
+                size="md"
+                label={m["common.signinWithSession"]()}
+                checked={useSessionKey}
+                onChange={(v) => changeSettings({ useSessionKey: v })}
+              />
+            </div>
+          </ExpandOptions>
         </>
       ) : (
         <form className="flex flex-col gap-6 w-full" onSubmit={signInWithUsername}>
@@ -196,7 +207,7 @@ const CredentialStep: React.FC = () => {
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey,
+    sessionKey: sessionKey && { expireAt: DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });

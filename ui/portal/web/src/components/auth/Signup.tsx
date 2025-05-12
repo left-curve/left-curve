@@ -43,14 +43,14 @@ import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
+import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
 import { captureException } from "@sentry/react";
-import { add } from "date-fns";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -381,7 +381,7 @@ const Signin: React.FC = () => {
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     username,
-    sessionKey: useSessionKey,
+    sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });

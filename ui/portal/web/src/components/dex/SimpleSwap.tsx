@@ -45,7 +45,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
 }) => {
   const simpleSwapState = state(parameters);
   const controllers = useInputs();
-  const { eventBus, settings, showModal } = useApp();
+  const { notifier, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { reset } = controllers;
@@ -58,7 +58,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
       if (!signingClient) throw new Error("error: no signing client");
       if (!pair) throw new Error("error: no pair");
       if (!simulation.input || !simulation.data) throw new Error("error: no simulation");
-      eventBus.publish("submit_tx", { isSubmitting: true });
+      notifier.publish("submit_tx", { isSubmitting: true });
 
       try {
         const { promise, resolve: confirmSwap, reject: rejectSwap } = withResolvers();
@@ -79,7 +79,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
         const response = await promise
           .then(() => true)
           .catch(() => {
-            eventBus.publish("submit_tx", {
+            notifier.publish("submit_tx", {
               isSubmitting: false,
               txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
             });
@@ -95,14 +95,14 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
 
         reset();
         toast.success({ title: m["dex.simpleSwap.swapSuccessfully"]() });
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["dex.simpleSwap.swapSuccessfully"]() },
         });
         refreshBalances();
       } catch (e) {
         console.error(e);
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
         });
