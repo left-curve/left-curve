@@ -51,8 +51,7 @@ impl Preset for TestOption {
                 height: GENESIS_BLOCK_HEIGHT,
                 timestamp: MOCK_GENESIS_TIMESTAMP,
             },
-            // By default, give owner, user1, user2 each 100k USDC from Ethereum
-            // and user1 1000 WETH from Ethereum.
+            // By default, give the owner and each user 100k USDC from Ethereum.
             bridge_ops: |accounts| {
                 vec![
                     BridgeOp {
@@ -82,10 +81,58 @@ impl Preset for TestOption {
                     BridgeOp {
                         remote: Remote::Warp {
                             domain: ethereum::DOMAIN,
-                            contract: ethereum::WETH_WARP,
+                            contract: ethereum::USDC_WARP,
                         },
-                        amount: Uint128::new(1000 * 10u128.pow(18)), /* 1000 WETH, 18 decimal precision */
-                        recipient: accounts.user1.address(),
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user3.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user4.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user5.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user6.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user7.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user8.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user9.address(),
                     },
                 ]
             },
