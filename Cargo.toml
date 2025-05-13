@@ -123,7 +123,6 @@ rand                    = "0.8" # can't use 0.9 because RustCrypto libraries sti
 reqwest                 = { version = "0.12", features = ["stream"] }
 reqwest-eventsource     = "0.6.0"
 ripemd                  = "0.1"
-rocksdb                 = "0.23"
 sentry                  = { version = "0.37", features = ["log", "tracing"] }
 sentry-actix            = "0.37"
 serde                   = "1"
@@ -229,6 +228,15 @@ features = [
   "uuid",
 ]
 version = "7.0"
+
+# RocksDB can either use `bindgen-runtime` (default) or `bindgen-static` feature.
+# We need to choose this based on the build target.
+# On musl platforms (e.g. Alpine) we use "static"; otherwise, use "runtime".
+# See `grug/db/disk/Cargo.toml` for details.
+[workspace.dependencies.rocksdb]
+default-features = false
+features         = ["bzip2", "lz4", "snappy", "zlib", "zstd"]
+version          = "0.23"
 
 [workspace.dependencies.sea-orm]
 features = [
