@@ -1,3 +1,9 @@
+import { useAccount, useConnectors, usePublicClient, useSignin } from "@left-curve/store";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useApp } from "~/hooks/useApp";
+
 import {
   Checkbox,
   ExpandOptions,
@@ -6,32 +12,18 @@ import {
   useMediaQuery,
   useUsernames,
   useWizard,
+  Button,
 } from "@left-curve/applets-kit";
-import {
-  useAccount,
-  useChainId,
-  useConnectors,
-  usePublicClient,
-  useSignin,
-} from "@left-curve/store";
-import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-
 import { toast } from "../foundation/Toast";
-
-import { Button } from "@left-curve/applets-kit";
 import { AuthOptions } from "./AuthOptions";
+import { AuthCarousel } from "./AuthCarousel";
+import { UsernamesList } from "./UsernamesList";
 
 import { m } from "~/paraglide/messages";
-
-import type { Hex, Key, Username } from "@left-curve/dango/types";
-import type React from "react";
-import { AuthCarousel } from "./AuthCarousel";
-
-import { UsernamesList } from "./UsernamesList";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { useApp } from "~/hooks/useApp";
+
+import type React from "react";
+import type { Hex, Username } from "@left-curve/dango/types";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();

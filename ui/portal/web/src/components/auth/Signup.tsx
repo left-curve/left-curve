@@ -1,20 +1,11 @@
 import {
-  Checkbox,
-  ExpandOptions,
-  IconAlert,
-  IconLeft,
-  ResizerContainer,
-  Stepper,
-  useUsernames,
-  useWizard,
-} from "@left-curve/applets-kit";
-import {
   useAccount,
   useConfig,
   useConnectors,
   usePublicClient,
   useSignin,
 } from "@left-curve/store";
+import { useApp } from "~/hooks/useApp";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -24,13 +15,19 @@ import { createKeyHash } from "@left-curve/dango";
 import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
-
-import { registerUser } from "@left-curve/dango/actions";
-import { AccountType } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
-import { toast } from "../foundation/Toast";
+import { registerUser } from "@left-curve/dango/actions";
+import { captureException } from "@sentry/react";
 
 import {
+  Checkbox,
+  ExpandOptions,
+  IconAlert,
+  IconLeft,
+  ResizerContainer,
+  Stepper,
+  useUsernames,
+  useWizard,
   Button,
   CheckCircleIcon,
   Input,
@@ -40,17 +37,16 @@ import {
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { AuthOptions } from "./AuthOptions";
+import { AuthCarousel } from "./AuthCarousel";
+import { toast } from "../foundation/Toast";
 
 import { m } from "~/paraglide/messages";
+import { AccountType } from "@left-curve/dango/types";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 
+import type React from "react";
 import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
-import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { AuthCarousel } from "./AuthCarousel";
-
-import { captureException } from "@sentry/react";
-import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
