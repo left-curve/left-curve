@@ -113,8 +113,10 @@ pub enum QueryMsg {
     /// Query a single user by username.
     #[returns(User)]
     User { username: Username },
+    /// Query usernames associated with a given key hash.
+    /// Useful if user forgot their username but still have access to the key.
     #[returns(BTreeSet<Username>)]
-    UsersByKey {
+    ForgotUsername {
         key_hash: Hash256,
         start_after: Option<Username>,
         limit: Option<u32>,

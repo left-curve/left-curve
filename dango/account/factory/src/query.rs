@@ -64,12 +64,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_user(ctx.storage, username)?;
             res.to_json_value()
         },
-        QueryMsg::UsersByKey {
+        QueryMsg::ForgotUsername {
             key_hash,
             start_after,
             limit,
         } => {
-            let res = query_users_by_key(ctx.storage, key_hash, start_after, limit)?;
+            let res = forgot_username(ctx.storage, key_hash, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -178,7 +178,7 @@ fn query_user(storage: &dyn Storage, username: Username) -> StdResult<User> {
     Ok(User { keys, accounts })
 }
 
-fn query_users_by_key(
+fn forgot_username(
     storage: &dyn Storage,
     key_hash: Hash256,
     start_after: Option<Username>,
