@@ -64,6 +64,7 @@ impl GenesisCodes for RustVm {
         let gateway = ContractBuilder::new(Box::new(dango_gateway::instantiate))
             .with_execute(Box::new(dango_gateway::execute))
             .with_query(Box::new(dango_gateway::query))
+            .with_cron_execute(Box::new(dango_gateway::cron_execute))
             .build();
 
         let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))

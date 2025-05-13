@@ -1,7 +1,7 @@
 use {
-    crate::{RATE_LIMITS, REVERSE_ROUTES, ROUTES},
+    crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES},
     dango_types::gateway::{QueryMsg, RateLimit, Remote},
-    grug::{Addr, Denom, ImmutableCtx, Json, JsonSerExt, StdResult},
+    grug::{Addr, Denom, ImmutableCtx, Json, JsonSerExt, StdResult, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -20,6 +20,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_rate_limits(ctx)?;
             res.to_json_value()
         },
+        QueryMsg::Reserve { bridge, remote } => {
+            let res = query_reserve(ctx, bridge, remote)?;
+            res.to_json_value()
+        },
     }
 }
 
@@ -33,4 +37,8 @@ fn query_reverse_route(ctx: ImmutableCtx, denom: Denom, remote: Remote) -> StdRe
 
 fn query_rate_limits(ctx: ImmutableCtx) -> StdResult<BTreeMap<Denom, RateLimit>> {
     RATE_LIMITS.load(ctx.storage)
+}
+
+fn query_reserve(ctx: ImmutableCtx, bridge: Addr, remote: Remote) -> StdResult<Uint128> {
+    RESERVES.load(ctx.storage, (bridge, remote))
 }

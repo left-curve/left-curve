@@ -1,89 +1,71 @@
 use {
-    dango_testing::{HyperlaneTestSuite, TestSuite, setup_test},
-    dango_types::warp::{self},
-    grug::{
-        Addr, Addressable, BalanceChange, Coin, Coins, Denom, Duration, NumberConst, ResultExt,
-        Udec128, Uint128, btree_map,
+    dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
+    dango_types::{
+        constants::usdc,
+        gateway::{self, RateLimit, Remote},
     },
-    std::str::FromStr,
+    grug::{Addr, BalanceChange, Coin, Coins, Duration, QuerierExt, ResultExt, Udec128, btree_map},
+    hyperlane_types::{
+        Addr32,
+        constants::{ethereum, solana},
+    },
 };
 
 #[test]
 fn rate_limit() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
+    let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
 
     suite.block_time = Duration::ZERO;
 
-    let osmo_domain = 10;
-    let sol_domain = 20;
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
 
-    let osmo_usdc_recipient = Addr::mock(1).into();
-    let sol_usdc_recipient = Addr::mock(2).into();
-    let mock_remote_user = Addr::mock(3).into();
+    let receiver = &mut accounts.user2;
+    let relayer = &mut accounts.user1;
+    let owner = &mut accounts.owner;
 
-    let sol_usdc_denom = Denom::from_str("hyp/sol/usdc").unwrap();
-    let osmo_usdc_denom = Denom::from_str("hyp/osmo/usdc").unwrap();
+    let mock_solana_recipient: Addr32 = Addr::mock(201).into();
+    let mock_eth_recipient: Addr32 = Addr::mock(202).into();
 
-    let alloyed_usdc_denom = Denom::from_str("hyp/all/usdc").unwrap();
+    let usdc_sol_fee = 10_000;
+    let usdc_eth_fee = 1_000_000;
 
-    let (mut suite, owner) = HyperlaneTestSuite::new(suite, accounts.owner, btree_map! {
-        osmo_domain => (3, 2),
-        sol_domain => (3, 2),
-    });
-
-    // Set the route.
-    for (domain, denom, route) in [
-        (osmo_domain, &osmo_usdc_denom, Route {
-            address: osmo_usdc_recipient,
-            fee: Uint128::ZERO,
-        }),
-        (sol_domain, &sol_usdc_denom, Route {
-            address: sol_usdc_recipient,
-            fee: Uint128::ZERO,
-        }),
-    ] {
-        suite
-            .hyperlane()
-            .set_route(denom.clone(), domain, route)
-            .should_succeed();
-    }
-
-    suite.balances().record(accounts.user1.address());
+    suite.balances().record(receiver);
 
     // Receive some tokens.
-    // osmo_usdc => 100
+    // eth_usdc => 100
     // sol_usdc => 200
     {
-        for (domain, denom, amount) in [
-            (osmo_domain, &osmo_usdc_denom, 100),
-            (sol_domain, &sol_usdc_denom, 200),
+        for (domain, origin_warp, amount) in [
+            (ethereum::DOMAIN, ethereum::USDC_WARP, 100_000_000),
+            (solana::DOMAIN, solana::USDC_WARP, 200_000_000),
         ] {
-            suite.hyperlane().receive_transfer(
-                domain,
-                accounts.user1.address(),
-                coin(denom, amount),
-            );
+            suite
+                .receive_warp_transfer(relayer, domain, origin_warp, receiver, amount)
+                .should_succeed();
         }
 
         // Check balances.
-        suite
-            .balances()
-            .should_change(accounts.user1.address(), btree_map! {
-                osmo_usdc_denom.clone() => BalanceChange::Increased(100),
-                sol_usdc_denom.clone() => BalanceChange::Increased(200),
-            });
+        suite.balances().should_change(receiver, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(300_000_000),
+        });
     }
 
+    suite
+        .query_supply(usdc::DENOM.clone())
+        .should_succeed_and_equal(300_000_000.into());
+
+    // Total supply = 300 usdc
     // Set rate limit.
-    // osmo_usdc => 10%
-    // sol_usdc => 20%
+    // alloy_usdc => 10%
     suite
         .execute(
-            owner.write_access().deref_mut(),
-            contracts.warp,
-            &warp::ExecuteMsg::SetRateLimits(btree_map! {
-                osmo_usdc_denom.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
-                sol_usdc_denom.clone()  => RateLimit::new_unchecked(Udec128::new_percent(20)),
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
             }),
             Coins::default(),
         )
@@ -93,211 +75,218 @@ fn rate_limit() {
     advance_to_next_day(&mut suite);
 
     // Try send back exact tokens to don't trigger rate limit.
-    // osmo_usdc => 100 * 0.1 = 10
-    // sol_usdc => 200 * 0.2 = 40
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 10),
-        (sol_domain, &sol_usdc_denom, 40),
-    ] {
-        suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_succeed();
-    }
+    // Current limit = 10% of 300 = 30
+    // alloy_usdc => 300 * 0.1 = 30
+    // Send 30 alloy_usdc back to solana.
+
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee),
+        )
+        .should_succeed();
 
     // Trigger the rate limit sending 1 more token.
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 1),
-        (sol_domain, &sol_usdc_denom, 1),
-    ] {
-        suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_fail_with_error("rate limit reached: 0 < 1");
-    }
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee),
+        )
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
     // Receive more tokens increase rate limit and allow to send them back.
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 100),
-        (sol_domain, &sol_usdc_denom, 200),
-    ] {
-        suite
-            .hyperlane()
-            .receive_transfer(domain, accounts.user1.address(), coin(denom, amount));
+    suite
+        .receive_warp_transfer(
+            relayer,
+            ethereum::DOMAIN,
+            ethereum::USDC_WARP,
+            receiver,
+            100_000_000,
+        )
+        .should_succeed();
 
+    // Check supply now.
+    // it should be 200_000_000 + 200_000_000 - 30_000_000 + 100_000_000 = 370_000_000
+    // `receiver` should has 370_000_000 - 10_000 (fee) = 369_990_000
+    {
         suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_succeed();
+            .query_supply(usdc::DENOM.clone())
+            .should_succeed_and_equal(370_000_000.into());
+
+        suite.balances().should_change(receiver, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Increased(369_990_000),
+        });
     }
 
-    // Make 1 day pass letting the cron job to reset the rate limits.
-    advance_to_next_day(&mut suite);
-
-    // The supply on chain now are:
-    // osmo_usdc => 100 - 10 = 90
-    // sol_usdc => 200 - 40 = 160
-
-    // New limits are:
-    // osmo_usdc => 90 * 0.1 = 9
-    // sol_usdc => 160 * 0.2 = 32
-
-    // Try send them back.
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 9),
-        (sol_domain, &sol_usdc_denom, 32),
-    ] {
-        suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_succeed();
-    }
+    // Try withdraw everything the 100_000 available but to ethereum.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: ethereum::DOMAIN,
+                    contract: ethereum::USDC_WARP,
+                },
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 100_000_000 + usdc_eth_fee),
+        )
+        .should_succeed();
 
     // Trigger the rate limit sending 1 more token.
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 1),
-        (sol_domain, &sol_usdc_denom, 1),
-    ] {
-        suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_fail_with_error("rate limit reached: 0 < 1");
-    }
-
-    // Receive some tokens to reset back the supply to:
-    // osmo_usdc => 100
-    // sol_usdc => 200
-    for (domain, denom, amount, should_be) in [
-        (osmo_domain, &osmo_usdc_denom, 10 + 9, 100),
-        (sol_domain, &sol_usdc_denom, 40 + 32, 200),
-    ] {
-        suite
-            .hyperlane()
-            .receive_transfer(domain, accounts.user1.address(), coin(denom, amount));
-
-        suite
-            .query_supply(denom.clone())
-            .should_succeed_and_equal(Uint128::new(should_be));
-    }
-
-    // Create alloy token
-    for (domain, denom) in [
-        (osmo_domain, &osmo_usdc_denom),
-        (sol_domain, &sol_usdc_denom),
-    ] {
-        suite
-            .execute(
-                owner.write_access().deref_mut(),
-                contracts.warp,
-                &warp::ExecuteMsg::SetAlloy {
-                    underlying_denom: denom.clone(),
-                    destination_domain: domain,
-                    alloyed_denom: alloyed_usdc_denom.clone(),
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: ethereum::DOMAIN,
+                    contract: ethereum::USDC_WARP,
                 },
-                Coins::default(),
-            )
-            .should_succeed();
-    }
-
-    // Receive some tokens. they should be minted as alloyed:
-    // osmo_usdc => 100
-    // sol_usdc  => 200
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 100),
-        (sol_domain, &sol_usdc_denom, 200),
-    ] {
-        suite
-            .hyperlane()
-            .receive_transfer(domain, accounts.user1.address(), coin(denom, amount));
-    }
+                recipient: mock_eth_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee),
+        )
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
     // Make 1 day pass letting the cron job to reset the rate limits.
     advance_to_next_day(&mut suite);
 
     // The supply on chain now are:
-    // osmo_usdc => 100 + 100 = 200
-    // sol_usdc  => 200 + 200 = 400
+    // 370_000_000 - 100_000_000 = 270_000_000 where
+    // 100_000_000 are from ethereum
+    // 170_000_000 are from solana
 
-    // Send the alloyed tokens.
-    for (domain, denom, amount) in [
-        (osmo_domain, &alloyed_usdc_denom, 20),
-        (sol_domain, &alloyed_usdc_denom, 80),
+    // Check reserves.
+    for (remote, amount) in [
+        (
+            Remote::Warp {
+                domain: ethereum::DOMAIN,
+                contract: ethereum::USDC_WARP,
+            },
+            100_000_000,
+        ),
+        (
+            Remote::Warp {
+                domain: solana::DOMAIN,
+                contract: solana::USDC_WARP,
+            },
+            170_000_000,
+        ),
     ] {
         suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_succeed();
+            .query_wasm_smart(contracts.gateway, gateway::QueryReserveRequest {
+                bridge: contracts.warp,
+                remote,
+            })
+            .should_succeed_and_equal(amount.into());
     }
 
-    // Send 1 more tokens to trigger the rate limit.
-    for (domain, denom, amount) in [
-        (osmo_domain, &alloyed_usdc_denom, 1),
-        (sol_domain, &alloyed_usdc_denom, 1),
-    ] {
-        suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_fail_with_error("rate limit reached: 0 < 1");
-    }
+    // Withdraw 27 tokens to solana.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 27_000_000 + usdc_sol_fee),
+        )
+        .should_succeed();
 
-    // Try send 1 of the underlying tokens. Rate limit should be triggered.
-    for (domain, denom, amount) in [
-        (osmo_domain, &osmo_usdc_denom, 1),
-        (sol_domain, &sol_usdc_denom, 1),
-    ] {
-        suite
-            .hyperlane()
-            .send_transfer(
-                &mut accounts.user1,
-                domain,
-                mock_remote_user,
-                coin(denom, amount),
-            )
-            .should_fail_with_error("rate limit reached: 0 < 1");
-    }
+    // Try to withdraw 1 more token.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee),
+        )
+        .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
+
+    // Increase the rate limit
+    suite
+        .execute(
+            owner,
+            contracts.gateway,
+            &gateway::ExecuteMsg::SetRateLimits(btree_map! {
+                usdc::DENOM.clone() => RateLimit::new_unchecked(Udec128::new_percent(99)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Make 1 day pass letting the cron job to reset the rate limits.
+    advance_to_next_day(&mut suite);
+
+    // The supply on chain now are:
+    // 370_000_000 - 100_000_000 - 27_000_000 = 243_000_000 where
+    // 100_000_000 are from ethereum
+    // 143_000_000 are from solana
+
+    // try to withdraw 43 to solana.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 143_000_000 + usdc_sol_fee),
+        )
+        .should_succeed();
+
+    // solana should be empty now.
+    // Try to withdraw 1 more token.
+    suite
+        .execute(
+            receiver,
+            contracts.gateway,
+            &gateway::ExecuteMsg::TransferRemote {
+                remote: gateway::Remote::Warp {
+                    domain: solana::DOMAIN,
+                    contract: solana::USDC_WARP,
+                },
+                recipient: mock_solana_recipient,
+            },
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee),
+        )
+        .should_fail_with_error("insufficient reserve!");
 }
 
 fn advance_to_next_day(suite: &mut TestSuite) {
     suite.block_time = Duration::from_days(1);
     suite.make_empty_block();
     suite.block_time = Duration::ZERO;
-}
-
-fn coin(denom: &Denom, amount: u128) -> Coin {
-    Coin::new(denom.clone(), amount).unwrap()
 }

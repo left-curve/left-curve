@@ -31,9 +31,9 @@ pub struct Coin {
 }
 
 impl Coin {
-    /// Create a new `Coin` from the given denom and amount, which must be
+    /// Attempts to create a new `Coin` from the given denom and amount, which must be
     /// non-zero.
-    pub fn new<D, A>(denom: D, amount: A) -> StdResult<Self>
+    pub fn try_new<D, A>(denom: D, amount: A) -> StdResult<Self>
     where
         D: TryInto<Denom>,
         A: Into<Uint128>,
@@ -43,6 +43,18 @@ impl Coin {
             denom: denom.try_into()?,
             amount: amount.into(),
         })
+    }
+
+    /// Create a new `Coin` from the given denom and amount, which must be
+    /// non-zero.
+    pub fn new<A>(denom: Denom, amount: A) -> Self
+    where
+        A: Into<Uint128>,
+    {
+        Self {
+            denom,
+            amount: amount.into(),
+        }
     }
 
     /// Return an immutable reference to the coin.
@@ -77,7 +89,7 @@ where
     type Error = StdError;
 
     fn try_from((denom, amount): (D, A)) -> StdResult<Self> {
-        Self::new(denom, amount)
+        Self::try_new(denom, amount)
     }
 }
 

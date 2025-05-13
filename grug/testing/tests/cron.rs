@@ -104,7 +104,7 @@ fn cronjob_works() {
             tester_code_hash,
             &tester::Job {
                 receiver,
-                coin: Coin::new("uatom", 1).unwrap(),
+                coin: Coin::try_new("uatom", 1).unwrap(),
             },
             "cron1",
             Some("cron1"),
@@ -121,7 +121,7 @@ fn cronjob_works() {
             tester_code_hash,
             &tester::Job {
                 receiver,
-                coin: Coin::new("uosmo", 1).unwrap(),
+                coin: Coin::try_new("uosmo", 1).unwrap(),
             },
             "cron2",
             Some("cron2"),
@@ -138,7 +138,7 @@ fn cronjob_works() {
             tester_code_hash,
             &tester::Job {
                 receiver,
-                coin: Coin::new("umars", 1).unwrap(),
+                coin: Coin::try_new("umars", 1).unwrap(),
             },
             "cron3",
             Some("cron3"),
@@ -256,13 +256,13 @@ fn cronjob_works() {
         // The balances Jake is expected to have at time point
         let mut expect = Coins::new();
         expect
-            .insert(Coin::new("uatom", balances.uatom).unwrap())
+            .insert(Coin::try_new("uatom", balances.uatom).unwrap())
             .unwrap();
         expect
-            .insert(Coin::new("uosmo", balances.uosmo).unwrap())
+            .insert(Coin::try_new("uosmo", balances.uosmo).unwrap())
             .unwrap();
         expect
-            .insert(Coin::new("umars", balances.umars).unwrap())
+            .insert(Coin::try_new("umars", balances.umars).unwrap())
             .unwrap();
 
         // Check the balances are correct

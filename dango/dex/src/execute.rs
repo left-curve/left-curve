@@ -611,19 +611,19 @@ fn clear_orders_of_pair(
 
         // Handle fees.
         if fee_base.is_non_zero() {
-            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            fees.insert(Coin::try_new(base_denom.clone(), fee_base)?)?;
             fee_payments
                 .entry(order.user)
                 .or_default()
-                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+                .insert(Coin::try_new(base_denom.clone(), fee_base)?)?;
         }
 
         if fee_quote.is_non_zero() {
-            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            fees.insert(Coin::try_new(quote_denom.clone(), fee_quote)?)?;
             fee_payments
                 .entry(order.user)
                 .or_default()
-                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+                .insert(Coin::try_new(quote_denom.clone(), fee_quote)?)?;
         }
 
         // Include fee information in the event

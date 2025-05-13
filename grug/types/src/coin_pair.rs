@@ -27,8 +27,8 @@ impl CoinPair {
     /// Create a new coin pair with zero amounts.
     pub fn new_empty(denom1: Denom, denom2: Denom) -> StdResult<Self> {
         Self::new(
-            Coin::new(denom1, Uint128::ZERO)?,
-            Coin::new(denom2, Uint128::ZERO)?,
+            Coin::try_new(denom1, Uint128::ZERO)?,
+            Coin::try_new(denom2, Uint128::ZERO)?,
         )
     }
 

@@ -56,4 +56,6 @@ pub enum QueryMsg {
     /// Query the withdraw rate limits.
     #[returns(BTreeMap<Denom, RateLimit>)]
     RateLimits {},
+    #[returns(Uint128)]
+    Reserve { bridge: Addr, remote: Remote },
 }
