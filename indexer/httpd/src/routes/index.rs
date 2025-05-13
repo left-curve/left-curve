@@ -13,7 +13,7 @@ pub async fn index() -> impl Responder {
 }
 
 #[derive(serde::Serialize, Default)]
-struct HealthResponse<'a> {
+struct UpResponse<'a> {
     block_height: u64,
     indexed_block_height: Option<u64>,
     git_commit: &'a str,
@@ -37,7 +37,7 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         .map_err(ErrorInternalServerError)?
         .map(|b| b.block_height as u64);
 
-    Ok(HttpResponse::Ok().json(HealthResponse {
+    Ok(HttpResponse::Ok().json(UpResponse {
         block_height,
         indexed_block_height,
         git_commit: GIT_COMMIT,
