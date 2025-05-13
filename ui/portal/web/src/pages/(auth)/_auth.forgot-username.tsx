@@ -11,7 +11,6 @@ function ForgotUsernameComponent() {
     <WizardProvider wrapper={<ForgotUsername />} persistKey="dango.signup">
       <ForgotUsername.Credential />
       <ForgotUsername.AvailableUsernames />
-      <ForgotUsername.Signin />
     </WizardProvider>
   );
 }

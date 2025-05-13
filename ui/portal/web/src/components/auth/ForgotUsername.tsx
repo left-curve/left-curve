@@ -1,56 +1,29 @@
-import {
-  Checkbox,
-  ExpandOptions,
-  IconAlert,
-  IconLeft,
-  ResizerContainer,
-  Stepper,
-  useUsernames,
-  useWizard,
-} from "@left-curve/applets-kit";
+import { IconLeft, ResizerContainer, useUsernames, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
-  useConfig,
+  useChainId,
   useConnectors,
   usePublicClient,
   useSignin,
 } from "@left-curve/store";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { computeAddress, createAccountSalt } from "@left-curve/dango";
-import { createKeyHash } from "@left-curve/dango";
-import { createWebAuthnCredential } from "@left-curve/dango/crypto";
-import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
-import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
-
-import { registerUser } from "@left-curve/dango/actions";
-import { AccountType } from "@left-curve/dango/types";
-import { wait } from "@left-curve/dango/utils";
 import { toast } from "../foundation/Toast";
 
-import {
-  Button,
-  CheckCircleIcon,
-  Input,
-  Spinner,
-  XCircleIcon,
-  useInputs,
-} from "@left-curve/applets-kit";
-import { Link } from "@tanstack/react-router";
+import { Button } from "@left-curve/applets-kit";
 import { AuthOptions } from "./AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
-import type { Address, Hex, Key } from "@left-curve/dango/types";
-import type { EIP1193Provider } from "@left-curve/store/types";
+import type { Hex, Key, Username } from "@left-curve/dango/types";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
 import { AuthCarousel } from "./AuthCarousel";
 
-import { captureException } from "@sentry/react";
 import { UsernamesList } from "./UsernamesList";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
+import { useApp } from "~/hooks/useApp";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -81,52 +54,16 @@ const Credential: React.FC = () => {
   const { nextStep, setData } = useWizard();
   const connectors = useConnectors();
   const navigate = useNavigate();
+  const publicClient = usePublicClient();
 
   const { isPending, mutateAsync: createCredential } = useMutation({
     mutationFn: async (connectorId: string) => {
       try {
-        /* const connector = connectors.find((c) => c.id === connectorId);
+        const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
-        const challenge = "Please sign this message to confirm your identity.";
-        const { key, keyHash } = await (async () => {
-          if (connectorId === "passkey") {
-            const { id, getPublicKey } = await createWebAuthnCredential({
-              challenge: encodeUtf8(challenge),
-              user: {
-                name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
-              },
-              rp: {
-                name: window.document.title,
-                id: getRootDomain(window.location.hostname),
-              },
-              authenticatorSelection: {
-                residentKey: "preferred",
-                requireResidentKey: false,
-                userVerification: "preferred",
-              },
-            });
-
-            const publicKey = await getPublicKey();
-            const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash(id);
-
-            return { key, keyHash };
-          }
-
-          const provider = await (
-            connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-          ).getProvider();
-
-          const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
-
-          const addressLowerCase = controllerAddress.toLowerCase() as Address;
-
-          const key: Key = { ethereum: addressLowerCase };
-          const keyHash = createKeyHash(addressLowerCase);
-
-          return { key, keyHash };
-        })(); */
-        /* setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) }); */
+        const keyHash = await connector.getKeyHash();
+        const usernames = await publicClient.forgotUsername({ keyHash });
+        setData({ usernames, connectorId, keyHash });
         nextStep();
       } catch (err) {
         toast.error({ title: "Couldn't complete the request" });
@@ -158,39 +95,36 @@ const Credential: React.FC = () => {
 };
 
 const AvailableUsernames: React.FC = () => {
-  const { nextStep, data, setData, previousStep } = useWizard<{
-    key: Key;
+  const { data, previousStep, done } = useWizard<{
+    usernames: Username[];
     keyHash: Hex;
     connectorId: string;
-    seed: number;
-    username: string;
   }>();
   const navigate = useNavigate();
+  const { usernames, connectorId, keyHash } = data;
+  const { settings } = useApp();
+  const { addUsername } = useUsernames();
 
-  const fillUsername = (username: string) => {
-    //setData({ username, sessionKey: useSessionKey });
-    setData({ username });
-    nextStep();
-  };
-
-  const usernames = {
-    iris: {},
-    dango: {},
-  };
-
-  const { isPending, mutateAsync: createAccount } = useMutation({
-    mutationFn: async () => {
-      try {
-        // Select username & continue
-        nextStep();
-      } catch (err) {
-        toast.error({ title: "Couldn't complete the request" });
-        console.log(err);
-      }
+  const { mutateAsync: connectWithConnector, isPending } = useSignin({
+    sessionKey: settings.useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
+    mutation: {
+      onSuccess: (username) => {
+        navigate({ to: "/" });
+        addUsername(username);
+        done();
+      },
+      onError: (err) => {
+        console.error(err);
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigningIn"](),
+        });
+        previousStep();
+      },
     },
   });
 
-  const existUsernames = Object.keys(usernames);
+  const existUsernames = usernames.length;
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -219,9 +153,12 @@ const AvailableUsernames: React.FC = () => {
       {existUsernames ? (
         <div className="flex flex-col gap-4 w-full items-center">
           <UsernamesList
-            usernames={usernames}
+            usernames={usernames.reduce((acc, u) => {
+              acc[u] = {};
+              return acc;
+            }, Object.create({}))}
             showArrow={true}
-            onClick={(username) => fillUsername(username)}
+            onClick={(username) => connectWithConnector({ username, connectorId, keyHash })}
           />
           <Button variant="link" onClick={previousStep}>
             <IconLeft className="w-[22px] h-[22px] text-blue-500" />
