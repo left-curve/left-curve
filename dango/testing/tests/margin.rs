@@ -266,7 +266,7 @@ fn setup_margin_test_env(
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(eth::DENOM.clone(), 10 * 10_u128.pow(18)).unwrap(),
+            Coins::one(eth::DENOM.clone(), 10 * 10_u128.pow(18)).unwrap(), // 10 ETH
         )
         .should_succeed();
 
