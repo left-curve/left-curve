@@ -2,4 +2,4 @@
   command: >
     cargo install mdbook
   args:
-    creates: "{{ ansible_env.HOME }}/.cargo/bin/mdbook
+    creates: "{{ ansible_env.HOME }}/.cargo/bin/mdbook"
