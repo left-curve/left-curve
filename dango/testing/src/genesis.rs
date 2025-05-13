@@ -65,6 +65,14 @@ impl Preset for TestOption {
                     BridgeOp {
                         remote: Remote::Warp {
                             domain: ethereum::DOMAIN,
+                            contract: ethereum::WETH_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.owner.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
                             contract: ethereum::USDC_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
@@ -74,6 +82,14 @@ impl Preset for TestOption {
                         remote: Remote::Warp {
                             domain: ethereum::DOMAIN,
                             contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(100_000_000_000),
+                        recipient: accounts.user2.address(),
+                    },
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::WETH_WARP,
                         },
                         amount: Uint128::new(100_000_000_000),
                         recipient: accounts.user2.address(),

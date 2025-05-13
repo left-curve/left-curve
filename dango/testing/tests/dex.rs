@@ -3,7 +3,7 @@ use {
     dango_types::{
         account::single::Params,
         account_factory::AccountParams,
-        constants::{atom, btc, dango, eth, usdc, xrp},
+        constants::{atom, dango, eth, usdc, xrp},
         dex::{
             self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
             OrderResponse, PairId, PairParams, PairUpdate, QueryOrdersByPairRequest,
@@ -14,7 +14,7 @@ use {
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
-        IsZero, MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
+        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
         ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     hyperlane_types::constants::ethereum,
@@ -1139,6 +1139,7 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 100,
     },
+    Udec128::ZERO,
     Uint128::new(100);
     "provision at pool ratio"
 )]
@@ -1147,6 +1148,7 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 50,
         usdc::DENOM.clone() => 50,
     },
+    Udec128::ZERO,
     Uint128::new(50);
     "provision at half pool balance same ratio"
 )]
@@ -1155,10 +1157,11 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 50,
     },
+    Udec128::ZERO,
     Uint128::new(73);
     "provision at different ratio"
 )]
-fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
+fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: Uint128) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
@@ -1168,6 +1171,32 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone()  => 100,
     };
+
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Update pair params
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            swap_fee_rate: Bounded::new_unchecked(swap_fee),
+                            curve_invariant: pair_params.curve_invariant.clone(),
+                        },
+                    }]),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
 
     suite
         .execute(
@@ -1236,6 +1265,7 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
 
 #[test_case(
     Uint128::new(100),
+    Udec128::ZERO,
     coins! {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone()  => 100,
@@ -1244,13 +1274,14 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
 )]
 #[test_case(
     Uint128::new(50),
+    Udec128::ZERO,
     coins! {
         dango::DENOM.clone() => 50,
         usdc::DENOM.clone()  => 50,
     };
     "withdraw half"
 )]
-fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
+fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds_returned: Coins) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
@@ -1260,6 +1291,32 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone()  => 100,
     };
+
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Update pair params
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            swap_fee_rate: Bounded::new_unchecked(swap_fee),
+                            curve_invariant: pair_params.curve_invariant.clone(),
+                        },
+                    }]),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
 
     suite
         .execute(
@@ -1356,7 +1413,9 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         dango::DENOM.clone() => 1000000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     None,
     coins! {
         usdc::DENOM.clone() => 500000,
@@ -1383,7 +1442,9 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         dango::DENOM.clone() => 500000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     None,
     coins! {
         usdc::DENOM.clone() => 333333,
@@ -1410,7 +1471,9 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         dango::DENOM.clone() => 333333,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     None,
     coins! {
         usdc::DENOM.clone() => 249999,
@@ -1429,8 +1492,8 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
             dango::DENOM.clone() => 1000000,
             usdc::DENOM.clone() => 1000000,
         },
-        (btc::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            btc::DENOM.clone() => 1000000,
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+            eth::DENOM.clone() => 1000000,
             usdc::DENOM.clone() => 1000000,
         },
     },
@@ -1440,25 +1503,28 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
             quote_denom: usdc::DENOM.clone(),
         },
         PairId {
-            base_denom: btc::DENOM.clone(),
+            base_denom: eth::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         }
     ],
     coins! {
         dango::DENOM.clone() => 500000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     None,
     coins! {
-        btc::DENOM.clone() => 249999,
+        eth::DENOM.clone() => 249999,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 500000,
             usdc::DENOM.clone() => 1000000 - 333333,
         },
-        (btc::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            btc::DENOM.clone() => 1000000 - 249999,
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+            eth::DENOM.clone() => 1000000 - 249999,
             usdc::DENOM.clone() => 1000000 + 333333,
         },
     };
@@ -1478,7 +1544,9 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         dango::DENOM.clone() => 1000000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Some(500000u128.into()),
     coins! {
         usdc::DENOM.clone() => 500000,
@@ -1505,7 +1573,9 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         dango::DENOM.clone() => 1000000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Some(499999u128.into()),
     coins! {
         usdc::DENOM.clone() => 500000,
@@ -1559,10 +1629,6 @@ fn swap_exact_amount_in(
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
-        if swap_fee_rate.is_zero() {
-            continue;
-        }
-
         suite
             .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
                 base_denom: base_denom.clone(),
@@ -1663,7 +1729,9 @@ fn swap_exact_amount_in(
     coins! {
         dango::DENOM.clone() => 1000000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1688,7 +1756,9 @@ fn swap_exact_amount_in(
     coins! {
         dango::DENOM.clone() => 499999,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1713,7 +1783,9 @@ fn swap_exact_amount_in(
     coins! {
         dango::DENOM.clone() => 333333,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 333333).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1738,7 +1810,9 @@ fn swap_exact_amount_in(
     coins! {
         dango::DENOM.clone() => 1000000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1764,7 +1838,9 @@ fn swap_exact_amount_in(
     coins! {
         dango::DENOM.clone() => 999999,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1790,7 +1866,9 @@ fn swap_exact_amount_in(
     coins! {
         dango::DENOM.clone() => 1100000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1806,8 +1884,8 @@ fn swap_exact_amount_in(
             dango::DENOM.clone() => 1000000,
             usdc::DENOM.clone() => 1000000,
         },
-        (btc::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            btc::DENOM.clone() => 1000000,
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+            eth::DENOM.clone() => 1000000,
             usdc::DENOM.clone() => 1000000,
         },
     },
@@ -1817,23 +1895,26 @@ fn swap_exact_amount_in(
             quote_denom: usdc::DENOM.clone(),
         },
         PairId {
-            base_denom: btc::DENOM.clone(),
+            base_denom: eth::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         },
     ],
-    Coin::new(btc::DENOM.clone(), 250000).unwrap(),
+    Coin::new(eth::DENOM.clone(), 250000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
-    BTreeMap::new(),
+    btree_map! {
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+    },
     Coin::new(dango::DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 499999,
             usdc::DENOM.clone() => 1000000 - 333333,
         },
-        (btc::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            btc::DENOM.clone() => 1000000 - 250000,
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+            eth::DENOM.clone() => 1000000 - 250000,
             usdc::DENOM.clone() => 1000000 + 333333,
         },
     };
@@ -1879,10 +1960,6 @@ fn swap_exact_amount_out(
 
     // Update the pairs with the new swap fee rates.
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
-        if swap_fee_rate.is_zero() {
-            continue;
-        }
-
         let mut params = suite
             .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
                 base_denom: base_denom.clone(),
@@ -2342,7 +2419,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.owner,
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc::DENOM.clone() => PriceSource::Fixed {
+                eth::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::from_str("85248.71").unwrap(),
                     precision: 8,
                     timestamp: 1730802926,
@@ -2374,7 +2451,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         price: Udec128::from_str("1.01").unwrap(),
                     },
                     CreateLimitOrderRequest {
-                        base_denom: btc::DENOM.clone(),
+                        base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: Uint128::new(117304),
@@ -2402,7 +2479,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         price: Udec128::new(1),
                     },
                     CreateLimitOrderRequest {
-                        base_denom: btc::DENOM.clone(),
+                        base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: Uint128::new(117304),
@@ -2413,7 +2490,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
             coins! {
                 dango::DENOM.clone() => 200_000_000,
-                btc::DENOM.clone() => 117304,
+                eth::DENOM.clone() => 117304,
             },
         )
         .should_succeed();
@@ -2489,14 +2566,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         price: Udec128::from_str("1.01").unwrap(),
                     },
                     CreateLimitOrderRequest {
-                        base_denom: btc::DENOM.clone(),
+                        base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: Uint128::new(117304),
                         price: Udec128::from_str("852.485845").unwrap(),
                     },
                     CreateLimitOrderRequest {
-                        base_denom: btc::DENOM.clone(),
+                        base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: Uint128::new(117304),
@@ -2526,7 +2603,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         price: Udec128::new(1),
                     },
                     CreateLimitOrderRequest {
-                        base_denom: btc::DENOM.clone(),
+                        base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: Uint128::new(117304 * 2),
@@ -2540,10 +2617,12 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
             coins! {
                 dango::DENOM.clone() => 300_000_000,
-                btc::DENOM.clone() => 117304 * 2,
+                eth::DENOM.clone() => 117304 * 2,
             },
         )
         .should_succeed();
+
+    println!("post man four");
 
     // Get timestamp after second trade
     let timestamp_after_second_trade = suite.block.timestamp;
