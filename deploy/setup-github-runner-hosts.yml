@@ -22,7 +22,7 @@
         group: "{{ runner_user }}"
         recurse: yes
 
-    - name: Adding runner user users to group docker
+    - name: Adding runner user to group docker
       become: true
       user:
         name: "{{ runner_user }}"
