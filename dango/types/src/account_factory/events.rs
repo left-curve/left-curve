@@ -29,5 +29,6 @@ pub struct AccountRegistered {
 #[grug::event("key_updated")]
 pub struct KeyUpdated {
     pub username: Username,
-    pub key: Op<Key>,
+    pub op: Op<Key>,
+    pub key_hash: Hash256,
 }

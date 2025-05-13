@@ -3,4 +3,7 @@
 pub mod prelude;
 
 pub mod accounts;
+pub mod accounts_users;
+pub mod public_keys;
 pub mod transfers;
+pub mod users;

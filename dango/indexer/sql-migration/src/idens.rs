@@ -15,35 +15,48 @@ pub enum Transfer {
 }
 
 #[derive(DeriveIden)]
-pub enum Account {
-    #[sea_orm(iden = "accounts")]
+pub enum User {
+    #[sea_orm(iden = "users")]
     Table,
     Id,
     Username,
-    // Index,
-    #[allow(clippy::enum_variant_names)]
-    AccountType,
-    // Can this be changed later?
-    Address,
-    // NOTE: should it be PublicKey or just removed?
-    EthAddress,
     CreatedBlockHeight,
     CreatedAt,
 }
 
 #[derive(DeriveIden)]
-pub enum AccountsPublicKeys {
-    #[sea_orm(iden = "accounts_public_keys")]
+pub enum Account {
+    #[sea_orm(iden = "accounts")]
     Table,
-    AccountId,
-    PublicKeyId,
+    Id,
+    #[allow(clippy::enum_variant_names)]
+    AccountIndex,
+    #[allow(clippy::enum_variant_names)]
+    AccountType,
+    Address,
+    CreatedBlockHeight,
+    CreatedAt,
 }
 
 #[derive(DeriveIden)]
-pub enum PublicKeys {
-    #[sea_orm(iden = "public_keys")]
+pub enum AccountUser {
+    #[sea_orm(iden = "accounts_users")]
     Table,
     Id,
-    // Unique index
+    AccountId,
+    UserId,
+}
+
+#[derive(DeriveIden)]
+pub enum PublicKey {
+    #[sea_orm(iden = "users_public_keys")]
+    Table,
+    Id,
+    Username,
+    #[allow(clippy::enum_variant_names)]
     PublicKey,
+    KeyHash,
+    KeyType,
+    CreatedBlockHeight,
+    CreatedAt,
 }

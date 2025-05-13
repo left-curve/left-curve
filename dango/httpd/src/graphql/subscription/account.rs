@@ -38,7 +38,7 @@ impl AccountSubscription {
                                 .filter(
                                     entity::accounts::Column::CreatedBlockHeight.eq(block_height),
                                 )
-                                .order_by_asc(entity::accounts::Column::Username)
+                                // .order_by_asc(entity::accounts::Column::Username)
                                 .all(&db)
                                 .await
                                 .ok()

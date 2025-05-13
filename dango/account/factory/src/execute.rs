@@ -342,7 +342,11 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
         },
     }
 
-    Ok(Response::new().add_event(KeyUpdated { username, key })?)
+    Ok(Response::new().add_event(KeyUpdated {
+        username,
+        key_hash,
+        op: key,
+    })?)
 }
 
 fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Result<Response> {
