@@ -33,8 +33,9 @@ export function useUsernames(): UseUsernamesReturnType {
     });
   }, []);
 
-  const addUsername = useCallback((username: string) => {
+  const addUsername = (username: string) => {
     setUsernameInfo((usernames) => {
+      console.log(usernames);
       const userInfo = usernames[username] || {};
       const newUserInfo = {
         ...userInfo,
@@ -45,7 +46,7 @@ export function useUsernames(): UseUsernamesReturnType {
         [username]: newUserInfo,
       };
     });
-  }, []);
+  };
 
   return {
     usernames: Object.keys(usernameInfo),

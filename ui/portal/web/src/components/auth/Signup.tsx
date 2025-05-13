@@ -390,7 +390,6 @@ const Signin: React.FC = () => {
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
     sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
@@ -410,7 +409,11 @@ const Signin: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <Button fullWidth onClick={() => connectWithConnector({ connectorId })} isLoading={isPending}>
+      <Button
+        fullWidth
+        onClick={() => connectWithConnector({ username, connectorId })}
+        isLoading={isPending}
+      >
         {m["common.signin"]()}
       </Button>
       <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>

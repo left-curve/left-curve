@@ -214,10 +214,9 @@ const CredentialStep: React.FC = () => {
   const { username, sessionKey } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
     sessionKey: sessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
-      onSuccess: () => {
+      onSuccess: (username) => {
         navigate({ to: "/" });
         addUsername(username);
       },
@@ -250,14 +249,14 @@ const CredentialStep: React.FC = () => {
         </div>
         {isMd ? (
           <AuthOptions
-            action={(connectorId) => connectWithConnector({ connectorId })}
+            action={(connectorId) => connectWithConnector({ username, connectorId })}
             isPending={isPending}
             mode="signin"
           />
         ) : (
           <Button
             fullWidth
-            onClick={() => connectWithConnector({ connectorId: "passkey" })}
+            onClick={() => connectWithConnector({ username, connectorId: "passkey" })}
             isLoading={isPending}
             className="gap-2"
           >
