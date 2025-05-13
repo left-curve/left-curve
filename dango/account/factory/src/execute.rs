@@ -8,15 +8,15 @@ use {
     dango_types::{
         account::{self, single},
         account_factory::{
-            Account, AccountParamUpdates, AccountParams, AccountRegistered, AccountType,
-            ExecuteMsg, InstantiateMsg, KeyUpdated, NewUserSalt, RegisterUserData, Salt,
-            UserRegistered, Username,
+            Account, AccountDisowned, AccountOwned, AccountParamUpdates, AccountParams,
+            AccountRegistered, AccountType, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
+            NewUserSalt, RegisterUserData, Salt, UserRegistered, Username,
         },
         auth::{Key, Signature},
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        Addr, AuthCtx, AuthMode, AuthResponse, Coins, EventBuilder, Hash256, Inner, JsonDeExt,
+        Message, MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -310,6 +310,22 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
             Some(ctx.contract),
             ctx.funds,
         )?)
+        .add_events(match &account.params {
+            AccountParams::Spot(params) | AccountParams::Margin(params) => {
+                vec![AccountOwned {
+                    username: params.owner.clone(),
+                    address,
+                }]
+            },
+            AccountParams::Multi(params) => params
+                .members
+                .keys()
+                .map(|member| AccountOwned {
+                    username: member.clone(),
+                    address,
+                })
+                .collect(),
+        })?
         .add_event(AccountRegistered {
             address,
             params: account.params,
@@ -349,11 +365,29 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
         },
     }
 
-    Ok(Response::new().add_event(KeyUpdated { username, key })?)
+    Ok(Response::new()
+        .may_add_event(if let Op::Insert(key) = key {
+            Some(KeyOwned {
+                username: username.clone(),
+                key_hash,
+                key,
+            })
+        } else {
+            None
+        })?
+        .may_add_event(if let Op::Delete = key {
+            Some(KeyDisowned {
+                username: username.clone(),
+                key_hash,
+            })
+        } else {
+            None
+        })?)
 }
 
 fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Result<Response> {
     let mut account = ACCOUNTS.load(ctx.storage, ctx.sender)?;
+    let mut events = EventBuilder::new();
 
     match (&mut account.params, updates) {
         (AccountParams::Multi(params), AccountParamUpdates::Multi(updates)) => {
@@ -364,10 +398,20 @@ fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Resu
 
             for member in updates.members.add().keys() {
                 ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
+
+                events.push(AccountOwned {
+                    username: member.clone(),
+                    address: ctx.sender,
+                })?;
             }
 
             for member in updates.members.remove() {
                 ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
+
+                events.push(AccountDisowned {
+                    username: member.clone(),
+                    address: ctx.sender,
+                })?;
             }
 
             params.apply_updates(updates);
@@ -383,5 +427,5 @@ fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Resu
         },
     }
 
-    Ok(Response::new())
+    Ok(Response::new().add_events(events)?)
 }
