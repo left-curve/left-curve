@@ -28,6 +28,6 @@ use {
     std::sync::LazyLock,
 };
 
-pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("gateway"));
-
 pub type RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>;
+
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("bridge"));

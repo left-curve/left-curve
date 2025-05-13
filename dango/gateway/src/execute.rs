@@ -167,7 +167,8 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     }
 
     // Reduce the reserve.
-    RESERVES.update(ctx.storage, (bridge, remote), |reserve| {
+    RESERVES.may_update(ctx.storage, (bridge, remote), |maybe_reserve| {
+        let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
         reserve.checked_sub(coin.amount).map_err(|_| {
             anyhow!(
                 "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
@@ -180,8 +181,9 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     })?;
 
     // Reduce the outbound quota.
-    OUTBOUND_QUOTAS.update(ctx.storage, &coin.denom, |quote| {
-        quote.checked_sub(coin.amount).map_err(|_| {
+    OUTBOUND_QUOTAS.may_update(ctx.storage, &coin.denom, |maybe_quota| {
+        let quota = maybe_quota.unwrap_or(Uint128::ZERO);
+        quota.checked_sub(coin.amount).map_err(|_| {
             anyhow!(
                 "insufficient outbound quota! denom: {}, amount: {}",
                 coin.denom,
@@ -219,10 +221,10 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Withdraw,
                     payments: btree_map! {
-                        ctx.sender => coins! { coin.denom => fee },
+                        ctx.sender => coins! { coin.denom.clone() => fee },
                     },
                 },
-                Coins::new(),
+                coins! { coin.denom => fee },
             )?)
         } else {
             None

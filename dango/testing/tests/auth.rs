@@ -1,7 +1,7 @@
 use {
     dango_auth::MAX_NONCE_INCREASE,
     dango_testing::setup_test_naive,
-    dango_types::constants::DANGO_DENOM,
+    dango_types::constants::dango,
     grug::{Addressable, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
 };
 
@@ -15,14 +15,14 @@ use {
 /// which is set to 100.
 #[test]
 fn first_nonce_too_big() {
-    let (suite, accounts, ..) = setup_test_naive();
+    let (suite, accounts, ..) = setup_test_naive(Default::default());
 
     // User attempts to send their first tx with nonce 101. Should fail.
     {
         let msgs = NonEmpty::new_unchecked(vec![
             Message::transfer(
                 accounts.user2.address(),
-                coins! { DANGO_DENOM.clone() => 100 },
+                coins! { dango::DENOM.clone() => 100 },
             )
             .unwrap(),
         ]);

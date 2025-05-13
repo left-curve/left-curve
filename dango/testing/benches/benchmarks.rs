@@ -129,7 +129,7 @@ fn sends(c: &mut Criterion) {
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, accounts, codes, contracts) = setup_benchmark_wasm(&dir, 100);
+                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_wasm(&dir, 100);
 
                 let txs = do_send(&mut suite, accounts, codes, contracts);
 
@@ -154,7 +154,7 @@ fn sends(c: &mut Criterion) {
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, accounts, codes, contracts) = setup_benchmark_hybrid(&dir, 100);
+                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_hybrid(&dir, 100);
 
                 let txs = do_send(&mut suite, accounts, codes, contracts);
 

@@ -15,10 +15,13 @@ version       = { workspace = true }
 # - tendermint::abci::Event -> CronOutcome
 # - tendermint_rpc::endpoint::tx::Response -> SearchTxOutcome
 tendermint = ["dep:tendermint", "tendermint-rpc"]
+# Include a method to convert a `Timestamp` to an RFC-3339 string.
+rfc3339 = ["chrono"]
 
 [dependencies]
 bnum           = { workspace = true, features = ["borsh"] }
 borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
+chrono         = { workspace = true, optional = true }
 data-encoding  = { workspace = true }
 digest         = { workspace = true }
 dyn-clone      = { workspace = true }
