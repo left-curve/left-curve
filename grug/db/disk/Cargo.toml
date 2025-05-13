@@ -24,6 +24,9 @@ thiserror  = { workspace = true }
 # For RocksDB:
 # On musl platforms, use "static" linking; otherwise, use "runtime" linking.
 #
+# For a similar practice, see:
+# https://github.com/wasmerio/wasmer/blob/v5.0.6/lib/api/Cargo.toml#L170-L178
+#
 [target.'cfg(target_env = "musl")'.dependencies]
 rocksdb = { workspace = true, features = ["bindgen-static"] }
 
