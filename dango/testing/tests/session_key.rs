@@ -201,7 +201,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::try_new(usdc::DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }
@@ -213,7 +213,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::try_new(usdc::DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
         owner.nonce -= 1;
@@ -231,7 +231,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::try_new(usdc::DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }
@@ -264,7 +264,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 owner2.address(),
-                Coin::try_new(usdc::DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
 
@@ -273,7 +273,7 @@ fn session_key() {
             .transfer(
                 &mut owner2,
                 accounts.user1.address(),
-                Coin::try_new(usdc::DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }
@@ -291,7 +291,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::try_new(usdc::DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }

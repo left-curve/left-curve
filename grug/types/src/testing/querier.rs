@@ -133,7 +133,7 @@ impl Querier for MockQuerier {
                     .and_then(|amounts| amounts.get(&req.denom))
                     .cloned()
                     .unwrap_or(Uint128::ZERO);
-                Coin::try_new(req.denom, amount).map(QueryResponse::Balance)
+                Coin::new(req.denom, amount).map(QueryResponse::Balance)
             },
             Query::Balances(req) => {
                 let coins = self
@@ -160,7 +160,7 @@ impl Querier for MockQuerier {
                     .get(&req.denom)
                     .cloned()
                     .unwrap_or(Uint128::ZERO);
-                Coin::try_new(req.denom, amount).map(QueryResponse::Balance)
+                Coin::new(req.denom, amount).map(QueryResponse::Balance)
             },
             Query::Supplies(req) => {
                 let coins = self

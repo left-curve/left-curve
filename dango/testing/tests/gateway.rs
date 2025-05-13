@@ -90,7 +90,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee),
+            Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -106,7 +106,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee),
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
@@ -146,7 +146,7 @@ fn rate_limit() {
                 },
                 recipient: mock_eth_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 100_000_000 + usdc_eth_fee),
+            Coin::new(usdc::DENOM.clone(), 100_000_000 + usdc_eth_fee).unwrap(),
         )
         .should_succeed();
 
@@ -162,7 +162,7 @@ fn rate_limit() {
                 },
                 recipient: mock_eth_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee),
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
@@ -211,7 +211,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 27_000_000 + usdc_sol_fee),
+            Coin::new(usdc::DENOM.clone(), 27_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -227,7 +227,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee),
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
 
@@ -263,7 +263,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 143_000_000 + usdc_sol_fee),
+            Coin::new(usdc::DENOM.clone(), 143_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
 
@@ -280,7 +280,7 @@ fn rate_limit() {
                 },
                 recipient: mock_solana_recipient,
             },
-            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee),
+            Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient reserve!");
 }

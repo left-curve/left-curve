@@ -34,7 +34,7 @@ pub fn repay(
         // if any.
         let repaid = if coin.amount > &debt {
             let refund_amount = coin.amount.checked_sub(debt)?;
-            refunds.insert(Coin::try_new(coin.denom.clone(), refund_amount)?)?;
+            refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
             debt
         } else {
             *coin.amount

@@ -155,7 +155,7 @@ pub fn compute_health(
 
         // Calculate the real debt.
         let debt = dango_lending::into_underlying_debt(*scaled_debt, market)?;
-        debts.insert(Coin::try_new(denom.clone(), debt)?)?;
+        debts.insert(Coin::new(denom.clone(), debt)?)?;
 
         // Calculate the value of the debt.
         let price = prices
@@ -191,7 +191,7 @@ pub fn compute_health(
         let value = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(**power)?;
 
-        collaterals.insert(Coin::try_new(denom.clone(), collateral_balance)?)?;
+        collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
         total_collateral_value.checked_add_assign(value)?;
         total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
     }
@@ -215,15 +215,15 @@ pub fn compute_health(
         // if the order was filled.
         let (offer, ask) = match res.direction {
             Direction::Bid => (
-                Coin::try_new(
+                Coin::new(
                     res.quote_denom.clone(),
                     res.remaining.checked_mul_dec_ceil(res.price)?,
                 )?,
-                Coin::try_new(res.base_denom.clone(), res.remaining)?,
+                Coin::new(res.base_denom.clone(), res.remaining)?,
             ),
             Direction::Ask => (
-                Coin::try_new(res.base_denom.clone(), res.remaining)?,
-                Coin::try_new(
+                Coin::new(res.base_denom.clone(), res.remaining)?,
+                Coin::new(
                     res.quote_denom.clone(),
                     res.remaining.checked_mul_dec_floor(res.price)?,
                 )?,

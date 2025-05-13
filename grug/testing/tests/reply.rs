@@ -156,7 +156,7 @@ mod replier {
 
 fn setup() -> (TestSuite, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coin::try_new("usdc", 100_000).unwrap())
+        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
         .add_account("sender", Coins::new())
         .set_owner("owner")
         .build();

@@ -73,7 +73,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     let refund_msg = if refund.is_non_zero() {
         Some(Message::transfer(
             owner,
-            Coin::try_new(dango::DENOM.clone(), refund)?,
+            Coin::new(dango::DENOM.clone(), refund)?,
         )?)
     } else {
         None
@@ -98,6 +98,6 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     Ok(Response::new().add_message(Message::transfer(
         ctx.sender,
-        Coin::try_new(dango::DENOM.clone(), claimable)?,
+        Coin::new(dango::DENOM.clone(), claimable)?,
     )?))
 }

@@ -253,12 +253,12 @@ impl Coins {
         if &coin.amount >= amount {
             let remainder = coin.amount - *amount;
             self.0.remove(&coin.denom);
-            return Coin::try_new(coin.denom.clone(), remainder);
+            return Coin::new(coin.denom.clone(), remainder);
         }
 
         self.deduct(coin.clone())?;
 
-        Coin::try_new(coin.denom, 0)
+        Coin::new(coin.denom, 0)
     }
 
     /// Deduct all coins from another `Coins`, saturating at zero. Returns a

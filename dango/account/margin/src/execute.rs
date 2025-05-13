@@ -182,7 +182,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         };
 
         let repay_amount = if coin.amount > max_repay_for_denom {
-            refunds.insert(Coin::try_new(
+            refunds.insert(Coin::new(
                 coin.denom.clone(),
                 coin.amount - max_repay_for_denom,
             )?)?;
@@ -191,7 +191,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
             coin.amount
         };
 
-        repay_coins.insert(Coin::try_new(coin.denom.clone(), repay_amount)?)?;
+        repay_coins.insert(Coin::new(coin.denom.clone(), repay_amount)?)?;
         repaid_debt_value.checked_add_assign(price.value_of_unit_amount(repay_amount)?)?;
     }
 
@@ -211,7 +211,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     // Send the claimed collateral and any debt refunds to the liquidator.
     let mut send_coins = refunds.clone();
-    send_coins.insert(Coin::try_new(
+    send_coins.insert(Coin::new(
         collateral_denom.clone(),
         claimed_collateral_amount,
     )?)?;

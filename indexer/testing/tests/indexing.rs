@@ -435,7 +435,7 @@ fn index_block_events() {
         .expect("Can't create indexer");
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coin::try_new("usdc", 100_000).unwrap())
+        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
         .add_account("sender", Coins::new())
         .set_owner("owner")
         .build();

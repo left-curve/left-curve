@@ -23,10 +23,7 @@ pub fn deposit(
 
         // Compute the amount of LP tokens to mint
         let amount_scaled = core::into_scaled_collateral(coin.amount, &market)?;
-        lp_tokens.insert(Coin::try_new(
-            market.supply_lp_denom.clone(),
-            amount_scaled,
-        )?)?;
+        lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
 
         // Save the updated market state.
         markets.insert(coin.denom, market);

@@ -1659,12 +1659,12 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 500000),
+    Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 1000000),
+    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -1684,12 +1684,12 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 333333),
+    Coin::new(usdc::DENOM.clone(), 333333).unwrap(),
     coins! {
         dango::DENOM.clone() => 499999,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 499999),
+    Coin::new(dango::DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 499999,
@@ -1709,12 +1709,12 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 250000),
+    Coin::new(usdc::DENOM.clone(), 250000).unwrap(),
     coins! {
         dango::DENOM.clone() => 333333,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 333333),
+    Coin::new(dango::DENOM.clone(), 333333).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 333333,
@@ -1734,12 +1734,12 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 1000000),
+    Coin::new(usdc::DENOM.clone(), 1000000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 1000000),
+    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -1760,12 +1760,12 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 500000),
+    Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
     coins! {
         dango::DENOM.clone() => 999999,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 1000000),
+    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -1786,12 +1786,12 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 500000),
+    Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1100000,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 1000000),
+    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -1821,12 +1821,12 @@ fn swap_exact_amount_in(
             quote_denom: usdc::DENOM.clone(),
         },
     ],
-    Coin::new(btc::DENOM.clone(), 250000),
+    Coin::new(btc::DENOM.clone(), 250000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
     BTreeMap::new(),
-    Coin::new(dango::DENOM.clone(), 499999),
+    Coin::new(dango::DENOM.clone(), 499999).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 499999,
@@ -1850,14 +1850,14 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 499950),
+    Coin::new(usdc::DENOM.clone(), 499950).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_bps(1),
     },
-    Coin::new(dango::DENOM.clone(), 1000000),
+    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
