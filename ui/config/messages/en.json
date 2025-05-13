@@ -314,6 +314,14 @@
       "creatingAccount": "Error creating account"
     }
   },
+  "forgotUsername": {
+    "greetings": "Hi there",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "usernamesFound": "Usernames found",
+    "chooseCredentialFoundUsername": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected."
+  },
   "accountCreation": {
     "accountCreated": "Account Created",
     "title": "Create New Account",

@@ -79,10 +79,8 @@ const Credential: React.FC = () => {
           alt="dango-logo"
           className="h-12 rounded-full shadow-btn-shadow-gradient"
         />
-        <h1 className="h2-heavy">Hi there</h1>
-        <p className="text-gray-500 diatype-m-medium">
-          Choose any of the credentials that have been associated with your username.
-        </p>
+        <h1 className="h2-heavy">{m["forgotUsername.greetings"]()}</h1>
+        <p className="text-gray-500 diatype-m-medium">{m["forgotUsername.chooseCredential"]()}</p>
       </div>
       <AuthOptions action={createCredential} isPending={isPending} mode="signup" expanded={true} />
       <Button variant="link" onClick={() => navigate({ to: "/signin" })}>
@@ -135,16 +133,16 @@ const AvailableUsernames: React.FC = () => {
         />
         {existUsernames ? (
           <>
-            <h1 className="h2-heavy">Usernames found</h1>
+            <h1 className="h2-heavy">{m["forgotUsername.usernamesFound"]()}</h1>
             <p className="text-gray-500 diatype-m-medium">
-              Choose any of the credentials that have been associated with your username.
+              {m["forgotUsername.chooseCredentialFoundUsername"]()}
             </p>
           </>
         ) : (
           <>
-            <h1 className="h2-heavy">No username found</h1>
+            <h1 className="h2-heavy">{m["forgotUsername.noUsernamesFound"]()}</h1>
             <p className="text-gray-500 diatype-m-medium">
-              We could not find any username associated with the credential you connected.
+              {m["forgotUsername.noUsernameMessage"]()}
             </p>
           </>
         )}
