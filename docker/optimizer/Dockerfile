@@ -19,7 +19,7 @@ RUN echo "Cloning commit: $GIT_COMMIT" \
   && git remote add origin https://github.com/left-curve/left-curve.git \
   && git fetch --depth 1 origin $GIT_COMMIT \
   && git checkout FETCH_HEAD \
-  && cargo tree -i bindgen@0.70.1 --target x86_64-unknown-linux-musl -e features && exit 1
+  && cargo tree -i clang-sys -e features && exit 1
 # && cp dango/cli/src/git_info.rs dango/cli/src/git_info.rs.in \
 # && sed "s/{{GIT_COMMIT}}/${GIT_COMMIT}/" dango/cli/src/git_info.rs.in > dango/cli/src/git_info.rs \
 # && rm dango/cli/src/git_info.rs.in \
