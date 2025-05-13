@@ -1,6 +1,5 @@
 mod config;
 mod db;
-mod git_info;
 mod home_directory;
 mod keys;
 mod prompt;
@@ -16,6 +15,7 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
+    grug_app::GIT_COMMIT,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -69,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
         .init();
 
-    tracing::info!("Using GIT version {}", git_info::GIT_COMMIT);
+    tracing::info!("Using GIT version {GIT_COMMIT}");
 
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
