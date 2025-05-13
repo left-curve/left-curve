@@ -123,6 +123,9 @@ export {
   type GetUsersByKeyhashParameters,
   type GetUsersByKeyHashReturnType,
   getUsersByKeyHash,
+  type ForgotUsernameParameters,
+  type ForgotUsernameReturnType,
+  forgotUsername,
   // mutations
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
