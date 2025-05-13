@@ -80,7 +80,7 @@ const Credential: React.FC = () => {
         <h1 className="h2-heavy">{m["forgotUsername.greetings"]()}</h1>
         <p className="text-gray-500 diatype-m-medium">{m["forgotUsername.chooseCredential"]()}</p>
       </div>
-      <AuthOptions action={createCredential} isPending={isPending} mode="signup" />
+      <AuthOptions action={createCredential} isPending={isPending} mode="forgot-username" />
       <Button variant="link" onClick={() => navigate({ to: "/signin" })}>
         <IconLeft className="w-[22px] h-[22px] text-blue-500" />
         <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
