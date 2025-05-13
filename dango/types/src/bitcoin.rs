@@ -156,6 +156,9 @@ pub enum QueryMsg {
         start_after: Option<Binary>,
         limit: Option<u32>,
     },
+    /// Query the last outbound transaction ID.
+    #[returns(u32)]
+    LastOutboundTransactionId {},
     /// Query an outbound transaction by ID.
     #[returns(Transaction)]
     OutboundTransaction { id: u32 },
