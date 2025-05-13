@@ -1,8 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
+import type { GetConnectorClientReturnType } from "../actions/getConnectorClient.js";
 import { useConnectorClient } from "./useConnectorClient.js";
 import { useSessionKey } from "./useSessionKey.js";
 
-export function useSigningClient() {
+type UseSigningClientReturnType = UseQueryResult<GetConnectorClientReturnType, Error>;
+
+export function useSigningClient(): UseSigningClientReturnType {
   const { data: connectorClient } = useConnectorClient();
   const { client } = useSessionKey();
 

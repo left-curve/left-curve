@@ -44,6 +44,8 @@ where
 
         if let Some(origin) = cors_allowed_origin.as_deref() {
             cors = cors.allowed_origin(origin);
+        } else {
+            cors = cors.allow_any_origin();
         }
 
         let app = App::new()

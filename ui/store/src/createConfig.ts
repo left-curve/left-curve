@@ -15,6 +15,7 @@ import type {
   AccountTypes,
   AppConfig,
   Client,
+  Denom,
   Hex,
   PairUpdate,
   PublicClient,
@@ -107,7 +108,7 @@ export function createConfig<
   let _appConfig:
     | (AppConfig & {
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
-        pairs: PairUpdate[];
+        pairs: Record<Denom, PairUpdate>;
       })
     | undefined;
 
@@ -120,7 +121,14 @@ export function createConfig<
       client.getPairs(),
     ]);
 
-    _appConfig = { ...appConfig, accountFactory: { codeHashes }, pairs };
+    _appConfig = {
+      ...appConfig,
+      accountFactory: { codeHashes },
+      pairs: pairs.reduce((acc, pair) => {
+        acc[pair.baseDenom] = pair;
+        return acc;
+      }, Object.create({})),
+    };
     return _appConfig;
   }
 

@@ -20,9 +20,9 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { showModal, eventBus } = useApp();
-  const { coins, state } = useConfig();
-  const { account, refreshAccounts, changeAccount } = useAccount();
+  const { showModal, notifier } = useApp();
+  const { coins } = useConfig();
+  const { account, refreshAccounts } = useAccount();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
@@ -32,13 +32,13 @@ export const CreateAccountDepositStep: React.FC = () => {
   });
 
   const { accountType } = data;
-  const coinInfo = coins[state.chainId]["hyp/eth/usdc"];
+  const coinInfo = coins["hyp/eth/usdc"];
   const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, coinInfo.decimals);
 
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
       if (!signingClient) throw new Error("error: no signing client");
-      eventBus.publish("submit_tx", { isSubmitting: true });
+      notifier.publish("submit_tx", { isSubmitting: true });
       try {
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
@@ -53,7 +53,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           }),
         ]);
 
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["accountCreation.accountCreated"]() },
         });
@@ -71,7 +71,7 @@ export const CreateAccountDepositStep: React.FC = () => {
       } catch (e) {
         console.error(e);
         const error = ensureErrorMessage(e);
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: false, message: m["signup.errors.couldntCompleteRequest"]() },
         });
@@ -103,7 +103,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           strategy: "onChange",
           validate: (v) => {
             if (Number(v) > Number(humanBalance))
-              return m["validations.errors.insufficientFunds"]();
+              return m["errors.validations.insufficientFunds"]();
             return true;
           },
           mask: (v, prev) => {

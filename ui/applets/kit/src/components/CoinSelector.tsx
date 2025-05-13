@@ -21,7 +21,8 @@ export const CoinSelector: React.FC<Props> = ({ coins, defaultValue, classNames,
       defaultValue={defaultValue || coins[0].denom}
       classNames={{
         trigger: `min-w-14 p-3 bg-transparent shadow-none justify-start ${classNames?.trigger}`,
-        listboxWrapper: "top-12",
+        listboxWrapper: `top-12 ${classNames?.listboxWrapper}`,
+        icon: `${classNames?.selectorIcon}`,
       }}
       {...props}
     >

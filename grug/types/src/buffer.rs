@@ -1,5 +1,5 @@
 use {
-    grug_types::{Batch, Op, Order, Record, Storage},
+    crate::{Batch, Op, Order, Record, Storage},
     std::{
         cmp::Ordering,
         iter::{self, Peekable},
@@ -210,7 +210,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage};
+    use {super::*, crate::MockStorage};
 
     // Illustration of this test case:
     //

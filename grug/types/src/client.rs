@@ -31,9 +31,16 @@ impl<T, E, P> Client<E, P> for T where
 {
 }
 
-#[derive(Clone)]
 pub struct ClientWrapper<E, P = Proof> {
     pub client: Arc<dyn Client<E, P>>,
+}
+
+impl<E, P> Clone for ClientWrapper<E, P> {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+        }
+    }
 }
 
 impl<E, P> ClientWrapper<E, P> {

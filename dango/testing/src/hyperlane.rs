@@ -6,9 +6,9 @@ use {
     },
     grug::{
         Addr, Coin, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
-        QuerierExt, ResultExt, Signer, TestSuite, TxOutcome, Uint128, btree_map,
+        QuerierExt, ResultExt, Shared, Signer, TestSuite, TxOutcome, Uint128, btree_map,
     },
-    grug_app::{AppError, Db, Indexer, ProposalPreparer, Shared, Vm},
+    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     grug_crypto::Identity256,
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32, domain_hash, eip191_hash,
