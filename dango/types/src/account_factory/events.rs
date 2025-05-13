@@ -24,7 +24,7 @@ pub struct AccountRegistered {
     pub index: AccountIndex,
 }
 
-/// An event indicating a username begin to own an account.
+/// An event indicating a username begins to own an account.
 #[grug::derive(Serde)]
 #[grug::event("account_owned")]
 pub struct AccountOwned {
@@ -32,7 +32,7 @@ pub struct AccountOwned {
     pub address: Addr,
 }
 
-/// An event indicating a username cease to own an account.
+/// An event indicating a username ceases to own an account.
 #[grug::derive(Serde)]
 #[grug::event("account_disowned")]
 pub struct AccountDisowned {
@@ -40,7 +40,7 @@ pub struct AccountDisowned {
     pub address: Addr,
 }
 
-/// An event indicating a username begin to own a key.
+/// An event indicating a username begins to own a key.
 #[grug::derive(Serde)]
 #[grug::event("key_owned")]
 pub struct KeyOwned {
@@ -49,7 +49,7 @@ pub struct KeyOwned {
     pub key: Key,
 }
 
-/// An event indicating a username cease to own a key.
+/// An event indicating a username ceases to own a key.
 #[grug::derive(Serde)]
 #[grug::event("key_disowned")]
 pub struct KeyDisowned {
