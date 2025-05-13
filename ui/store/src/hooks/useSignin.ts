@@ -24,7 +24,7 @@ export type UseSigninParameters = {
 export type UseSigninReturnType = UseMutationReturnType<
   Username,
   Error,
-  { connectorId: string; usename: Username; keyHash?: KeyHash }
+  { connectorId: string; username: Username; keyHash?: KeyHash }
 >;
 
 export function useSignin(parameters: UseSigninParameters) {
