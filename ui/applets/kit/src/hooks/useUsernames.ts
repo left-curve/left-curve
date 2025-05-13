@@ -35,7 +35,6 @@ export function useUsernames(): UseUsernamesReturnType {
 
   const addUsername = (username: string) => {
     setUsernameInfo((usernames) => {
-      console.log(usernames);
       const userInfo = usernames[username] || {};
       const newUserInfo = {
         ...userInfo,
