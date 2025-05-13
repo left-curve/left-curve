@@ -3,15 +3,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
+import { useMediaQuery, useUsernames, useWizard } from "@left-curve/applets-kit";
 
 import {
   Checkbox,
   ExpandOptions,
   IconLeft,
   ResizerContainer,
-  useMediaQuery,
-  useUsernames,
-  useWizard,
   Button,
 } from "@left-curve/applets-kit";
 import { toast } from "../foundation/Toast";

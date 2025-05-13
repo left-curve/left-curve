@@ -9,6 +9,7 @@ import { useApp } from "~/hooks/useApp";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useUsernames, useWizard, useInputs } from "@left-curve/applets-kit";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
@@ -26,14 +27,11 @@ import {
   IconLeft,
   ResizerContainer,
   Stepper,
-  useUsernames,
-  useWizard,
   Button,
   CheckCircleIcon,
   Input,
   Spinner,
   XCircleIcon,
-  useInputs,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { AuthOptions } from "./AuthOptions";
