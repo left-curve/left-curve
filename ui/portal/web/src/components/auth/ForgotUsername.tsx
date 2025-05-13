@@ -1,4 +1,12 @@
-import { IconLeft, ResizerContainer, useUsernames, useWizard } from "@left-curve/applets-kit";
+import {
+  Checkbox,
+  ExpandOptions,
+  IconLeft,
+  ResizerContainer,
+  useMediaQuery,
+  useUsernames,
+  useWizard,
+} from "@left-curve/applets-kit";
 import {
   useAccount,
   useChainId,
@@ -98,12 +106,14 @@ const AvailableUsernames: React.FC = () => {
     connectorId: string;
   }>();
   const navigate = useNavigate();
-  const { usernames, connectorId, keyHash } = data;
-  const { settings } = useApp();
+  const { isMd } = useMediaQuery();
   const { addUsername } = useUsernames();
+  const { settings, changeSettings } = useApp();
+  const { useSessionKey } = settings;
+  const { usernames, connectorId, keyHash } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    sessionKey: settings.useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
+    sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: (username) => {
         navigate({ to: "/" });
@@ -157,6 +167,18 @@ const AvailableUsernames: React.FC = () => {
             showArrow={true}
             onClick={(username) => connectWithConnector({ username, connectorId, keyHash })}
           />
+          {isMd ? (
+            <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+              <div className="flex items-center gap-2 flex-col">
+                <Checkbox
+                  size="md"
+                  label={m["common.signinWithSession"]()}
+                  checked={useSessionKey}
+                  onChange={(v) => changeSettings({ useSessionKey: v })}
+                />
+              </div>
+            </ExpandOptions>
+          ) : null}
           <Button variant="link" onClick={previousStep}>
             <IconLeft className="w-[22px] h-[22px] text-blue-500" />
             <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
