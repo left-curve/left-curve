@@ -24,6 +24,22 @@ pub struct AccountRegistered {
     pub index: AccountIndex,
 }
 
+/// An event indicating a username begin to own an account.
+#[grug::derive(Serde)]
+#[grug::event("account_owned")]
+pub struct AccountOwned {
+    pub username: Username,
+    pub address: Addr,
+}
+
+/// An event indicating a username cease to own an account.
+#[grug::derive(Serde)]
+#[grug::event("account_disowned")]
+pub struct AccountDisowned {
+    pub username: Username,
+    pub address: Addr,
+}
+
 /// An event indicating a key has been updated.
 #[grug::derive(Serde)]
 #[grug::event("key_updated")]
