@@ -222,7 +222,7 @@ export const SimpleSwapForm: React.FC = () => {
           strategy: "onChange",
           validate: (v) => {
             if (!isConnected) return true;
-            if (Number(v) > Number(baseBalance)) return m["validations.errors.insufficientFunds"]();
+            if (Number(v) > Number(baseBalance)) return m["errors.validations.insufficientFunds"]();
             return true;
           },
           mask: numberMask,
@@ -290,7 +290,7 @@ export const SimpleSwapForm: React.FC = () => {
           validate: (v) => {
             if (!isConnected) return true;
             if (Number(v) > Number(quoteBalance))
-              return m["validations.errors.insufficientFunds"]();
+              return m["errors.validations.insufficientFunds"]();
             return true;
           },
           mask: numberMask,

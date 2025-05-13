@@ -184,10 +184,10 @@ function TransferApplet() {
                   {...register("amount", {
                     strategy: "onChange",
                     validate: (v) => {
-                      if (!v) return m["validations.errors.amountIsRequired"]();
-                      if (Number(v) <= 0) return m["validations.errors.amountIsZero"]();
+                      if (!v) return m["errors.validations.amountIsRequired"]();
+                      if (Number(v) <= 0) return m["errors.validations.amountIsZero"]();
                       if (Number(v) > Number(humanAmount))
-                        return m["validations.errors.insufficientFunds"]();
+                        return m["errors.validations.insufficientFunds"]();
                       return true;
                     },
                     mask: (v, prev) => {
@@ -232,7 +232,7 @@ function TransferApplet() {
                 />
                 <AccountSearchInput
                   {...register("address", {
-                    validate: (v) => isValidAddress(v) || m["validations.errors.invalidAddress"](),
+                    validate: (v) => isValidAddress(v) || m["errors.validations.invalidAddress"](),
                     mask: (v) => v.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                   })}
                   label="To"

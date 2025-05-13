@@ -65,7 +65,7 @@ const Credential: React.FC = () => {
         setData({ usernames, connectorId, keyHash });
         nextStep();
       } catch (err) {
-        toast.error({ title: m["common.errorFailedRequest"]() });
+        toast.error({ title: m["errors.failureRequest"]() });
         console.log(err);
       }
     },
@@ -82,7 +82,7 @@ const Credential: React.FC = () => {
         <h1 className="h2-heavy">{m["forgotUsername.greetings"]()}</h1>
         <p className="text-gray-500 diatype-m-medium">{m["forgotUsername.chooseCredential"]()}</p>
       </div>
-      <AuthOptions action={createCredential} isPending={isPending} mode="signup" expanded={true} />
+      <AuthOptions action={createCredential} isPending={isPending} mode="signup" />
       <Button variant="link" onClick={() => navigate({ to: "/signin" })}>
         <IconLeft className="w-[22px] h-[22px] text-blue-500" />
         <p className="leading-none pt-[2px]">{m["common.back"]()}</p>

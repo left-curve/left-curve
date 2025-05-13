@@ -9,10 +9,9 @@ interface Props {
   action: (method: string) => void;
   isPending: boolean;
   mode: "signup" | "signin" | "forgot-username";
-  expanded?: boolean;
 }
 
-export const AuthOptions: React.FC<Props> = ({ action, isPending, mode, expanded }) => {
+export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
   const connectors = useConnectors();
 
   return (

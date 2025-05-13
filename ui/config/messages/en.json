@@ -20,7 +20,6 @@
     "hi": "Hi",
     "to": "To",
     "error": "Error",
-    "errorFailedRequest": "Couldn't complete the request",
     "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
     "signinWithSession": "Sign in with session key",
@@ -521,12 +520,13 @@
       }
     }
   },
-  "validations": {
-    "errors": {
+  "errors": {
+    "validations": {
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
       "invalidAddress": "Invalid address"
-    }
+    },
+    "failureRequest": "Couldn't complete the request"
   }
 }
