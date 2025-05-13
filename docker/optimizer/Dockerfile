@@ -10,7 +10,7 @@ ENV GIT_COMMIT=$GIT_COMMIT
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # Install build dependencies
-RUN apk update && apk add --no-cache git
+RUN apt update && apt add --no-cache git
 
 # Download dango source code, build, then delete.
 RUN echo "Cloning commit: $GIT_COMMIT" \
@@ -41,7 +41,7 @@ FROM rust:slim AS wasm-opt
 ARG BINARYEN_GIT_TAG="version_119"
 
 # Install build dependencies
-RUN apk update && apk add --no-cache build-base clang cmake git ninja python3
+RUN apt update && apt add --no-cache build-base clang cmake git ninja python3
 
 # Download source code
 RUN git clone https://github.com/WebAssembly/binaryen.git \
