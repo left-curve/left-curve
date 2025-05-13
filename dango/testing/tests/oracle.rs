@@ -252,7 +252,7 @@ fn multiple_vaas() {
 // publish_time of new data are the same of the stored ones. The case for different
 // publish_time is already tested in the others tests.
 #[test]
-fn test_sequence() {
+fn sequence() {
     let id = BTC_USD_ID;
 
     let old_vaa = Binary::from_str(OLD_VAA).unwrap();
