@@ -73,7 +73,7 @@ const Credential: React.FC = () => {
         setData({ usernames, connectorId, keyHash });
         nextStep();
       } catch (err) {
-        toast.error({ title: "Couldn't complete the request" });
+        toast.error({ title: m["common.errorFailedRequest"]() });
         console.log(err);
       }
     },

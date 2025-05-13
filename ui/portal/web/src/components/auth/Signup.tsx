@@ -224,7 +224,7 @@ const Credential: React.FC = () => {
         setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
       } catch (err) {
-        toast.error({ title: "Couldn't complete the request" });
+        toast.error({ title: m["common.errorFailedRequest"]() });
         console.log(err);
       }
     },

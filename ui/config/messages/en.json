@@ -20,6 +20,7 @@
     "hi": "Hi",
     "to": "To",
     "error": "Error",
+    "errorFailedRequest": "Couldn't complete the request",
     "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
     "signinWithSession": "Sign in with session key",
