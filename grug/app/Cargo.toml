@@ -12,11 +12,10 @@ version       = { workspace = true }
 [features]
 abci    = ["data-encoding", "tendermint", "tower", "tower-abci"]
 ibc     = ["ics23"]
-tracing = ["chrono", "dep:tracing"]
+tracing = ["dep:tracing", "grug-types/rfc3339"]
 
 [dependencies]
 borsh         = { workspace = true }
-chrono        = { workspace = true, optional = true }
 data-encoding = { workspace = true, optional = true }
 grug-math     = { workspace = true }
 grug-storage  = { workspace = true }

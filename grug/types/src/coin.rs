@@ -31,8 +31,7 @@ pub struct Coin {
 }
 
 impl Coin {
-    /// Create a new `Coin` from the given denom and amount, which must be
-    /// non-zero.
+    /// Create a new `Coin` from the given denom and amount.
     pub fn new<D, A>(denom: D, amount: A) -> StdResult<Self>
     where
         D: TryInto<Denom>,

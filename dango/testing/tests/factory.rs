@@ -7,24 +7,27 @@ use {
             self, Account, AccountParams, QueryAccountRequest, RegisterUserData, Username,
         },
         bank,
-        constants::USDC_DENOM,
+        constants::usdc,
     },
     grug::{
-        Addressable, Coin, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
+        Addressable, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
         ResultExt, StdError, Tx, Uint128, VerificationError, btree_map, coins,
     },
+    hyperlane_types::constants::solana,
     std::str::FromStr,
 };
 
 #[test]
 fn user_onboarding() {
-    let (suite, accounts, codes, contracts) = setup_test_naive();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive(Default::default());
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let chain_id = suite.chain_id.clone();
 
     // Create a new key offchain; then, predict what its address would be.
-    let user = TestAccount::new_random("user").predict_address(
+    let username = Username::from_str("user").unwrap();
+    let user = TestAccount::new_random(username).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -32,24 +35,29 @@ fn user_onboarding() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // The transfer should be an orphaned transfer. The bank contract should be
     // holding the 10 USDC.
     suite
-        .query_balance(&contracts.bank, USDC_DENOM.clone())
+        .query_balance(&contracts.bank, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 
     // The orphaned transfer should have been recorded.
     suite
         .query_wasm_smart(contracts.bank, bank::QueryOrphanedTransferRequest {
-            sender: contracts.warp,
+            sender: contracts.gateway,
             recipient: user.address(),
         })
-        .should_succeed_and_equal(coins! { USDC_DENOM.clone() => 10_000_000 });
+        .should_succeed_and_equal(coins! { usdc::DENOM.clone() => 10_000_000 });
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -104,7 +112,7 @@ fn user_onboarding() {
 
     // User's account should have been created with the correct token balance.
     suite
-        .query_balance(&user, USDC_DENOM.clone())
+        .query_balance(&user, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 
@@ -112,15 +120,17 @@ fn user_onboarding() {
 /// The transaction should fail `CheckTx` and be rejected from entering mempool.
 #[test]
 fn onboarding_existing_user() {
-    let (suite, accounts, codes, contracts) = setup_test_naive();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive(Default::default());
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let chain_id = suite.chain_id.clone();
 
     // First, we onboard a user normally.
     let tx = {
         // Generate the key and derive address for the user.
-        let user = TestAccount::new_random("user").predict_address(
+        let username = Username::from_str("user").unwrap();
+        let user = TestAccount::new_random(username).predict_address(
             contracts.account_factory,
             10,
             codes.account_spot.to_bytes().hash256(),
@@ -128,10 +138,15 @@ fn onboarding_existing_user() {
         );
 
         // Make the initial deposit.
-        suite.hyperlane().receive_transfer(
-            user.address(),
-            Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
-        );
+        suite
+            .receive_warp_transfer(
+                &mut accounts.owner,
+                solana::DOMAIN,
+                solana::USDC_WARP,
+                &user,
+                10_000_000,
+            )
+            .should_succeed();
 
         // Send the register user message with account factory.
         let tx = Tx {
@@ -175,12 +190,14 @@ fn onboarding_existing_user() {
 /// The transaction should fail `CheckTx` and be rejected from entering mempool.
 #[test]
 fn onboarding_without_deposit() {
-    let (suite, accounts, codes, contracts) = setup_test_naive();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive(Default::default());
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let chain_id = suite.chain_id.clone();
 
-    let user = TestAccount::new_random("user").predict_address(
+    let username = Username::from_str("user").unwrap();
+    let user = TestAccount::new_random(username).predict_address(
         contracts.account_factory,
         3,
         codes.account_spot.to_bytes().hash256(),
@@ -219,15 +236,20 @@ fn onboarding_without_deposit() {
         .check_tx(tx.clone())
         .should_fail_with_error(StdError::data_not_found::<Coins>(
             ORPHANED_TRANSFERS
-                .path((contracts.warp, user.address()))
+                .path((contracts.gateway, user.address()))
                 .storage_key(),
         ));
 
     // Make a deposit but not enough.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 7_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            7_000_000,
+        )
+        .should_succeed();
 
     // Try again, should fail.
     suite
@@ -235,10 +257,15 @@ fn onboarding_without_deposit() {
         .should_fail_with_error("minumum deposit not satisfied");
 
     // Make a deposit of the minimum amount.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 3_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            3_000_000,
+        )
+        .should_succeed();
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
@@ -246,13 +273,15 @@ fn onboarding_without_deposit() {
 
 #[test]
 fn update_key() {
-    let (suite, accounts, codes, contracts) = setup_test_naive();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive(Default::default());
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let chain_id = suite.chain_id.clone();
 
     // Create a new key offchain; then, predict what its address would be.
-    let mut user = TestAccount::new_random("user").predict_address(
+    let username = Username::from_str("user").unwrap();
+    let mut user = TestAccount::new_random(username).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -260,10 +289,15 @@ fn update_key() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -372,13 +406,16 @@ fn update_key() {
 /// Should fail because the signature won't be valid.
 #[test]
 fn malicious_register_user() {
-    let (suite, accounts, codes, contracts) = setup_test_naive();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive(Default::default());
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
     let chain_id = suite.chain_id.clone();
 
     // ------------------------------ User setup -------------------------------
 
-    let user = TestAccount::new_random("user").predict_address(
+    let username = Username::from_str("user").unwrap();
+    let user = TestAccount::new_random(username).predict_address(
         contracts.account_factory,
         2,
         codes.account_spot.to_bytes().hash256(),
@@ -386,10 +423,15 @@ fn malicious_register_user() {
     );
 
     // User makes deposit.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // The frontend instructs the user to sign this.
     let user_signature = user
@@ -404,7 +446,8 @@ fn malicious_register_user() {
     // The attacker attempts to register this username using the user's deposit.
     let false_username = Username::from_str("random_username").unwrap();
 
-    let attacker = TestAccount::new_random("attacker").predict_address(
+    let username = Username::from_str("attacker").unwrap();
+    let attacker = TestAccount::new_random(username).predict_address(
         contracts.account_factory,
         2,
         codes.account_spot.to_bytes().hash256(),
@@ -486,7 +529,7 @@ fn malicious_register_user() {
             // is found.
             StdError::data_not_found::<Coins>(
                 dango_bank::ORPHANED_TRANSFERS
-                    .path((contracts.warp, attacker.address()))
+                    .path((contracts.gateway, attacker.address()))
                     .storage_key(),
             ),
         );

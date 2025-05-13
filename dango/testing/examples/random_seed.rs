@@ -1,3 +1,6 @@
+//! Generate a random seed phrase. Derive the corresponding Secp256k1 key pair
+//! using Ethereum's derivation path.
+
 use {
     bip32::{Language, Mnemonic, XPrv},
     rand::rngs::OsRng,
@@ -19,7 +22,7 @@ fn main() {
     let pk = sk.public_key();
     let pk_hex = hex::encode(pk.to_bytes());
 
-    println!("Seed phrase : {}", mnemonic.phrase());
-    println!("Private key : {sk_hex}");
-    println!("Public key  : {pk_hex}");
+    println!("Seed phrase:\n{}", mnemonic.phrase());
+    println!("\nPrivate key:\n{sk_hex}");
+    println!("\nPublic key:\n{pk_hex}");
 }
