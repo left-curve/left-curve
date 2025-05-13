@@ -103,7 +103,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           strategy: "onChange",
           validate: (v) => {
             if (Number(v) > Number(humanBalance))
-              return m["validations.errors.insufficientFunds"]();
+              return m["errors.validations.insufficientFunds"]();
             return true;
           },
           mask: (v, prev) => {

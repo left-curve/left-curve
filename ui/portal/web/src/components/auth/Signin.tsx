@@ -1,11 +1,4 @@
-import {
-  IconButton,
-  IconTrash,
-  useInputs,
-  useMediaQuery,
-  useUsernames,
-  useWizard,
-} from "@left-curve/applets-kit";
+import { useInputs, useMediaQuery, useUsernames, useWizard } from "@left-curve/applets-kit";
 import { useAccount, usePublicClient, useSignin } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -192,7 +185,12 @@ const UsernameStep: React.FC = () => {
             {m["signin.continueWithoutSignin"]()}
           </Button>
         )}
-        <Button fullWidth variant="link" className="p-0 h-fit">
+        <Button
+          fullWidth
+          className="p-0 h-fit"
+          variant="link"
+          onClick={() => navigate({ to: "/forgot-username" })}
+        >
           {m["signin.forgotUsername"]()}
         </Button>
       </div>
@@ -209,10 +207,9 @@ const CredentialStep: React.FC = () => {
   const { username, sessionKey } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
     sessionKey: sessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
-      onSuccess: () => {
+      onSuccess: (username) => {
         navigate({ to: "/" });
         addUsername(username);
       },
@@ -245,14 +242,14 @@ const CredentialStep: React.FC = () => {
         </div>
         {isMd ? (
           <AuthOptions
-            action={(connectorId) => connectWithConnector({ connectorId })}
+            action={(connectorId) => connectWithConnector({ username, connectorId })}
             isPending={isPending}
             mode="signin"
           />
         ) : (
           <Button
             fullWidth
-            onClick={() => connectWithConnector({ connectorId: "passkey" })}
+            onClick={() => connectWithConnector({ username, connectorId: "passkey" })}
             isLoading={isPending}
             className="gap-2"
           >

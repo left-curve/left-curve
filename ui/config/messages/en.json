@@ -35,7 +35,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet"
+          "action=signup": "Sign up with wallet",
+          "action=forgot-username": "Retrieve with wallet"
         }
       }
     ],
@@ -45,7 +46,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey"
+          "action=signup": "Sign up with Passkey",
+          "action=forgot-username": "Retrieve with Passkey"
         }
       }
     ]
@@ -314,6 +316,14 @@
       "creatingAccount": "Error creating account"
     }
   },
+  "forgotUsername": {
+    "greetings": "Hi there",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "usernamesFound": "Usernames found",
+    "chooseCredentialFoundUsername": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected."
+  },
   "accountCreation": {
     "accountCreated": "Account Created",
     "title": "Create New Account",
@@ -512,12 +522,13 @@
       }
     }
   },
-  "validations": {
-    "errors": {
+  "errors": {
+    "validations": {
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
       "invalidAddress": "Invalid address"
-    }
+    },
+    "failureRequest": "Couldn't complete the request"
   }
 }

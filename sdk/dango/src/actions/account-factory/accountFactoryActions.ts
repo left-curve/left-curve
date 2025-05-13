@@ -81,8 +81,14 @@ import {
 } from "./mutations/createSession.js";
 
 import type { DangoClient, Signer } from "../../types/index.js";
+import {
+  forgotUsername,
+  type ForgotUsernameParameters,
+  type ForgotUsernameReturnType,
+} from "./queries/forgotUsername.js";
 
 export type AccountFactoryQueryActions = {
+  forgotUsername: (args: ForgotUsernameParameters) => ForgotUsernameReturnType;
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
   getAccountSeenNonces: (args: GetAccountSeenNoncesParameters) => GetAccountSeenNoncesReturnType;
@@ -115,6 +121,7 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
   client: Client<transport>,
 ): AccountFactoryQueryActions {
   return {
+    forgotUsername: (args) => forgotUsername(client, args),
     getAccountInfo: (args) => getAccountInfo(client, args),
     getAccountsByUsername: (args) => getAccountsByUsername(client, args),
     getAccountSeenNonces: (args) => getAccountSeenNonces(client, args),

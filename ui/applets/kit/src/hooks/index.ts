@@ -9,4 +9,4 @@ export { useCountdown } from "./useCountdown";
 export {
   type UseUsernamesReturnType,
   useUsernames,
-} from "./useAccountName";
+} from "./useUsernames";

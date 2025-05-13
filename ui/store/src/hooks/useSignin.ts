@@ -5,36 +5,48 @@ import { useChainId } from "./useChainId.js";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
 import { useSessionKey } from "./useSessionKey.js";
 
+import type { KeyHash, Username } from "@left-curve/dango/types";
+
 export type UseSigninParameters = {
-  username: string;
   connectors?: UseConnectorsReturnType;
   sessionKey?:
     | {
         expireAt: number;
       }
     | false;
-  mutation?: UseMutationParameters<void, Error, { connectorId: string }>;
+  mutation?: UseMutationParameters<
+    Username,
+    Error,
+    { connectorId: string; username: Username; keyHash?: KeyHash }
+  >;
 };
 
-export type UseSigninReturnType = UseMutationReturnType<void, Error, { connectorId: string }>;
+export type UseSigninReturnType = UseMutationReturnType<
+  Username,
+  Error,
+  { connectorId: string; username: Username; keyHash?: KeyHash }
+>;
 
 export function useSignin(parameters: UseSigninParameters) {
-  const { username, mutation, sessionKey = false } = parameters;
+  const { mutation, sessionKey = false } = parameters;
   const connectors = parameters?.connectors ?? useConnectors();
   const chainId = useChainId();
   const { setSession } = useSessionKey();
 
   return useMutation({
-    mutationFn: async ({ connectorId }) => {
+    mutationFn: async ({ connectorId, username, keyHash }) => {
       const connector = connectors.find((connector) => connector.id === connectorId);
       if (!connector) throw new Error("error: missing connector");
 
       if (!sessionKey) {
-        return await connector.connect({
+        await connector.connect({
           username,
           chainId,
-          challenge: "Please sign this message to confirm your identity.",
+          ...(keyHash
+            ? { keyHash }
+            : { challenge: "Please sign this message to confirm your identity." }),
         });
+        return username;
       }
 
       const keyPair = Secp256k1.makeKeyPair();
@@ -71,6 +83,8 @@ export function useSignin(parameters: UseSigninParameters) {
         publicKey,
         authorization: credential.standard,
       });
+
+      return username;
     },
     ...mutation,
   });
