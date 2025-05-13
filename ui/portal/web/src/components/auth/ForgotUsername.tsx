@@ -26,7 +26,6 @@ import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { useApp } from "~/hooks/useApp";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { activeStep, previousStep, data } = useWizard<{ username: string }>();
   const { isConnected } = useAccount();
   const navigate = useNavigate();
 

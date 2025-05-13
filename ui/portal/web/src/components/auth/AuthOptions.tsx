@@ -21,10 +21,7 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode, expanded
         <IconPasskey className="w-6 h-6" />
         <p className="min-w-20"> {m["common.signWithPasskey"]({ action: mode })}</p>
       </Button>
-      <ExpandOptions
-        showOptionText={m["common.signWithWallet"]({ action: mode })}
-        expanded={expanded}
-      >
+      <ExpandOptions showOptionText={m["common.signWithWallet"]({ action: mode })}>
         {connectors.length > 2 ? (
           connectors.map((connector) => {
             if (["passkey", "session"].includes(connector.type)) return null;

@@ -9,7 +9,6 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 
 type ExpandOptionsProps = {
-  expanded?: boolean;
   showOptionText: string;
   className?: string;
 };
@@ -17,10 +16,9 @@ type ExpandOptionsProps = {
 export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
   children,
   showOptionText,
-  expanded,
   className,
 }) => {
-  const [isOptionExpanded, setOptionExpanded] = useState(expanded || false);
+  const [isOptionExpanded, setOptionExpanded] = useState(false);
 
   const options = Children.toArray(children) as React.ReactElement[];
 
