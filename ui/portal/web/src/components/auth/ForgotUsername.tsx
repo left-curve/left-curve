@@ -26,18 +26,16 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   }, []);
 
   return (
-    <>
-      <div className="h-screen w-screen flex items-center justify-center">
-        <div className="flex items-center justify-center flex-1">
-          <ResizerContainer layoutId="signup" className="w-full max-w-[22.5rem]">
-            <div className="flex items-center justify-center gap-8 px-4 lg:px-0 flex-col w-full">
-              {children}
-            </div>
-          </ResizerContainer>
-        </div>
-        <AuthCarousel />
+    <div className="h-screen w-screen flex items-center justify-center">
+      <div className="flex items-center justify-center flex-1">
+        <ResizerContainer layoutId="signup" className="w-full max-w-[22.5rem]">
+          <div className="flex items-center justify-center gap-8 px-4 lg:px-0 flex-col w-full">
+            {children}
+          </div>
+        </ResizerContainer>
       </div>
-    </>
+      <AuthCarousel />
+    </div>
   );
 };
 
