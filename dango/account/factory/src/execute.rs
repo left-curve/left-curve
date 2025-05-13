@@ -1,7 +1,7 @@
 use {
     crate::{
         ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX,
-        REVERSE_KEYS,
+        USERNAMES_BY_KEY,
     },
     anyhow::{bail, ensure},
     dango_auth::{VerifyData, verify_signature},
@@ -37,7 +37,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .enumerate()
         .map(|(seed, (username, (key_hash, key)))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            REVERSE_KEYS.insert(ctx.storage, (key_hash, &username))?;
+            USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
 
             let (msg, user_registered, account_registered) = onboard_new_user(
                 ctx.storage,
@@ -169,7 +169,7 @@ fn register_user(
 
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-    REVERSE_KEYS.insert(ctx.storage, (key_hash, &username))?;
+    USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
 
     let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
 
@@ -331,11 +331,11 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
     match key {
         Op::Insert(key) => {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            REVERSE_KEYS.insert(ctx.storage, (key_hash, &username))?;
+            USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
         },
         Op::Delete => {
             KEYS.remove(ctx.storage, (&username, key_hash));
-            REVERSE_KEYS.remove(ctx.storage, (key_hash, &username));
+            USERNAMES_BY_KEY.remove(ctx.storage, (key_hash, &username));
 
             // Ensure the user hasn't removed every single key associated with
             // their username. There must be at least one remaining.

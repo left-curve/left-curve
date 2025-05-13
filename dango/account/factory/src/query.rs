@@ -1,7 +1,7 @@
 use {
     crate::{
         ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX,
-        REVERSE_KEYS,
+        USERNAMES_BY_KEY,
     },
     dango_types::{
         account_factory::{
@@ -187,7 +187,7 @@ fn forgot_username(
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    REVERSE_KEYS
+    USERNAMES_BY_KEY
         .prefix(key_hash)
         .keys(storage, start, None, Order::Ascending)
         .take(limit)
