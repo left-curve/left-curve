@@ -25,7 +25,7 @@ pub fn derive_address(vk: &k256::ecdsa::VerifyingKey) -> Address {
     address.try_into().unwrap()
 }
 
-/// Sign the given _hashed_ message sign the given private key, and pack the
+/// Sign the given _hashed_ message with the given private key, and pack the
 /// signature into the format expected by Ethereum.
 pub fn sign(msg_hash: Hash256, sk: &k256::ecdsa::SigningKey) -> Signature {
     let (signature, recovery_id) = sk
