@@ -3,15 +3,9 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
-import { useMediaQuery, useUsernames, useWizard } from "@left-curve/applets-kit";
+import { useUsernames, useWizard } from "@left-curve/applets-kit";
 
-import {
-  Checkbox,
-  ExpandOptions,
-  IconLeft,
-  ResizerContainer,
-  Button,
-} from "@left-curve/applets-kit";
+import { IconLeft, ResizerContainer, Button } from "@left-curve/applets-kit";
 import { toast } from "../foundation/Toast";
 import { AuthOptions } from "./AuthOptions";
 import { AuthCarousel } from "./AuthCarousel";
@@ -96,9 +90,8 @@ const AvailableUsernames: React.FC = () => {
     connectorId: string;
   }>();
   const navigate = useNavigate();
-  const { isMd } = useMediaQuery();
   const { addUsername } = useUsernames();
-  const { settings, changeSettings } = useApp();
+  const { settings } = useApp();
   const { useSessionKey } = settings;
   const { usernames, connectorId, keyHash } = data;
 
@@ -157,18 +150,6 @@ const AvailableUsernames: React.FC = () => {
             showArrow={true}
             onClick={(username) => connectWithConnector({ username, connectorId, keyHash })}
           />
-          {isMd ? (
-            <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
-              <div className="flex items-center gap-2 flex-col">
-                <Checkbox
-                  size="md"
-                  label={m["common.signinWithSession"]()}
-                  checked={useSessionKey}
-                  onChange={(v) => changeSettings({ useSessionKey: v })}
-                />
-              </div>
-            </ExpandOptions>
-          ) : null}
           <Button variant="link" onClick={previousStep}>
             <IconLeft className="w-[22px] h-[22px] text-blue-500" />
             <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
