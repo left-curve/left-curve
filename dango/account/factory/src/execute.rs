@@ -9,8 +9,8 @@ use {
         account::{self, single},
         account_factory::{
             Account, AccountDisowned, AccountOwned, AccountParamUpdates, AccountParams,
-            AccountRegistered, AccountType, ExecuteMsg, InstantiateMsg, KeyUpdated, NewUserSalt,
-            RegisterUserData, Salt, UserRegistered, Username,
+            AccountRegistered, AccountType, ExecuteMsg, InstantiateMsg, KeyDisowned, KeyOwned,
+            NewUserSalt, RegisterUserData, Salt, UserRegistered, Username,
         },
         auth::{Key, Signature},
     },
@@ -365,7 +365,24 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
         },
     }
 
-    Ok(Response::new().add_event(KeyUpdated { username, key })?)
+    Ok(Response::new()
+        .may_add_event(if let Op::Insert(key) = key {
+            Some(KeyOwned {
+                username: username.clone(),
+                key_hash,
+                key,
+            })
+        } else {
+            None
+        })?
+        .may_add_event(if let Op::Delete = key {
+            Some(KeyDisowned {
+                username: username.clone(),
+                key_hash,
+            })
+        } else {
+            None
+        })?)
 }
 
 fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Result<Response> {
