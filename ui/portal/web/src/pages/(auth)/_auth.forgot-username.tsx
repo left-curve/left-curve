@@ -8,7 +8,7 @@ export const Route = createFileRoute("/(auth)/_auth/forgot-username")({
 
 function ForgotUsernameComponent() {
   return (
-    <WizardProvider wrapper={<ForgotUsername />} persistKey="dango.signup">
+    <WizardProvider wrapper={<ForgotUsername />} persistKey="dango.forgot-username">
       <ForgotUsername.Credential />
       <ForgotUsername.AvailableUsernames />
     </WizardProvider>
