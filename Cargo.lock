@@ -3471,7 +3471,6 @@ dependencies = [
  "dango-testing",
  "grug-db-memory",
  "grug-testing",
- "grug-types",
  "grug-vm-rust",
  "indexer-httpd",
  "indexer-sql",

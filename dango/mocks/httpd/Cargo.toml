@@ -17,7 +17,6 @@ dango-proposal-preparer = { workspace = true }
 dango-testing           = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-testing            = { workspace = true }
-grug-types              = { workspace = true }
 grug-vm-rust            = { workspace = true }
 indexer-httpd           = { workspace = true, features = ["testing", "tracing"] }
 indexer-sql             = { workspace = true, features = ["tracing"] }
