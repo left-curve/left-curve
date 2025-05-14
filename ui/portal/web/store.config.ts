@@ -9,53 +9,53 @@ export const GRAPHQL_URI =
     : dango.urls.indexer;
 
 export const coins = {
-  "hyp/all/btc": {
+  "bridge/btc": {
     type: "native",
     name: "Bitcoin",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
     symbol: "BTC",
-    denom: "hyp/all/btc",
+    denom: "bridge/btc",
     decimals: 6,
     coingeckoId: "bitcoin",
   },
-  "hyp/all/eth": {
+  "bridge/eth": {
     type: "native",
     name: "Ether",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
     symbol: "ETH",
-    denom: "hyp/all/eth",
+    denom: "bridge/eth",
     decimals: 6,
     coingeckoId: "ethereum",
   },
-  "hyp/all/xrp": {
+  "bridge/xrp": {
     type: "native",
     name: "Ripple",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/xrpl/images/xrp.svg",
     symbol: "XRP",
-    denom: "hyp/all/xrp",
+    denom: "bridge/xrp",
     decimals: 6,
     coingeckoId: "ripple",
   },
-  "hyp/eth/usdc": {
+  "bridge/usdc": {
     type: "alloyed",
     name: "Ethereum USD Circle",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
     symbol: "USDC",
-    denom: "hyp/eth/usdc",
+    denom: "bridge/usdc",
     decimals: 6,
     coingeckoId: "usd-coin",
   },
-  "hyp/all/sol": {
+  "bridge/sol": {
     type: "native",
     name: "Solana",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
     symbol: "SOL",
-    denom: "hyp/all/sol",
+    denom: "bridge/sol",
     decimals: 6,
     coingeckoId: "solana",
   },

@@ -13,7 +13,7 @@ import { toast } from "../foundation/Toast";
 import { Modals } from "../modals/RootModal";
 
 export const CreateAccountDepositStep: React.FC = () => {
-  const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
+  const { previousStep, data } = useWizard<{ accountType: AccountTypes }>();
   const { register, inputs } = useInputs();
 
   const { value: fundsAmount, error } = inputs.amount || {};
@@ -32,8 +32,8 @@ export const CreateAccountDepositStep: React.FC = () => {
   });
 
   const { accountType } = data;
-  const coinInfo = coins["hyp/eth/usdc"];
-  const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, coinInfo.decimals);
+  const coinInfo = coins["bridge/usdc"];
+  const humanBalance = formatUnits(balances["bridge/usdc"] || 0, coinInfo.decimals);
 
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
@@ -48,7 +48,7 @@ export const CreateAccountDepositStep: React.FC = () => {
             sender: account!.address,
             config: { [accountType as "spot"]: { owner: account!.username } },
             funds: {
-              "hyp/eth/usdc": parsedAmount,
+              "bridge/usdc": parsedAmount,
             },
           }),
         ]);
@@ -62,7 +62,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           amount: parsedAmount,
           accountType,
           accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
-          denom: "hyp/eth/usdc",
+          denom: "bridge/usdc",
         });
         await refreshAccounts?.();
         await refreshBalances();
