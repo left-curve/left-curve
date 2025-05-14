@@ -58,7 +58,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   ): T extends true ? string : number {
     const { formatOptions = defaultFormatOptions, format = false } = options || {};
     const totalValue = Object.entries(balances).reduce((total, [denom, amount]) => {
-      const price = getPrice(formatUnits(amount, coins[denom]?.decimals || 6), denom, {
+      const price = getPrice(formatUnits(amount, coins[denom].decimals), denom, {
         formatOptions,
         format: false,
       });
@@ -70,7 +70,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
       : number;
   }
 
-  const { data: prices, ...rest } = useQuery({
+  const { data: prices, ...rest } = useQuery<Record<Denom, Price>>({
     queryKey: ["prices", coins],
     queryFn: () => client.getPrices(),
     staleTime: 1000 * 60 * 5,
