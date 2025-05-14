@@ -10,8 +10,12 @@ env:
 on:
   push:
     branches: [main]
+    paths:
+      - ".github/workflows/cometbft.yml"
   pull_request:
     branches: [main]
+    paths:
+      - ".github/workflows/cometbft.yml"
 
 jobs:
   check-image:
