@@ -28,6 +28,7 @@ export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
+export { Pagination } from "./Pagination";
 
 /* ---------------------------------- Icons --------------------------------- */
 
