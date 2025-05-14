@@ -38,6 +38,7 @@ hex                     = { workspace = true }
 home                    = { workspace = true }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true, features = ["tracing"] }
+pyth-client             = { workspace = true }
 rand                    = { workspace = true }
 sentry                  = { workspace = true }
 serde                   = { workspace = true }

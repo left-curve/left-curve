@@ -5,12 +5,13 @@ mod keys;
 mod prompt;
 mod query;
 mod start;
+mod test;
 mod tx;
 
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
-        tx::TxCmd,
+        test::TestCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -51,6 +52,9 @@ enum Command {
     /// Send transactions
     #[command(next_display_order = None)]
     Tx(TxCmd),
+
+    /// Run test
+    Test(TestCmd),
 }
 
 #[tokio::main]
@@ -89,5 +93,6 @@ async fn main() -> anyhow::Result<()> {
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
+        Command::Test(cmd) => cmd.run().await,
     }
 }
