@@ -433,6 +433,7 @@ fn swap_exact_amount_out(
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
 
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
@@ -461,8 +462,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .into_values()
         .map(|((pair, ..), _)| pair)
         .collect::<BTreeSet<_>>();
-
-    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
 
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
@@ -682,7 +681,7 @@ fn clear_orders_of_pair(
         }
 
         // Calculate the volume in USD for the filled order
-        let base_asset_price = oracle_querier.query_price(&querier, &base_denom, None)?;
+        let base_asset_price = oracle_querier.query_price(&base_denom, None)?;
         let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
 
         // Record trading volume for the user's address.
