@@ -229,7 +229,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
-        isQuestBannerVisible,
+        isQuestBannerVisible: false,
         setQuestBannerVisibility,
         showModal,
         hideModal,
