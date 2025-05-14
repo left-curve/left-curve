@@ -62,7 +62,7 @@ const Credential: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col gap-6 w-full items-center">
+    <div className="flex flex-col gap-6 w-full items-center text-center">
       <div className="flex flex-col gap-7 items-center justify-center">
         <img
           src="./favicon.svg"
@@ -115,7 +115,7 @@ const AvailableUsernames: React.FC = () => {
   const existUsernames = usernames.length;
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full items-center text-center">
       <div className="flex flex-col gap-7 items-center justify-center">
         <img
           src="./favicon.svg"
