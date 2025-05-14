@@ -7,7 +7,7 @@ import { IconChevronLeft } from "./icons/IconChevronLeft";
 
 import { motion, AnimatePresence } from "framer-motion";
 
-interface Props extends VariantProps<typeof pagnationVariants> {
+interface Props extends VariantProps<typeof paginationVariants> {
   total: number;
   siblings?: number;
   boundaries?: number;
@@ -15,6 +15,8 @@ interface Props extends VariantProps<typeof pagnationVariants> {
   page?: number;
   initialPage?: number;
   onPageChange?: (page: number) => void;
+  labelPage?: string;
+  labelOf?: string;
 }
 
 export const Pagination: React.FC<Props> = ({
@@ -27,8 +29,10 @@ export const Pagination: React.FC<Props> = ({
   isDisabled,
   variant,
   id,
+  labelPage = "Page",
+  labelOf = "of",
 }) => {
-  const styles = pagnationVariants({ variant, isDisabled });
+  const styles = paginationVariants({ variant, isDisabled });
   const internalId = useId();
   const [uncontrolledPage, setUncontrolledPage] = useState(initialPage);
   const currentPage = controlledPage ?? uncontrolledPage;
@@ -66,12 +70,11 @@ export const Pagination: React.FC<Props> = ({
       {variant === "text" ? (
         <AnimatePresence mode="wait">
           <p>
-            Page{" "}
+            {labelPage}{" "}
             <motion.span
               key={currentPage}
-              initial={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 1.4, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
               transition={{
                 duration: 0.2,
               }}
@@ -79,7 +82,7 @@ export const Pagination: React.FC<Props> = ({
             >
               {currentPage}
             </motion.span>{" "}
-            of {total}
+            {labelOf} {total}
           </p>
         </AnimatePresence>
       ) : (
@@ -231,7 +234,7 @@ function getPaginationRange({
   );
 }
 
-const pagnationVariants = tv(
+const paginationVariants = tv(
   {
     slots: {
       base: " text-blue-600  exposure-sm-italic",
@@ -247,7 +250,6 @@ const pagnationVariants = tv(
       },
     },
     defaultVariants: {
-      size: "md",
       variant: "default",
       isDisabled: false,
     },

@@ -41,6 +41,14 @@ const meta: Meta<typeof Pagination> = {
       control: { type: "text" },
       description: "Optional ID for the pagination component if more than one is used.",
     },
+    labelPage: {
+      control: { type: "text" },
+      description: "Label for word 'Page' when variant is 'text'.",
+    },
+    labelOf: {
+      control: { type: "text" },
+      description: "Label for word 'of' when variant is 'text'.",
+    },
   },
   args: {
     total: 10,
@@ -56,4 +64,20 @@ export default meta;
 
 type Store = StoryObj<typeof Pagination>;
 
-export const Primary: Store = {};
+export const Default: Store = {
+  args: {
+    total: 10,
+    siblings: 1,
+    boundaries: 1,
+    initialPage: 1,
+  },
+};
+export const Text: Store = {
+  args: {
+    variant: "text",
+    total: 10,
+    siblings: 1,
+    boundaries: 1,
+    initialPage: 1,
+  },
+};
