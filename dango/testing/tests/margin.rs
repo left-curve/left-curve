@@ -13,13 +13,13 @@ use {
         constants::{dango, eth, usdc},
         dex::CreateLimitOrderRequest,
         lending::{self, InterestRateModel, QueryDebtRequest, QueryMarketRequest},
-        oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
+        oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource, QueryPriceRequest},
     },
     grug::{
         Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
         JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, Number,
-        NumberConst, PrevNumber, QuerierExt, ResultExt, SearchEvent, Udec128, Uint128, btree_map,
-        coins,
+        NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Udec128,
+        Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -809,9 +809,9 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .unwrap();
 
     // Ensure liquidator received the liquidated collateral and bonus
-    let eth_price = suite
-        .query_price(contracts.oracle.address(), &eth::DENOM, None)
-        .unwrap();
+    let mut oracle_querier =
+        OracleQuerier::new_remote(contracts.oracle.address(), QuerierWrapper::new(&suite));
+    let eth_price = oracle_querier.query_price(&eth::DENOM, None).unwrap();
     let liquidator_usdc_increase = usdc_balance_after.checked_sub(usdc_balance_before).unwrap();
     let liquidator_eth_decrease = eth_balance_before.checked_sub(eth_balance_after).unwrap();
     assert!(liquidator_usdc_increase > Uint128::new(95_000_000));
@@ -1256,7 +1256,11 @@ proptest! {
         let liquidator_worth_before = liquidator_balances_before
             .clone()
             .into_iter().map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
+                let price = suite
+                    .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                        denom: coin.denom,
+                    })
+                    .unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1279,7 +1283,11 @@ proptest! {
         let liquidator_worth_after = liquidator_balances_after
             .into_iter()
             .map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
+                let price = suite
+                    .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                        denom: coin.denom,
+                    })
+                    .unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1305,7 +1313,9 @@ proptest! {
         let repaid_debt_value = liquidation_event.repaid_debt_value;
         let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
         let claimed_collateral_value = suite
-            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom, None)
+            .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                denom: scenario.collaterals[0].denom.denom.clone(),
+            })
             .unwrap()
             .value_of_unit_amount(claimed_collateral_amount)
             .unwrap();

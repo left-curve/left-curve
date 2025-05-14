@@ -14,7 +14,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             Ok(res.to_json_value()?)
         },
         QueryMsg::Prices { start_after, limit } => {
-            let res = query_prices(ctx, start_after, limit);
+            let res = query_prices(ctx, start_after, limit)?;
             Ok(res.to_json_value()?)
         },
         QueryMsg::PriceSource { denom } => {
@@ -37,18 +37,21 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    ctx.querier.query_price(ctx.contract, &denom, None)
+    let mut oracle_querier = OracleQuerier::new_local(ctx.storage, ctx.querier);
+    oracle_querier.query_price(&denom, None)
 }
 
 fn query_prices(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> BTreeMap<Denom, PrecisionedPrice> {
+) -> anyhow::Result<BTreeMap<Denom, PrecisionedPrice>> {
+    let mut oracle_querier = OracleQuerier::new_local(ctx.storage, ctx.querier);
+
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    PRICE_SOURCES
+    Ok(PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .filter_map(|res| {
@@ -56,13 +59,12 @@ fn query_prices(
             // no price has been uploaded onchain yet.
             // Instead of throwing a "data not found" error, we simply skip it.
             let (denom, price_source) = res.ok()?;
-            let price = ctx
-                .querier
-                .query_price(ctx.contract, &denom, Some(price_source))
+            let price = oracle_querier
+                .query_price(&denom, Some(price_source))
                 .ok()?;
             Some((denom, price))
         })
-        .collect()
+        .collect())
 }
 
 fn query_price_source(ctx: ImmutableCtx, denom: Denom) -> StdResult<PriceSource> {
