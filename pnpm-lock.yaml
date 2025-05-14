@@ -6,12 +6,27 @@ settings:
 
 catalogs:
   default:
+    '@cloudflare/workers-types':
+      specifier: ^4.20250303.0
+      version: 4.20250312.0
     '@rsbuild/core':
       specifier: ^1.2.14
       version: 1.2.18
     '@rsbuild/plugin-react':
       specifier: ^1.1.0
       version: 1.1.0
+    '@tanstack/react-query':
+      specifier: ^5.59.0
+      version: 5.59.0
+    '@tanstack/react-router':
+      specifier: ^1.111.3
+      version: 1.111.3
+    '@tanstack/router-devtools':
+      specifier: ^1.111.3
+      version: 1.111.3
+    '@tanstack/zod-adapter':
+      specifier: ^1.111.3
+      version: 1.111.3
     '@types/node':
       specifier: ^20
       version: 20.16.10
@@ -21,12 +36,21 @@ catalogs:
     '@types/react-dom':
       specifier: ^18.3.1
       version: 18.3.1
+    '@unocss/postcss':
+      specifier: ^0.63.3
+      version: 0.63.3
+    '@unocss/reset':
+      specifier: ^0.63.3
+      version: 0.63.3
     autoprefixer:
       specifier: ^10.4.20
       version: 10.4.20
     framer-motion:
       specifier: ^11.11.7
       version: 11.11.7
+    next:
+      specifier: 14.2.5
+      version: 14.2.5
     postcss:
       specifier: ^8
       version: 8.4.47
@@ -36,9 +60,33 @@ catalogs:
     react-dom:
       specifier: ^18.3.1
       version: 18.3.1
+    react-hook-form:
+      specifier: ^7.53.0
+      version: 7.53.0
+    react-hot-toast:
+      specifier: ^2.4.1
+      version: 2.4.1
+    react-refresh:
+      specifier: ^0.14.2
+      version: 0.14.2
     tailwindcss:
       specifier: ^3.4.13
       version: 3.4.13
+    typescript:
+      specifier: ^5.6.3
+      version: 5.6.3
+    vitest:
+      specifier: ^2.0.5
+      version: 2.1.1
+    wrangler:
+      specifier: ^4.0.0
+      version: 4.0.0
+    zod:
+      specifier: ^3.24.1
+      version: 3.24.1
+    zustand:
+      specifier: ^5.0.1
+      version: 5.0.1
 
 importers:
 
@@ -473,31 +521,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.6.3
-
-  ui/workers/mock-warp:
-    dependencies:
-      '@left-curve/dango':
-        specifier: workspace:^
-        version: link:../../../sdk/dango
-      dotenv:
-        specifier: ^16.4.7
-        version: 16.4.7
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: 'catalog:'
-        version: 4.20250312.0
-      '@left-curve/config':
-        specifier: workspace:^
-        version: link:../../../sdk/config
-      tsx:
-        specifier: ^4.19.3
-        version: 4.19.3
-      typescript:
-        specifier: 'catalog:'
-        version: 5.6.3
-      wrangler:
-        specifier: 'catalog:'
-        version: 4.0.0(@cloudflare/workers-types@4.20250312.0)
 
   ui/workers/proxy:
     devDependencies:
@@ -4154,9 +4177,6 @@ packages:
     resolution: {integrity: sha512-Gmy6FhYlCY7uOElZUSbxo2UCDH8owEk996gkbrpsgGtrJLM3J7jGxl9Ic7Qwwj4ivOE5AWZWRMecDdF7hqGjFA==}
     engines: {node: '>=10'}
 
-  caniuse-lite@1.0.30001666:
-    resolution: {integrity: sha512-gD14ICmoV5ZZM1OdzPWmpx+q4GyefaK06zi8hmfHV5xe4/2nOQX3+Dw5o+fSqOws2xVwL9j+anOPFwHzdEdV4g==}
-
   caniuse-lite@1.0.30001695:
     resolution: {integrity: sha512-vHyLade6wTgI2u1ec3WQBxv+2BrTERV28UXQu9LO6lZ9pYeMk34vjXFLOxo1A4UBA8XTL4njRQZdno/yYaSmWw==}
 
@@ -5847,9 +5867,6 @@ packages:
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
-
-  magic-string@0.30.11:
-    resolution: {integrity: sha512-+Wri9p0QHMy+545hKww7YAu5NyzF8iomPL/RQazugQ9+Ez4Ic3mERMd8ZTX5rfK944j+560ZJi8iAwgak1Ac7A==}
 
   magic-string@0.30.17:
     resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
@@ -11210,7 +11227,7 @@ snapshots:
   '@swc/helpers@0.5.5':
     dependencies:
       '@swc/counter': 0.1.3
-      tslib: 2.7.0
+      tslib: 2.8.1
 
   '@swc/types@0.1.12':
     dependencies:
@@ -11534,7 +11551,7 @@ snapshots:
   '@unocss/rule-utils@0.63.3':
     dependencies:
       '@unocss/core': 0.63.3
-      magic-string: 0.30.11
+      magic-string: 0.30.17
 
   '@urql/core@5.1.0(graphql@16.10.0)':
     dependencies:
@@ -11559,7 +11576,7 @@ snapshots:
     dependencies:
       '@vitest/spy': 2.1.1
       estree-walker: 3.0.3
-      magic-string: 0.30.11
+      magic-string: 0.30.17
     optionalDependencies:
       vite: 5.4.8(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
@@ -11575,7 +11592,7 @@ snapshots:
   '@vitest/snapshot@2.1.1':
     dependencies:
       '@vitest/pretty-format': 2.1.1
-      magic-string: 0.30.11
+      magic-string: 0.30.17
       pathe: 1.1.2
 
   '@vitest/spy@2.1.1':
@@ -12130,8 +12147,6 @@ snapshots:
   camelcase@5.3.1: {}
 
   camelcase@6.3.0: {}
-
-  caniuse-lite@1.0.30001666: {}
 
   caniuse-lite@1.0.30001695: {}
 
@@ -13944,10 +13959,6 @@ snapshots:
 
   lunr@2.3.9: {}
 
-  magic-string@0.30.11:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.0
-
   magic-string@0.30.17:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
@@ -14387,7 +14398,7 @@ snapshots:
       '@next/env': 14.2.5
       '@swc/helpers': 0.5.5
       busboy: 1.6.0
-      caniuse-lite: 1.0.30001666
+      caniuse-lite: 1.0.30001715
       graceful-fs: 4.2.11
       postcss: 8.4.31
       react: 18.3.1
@@ -14729,7 +14740,7 @@ snapshots:
   postcss@8.4.31:
     dependencies:
       nanoid: 3.3.7
-      picocolors: 1.1.0
+      picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.4.47:
@@ -16280,7 +16291,7 @@ snapshots:
       '@vitest/utils': 2.1.1
       chai: 5.1.1
       debug: 4.3.7
-      magic-string: 0.30.11
+      magic-string: 0.30.17
       pathe: 1.1.2
       std-env: 3.7.0
       tinybench: 2.9.0
