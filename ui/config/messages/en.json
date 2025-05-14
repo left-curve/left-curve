@@ -20,6 +20,7 @@
     "hi": "Hi",
     "to": "To",
     "error": "Error",
+    "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
@@ -34,7 +35,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet"
+          "action=signup": "Sign up with wallet",
+          "action=forgot-username": "Retrieve with wallet"
         }
       }
     ],
@@ -44,7 +46,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey"
+          "action=signup": "Sign up with Passkey",
+          "action=forgot-username": "Retrieve with Passkey"
         }
       }
     ]
@@ -119,6 +122,13 @@
       "description": "Create subaccounts.",
       "path": "/create-account",
       "keywords": "account,create,register"
+    },
+    "4": {
+      "img": "/images/emojis/simple/spot.svg",
+      "title": "Simple Swap",
+      "description": "Swap tokens",
+      "path": "/swap",
+      "keywords": "swap,trade,simple"
     }
   },
   "explorer": {
@@ -199,6 +209,11 @@
       "accountName": "Account Name",
       "accountBalance": "Account Balance",
       "getStarted": "Get Started!"
+    },
+    "renewSession": {
+      "title": "Session expired",
+      "description": "For your security, each login session expires after 24 hours. Please sign in again.",
+      "stayLogout": "Stay logged out"
     }
   },
   "signin": {
@@ -208,6 +223,11 @@
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
+    "forgotUsername": "Forgot my username",
+    "useAnotherAccount": "Use another account",
+    "rememberUsername": {
+      "lastLogin": "Last login: {time}"
+    },
     "errors": {
       "failedSignInWithDesktop": "Failed to sign in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
@@ -295,6 +315,19 @@
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
     }
+  },
+  "forgotUsername": {
+    "greetings": "Hi there",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "usernamesFound": "Usernames found",
+    "chooseCredentialFoundUsername": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected."
+  },
+  "notFound": {
+    "title": "Page not found!",
+    "description": "Sorry! We couldn’t find what you were looking for...",
+    "goToHome": "Go to Homepage"
   },
   "accountCreation": {
     "accountCreated": "Account Created",
@@ -408,6 +441,12 @@
     "title": "Settings",
     "display": "Display",
     "language": "Language",
+    "session": {
+      "title": "Session",
+      "description": "For security reasons, each login session lasts 24 hours. You will need to log in again once your session expires.",
+      "remaining": "Remaining time",
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+    },
     "languages": [
       {
         "declarations": ["input language"],
@@ -471,12 +510,30 @@
       "addAccount": "Add Account"
     }
   },
-  "validations": {
-    "errors": {
+  "dex": {
+    "fee": "Fee",
+    "apy": "APY",
+    "tvl": "TVL",
+    "24h": "24h",
+    "swap": "Swap",
+    "swapping": "Swapping",
+    "simpleSwap": {
+      "swapSuccessfully": "Swap Successfully",
+      "youGet": "You get",
+      "youSwap": "You swap",
+      "rate": "Rate",
+      "errors": {
+        "failure": "Swap failed"
+      }
+    }
+  },
+  "errors": {
+    "validations": {
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
       "invalidAddress": "Invalid address"
-    }
+    },
+    "failureRequest": "Couldn't complete the request"
   }
 }

@@ -110,6 +110,7 @@ export type {
   Failure,
   Success,
   Result,
+  Option,
 } from "./utils.js";
 
 export type {

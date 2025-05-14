@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { type ReactElement, cloneElement, useState } from "react";
+import { type ReactElement, cloneElement, forwardRef, useState } from "react";
 import { useClickAway } from "react-use";
-import { forwardRef, twMerge, useDOMRef } from "#utils/index.js";
+import { useDOMRef } from "#hooks/index.js";
+import { twMerge } from "#utils/index.js";
 
 import { wait } from "@left-curve/dango/utils";
 import { useControlledState } from "#hooks/useControlledState.js";
@@ -16,7 +17,7 @@ export interface SearchInputProps extends Omit<InputProps, "value" | "defaultVal
   optComponent?: React.ReactElement;
 }
 
-export const SearchInput = forwardRef<"input", SearchInputProps>(
+export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ value, onChange, defaultValue, getOptionsFn, optComponent, ...props }, ref) => {
     const menuRef = useDOMRef<HTMLDivElement>(null);
     const [showMenu, setShowMenu] = useState(false);

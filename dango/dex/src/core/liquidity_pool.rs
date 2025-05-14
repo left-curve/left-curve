@@ -387,7 +387,7 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
 mod tests {
 
     use {
-        dango_types::constants::{ETH_DENOM, USDC_DENOM},
+        dango_types::constants::{eth, usdc},
         grug::{Bounded, coins},
     };
 
@@ -401,8 +401,8 @@ mod tests {
         10,
         Udec128::ZERO,
         coins! {
-            ETH_DENOM.clone() => 10000000,
-            USDC_DENOM.clone() => 200 * 10000000,
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 200 * 10000000,
         },
         vec![
             (Udec128::new_percent(19900), Uint128::from(50251)),
@@ -435,8 +435,8 @@ mod tests {
         10,
         Udec128::new_percent(1),
         coins! {
-            ETH_DENOM.clone() => 10000000,
-            USDC_DENOM.clone() => 200 * 10000000,
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 200 * 10000000,
         },
         vec![
             (Udec128::new_percent(19700), Uint128::from(152284)),
@@ -469,8 +469,8 @@ mod tests {
         10,
         Udec128::ZERO,
         coins! {
-            ETH_DENOM.clone() => 10000000,
-            USDC_DENOM.clone() => 10000000,
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
         },
         vec![
             (Udec128::new_percent(99), Uint128::from(101010)),
@@ -503,8 +503,8 @@ mod tests {
         10,
         Udec128::new_percent(1),
         coins! {
-            ETH_DENOM.clone() => 10000000,
-            USDC_DENOM.clone() => 10000000,
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
         },
         vec![
             (Udec128::new_percent(98), Uint128::from(204081)),
@@ -551,8 +551,8 @@ mod tests {
 
         let (bids, asks) = pair
             .reflect_curve(
-                ETH_DENOM.clone(),
-                USDC_DENOM.clone(),
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
                 &pool_liquidity.try_into().unwrap(),
             )
             .unwrap();

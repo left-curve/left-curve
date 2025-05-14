@@ -8,7 +8,7 @@ use {
     },
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::{PYTH_URL, PythId},
+    pyth_types::{PythId, constants::PYTH_URL},
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -23,13 +23,15 @@ const NOT_USED_ID: PythId = PythId::from_inner(hex!(
 
 #[test]
 fn proposal_pyth() {
+    setup_tracing_subscriber(tracing::Level::DEBUG);
+
     // Ensure there are all cache file for the PythIds in oracle and also for
     // the NOT_USED_ID and retrieve them if not presents. This is needed since
     // the PythPPHandler create a thread to get the data from Pyth and if the
     // cache files are not present the thread will not wait for client to retrieve
     // and save them. The test will end before the client is able to finish.
     {
-        let (suite, _, _, contracts) = setup_test();
+        let (suite, _, _, contracts, _) = setup_test(Default::default());
 
         // Retrieve all PythIds from the oracle.
         let mut pyth_ids = suite
@@ -47,14 +49,14 @@ fn proposal_pyth() {
 
         // Create cache for ids if not present.
         pyth_ids.push(NOT_USED_ID);
+
         PythClientCache::new(PYTH_URL)
             .unwrap()
             .get_latest_vaas(NonEmpty::new(pyth_ids).unwrap())
             .unwrap();
     }
 
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-    setup_tracing_subscriber(tracing::Level::DEBUG);
+    let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
 
     // Find all the prices that use the Pyth source.
     let pyth_ids = suite

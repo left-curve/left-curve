@@ -15,7 +15,9 @@ import type {
   AccountTypes,
   AppConfig,
   Client,
+  Denom,
   Hex,
+  PairUpdate,
   PublicClient,
   Transport,
 } from "@left-curve/dango/types";
@@ -104,15 +106,29 @@ export function createConfig<
   }
 
   let _appConfig:
-    | (AppConfig & { accountFactory: { codeHashes: Record<AccountTypes, Hex> } })
+    | (AppConfig & {
+        accountFactory: { codeHashes: Record<AccountTypes, Hex> };
+        pairs: Record<Denom, PairUpdate>;
+      })
     | undefined;
 
   async function getAppConfig() {
     if (_appConfig) return _appConfig;
     const client = getClient() as PublicClient;
-    const appConfig = await client.getAppConfig();
-    const codeHashes = await client.getAccountTypeCodeHashes();
-    _appConfig = { ...appConfig, accountFactory: { codeHashes } };
+    const [appConfig, codeHashes, pairs] = await Promise.all([
+      client.getAppConfig(),
+      client.getAccountTypeCodeHashes(),
+      client.getPairs(),
+    ]);
+
+    _appConfig = {
+      ...appConfig,
+      accountFactory: { codeHashes },
+      pairs: pairs.reduce((acc, pair) => {
+        acc[pair.baseDenom] = pair;
+        return acc;
+      }, Object.create({})),
+    };
     return _appConfig;
   }
 

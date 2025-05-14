@@ -1,6 +1,5 @@
 use {
-    crate::Shared,
-    grug_types::{StdError, StdResult},
+    grug_types::{Shared, StdError, StdResult},
     std::fmt::{self, Display},
 };
 

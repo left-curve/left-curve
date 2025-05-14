@@ -1,54 +1,50 @@
 import {
-  Checkbox,
-  ExpandOptions,
-  IconAlert,
-  IconLeft,
-  ResizerContainer,
-  Stepper,
-  useWizard,
-} from "@left-curve/applets-kit";
-import {
   useAccount,
   useConfig,
   useConnectors,
   usePublicClient,
   useSignin,
 } from "@left-curve/store";
+import { useApp } from "~/hooks/useApp";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useUsernames, useWizard, useInputs } from "@left-curve/applets-kit";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
 import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
-
-import { registerUser } from "@left-curve/dango/actions";
-import { AccountType } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
-import { toast } from "../foundation/Toast";
+import { registerUser } from "@left-curve/dango/actions";
+import { captureException } from "@sentry/react";
 
 import {
+  Checkbox,
+  ExpandOptions,
+  IconAlert,
+  IconLeft,
+  ResizerContainer,
+  Stepper,
   Button,
   CheckCircleIcon,
   Input,
   Spinner,
   XCircleIcon,
-  useInputs,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { AuthOptions } from "./AuthOptions";
+import { AuthCarousel } from "./AuthCarousel";
+import { toast } from "../foundation/Toast";
 
 import { m } from "~/paraglide/messages";
+import { AccountType } from "@left-curve/dango/types";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 
-import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
-import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { AuthCarousel } from "./AuthCarousel";
-
-import { captureException } from "@sentry/react";
+import type { Address, Hex, Key } from "@left-curve/dango/types";
+import type { EIP1193Provider } from "@left-curve/store/types";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -98,14 +94,24 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
               </div>
               {children}
               {activeStep === 0 ? (
-                <div className="flex items-center gap-1">
-                  <p>{m["signup.alreadyHaveAccount"]()}</p>
+                <div className="w-full flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <p>{m["signup.alreadyHaveAccount"]()}</p>
+                    <Button
+                      variant="link"
+                      autoFocus={false}
+                      onClick={() => navigate({ to: "/signin" })}
+                    >
+                      {m["common.signin"]()}
+                    </Button>
+                  </div>
                   <Button
+                    fullWidth
+                    className="p-0 h-fit"
                     variant="link"
-                    autoFocus={false}
-                    onClick={() => navigate({ to: "/signin" })}
+                    onClick={() => navigate({ to: "/forgot-username" })}
                   >
-                    {m["common.signin"]()}
+                    {m["signin.forgotUsername"]()}
                   </Button>
                 </div>
               ) : null}
@@ -212,7 +218,7 @@ const Credential: React.FC = () => {
         setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
       } catch (err) {
-        toast.error({ title: "Couldn't complete the request" });
+        toast.error({ title: m["errors.failureRequest"]() });
         console.log(err);
       }
     },
@@ -293,9 +299,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(
-          `${import.meta.env.PUBLIC_FAUCET_URI || "https://devnet.dango.exchange/faucet"}/mint/${address}`,
-        );
+        const response = await fetch(`${import.meta.env.PUBLIC_FAUCET_URI}/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
@@ -372,6 +376,7 @@ const Username: React.FC = () => {
 
 const Signin: React.FC = () => {
   const navigate = useNavigate();
+  const { addUsername } = useUsernames();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
   const { settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
@@ -379,11 +384,11 @@ const Signin: React.FC = () => {
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
-    sessionKey: useSessionKey,
+    sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
+        addUsername(username);
         done();
       },
       onError: (err) => {
@@ -398,7 +403,11 @@ const Signin: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <Button fullWidth onClick={() => connectWithConnector({ connectorId })} isLoading={isPending}>
+      <Button
+        fullWidth
+        onClick={() => connectWithConnector({ username, connectorId })}
+        isLoading={isPending}
+      >
         {m["common.signin"]()}
       </Button>
       <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>

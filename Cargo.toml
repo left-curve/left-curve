@@ -7,11 +7,13 @@ members = [
   "dango/cli",
   "dango/client",
   "dango/dex",
+  "dango/gateway",
   "dango/genesis",
   "dango/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
+  "dango/mocks/*",
   "dango/oracle",
   "dango/proposal-preparer",
   "dango/taxman",
@@ -37,6 +39,7 @@ members = [
   "grug/vm/*",
   "hyperlane/isms/*",
   "hyperlane/mailbox",
+  "hyperlane/testing",
   "hyperlane/va",
   "indexer/*",
   "pyth/client",
@@ -136,8 +139,8 @@ strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
-tendermint              = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
-tendermint-rpc          = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
+tendermint              = "0.40.4"
+tendermint-rpc          = "0.40.4"
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
@@ -145,7 +148,7 @@ tokio                   = { version = "1", features = ["full"] }
 tokio-stream            = { version = "0.1", features = ["sync"] }
 toml                    = "0.8"
 tower                   = "0.5"
-tower-abci              = { git = "https://github.com/left-curve/tower-abci.git", rev = "6ba8190" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
+tower-abci              = "0.19"
 tracing                 = "0.1"
 tracing-actix-web       = "0.7"
 tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -164,12 +167,14 @@ dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
+dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/httpd" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
+dango-mock-httpd            = { path = "dango/mock/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }
@@ -201,6 +206,7 @@ grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
+hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-client              = { path = "indexer/client" }

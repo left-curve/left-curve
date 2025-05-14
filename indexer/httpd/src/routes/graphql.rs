@@ -1,6 +1,6 @@
 use {
     crate::graphql::AppSchema,
-    actix_web::{HttpRequest, HttpResponse, Resource, web},
+    actix_web::{HttpRequest, HttpResponse, Resource, http::header, web},
     async_graphql::{Schema, http::*},
     async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
 };
@@ -27,15 +27,18 @@ pub(crate) async fn graphql_index(
 }
 
 pub async fn graphiql_playgound() -> HttpResponse {
+    let html = GraphiQLSource::build()
+        .endpoint("/graphql")
+        .subscription_endpoint("/graphql")
+        .finish();
+
     HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(
-            GraphiQLSource::build()
-                .endpoint("/graphql")
-                .subscription_endpoint("/graphql")
-                // .credentials(Credentials::Include)
-                .finish(),
-        )
+        .insert_header((header::CONTENT_TYPE, "text/html; charset=utf-8"))
+        .insert_header((
+            header::CONTENT_SECURITY_POLICY,
+            "default-src 'self'; script-src 'self' 'unsafe-eval'",
+        ))
+        .body(html)
 }
 
 pub(crate) async fn graphql_ws(

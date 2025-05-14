@@ -1,8 +1,8 @@
 use {
-    crate::{AppError, Buffer, EventResult, GasTracker, Shared, Vm, do_reply, process_msg},
+    crate::{AppError, EventResult, GasTracker, Vm, do_reply, process_msg},
     grug_types::{
-        Addr, BlockInfo, EventStatus, GenericResult, ReplyOn, Storage, SubEvent, SubEventStatus,
-        SubMessage,
+        Addr, BlockInfo, Buffer, EventStatus, GenericResult, ReplyOn, Shared, Storage, SubEvent,
+        SubEventStatus, SubMessage,
     },
 };
 

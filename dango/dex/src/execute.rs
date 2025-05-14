@@ -4,10 +4,11 @@ use {
         PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
+    dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        account_factory::{Account, Username},
+        account_factory::Username,
         bank,
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
@@ -17,10 +18,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Borsh, Codec, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner,
-        IsZero, Message, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
-        Order as IterationOrder, QuerierExt, QuerierWrapper, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128, UniqueVec,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec, coins,
     },
     std::{
         cmp::Ordering,
@@ -303,8 +303,7 @@ fn provide_liquidity(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom: pair.lp_denom,
-                amount: lp_mint_amount,
+                coins: coins! { pair.lp_denom => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
         )?
@@ -353,8 +352,7 @@ fn withdraw_liquidity(
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: pair.lp_denom,
-                    amount: lp_burn_amount,
+                    coins: coins! { pair.lp_denom => lp_burn_amount },
                 },
                 Coins::new(), // No funds needed for burning
             )?
@@ -437,6 +435,8 @@ fn swap_exact_amount_out(
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
+    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
@@ -472,11 +472,10 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            &ctx.querier,
             ctx.block.height,
             app_cfg.addresses.dex,
-            app_cfg.addresses.oracle,
-            app_cfg.addresses.account_factory,
+            &mut oracle_querier,
+            &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
             base_denom,
@@ -581,11 +580,10 @@ where
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
     current_block_height: u64,
     dex_addr: Addr,
-    oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
-    account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    oracle_querier: &mut OracleQuerier,
+    account_querier: &mut AccountQuerier,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     base_denom: Denom,
@@ -703,9 +701,8 @@ fn clear_orders_of_pair(
     {
         update_trading_volumes(
             storage,
-            querier,
-            oracle,
-            account_factory,
+            oracle_querier,
+            account_querier,
             &base_denom,
             filled,
             order.user,
@@ -724,6 +721,7 @@ fn clear_orders_of_pair(
                 amount: refund_quote,
             },
         ])?;
+
         refunds
             .entry(order.user)
             .or_default()
@@ -770,6 +768,9 @@ fn clear_orders_of_pair(
             refund,
             fee,
             cleared,
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction: order_direction,
         })?;
 
         if cleared {
@@ -812,9 +813,8 @@ fn clear_orders_of_pair(
         {
             update_trading_volumes(
                 storage,
-                querier,
-                oracle,
-                account_factory,
+                oracle_querier,
+                account_querier,
                 &base_denom,
                 filled,
                 order.user,
@@ -824,6 +824,7 @@ fn clear_orders_of_pair(
 
             // The order only exists in the storage if it's not owned by the dex, since
             // the passive orders are "virtual". If it is virtual, we need to update the
+            // reserve.
             match order_direction {
                 Direction::Bid => {
                     reserve
@@ -851,9 +852,8 @@ fn clear_orders_of_pair(
 /// Updates trading volumes for both user addresses and usernames
 fn update_trading_volumes(
     storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    oracle: Addr,
-    account_factory: Addr,
+    oracle_querier: &mut OracleQuerier,
+    account_querier: &mut AccountQuerier,
     base_denom: &Denom,
     filled: Uint128,
     order_user: Addr,
@@ -861,7 +861,7 @@ fn update_trading_volumes(
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
     // Calculate the vo lume in USD for the filled order
-    let base_asset_price = querier.query_price(oracle, base_denom, None)?;
+    let base_asset_price = oracle_querier.query_price(base_denom, None)?;
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
 
     // Record trading volume for the user's address
@@ -882,19 +882,10 @@ fn update_trading_volumes(
         },
     }
 
-    // If the address exists in the account map we attempt to record the trading volume
-    // by username. This will not be the case for example for contracts deployed
-    if let Some(user_account_binary) = querier.query_wasm_raw(
-        account_factory,
-        dango_account_factory::ACCOUNTS
-            .path(order_user)
-            .storage_key(),
-    )? {
-        // Decode the account from the binary
-        let user_account: Account = Borsh::decode(&user_account_binary)?;
-
-        // If the account has a username we record the trading volume by username
-        if let Some(username) = user_account.params.owner() {
+    // Record trading volume for the user's username, if the trader is a
+    // single-signature account (skip for multisig accounts).
+    if let Some(account) = account_querier.query_account(order_user)? {
+        if let Some(username) = account.params.owner() {
             match volumes_by_username.entry(username.clone()) {
                 Entry::Occupied(mut v) => {
                     v.get_mut().checked_add_assign(new_volume)?;

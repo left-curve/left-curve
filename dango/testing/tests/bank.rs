@@ -6,7 +6,7 @@ use {
             QueryOrphanedTransfersBySenderRequest, QueryOrphanedTransfersRequest, Received, Sent,
             TransferOrphaned,
         },
-        constants::{DANGO_DENOM, USDC_DENOM},
+        constants::{dango, usdc},
     },
     grug::{
         Addressable, BalanceChange, CheckedContractEvent, JsonDeExt, QuerierExt, ResultExt,
@@ -16,42 +16,43 @@ use {
 
 #[test]
 fn batch_transfer() {
-    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Create two non-existent recipient addresses.
     let dead1 = addr!("000000000000000000000000000000000000dead");
     let dead2 = addr!("00000000000000000000000000000000deaddead");
 
     suite.balances().record_many([
-        accounts.owner.address(),
-        accounts.user1.address(),
-        accounts.user2.address(),
-        contracts.bank,
-        dead1,
-        dead2,
+        &accounts.owner.address(),
+        &accounts.user1.address(),
+        &accounts.user2.address(),
+        &contracts.bank,
+        &dead1,
+        &dead2,
     ]);
 
     // Owner makes a multi-send to users 1, 2, and the non-existent recipient.
     let events = suite
         .batch_transfer(&mut accounts.owner, btree_map! {
             accounts.user1.address() => coins! {
-                DANGO_DENOM.clone() => 100,
+                dango::DENOM.clone() => 100,
             },
             accounts.user2.address() => coins! {
-                DANGO_DENOM.clone() => 200,
-                USDC_DENOM.clone() => 300,
+                dango::DENOM.clone() => 200,
+                usdc::DENOM.clone() => 300,
             },
             dead1 => coins! {
-                DANGO_DENOM.clone() => 400,
+                dango::DENOM.clone() => 400,
             },
             dead2 => coins! {
-                USDC_DENOM.clone() => 500,
+                usdc::DENOM.clone() => 500,
             },
         })
         .should_succeed()
         .events;
 
     // Check the emitted events are correct.
+    // `sent` events:
     {
         let sends = events
             .clone()
@@ -62,38 +63,42 @@ fn batch_transfer() {
             .into_iter()
             .map(|e| e.event.data.deserialize_json::<Sent>().unwrap())
             .collect::<Vec<_>>();
+
         assert!(vectors_have_same_elements(sends, vec![
             Sent {
                 user: accounts.owner.address(),
                 to: accounts.user1.address(),
                 coins: coins! {
-                    DANGO_DENOM.clone() => 100,
+                    dango::DENOM.clone() => 100,
                 },
             },
             Sent {
                 user: accounts.owner.address(),
                 to: accounts.user2.address(),
                 coins: coins! {
-                    DANGO_DENOM.clone() => 200,
-                    USDC_DENOM.clone() => 300,
+                    dango::DENOM.clone() => 200,
+                    usdc::DENOM.clone() => 300,
                 },
             },
             Sent {
                 user: accounts.owner.address(),
                 to: contracts.bank, // The orphaned transfer goes to the bank.
                 coins: coins! {
-                    DANGO_DENOM.clone() => 400,
+                    dango::DENOM.clone() => 400,
                 },
             },
             Sent {
                 user: accounts.owner.address(),
                 to: contracts.bank, // The orphaned transfer goes to the bank.
                 coins: coins! {
-                    USDC_DENOM.clone() => 500,
+                    usdc::DENOM.clone() => 500,
                 },
             },
         ]));
+    }
 
+    // `received` events:
+    {
         let receives = events
             .clone()
             .search_event::<CheckedContractEvent>()
@@ -103,38 +108,42 @@ fn batch_transfer() {
             .into_iter()
             .map(|e| e.event.data.deserialize_json::<Received>().unwrap())
             .collect::<Vec<_>>();
+
         assert!(vectors_have_same_elements(receives, vec![
             Received {
                 user: accounts.user1.address(),
                 from: accounts.owner.address(),
                 coins: coins! {
-                    DANGO_DENOM.clone() => 100,
+                    dango::DENOM.clone() => 100,
                 },
             },
             Received {
                 user: accounts.user2.address(),
                 from: accounts.owner.address(),
                 coins: coins! {
-                    DANGO_DENOM.clone() => 200,
-                    USDC_DENOM.clone() => 300,
+                    dango::DENOM.clone() => 200,
+                    usdc::DENOM.clone() => 300,
                 },
             },
             Received {
                 user: contracts.bank, // The orphaned transfer goes to the bank.
                 from: accounts.owner.address(),
                 coins: coins! {
-                    DANGO_DENOM.clone() => 400,
+                    dango::DENOM.clone() => 400,
                 },
             },
             Received {
                 user: contracts.bank, // The orphaned transfer goes to the bank.
                 from: accounts.owner.address(),
                 coins: coins! {
-                    USDC_DENOM.clone() => 500,
+                    usdc::DENOM.clone() => 500,
                 },
             },
         ]));
+    }
 
+    // `transfer_orphaned` events:
+    {
         let orphans = events
             .search_event::<CheckedContractEvent>()
             .with_predicate(|e| e.ty == "transfer_orphaned")
@@ -143,19 +152,20 @@ fn batch_transfer() {
             .into_iter()
             .map(|e| e.event.data.deserialize_json::<TransferOrphaned>().unwrap())
             .collect::<Vec<_>>();
+
         assert!(vectors_have_same_elements(orphans, vec![
             TransferOrphaned {
                 from: accounts.owner.address(),
                 to: dead1,
                 coins: coins! {
-                    DANGO_DENOM.clone() => 400,
+                    dango::DENOM.clone() => 400,
                 },
             },
             TransferOrphaned {
                 from: accounts.owner.address(),
                 to: dead2,
                 coins: coins! {
-                    USDC_DENOM.clone() => 500,
+                    usdc::DENOM.clone() => 500,
                 },
             },
         ]));
@@ -163,36 +173,30 @@ fn batch_transfer() {
 
     // Check the balance changes.
     {
-        suite
-            .balances()
-            .should_change(accounts.owner.address(), btree_map! {
-                DANGO_DENOM.clone() => BalanceChange::Decreased(700),
-                USDC_DENOM.clone() => BalanceChange::Decreased(800),
-            });
+        suite.balances().should_change(&accounts.owner, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(700),
+            usdc::DENOM.clone() => BalanceChange::Decreased(800),
+        });
 
-        suite
-            .balances()
-            .should_change(accounts.user1.address(), btree_map! {
-                DANGO_DENOM.clone() => BalanceChange::Increased(100),
-            });
+        suite.balances().should_change(&accounts.user1, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(100),
+        });
 
-        suite
-            .balances()
-            .should_change(accounts.user2.address(), btree_map! {
-                DANGO_DENOM.clone() => BalanceChange::Increased(200),
-                USDC_DENOM.clone() => BalanceChange::Increased(300),
-            });
+        suite.balances().should_change(&accounts.user2, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(200),
+            usdc::DENOM.clone() => BalanceChange::Increased(300),
+        });
 
         // The token that are supposed to go to the non-existing accounts should
         // have been withheld in the bank contract as orphaned transfers.
-        suite.balances().should_change(contracts.bank, btree_map! {
-            DANGO_DENOM.clone() => BalanceChange::Increased(400),
-            USDC_DENOM.clone() => BalanceChange::Increased(500),
+        suite.balances().should_change(&contracts.bank, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(400),
+            usdc::DENOM.clone() => BalanceChange::Increased(500),
         });
 
         // The non-existing accounts should have no balance.
-        suite.balances().should_change(dead1, btree_map! {});
-        suite.balances().should_change(dead2, btree_map! {});
+        suite.balances().should_change(&dead1, btree_map! {});
+        suite.balances().should_change(&dead2, btree_map! {});
     }
 
     // The orphaned transfers should have been recorded.
@@ -206,12 +210,12 @@ fn batch_transfer() {
                 OrphanedTransferResponseItem {
                     sender: accounts.owner.address(),
                     recipient: dead1,
-                    amount: coins! { DANGO_DENOM.clone() => 400 },
+                    amount: coins! { dango::DENOM.clone() => 400 },
                 },
                 OrphanedTransferResponseItem {
                     sender: accounts.owner.address(),
                     recipient: dead2,
-                    amount: coins! { USDC_DENOM.clone() => 500 },
+                    amount: coins! { usdc::DENOM.clone() => 500 },
                 },
             ]);
 
@@ -222,8 +226,8 @@ fn batch_transfer() {
                 limit: None,
             })
             .should_succeed_and_equal(btree_map! {
-                dead1 => coins! { DANGO_DENOM.clone() => 400 },
-                dead2 => coins! { USDC_DENOM.clone() => 500 },
+                dead1 => coins! { dango::DENOM.clone() => 400 },
+                dead2 => coins! { usdc::DENOM.clone() => 500 },
             });
 
         suite
@@ -233,7 +237,7 @@ fn batch_transfer() {
                 limit: None,
             })
             .should_succeed_and_equal(btree_map! {
-                accounts.owner.address() => coins! { DANGO_DENOM.clone() => 400 },
+                accounts.owner.address() => coins! { dango::DENOM.clone() => 400 },
             });
 
         suite
@@ -243,7 +247,7 @@ fn batch_transfer() {
                 limit: None,
             })
             .should_succeed_and_equal(btree_map! {
-                accounts.owner.address() => coins! { USDC_DENOM.clone() => 500 },
+                accounts.owner.address() => coins! { usdc::DENOM.clone() => 500 },
             });
     }
 }

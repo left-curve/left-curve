@@ -114,7 +114,7 @@ export const Hamburger: React.FC = () => {
           </IconButton>
         </div>
 
-        <TxIndicator>
+        <TxIndicator as={IconButton} variant="utility" size="lg">
           <HamburgerButton isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
         </TxIndicator>
       </div>

@@ -1,14 +1,13 @@
-import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import type { KeyHash } from "@left-curve/dango/types";
-import { wait } from "@left-curve/dango/utils";
+import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { forwardRef } from "react";
 import { m } from "~/paraglide/messages";
 
+import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
+
+import type { KeyHash } from "@left-curve/dango/types";
 interface Props {
   keyHash: KeyHash;
 }

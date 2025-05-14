@@ -1,0 +1,24 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-mock-httpd"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+dango-genesis           = { workspace = true }
+dango-httpd             = { workspace = true }
+dango-indexer-sql       = { workspace = true }
+dango-proposal-preparer = { workspace = true }
+dango-testing           = { workspace = true }
+grug-db-memory          = { workspace = true }
+grug-testing            = { workspace = true }
+grug-vm-rust            = { workspace = true }
+indexer-httpd           = { workspace = true, features = ["testing", "tracing"] }
+indexer-sql             = { workspace = true, features = ["tracing"] }
+tokio                   = { workspace = true }
+tracing                 = { workspace = true }

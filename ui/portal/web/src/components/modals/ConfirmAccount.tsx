@@ -1,12 +1,7 @@
-import {
-  Badge,
-  Button,
-  IconButton,
-  IconChecked,
-  IconClose,
-  forwardRef,
-} from "@left-curve/applets-kit";
+import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
+
+import { Badge, Button, IconButton, IconChecked, IconClose } from "@left-curve/applets-kit";
 
 import { capitalize, formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";
@@ -19,13 +14,13 @@ type ConfirmAccountProps = {
   denom: string;
 };
 
-export const ConfirmAccount = forwardRef(
-  ({ amount, accountName, accountType, denom }: ConfirmAccountProps, _ref) => {
+export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
+  ({ amount, accountName, accountType, denom }, _ref) => {
     const { hideModal, settings } = useApp();
     const { formatNumberOptions } = settings;
 
-    const { coins, state } = useConfig();
-    const coin = coins[state.chainId][denom];
+    const { coins } = useConfig();
+    const coin = coins[denom];
 
     const { getPrice } = usePrices();
 
