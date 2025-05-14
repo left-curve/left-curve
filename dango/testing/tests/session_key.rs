@@ -3,7 +3,7 @@ use {
     dango_types::{
         account::single::Params,
         account_factory::{AccountParams, Username},
-        constants::USDC_DENOM,
+        constants::usdc,
     },
     grug::{Addressable, Coin, Coins, Duration, ResultExt},
     session_account::SessionAccount,
@@ -187,7 +187,7 @@ mod session_account {
 
 #[test]
 fn session_key() {
-    let (mut suite, accounts, _, contracts) = setup_test_naive();
+    let (mut suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     suite.block_time = Duration::from_seconds(10);
 
@@ -201,7 +201,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }
@@ -213,7 +213,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
         owner.nonce -= 1;
@@ -231,7 +231,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }
@@ -264,7 +264,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 owner2.address(),
-                Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
 
@@ -273,7 +273,7 @@ fn session_key() {
             .transfer(
                 &mut owner2,
                 accounts.user1.address(),
-                Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }
@@ -291,7 +291,7 @@ fn session_key() {
             .transfer(
                 &mut owner,
                 accounts.user1.address(),
-                Coin::new(USDC_DENOM.clone(), 100).unwrap(),
+                Coin::new(usdc::DENOM.clone(), 100).unwrap(),
             )
             .should_succeed();
     }

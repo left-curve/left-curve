@@ -36,6 +36,13 @@ where
 {
     pub fn new(suite: TestSuite<DB, VM, PP, ID>, block_mode: BlockCreation) -> Self {
         let suite = Arc::new(Mutex::new(suite));
+        Self::new_shared(suite, block_mode)
+    }
+
+    pub fn new_shared(
+        suite: Arc<Mutex<TestSuite<DB, VM, PP, ID>>>,
+        block_mode: BlockCreation,
+    ) -> Self {
         let blocks = Arc::new(Mutex::new(BTreeMap::new()));
         let txs = Arc::new(Mutex::new(BTreeMap::new()));
 
@@ -93,6 +100,10 @@ where
     pub async fn set_block_time(&self, block_time: grug_types::Duration) {
         self.suite.lock().await.block_time = block_time;
     }
+
+    pub async fn chain_id(&self) -> String {
+        self.suite.lock().await.chain_id.clone()
+    }
 }
 
 #[async_trait]
@@ -105,7 +116,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     type Error = anyhow::Error;
-    type Proof = grug_jmt::Proof;
+    type Proof = grug_types::Proof;
 
     async fn query_app(
         &self,

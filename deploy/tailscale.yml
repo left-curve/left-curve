@@ -1,0 +1,8 @@
+- hosts: all
+  become: true
+  roles:
+    - role: artis3n.tailscale
+      vars:
+        tailscale_authkey: "{{ lookup('env', 'TAILSCALE_AUTHKEY') }}"
+        # That raises issues with automatic deployment
+        # tailscale_args: "--ssh"

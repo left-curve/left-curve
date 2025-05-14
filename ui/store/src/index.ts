@@ -107,6 +107,14 @@ export {
   useSignin,
 } from "./hooks/useSignin.js";
 
+export {
+  type UseAppConfigParameters,
+  type UseAppConfigReturnType,
+  useAppConfig,
+} from "./hooks/useAppConfig.js";
+
+export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";

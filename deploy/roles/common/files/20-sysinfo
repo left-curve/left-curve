@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# current date
+date=`date`
+ 
+# current cpu load
+cpu_load=`cat /proc/loadavg | awk '{print $1*100 "%"}'`
+ 
+# used memory
+memory_usage=`free -m | awk '($1=="Mem:"){memTotal=$2} ($2=="buffers/cache:"){memUsed=$3} END{printf "%.1f%%", memUsed/memTotal * 100}'`
+ 
+# used swap memory
+swap_usage=`free -m | awk '($1=="Swap:"){swapTotal=$2; swapUsed=$3} END{printf "%.1f%%", swapUsed/swapTotal * 100}'`
+ 
+# used disk space
+disk_usage=`df -h | awk '{if($(NF) == "/") {print $(NF-1); exit;}}'`
+ 
+# system uptime
+sys_uptime=`uptime | awk '{print $3 " " $4}' | sed s'/.$//'`
+
+COLOR_DEFAULT="\033[0m"
+COLOR_INFO="\033[0;37m"
+COLOR_VALUE="\033[0;35m"
+ 
+printf "${COLOR_INFO}System Information on ${date}\n"
+printf "==================================================\n"
+printf "${COLOR_INFO}CPU Usage         :${COLOR_VALUE} %s\n" "${cpu_load}"
+printf "${COLOR_INFO}Memory Usage      :${COLOR_VALUE} %s\n" "${memory_usage}"
+printf "${COLOR_INFO}Swap Usage        :${COLOR_VALUE} %s\n" "${swap_usage}"
+printf "${COLOR_INFO}System Uptime     :${COLOR_VALUE} %s\n" "${sys_uptime}"
+printf "${COLOR_INFO}Total Disk Usage  :${COLOR_VALUE} %s\n" "${disk_usage}" 
+printf "${COLOR_DEFAULT}"

@@ -67,7 +67,7 @@ pub fn query_and_compute_health(
     let prices = denoms
         .iter()
         .map(|denom| {
-            let price = oracle_querier.query_price(&querier, denom, None)?;
+            let price = oracle_querier.query_price(denom, None)?;
             Ok((denom.clone(), price))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;

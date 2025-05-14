@@ -19,6 +19,7 @@ export default defineConfig({
     alias: {
       "~": "./src",
       "~/paraglide": path.resolve(__dirname, "./.paraglide"),
+      "~/constants": path.resolve(__dirname, "./constants.config.ts"),
     },
     define: publicVars,
   },

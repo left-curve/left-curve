@@ -104,7 +104,7 @@ const FutureBlock: React.FC = () => {
   const { data } = useBlockExplorer();
   const [countdown, setCountdown] = useState<number>(0);
   const [blockData, setBlockData] = useState<number>();
-  const { days, hours, minutes, seconds } = useCountdown(blockData);
+  const { days, hours, minutes, seconds } = useCountdown({ date: blockData });
 
   useWatchEffect(seconds, () => setCountdown((v) => v + 2));
 

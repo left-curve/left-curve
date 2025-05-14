@@ -19,8 +19,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::Health {} => {
-            let app_cfg = ctx.querier.query_dango_config()?;
-            let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
+            let oracle = ctx.querier.query_oracle()?;
+            let mut oracle_querier = OracleQuerier::new_remote(oracle, ctx.querier);
             let res = core::query_and_compute_health(
                 ctx.querier,
                 &mut oracle_querier,

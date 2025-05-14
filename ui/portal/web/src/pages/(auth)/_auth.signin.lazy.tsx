@@ -7,10 +7,10 @@ import { Modals } from "~/components/modals/RootModal";
 import { useApp } from "~/hooks/useApp";
 
 export const Route = createLazyFileRoute("/(auth)/_auth/signin")({
-  component: SigninComponent,
+  component: SigninApplet,
 });
 
-function SigninComponent() {
+function SigninApplet() {
   const { showModal } = useApp();
   const { socketId } = useSearch({ strict: false });
 

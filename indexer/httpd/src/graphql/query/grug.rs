@@ -16,7 +16,7 @@ impl GrugQuery {
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.query_app(request, height)?)
+        Ok(app_ctx.grug_app.query_app(request, height).await?)
     }
 
     async fn query_store(
@@ -29,7 +29,10 @@ impl GrugQuery {
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let key = Binary::from_str(&key)?;
 
-        let (value, proof) = app_ctx.grug_app.query_store(key.inner(), height, prove)?;
+        let (value, proof) = app_ctx
+            .grug_app
+            .query_store(key.inner(), height, prove)
+            .await?;
 
         let value = if let Some(value) = value {
             Binary::from(value).to_string()
@@ -47,8 +50,8 @@ impl GrugQuery {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let status = Status {
-            block: app_ctx.grug_app.last_finalized_block()?.into(),
-            chain_id: app_ctx.grug_app.chain_id()?,
+            block: app_ctx.grug_app.last_finalized_block().await?.into(),
+            chain_id: app_ctx.grug_app.chain_id().await?,
         };
 
         Ok(status)
@@ -61,6 +64,6 @@ impl GrugQuery {
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.simulate(tx)?)
+        Ok(app_ctx.grug_app.simulate(tx).await?)
     }
 }

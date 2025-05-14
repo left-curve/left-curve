@@ -21,7 +21,7 @@ use {
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
         QuerierExt, QuerierWrapper, Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
-        UniqueVec,
+        UniqueVec, coins,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -302,8 +302,7 @@ fn provide_liquidity(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom: pair.lp_denom,
-                amount: lp_mint_amount,
+                coins: coins! { pair.lp_denom => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
         )?
@@ -352,8 +351,7 @@ fn withdraw_liquidity(
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: pair.lp_denom,
-                    amount: lp_burn_amount,
+                    coins: coins! { pair.lp_denom => lp_burn_amount },
                 },
                 Coins::new(), // No funds needed for burning
             )?
@@ -436,6 +434,8 @@ fn swap_exact_amount_out(
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
+    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory);
 
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
@@ -464,9 +464,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .into_values()
         .map(|((pair, ..), _)| pair)
         .collect::<BTreeSet<_>>();
-
-    let mut oracle_querier = OracleQuerier::new(app_cfg.addresses.oracle);
-    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory);
 
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
@@ -655,6 +652,9 @@ fn clear_orders_of_pair(
             refund: refund.clone(),
             fee,
             cleared,
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction: order_direction,
         })?;
 
         refunds.entry(order.user).or_default().insert_many(refund)?;
@@ -683,7 +683,7 @@ fn clear_orders_of_pair(
         }
 
         // Calculate the volume in USD for the filled order
-        let base_asset_price = oracle_querier.query_price(&querier, &base_denom, None)?;
+        let base_asset_price = oracle_querier.query_price(&base_denom, None)?;
         let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
 
         // Record trading volume for the user's address.
