@@ -9,12 +9,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface Props extends VariantProps<typeof pagnationVariants> {
   total: number;
-  initialPage?: number; // The initial page (uncontrolled)
-  page?: number; // The current page (controlled)
-  onPageChange?: (page: number) => void; // Callback function to handle page changes.
-  siblings?: number; // The number of pages to show before and after the current page.
-  boundaries?: number; // The number of pages to show at the beginning and end of the pagination.
-  id?: string; // Optional ID for the pagination component if more than one is used
+  siblings?: number;
+  boundaries?: number;
+  id?: string;
+  page?: number;
+  initialPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
 export const Pagination: React.FC<Props> = ({
@@ -63,40 +63,46 @@ export const Pagination: React.FC<Props> = ({
         <IconChevronLeft className="w-5 h-5" />
       </button>
 
-      <AnimatePresence>
-        {range.map((item, index) => {
-          const key = typeof item === "string" ? `ellipsis-${index}` : `page-${item}`;
-          const isCurrent = item === currentPage;
+      {variant === "text" ? (
+        <div>
+          Page {currentPage} of {total}
+        </div>
+      ) : (
+        <AnimatePresence>
+          {range.map((item, index) => {
+            const key = typeof item === "string" ? `ellipsis-${index}` : `page-${item}`;
+            const isCurrent = item === currentPage;
 
-          if (item === "...") {
+            if (item === "...") {
+              return (
+                <span key={key} className="px-2 text-blue-400 select-none">
+                  ...
+                </span>
+              );
+            }
             return (
-              <span key={key} className="px-2 text-blue-400 select-none">
-                ...
-              </span>
+              <motion.button
+                layout
+                type="button"
+                key={key}
+                onClick={() => setPage(item as number)}
+                className={twMerge(styles.item(), "relative")}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <span className="relative z-10">{item}</span>
+                {isCurrent && (
+                  <motion.span
+                    layoutId={`pagination-underline-${id ?? internalId}`}
+                    className="absolute left-0 top-0 w-full h-full rounded-sm bg-blue-100"
+                  />
+                )}
+              </motion.button>
             );
-          }
-          return (
-            <motion.button
-              layout
-              type="button"
-              key={key}
-              onClick={() => setPage(item as number)}
-              className={twMerge(styles.item(), "relative")}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              <span className="relative z-10">{item}</span>
-              {isCurrent && (
-                <motion.span
-                  layoutId={`pagination-underline-${id ?? internalId}`}
-                  className="absolute left-0 top-0 w-full h-full rounded-sm bg-blue-100"
-                />
-              )}
-            </motion.button>
-          );
-        })}
-      </AnimatePresence>
+          })}
+        </AnimatePresence>
+      )}
 
       <button
         type="button"
