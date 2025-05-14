@@ -12,7 +12,11 @@ use {
     tracing::Level,
 };
 
-pub use {dango_testing::TestOption, grug_testing::BlockCreation, indexer_httpd::error::Error};
+pub use {
+    dango_testing::{BridgeOp, Preset, TestOption},
+    grug_testing::BlockCreation,
+    indexer_httpd::error::Error,
+};
 
 pub async fn run(
     port: u16,
