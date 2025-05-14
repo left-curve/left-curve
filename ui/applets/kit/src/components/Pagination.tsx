@@ -64,9 +64,24 @@ export const Pagination: React.FC<Props> = ({
       </button>
 
       {variant === "text" ? (
-        <div>
-          Page {currentPage} of {total}
-        </div>
+        <AnimatePresence mode="wait">
+          <p>
+            Page{" "}
+            <motion.span
+              key={currentPage}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{
+                duration: 0.2,
+              }}
+              className="min-w-[1rem] inline-block text-center"
+            >
+              {currentPage}
+            </motion.span>{" "}
+            of {total}
+          </p>
+        </AnimatePresence>
       ) : (
         <AnimatePresence>
           {range.map((item, index) => {
@@ -219,8 +234,8 @@ function getPaginationRange({
 const pagnationVariants = tv(
   {
     slots: {
-      base: "",
-      item: "flex items-center justify-center w-8 h-8 rounded-sm exposure-sm-italic hover:bg-blue-50 transition-all text-blue-600",
+      base: " text-blue-600  exposure-sm-italic",
+      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-blue-50 transition-all",
     },
     variants: {
       variant: {

@@ -9,6 +9,11 @@ const meta: Meta<typeof Pagination> = {
       control: { type: "number" },
       description: "The total number of pages.",
     },
+    variant: {
+      options: ["default", "text"],
+      control: { type: "select" },
+      description: "The variant of the pagination.",
+    },
     siblings: {
       control: { type: "number" },
       description: "The number of pages to show before and after the current page.",
@@ -35,11 +40,6 @@ const meta: Meta<typeof Pagination> = {
     id: {
       control: { type: "text" },
       description: "Optional ID for the pagination component if more than one is used.",
-    },
-    variant: {
-      options: ["default", "text"],
-      control: { type: "select" },
-      description: "The variant of the pagination.",
     },
   },
   args: {
