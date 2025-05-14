@@ -1,6 +1,6 @@
 import { twMerge } from "#utils/twMerge.js";
 import type React from "react";
-import { useState, useId } from "react";
+import { useState, useId, useMemo } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 import { IconChevronRight } from "./icons/IconChevronRight";
 import { IconChevronLeft } from "./icons/IconChevronLeft";
@@ -29,7 +29,7 @@ export const Pagination: React.FC<Props> = ({
   id,
 }) => {
   const styles = pagnationVariants({ variant, isDisabled });
-
+  const internalId = useId();
   const [uncontrolledPage, setUncontrolledPage] = useState(initialPage);
   const currentPage = controlledPage ?? uncontrolledPage;
 
@@ -38,12 +38,16 @@ export const Pagination: React.FC<Props> = ({
     else setUncontrolledPage(newPage);
   };
 
-  const range = getPaginationRange({
-    total,
-    currentPage,
-    siblings,
-    boundaries,
-  });
+  const range = useMemo(
+    () =>
+      getPaginationRange({
+        total,
+        currentPage,
+        siblings,
+        boundaries,
+      }),
+    [total, currentPage, siblings, boundaries],
+  );
 
   return (
     <motion.div
@@ -85,7 +89,7 @@ export const Pagination: React.FC<Props> = ({
               <span className="relative z-10">{item}</span>
               {isCurrent && (
                 <motion.span
-                  layoutId={`pagination-underline-${id ?? useId()}`}
+                  layoutId={`pagination-underline-${id ?? internalId}`}
                   className="absolute left-0 top-0 w-full h-full rounded-sm bg-blue-100"
                 />
               )}
@@ -120,30 +124,90 @@ function getPaginationRange({
   currentPage: number;
   siblings: number;
   boundaries: number;
-}): (number | "...")[] {
-  const startPages = [...Array(boundaries)].map((_, i) => i + 1);
-  const endPages = [...Array(boundaries)].map((_, i) => total - boundaries + 1 + i);
+}): (number | string)[] {
+  const totalBoundaryPages = boundaries * 2;
 
-  const siblingStart = Math.max(currentPage - siblings, boundaries + 2);
-  const siblingEnd = Math.min(currentPage + siblings, total - boundaries - 1);
+  if (total <= totalBoundaryPages) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
 
-  const pages = [
-    ...startPages,
-    ...(siblingStart > boundaries + 2
-      ? ["..."]
-      : siblingStart > boundaries + 1
-        ? [boundaries + 1]
-        : []),
-    ...Array.from({ length: siblingEnd - siblingStart + 1 }, (_, i) => siblingStart + i),
-    ...(siblingEnd < total - boundaries - 1
-      ? ["..."]
-      : siblingEnd < total - boundaries
-        ? [total - boundaries]
-        : []),
-    ...endPages,
-  ];
+  const startPages: number[] = [];
+  for (let i = 1; i <= Math.min(boundaries, total); i++) {
+    startPages.push(i);
+  }
 
-  return [...new Set(pages)] as (number | "...")[];
+  const endPages: number[] = [];
+  for (let i = Math.max(1, total - boundaries + 1); i <= total; i++) {
+    endPages.push(i);
+  }
+
+  const siblingStart = Math.max(1, currentPage - siblings);
+  const siblingEnd = Math.min(total, currentPage + siblings);
+
+  const middlePages: number[] = [];
+  for (let i = siblingStart; i <= siblingEnd; i++) {
+    middlePages.push(i);
+  }
+
+  let assembledPages: (number | "...")[] = [];
+
+  assembledPages = [...startPages];
+
+  if (middlePages.length > 0 && middlePages[0] > startPages[startPages.length - 1] + 1) {
+    if (
+      middlePages[0] > startPages[startPages.length - 1] + 2 &&
+      startPages[startPages.length - 1] + 1 <= total - boundaries
+    ) {
+      assembledPages.push("...");
+    } else if (middlePages[0] === startPages[startPages.length - 1] + 2) {
+      if (!endPages.includes(startPages[startPages.length - 1] + 1)) {
+        assembledPages.push(startPages[startPages.length - 1] + 1);
+      }
+    }
+  }
+
+  middlePages.forEach((p) => {
+    if (p > startPages[startPages.length - 1] && p < endPages[0]) {
+      assembledPages.push(p);
+    }
+  });
+
+  const lastAssembledNumeric = [...assembledPages].filter((p) => typeof p === "number").pop() as
+    | number
+    | undefined;
+
+  if (
+    endPages.length > 0 &&
+    lastAssembledNumeric !== undefined &&
+    endPages[0] > lastAssembledNumeric + 1
+  ) {
+    if (endPages[0] > lastAssembledNumeric + 2 && lastAssembledNumeric + 1 > boundaries) {
+      assembledPages.push("...");
+    } else if (endPages[0] === lastAssembledNumeric + 2) {
+      if (lastAssembledNumeric + 1 > boundaries) {
+        assembledPages.push(lastAssembledNumeric + 1);
+      }
+    }
+  }
+
+  assembledPages = [...assembledPages, ...endPages];
+
+  const uniquePages = [];
+  const seen = new Set();
+  for (const page of assembledPages) {
+    if (page === "...") {
+      if (uniquePages.length === 0 || uniquePages[uniquePages.length - 1] !== "...") {
+        uniquePages.push(page);
+      }
+    } else if (!seen.has(page)) {
+      uniquePages.push(page);
+      seen.add(page);
+    }
+  }
+
+  return uniquePages.filter(
+    (page, index, self) => page !== "..." || (index > 0 && self[index - 1] !== "..."),
+  );
 }
 
 const pagnationVariants = tv(
