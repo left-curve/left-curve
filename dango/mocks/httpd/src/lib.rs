@@ -1,5 +1,5 @@
 use {
-    dango_genesis::{GenesisCodes, GenesisOption},
+    dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
@@ -13,6 +13,7 @@ use {
 };
 
 pub use {
+    dango_genesis::GenesisOption,
     dango_testing::{BridgeOp, Preset, TestOption},
     grug_testing::BlockCreation,
     indexer_httpd::error::Error,
