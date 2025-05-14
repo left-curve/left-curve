@@ -28,6 +28,13 @@ cold-deploy-dango:
 deploy-dango:
   ansible-playbook dango.yml --skip-tags setup
 
+reset-deploy:
+  ansible-playbook reset-cometbft.yml
+  ansible-playbook reset-dango.yml
+  ansible-playbook cometbft.yml
+  ansible-playbook dango.yml --tags setup
+  ansible-playbook dango.yml --skip-tags setup
+
 setup-deploy-dango:
   ansible-playbook dango.yml --tags setup
 
