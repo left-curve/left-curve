@@ -12,7 +12,7 @@ ENV GIT_COMMIT=$GIT_COMMIT
 # ENV USERNAME=${USERNAME}
 
 RUN apt-get update && \
-    apt-get install -y libssl-dev pkg-config libsqlite3-0 && \
+    apt-get install -y libssl-dev pkg-config libsqlite3-0 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # RUN useradd --create-home --shell /bin/bash $USERNAME
