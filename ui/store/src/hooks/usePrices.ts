@@ -33,7 +33,7 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   } = parameters;
   const config = useConfig();
 
-  const coins = parameters.coins || config.coins[config.state.chainId];
+  const coins = parameters.coins || config.coins;
 
   function getPrice<T extends boolean = false>(
     amount: number | string,

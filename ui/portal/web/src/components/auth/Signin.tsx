@@ -1,8 +1,8 @@
-import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import { useInputs, useMediaQuery, useUsernames, useWizard } from "@left-curve/applets-kit";
 import { useAccount, usePublicClient, useSignin } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -21,10 +21,12 @@ import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
 import type { FormEvent, PropsWithChildren } from "react";
+import { UsernamesList } from "./UsernamesList";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();
@@ -49,16 +51,23 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 const UsernameStep: React.FC = () => {
   const { settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
+  const { usernames, info: usernamesInfo } = useUsernames();
 
   const navigate = useNavigate();
   const { nextStep, setData } = useWizard<{ username: string; sessionKey: boolean }>();
   const { register, inputs, setError } = useInputs();
+  const [useAnotherAccount, setUseAnotherAccount] = useState(false);
   const { isMd } = useMediaQuery();
   const { showModal } = useApp();
 
   const { value: username, error } = inputs.username || {};
 
   const client = usePublicClient();
+
+  const setUsername = (username: string) => {
+    setData({ username, sessionKey: useSessionKey });
+    nextStep();
+  };
 
   const { mutateAsync: signInWithUsername, isPending } = useMutation({
     mutationFn: async (e: FormEvent<HTMLFormElement>) => {
@@ -69,14 +78,13 @@ const UsernameStep: React.FC = () => {
       if (numberOfAccounts === 0) {
         setError("username", m["signin.errors.usernameNotExist"]());
       } else {
-        setData({ username, sessionKey: useSessionKey });
-        nextStep();
+        setUsername(username);
       }
     },
   });
 
   return (
-    <div className="flex items-center justify-center flex-col gap-8 px-4 lg:px-0">
+    <div className="flex items-center justify-center flex-col gap-8 px-2 lg:px-0">
       <div className="flex flex-col gap-7 items-center justify-center">
         <img
           src="./favicon.svg"
@@ -85,47 +93,19 @@ const UsernameStep: React.FC = () => {
         />
         <h1 className="h2-heavy">{m["common.signin"]()}</h1>
       </div>
-      <form className="flex flex-col gap-6 w-full" onSubmit={signInWithUsername}>
-        <Input
-          placeholder={
-            <p className="flex gap-1 items-center justify-start">
-              <span>{m["signin.placeholder"]()}</span>
-              <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500">
-                {m["common.username"]().toLowerCase()}
-              </span>
-            </p>
-          }
-          {...register("username", {
-            strategy: "onChange",
-            validate: (value) => {
-              if (!value) return m["signin.errors.usernameRequired"]();
-              if (value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
-                return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";
-              }
-              return true;
-            },
-            mask: (v) => v.toLowerCase(),
-          })}
-        />
-        <Button fullWidth type="submit" isDisabled={!!error} isLoading={isPending}>
-          {m["common.signin"]()}
-        </Button>
-        {isMd ? (
+      {usernames.length && !useAnotherAccount ? (
+        <>
+          <UsernamesList
+            usernames={usernamesInfo}
+            showRemove={true}
+            onClick={(username) => setUsername(username)}
+          />
+          <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="primary">
+            {m["signin.useAnotherAccount"]()}
+          </Button>
           <Button as={Link} fullWidth variant="secondary" to="/">
             {m["signin.continueWithoutSignin"]()}
           </Button>
-        ) : (
-          <Button
-            fullWidth
-            onClick={() => showModal(Modals.SignWithDesktop)}
-            className="gap-2"
-            variant="secondary"
-          >
-            <IconQR className="w-6 h-6" />
-            <p className="min-w-20"> {m["common.signinWithDesktop"]()}</p>
-          </Button>
-        )}
-        {isMd ? (
           <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
             <div className="flex items-center gap-2 flex-col">
               <Checkbox
@@ -136,9 +116,63 @@ const UsernameStep: React.FC = () => {
               />
             </div>
           </ExpandOptions>
-        ) : null}
-      </form>
-      <div className="flex flex-col items-center">
+        </>
+      ) : (
+        <form className="flex flex-col gap-6 w-full" onSubmit={signInWithUsername}>
+          <Input
+            placeholder={
+              <p className="flex gap-1 items-center justify-start">
+                <span>{m["signin.placeholder"]()}</span>
+                <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500">
+                  {m["common.username"]().toLowerCase()}
+                </span>
+              </p>
+            }
+            {...register("username", {
+              strategy: "onChange",
+              validate: (value) => {
+                if (!value) return m["signin.errors.usernameRequired"]();
+                if (value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
+                  return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";
+                }
+                return true;
+              },
+              mask: (v) => v.toLowerCase(),
+            })}
+          />
+          <Button fullWidth type="submit" isDisabled={!!error} isLoading={isPending}>
+            {m["common.signin"]()}
+          </Button>
+          {isMd ? (
+            <Button as={Link} fullWidth variant="secondary" to="/">
+              {m["signin.continueWithoutSignin"]()}
+            </Button>
+          ) : (
+            <Button
+              fullWidth
+              onClick={() => showModal(Modals.SignWithDesktop)}
+              className="gap-2"
+              variant="secondary"
+            >
+              <IconQR className="w-6 h-6" />
+              <p className="min-w-20"> {m["common.signinWithDesktop"]()}</p>
+            </Button>
+          )}
+          {isMd ? (
+            <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+              <div className="flex items-center gap-2 flex-col">
+                <Checkbox
+                  size="md"
+                  label={m["common.signinWithSession"]()}
+                  checked={useSessionKey}
+                  onChange={(v) => changeSettings({ useSessionKey: v })}
+                />
+              </div>
+            </ExpandOptions>
+          ) : null}
+        </form>
+      )}
+      <div className="flex flex-col items-center w-full gap-4 lg:gap-0">
         {isMd ? (
           <div className="flex justify-center items-center">
             <p>{m["signin.noAccount"]()}</p>
@@ -147,10 +181,18 @@ const UsernameStep: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <Button as={Link} fullWidth variant="link" to="/">
+          <Button as={Link} fullWidth variant="secondary" to="/">
             {m["signin.continueWithoutSignin"]()}
           </Button>
         )}
+        <Button
+          fullWidth
+          className="p-0 h-fit"
+          variant="link"
+          onClick={() => navigate({ to: "/forgot-username" })}
+        >
+          {m["signin.forgotUsername"]()}
+        </Button>
       </div>
     </div>
   );
@@ -158,16 +200,19 @@ const UsernameStep: React.FC = () => {
 
 const CredentialStep: React.FC = () => {
   const navigate = useNavigate();
+  const { addUsername } = useUsernames();
   const { data, previousStep } = useWizard<{ username: string; sessionKey: boolean }>();
   const { isMd } = useMediaQuery();
 
   const { username, sessionKey } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
-    sessionKey,
+    sessionKey: sessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
-      onSuccess: () => navigate({ to: "/" }),
+      onSuccess: (username) => {
+        navigate({ to: "/" });
+        addUsername(username);
+      },
       onError: (err) => {
         console.error(err);
         toast.error({
@@ -181,7 +226,7 @@ const CredentialStep: React.FC = () => {
 
   return (
     <>
-      <div className="flex items-center justify-center flex-col gap-8 px-4 lg:px-0">
+      <div className="flex items-center justify-center flex-col gap-8 px-2 lg:px-0">
         <div className="flex flex-col gap-7 items-center justify-center">
           <img
             src="./favicon.svg"
@@ -197,14 +242,14 @@ const CredentialStep: React.FC = () => {
         </div>
         {isMd ? (
           <AuthOptions
-            action={(connectorId) => connectWithConnector({ connectorId })}
+            action={(connectorId) => connectWithConnector({ username, connectorId })}
             isPending={isPending}
             mode="signin"
           />
         ) : (
           <Button
             fullWidth
-            onClick={() => connectWithConnector({ connectorId: "passkey" })}
+            onClick={() => connectWithConnector({ username, connectorId: "passkey" })}
             isLoading={isPending}
             className="gap-2"
           >

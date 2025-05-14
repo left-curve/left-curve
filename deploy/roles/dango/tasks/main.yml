@@ -1,0 +1,102 @@
+- name: Install nginx as a proxy
+  tags: setup
+  become: true
+  become_user: root
+  apt:
+    name: nginx
+    state: present
+
+- name: Install psycopg2 so Ansible can talk to Postgres
+  tags: setup
+  become: true
+  become_user: root
+  apt:
+    name: python3-psycopg2
+    state: present
+
+- name: Create Dango DB user
+  tags: setup
+  community.postgresql.postgresql_user:
+    name: "{{ dango_db_user }}"
+    password: "{{ dango_db_password }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_pass }}"
+    login_host: "{{ db_host }}"
+    login_port: "{{ db_port }}"
+    state: present
+
+- name: Create Dango production database
+  tags: setup
+  community.postgresql.postgresql_db:
+    name: "{{ dango_db_name }}"
+    owner: "{{ dango_db_user }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_pass }}"
+    login_host: "{{ db_host }}"
+    login_port: "{{ db_port }}"
+    state: present
+
+- name: Grant ALL privileges on the Dango database to the Dango user
+  tags: setup
+  community.postgresql.postgresql_privs:
+    type: database
+    privs: ALL
+    roles: "{{ dango_db_user }}"
+    login_db: "{{ dango_db_name }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_pass }}"
+    login_host: "{{ db_host }}"
+    login_port: "{{ db_port }}"
+    state: present
+
+- name: Copy all files from dango role
+  tags: setup
+  copy:
+    src: "{{ playbook_dir }}/roles/dango/files/config"
+    dest: "{{ dango_target_dir }}"
+    mode: '0644'
+
+- name: Ensure backend network exists
+  tags: setup
+  community.docker.docker_network:
+    name: backend
+    driver: bridge
+    state: present
+
+- name: Allow TCP ports
+  tags: setup
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 8080
+    - 26656
+
+- name: Deploy dango container
+  docker_container:
+    name: dango
+    image: "ghcr.io/left-curve/left-curve/dango:{{ dango_image_tag }}"
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    pull: always           # always pull the image
+    recreate: true         # destroy+recreate if anything changes
+    restart_policy: unless-stopped
+    state: started
+    env:
+      HOME: /app
+      INDEXER__DATABASE_URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ dango_db_host }}:{{ db_port }}/{{ dango_db_name }}"
+      SENTRY__ENABLED: "false"
+      SENTRY__DSN: "https://your-dsn-here"
+      SENTRY__ENVIRONMENT: "production"
+    ports:
+      - "8080:8080"
+      - "26656:26656"
+    volumes:
+      - "{{ dango_target_dir }}:/app/.dango"
+    networks:
+      - name: backend
+    tty: true
+

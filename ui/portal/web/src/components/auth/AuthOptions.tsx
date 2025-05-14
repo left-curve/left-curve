@@ -8,7 +8,7 @@ import { m } from "~/paraglide/messages";
 interface Props {
   action: (method: string) => void;
   isPending: boolean;
-  mode: "signup" | "signin";
+  mode: "signup" | "signin" | "forgot-username";
 }
 
 export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {

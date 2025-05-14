@@ -14,6 +14,8 @@ pub const NEXT_ACCOUNT_INDEX: Counter<AccountIndex> = Counter::new("index", 0, 1
 
 pub const KEYS: Map<(&Username, Hash256), Key> = dango_auth::account_factory::KEYS;
 
+pub const USERNAMES_BY_KEY: Set<(Hash256, &Username)> = Set::new("username__key");
+
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 
 pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = dango_auth::account_factory::ACCOUNTS_BY_USER;
