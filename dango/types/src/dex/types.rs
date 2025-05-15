@@ -2,7 +2,7 @@ use {
     grug::{
         Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
     },
-    std::{fmt::Display, str::FromStr},
+    std::fmt::Display,
 };
 
 /// Numerical identifier of an order.
@@ -66,13 +66,6 @@ pub struct PairParams {
     /// This also sets the spread of the orders when the passive
     /// liquidity is reflected onto the orderbook.
     pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    /// The number of orders from the current price to place on the
-    /// bid and ask sides respectively.
-    pub order_depth: u64,
-    /// The order spacing for the passive liquidity pool. This is the price
-    /// difference between two consecutive orders in when the passive
-    /// liquidity is reflected onto the orderbook.
-    pub order_spacing: Udec128,
     // TODO:
     // - orderbook fee rate (either here or as a global parameter)
     // - tick size (necessary or not?)
@@ -81,31 +74,42 @@ pub struct PairParams {
 
 #[grug::derive(Serde, Borsh)]
 pub enum CurveInvariant {
-    Xyk,
+    Xyk {
+        /// The number of orders from the current price to place on the
+        /// bid and ask sides respectively.
+        order_depth: u64,
+        /// The order spacing for the passive liquidity pool. This is the price
+        /// difference between two consecutive orders in when the passive
+        /// liquidity is reflected onto the orderbook.
+        order_spacing: Udec128,
+    },
 }
 
 impl Display for CurveInvariant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            CurveInvariant::Xyk => "xyk",
+            CurveInvariant::Xyk {
+                order_depth,
+                order_spacing,
+            } => format!("xyk, order_depth: {order_depth}, order_spacing: {order_spacing}"),
         };
         write!(f, "{}", s)
     }
 }
 
-impl FromStr for CurveInvariant {
-    type Err = StdError;
+// impl FromStr for CurveInvariant {
+//     type Err = StdError;
 
-    fn from_str(s: &str) -> StdResult<Self> {
-        match s {
-            "xyk" => Ok(CurveInvariant::Xyk),
-            _ => Err(StdError::deserialize::<Self, _>(
-                "str",
-                "invalid curve type",
-            )),
-        }
-    }
-}
+//     fn from_str(s: &str) -> StdResult<Self> {
+//         match s {
+//             "xyk" => Ok(CurveInvariant::Xyk),
+//             _ => Err(StdError::deserialize::<Self, _>(
+//                 "str",
+//                 "invalid curve type",
+//             )),
+//         }
+//     }
+// }
 
 /// Updates to a trading pair's parameters.
 #[grug::derive(Serde)]

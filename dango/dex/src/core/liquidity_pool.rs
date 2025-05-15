@@ -228,7 +228,7 @@ impl PassiveLiquidityPool for PairParams {
         let output_reserve = reserve.amount_of(&output_denom)?;
 
         let output_amount_after_fee = match self.curve_invariant {
-            CurveInvariant::Xyk => {
+            CurveInvariant::Xyk { .. } => {
                 // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
                 // => output_amount = B - (A * B) / (A + input_amount)
                 // Round so that user takes the loss.
@@ -276,7 +276,7 @@ impl PassiveLiquidityPool for PairParams {
         );
 
         let input_amount = match self.curve_invariant {
-            CurveInvariant::Xyk => {
+            CurveInvariant::Xyk { .. } => {
                 // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
                 // offer amount after fees. So in this case we need to divide ask by (1 - fee)
                 // to get the ask amount after fees.
@@ -326,64 +326,58 @@ impl PassiveLiquidityPool for PairParams {
         let mut bid_i = 1;
         let mut bid_prev_amount = Uint128::ZERO;
         let mut bid_price = spot_price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
-        let bids = std::iter::from_fn(move || {
-            let mut amount_diff;
-            loop {
-                if bid_i > self.order_depth {
+        let bids = std::iter::from_fn(move || match self.curve_invariant {
+            CurveInvariant::Xyk {
+                order_depth,
+                order_spacing,
+            } => {
+                if bid_i > order_depth {
                     return None;
                 }
 
-                bid_price =
-                    unwrap_or_return_err_as_option!(bid_price.checked_sub(self.order_spacing));
-                let amount_bid = unwrap_or_return_err_as_option!(match self.curve_invariant {
-                    CurveInvariant::Xyk => quote_reserves
+                bid_price = unwrap_or_return_err_as_option!(bid_price.checked_sub(order_spacing));
+                let amount_bid = unwrap_or_return_err_as_option!(
+                    quote_reserves
                         .checked_div_dec(bid_price)
-                        .and_then(|v| v.checked_sub(base_reserves)),
-                });
-                amount_diff =
+                        .and_then(|v| v.checked_sub(base_reserves))
+                );
+                let amount_diff =
                     unwrap_or_return_err_as_option!(amount_bid.checked_sub(bid_prev_amount));
 
-                if amount_diff > Uint128::ZERO {
-                    bid_prev_amount = amount_bid;
-                    bid_i += 1;
-                    break;
-                } else {
-                    bid_i += 1;
-                }
-            }
-            Some(Ok((bid_price, amount_diff)))
+                bid_prev_amount = amount_bid;
+                bid_i += 1;
+
+                Some(Ok((bid_price, amount_diff)))
+            },
         });
 
         // Construct the ask order iterator.
         let mut ask_i = 1;
         let mut ask_prev_amount = Uint128::ZERO;
         let mut ask_price = spot_price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
-        let asks = std::iter::from_fn(move || {
-            let mut amount_diff;
-            loop {
-                if ask_i > self.order_depth {
+        let asks = std::iter::from_fn(move || match self.curve_invariant {
+            CurveInvariant::Xyk {
+                order_depth,
+                order_spacing,
+            } => {
+                if ask_i > order_depth {
                     return None;
                 }
 
-                ask_price =
-                    unwrap_or_return_err_as_option!(ask_price.checked_add(self.order_spacing));
+                ask_price = unwrap_or_return_err_as_option!(ask_price.checked_add(order_spacing));
                 let quote_reserves_div_price =
                     unwrap_or_return_err_as_option!(quote_reserves.checked_div_dec(ask_price));
-                let amount_ask = unwrap_or_return_err_as_option!(match self.curve_invariant {
-                    CurveInvariant::Xyk => base_reserves.checked_sub(quote_reserves_div_price),
-                });
-                amount_diff =
+                let amount_ask = unwrap_or_return_err_as_option!(
+                    base_reserves.checked_sub(quote_reserves_div_price)
+                );
+                let amount_diff =
                     unwrap_or_return_err_as_option!(amount_ask.checked_sub(ask_prev_amount));
 
-                if amount_diff > Uint128::ZERO {
-                    ask_prev_amount = amount_ask;
-                    ask_i += 1;
-                    break;
-                } else {
-                    ask_i += 1;
-                }
-            }
-            Some(Ok((ask_price, amount_diff)))
+                ask_prev_amount = amount_ask;
+                ask_i += 1;
+
+                Some(Ok((ask_price, amount_diff)))
+            },
         });
 
         Ok((bids, asks))
@@ -399,7 +393,9 @@ impl PassiveLiquidityPool for PairParams {
         let quote_reserves = reserves.amount_of(quote_denom)?;
 
         match self.curve_invariant {
-            CurveInvariant::Xyk => Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?),
+            CurveInvariant::Xyk { .. } => {
+                Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?)
+            },
         }
     }
 }
@@ -425,9 +421,10 @@ mod tests {
     use {grug::Coins, test_case::test_case};
 
     #[test_case(
-        CurveInvariant::Xyk,
-        Udec128::ONE,
-        10,
+        CurveInvariant::Xyk {
+            order_depth: 10,
+            order_spacing: Udec128::ONE,
+        },
         Udec128::ZERO,
         coins! {
             eth::DENOM.clone() => 10000000,
@@ -459,9 +456,10 @@ mod tests {
         ],
         1 ; "xyk pool balance 1:200 tick size 1 no fee")]
     #[test_case(
-        CurveInvariant::Xyk,
-        Udec128::ONE,
-        10,
+        CurveInvariant::Xyk {
+            order_depth: 10,
+            order_spacing: Udec128::ONE,
+        },
         Udec128::new_percent(1),
         coins! {
             eth::DENOM.clone() => 10000000,
@@ -493,9 +491,10 @@ mod tests {
         ],
         1 ; "xyk pool balance 1:200 tick size 1 one percent fee")]
     #[test_case(
-        CurveInvariant::Xyk,
-        Udec128::new_percent(1),
-        10,
+        CurveInvariant::Xyk {
+            order_depth: 10,
+            order_spacing: Udec128::new_percent(1),
+        },
         Udec128::ZERO,
         coins! {
             eth::DENOM.clone() => 10000000,
@@ -527,9 +526,10 @@ mod tests {
         ],
         1 ; "xyk pool balance 1:1 no fee")]
     #[test_case(
-        CurveInvariant::Xyk,
-        Udec128::new_percent(1),
-        10,
+        CurveInvariant::Xyk {
+            order_depth: 10,
+            order_spacing: Udec128::new_percent(1),
+        },
         Udec128::new_percent(1),
         coins! {
             eth::DENOM.clone() => 10000000,
@@ -562,8 +562,6 @@ mod tests {
         1 ; "xyk pool balance 1:1 one percent fee")]
     fn curve_on_orderbook(
         curve_invariant: CurveInvariant,
-        order_spacing: Udec128,
-        order_depth: u64,
         swap_fee_rate: Udec128,
         pool_liquidity: Coins,
         expected_bids: Vec<(Udec128, Uint128)>,
@@ -572,8 +570,6 @@ mod tests {
     ) {
         let pair = PairParams {
             curve_invariant,
-            order_spacing,
-            order_depth,
             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };

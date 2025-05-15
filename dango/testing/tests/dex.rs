@@ -1108,10 +1108,11 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    curve_invariant: CurveInvariant::Xyk,
+                    curve_invariant: CurveInvariant::Xyk {
+                        order_depth: 100,
+                        order_spacing: Udec128::new_bps(1),
+                    },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
-                    order_depth: 100,
-                    order_spacing: Udec128::new_bps(1),
                 },
             }]),
             Coins::new(),
@@ -1128,10 +1129,11 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    curve_invariant: CurveInvariant::Xyk,
+                    curve_invariant: CurveInvariant::Xyk {
+                        order_depth: 100,
+                        order_spacing: Udec128::new_bps(1),
+                    },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
-                    order_depth: 100,
-                    order_spacing: Udec128::new_bps(1),
                 },
             }]),
             Coins::new(),
@@ -1195,8 +1197,6 @@ fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: U
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             curve_invariant: pair_params.curve_invariant.clone(),
-                            order_depth: pair_params.order_depth,
-                            order_spacing: pair_params.order_spacing,
                         },
                     }]),
                     Coins::new(),
@@ -1317,8 +1317,6 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             curve_invariant: pair_params.curve_invariant.clone(),
-                            order_depth: pair_params.order_depth,
-                            order_spacing: pair_params.order_spacing,
                         },
                     }]),
                     Coins::new(),
@@ -1656,8 +1654,6 @@ fn swap_exact_amount_in(
                                 lp_denom: pair_params.lp_denom.clone(),
                                 swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                                 curve_invariant: pair_params.curve_invariant.clone(),
-                                order_depth: pair_params.order_depth,
-                                order_spacing: pair_params.order_spacing,
                             },
                         }]),
                         Coins::new(),
@@ -2057,9 +2053,10 @@ fn swap_exact_amount_out(
 }
 
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2102,9 +2099,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 one percent fee no matching orders")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::ZERO,
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2145,9 +2143,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2188,9 +2187,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2233,9 +2233,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::ZERO,
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2276,9 +2277,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::ZERO,
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2319,9 +2321,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::ZERO,
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2364,9 +2367,10 @@ fn swap_exact_amount_out(
     ]
     ; "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after")]
 #[test_case(
-    CurveInvariant::Xyk,
-    Udec128::ONE,
-    10,
+    CurveInvariant::Xyk {
+        order_depth: 10,
+        order_spacing: Udec128::ONE,
+    },
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2424,8 +2428,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders")]
 fn curve_on_orderbook(
     curve_invariant: CurveInvariant,
-    order_spacing: Udec128,
-    order_depth: u64,
     swap_fee_rate: Udec128,
     pool_liquidity: Coins,
     orders: Vec<Vec<CreateLimitOrderRequest>>,
@@ -2468,8 +2470,6 @@ fn curve_on_orderbook(
                             lp_denom: pair_params.lp_denom.clone(),
                             curve_invariant,
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                            order_depth,
-                            order_spacing,
                         },
                     }]),
                     pool_liquidity.clone(),
