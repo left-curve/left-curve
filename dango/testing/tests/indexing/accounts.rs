@@ -3,26 +3,27 @@ use {
     dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_with_indexer},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, RegisterUserData},
+        account_factory::{self, Account, AccountParams, RegisterUserData, Username},
         bank,
-        constants::USDC_DENOM,
+        constants::usdc,
     },
     grug::{
-        Addressable, Coin, Coins, HashExt, QuerierExt, ResultExt, Uint128, btree_map, coins,
+        Addressable, Coins, HashExt, Inner, QuerierExt, ResultExt, Uint128, btree_map, coins,
         setup_tracing_subscriber,
     },
+    hyperlane_types::constants::solana,
     sea_orm::EntityTrait,
+    std::str::FromStr,
 };
 
 #[test]
 fn index_account_creations() {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((suite, accounts, codes, contracts), _context) = setup_test_with_indexer();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let chain_id = suite.chain_id.clone();
-    let username = "user";
 
     // tracing::debug_span!(
     //     "Will use indexerpath for testing: {:?}",
@@ -31,7 +32,8 @@ fn index_account_creations() {
 
     // Copied from `user_onboarding`` test
     // Create a new key offchain; then, predict what its address would be.
-    let user = TestAccount::new_random(username).predict_address(
+    let username = Username::from_str("user").unwrap();
+    let user = TestAccount::new_random(username.clone()).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -39,24 +41,29 @@ fn index_account_creations() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // The transfer should be an orphaned transfer. The bank contract should be
     // holding the 10 USDC.
     suite
-        .query_balance(&contracts.bank, USDC_DENOM.clone())
+        .query_balance(&contracts.bank, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 
     // The orphaned transfer should have been recorded.
     suite
         .query_wasm_smart(contracts.bank, bank::QueryOrphanedTransferRequest {
-            sender: contracts.warp,
+            sender: contracts.gateway,
             recipient: user.address(),
         })
-        .should_succeed_and_equal(coins! { USDC_DENOM.clone() => 10_000_000 });
+        .should_succeed_and_equal(coins! { usdc::DENOM.clone() => 10_000_000 });
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -111,7 +118,7 @@ fn index_account_creations() {
 
     // User's account should have been created with the correct token balance.
     suite
-        .query_balance(&user, USDC_DENOM.clone())
+        .query_balance(&user, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 
     // Force the runtime to wait for the async indexer task to finish
@@ -123,19 +130,38 @@ fn index_account_creations() {
         .indexer
         .handle
         .block_on(async {
+            let users = dango_indexer_sql::entity::users::Entity::find()
+                .all(&suite.app.indexer.context.db)
+                .await?;
+
             let accounts = dango_indexer_sql::entity::accounts::Entity::find()
                 .all(&suite.app.indexer.context.db)
                 .await?;
 
-            assert_that!(accounts).has_length(1);
+            let public_keys = dango_indexer_sql::entity::public_keys::Entity::find()
+                .all(&suite.app.indexer.context.db)
+                .await?;
 
-            // assert_that!(
-            //     accounts
-            //         .iter()
-            //         .map(|t| t.username.as_str())
-            //         .collect::<Vec<_>>()
-            // )
-            // .is_equal_to(vec![username]);
+            assert_that!(
+                users
+                    .iter()
+                    .map(|t| t.username.as_str())
+                    .collect::<Vec<_>>()
+            )
+            .is_equal_to(vec![username.as_ref()]);
+
+            assert_that!(accounts).has_length(1);
+            assert_that!(public_keys).has_length(1);
+
+            let public_key = public_keys.first().unwrap();
+
+            assert_that!(&public_key.username).is_equal_to(username.inner());
+            assert_that!(public_key.key_hash).is_equal_to(user.first_key_hash().to_string());
+            assert_that!(public_key.public_key).is_equal_to(user.first_key().to_string());
+
+            dbg!(accounts);
+            dbg!(users);
+            dbg!(public_keys);
 
             Ok::<_, anyhow::Error>(())
         })
@@ -146,8 +172,8 @@ fn index_account_creations() {
 fn index_previous_blocks() {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((suite, accounts, codes, contracts), _context) = setup_test_with_indexer();
-    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+    let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let chain_id = suite.chain_id.clone();
     let username = "user";
@@ -159,7 +185,7 @@ fn index_previous_blocks() {
 
     // Copied from `user_onboarding`` test
     // Create a new key offchain; then, predict what its address would be.
-    let user = TestAccount::new_random(username).predict_address(
+    let user = TestAccount::new_random(Username::from_str(username).unwrap()).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -167,15 +193,20 @@ fn index_previous_blocks() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().receive_transfer(
-        user.address(),
-        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
-    );
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
 
     // The transfer should be an orphaned transfer. The bank contract should be
     // holding the 10 USDC.
     suite
-        .query_balance(&contracts.bank, USDC_DENOM.clone())
+        .query_balance(&contracts.bank, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 
     // The orphaned transfer should have been recorded.
@@ -184,7 +215,7 @@ fn index_previous_blocks() {
             sender: contracts.warp,
             recipient: user.address(),
         })
-        .should_succeed_and_equal(coins! { USDC_DENOM.clone() => 10_000_000 });
+        .should_succeed_and_equal(coins! { usdc::DENOM.clone() => 10_000_000 });
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -239,7 +270,7 @@ fn index_previous_blocks() {
 
     // User's account should have been created with the correct token balance.
     suite
-        .query_balance(&user, USDC_DENOM.clone())
+        .query_balance(&user, usdc::DENOM.clone())
         .should_succeed_and_equal(Uint128::new(10_000_000));
 
     // Force the runtime to wait for the async indexer task to finish

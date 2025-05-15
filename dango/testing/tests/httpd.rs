@@ -165,22 +165,9 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
-            // let msgs = vec![
-            //     Message::transfer(
-            //         accounts.user2.address(),
-            //         Coins::one(USDC_DENOM.clone(), 123).unwrap(),
-            //     )
-            //     .unwrap(),
-            // ];
-            // Copied from benchmarks.rs
-            let msgs = vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(
-                        accounts.user1.username.clone(),
-                    )),
-                },
-                Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            let msgs = vec![Message::transfer(
+                accounts.user2.address(),
+                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
             )?];
 
             suite
