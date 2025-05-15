@@ -16,17 +16,12 @@
     username: "{{ ghcr_user }}"
     password: "{{ ghcr_token }}"
 
-- name: Pull bots image
-  community.docker.docker_image:
-    name: ghcr.io/left-curve/bots/bots:latest
-    source: pull
-
 - name: Deploy bots container
   docker_container:
     name: bots
     image: ghcr.io/left-curve/bots/bots:latest
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
-    pull: never # always
+    pull: always
     recreate: true
     restart_policy: unless-stopped
     state: started
