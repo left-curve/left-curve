@@ -5,7 +5,7 @@ const meta: Meta<typeof Pagination> = {
   title: "Design System/Foundation/Pagination",
   component: Pagination,
   argTypes: {
-    total: {
+    totalPages: {
       control: { type: "number" },
       description: "The total number of pages.",
     },
@@ -26,7 +26,7 @@ const meta: Meta<typeof Pagination> = {
       control: { type: "number" },
       description: "The initial page (uncontrolled).",
     },
-    page: {
+    currentPage: {
       control: { type: "number" },
       description: "The current page (controlled).",
     },
@@ -36,10 +36,6 @@ const meta: Meta<typeof Pagination> = {
     isDisabled: {
       control: { type: "boolean" },
       description: "Whether the pagination is disabled.",
-    },
-    id: {
-      control: { type: "text" },
-      description: "Optional ID for the pagination component if more than one is used.",
     },
     labelPage: {
       control: { type: "text" },
@@ -51,7 +47,7 @@ const meta: Meta<typeof Pagination> = {
     },
   },
   args: {
-    total: 10,
+    totalPages: 15,
     isDisabled: false,
   },
   parameters: {
@@ -66,7 +62,7 @@ type Store = StoryObj<typeof Pagination>;
 
 export const Default: Store = {
   args: {
-    total: 10,
+    totalPages: 15,
     siblings: 1,
     boundaries: 1,
     initialPage: 1,
@@ -75,7 +71,7 @@ export const Default: Store = {
 export const Text: Store = {
   args: {
     variant: "text",
-    total: 10,
+    totalPages: 10,
     siblings: 1,
     boundaries: 1,
     initialPage: 1,
