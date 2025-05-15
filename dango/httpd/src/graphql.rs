@@ -44,9 +44,9 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     );
 
     let file_transaction_loader: DataLoader<
-        dataloader::file_transaction::FileTranscationDataLoader,
+        dataloader::file_transaction::FileTransactionDataLoader,
     > = DataLoader::new(
-        dataloader::file_transaction::FileTranscationDataLoader {
+        dataloader::file_transaction::FileTransactionDataLoader {
             indexer: app_ctx.indexer_path.clone(),
         },
         tokio::spawn,

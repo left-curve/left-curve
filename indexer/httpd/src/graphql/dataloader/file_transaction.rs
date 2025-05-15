@@ -7,11 +7,11 @@ use {
     std::{collections::HashMap, sync::Arc},
 };
 
-pub struct FileTranscationDataLoader {
+pub struct FileTransactionDataLoader {
     pub indexer: IndexerPath,
 }
 
-impl Loader<Transaction> for FileTranscationDataLoader {
+impl Loader<Transaction> for FileTransactionDataLoader {
     type Error = Arc<anyhow::Error>;
     type Value = (Tx, TxOutcome);
 

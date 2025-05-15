@@ -1,7 +1,7 @@
 use {
     super::{event::Event, message::Message},
     crate::graphql::dataloader::{
-        file_transaction::FileTranscationDataLoader,
+        file_transaction::FileTransactionDataLoader,
         transaction_events::TransactionEventsDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
     },
@@ -98,7 +98,7 @@ impl Transaction {
 }
 
 async fn load_tx_from_file(tx: &Transaction, ctx: &Context<'_>) -> Result<(Tx, TxOutcome)> {
-    let loader = ctx.data_unchecked::<DataLoader<FileTranscationDataLoader>>();
+    let loader = ctx.data_unchecked::<DataLoader<FileTransactionDataLoader>>();
     loader
         .load_one(tx.clone())
         .await?
