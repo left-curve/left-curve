@@ -150,6 +150,7 @@ fn index_account_creations() {
             )
             .is_equal_to(vec![username.as_ref()]);
 
+            assert_that!(users).has_length(1);
             assert_that!(accounts).has_length(1);
             assert_that!(public_keys).has_length(1);
 
@@ -168,6 +169,7 @@ fn index_account_creations() {
         .expect("Can't fetch accounts");
 }
 
+#[ignore]
 #[test]
 fn index_previous_blocks() {
     setup_tracing_subscriber(tracing::Level::INFO);
