@@ -1,11 +1,41 @@
 use {
     crate::graphql::types::transaction::Transaction,
-    anyhow::anyhow,
+    anyhow::{anyhow, ensure},
     async_graphql::dataloader::Loader,
     grug_types::{Tx, TxOutcome},
-    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
-    std::{collections::HashMap, sync::Arc},
+    indexer_sql::{block_to_index::BlockToIndex, error::IndexerError, indexer_path::IndexerPath},
+    std::{
+        collections::{HashMap, hash_map::Entry},
+        sync::Arc,
+    },
 };
+
+pub struct BlockCache<'a> {
+    pub blocks: HashMap<u64, BlockToIndex>,
+    pub indexer: &'a IndexerPath,
+}
+
+impl BlockCache<'_> {
+    pub fn new(indexer: &IndexerPath) -> BlockCache {
+        BlockCache {
+            indexer,
+            blocks: HashMap::new(),
+        }
+    }
+
+    pub fn get_or_load_from_disk(
+        &mut self,
+        block_height: u64,
+    ) -> Result<&BlockToIndex, IndexerError> {
+        match self.blocks.entry(block_height) {
+            Entry::Vacant(entry) => {
+                let block = BlockToIndex::load_from_disk(self.indexer.block_path(block_height))?;
+                Ok(entry.insert(block))
+            },
+            Entry::Occupied(entry) => Ok(entry.into_mut()),
+        }
+    }
+}
 
 pub struct FileTransactionDataLoader {
     pub indexer: IndexerPath,
@@ -19,57 +49,35 @@ impl Loader<Transaction> for FileTransactionDataLoader {
         &self,
         keys: &[Transaction],
     ) -> Result<HashMap<Transaction, Self::Value>, Self::Error> {
-        let mut buff = HashMap::<u64, BlockToIndex>::new();
+        let mut cache = BlockCache::new(&self.indexer);
 
         keys.iter()
             .map(|graphql_tx| {
-                let indexed_block = match buff.get(&graphql_tx.block_height) {
-                    Some(block_to_index) => block_to_index.clone(),
-                    None => {
-                        let block_to_index = match BlockToIndex::load_from_disk(
-                            self.indexer.block_path(graphql_tx.block_height),
-                        ) {
-                            Ok(b) => b,
-                            Err(err) => {
-                                return Err(err.into());
-                            },
-                        };
+                // Load the block.
+                let indexed_block = cache.get_or_load_from_disk(graphql_tx.block_height)?;
 
-                        buff.insert(graphql_tx.block_height, block_to_index.clone());
-                        block_to_index
-                    },
-                };
-
-                let tx = if let Some((tx, hash)) = indexed_block
+                // Find the transaction in the block.
+                let (tx, hash) = indexed_block
                     .block
                     .txs
                     .get(graphql_tx.transaction_idx as usize)
-                {
-                    if hash.to_string() == graphql_tx.hash {
-                        tx.clone()
-                    } else {
-                        return Err(anyhow!(
-                            "Transaction hash mismatch: {} != {}",
-                            hash.to_string(),
-                            graphql_tx.hash
-                        ));
-                    }
-                } else {
-                    return Err(anyhow!("Transaction not found: {}", graphql_tx.hash));
-                };
+                    .cloned()
+                    .ok_or_else(|| anyhow!("transaction not found: {}", graphql_tx.hash))?;
 
-                let outcome = if let Some(outcome) = indexed_block
+                // Find the transaction outcome in the block.
+                let outcome = indexed_block
                     .block_outcome
                     .tx_outcomes
                     .get(graphql_tx.transaction_idx as usize)
-                {
-                    outcome.clone()
-                } else {
-                    return Err(anyhow!(
-                        "Transaction outcome not found: {}",
-                        graphql_tx.hash
-                    ));
-                };
+                    .cloned()
+                    .ok_or_else(|| anyhow!("transaction outcome not found: {}", graphql_tx.hash))?;
+
+                ensure!(
+                    hash.to_string() == graphql_tx.hash,
+                    "transaction hash mismatch: {} != {}",
+                    hash,
+                    graphql_tx.hash
+                );
 
                 Ok((graphql_tx.clone(), (tx, outcome)))
             })
