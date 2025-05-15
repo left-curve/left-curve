@@ -22,6 +22,9 @@ install-runners:
   source .venv/bin/activate && ansible-playbook setup-github-runner-hosts.yml
   source .venv/bin/activate && ansible-playbook install-github-runner-hosts.yml
 
+deploy-bots:
+  ansible-playbook bots.yml
+
 cold-deploy-dango:
   ansible-playbook dango.yml
 

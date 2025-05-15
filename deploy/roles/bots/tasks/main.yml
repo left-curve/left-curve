@@ -1,0 +1,41 @@
+- name: Allow TCP ports
+  tags: setup
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 8082
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+
+- name: Pull bots image
+  community.docker.docker_image:
+    name: ghcr.io/left-curve/bots/bots:latest
+    source: pull
+
+- name: Deploy bots container
+  docker_container:
+    name: bots
+    image: ghcr.io/left-curve/bots/bots:latest
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    pull: never # always
+    recreate: true
+    restart_policy: unless-stopped
+    state: started
+    command: ["faucet", "--provider-url", "http://dango:8080"]
+    env:
+      HOME: /app
+    ports:
+      - "8082:8082"
+    networks:
+      - name: backend
+    tty: true
+
