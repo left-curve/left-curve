@@ -1,7 +1,11 @@
 use {
-    crate::{entity, error::Error},
+    crate::{
+        entity::{self},
+        error::Error,
+    },
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
+    grug::Addr,
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{
         Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
@@ -10,8 +14,17 @@ use {
     uuid::Uuid,
 };
 
+mod accounts;
+
 #[derive(Clone)]
-pub struct Hooks;
+pub struct ContractAddrs {
+    pub account_factory: Addr,
+}
+
+#[derive(Clone)]
+pub struct Hooks {
+    pub contract_addrs: ContractAddrs,
+}
 
 #[async_trait]
 impl HooksTrait for Hooks {
@@ -28,6 +41,7 @@ impl HooksTrait for Hooks {
         block: BlockToIndex,
     ) -> Result<(), Self::Error> {
         self.save_transfers(&context, &block).await?;
+        self.save_accounts(&context, &block).await?;
 
         Ok(())
     }
@@ -140,7 +154,11 @@ mod tests {
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
-            .with_hooks(Hooks)
+            .with_hooks(Hooks {
+                contract_addrs: ContractAddrs {
+                    account_factory: Addr::mock(0),
+                },
+            })
             .build()?;
 
         let storage = MockStorage::new();

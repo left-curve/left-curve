@@ -1,6 +1,7 @@
 mod config;
 mod db;
 mod home_directory;
+mod indexer;
 mod keys;
 mod prompt;
 mod query;
@@ -20,6 +21,7 @@ use {
     config::Config,
     config_parser::parse_config,
     grug_app::GIT_COMMIT,
+    indexer::IndexerCmd,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -51,6 +53,9 @@ enum Command {
 
     /// Start the node
     Start(StartCmd),
+
+    /// Indexer related commands
+    Indexer(IndexerCmd),
 
     /// Run test
     #[cfg(feature = "testing")]
@@ -99,5 +104,6 @@ async fn main() -> anyhow::Result<()> {
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
+        Command::Indexer(cmd) => cmd.run(app_dir).await,
     }
 }
