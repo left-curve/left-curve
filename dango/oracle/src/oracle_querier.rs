@@ -6,38 +6,27 @@ use {
         lending::{NAMESPACE, SUBNAMESPACE},
         oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
-    grug::{Addr, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Udec128},
+    grug::{
+        Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Udec128,
+    },
     pyth_types::PythId,
-    std::{cell::OnceCell, collections::HashMap},
+    std::cell::OnceCell,
 };
 
 pub struct OracleQuerier<'a> {
-    ctx: OracleContext<'a>,
-    cache: Option<HashMap<Denom, PrecisionedPrice>>,
-    lending: RemoteLending<'a>,
+    cache: Cache<'a, Denom, PrecisionedPrice, anyhow::Error, Option<PriceSource>>,
 }
 
 impl<'a> OracleQuerier<'a> {
-    /// Create a new `OracleQuerier` for use inside the oracle contract itself,
-    /// without caching.
-    pub fn new_local(storage: &'a dyn Storage, querier: QuerierWrapper<'a>) -> Self {
-        Self::new(OracleContext::Local { storage }, querier, false)
-    }
-
     /// Create a new `OracleQuerier` for in another contract, with caching.
     pub fn new_remote(address: Addr, querier: QuerierWrapper<'a>) -> Self {
-        Self::new(OracleContext::Remote { address, querier }, querier, true)
-    }
+        let ctx = OracleContext::Remote { address, querier };
+        let no_cache_querier = OracleQuerierNoCache::new(ctx, querier);
 
-    fn new(ctx: OracleContext<'a>, querier: QuerierWrapper<'a>, use_cache: bool) -> Self {
         Self {
-            ctx,
-            cache: if use_cache {
-                Some(HashMap::new())
-            } else {
-                None
-            },
-            lending: RemoteLending::new(querier),
+            cache: Cache::new(move |denom, price_source| {
+                no_cache_querier.query_price(&denom, price_source)
+            }),
         }
     }
 
@@ -46,27 +35,50 @@ impl<'a> OracleQuerier<'a> {
         denom: &Denom,
         price_source: Option<PriceSource>,
     ) -> anyhow::Result<PrecisionedPrice> {
-        // If cache is enabled and the price already exists in the cache, return it.
-        if let Some(price) = self.cache.as_ref().and_then(|cache| cache.get(denom)) {
-            return Ok(price.clone());
-        }
+        self.cache.get_or_fetch(denom, price_source).cloned()
+    }
+}
 
+pub struct OracleQuerierNoCache<'a> {
+    ctx: OracleContext<'a>,
+    lending: RemoteLending<'a>,
+}
+
+impl<'a> OracleQuerierNoCache<'a> {
+    /// Create a new `OracleQuerierNoCache` for use inside the oracle contract
+    /// itself.
+    pub fn new_local(storage: &'a dyn Storage, querier: QuerierWrapper<'a>) -> Self {
+        Self::new(OracleContext::Local { storage }, querier)
+    }
+
+    fn new(ctx: OracleContext<'a>, querier: QuerierWrapper<'a>) -> Self {
+        Self {
+            ctx,
+            lending: RemoteLending::new(querier),
+        }
+    }
+
+    pub fn query_price(
+        &self,
+        denom: &Denom,
+        price_source: Option<PriceSource>,
+    ) -> anyhow::Result<PrecisionedPrice> {
         // Query the denom's price source, if not provided.
         let price_source = price_source.map_or_else(|| self.ctx.get_price_source(denom), Ok)?;
 
         // Compute the price based on the price source.
-        let price = match price_source {
+        match price_source {
             PriceSource::Fixed {
                 humanized_price,
                 precision,
                 timestamp,
             } => {
                 let price = PrecisionlessPrice::new(humanized_price, humanized_price, timestamp);
-                price.with_precision(precision)
+                Ok(price.with_precision(precision))
             },
             PriceSource::Pyth { id, precision } => {
                 let (price, _) = self.ctx.get_price(id)?;
-                price.with_precision(precision)
+                Ok(price.with_precision(precision))
             },
             PriceSource::LendingLiquidity => {
                 // Get the underlying denom.
@@ -86,21 +98,14 @@ impl<'a> OracleQuerier<'a> {
                 let supply_index = self.lending.get_supply_index(&underlying_denom)?;
 
                 // Calculate the price of the LP token.
-                PrecisionedPrice::new(
+                Ok(PrecisionedPrice::new(
                     underlying_price.humanized_price.checked_mul(supply_index)?,
                     underlying_price.humanized_ema.checked_mul(supply_index)?,
                     underlying_price.timestamp,
                     underlying_price.precision(),
-                )
+                ))
             },
-        };
-
-        // Insert the price into the cache, if enabled.
-        if let Some(cache) = &mut self.cache {
-            cache.insert(denom.clone(), price.clone());
         }
-
-        Ok(price)
     }
 }
 
