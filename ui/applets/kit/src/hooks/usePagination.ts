@@ -72,7 +72,7 @@ export function usePagination(parameters: UsePaginationParameters) {
     return pages
       .slice(pages.length - boundaries, pages.length)
       .filter((p) => !middlePages.includes(p));
-  }, [middlePages, pages]);
+  }, [middlePages, pages, boundaries]);
 
   const isPreviousTruncable = useMemo(() => {
     return middlePages[0] > previousPages[previousPages.length - 1] + 1;
@@ -80,19 +80,19 @@ export function usePagination(parameters: UsePaginationParameters) {
 
   const isNextTruncable = useMemo(() => {
     return middlePages[middlePages.length - 1] + 1 < nextPages[0];
-  }, [nextPages, middlePages]);
+  }, [nextPages, middlePages, isDisabled, setCurrentPage]);
 
   const nextPage = useCallback(() => {
     if (hasNextPage && !isDisabled) {
       setCurrentPage(currentPage + 1);
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, isDisabled, setCurrentPage]);
 
   const previousPage = useCallback(() => {
     if (hasPreviousPage && !isDisabled) {
       setCurrentPage(currentPage - 1);
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, isDisabled, setCurrentPage]);
 
   return {
     hasNextPage,

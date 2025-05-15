@@ -140,7 +140,6 @@ const PaginationItem: React.FC<PaginationItemProps> = ({ page, setCurrentPage, i
     <motion.button
       layout
       type="button"
-      key={page}
       onClick={() => setCurrentPage(page)}
       className={twMerge(styles.item(), "relative")}
       initial={{ opacity: 0, scale: 0.9 }}
