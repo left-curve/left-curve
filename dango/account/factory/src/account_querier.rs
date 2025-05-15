@@ -12,7 +12,7 @@ impl<'a> AccountQuerier<'a> {
     pub fn new(factory: Addr, querier: QuerierWrapper<'a>) -> Self {
         Self {
             cache: Cache::new(move |address, ()| {
-                querier.query_wasm_path(factory, &ACCOUNTS.path(address))
+                querier.query_wasm_path(factory, &ACCOUNTS.path(*address))
             }),
         }
     }

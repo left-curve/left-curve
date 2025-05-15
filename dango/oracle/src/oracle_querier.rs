@@ -25,7 +25,7 @@ impl<'a> OracleQuerier<'a> {
 
         Self {
             cache: Cache::new(move |denom, price_source| {
-                no_cache_querier.query_price(&denom, price_source)
+                no_cache_querier.query_price(denom, price_source)
             }),
         }
     }
