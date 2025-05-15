@@ -21,8 +21,8 @@ impl Loader<Transaction> for FileTranscationDataLoader {
     ) -> Result<HashMap<Transaction, Self::Value>, Self::Error> {
         let mut buff = HashMap::<u64, BlockToIndex>::new();
 
-        keys.into_iter()
-            .filter_map(|graphql_tx| {
+        keys.iter()
+            .map(|graphql_tx| {
                 let indexed_block = match buff.get(&graphql_tx.block_height) {
                     Some(block_to_index) => block_to_index.clone(),
                     None => {
@@ -31,7 +31,7 @@ impl Loader<Transaction> for FileTranscationDataLoader {
                         ) {
                             Ok(b) => b,
                             Err(err) => {
-                                return Some(Err(err.into()));
+                                return Err(err.into());
                             },
                         };
 
@@ -48,14 +48,14 @@ impl Loader<Transaction> for FileTranscationDataLoader {
                     if hash.to_string() == graphql_tx.hash {
                         tx.clone()
                     } else {
-                        return Some(Err(anyhow!(
+                        return Err(anyhow!(
                             "Transaction hash mismatch: {} != {}",
                             hash.to_string(),
                             graphql_tx.hash
-                        )));
+                        ));
                     }
                 } else {
-                    return Some(Err(anyhow!("Transaction not found: {}", graphql_tx.hash)));
+                    return Err(anyhow!("Transaction not found: {}", graphql_tx.hash));
                 };
 
                 let outcome = if let Some(outcome) = indexed_block
@@ -65,13 +65,13 @@ impl Loader<Transaction> for FileTranscationDataLoader {
                 {
                     outcome.clone()
                 } else {
-                    return Some(Err(anyhow!(
+                    return Err(anyhow!(
                         "Transaction outcome not found: {}",
                         graphql_tx.hash
-                    )));
+                    ));
                 };
 
-                Some(Ok((graphql_tx.clone(), (tx, outcome))))
+                Ok((graphql_tx.clone(), (tx, outcome)))
             })
             .collect::<Result<_, _>>()
             .map_err(Arc::new)
