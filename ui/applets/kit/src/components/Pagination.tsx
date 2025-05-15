@@ -9,7 +9,7 @@ import { twMerge } from "#utils/twMerge.js";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
-import type { UsePaginationParameters } from "#hooks/usePagination.js";
+import type { UsePaginationParameters } from "../hooks/usePagination";
 
 type PaginationProps = VariantProps<typeof paginationVariants> &
   Omit<UsePaginationParameters, "setCurrentPage"> & {

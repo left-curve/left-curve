@@ -80,7 +80,7 @@ export function usePagination(parameters: UsePaginationParameters) {
 
   const isNextTruncable = useMemo(() => {
     return middlePages[middlePages.length - 1] + 1 < nextPages[0];
-  }, [nextPages, middlePages, isDisabled, setCurrentPage]);
+  }, [nextPages, middlePages]);
 
   const nextPage = useCallback(() => {
     if (hasNextPage && !isDisabled) {
