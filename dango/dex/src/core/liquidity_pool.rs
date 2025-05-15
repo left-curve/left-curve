@@ -4,9 +4,18 @@ use {
     dango_types::dex::{CurveInvariant, PairParams},
     grug::{
         Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        StdResult, Udec128, Uint128,
+        StdError, StdResult, Udec128, Uint128,
     },
 };
+
+macro_rules! unwrap_or_return_err_as_option {
+    ($expr:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(e)  => return Some(Err(StdError::Math(e))),
+        }
+    };
+}
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
@@ -113,7 +122,10 @@ pub trait PassiveLiquidityPool {
         base_denom: Denom,
         quote_denom: Denom,
         reserves: &CoinPair,
-    ) -> StdResult<(Vec<(Udec128, Uint128)>, Vec<(Udec128, Uint128)>)>;
+    ) -> StdResult<(
+        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
+        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
+    )>;
 
     /// Returns the spot price of the pool at the current reserves, given as the number
     /// of quote asset units per base asset unit.
@@ -300,62 +312,79 @@ impl PassiveLiquidityPool for PairParams {
         base_denom: Denom,
         quote_denom: Denom,
         reserves: &CoinPair,
-    ) -> StdResult<(Vec<(Udec128, Uint128)>, Vec<(Udec128, Uint128)>)> {
+    ) -> StdResult<(
+        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
+        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
+    )> {
         let base_reserves = reserves.amount_of(&base_denom)?;
         let quote_reserves = reserves.amount_of(&quote_denom)?;
+        let spot_price = self.spot_price(&base_denom, &quote_denom, reserves)?;
 
-        let price = self.spot_price(&base_denom, &quote_denom, reserves)?;
-
-        // Calculate the starting price for the ask and bid side respectively. We
-        // place the spread symmetrically around the spot price.
         let swap_fee_rate = self.swap_fee_rate.into_inner();
-        let starting_price_ask = price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
-        let starting_price_bid = price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
 
-        let mut bids = Vec::with_capacity(self.order_depth as usize);
-        let mut asks = Vec::with_capacity(self.order_depth as usize);
-        let mut amount_bid_prev = Uint128::ZERO;
-        let mut amount_ask_prev = Uint128::ZERO;
-        for i in 1..(self.order_depth + 1) {
-            // Calculate the price that is `i` price steps of size `order_spacing`
-            // on the ask and bid side of the spot price respectively.
-            let delta_p = self
-                .order_spacing
-                .checked_mul(Udec128::checked_from_ratio(i as u128, Uint128::ONE)?)?;
-            let price_ask = starting_price_ask.checked_add(delta_p)?;
-            let price_bid = starting_price_bid.checked_sub(delta_p)?;
+        // Construct the bid order iterator.
+        let mut bid_i = 1;
+        let mut bid_prev_amount = Uint128::ZERO;
+        let mut bid_price = spot_price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
+        let bids = std::iter::from_fn(move || {
+            let mut amount_diff;
+            loop {
+                if bid_i > self.order_depth {
+                    return None;
+                }
 
-            // Calculate the amount of base that the pool will trade from the
-            // current spot price to `price_ask` and `price_bid` respectively.
-            let (amount_ask, amount_bid) = match self.curve_invariant {
-                CurveInvariant::Xyk => {
-                    let amount_ask =
-                        base_reserves.checked_sub(quote_reserves.checked_div_dec(price_ask)?)?;
-                    let amount_bid = quote_reserves
-                        .checked_div_dec(price_bid)?
-                        .checked_sub(base_reserves)?;
-                    (amount_ask, amount_bid)
-                },
-            };
+                bid_price =
+                    unwrap_or_return_err_as_option!(bid_price.checked_sub(self.order_spacing));
+                let amount_bid = unwrap_or_return_err_as_option!(match self.curve_invariant {
+                    CurveInvariant::Xyk => quote_reserves
+                        .checked_div_dec(bid_price)
+                        .and_then(|v| v.checked_sub(base_reserves)),
+                });
+                amount_diff =
+                    unwrap_or_return_err_as_option!(amount_bid.checked_sub(bid_prev_amount));
 
-            // Calculate the difference in the amount as compared to the previous iteration.
-            // I.e. the amount that the pool would trade between the previous price and the
-            // current price, which is the amount of the order to place at the current price.
-            // Only place orders if the amount is positive.
-            let amount_bid_diff = amount_bid.checked_sub(amount_bid_prev)?;
-            if amount_bid_diff > Uint128::ZERO {
-                bids.push((price_bid, amount_bid_diff));
+                if amount_diff > Uint128::ZERO {
+                    bid_prev_amount = amount_bid;
+                    bid_i += 1;
+                    break;
+                } else {
+                    bid_i += 1;
+                }
             }
+            Some(Ok((bid_price, amount_diff)))
+        });
 
-            let amount_ask_diff = amount_ask.checked_sub(amount_ask_prev)?;
-            if amount_ask_diff > Uint128::ZERO {
-                asks.push((price_ask, amount_ask_diff));
+        // Construct the ask order iterator.
+        let mut ask_i = 1;
+        let mut ask_prev_amount = Uint128::ZERO;
+        let mut ask_price = spot_price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
+        let asks = std::iter::from_fn(move || {
+            let mut amount_diff;
+            loop {
+                if ask_i > self.order_depth {
+                    return None;
+                }
+
+                ask_price =
+                    unwrap_or_return_err_as_option!(ask_price.checked_add(self.order_spacing));
+                let quote_reserves_div_price =
+                    unwrap_or_return_err_as_option!(quote_reserves.checked_div_dec(ask_price));
+                let amount_ask = unwrap_or_return_err_as_option!(match self.curve_invariant {
+                    CurveInvariant::Xyk => base_reserves.checked_sub(quote_reserves_div_price),
+                });
+                amount_diff =
+                    unwrap_or_return_err_as_option!(amount_ask.checked_sub(ask_prev_amount));
+
+                if amount_diff > Uint128::ZERO {
+                    ask_prev_amount = amount_ask;
+                    ask_i += 1;
+                    break;
+                } else {
+                    ask_i += 1;
+                }
             }
-
-            // Update the previous amounts for the next iteration.
-            amount_bid_prev = amount_bid;
-            amount_ask_prev = amount_ask;
-        }
+            Some(Ok((ask_price, amount_diff)))
+        });
 
         Ok((bids, asks))
     }
@@ -549,22 +578,21 @@ mod tests {
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
 
+        let reserves = pool_liquidity.try_into().unwrap();
         let (bids, asks) = pair
-            .reflect_curve(
-                eth::DENOM.clone(),
-                usdc::DENOM.clone(),
-                &pool_liquidity.try_into().unwrap(),
-            )
+            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserves)
             .unwrap();
 
-        for (bid, expected_bid) in bids.iter().zip(expected_bids.iter()) {
+        for (bid, expected_bid) in bids.zip(expected_bids.iter()) {
+            let bid = bid.unwrap();
             assert_eq!(bid.0, expected_bid.0);
             assert!(
                 bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
             );
         }
 
-        for (ask, expected_ask) in asks.iter().zip(expected_asks.iter()) {
+        for (ask, expected_ask) in asks.zip(expected_asks.iter()) {
+            let ask = ask.unwrap();
             assert_eq!(ask.0, expected_ask.0);
             assert!(
                 ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance

@@ -622,24 +622,29 @@ fn clear_orders_of_pair(
             let (passive_bids, passive_asks) =
                 pair.reflect_curve(base_denom.clone(), quote_denom.clone(), &reserve)?;
 
-            let passive_bids = passive_bids.into_iter().map(|(price, amount)| {
-                Ok(((price, u64::MAX), Order {
-                    user: dex_addr,
-                    amount,
-                    remaining: amount,
-                    created_at_block_height: current_block_height,
-                }))
+            // Convert the passive bids and asks iterators to the format required by match_orders.
+            let passive_bids = passive_bids.map(|res| {
+                res.map(|(price, amount)| {
+                    ((price, u64::MAX), Order {
+                        user: dex_addr,
+                        amount,
+                        remaining: amount,
+                        created_at_block_height: current_block_height,
+                    })
+                })
             });
-            let passive_asks = passive_asks.into_iter().map(|(price, amount)| {
-                Ok(((price, 0), Order {
-                    user: dex_addr,
-                    amount,
-                    remaining: amount,
-                    created_at_block_height: current_block_height,
-                }))
+            let passive_asks = passive_asks.map(|res| {
+                res.map(|(price, amount)| {
+                    ((price, 0), Order {
+                        user: dex_addr,
+                        amount,
+                        remaining: amount,
+                        created_at_block_height: current_block_height,
+                    })
+                })
             });
 
-            // Merge the real and passive orders.
+            // Merge the real and passive order iterators
             let (merged_bid_iter, merged_ask_iter) = (
                 MergedOrders::new(bid_iter, Box::new(passive_bids), grug::Order::Descending),
                 MergedOrders::new(ask_iter, Box::new(passive_asks), grug::Order::Ascending),
