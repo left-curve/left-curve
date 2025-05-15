@@ -1,4 +1,5 @@
 import { useMediaQuery } from "@left-curve/applets-kit";
+import { useFavApplets } from "~/hooks/useFavApplets";
 
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
@@ -6,7 +7,7 @@ import { motion } from "framer-motion";
 import type { AppletMetadata } from "@left-curve/applets-kit";
 import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
 import type { AnyCoin, WithPrice } from "@left-curve/store/types";
-import type { PropsWithChildren } from "react";
+import type { MouseEvent, PropsWithChildren } from "react";
 
 const childVariants = {
   hidden: { opacity: 0, y: -30 },
@@ -19,7 +20,17 @@ const Root: React.FC<PropsWithChildren> = ({ children }) => {
 
 type SearchAppletItemProps = AppletMetadata;
 
-const AppletItem: React.FC<SearchAppletItemProps> = ({ description, img, title }) => {
+const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
+  const { title, description, img, path } = applet;
+  const { favApplets, addFavApplet, removeFavApplet } = useFavApplets();
+  const isFav = favApplets[path];
+
+  const onClickStar = (e: MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (isFav) removeFavApplet(applet);
+    else addFavApplet(applet);
+  };
+
   return (
     <motion.div
       className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
@@ -35,12 +46,12 @@ const AppletItem: React.FC<SearchAppletItemProps> = ({ description, img, title }
           <p className="diatype-m-regular text-gray-500">{description}</p>
         </div>
       </div>
-      <div>
-        {/*  {false ? (
+      <div onClick={onClickStar}>
+        {isFav ? (
           <IconStar className="w-6 h-6 text-rice-500" />
         ) : (
           <IconEmptyStar className="w-6 h-6" />
-        )} */}
+        )}
       </div>
     </motion.div>
   );
