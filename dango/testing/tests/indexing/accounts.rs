@@ -124,7 +124,7 @@ fn index_account_creations() {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    // The transfer should have been indexed.
+    // The account creation should have been indexed.
     suite
         .app
         .indexer
@@ -135,6 +135,10 @@ fn index_account_creations() {
                 .await?;
 
             let accounts = dango_indexer_sql::entity::accounts::Entity::find()
+                .all(&suite.app.indexer.context.db)
+                .await?;
+
+            let account_users = dango_indexer_sql::entity::accounts_users::Entity::find()
                 .all(&suite.app.indexer.context.db)
                 .await?;
 
@@ -152,6 +156,7 @@ fn index_account_creations() {
 
             assert_that!(users).has_length(1);
             assert_that!(accounts).has_length(1);
+            assert_that!(account_users).has_length(1);
             assert_that!(public_keys).has_length(1);
 
             let public_key = public_keys.first().unwrap();
@@ -160,9 +165,10 @@ fn index_account_creations() {
             assert_that!(public_key.key_hash).is_equal_to(user.first_key_hash().to_string());
             assert_that!(public_key.public_key).is_equal_to(user.first_key().to_string());
 
-            dbg!(accounts);
             dbg!(users);
             dbg!(public_keys);
+            dbg!(accounts);
+            dbg!(account_users);
 
             Ok::<_, anyhow::Error>(())
         })

@@ -20,8 +20,8 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
-    indexer::IndexerCmd,
     grug_app::GIT_COMMIT,
+    indexer::IndexerCmd,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };

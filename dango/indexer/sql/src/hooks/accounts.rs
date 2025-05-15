@@ -5,7 +5,7 @@ use {
         error::Error,
     },
     dango_types::account_factory::{self, AccountParams},
-    grug::{EventName, JsonDeExt},
+    grug::{EventName, Inner, JsonDeExt},
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
     indexer_sql::{Context, block_to_index::BlockToIndex},
     sea_orm::{
@@ -176,26 +176,40 @@ impl Hooks {
                     AccountParams::Spot(params) | AccountParams::Margin(params) => {
                         let username = params.owner;
 
-                        if let Some(_user_id) = entity::users::Entity::find()
+                        if let Some(user_id) = entity::users::Entity::find()
                             .column(entity::users::Column::Id)
-                            .filter(entity::users::Column::Username.eq(username.to_string()))
+                            .filter(entity::users::Column::Username.eq(username.inner()))
                             .one(&txn)
                             .await?
                             .map(|user| user.id)
                         {
-                            //
+                            let new_account_user = entity::accounts_users::ActiveModel {
+                                id: Set(Uuid::new_v4()),
+                                account_id: Set(new_account_id),
+                                user_id: Set(user_id),
+                            };
+                            entity::accounts_users::Entity::insert(new_account_user)
+                                .exec_without_returning(&txn)
+                                .await?;
                         }
                     },
                     AccountParams::Multi(params) => {
                         for username in params.members.keys() {
-                            if let Some(_user_id) = entity::users::Entity::find()
+                            if let Some(user_id) = entity::users::Entity::find()
                                 .column(entity::users::Column::Id)
-                                .filter(entity::users::Column::Username.eq(username.to_string()))
+                                .filter(entity::users::Column::Username.eq(username.inner()))
                                 .one(&txn)
                                 .await?
                                 .map(|user| user.id)
                             {
-                                //
+                                let new_account_user = entity::accounts_users::ActiveModel {
+                                    id: Set(Uuid::new_v4()),
+                                    account_id: Set(new_account_id),
+                                    user_id: Set(user_id),
+                                };
+                                entity::accounts_users::Entity::insert(new_account_user)
+                                    .exec_without_returning(&txn)
+                                    .await?;
                             }
                         }
                     },
