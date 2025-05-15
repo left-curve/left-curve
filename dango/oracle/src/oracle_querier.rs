@@ -39,7 +39,7 @@ impl<'a> OracleQuerier<'a> {
     }
 }
 
-pub struct OracleQuerierNoCache<'a> {
+pub(crate) struct OracleQuerierNoCache<'a> {
     ctx: OracleContext<'a>,
     lending: RemoteLending<'a>,
 }
