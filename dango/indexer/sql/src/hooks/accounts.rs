@@ -23,13 +23,15 @@ impl Hooks {
     ) -> Result<(), Error> {
         let mut user_registered_events = Vec::new();
         let mut account_registered_events = Vec::new();
-        let mut account_key_updated_events = Vec::new();
+        let mut account_key_added_events = Vec::new();
+        let mut account_key_removed_events = Vec::new();
 
         // NOTE:
         // The kind of operations which needs to be executed after are :
         // - UserRegistered: a username, key and key hash. We should create a user entry.
         // - AccountRegistered: an address, username, We should create an account entry.
-        // - KeyUpdated: a username, key and key hash. We should update the account entry with the new key or delete it.
+        // - KeyOwned: a username, key and key hash. We should update the users entry with the new key.
+        // - KeyDisowned: a username and key hash. We should delete that key hash attached to that user.
 
         for tx in block.block_outcome.tx_outcomes.iter() {
             if tx.result.is_err() {
@@ -70,14 +72,23 @@ impl Hooks {
 
                         account_registered_events.push(event);
                     },
-                    account_factory::KeyUpdated::EVENT_NAME => {
-                        let Ok(event) =
-                            event.data.deserialize_json::<account_factory::KeyUpdated>()
+                    account_factory::KeyOwned::EVENT_NAME => {
+                        let Ok(event) = event.data.deserialize_json::<account_factory::KeyOwned>()
                         else {
                             continue;
                         };
 
-                        account_key_updated_events.push(event);
+                        account_key_added_events.push(event);
+                    },
+                    account_factory::KeyDisowned::EVENT_NAME => {
+                        let Ok(event) = event
+                            .data
+                            .deserialize_json::<account_factory::KeyDisowned>()
+                        else {
+                            continue;
+                        };
+
+                        account_key_removed_events.push(event);
                     },
                     _ => {},
                 }
@@ -106,11 +117,6 @@ impl Hooks {
                 "Detected user_registered_events: {:?}",
                 user_registered_events
             );
-            // pub struct UserRegistered {
-            //    pub username: Username,
-            //    pub key: Key,
-            //    pub key_hash: Hash256,
-            //}
 
             for user_register_events in user_registered_events.chunks(chunk_size) {
                 let new_users = user_register_events
@@ -151,11 +157,6 @@ impl Hooks {
                 "Detected account_registered_events: {:?}",
                 account_registered_events
             );
-            // pub struct AccountRegistered {
-            //     pub address: Addr,
-            //     pub params: AccountParams,
-            //     pub index: AccountIndex,
-            // }
 
             for account_registered_event in account_registered_events {
                 let new_account_id = Uuid::new_v4();
@@ -202,46 +203,38 @@ impl Hooks {
             }
         }
 
-        if !account_key_updated_events.is_empty() {
+        if !account_key_added_events.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::info!(
                 "Detected account_key_updated_events: {:?}",
-                account_key_updated_events
+                account_key_added_events
             );
-            // pub struct KeyUpdated {
-            //     pub username: Username,
-            //     pub op: Op<Key>,
-            //     pub key_hash: Hash256,
-            // }
 
-            for account_key_updated_event in account_key_updated_events {
-                match account_key_updated_event.op {
-                    grug::Op::Insert(key) => {
-                        let model = entity::public_keys::ActiveModel {
-                            id: Set(Uuid::new_v4()),
-                            username: Set(account_key_updated_event.username.to_string()),
-                            key_hash: Set(account_key_updated_event.key_hash.to_string()),
-                            public_key: Set(key.to_string()),
-                            key_type: Set(key.into()),
-                            created_at: Set(created_at),
-                            created_block_height: Set(block.block.info.height as i64),
-                        };
-                        model.insert(&txn).await?;
-                    },
-                    grug::Op::Delete => {
-                        entity::public_keys::Entity::delete_many()
-                            .filter(
-                                entity::public_keys::Column::Username
-                                    .eq(account_key_updated_event.username.to_string())
-                                    .and(
-                                        entity::public_keys::Column::KeyHash
-                                            .eq(account_key_updated_event.key_hash.to_string()),
-                                    ),
-                            )
-                            .exec(&txn)
-                            .await?;
-                    },
-                }
+            for account_key_added_event in account_key_added_events {
+                let model = entity::public_keys::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                    username: Set(account_key_added_event.username.to_string()),
+                    key_hash: Set(account_key_added_event.key_hash.to_string()),
+                    public_key: Set(account_key_added_event.key.to_string()),
+                    key_type: Set(account_key_added_event.key.into()),
+                    created_at: Set(created_at),
+                    created_block_height: Set(block.block.info.height as i64),
+                };
+                model.insert(&txn).await?;
+            }
+
+            for account_key_removed_event in account_key_removed_events {
+                entity::public_keys::Entity::delete_many()
+                    .filter(
+                        entity::public_keys::Column::Username
+                            .eq(account_key_removed_event.username.to_string())
+                            .and(
+                                entity::public_keys::Column::KeyHash
+                                    .eq(account_key_removed_event.key_hash.to_string()),
+                            ),
+                    )
+                    .exec(&txn)
+                    .await?;
             }
         }
 
