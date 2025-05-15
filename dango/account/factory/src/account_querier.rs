@@ -1,14 +1,14 @@
 use {
     crate::ACCOUNTS,
     dango_types::account_factory::Account,
-    grug::{Addr, Borsh, Codec, QuerierExt, QuerierWrapper},
+    grug::{Addr, QuerierWrapper, StorageQuerier},
     std::collections::HashMap,
 };
 
 pub struct AccountQuerier<'a> {
     querier: QuerierWrapper<'a>,
     address: Addr,
-    cache: HashMap<Addr, Account>,
+    cache: HashMap<Addr, Option<Account>>,
 }
 
 impl<'a> AccountQuerier<'a> {
@@ -32,20 +32,19 @@ impl<'a> AccountQuerier<'a> {
     ///   addresses. `None` if no account exists, which will be the case for
     ///   contract addresses.
     pub fn query_account(&mut self, address: Addr) -> anyhow::Result<Option<Account>> {
-        if let Some(account) = self.cache.get(&address) {
-            return Ok(Some(account.clone()));
-        }
+        if let Some(cached_account) = self.cache.get(&address) {
+            match cached_account {
+                Some(account) => Ok(Some(account.clone())),
+                None => Ok(None),
+            }
+        } else {
+            let account = self
+                .querier
+                .may_query_wasm_path(self.address, ACCOUNTS.path(address))?;
 
-        match self
-            .querier
-            .query_wasm_raw(self.address, ACCOUNTS.path(address).storage_key())?
-        {
-            Some(account_binary) => {
-                let account: Account = Borsh::decode(&account_binary)?;
-                self.cache.insert(address, account.clone());
-                Ok(Some(account))
-            },
-            None => Ok(None),
+            self.cache.insert(address, account.clone());
+
+            Ok(account)
         }
     }
 }
