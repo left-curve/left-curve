@@ -27,6 +27,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   boundaries = 1,
   isDisabled,
   variant,
+  maxDisplay = 7,
   labelPage = "Page",
   labelOf = "of",
 }) => {
@@ -51,6 +52,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     totalPages,
     siblings,
     boundaries,
+    maxDisplay,
   });
 
   return (
