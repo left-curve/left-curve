@@ -43,6 +43,15 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         tokio::spawn,
     );
 
+    let file_transaction_loader: DataLoader<
+        dataloader::file_transaction::FileTranscationDataLoader,
+    > = DataLoader::new(
+        dataloader::file_transaction::FileTranscationDataLoader {
+            indexer: app_ctx.indexer_path.clone(),
+        },
+        tokio::spawn,
+    );
+
     Schema::build(
         Query::default(),
         Mutation::default(),
@@ -55,5 +64,6 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     .data(block_events_loader)
     .data(transaction_messages_loader)
     .data(transaction_events_loader)
+    .data(file_transaction_loader)
     .finish()
 }

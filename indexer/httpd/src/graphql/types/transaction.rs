@@ -1,12 +1,14 @@
 use {
     super::{event::Event, message::Message},
     crate::graphql::dataloader::{
+        file_transaction::FileTranscationDataLoader,
         transaction_events::TransactionEventsDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
     },
     async_graphql::{dataloader::DataLoader, *},
     chrono::{DateTime, TimeZone, Utc},
-    indexer_sql::{block_to_index::BlockToIndex, entity},
+    grug_types::{JsonSerExt, Tx, TxOutcome},
+    indexer_sql::entity,
     serde::Deserialize,
 };
 
@@ -68,27 +70,9 @@ impl From<entity::transactions::Model> for Transaction {
 impl Transaction {
     /// Nested Events from this transaction, from block on-disk caching
     async fn nested_events(&self, ctx: &Context<'_>) -> Result<Option<String>> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
-        let block_filename = app_ctx.indexer_path.block_path(self.block_height);
-        let tx_idx = self.transaction_idx as usize;
+        let (_, outcome) = load_tx_from_file(self, ctx).await?;
 
-        let data = BlockToIndex::load_from_disk(block_filename)?;
-
-        // This is to ensure the current transaction hash is for this transaction
-        // index is right. We should never have that issue but that's a safety.
-        let Some(tx_hash) = data.block.txs.get(tx_idx).map(|tx| tx.1) else {
-            return Err(Error::new("Transaction not found"));
-        };
-
-        if tx_hash.to_string() != self.hash {
-            return Err(Error::new("Transaction hash mismatch"));
-        }
-
-        data.block_outcome
-            .tx_outcomes
-            .get(tx_idx)
-            .map(|tx| Ok(serde_json::to_string(&tx.events)?))
-            .transpose()
+        Ok(Some(outcome.events.to_json_string()?))
     }
 
     /// Flatten events from the indexer
@@ -101,4 +85,22 @@ impl Transaction {
         let loader = ctx.data_unchecked::<DataLoader<TransactionMessagesDataLoader>>();
         Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
     }
+
+    async fn data(&self, ctx: &Context<'_>) -> Result<String> {
+        let (tx, _) = load_tx_from_file(self, ctx).await?;
+        Ok(tx.data.to_json_string()?)
+    }
+
+    async fn credential(&self, ctx: &Context<'_>) -> Result<String> {
+        let (tx, _) = load_tx_from_file(self, ctx).await?;
+        Ok(tx.credential.to_json_string()?)
+    }
+}
+
+async fn load_tx_from_file(tx: &Transaction, ctx: &Context<'_>) -> Result<(Tx, TxOutcome)> {
+    let loader = ctx.data_unchecked::<DataLoader<FileTranscationDataLoader>>();
+    loader
+        .load_one(tx.clone())
+        .await?
+        .ok_or(Error::new(format!("Transaction not found: {}", tx.hash)))
 }
