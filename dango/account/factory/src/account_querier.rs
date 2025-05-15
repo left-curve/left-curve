@@ -1,36 +1,23 @@
 use {
     crate::ACCOUNTS,
     dango_types::account_factory::Account,
-    grug::{Addr, QuerierWrapper, StorageQuerier},
-    std::collections::HashMap,
+    grug::{Addr, Cache, QuerierWrapper, StdResult, StorageQuerier},
 };
 
 pub struct AccountQuerier<'a> {
-    querier: QuerierWrapper<'a>,
-    address: Addr,
-    cache: HashMap<Addr, Account>,
+    cache: Cache<'a, Addr, Account>,
 }
 
 impl<'a> AccountQuerier<'a> {
-    pub fn new(address: Addr, querier: QuerierWrapper<'a>) -> Self {
+    pub fn new(factory: Addr, querier: QuerierWrapper<'a>) -> Self {
         Self {
-            address,
-            querier,
-            cache: HashMap::new(),
+            cache: Cache::new(move |address, _| {
+                querier.query_wasm_path(factory, &ACCOUNTS.path(*address))
+            }),
         }
     }
 
-    pub fn query_account(&mut self, address: Addr) -> anyhow::Result<Account> {
-        if let Some(account) = self.cache.get(&address) {
-            return Ok(account.clone());
-        }
-
-        let account = self
-            .querier
-            .query_wasm_path(self.address, &ACCOUNTS.path(address))?;
-
-        self.cache.insert(address, account.clone());
-
-        Ok(account)
+    pub fn query_account(&mut self, address: Addr) -> StdResult<&Account> {
+        self.cache.get_or_fetch(&address, None)
     }
 }

@@ -712,7 +712,7 @@ fn clear_orders_of_pair(
                 },
                 Entry::Vacant(v) => {
                     let volume = VOLUMES_BY_USER
-                        .prefix(&username)
+                        .prefix(username)
                         .values(storage, None, None, IterationOrder::Descending)
                         .next()
                         .transpose()?

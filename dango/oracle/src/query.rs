@@ -1,5 +1,5 @@
 use {
-    crate::{GUARDIAN_SETS, OracleQuerier, PRICE_SOURCES},
+    crate::{GUARDIAN_SETS, OracleQuerierNoCache, PRICE_SOURCES},
     dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
     grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     pyth_types::{GuardianSet, GuardianSetIndex},
@@ -37,7 +37,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    let mut oracle_querier = OracleQuerier::new_local(ctx.storage, ctx.querier);
+    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage, ctx.querier);
     oracle_querier.query_price(&denom, None)
 }
 
@@ -46,7 +46,7 @@ fn query_prices(
     start_after: Option<Denom>,
     limit: Option<u32>,
 ) -> anyhow::Result<BTreeMap<Denom, PrecisionedPrice>> {
-    let mut oracle_querier = OracleQuerier::new_local(ctx.storage, ctx.querier);
+    let oracle_querier = OracleQuerierNoCache::new_local(ctx.storage, ctx.querier);
 
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
