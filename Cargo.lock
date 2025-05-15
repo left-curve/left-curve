@@ -3316,11 +3316,14 @@ dependencies = [
  "home",
  "indexer-httpd",
  "indexer-sql",
+ "pyth-client",
+ "pyth-types",
  "rand 0.8.5",
  "sentry",
  "serde",
  "tendermint",
  "tokio",
+ "tokio-stream",
  "tower 0.5.2",
  "tower-abci",
  "tracing",
@@ -3358,17 +3361,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-gateway"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "bip32",
  "dango-account-factory",
  "dango-account-margin",
  "dango-account-multi",
  "dango-account-spot",
  "dango-bank",
  "dango-dex",
+ "dango-gateway",
  "dango-lending",
  "dango-oracle",
  "dango-taxman",
@@ -3376,15 +3388,14 @@ dependencies = [
  "dango-vesting",
  "dango-warp",
  "grug",
- "hex",
- "hex-literal",
- "home",
+ "grug-vm-hybrid",
+ "grug-vm-rust",
+ "grug-vm-wasm",
  "hyperlane-ism",
  "hyperlane-mailbox",
  "hyperlane-types",
  "hyperlane-va",
  "pyth-types",
- "rand 0.8.5",
  "serde",
 ]
 
@@ -3519,10 +3530,13 @@ dependencies = [
  "anyhow",
  "assertor",
  "async-graphql",
+ "bip32",
+ "chrono",
  "criterion",
  "dango-account-factory",
  "dango-auth",
  "dango-bank",
+ "dango-gateway",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
@@ -3530,7 +3544,6 @@ dependencies = [
  "dango-oracle",
  "dango-proposal-preparer",
  "dango-types",
- "dango-warp",
  "digest 0.10.7",
  "grug",
  "grug-app",
@@ -3540,7 +3553,10 @@ dependencies = [
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
+ "hex",
  "hex-literal",
+ "home",
+ "hyperlane-testing",
  "hyperlane-types",
  "indexer-disk-saver",
  "indexer-httpd",
@@ -4588,7 +4604,6 @@ name = "grug-app"
 version = "0.0.0"
 dependencies = [
  "borsh 1.5.6",
- "chrono",
  "data-encoding",
  "grug-math",
  "grug-storage",
@@ -4804,6 +4819,7 @@ dependencies = [
  "async-trait",
  "bnum",
  "borsh 1.5.6",
+ "chrono",
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
@@ -5324,6 +5340,17 @@ dependencies = [
  "anyhow",
  "grug",
  "hyperlane-types",
+]
+
+[[package]]
+name = "hyperlane-testing"
+version = "0.0.0"
+dependencies = [
+ "grug",
+ "grug-crypto",
+ "hex-literal",
+ "hyperlane-types",
+ "k256",
 ]
 
 [[package]]

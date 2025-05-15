@@ -4,13 +4,13 @@ Web interface for accessing [Dango](../dango/)
 
 ## Packages
 
-| Packages                       | Description                                                                                                                         |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [`applets-kit`](./applets/kit) | A common library for developing applets and communicate with dango portal                                                           |
-| [`ui-config`](./config)        | Common configurations for ui elements such as tailwind, fonts, etc...                                                               |
-| [`store`](./store/core)        | It allows connect with dango blockchain, connect multiples wallets, manages accounts, and enables interaction with smart contracts. |
-| [`store-react`](./store/react) | It wraps store and all their actions into react-hooks and wrap the state in a react provider with hydration for ssr                 |
-| [`proxy`](./workers/proxy)     | Cloudflare worker used as proxy for devnet rpc                                                                                      |
+| Packages                                         | Description                                                                                                                         |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [`applets-kit`](./applets/kit)                   | A common library for developing applets and communicate with dango portal                                                           |
+| [`config`](./config)                             | Common configurations for ui elements such as tailwind, fonts, etc...                                                               |
+| [`store`](./store)                               | It allows connect with dango blockchain, connect multiples wallets, manages accounts, and enables interaction with smart contracts. |
+| [`proxy`](./workers/proxy)                       | Cloudflare worker used as proxy for devnet rpc                                                                                      |
+| [`webrtc-signaling`](./workers/webrtc-signaling) | A WebRTC signaling server used to establish peer-to-peer connections between clients.                                               |
 
 ----
 

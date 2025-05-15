@@ -35,7 +35,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet"
+          "action=signup": "Sign up with wallet",
+          "action=forgot-username": "Retrieve with wallet"
         }
       }
     ],
@@ -45,7 +46,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey"
+          "action=signup": "Sign up with Passkey",
+          "action=forgot-username": "Retrieve with Passkey"
         }
       }
     ]
@@ -207,6 +209,11 @@
       "accountName": "Account Name",
       "accountBalance": "Account Balance",
       "getStarted": "Get Started!"
+    },
+    "renewSession": {
+      "title": "Session expired",
+      "description": "For your security, each login session expires after 24 hours. Please sign in again.",
+      "stayLogout": "Stay logged out"
     }
   },
   "signin": {
@@ -308,6 +315,19 @@
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
     }
+  },
+  "forgotUsername": {
+    "greetings": "Hi there",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "usernamesFound": "Usernames found",
+    "chooseCredentialFoundUsername": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected."
+  },
+  "notFound": {
+    "title": "Page not found!",
+    "description": "Sorry! We couldn’t find what you were looking for...",
+    "goToHome": "Go to Homepage"
   },
   "accountCreation": {
     "accountCreated": "Account Created",
@@ -421,6 +441,12 @@
     "title": "Settings",
     "display": "Display",
     "language": "Language",
+    "session": {
+      "title": "Session",
+      "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
+      "remaining": "Remaining time",
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+    },
     "languages": [
       {
         "declarations": ["input language"],
@@ -495,19 +521,19 @@
       "swapSuccessfully": "Swap Successfully",
       "youGet": "You get",
       "youSwap": "You swap",
-      "priceImpact": "Price Impact",
-      "slippage": "Max Slippage",
+      "rate": "Rate",
       "errors": {
         "failure": "Swap failed"
       }
     }
   },
-  "validations": {
-    "errors": {
+  "errors": {
+    "validations": {
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
       "invalidAddress": "Invalid address"
-    }
+    },
+    "failureRequest": "Couldn't complete the request"
   }
 }

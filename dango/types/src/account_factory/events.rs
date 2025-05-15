@@ -3,7 +3,7 @@ use {
         account_factory::{AccountIndex, AccountParams, Username},
         auth::Key,
     },
-    grug::{Addr, Hash256, Op},
+    grug::{Addr, Hash256},
 };
 
 /// An event indicating a new user has registered.
@@ -24,11 +24,35 @@ pub struct AccountRegistered {
     pub index: AccountIndex,
 }
 
-/// An event indicating a key has been updated.
+/// An event indicating a username begins to own an account.
 #[grug::derive(Serde)]
-#[grug::event("key_updated")]
-pub struct KeyUpdated {
+#[grug::event("account_owned")]
+pub struct AccountOwned {
     pub username: Username,
-    pub op: Op<Key>,
+    pub address: Addr,
+}
+
+/// An event indicating a username ceases to own an account.
+#[grug::derive(Serde)]
+#[grug::event("account_disowned")]
+pub struct AccountDisowned {
+    pub username: Username,
+    pub address: Addr,
+}
+
+/// An event indicating a username begins to own a key.
+#[grug::derive(Serde)]
+#[grug::event("key_owned")]
+pub struct KeyOwned {
+    pub username: Username,
+    pub key_hash: Hash256,
+    pub key: Key,
+}
+
+/// An event indicating a username ceases to own a key.
+#[grug::derive(Serde)]
+#[grug::event("key_disowned")]
+pub struct KeyDisowned {
+    pub username: Username,
     pub key_hash: Hash256,
 }

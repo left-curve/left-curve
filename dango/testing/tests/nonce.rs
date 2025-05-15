@@ -1,6 +1,6 @@
 use {
-    dango_testing::{MOCK_CHAIN_ID, TestAccounts, setup_test_naive},
-    dango_types::{account::spot::QuerySeenNoncesRequest, constants::USDC_DENOM},
+    dango_testing::{TestAccounts, constants::MOCK_CHAIN_ID, setup_test_naive},
+    dango_types::{account::spot::QuerySeenNoncesRequest, constants::dango},
     grug::{
         Addressable, Coins, Duration, JsonSerExt, Message, NonEmpty, QuerierExt, ResultExt, Tx,
     },
@@ -13,7 +13,7 @@ fn prepare_tx_with_nonce(accounts: &TestAccounts, nonce: u32, expiry: Option<Dur
     let msgs = NonEmpty::new_unchecked(vec![
         Message::transfer(
             accounts.user1.address(),
-            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
+            Coins::one(dango::DENOM.clone(), 123).unwrap(),
         )
         .unwrap(),
     ]);
@@ -41,14 +41,14 @@ fn prepare_tx_with_nonce(accounts: &TestAccounts, nonce: u32, expiry: Option<Dur
 
 #[test]
 fn tracked_nonces_works() {
-    let (mut suite, mut accounts, ..) = setup_test_naive();
+    let (mut suite, mut accounts, ..) = setup_test_naive(Default::default());
 
     for _ in 0..20 {
         suite
             .transfer(
                 &mut accounts.owner,
                 accounts.user1.address(),
-                Coins::one(USDC_DENOM.clone(), 123).unwrap(),
+                Coins::one(dango::DENOM.clone(), 123).unwrap(),
             )
             .should_succeed();
     }

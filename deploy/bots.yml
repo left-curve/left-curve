@@ -1,0 +1,10 @@
+- hosts: bots
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars:
+    ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
+    ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
+  collections:
+    - community.docker
+  roles:
+    - bots

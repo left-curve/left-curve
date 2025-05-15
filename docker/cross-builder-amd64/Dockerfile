@@ -16,6 +16,7 @@ RUN dpkg --add-architecture amd64 && \
     clang \
     libclang-dev \
     llvm-dev \
+    liblzma-dev \
     pkg-config \
     curl \
     ca-certificates \

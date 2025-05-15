@@ -70,17 +70,9 @@ export function usePrices(parameters: UsePricesParameters = {}) {
       : number;
   }
 
-  const { data: prices, ...rest } = useQuery({
+  const { data: prices, ...rest } = useQuery<Record<Denom, Price>>({
     queryKey: ["prices", coins],
-    queryFn: async () => {
-      const prices = await client.getPrices();
-
-      return Object.entries(prices).reduce((acc, [denom, coin]) => {
-        if (denom.includes("usdc")) acc["hyp/eth/usdc"] = coin;
-        else acc[`hyp/all/${denom.split("/")[2]}`] = coin;
-        return acc;
-      }, Object.create({})) as Record<Denom, Price>;
-    },
+    queryFn: () => client.getPrices(),
     staleTime: 1000 * 60 * 5,
     refetchInterval,
   });

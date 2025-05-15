@@ -1,11 +1,4 @@
-import {
-  IconButton,
-  IconTrash,
-  useInputs,
-  useMediaQuery,
-  useUsernames,
-  useWizard,
-} from "@left-curve/applets-kit";
+import { useInputs, useMediaQuery, useUsernames, useWizard } from "@left-curve/applets-kit";
 import { useAccount, usePublicClient, useSignin } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -28,6 +21,7 @@ import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
@@ -109,6 +103,19 @@ const UsernameStep: React.FC = () => {
           <Button onClick={() => setUseAnotherAccount(true)} fullWidth variant="primary">
             {m["signin.useAnotherAccount"]()}
           </Button>
+          <Button as={Link} fullWidth variant="secondary" to="/">
+            {m["signin.continueWithoutSignin"]()}
+          </Button>
+          <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
+            <div className="flex items-center gap-2 flex-col">
+              <Checkbox
+                size="md"
+                label={m["common.signinWithSession"]()}
+                checked={useSessionKey}
+                onChange={(v) => changeSettings({ useSessionKey: v })}
+              />
+            </div>
+          </ExpandOptions>
         </>
       ) : (
         <form className="flex flex-col gap-6 w-full" onSubmit={signInWithUsername}>
@@ -178,7 +185,12 @@ const UsernameStep: React.FC = () => {
             {m["signin.continueWithoutSignin"]()}
           </Button>
         )}
-        <Button fullWidth variant="link" className="p-0 h-fit">
+        <Button
+          fullWidth
+          className="p-0 h-fit"
+          variant="link"
+          onClick={() => navigate({ to: "/forgot-username" })}
+        >
           {m["signin.forgotUsername"]()}
         </Button>
       </div>
@@ -195,10 +207,9 @@ const CredentialStep: React.FC = () => {
   const { username, sessionKey } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
-    sessionKey,
+    sessionKey: sessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
-      onSuccess: () => {
+      onSuccess: (username) => {
         navigate({ to: "/" });
         addUsername(username);
       },
@@ -231,14 +242,14 @@ const CredentialStep: React.FC = () => {
         </div>
         {isMd ? (
           <AuthOptions
-            action={(connectorId) => connectWithConnector({ connectorId })}
+            action={(connectorId) => connectWithConnector({ username, connectorId })}
             isPending={isPending}
             mode="signin"
           />
         ) : (
           <Button
             fullWidth
-            onClick={() => connectWithConnector({ connectorId: "passkey" })}
+            onClick={() => connectWithConnector({ username, connectorId: "passkey" })}
             isLoading={isPending}
             className="gap-2"
           >

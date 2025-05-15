@@ -12,6 +12,7 @@ RUN dpkg --add-architecture arm64 && \
     clang \
     libclang-dev \
     llvm-dev \
+    liblzma-dev:arm64 \
     pkg-config \
     curl \
     ca-certificates \

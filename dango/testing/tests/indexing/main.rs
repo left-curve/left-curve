@@ -4,7 +4,7 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
-        constants::USDC_DENOM,
+        constants::usdc,
     },
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
@@ -14,7 +14,7 @@ pub mod accounts;
 
 #[test]
 fn index_transfer_events() {
-    let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![
@@ -23,7 +23,7 @@ fn index_transfer_events() {
             &account_factory::ExecuteMsg::RegisterAccount {
                 params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
             },
-            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         )
         .unwrap(),
     ];
@@ -70,7 +70,7 @@ fn index_transfer_events() {
 
     let msg = Message::transfer(
         accounts.user1.address(),
-        Coins::one(USDC_DENOM.clone(), 123).unwrap(),
+        Coins::one(usdc::DENOM.clone(), 123).unwrap(),
     )
     .unwrap();
 

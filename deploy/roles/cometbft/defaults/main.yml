@@ -1,0 +1,3 @@
+---
+cometbft_target_dir: "{{ ansible_env.HOME }}/cometbft"
+host_port: 26657

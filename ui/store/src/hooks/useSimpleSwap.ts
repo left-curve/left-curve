@@ -3,9 +3,9 @@ import { useMemo, useRef, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { usePublicClient } from "./usePublicClient.js";
-import { useStorage } from "./useStorage.js";
 
 import type { Coin, PairUpdate } from "@left-curve/dango/types";
+import { formatUnits } from "@left-curve/dango/utils";
 import type { AnyCoin } from "../types/coin.js";
 import { usePrices } from "./usePrices.js";
 
@@ -21,7 +21,6 @@ export type SimpleSwapInfo = {
   pair: PairUpdate;
   priceImpact: number;
   fee: number;
-  slippage: string;
 };
 
 export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
@@ -34,7 +33,6 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const client = usePublicClient();
 
   const simulationInput = useRef<Coin | null>(null);
-  const [slippage, setSlippage] = useStorage("simpleSwap.slippage", { initialValue: "0.01" });
 
   const changeQuote = (quote: string) => {
     const newPair = isReverse ? { from: quote, to } : { from, to: quote };
@@ -93,18 +91,18 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     return data;
   };
 
-  const priceImpact = useMemo(() => {
-    if (!simulationInput.current || !simulation.data) return 0;
-    const inputPrice = getPrice(simulationInput.current.amount, simulationInput.current.denom);
-    const outputPrice = getPrice(simulation.data.amount, simulation.data.denom);
-    return (inputPrice - outputPrice) / inputPrice;
-  }, [simulation.data]);
-
   const fee = useMemo(() => {
     if (!simulationInput.current || !simulation.data) return 0;
     return (
-      Math.round(getPrice(simulationInput.current.amount, simulationInput.current.denom)) *
-      Number(pair?.params.swapFeeRate)
+      Math.round(
+        getPrice(
+          formatUnits(
+            simulationInput.current.amount,
+            coins[simulationInput.current.denom].decimals,
+          ),
+          simulationInput.current.denom,
+        ),
+      ) * Number(pair?.params.swapFeeRate)
     );
   }, [simulation.data]);
 
@@ -117,12 +115,9 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     base: baseCoin,
     isReverse,
     direction,
-    priceImpact,
     fee,
     toggleDirection,
     changeQuote,
-    slippage,
-    setSlippage,
     simulation: {
       simulate,
       input: simulationInput.current,

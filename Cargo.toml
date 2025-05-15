@@ -7,6 +7,7 @@ members = [
   "dango/cli",
   "dango/client",
   "dango/dex",
+  "dango/gateway",
   "dango/genesis",
   "dango/httpd",
   "dango/indexer/sql",
@@ -38,6 +39,7 @@ members = [
   "grug/vm/*",
   "hyperlane/isms/*",
   "hyperlane/mailbox",
+  "hyperlane/testing",
   "hyperlane/va",
   "indexer/*",
   "pyth/client",
@@ -165,6 +167,7 @@ dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
+dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/httpd" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
@@ -203,6 +206,7 @@ grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
+hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-client              = { path = "indexer/client" }

@@ -1,0 +1,5 @@
+[sshd]
+enabled = true
+port    = ssh
+logpath = /var/log/auth.log
+backend = systemd

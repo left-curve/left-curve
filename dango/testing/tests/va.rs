@@ -1,14 +1,14 @@
 use {
     dango_testing::{generate_random_key, setup_test},
-    dango_types::constants::{DANGO_DENOM, USDC_DENOM},
+    dango_types::constants::{dango, usdc},
     grug::{
-        Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray, Inner, JsonDeExt,
-        QuerierExt, ResultExt, SearchEvent, UniqueVec, btree_set, coins,
+        Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, JsonDeExt, QuerierExt,
+        ResultExt, SearchEvent, UniqueVec, btree_set, coins,
     },
-    grug_crypto::Identity256,
+    hyperlane_testing::{constants::MOCK_HYPERLANE_LOCAL_DOMAIN, eth_utils},
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
-        mailbox::{self, Domain},
+        mailbox::Domain,
         va::{self, Announce, VA_DOMAIN_KEY},
     },
     k256::ecdsa::SigningKey,
@@ -37,29 +37,22 @@ impl MockAnnouncement {
         local_domain: Domain,
         storage_location: &str,
     ) -> Self {
-        // We need the _uncompressed_ pubkey for deriving Ethereum address.
-        let pk = sk.verifying_key().to_encoded_point(false).to_bytes();
-        let pk_hash = (&pk[1..]).keccak256();
-        let validator_address = &pk_hash[12..];
+        // Derive the validator's Ethereum address.
+        let validator_address = eth_utils::derive_address(sk.verifying_key());
 
-        // Create msg to sign.
+        // Create message to sign.
         let message_hash = eip191_hash(announcement_hash(
             domain_hash(local_domain, mailbox.into(), VA_DOMAIN_KEY),
             storage_location,
         ));
 
-        let (signature, recovery_id) = sk
-            .sign_digest_recoverable(Identity256::from(message_hash.into_inner()))
-            .unwrap();
-
-        let mut packed = [0u8; 65];
-        packed[..64].copy_from_slice(&signature.to_bytes());
-        packed[64] = recovery_id.to_byte() + 27;
+        // Sign the message.
+        let signature = eth_utils::sign(message_hash, &sk);
 
         Self {
             sk,
-            validator: validator_address.try_into().unwrap(),
-            signature: packed.into(),
+            validator: validator_address.into(),
+            signature: signature.into(),
             storage_location: storage_location.to_string(),
         }
     }
@@ -67,30 +60,25 @@ impl MockAnnouncement {
 
 #[test]
 fn test_announce() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-
-    let mut signer = accounts.owner;
-    let mailbox = contracts.hyperlane.mailbox;
-    let va = contracts.hyperlane.va;
-
-    let local_domain = suite
-        .query_wasm_smart(mailbox, mailbox::QueryConfigRequest {})
-        .should_succeed()
-        .local_domain;
+    let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
 
     let mut validators_expected = BTreeSet::new();
     let mut storage_locations_expected = BTreeMap::new();
 
     // Create a working announcement.
-    let announcement = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location");
+    let announcement = MockAnnouncement::new(
+        contracts.hyperlane.mailbox,
+        MOCK_HYPERLANE_LOCAL_DOMAIN,
+        "Test/Storage/Location",
+    );
     let announce_fee = ANNOUNCE_FEE_PER_BYTE * announcement.storage_location.len() as u128;
 
     // Announce without sending announce fee.
     {
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location.clone(),
                     validator: announcement.validator,
@@ -105,14 +93,14 @@ fn test_announce() {
     {
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location.clone(),
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { DANGO_DENOM.clone() => announce_fee },
+                coins! { dango::DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("invalid payment");
     }
@@ -121,16 +109,16 @@ fn test_announce() {
     {
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location.clone(),
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
                 coins! {
-                    DANGO_DENOM.clone() => announce_fee,
-                    USDC_DENOM.clone()  => announce_fee,
+                    dango::DENOM.clone() => announce_fee,
+                    usdc::DENOM.clone()  => announce_fee,
                 },
             )
             .should_fail_with_error("invalid payment");
@@ -140,14 +128,14 @@ fn test_announce() {
     {
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location.clone(),
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { USDC_DENOM.clone() => announce_fee - 1 },
+                coins! { usdc::DENOM.clone() => announce_fee - 1 },
             )
             .should_fail_with_error("insufficient validator announce fee");
     }
@@ -156,14 +144,14 @@ fn test_announce() {
     {
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location.clone(),
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { USDC_DENOM.clone() => announce_fee },
+                coins! { usdc::DENOM.clone() => announce_fee },
             )
             .should_succeed()
             .events
@@ -175,7 +163,7 @@ fn test_announce() {
             .data
             .deserialize_json::<Announce>()
             .should_succeed_and_equal(Announce {
-                sender: signer.address(),
+                sender: accounts.owner.address(),
                 validator: announcement.validator,
                 storage_location: announcement.storage_location.clone(),
             });
@@ -184,10 +172,13 @@ fn test_announce() {
         validators_expected.insert(announcement.validator);
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
-                start_after: None,
-                limit: None,
-            })
+            .query_wasm_smart(
+                contracts.hyperlane.va,
+                va::QueryAnnouncedValidatorsRequest {
+                    start_after: None,
+                    limit: None,
+                },
+            )
             .should_succeed_and_equal(validators_expected.clone());
 
         // Check that the validator was added to the storage locations.
@@ -197,9 +188,12 @@ fn test_announce() {
         );
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
-                validators: btree_set![announcement.validator],
-            })
+            .query_wasm_smart(
+                contracts.hyperlane.va,
+                va::QueryAnnouncedStorageLocationsRequest {
+                    validators: btree_set![announcement.validator],
+                },
+            )
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
 
@@ -207,14 +201,14 @@ fn test_announce() {
     {
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location,
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { USDC_DENOM.clone() => announce_fee },
+                coins! { usdc::DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("duplicate data found!");
     }
@@ -223,8 +217,8 @@ fn test_announce() {
     {
         let announcement2 = MockAnnouncement::new_with_singing_key(
             announcement.sk,
-            mailbox,
-            local_domain,
+            contracts.hyperlane.mailbox,
+            MOCK_HYPERLANE_LOCAL_DOMAIN,
             "Test/Storage/Location/2",
         );
 
@@ -232,14 +226,14 @@ fn test_announce() {
 
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement2.storage_location.clone(),
                     validator: announcement2.validator,
                     signature: announcement2.signature,
                 },
-                coins! { USDC_DENOM.clone() => announce_fee2 },
+                coins! { usdc::DENOM.clone() => announce_fee2 },
             )
             .should_succeed()
             .events
@@ -251,17 +245,20 @@ fn test_announce() {
             .data
             .deserialize_json::<Announce>()
             .should_succeed_and_equal(Announce {
-                sender: signer.address(),
+                sender: accounts.owner.address(),
                 validator: announcement2.validator,
                 storage_location: announcement2.storage_location.clone(),
             });
 
         // Check there are no change in validators.
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
-                start_after: None,
-                limit: None,
-            })
+            .query_wasm_smart(
+                contracts.hyperlane.va,
+                va::QueryAnnouncedValidatorsRequest {
+                    start_after: None,
+                    limit: None,
+                },
+            )
             .should_succeed_and_equal(validators_expected.clone());
 
         // Check that the storage location was added.
@@ -272,28 +269,35 @@ fn test_announce() {
             .unwrap();
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
-                validators: btree_set![announcement.validator],
-            })
+            .query_wasm_smart(
+                contracts.hyperlane.va,
+                va::QueryAnnouncedStorageLocationsRequest {
+                    validators: btree_set![announcement.validator],
+                },
+            )
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
 
     // Adding a different validator.
     {
-        let announcement3 = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location/3");
+        let announcement3 = MockAnnouncement::new(
+            contracts.hyperlane.mailbox,
+            MOCK_HYPERLANE_LOCAL_DOMAIN,
+            "Test/Storage/Location/3",
+        );
 
         let announce_fee3 = ANNOUNCE_FEE_PER_BYTE * announcement3.storage_location.len() as u128;
 
         suite
             .execute(
                 &mut accounts.user2,
-                va,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement3.storage_location.clone(),
                     validator: announcement3.validator,
                     signature: announcement3.signature,
                 },
-                coins! { USDC_DENOM.clone() => announce_fee3 },
+                coins! { usdc::DENOM.clone() => announce_fee3 },
             )
             .should_succeed()
             .events
@@ -314,10 +318,13 @@ fn test_announce() {
         validators_expected.insert(announcement3.validator);
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
-                start_after: None,
-                limit: None,
-            })
+            .query_wasm_smart(
+                contracts.hyperlane.va,
+                va::QueryAnnouncedValidatorsRequest {
+                    start_after: None,
+                    limit: None,
+                },
+            )
             .should_succeed_and_equal(validators_expected.clone());
 
         // Check that the storage location was added.
@@ -327,30 +334,36 @@ fn test_announce() {
         );
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
-                validators: btree_set![announcement.validator, announcement3.validator],
-            })
+            .query_wasm_smart(
+                contracts.hyperlane.va,
+                va::QueryAnnouncedStorageLocationsRequest {
+                    validators: btree_set![announcement.validator, announcement3.validator],
+                },
+            )
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
 
     // Try adding a invalid announcement with different local domain
     // (should fail for pubkey mismatch).
     {
-        let announcement =
-            MockAnnouncement::new(mailbox, local_domain + 1, "Test/Storage/Location");
+        let announcement = MockAnnouncement::new(
+            contracts.hyperlane.mailbox,
+            MOCK_HYPERLANE_LOCAL_DOMAIN + 1,
+            "Test/Storage/Location",
+        );
 
         let announce_fee = ANNOUNCE_FEE_PER_BYTE * announcement.storage_location.len() as u128;
 
         suite
             .execute(
-                &mut signer,
-                va,
+                &mut accounts.owner,
+                contracts.hyperlane.va,
                 &va::ExecuteMsg::Announce {
                     storage_location: announcement.storage_location,
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                coins! { USDC_DENOM.clone() => announce_fee },
+                coins! { usdc::DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("pubkey mismatch");
     }
@@ -358,7 +371,7 @@ fn test_announce() {
 
 #[test]
 fn test_query() {
-    let (suite, _, _, contracts) = setup_test();
+    let (suite, _, _, contracts, _) = setup_test(Default::default());
 
     // Assert mailbox is correct.
     suite

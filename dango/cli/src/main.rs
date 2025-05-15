@@ -1,14 +1,17 @@
 mod config;
 mod db;
-mod git_info;
 mod home_directory;
 mod indexer;
 mod keys;
 mod prompt;
 mod query;
 mod start;
+#[cfg(feature = "testing")]
+mod test;
 mod tx;
 
+#[cfg(feature = "testing")]
+use crate::test::TestCmd;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
@@ -18,6 +21,7 @@ use {
     config::Config,
     config_parser::parse_config,
     indexer::IndexerCmd,
+    grug_app::GIT_COMMIT,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -53,6 +57,10 @@ enum Command {
     /// Indexer related commands
     Indexer(IndexerCmd),
 
+    /// Run test
+    #[cfg(feature = "testing")]
+    Test(TestCmd),
+
     /// Send transactions
     #[command(next_display_order = None)]
     Tx(TxCmd),
@@ -74,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
         .init();
 
-    tracing::info!("Using GIT version {}", git_info::GIT_COMMIT);
+    tracing::info!("Using GIT version {GIT_COMMIT}");
 
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
@@ -93,6 +101,8 @@ async fn main() -> anyhow::Result<()> {
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
+        #[cfg(feature = "testing")]
+        Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
         Command::Indexer(cmd) => cmd.run(app_dir).await,
     }
