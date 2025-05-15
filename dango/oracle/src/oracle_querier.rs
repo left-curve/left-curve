@@ -14,7 +14,7 @@ use {
 };
 
 pub struct OracleQuerier<'a> {
-    cache: Cache<'a, Denom, PrecisionedPrice, anyhow::Error, Option<PriceSource>>,
+    cache: Cache<'a, Denom, PrecisionedPrice, anyhow::Error, PriceSource>,
 }
 
 impl<'a> OracleQuerier<'a> {
