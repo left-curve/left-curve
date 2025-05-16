@@ -9,7 +9,7 @@ use {
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, AppError, Db, Indexer, NullIndexer},
+    grug_app::{App, AppError, Db, GIT_COMMIT, Indexer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_types::HashExt,
@@ -27,6 +27,8 @@ pub struct StartCmd;
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        tracing::info!("Using git version {GIT_COMMIT}");
+
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
