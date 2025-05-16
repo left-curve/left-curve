@@ -74,7 +74,6 @@
     proto: tcp
   loop:
     - 8080
-    - 26656
 
 - name: Deploy dango container
   docker_container:
@@ -93,7 +92,6 @@
       SENTRY__ENVIRONMENT: "production"
     ports:
       - "8080:8080"
-      - "26656:26656"
     volumes:
       - "{{ dango_target_dir }}:/app/.dango"
     networks:

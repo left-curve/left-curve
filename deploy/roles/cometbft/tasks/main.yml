@@ -26,6 +26,18 @@
     dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
   loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/config/*', wantlist=True) }}"
 
+- name: Allow TCP ports
+  tags: setup
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 26656
+
 - name: Ensure backend network exists
   community.docker.docker_network:
     name: backend
@@ -44,10 +56,8 @@
     env:
       HOME: /app
     ports:
-      # ufw rules
-      # - "127.0.0.1:{{ host_port }}:26656"
-      # - "127.0.0.1:{{ host_port }}:26657"
-      # - "127.0.0.1:{{ host_port }}:26658"
+      - "26656:26656"
+      - "{{ tailscale_ip }}:26657:26657"
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     networks:
