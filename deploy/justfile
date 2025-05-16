@@ -25,6 +25,9 @@ install-runners:
 deploy-bots:
   ansible-playbook bots.yml
 
+deploy-dozzle:
+  ansible-playbook dozzle.yml
+
 cold-deploy-dango:
   ansible-playbook dango.yml
 
