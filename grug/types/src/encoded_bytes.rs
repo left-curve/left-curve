@@ -319,8 +319,7 @@ where
         R: io::Read,
     {
         let vec = <Vec<u8> as BorshDeserialize>::deserialize_reader(reader)?;
-        let bytes =
-            B::try_from_vec(vec).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+        let bytes = B::try_from_vec(vec).map_err(io::Error::other)?;
 
         Ok(EncodedBytes {
             bytes,

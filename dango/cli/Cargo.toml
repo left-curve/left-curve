@@ -9,9 +9,9 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[[bin]]
-name = "dango"
-path = "src/main.rs"
+[features]
+default = ["testing"]
+testing = ["pyth-client", "pyth-types", "tokio-stream"]
 
 [dependencies]
 anyhow                  = { workspace = true }
@@ -38,12 +38,19 @@ hex                     = { workspace = true }
 home                    = { workspace = true }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true, features = ["tracing"] }
+pyth-client             = { workspace = true, optional = true }
+pyth-types              = { workspace = true, optional = true }
 rand                    = { workspace = true }
 sentry                  = { workspace = true }
 serde                   = { workspace = true }
 tendermint              = { workspace = true }
 tokio                   = { workspace = true }
+tokio-stream            = { workspace = true, optional = true }
 tower                   = { workspace = true, features = ["full"] }
 tower-abci              = { workspace = true }
 tracing                 = { workspace = true }
 tracing-subscriber      = { workspace = true }
+
+[[bin]]
+name = "dango"
+path = "src/main.rs"

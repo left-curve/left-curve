@@ -443,7 +443,7 @@
     "language": "Language",
     "session": {
       "title": "Session",
-      "description": "For security reasons, each login session lasts 24 hours. You will need to log in again once your session expires.",
+      "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
       "time": { "hours": "h", "minutes": "m", "seconds": "s" }
     },

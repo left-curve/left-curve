@@ -46,7 +46,7 @@ function TransferApplet() {
 
   const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
-  const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
+  const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({
     strategy: "onSubmit",
   });

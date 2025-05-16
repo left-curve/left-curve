@@ -889,24 +889,25 @@ fn update_trading_volumes(
 
     // Record trading volume for the user's username, if the trader is a
     // single-signature account (skip for multisig accounts).
-    if let Some(account) = account_querier.query_account(order_user)? {
-        if let Some(username) = account.params.owner() {
-            match volumes_by_username.entry(username.clone()) {
-                Entry::Occupied(mut v) => {
-                    v.get_mut().checked_add_assign(new_volume)?;
-                },
-                Entry::Vacant(v) => {
-                    let volume = VOLUMES_BY_USER
-                        .prefix(&username)
-                        .values(storage, None, None, IterationOrder::Descending)
-                        .next()
-                        .transpose()?
-                        .unwrap_or(Uint128::ZERO)
-                        .checked_add(new_volume)?;
+    if let Some(username) = account_querier
+        .query_account(order_user)?
+        .and_then(|account| account.params.owner())
+    {
+        match volumes_by_username.entry(username.clone()) {
+            Entry::Occupied(mut v) => {
+                v.get_mut().checked_add_assign(new_volume)?;
+            },
+            Entry::Vacant(v) => {
+                let volume = VOLUMES_BY_USER
+                    .prefix(username)
+                    .values(storage, None, None, IterationOrder::Descending)
+                    .next()
+                    .transpose()?
+                    .unwrap_or(Uint128::ZERO)
+                    .checked_add(new_volume)?;
 
-                    v.insert(volume);
-                },
-            }
+                v.insert(volume);
+            },
         }
     }
 

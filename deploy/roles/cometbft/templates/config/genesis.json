@@ -5,15 +5,16 @@
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
         "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+        "gateway": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
         "hyperlane": {
-          "ism": "0xdc68d6c82f5e4386294e7fda27317ab6ae8ff54c",
-          "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7",
-          "va": "0x75f38c6fcfc2fb8333e5c3ef89d13b7036abe3ff"
+          "ism": "0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7",
+          "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f",
+          "va": "0x0594aa774b588f9db00dfbdb1e2b0ef2a3b9329b"
         },
-        "lending": "0xf556c8f9ffa142b9ea2c2aab101210ad205c5259",
-        "oracle": "0xcedc5f73cbb963a48471b849c3650e6e34cd3b6d",
-        "taxman": "0xba88218166dbb57ae81f7e5043d95b0ee8f051e2",
-        "warp": "0x169d35f1c06babf5c340da3548f0c28cb3a83b57"
+        "lending": "0x6750bf808e01c7a329826a3a1bec9e20cde6755c",
+        "oracle": "0xfd3de90306e28197f277096fad988f38af1586b8",
+        "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+        "warp": "0xdf86ce97839bc44fabb32f67f1da8f76885131a2"
       },
       "collateral_powers": {},
       "maker_fee_rate": "0.0025",
@@ -25,20 +26,18 @@
     "config": {
       "bank": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
       "cronjobs": {
-        "0x169d35f1c06babf5c340da3548f0c28cb3a83b57": "86400",
-        "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "0"
+        "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "0",
+        "0xc6e03e2bca2f0e77c91908f2043c596349b08353": "86400"
       },
       "max_orphan_age": "604800",
       "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
       "permissions": {
         "instantiate": {
-          "somebodies": [
-            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
-          ]
+          "somebodies": ["0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"]
         },
         "upload": "nobody"
       },
-      "taxman": "0xba88218166dbb57ae81f7e5043d95b0ee8f051e2"
+      "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03"
     },
     "msgs": [
       {
@@ -88,11 +87,6 @@
       },
       {
         "upload": {
-          "code": "CgAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
           "code": "CQAAAAAAAAA="
         }
       },
@@ -103,12 +97,22 @@
       },
       {
         "upload": {
+          "code": "CgAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
           "code": "DAAAAAAAAAA="
         }
       },
       {
         "upload": {
           "code": "DQAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "DgAAAAAAAAA="
         }
       },
       {
@@ -123,7 +127,7 @@
               "spot": "35BE322D094F9D154A8ABA4733B8497F180353BD7AE7B0A15F90B586B549F28B"
             },
             "minimum_deposit": {
-              "hyp/eth/usdc": "10000000"
+              "bridge/usdc": "10000000"
             },
             "users": {
               "owner": [
@@ -193,34 +197,75 @@
       },
       {
         "instantiate": {
-          "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
+          "code_hash": "AAE89FC0F03E2959AE4D701A80CC3915918C950B159F6ABB6C92C1433B1A8534",
           "funds": {},
           "label": "hyperlane/ism/multisig",
           "msg": {
-            "validator_sets": {}
+            "validator_sets": {
+              "1": {
+                "threshold": 2,
+                "validators": [
+                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
+                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
+                  "92f7690869a6453ace4b5461f76367db902c2350"
+                ]
+              },
+              "10": {
+                "threshold": 2,
+                "validators": [
+                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
+                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
+                  "92f7690869a6453ace4b5461f76367db902c2350"
+                ]
+              },
+              "1399811149": {
+                "threshold": 2,
+                "validators": [
+                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
+                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
+                  "92f7690869a6453ace4b5461f76367db902c2350"
+                ]
+              },
+              "42161": {
+                "threshold": 2,
+                "validators": [
+                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
+                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
+                  "92f7690869a6453ace4b5461f76367db902c2350"
+                ]
+              },
+              "8453": {
+                "threshold": 2,
+                "validators": [
+                  "08afdf59ba845eb4d1c70cc83c5fb4ad6bc358b7",
+                  "4e5088dd05269194c9cdf30cd7a72a2ddd31b23c",
+                  "92f7690869a6453ace4b5461f76367db902c2350"
+                ]
+              }
+            }
           },
           "salt": "aHlwZXJsYW5lL2lzbS9tdWx0aXNpZw=="
         }
       },
       {
         "instantiate": {
-          "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
+          "code_hash": "18D8D609947C6B82B9607704AE40D3317038E709238514DE750B5C7411BA4C20",
           "funds": {},
           "label": "dango/warp",
           "msg": {
-            "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7"
+            "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f"
           },
           "salt": "ZGFuZ28vd2FycA=="
         }
       },
       {
         "instantiate": {
-          "code_hash": "AAE89FC0F03E2959AE4D701A80CC3915918C950B159F6ABB6C92C1433B1A8534",
+          "code_hash": "6CC16ABD70EEFB90DC0BA0D14FB088630873B2C6AD943F7442356735984C35A3",
           "funds": {},
           "label": "hyperlane/mailbox",
           "msg": {
             "config": {
-              "default_ism": "0xdc68d6c82f5e4386294e7fda27317ab6ae8ff54c",
+              "default_ism": "0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7",
               "local_domain": 88888888
             }
           },
@@ -229,15 +274,15 @@
       },
       {
         "instantiate": {
-          "code_hash": "6CC16ABD70EEFB90DC0BA0D14FB088630873B2C6AD943F7442356735984C35A3",
+          "code_hash": "CBBD5F990C53684D7AE650B40FCB5656E02261B53DA5F6A7D8C819C92F2828F8",
           "funds": {},
           "label": "hyperlane/va",
           "msg": {
             "announce_fee_per_byte": {
               "amount": "100",
-              "denom": "hyp/eth/usdc"
+              "denom": "bridge/usdc"
             },
-            "mailbox": "0x974e57564ed3ed7d8f99d0c359fd03f3d78259c7"
+            "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f"
           },
           "salt": "aHlwZXJsYW5lL3Zh"
         }
@@ -256,34 +301,34 @@
                   "lp_denom": "dex/pool/dango/usdc",
                   "swap_fee_rate": "0.003"
                 },
-                "quote_denom": "hyp/eth/usdc"
+                "quote_denom": "bridge/usdc"
               },
               {
-                "base_denom": "hyp/btc/btc",
+                "base_denom": "bridge/btc",
                 "params": {
                   "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/btc/usdc",
                   "swap_fee_rate": "0.003"
                 },
-                "quote_denom": "hyp/eth/usdc"
+                "quote_denom": "bridge/usdc"
               },
               {
-                "base_denom": "hyp/eth/eth",
+                "base_denom": "bridge/eth",
                 "params": {
                   "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/eth/usdc",
                   "swap_fee_rate": "0.003"
                 },
-                "quote_denom": "hyp/eth/usdc"
+                "quote_denom": "bridge/usdc"
               },
               {
-                "base_denom": "hyp/sol/sol",
+                "base_denom": "bridge/sol",
                 "params": {
                   "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/sol/usdc",
                   "swap_fee_rate": "0.003"
                 },
-                "quote_denom": "hyp/eth/usdc"
+                "quote_denom": "bridge/usdc"
               }
             ]
           },
@@ -292,13 +337,247 @@
       },
       {
         "instantiate": {
-          "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
+          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
           "funds": {},
           "label": "dango/lending",
           "msg": {
-            "markets": {}
+            "markets": {
+              "bridge/eth": {
+                "base_rate": "0.01",
+                "first_slope": "0.04",
+                "optimal_utilization": "0.8",
+                "reserve_factor": "0.02",
+                "second_slope": "0.75"
+              },
+              "bridge/usdc": {
+                "base_rate": "0.01",
+                "first_slope": "0.04",
+                "optimal_utilization": "0.8",
+                "reserve_factor": "0.02",
+                "second_slope": "0.75"
+              }
+            }
           },
           "salt": "ZGFuZ28vbGVuZGluZw=="
+        }
+      },
+      {
+        "instantiate": {
+          "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
+          "funds": {},
+          "label": "dango/gateway",
+          "msg": {
+            "rate_limits": {
+              "bridge/eth": "0.1",
+              "bridge/sol": "0.1",
+              "bridge/usdc": "0.1"
+            },
+            "routes": [
+              [
+                "eth",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 1
+                  }
+                }
+              ],
+              [
+                "eth",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 10
+                  }
+                }
+              ],
+              [
+                "eth",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 8453
+                  }
+                }
+              ],
+              [
+                "eth",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 42161
+                  }
+                }
+              ],
+              [
+                "sol",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 1399811149
+                  }
+                }
+              ],
+              [
+                "usdc",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 1
+                  }
+                }
+              ],
+              [
+                "usdc",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 10
+                  }
+                }
+              ],
+              [
+                "usdc",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 8453
+                  }
+                }
+              ],
+              [
+                "usdc",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 42161
+                  }
+                }
+              ],
+              [
+                "usdc",
+                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 1399811149
+                  }
+                }
+              ]
+            ],
+            "withdrawal_fees": [
+              {
+                "denom": "bridge/usdc",
+                "fee": "100000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 42161
+                  }
+                }
+              },
+              {
+                "denom": "bridge/usdc",
+                "fee": "100000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 8453
+                  }
+                }
+              },
+              {
+                "denom": "bridge/usdc",
+                "fee": "1000000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 1
+                  }
+                }
+              },
+              {
+                "denom": "bridge/usdc",
+                "fee": "100000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 10
+                  }
+                }
+              },
+              {
+                "denom": "bridge/usdc",
+                "fee": "10000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "domain": 1399811149
+                  }
+                }
+              },
+              {
+                "denom": "bridge/eth",
+                "fee": "50000000000000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 42161
+                  }
+                }
+              },
+              {
+                "denom": "bridge/eth",
+                "fee": "50000000000000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 8453
+                  }
+                }
+              },
+              {
+                "denom": "bridge/eth",
+                "fee": "500000000000000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 1
+                  }
+                }
+              },
+              {
+                "denom": "bridge/eth",
+                "fee": "50000000000000",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 10
+                  }
+                }
+              },
+              {
+                "denom": "bridge/sol",
+                "fee": "66667",
+                "remote": {
+                  "warp": {
+                    "contract": "0000000000000000000000000000000000000000000000000000000000000001",
+                    "domain": 1399811149
+                  }
+                }
+              }
+            ]
+          },
+          "salt": "ZGFuZ28vZ2F0ZXdheQ=="
         }
       },
       {
@@ -309,42 +588,48 @@
           "msg": {
             "balances": {
               "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0x0fbc6c01f7c334500f465ba456826c890f3c8160": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0x2b83168508f82b773ee9496f462db9ebd9fca817": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
-                "dango": "30000000000",
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0x365a389d8571b681d087ee8f7eecf1ff710f59c8": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0x5a7213b5a8f12e826e88d67c083be371a442689c": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0x6f95c4f169f38f598dd571084daa5c799c5743de": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0xa20a0e1a71b82d50fc046bc6e3178ad0154fd184": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0xbed1fa8569d5a66935dea5a179b77ac06067de32": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               },
               "0xf75d080e41925c12bff714eda6ab74330482561b": {
-                "hyp/eth/usdc": "100000000000000"
+                "dango": "100000000000000"
               }
             },
-            "metadatas": {},
+            "metadatas": {
+              "dango": {
+                "decimals": 6,
+                "description": "Native token of Dango",
+                "name": "Dango",
+                "symbol": "DGX"
+              }
+            },
             "namespaces": {
+              "bridge": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
               "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
-              "hyp": "0x169d35f1c06babf5c340da3548f0c28cb3a83b57",
-              "lending": "0xf556c8f9ffa142b9ea2c2aab101210ad205c5259"
+              "lending": "0x6750bf808e01c7a329826a3a1bec9e20cde6755c"
             }
           },
           "salt": "ZGFuZ28vYmFuaw=="
@@ -352,13 +637,13 @@
       },
       {
         "instantiate": {
-          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
+          "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
           "funds": {},
           "label": "dango/taxman",
           "msg": {
             "config": {
-              "fee_denom": "hyp/eth/usdc",
-              "fee_rate": "0.25"
+              "fee_denom": "bridge/usdc",
+              "fee_rate": "0"
             }
           },
           "salt": "ZGFuZ28vdGF4bWFu"
@@ -366,7 +651,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "CBBD5F990C53684D7AE650B40FCB5656E02261B53DA5F6A7D8C819C92F2828F8",
+          "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
           "funds": {},
           "label": "dango/oracle",
           "msg": {
@@ -396,79 +681,61 @@
               }
             },
             "price_sources": {
-              "hyp/atom/atom": {
+              "bridge/atom": {
                 "pyth": {
                   "id": "0xb00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819",
                   "precision": 6
                 }
               },
-              "hyp/bch/bch": {
+              "bridge/bch": {
                 "pyth": {
                   "id": "0x3dd2b63686a450ec7290df3a1e0b583c0481f651351edfa7636f39aed55cf8a3",
                   "precision": 8
                 }
               },
-              "hyp/bnb/bnb": {
+              "bridge/bnb": {
                 "pyth": {
                   "id": "0x2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f",
                   "precision": 18
                 }
               },
-              "hyp/btc/btc": {
+              "bridge/btc": {
                 "pyth": {
                   "id": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
                   "precision": 8
                 }
               },
-              "hyp/doge/doge": {
+              "bridge/doge": {
                 "pyth": {
                   "id": "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c",
                   "precision": 8
                 }
               },
-              "hyp/eth/eth": {
+              "bridge/eth": {
                 "pyth": {
                   "id": "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
                   "precision": 18
                 }
               },
-              "hyp/eth/shib": {
-                "pyth": {
-                  "id": "0xf0d57deca57b3da2fe63a493f4c25925fdfd8edf834b20f93e1f84dbd1504d4a",
-                  "precision": 18
-                }
-              },
-              "hyp/eth/usdc": {
-                "pyth": {
-                  "id": "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
-                  "precision": 6
-                }
-              },
-              "hyp/eth/wbtc": {
-                "pyth": {
-                  "id": "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33",
-                  "precision": 8
-                }
-              },
-              "hyp/ltc/ltc": {
+              "bridge/ltc": {
                 "pyth": {
                   "id": "0x6e3f3fa8253588df9326580180233eb791e03b443a3ba7a1d892e73874e19a54",
                   "precision": 8
                 }
               },
-              "hyp/sol/sol": {
+              "bridge/sol": {
                 "pyth": {
                   "id": "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
                   "precision": 9
                 }
               },
-              "hyp/sui/sui": {
+              "bridge/usdc": {
                 "pyth": {
-                  "id": "0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744",
-                  "precision": 9
+                  "id": "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+                  "precision": 6
                 }
               },
-              "hyp/xrp/xrp": {
+              "bridge/xrp": {
                 "pyth": {
                   "id": "0xec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8",
                   "precision": 6
@@ -481,7 +748,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
+          "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
           "funds": {},
           "label": "dango/vesting",
           "msg": {
@@ -508,15 +775,13 @@
       "max_bytes": "1048576"
     },
     "validator": {
-      "pub_key_types": [
-        "ed25519"
-      ]
+      "pub_key_types": ["ed25519"]
     },
     "version": {
       "app": "0"
     }
   },
-  "genesis_time": "2025-05-06T00:00:00Z",
+  "genesis_time": "1971-01-01T00:00:00Z",
   "initial_height": "0",
   "validators": [
     {

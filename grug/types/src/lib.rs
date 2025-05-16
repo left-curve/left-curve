@@ -6,6 +6,7 @@ mod bound;
 mod buffer;
 mod builder;
 mod bytes;
+mod cache;
 mod changeset;
 mod code;
 mod coin;
@@ -43,7 +44,7 @@ mod unique_vec;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*,
+    address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*,
     encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*,
     jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*,

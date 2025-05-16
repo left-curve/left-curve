@@ -12,3 +12,6 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [dango]
 100.96.253.40 ansible_user=debian
+
+[bots]
+100.96.253.40 ansible_user=debian

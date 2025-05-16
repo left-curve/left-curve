@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     clang \
     libclang-dev \
     llvm-dev \
+    liblzma-dev \
     pkg-config \
     curl \
     ca-certificates \
