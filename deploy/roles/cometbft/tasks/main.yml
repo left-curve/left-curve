@@ -44,6 +44,12 @@
     driver: bridge
     state: present
 
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+
 - name: Deploy cometbft container
   docker_container:
     name: cometbft
