@@ -2,7 +2,7 @@ import {
   Button,
   IconBell,
   IconGear,
-  IconProfile,
+  IconUser,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -17,6 +17,7 @@ import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
+import { capitalize } from "@left-curve/dango/utils";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -103,8 +104,10 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <>
-                <IconProfile className="w-6 h-6" />
-                <span className="italic font-exposure font-bold">{account?.username}</span>
+                <IconUser className="w-6 h-6" />
+                <span className="italic font-exposure font-bold">
+                  {capitalize(account?.type as string)} #{account?.index}
+                </span>
               </>
             ) : (
               <span>{m["common.signin"]()}</span>
