@@ -3,19 +3,18 @@ import type React from "react";
 export const IconChevronRight: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
   return (
     <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
       <path
-        d="M7.5 15L12.5 10L7.5 5"
-        stroke="currentColor"
-        strokeWidth="1.67"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M7.66798 5.31119C8.04858 4.57536 8.95361 4.28739 9.68944 4.66798C12.5283 6.13633 14.196 7.68438 15.6676 10.4011L15.6676 10.4011C16.2065 11.396 16.2065 12.6046 15.6676 13.5995L15.6676 13.5995C14.196 16.3162 12.5283 17.8643 9.68945 19.3326C8.95362 19.7132 8.04858 19.4253 7.66799 18.6894C7.28739 17.9536 7.57535 17.0486 8.31118 16.668C10.6722 15.4468 11.8735 14.3052 13.0297 12.1707C13.0858 12.0672 13.0858 11.9335 13.0297 11.83L14.3486 11.1155L13.0297 11.83C11.8735 9.69538 10.6722 8.55385 8.31119 7.33264C7.57536 6.95205 7.28739 6.04701 7.66798 5.31119Z"
+        fill="currentColor"
       />
     </svg>
   );
