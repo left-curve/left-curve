@@ -7,7 +7,7 @@ body {
   overflow-y: auto;
   min-height: 100svh;
   scrollbar-gutter: stable;
-  background: black;
+  background: theme("colors.white.100");
 }
 
 #root {
