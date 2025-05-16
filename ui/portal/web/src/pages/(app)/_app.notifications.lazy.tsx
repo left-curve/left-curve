@@ -24,7 +24,7 @@ function NotificationApplet() {
       <Notifications
         maxNotifications={isMd ? 10 : 5}
         withPagination
-        className="shadow-card-shadow"
+        className="!shadow-card-shadow"
       />
     </div>
   );
