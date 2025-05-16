@@ -1,7 +1,13 @@
 import { useNotifications } from "~/hooks/useNotifications";
 import { useState } from "react";
 
-import { Pagination, ResizerContainer, twMerge } from "@left-curve/applets-kit";
+import {
+  Pagination,
+  ResizerContainer,
+  twMerge,
+  useMediaQuery,
+  useWatchEffect,
+} from "@left-curve/applets-kit";
 import { capitalize } from "@left-curve/dango/utils";
 
 import { Notification } from "./Notification";
@@ -21,11 +27,14 @@ type NotificationsProps = {
 export const Notifications: React.FC<NotificationsProps> = (props) => {
   const { className, maxNotifications = 5, withPagination } = props;
   const [currentPage, setCurrentPage] = useState(1);
+  const { isMd } = useMediaQuery();
 
   const { notifications, hasNotifications, totalNotifications } = useNotifications({
     limit: maxNotifications,
     page: currentPage,
   });
+
+  useWatchEffect(maxNotifications, () => setCurrentPage(1));
 
   if (!hasNotifications) {
     return (
@@ -47,8 +56,12 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
     <div className="flex flex-col gap-6">
       {hasNotifications && withPagination ? (
         <Pagination
+          currentPage={currentPage}
           totalPages={Math.ceil(totalNotifications / maxNotifications)}
           onPageChange={setCurrentPage}
+          variant={isMd ? "default" : "text"}
+          labelPage={m["pagination.page"]()}
+          labelOf={m["pagination.of"]()}
         />
       ) : null}
       <ResizerContainer

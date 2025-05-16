@@ -3,6 +3,8 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { IconButton, IconChevronDown, twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { Notifications } from "~/components/notifications/Notifications";
 
+import { m } from "~/paraglide/messages";
+
 export const Route = createLazyFileRoute("/(app)/_app/notifications")({
   component: NotificationApplet,
 });
@@ -18,7 +20,7 @@ function NotificationApplet() {
               <IconChevronDown className="rotate-90" />
             </IconButton>
           )}
-          <span className="h3-bold">Notifcations</span>
+          <span className="h3-bold">{m["notifications.title"]()}</span>
         </h2>
       </div>
       <Notifications

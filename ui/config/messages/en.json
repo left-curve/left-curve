@@ -329,6 +329,10 @@
     "noUsernamesFound": "No usernames found",
     "noUsernameMessage": "We could not find any username associated with the credential you connected."
   },
+  "pagination": {
+    "page": "Page",
+    "of": "of"
+  },
   "notFound": {
     "title": "Page not found!",
     "description": "Sorry! We couldn’t find what you were looking for...",
