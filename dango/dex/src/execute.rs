@@ -654,14 +654,14 @@ fn clear_orders_of_pair(
                 Direction::Bid => {
                     reserve_changes
                         .insert(Coin::new(base_denom.clone(), filled)?)?
-                        .decuct(Coin::new(
+                        .deduct(Coin::new(
                             quote_denom.clone(),
                             filled.checked_mul_dec_floor(clearing_price)?,
                         )?)?;
                 },
                 Direction::Ask => {
                     reserve_changes
-                        .decuct(Coin::new(base_denom.clone(), filled)?)?
+                        .deduct(Coin::new(base_denom.clone(), filled)?)?
                         .insert(Coin::new(quote_denom.clone(), refund_quote)?)?;
                 },
             }
@@ -851,7 +851,7 @@ impl SignedCoins {
         Self(BTreeMap::new())
     }
 
-    fn decuct(&mut self, coin: Coin) -> StdResult<&mut Self> {
+    fn deduct(&mut self, coin: Coin) -> StdResult<&mut Self> {
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             // If the denom doesn't exist, and we are decreasing by a non-zero
             // amount: just create a new record, and we are done.
