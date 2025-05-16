@@ -328,3 +328,4 @@ jobs:
             --skip-tags setup \
             -e dango_image_tag=${{ env.GIT_COMMIT }} \
             -e "dango_db_password=$DANGO_DB_PASSWORD"
+          ansible-playbook bots.yml
