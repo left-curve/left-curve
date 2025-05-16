@@ -4,11 +4,10 @@
     state: directory
     mode: '0755'
 
-- name: Copy files
-  copy:
-    src: "{{ playbook_dir }}/roles/dozzle/files/"
-    dest: "{{ dozzle_dir }}"
-    mode: '0644'
+- name: Copy docker-compose
+  template:
+    src: "{{ playbook_dir }}/roles/dozzle/templates/docker-compose.yml"
+    dest: "{{ dozzle_dir }}/docker-compose.yml"
 
 - name: Launch Dozzle stack
   community.docker.docker_compose_v2:

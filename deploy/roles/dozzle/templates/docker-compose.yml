@@ -4,7 +4,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - 9090:8080
+      - "{{ tailscale_ip }}:9090:8080"
     environment:
       # Uncomment to enable container actions (stop, start, restart). See https://dozzle.dev/guide/actions
       - DOZZLE_ENABLE_ACTIONS=false
