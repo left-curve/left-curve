@@ -800,21 +800,23 @@ fn update_trading_volumes(
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
 
     // Record trading volume for the user's address
-    match volumes.entry(order_user) {
-        Entry::Occupied(mut v) => {
-            v.get_mut().checked_add_assign(new_volume)?;
-        },
-        Entry::Vacant(v) => {
-            let volume = VOLUMES
-                .prefix(&order_user)
-                .values(storage, None, None, IterationOrder::Descending)
-                .next()
-                .transpose()?
-                .unwrap_or(Uint128::ZERO)
-                .checked_add(new_volume)?;
+    {
+        match volumes.entry(order_user) {
+            Entry::Occupied(mut v) => {
+                v.get_mut().checked_add_assign(new_volume)?;
+            },
+            Entry::Vacant(v) => {
+                let volume = VOLUMES
+                    .prefix(&order_user)
+                    .values(storage, None, None, IterationOrder::Descending)
+                    .next()
+                    .transpose()?
+                    .unwrap_or(Uint128::ZERO)
+                    .checked_add(new_volume)?;
 
-            v.insert(volume);
-        },
+                v.insert(volume);
+            },
+        }
     }
 
     // Record trading volume for the user's username, if the trader is a
