@@ -5,7 +5,7 @@ use {
         Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
         Uint128,
     },
-    std::{collections::BTreeMap, str::Utf8Error},
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]

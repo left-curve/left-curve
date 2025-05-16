@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Binary, Denom, Hash256, HexBinary, HexByteArray, NonEmpty, Order, Uint128},
+    grug::{Addr, Denom, Hash256, HexBinary, HexByteArray, NonEmpty, Order, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
