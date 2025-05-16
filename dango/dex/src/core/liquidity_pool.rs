@@ -127,8 +127,11 @@ pub trait PassiveLiquidityPool {
         impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
     )>;
 
-    /// Returns the spot price of the pool at the current reserve, given as the
-    /// number of quote asset units per base asset unit.
+    /// Returns the marginal price of the pool at the current reserve.
+    ///
+    /// The margin price is defined as the price, as the number of quote asset
+    /// units per base asset unit, if one swaps an _infinitesimal amount_ of the
+    /// quote asset for the base asset.
     ///
     /// ## Inputs
     ///
@@ -138,8 +141,8 @@ pub trait PassiveLiquidityPool {
     ///
     /// ## Outputs
     ///
-    /// - The spot price of the pool.
-    fn spot_price(
+    /// - The marginal price of the pool.
+    fn marginal_price(
         &self,
         base_denom: &Denom,
         quote_denom: &Denom,
@@ -318,14 +321,14 @@ impl PassiveLiquidityPool for PairParams {
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
-        let spot_price = self.spot_price(&base_denom, &quote_denom, reserve)?;
+        let marginal_price = self.marginal_price(&base_denom, &quote_denom, reserve)?;
 
         let swap_fee_rate = self.swap_fee_rate.into_inner();
 
         // Construct the bid order iterator.
         let mut bid_i = 1;
         let mut bid_prev_amount = Uint128::ZERO;
-        let mut bid_price = spot_price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
+        let mut bid_price = marginal_price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
         let bids = std::iter::from_fn(move || match self.curve_invariant {
             CurveInvariant::Xyk {
                 order_depth,
@@ -354,7 +357,7 @@ impl PassiveLiquidityPool for PairParams {
         // Construct the ask order iterator.
         let mut ask_i = 1;
         let mut ask_prev_amount = Uint128::ZERO;
-        let mut ask_price = spot_price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
+        let mut ask_price = marginal_price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
         let asks = std::iter::from_fn(move || match self.curve_invariant {
             CurveInvariant::Xyk {
                 order_depth,
@@ -383,7 +386,7 @@ impl PassiveLiquidityPool for PairParams {
         Ok((bids, asks))
     }
 
-    fn spot_price(
+    fn marginal_price(
         &self,
         base_denom: &Denom,
         quote_denom: &Denom,
