@@ -104,6 +104,14 @@
       "keywords": "transfer,send,receive"
     },
     "1": {
+      "id": "simple-swap",
+      "img": "/images/emojis/simple/spot.svg",
+      "title": "Simple Swap",
+      "description": "Swap tokens",
+      "path": "/swap",
+      "keywords": "swap,trade,simple"
+    },
+    "2": {
       "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
       "title": "Settings",
@@ -111,7 +119,7 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "2": {
+    "3": {
       "id": "notifications",
       "img": "/images/emojis/simple/notifications.svg",
       "title": "Notifications",
@@ -119,21 +127,13 @@
       "path": "/notifications",
       "keywords": "notifications,alerts"
     },
-    "3": {
+    "4": {
       "id": "create-account",
       "img": "/images/applets/account-creation.svg",
       "title": "Subaccount creation",
       "description": "Create subaccounts.",
       "path": "/create-account",
       "keywords": "account,create,register"
-    },
-    "4": {
-      "id": "simple-swap",
-      "img": "/images/emojis/simple/spot.svg",
-      "title": "Simple Swap",
-      "description": "Swap tokens",
-      "path": "/swap",
-      "keywords": "swap,trade,simple"
     }
   },
   "explorer": {
