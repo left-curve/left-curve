@@ -293,6 +293,9 @@ jobs:
       COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.COMETBFT_VALIDATOR_ADDRESS }}
       COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.COMETBFT_VALIDATOR_PUB_KEY }}
       COMETBFT_VALIDATOR_PRIVATE_KEY: ${{ secrets.COMETBFT_VALIDATOR_PRIVATE_KEY }}
+      # Still using this as ENV for the bots ansible playbook to login properly
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Check DEPLOY_KEY is set
