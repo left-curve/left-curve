@@ -27,7 +27,7 @@ pub struct StartCmd;
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        tracing::info!("Using git version {GIT_COMMIT}");
+        tracing::info!("Using git commit: {GIT_COMMIT}");
 
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
