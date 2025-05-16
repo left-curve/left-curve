@@ -31,11 +31,17 @@ jobs:
         run: |
           pipx install ansible
           pipx ensurepath
-          ln -f -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+          ln -sf -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
           ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
+      - name: Install collections
+        run: |
+          cd deploy
+          pipx ensurepath
+          ansible-galaxy collection install -r deploy/requirements.yml
       - name: Run Ansible playbook
         run: |
           cd deploy
           pipx ensurepath
-          ansible-galaxy collection install -r requirements.yml
           ansible-playbook bots.yml
+
