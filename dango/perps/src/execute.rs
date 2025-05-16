@@ -182,8 +182,7 @@ fn create_position(
     // Query the oracle for the price
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
     let price = oracle_querier.query_price(&denom, None)?;
-    let position_value =
-        price.value_of_unit_amount(amount.checked_abs()?.checked_into_unsigned()?)?;
+    let position_value = price.value_of_unit_amount(amount.unsigned_abs())?;
 
     Ok(Response::new())
 }

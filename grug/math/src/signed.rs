@@ -10,6 +10,9 @@ pub trait Signed {
     type Unsigned;
 
     fn checked_into_unsigned(self) -> MathResult<Self::Unsigned>;
+
+    /// Returns the absolute value of the signed type as an unsigned type.
+    fn unsigned_abs(self) -> Self::Unsigned;
 }
 
 macro_rules! impl_checked_into_unsigned_std {
@@ -23,6 +26,10 @@ macro_rules! impl_checked_into_unsigned_std {
                 }
 
                 Ok(<$unsigned>::new(self.0 as _))
+            }
+
+            fn unsigned_abs(self) -> Self::Unsigned {
+                <$unsigned>::new(self.0.unsigned_abs())
             }
         }
     };
@@ -50,6 +57,10 @@ macro_rules! impl_checked_into_unsigned_bnum {
 
                 Ok(<$unsigned>::new(self.0.as_()))
             }
+
+            fn unsigned_abs(self) -> Self::Unsigned {
+                <$unsigned>::new(self.0.unsigned_abs())
+            }
         }
     };
     ($($signed:ty => $unsigned:ty),+ $(,)?) => {
@@ -71,6 +82,10 @@ macro_rules! impl_checked_into_unsigned_dec {
 
             fn checked_into_unsigned(self) -> MathResult<$unsigned> {
                 self.0.checked_into_unsigned().map(<$unsigned>::raw)
+            }
+
+            fn unsigned_abs(self) -> Self::Unsigned {
+                <$unsigned>::raw(self.0.unsigned_abs())
             }
         }
     };
@@ -95,6 +110,7 @@ mod int_tests {
         bnum::{cast::As, types::I256},
     };
 
+    // checked_into_unsigned
     int_test!( singed_to_unsigned
         inputs = {
             i128 = {
@@ -132,6 +148,38 @@ mod int_tests {
             }
         }
     );
+
+    // unsigned_abs
+    int_test!( signed_abs
+        inputs = {
+            i128 = {
+                passing: [
+                    (0, Uint128::ZERO),
+                    (10i128, Uint128::TEN),
+                    (-1, Uint128::ONE),
+                    (i128::MAX, Uint128::new(i128::MAX as u128)),
+                    (i128::MIN, Uint128::new(i128::MIN as u128)),
+                ],
+                failing: []
+            }
+            i256 = {
+                passing: [
+                    (I256::ZERO, Uint256::ZERO),
+                    (I256::TEN, Uint256::TEN),
+                    (-I256::TEN, Uint256::TEN),
+                    (I256::MAX, Uint256::new(I256::MAX.as_())),
+                    (-I256::MAX, Uint256::new(I256::MAX.as_())),
+                ],
+                failing: []
+            }
+        }
+        method = |_0, samples, _failing_samples: [i128; 0]| {
+            for (unsigned, expected) in samples {
+                let uint = bt(_0, Int::new(unsigned));
+                assert_eq!(uint.unsigned_abs(), expected);
+            }
+        }
+    );
 }
 
 #[cfg(test)]
@@ -144,6 +192,7 @@ mod dec_tests {
         bnum::{cast::As, types::I256},
     };
 
+    // checked_into_unsigned
     dec_test!( singed_to_unsigned
         inputs = {
             dec128 = {
@@ -178,6 +227,38 @@ mod dec_tests {
             for unsigned in failing {
                 dt(_0d, unsigned);
                 assert!(matches!(unsigned.checked_into_unsigned(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+
+    // unsigned_abs
+    dec_test!( signed_abs
+        inputs = {
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, Udec128::ZERO),
+                    (Dec::TEN, Udec128::TEN),
+                    (-Dec::TEN, Udec128::TEN),
+                    (Dec::MAX, Udec128::raw(Uint128::new(i128::MAX as u128))),
+                    (-Dec::MAX, Udec128::raw(Uint128::new(i128::MAX as u128))),
+                ],
+                failing: []
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, Udec256::ZERO),
+                    (Dec::TEN, Udec256::TEN),
+                    (-Dec::TEN, Udec256::TEN),
+                    (Dec::MAX, Udec256::raw(Uint256::new(I256::MAX.as_()))),
+                    (-Dec::MAX, Udec256::raw(Uint256::new(I256::MAX.as_()))),
+                ],
+                failing: []
+            }
+        }
+        method = |_0d: Dec<_, 18>, samples, _failing_samples: [Dec<u128, 18>; 0]| {
+            for (unsigned, expected) in samples {
+                dt(_0d, unsigned);
+                assert_eq!(unsigned.unsigned_abs(), expected);
             }
         }
     );
