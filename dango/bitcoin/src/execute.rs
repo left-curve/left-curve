@@ -14,7 +14,7 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Empty, Hash256, Message, MutableCtx, Number, NumberConst, Order,
+        Addr, Coin, Coins, Empty, Hash256, Message, MutableCtx, Number, NumberConst, Order,
         QuerierExt as _, Response, StdResult, SudoCtx, Uint128, btree_map,
     },
     std::collections::BTreeMap,
@@ -127,8 +127,7 @@ fn observe_inbound(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: recipient,
-                    denom: DENOM.clone(),
-                    amount,
+                    coins: Coin::new(DENOM.clone(), amount)?.into(),
                 },
                 Coins::new(),
             )?)
@@ -178,8 +177,7 @@ fn withdraw(ctx: MutableCtx, recipient: BitcoinAddress) -> anyhow::Result<Respon
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: coin.denom.clone(),
-                    amount: amount_after_fee,
+                    coins: Coin::new(coin.denom.clone(), amount_after_fee)?.into(),
                 },
                 Coins::new(),
             )?
