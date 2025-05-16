@@ -57,7 +57,7 @@
       HOME: /app
     ports:
       - "26656:26656"
-      - "26657:26657"
+      - "{{ tailscale_ip }}:26657:26657"
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     networks:
