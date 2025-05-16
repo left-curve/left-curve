@@ -89,7 +89,7 @@ pub fn query_health(
 ) -> anyhow::Result<HealthData> {
     // Query all debts for the account.
     let scaled_debts = querier
-        .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
+        .may_query_wasm_path(app_cfg.addresses.lending, &DEBTS.path(account))?
         .unwrap_or_default();
 
     // Query collateral balances.
