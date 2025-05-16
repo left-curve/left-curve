@@ -33,7 +33,10 @@ export function useStorage<T = undefined>(
   const { data, refetch } = useQuery<T | null, Error, T, string[]>({
     queryKey: ["dango", key],
     queryFn: () => {
-      const { value } = storage.getItem(key) as { version: number; value: T };
+      const { value } = storage.getItem(key, {
+        version: __version__,
+        value: initialValue!,
+      }) as { version: number; value: T };
 
       const returnValue = value ?? null;
       return returnValue;
@@ -63,7 +66,10 @@ export function useStorage<T = undefined>(
     (valOrFunc: T | ((t: T) => void)) => {
       const newState = (() => {
         if (typeof valOrFunc !== "function") return valOrFunc as T;
-        const { value } = storage.getItem(key) as { version: number; value: T };
+        const { value } = storage.getItem(key, {
+          version: __version__,
+          value: initialValue!,
+        }) as { version: number; value: T };
         return (valOrFunc as (prevState: T) => T)(value);
       })();
 
