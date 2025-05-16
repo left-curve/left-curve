@@ -19,12 +19,13 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec, coins,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, Int256, IsZero,
+        Message, MultiplyFraction, MutableCtx, NextNumber, NonZero, Number, NumberConst,
+        Order as IterationOrder, PrevNumber, QuerierExt, Response, Signed, StdResult, Storage,
+        SudoCtx, Udec128, Uint128, UniqueVec, Unsigned, coins,
     },
     std::{
-        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+        collections::{BTreeMap, BTreeSet, HashMap, btree_map::IntoIter, hash_map::Entry},
         iter,
     },
 };
@@ -611,18 +612,7 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    // Partition the orders into real and passive orders.
-    let (passive_orders, user_orders): (Vec<_>, Vec<_>) = fill_orders(
-        bids,
-        asks,
-        clearing_price,
-        volume,
-        current_block_height,
-        maker_fee_rate,
-        taker_fee_rate,
-    )?
-    .into_iter()
-    .partition(|filling_outcome| filling_outcome.order.user == dex_addr);
+    let mut reserve_changes = SignedCoins::new();
 
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
@@ -636,8 +626,15 @@ fn clear_orders_of_pair(
         refund_quote,
         fee_base,
         fee_quote,
-    } in user_orders
-    {
+    } in fill_orders(
+        bids,
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
+    )? {
         update_trading_volumes(
             storage,
             oracle_querier,
@@ -649,139 +646,138 @@ fn clear_orders_of_pair(
             volumes_by_username,
         )?;
 
-        // Add refund to the refunds map
-        let refund = Coins::try_from([
-            Coin {
-                denom: base_denom.clone(),
-                amount: refund_base,
-            },
-            Coin {
-                denom: quote_denom.clone(),
-                amount: refund_quote,
-            },
-        ])?;
-
-        refunds
-            .entry(order.user)
-            .or_default()
-            .insert_many(refund.clone())?;
-
-        // Handle fees.
-        if fee_base.is_non_zero() {
-            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
-            fee_payments
-                .entry(order.user)
-                .or_default()
-                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
-        }
-
-        if fee_quote.is_non_zero() {
-            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-            fee_payments
-                .entry(order.user)
-                .or_default()
-                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-        }
-
-        // Include fee information in the event
-        let fee = if fee_base.is_non_zero() {
-            Some(Coin {
-                denom: base_denom.clone(),
-                amount: fee_base,
-            })
-        } else if fee_quote.is_non_zero() {
-            Some(Coin {
-                denom: quote_denom.clone(),
-                amount: fee_quote,
-            })
-        } else {
-            None
-        };
-
-        // Emit event for filled user orders to be used by the frontend
-        events.push(OrderFilled {
-            user: order.user,
-            order_id,
-            clearing_price,
-            filled,
-            refund,
-            fee,
-            cleared,
-            base_denom: base_denom.clone(),
-            quote_denom: quote_denom.clone(),
-            direction: order_direction,
-        })?;
-
-        if cleared {
-            // Remove the order from the storage if it was fully filled
-            ORDERS.remove(
-                storage,
-                (
-                    (base_denom.clone(), quote_denom.clone()),
-                    order_direction,
-                    order_price,
-                    order_id,
-                ),
-            )?;
-        } else {
-            ORDERS.save(
-                storage,
-                (
-                    (base_denom.clone(), quote_denom.clone()),
-                    order_direction,
-                    order_price,
-                    order_id,
-                ),
-                &order,
-            )?;
-        }
-    }
-
-    if !passive_orders.is_empty() {
-        let mut reserve =
-            reserve.ok_or(anyhow!("no reserve found for pair with passive orders"))?;
-
-        // Process the passive orders. This requires the reserve to not be `None`.
-        for FillingOutcome {
-            order_direction,
-            order,
-            filled,
-            refund_quote,
-            ..
-        } in passive_orders
-        {
-            update_trading_volumes(
-                storage,
-                oracle_querier,
-                account_querier,
-                &base_denom,
-                filled,
-                order.user,
-                volumes,
-                volumes_by_username,
-            )?;
-
+        if order.user == dex_addr {
             // The order only exists in the storage if it's not owned by the dex, since
             // the passive orders are "virtual". If it is virtual, we need to update the
             // reserve.
             match order_direction {
                 Direction::Bid => {
-                    reserve
-                        .checked_add(&Coin::new(base_denom.clone(), filled)?)?
-                        .checked_sub(&Coin::new(
+                    reserve_changes
+                        .insert(Coin::new(base_denom.clone(), filled)?)?
+                        .decuct(Coin::new(
                             quote_denom.clone(),
                             filled.checked_mul_dec_floor(clearing_price)?,
                         )?)?;
                 },
                 Direction::Ask => {
-                    reserve
-                        .checked_sub(&Coin::new(base_denom.clone(), filled)?)?
-                        .checked_add(&Coin::new(quote_denom.clone(), refund_quote)?)?;
+                    reserve_changes
+                        .decuct(Coin::new(base_denom.clone(), filled)?)?
+                        .insert(Coin::new(quote_denom.clone(), refund_quote)?)?;
                 },
+            }
+        } else {
+            // Add refund to the refunds map
+            let refund = Coins::try_from([
+                Coin {
+                    denom: base_denom.clone(),
+                    amount: refund_base,
+                },
+                Coin {
+                    denom: quote_denom.clone(),
+                    amount: refund_quote,
+                },
+            ])?;
+
+            refunds
+                .entry(order.user)
+                .or_default()
+                .insert_many(refund.clone())?;
+
+            // Handle fees.
+            if fee_base.is_non_zero() {
+                fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+                fee_payments
+                    .entry(order.user)
+                    .or_default()
+                    .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            }
+
+            if fee_quote.is_non_zero() {
+                fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+                fee_payments
+                    .entry(order.user)
+                    .or_default()
+                    .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            }
+
+            // Include fee information in the event
+            let fee = if fee_base.is_non_zero() {
+                Some(Coin {
+                    denom: base_denom.clone(),
+                    amount: fee_base,
+                })
+            } else if fee_quote.is_non_zero() {
+                Some(Coin {
+                    denom: quote_denom.clone(),
+                    amount: fee_quote,
+                })
+            } else {
+                None
+            };
+
+            // Emit event for filled user orders to be used by the frontend
+            events.push(OrderFilled {
+                user: order.user,
+                order_id,
+                clearing_price,
+                filled,
+                refund,
+                fee,
+                cleared,
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                direction: order_direction,
+            })?;
+
+            if cleared {
+                // Remove the order from the storage if it was fully filled
+                ORDERS.remove(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order_direction,
+                        order_price,
+                        order_id,
+                    ),
+                )?;
+            } else {
+                ORDERS.save(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order_direction,
+                        order_price,
+                        order_id,
+                    ),
+                    &order,
+                )?;
+            }
+        }
+    }
+
+    if !reserve_changes.is_empty() {
+        let mut reserve = RESERVES
+            .load(storage, (&base_denom, &quote_denom))
+            .map_err(|_| anyhow!("no reserve found for pair with passive orders"))?;
+
+        for (denom, amount) in reserve_changes.into_iter() {
+            match amount.cmp(&Int256::ZERO) {
+                std::cmp::Ordering::Less => {
+                    reserve.checked_sub(&Coin::new(
+                        denom.clone(),
+                        (-amount).checked_into_unsigned()?.checked_into_prev()?,
+                    )?)?;
+                },
+                std::cmp::Ordering::Greater => {
+                    reserve.checked_add(&Coin::new(
+                        denom.clone(),
+                        amount.checked_into_unsigned()?.checked_into_prev()?,
+                    )?)?;
+                },
+                std::cmp::Ordering::Equal => {},
             }
         }
 
-        // Save the updated reserve to storage.
         RESERVES.save(storage, (&base_denom, &quote_denom), &reserve)?;
     }
 
@@ -846,4 +842,59 @@ fn update_trading_volumes(
     }
 
     Ok(())
+}
+
+struct SignedCoins(BTreeMap<Denom, Int256>);
+
+impl SignedCoins {
+    fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    fn decuct(&mut self, coin: Coin) -> StdResult<&mut Self> {
+        let Some(amount) = self.0.get_mut(&coin.denom) else {
+            // If the denom doesn't exist, and we are decreasing by a non-zero
+            // amount: just create a new record, and we are done.
+            if coin.amount.is_non_zero() {
+                self.0
+                    .insert(coin.denom, -coin.amount.into_next().checked_into_signed()?);
+            }
+
+            return Ok(self);
+        };
+
+        amount.checked_sub_assign(coin.amount.into_next().checked_into_signed()?)?;
+
+        Ok(self)
+    }
+
+    fn insert(&mut self, coin: Coin) -> StdResult<&mut Self> {
+        let Some(amount) = self.0.get_mut(&coin.denom) else {
+            // If the denom doesn't exist, and we are increasing by a non-zero
+            // amount: just create a new record, and we are done.
+            if coin.amount.is_non_zero() {
+                self.0
+                    .insert(coin.denom, coin.amount.into_next().checked_into_signed()?);
+            }
+
+            return Ok(self);
+        };
+
+        amount.checked_add_assign(coin.amount.into_next().checked_into_signed()?)?;
+
+        Ok(self)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl IntoIterator for SignedCoins {
+    type IntoIter = IntoIter<Denom, Int256>;
+    type Item = (Denom, Int256);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
 }
