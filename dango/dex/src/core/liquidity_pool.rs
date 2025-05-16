@@ -408,17 +408,16 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-
     use {
+        super::*,
         dango_types::constants::{eth, usdc},
-        grug::{Bounded, coins},
+        grug::{Bounded, Coins, coins},
+        test_case::test_case,
     };
-
-    use super::*;
-
-    use {grug::Coins, test_case::test_case};
 
     #[test_case(
         CurveInvariant::Xyk {
@@ -454,7 +453,9 @@ mod tests {
             (Udec128::new_percent(20900), Uint128::from(46007)),
             (Udec128::new_percent(21000), Uint128::from(45568)),
         ],
-        1 ; "xyk pool balance 1:200 tick size 1 no fee")]
+        1;
+        "xyk pool balance 1:200 tick size 1 no fee"
+    )]
     #[test_case(
         CurveInvariant::Xyk {
             order_depth: 10,
@@ -489,7 +490,9 @@ mod tests {
             (Udec128::new_percent(21100), Uint128::from(45137)),
             (Udec128::new_percent(21200), Uint128::from(44711)),
         ],
-        1 ; "xyk pool balance 1:200 tick size 1 one percent fee")]
+        1;
+        "xyk pool balance 1:200 tick size 1 one percent fee"
+    )]
     #[test_case(
         CurveInvariant::Xyk {
             order_depth: 10,
@@ -524,7 +527,9 @@ mod tests {
             (Udec128::new_percent(109), Uint128::from(84947)),
             (Udec128::new_percent(110), Uint128::from(83403)),
         ],
-        1 ; "xyk pool balance 1:1 no fee")]
+        1;
+        "xyk pool balance 1:1 no fee"
+    )]
     #[test_case(
         CurveInvariant::Xyk {
             order_depth: 10,
@@ -559,7 +564,9 @@ mod tests {
             (Udec128::new_percent(110), Uint128::from(83403)),
             (Udec128::new_percent(111), Uint128::from(81900)),
         ],
-        1 ; "xyk pool balance 1:1 one percent fee")]
+        1;
+        "xyk pool balance 1:1 one percent fee"
+    )]
     fn curve_on_orderbook(
         curve_invariant: CurveInvariant,
         swap_fee_rate: Udec128,
