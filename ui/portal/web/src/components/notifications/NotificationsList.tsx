@@ -8,6 +8,7 @@ import { m } from "~/paraglide/messages";
 import type React from "react";
 import type { Notifications } from "~/app.provider";
 import { Notification } from "./Notification";
+import { useNotifications } from "~/hooks/useNotifications";
 
 type NotificationListProps = {
   className?: string;
@@ -22,25 +23,9 @@ export const NotificationsList: React.FC<NotificationListProps> = ({
   className,
   maxNotifications,
 }) => {
-  const { notifications } = useApp();
+  const { notifications, hasNotifications } = useNotifications({ maxNotifications });
 
-  const sortedNotifications: Record<string, Notifications[]> = [...notifications]
-    .reverse()
-    .slice(0, maxNotifications || notifications.length)
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .reduce((acc, notification) => {
-      const dateKey = isToday(notification.createdAt)
-        ? "Today"
-        : format(notification.createdAt, "MM/dd/yyyy");
-
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
-      acc[dateKey].push(notification);
-      return acc;
-    }, Object.create({}));
-
-  if (!notifications.length) {
+  if (!hasNotifications) {
     return (
       <div className="min-h-[19rem] flex flex-col gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat">
         <img
@@ -58,7 +43,7 @@ export const NotificationsList: React.FC<NotificationListProps> = ({
 
   return (
     <div className={twMerge("bg-transparent py-2 px-1 rounded-xl shadow-lg", className)}>
-      {Object.entries(sortedNotifications).map(([dateKey, n]) => (
+      {Object.entries(notifications).map(([dateKey, n]) => (
         <div key={dateKey}>
           <p className="text-sm text-gray-500 mx-2">{dateKey}</p>
           <div className="flex flex-col gap-2">

@@ -16,6 +16,7 @@ import { router } from "./app.router";
 import { Modals } from "./components/modals/RootModal";
 
 import type { AnyCoin } from "@left-curve/store/types";
+import { useNotifications } from "./hooks/useNotifications";
 
 export type NotificationsMap = {
   submit_tx:
@@ -52,7 +53,6 @@ type AppState = {
   router: typeof router;
   config: ReturnType<typeof useAppConfig>;
   notifier: typeof notifier;
-  notifications: { type: string; data: any; createdAt: number }[];
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isNotificationMenuVisible: boolean;
@@ -104,15 +104,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const config = useAppConfig();
 
   // App notifications
-  const [notifications, setNotifications] = useStorage<
-    { type: string; data: unknown; createdAt: number }[]
-  >("app.notifications", { initialValue: [], version: 0.1 });
-  const pushNotification = useCallback(
-    (notification: { type: string; data: unknown; createdAt: number }) => {
-      setNotifications((prev) => [...prev, notification]);
-    },
-    [],
-  );
+  const { pushNotification } = useNotifications({});
 
   const changeSettings = useCallback(
     (s: Partial<AppState["settings"]>) => setSettings((prev) => ({ ...prev, ...s })),
@@ -222,7 +214,6 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         router,
         config,
         notifier,
-        notifications,
         isSidebarVisible,
         setSidebarVisibility,
         isNotificationMenuVisible,
