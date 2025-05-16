@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Binary, ByteArray, Denom, Hash256, HexByteArray, NonEmpty, Order, Uint128},
+    grug::{Addr, Binary, Denom, Hash256, HexBinary, HexByteArray, NonEmpty, Order, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -21,8 +21,8 @@ pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked([NAMESP
 // TODO: There are other types of Bitcoin addresses.
 pub type BitcoinAddress = HexByteArray<20>;
 
-/// An Secp256k1 signature.
-pub type BitcoinSignature = ByteArray<64>;
+/// An Bitcoin signature.
+pub type BitcoinSignature = HexBinary;
 
 /// The index of the output in a Bitcoin transaction.
 pub type Vout = u32;
@@ -134,7 +134,7 @@ pub enum ExecuteMsg {
         ///
         /// Once a threshold number of signatures has been received, a worker
         /// will pick it up and broadcast the transaction on the Bitcoin network.
-        signature: BitcoinSignature,
+        signatures: Vec<BitcoinSignature>,
     },
 }
 
@@ -209,5 +209,5 @@ pub struct OutboundRequested {
 pub struct OutboundConfirmed {
     pub id: u32,
     pub transaction: Transaction,
-    pub signatures: BTreeMap<Addr, BitcoinSignature>,
+    pub signatures: BTreeMap<Addr, Vec<BitcoinSignature>>,
 }

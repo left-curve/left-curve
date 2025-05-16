@@ -49,7 +49,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             recipient,
         } => observe_inbound(ctx, transaction_hash, vout, amount, recipient),
         ExecuteMsg::Withdraw { recipient } => withdraw(ctx, recipient),
-        ExecuteMsg::AuthorizeOutbound { id, signature } => authorize_outbound(ctx, id, signature),
+        ExecuteMsg::AuthorizeOutbound { id, signatures } => authorize_outbound(ctx, id, signatures),
     }
 }
 
@@ -270,7 +270,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 fn authorize_outbound(
     ctx: MutableCtx,
     id: u32,
-    signature: BitcoinSignature,
+    signatures: Vec<BitcoinSignature>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
@@ -279,26 +279,40 @@ fn authorize_outbound(
         "you don't have the right, O you don't have the right"
     );
 
-    let signatures = SIGNATURES.may_update(ctx.storage, id, |signatures| {
-        let mut signatures = signatures.unwrap_or_default();
+    let transaction = OUTBOUNDS.load(ctx.storage, id)?;
 
-        ensure!(
-            signatures.insert(ctx.sender, signature).is_none(),
-            "you've already signed transaction `{id}`"
-        );
+    ensure!(
+        transaction.inputs.len() == signatures.len(),
+        "transaction `{id}` has {} inputs, but {} signatures were provided",
+        transaction.inputs.len(),
+        signatures.len()
+    );
 
-        Ok(signatures)
-    })?;
+    let cumulative_signatures =
+        SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
+            let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
+
+            ensure!(
+                cumulative_signatures
+                    .insert(ctx.sender, signatures)
+                    .is_none(),
+                "you've already signed transaction `{id}`"
+            );
+
+            Ok(cumulative_signatures)
+        })?;
 
     Ok(
-        Response::new().may_add_event(if signatures.len() >= cfg.threshold as usize {
-            Some(OutboundConfirmed {
-                id,
-                transaction: OUTBOUNDS.load(ctx.storage, id)?,
-                signatures,
-            })
-        } else {
-            None
-        })?,
+        Response::new().may_add_event(
+            if cumulative_signatures.len() >= cfg.threshold as usize {
+                Some(OutboundConfirmed {
+                    id,
+                    transaction: OUTBOUNDS.load(ctx.storage, id)?,
+                    signatures: cumulative_signatures,
+                })
+            } else {
+                None
+            },
+        )?,
     )
 }
