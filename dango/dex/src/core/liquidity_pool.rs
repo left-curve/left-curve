@@ -6,6 +6,7 @@ use {
         Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
         StdResult, Udec128, Uint128,
     },
+    std::iter,
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -115,13 +116,13 @@ pub trait PassiveLiquidityPool {
     /// error in computing the order, the iterator should return `None` and thus
     /// terminates.
     fn reflect_curve(
-        &self,
+        self,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> StdResult<(
-        impl Iterator<Item = (Udec128, Uint128)>, // bids
-        impl Iterator<Item = (Udec128, Uint128)>, // asks
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
     )>;
 
     /// Returns the marginal price of the pool at the current reserve.
@@ -308,73 +309,72 @@ impl PassiveLiquidityPool for PairParams {
     }
 
     fn reflect_curve(
-        &self,
+        self,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> StdResult<(
-        impl Iterator<Item = (Udec128, Uint128)>,
-        impl Iterator<Item = (Udec128, Uint128)>,
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
         let marginal_price = self.marginal_price(&base_denom, &quote_denom, reserve)?;
 
-        let swap_fee_rate = self.swap_fee_rate.into_inner();
-
-        // Construct the bid order iterator.
-        let mut bid_i = 1;
-        let mut bid_prev_amount = Uint128::ZERO;
-        let mut bid_price = marginal_price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
-        let bids = std::iter::from_fn(move || match self.curve_invariant {
+        match self.curve_invariant {
             CurveInvariant::Xyk {
                 order_depth,
                 order_spacing,
             } => {
-                if bid_i > order_depth {
-                    return None;
-                }
+                let swap_fee_rate = self.swap_fee_rate.into_inner();
 
-                bid_price.checked_sub_assign(order_spacing).ok()?;
+                // Construct the bid order iterator.
+                let mut bid_i = 1;
+                let mut bid_prev_amount = Uint128::ZERO;
+                let bid_price_multiplier = Udec128::ONE.checked_sub(swap_fee_rate)?;
+                let mut bid_price = marginal_price.checked_mul(bid_price_multiplier)?;
+                let bids = iter::from_fn(move || {
+                    if bid_i > order_depth {
+                        return None;
+                    }
 
-                let quote_reserve_div_price = quote_reserve.checked_div_dec(bid_price).ok()?;
-                let amount_bid = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
-                let amount_diff = amount_bid.checked_sub(bid_prev_amount).ok()?;
+                    bid_price.checked_sub_assign(order_spacing).ok()?;
 
-                bid_prev_amount = amount_bid;
-                bid_i += 1;
+                    let quote_reserve_div_price = quote_reserve.checked_div_dec(bid_price).ok()?;
+                    let amount_bid = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
+                    let amount_diff = amount_bid.checked_sub(bid_prev_amount).ok()?;
 
-                Some((bid_price, amount_diff))
+                    bid_prev_amount = amount_bid;
+                    bid_i += 1;
+
+                    Some((bid_price, amount_diff))
+                });
+
+                // Construct the ask order iterator.
+                let mut ask_i = 1;
+                let mut ask_prev_amount = Uint128::ZERO;
+                let ask_price_multiplier = Udec128::ONE.checked_add(swap_fee_rate)?;
+                let mut ask_price = marginal_price.checked_mul(ask_price_multiplier)?;
+                let asks = iter::from_fn(move || {
+                    if ask_i > order_depth {
+                        return None;
+                    }
+
+                    ask_price.checked_add_assign(order_spacing).ok()?;
+
+                    let quote_reserve_div_price = quote_reserve.checked_div_dec(ask_price).ok()?;
+                    let amount_ask = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
+                    let amount_diff = amount_ask.checked_sub(ask_prev_amount).ok()?;
+
+                    ask_prev_amount = amount_ask;
+                    ask_i += 1;
+
+                    Some((ask_price, amount_diff))
+                });
+
+                Ok((Box::new(bids), Box::new(asks)))
             },
-        });
-
-        // Construct the ask order iterator.
-        let mut ask_i = 1;
-        let mut ask_prev_amount = Uint128::ZERO;
-        let mut ask_price = marginal_price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
-        let asks = std::iter::from_fn(move || match self.curve_invariant {
-            CurveInvariant::Xyk {
-                order_depth,
-                order_spacing,
-            } => {
-                if ask_i > order_depth {
-                    return None;
-                }
-
-                ask_price.checked_add_assign(order_spacing).ok()?;
-
-                let quote_reserve_div_price = quote_reserve.checked_div_dec(ask_price).ok()?;
-                let amount_ask = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
-                let amount_diff = amount_ask.checked_sub(ask_prev_amount).ok()?;
-
-                ask_prev_amount = amount_ask;
-                ask_i += 1;
-
-                Some((ask_price, amount_diff))
-            },
-        });
-
-        Ok((bids, asks))
+        }
     }
 
     fn marginal_price(

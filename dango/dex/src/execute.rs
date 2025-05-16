@@ -23,7 +23,10 @@ use {
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
         QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec, coins,
     },
-    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+    std::{
+        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+        iter,
+    },
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -536,6 +539,8 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
+    // Create iterators over user orders.
+    //
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
     let bid_iter = ORDERS
@@ -547,7 +552,33 @@ fn clear_orders_of_pair(
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending);
 
+    // Create iterators over passive orders.
+    //
+    // If the pool doesn't have passive liquidity (reserve is `None`), simply
+    // use empty iterators.
     let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
+    let (passive_bid_iter, passive_ask_iter) = match &reserve {
+        Some(reserve) => {
+            // Create the passive liquidity orders if the pair has a pool.
+            let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+            pair.reflect_curve(base_denom.clone(), quote_denom.clone(), reserve)?
+        },
+        None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
+    };
+
+    // Merge the orders from users and from the passive pool.
+    let merged_bid_iter = MergedOrders::new(
+        bid_iter,
+        passive_bid_iter,
+        IterationOrder::Descending,
+        dex_addr,
+    );
+    let merged_ask_iter = MergedOrders::new(
+        ask_iter,
+        passive_ask_iter,
+        IterationOrder::Ascending,
+        dex_addr,
+    );
 
     // Run the order matching algorithm.
     let MatchingOutcome {
@@ -555,31 +586,7 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-    } = match reserve.clone() {
-        Some(reserve) => {
-            // Create the passive liquidity orders if the pair has a pool.
-            let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            let (passive_bids, passive_asks) =
-                pair.reflect_curve(base_denom.clone(), quote_denom.clone(), &reserve)?;
-
-            // Merge the real and passive order iterators
-            let merged_bid_iter = MergedOrders::new(
-                bid_iter,
-                Box::new(passive_bids),
-                IterationOrder::Descending,
-                dex_addr,
-            );
-            let merged_ask_iter = MergedOrders::new(
-                ask_iter,
-                Box::new(passive_asks),
-                IterationOrder::Ascending,
-                dex_addr,
-            );
-
-            match_orders(merged_bid_iter, merged_ask_iter)?
-        },
-        None => match_orders(bid_iter, ask_iter)?,
-    };
+    } = match_orders(merged_bid_iter, merged_ask_iter)?;
 
     // If no matching orders were found, then we're done with this pair.
     // Continue to the next pair.
