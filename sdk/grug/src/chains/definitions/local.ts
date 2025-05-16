@@ -6,7 +6,7 @@ export const local = /*#__PURE__*/ defineChain({
   nativeCoin: "uusdc",
   blockExplorers: {
     default: {
-      name: "Devnet Explorer",
+      name: "Local Explorer",
       txPage: "/${tx_hash}",
       accountPage: "/${address}",
     },
