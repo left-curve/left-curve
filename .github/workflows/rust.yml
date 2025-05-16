@@ -209,7 +209,7 @@ jobs:
         run: |
           cp grug/types/src/lib.rs grug/types/src/lib.rs.in
           sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/types/src/lib.rs.in > grug/types/src/lib.rs
-          rm grug/types/src/lib.rs.in
+          rm grug/types/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@v3
 

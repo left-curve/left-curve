@@ -21,6 +21,7 @@ mod encoders;
 mod error;
 mod events;
 mod ffi;
+mod git_info;
 mod hash;
 mod hashers;
 mod imports;
@@ -46,10 +47,10 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*,
-    encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*,
-    jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*,
-    response::*, result::*, serializers::*, shared::*, signer::*, status::*, time::*, tx::*,
-    unique_vec::*, utils::*,
+    encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
+    imports::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*,
+    outcome::*, query::*, response::*, result::*, serializers::*, shared::*, signer::*, status::*,
+    time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
@@ -69,9 +70,3 @@ pub use {client::*, testing::*};
 pub mod __private {
     pub use {::borsh, ::hex_literal, ::serde, ::serde_json, ::serde_with};
 }
-
-// --------------------------------- constants ---------------------------------
-
-/// The git commit hash of the current build. This is replaced by Ansible during
-/// deployment.
-pub const GIT_COMMIT: &str = "{{GIT_COMMIT}}";
