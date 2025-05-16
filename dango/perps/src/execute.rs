@@ -12,7 +12,7 @@ use {
     },
     grug::{
         Coins, Denom, Int128, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt,
-        Response, Sign, Signed, StorageQuerier, Uint128,
+        Response, Sign, Signed, StorageQuerier, Udec128, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -182,8 +182,7 @@ fn create_position(
     // Query the oracle for the price
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
     let price = oracle_querier.query_price(&denom, None)?;
-    let position_value =
-        price.value_of_unit_amount(amount.checked_abs()?.checked_into_unsigned()?)?;
+    let position_value: Udec128 = price.value_of_unit_amount(amount.unsigned_abs())?;
 
     Ok(Response::new())
 }
