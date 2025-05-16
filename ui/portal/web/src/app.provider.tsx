@@ -1,58 +1,19 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import {
-  createEventBus,
-  useAccount,
-  useAppConfig,
-  useConfig,
-  useSessionKey,
-  useStorage,
-} from "@left-curve/store";
+import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
-import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
-import { GRAPHQL_URI } from "../store.config";
 import { router } from "./app.router";
 import { Modals } from "./components/modals/RootModal";
 
-import type { AnyCoin } from "@left-curve/store/types";
 import { useNotifications } from "./hooks/useNotifications";
 
-export type NotificationsMap = {
-  submit_tx:
-    | { isSubmitting: true; txResult?: never }
-    | { isSubmitting: false; txResult: { hasSucceeded: boolean; message: string } };
-  transfer: {
-    amount: number;
-    coin: AnyCoin;
-    fromAddress: string;
-    toAddress: string;
-    type: "received" | "sent";
-  };
-};
-
-export type Notifications<key extends keyof NotificationsMap = keyof NotificationsMap> = {
-  createdAt: number;
-  type: string;
-  data: NotificationsMap[key];
-};
-
-export type Subscription = {
-  transfers: {
-    amount: number;
-    denom: string;
-    fromAddress: string;
-    toAddress: string;
-    blockHeight: number;
-  };
-};
-
-export const notifier = createEventBus<NotificationsMap>();
+import type { notifier as notifierType } from "./hooks/useNotifications";
 
 type AppState = {
   router: typeof router;
   config: ReturnType<typeof useAppConfig>;
-  notifier: typeof notifier;
+  notifier: typeof notifierType;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isNotificationMenuVisible: boolean;
@@ -103,9 +64,6 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   // App Config
   const config = useAppConfig();
 
-  // App notifications
-  const { pushNotification } = useNotifications({});
-
   const changeSettings = useCallback(
     (s: Partial<AppState["settings"]>) => setSettings((prev) => ({ ...prev, ...s })),
     [],
@@ -133,6 +91,14 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   }, [username]);
 
+  // App notifications
+  const { notifier, subscribe } = useNotifications();
+  useEffect(() => {
+    if (!account) return;
+    const unsubscribe = subscribe(account);
+    return () => unsubscribe();
+  }, [account]);
+
   // Track session key expiration
   const { session } = useSessionKey();
   useEffect(() => {
@@ -152,61 +118,6 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       clearInterval(intervalId);
     };
   }, [session, modal, settings.useSessionKey, connector]);
-
-  // Track notifications
-  useEffect(() => {
-    if (!username) return;
-    let client: GraphqlSubscriptionClient | undefined;
-    (async () => {
-      client = createClient({ url: GRAPHQL_URI });
-      const subscription = client.iterate({
-        query: `subscription($address: String) {
-          sentTransfers: transfers(fromAddress: $address) {
-            fromAddress
-            toAddress
-            blockHeight
-            amount
-            denom
-          }
-          receivedTransfers: transfers(toAddress: $address) {
-            fromAddress
-            toAddress
-            blockHeight
-            amount
-            denom
-          }
-        }`,
-        variables: { address: account?.address },
-      });
-      for await (const { data } of subscription) {
-        if (!data) continue;
-        if ("receivedTransfers" in data || "sentTransfers" in data) {
-          const isSent = "sentTransfers" in data;
-
-          const [transfer] = data[
-            isSent ? "sentTransfers" : "receivedTransfers"
-          ] as Subscription["transfers"][];
-          if (!transfer) continue;
-          const coin = coins[transfer.denom];
-          const notification = {
-            ...transfer,
-            type: isSent ? "sent" : "received",
-            coin,
-          } as NotificationsMap["transfer"];
-
-          notifier.publish("transfer", notification);
-          pushNotification({
-            type: "transfer",
-            data: notification,
-            createdAt: Date.now(),
-          });
-        }
-      }
-    })();
-    return () => {
-      if (client) client.dispose();
-    };
-  }, [username]);
 
   return (
     <AppContext.Provider
