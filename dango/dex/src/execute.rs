@@ -623,25 +623,21 @@ fn clear_orders_of_pair(
                 pair.reflect_curve(base_denom.clone(), quote_denom.clone(), &reserve)?;
 
             // Convert the passive bids and asks iterators to the format required by match_orders.
-            let passive_bids = passive_bids.map(|res| {
-                res.map(|(price, amount)| {
-                    ((price, u64::MAX), Order {
-                        user: dex_addr,
-                        amount,
-                        remaining: amount,
-                        created_at_block_height: current_block_height,
-                    })
-                })
+            let passive_bids = passive_bids.map(|(price, amount)| {
+                Ok(((price, u64::MAX), Order {
+                    user: dex_addr,
+                    amount,
+                    remaining: amount,
+                    created_at_block_height: current_block_height,
+                }))
             });
-            let passive_asks = passive_asks.map(|res| {
-                res.map(|(price, amount)| {
-                    ((price, 0), Order {
-                        user: dex_addr,
-                        amount,
-                        remaining: amount,
-                        created_at_block_height: current_block_height,
-                    })
-                })
+            let passive_asks = passive_asks.map(|(price, amount)| {
+                Ok(((price, 0), Order {
+                    user: dex_addr,
+                    amount,
+                    remaining: amount,
+                    created_at_block_height: current_block_height,
+                }))
             });
 
             // Merge the real and passive order iterators

@@ -4,18 +4,9 @@ use {
     dango_types::dex::{CurveInvariant, PairParams},
     grug::{
         Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        StdError, StdResult, Udec128, Uint128,
+        StdResult, Udec128, Uint128,
     },
 };
-
-macro_rules! unwrap_or_return_err_as_option {
-    ($expr:expr) => {
-        match $expr {
-            Ok(val) => val,
-            Err(e)  => return Some(Err(StdError::Math(e))),
-        }
-    };
-}
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
@@ -117,14 +108,20 @@ pub trait PassiveLiquidityPool {
     /// - A tuple of two iterators of orders to place on the orderbook. The
     ///   first contains the bids, the second contains the asks, specified as a
     ///   tuple of (price, amount).
+    ///
+    /// ## Notes
+    ///
+    /// Note that the iterator item doesn't a `Result` type. If there is an
+    /// error in computing the order, the iterator should return `None` and thus
+    /// terminates.
     fn reflect_curve(
         &self,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> StdResult<(
-        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
-        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
+        impl Iterator<Item = (Udec128, Uint128)>, // bids
+        impl Iterator<Item = (Udec128, Uint128)>, // asks
     )>;
 
     /// Returns the marginal price of the pool at the current reserve.
@@ -316,8 +313,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> StdResult<(
-        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
-        impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
+        impl Iterator<Item = (Udec128, Uint128)>,
+        impl Iterator<Item = (Udec128, Uint128)>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
@@ -338,19 +335,16 @@ impl PassiveLiquidityPool for PairParams {
                     return None;
                 }
 
-                bid_price = unwrap_or_return_err_as_option!(bid_price.checked_sub(order_spacing));
-                let amount_bid = unwrap_or_return_err_as_option!(
-                    quote_reserve
-                        .checked_div_dec(bid_price)
-                        .and_then(|v| v.checked_sub(base_reserve))
-                );
-                let amount_diff =
-                    unwrap_or_return_err_as_option!(amount_bid.checked_sub(bid_prev_amount));
+                bid_price.checked_sub_assign(order_spacing).ok()?;
+
+                let quote_reserve_div_price = quote_reserve.checked_div_dec(bid_price).ok()?;
+                let amount_bid = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
+                let amount_diff = amount_bid.checked_sub(bid_prev_amount).ok()?;
 
                 bid_prev_amount = amount_bid;
                 bid_i += 1;
 
-                Some(Ok((bid_price, amount_diff)))
+                Some((bid_price, amount_diff))
             },
         });
 
@@ -367,19 +361,16 @@ impl PassiveLiquidityPool for PairParams {
                     return None;
                 }
 
-                ask_price = unwrap_or_return_err_as_option!(ask_price.checked_add(order_spacing));
-                let quote_reserves_div_price =
-                    unwrap_or_return_err_as_option!(quote_reserve.checked_div_dec(ask_price));
-                let amount_ask = unwrap_or_return_err_as_option!(
-                    base_reserve.checked_sub(quote_reserves_div_price)
-                );
-                let amount_diff =
-                    unwrap_or_return_err_as_option!(amount_ask.checked_sub(ask_prev_amount));
+                ask_price.checked_add_assign(order_spacing).ok()?;
+
+                let quote_reserve_div_price = quote_reserve.checked_div_dec(ask_price).ok()?;
+                let amount_ask = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
+                let amount_diff = amount_ask.checked_sub(ask_prev_amount).ok()?;
 
                 ask_prev_amount = amount_ask;
                 ask_i += 1;
 
-                Some(Ok((ask_price, amount_diff)))
+                Some((ask_price, amount_diff))
             },
         });
 
@@ -590,7 +581,6 @@ mod tests {
             .unwrap();
 
         for (bid, expected_bid) in bids.zip(expected_bids.iter()) {
-            let bid = bid.unwrap();
             assert_eq!(bid.0, expected_bid.0);
             assert!(
                 bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
@@ -598,7 +588,6 @@ mod tests {
         }
 
         for (ask, expected_ask) in asks.zip(expected_asks.iter()) {
-            let ask = ask.unwrap();
             assert_eq!(ask.0, expected_ask.0);
             assert!(
                 ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
