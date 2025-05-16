@@ -1,12 +1,8 @@
-import { createConfig, devnet, graphql, passkey, session } from "@left-curve/store";
+import { createConfig, graphql, local, passkey, session } from "@left-curve/store";
 
 import type { Config } from "@left-curve/store/types";
-const dango = devnet;
 
-export const GRAPHQL_URI =
-  import.meta.env.PUBLIC_ENVIRONMENT === "local"
-    ? import.meta.env.PUBLIC_GRAPHQL_URI
-    : dango.urls.indexer;
+const chain = local;
 
 export const coins = {
   "bridge/btc": {
@@ -68,8 +64,8 @@ export const coinsBySymbol = Object.values(coins).reduce((acc, coin) => {
 
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
-  chain: dango,
-  transport: graphql(GRAPHQL_URI, { batch: true }),
+  chain,
+  transport: graphql(chain.urls.indexer, { batch: true }),
   coins,
   connectors: [passkey(), session()],
 });

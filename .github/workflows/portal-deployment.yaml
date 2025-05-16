@@ -46,7 +46,7 @@ jobs:
       - name: Build Portal
         run: pnpm build:portal-web
         env:
-          PUBLIC_ENVIRONMENT: ${{ secrets.PUBLIC_ENVIRONMENT }}
+          CONFIG_ENVIRONMENT: ${{ github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'ui/release' && 'prod' || 'dev' }}
           PUBLIC_FAUCET_URI: ${{ secrets.PUBLIC_FAUCET_URI }}
           PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}
           PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}

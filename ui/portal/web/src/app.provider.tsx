@@ -1,5 +1,5 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
+import { useAccount, useAppConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
@@ -37,7 +37,6 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const { coins } = useConfig();
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);

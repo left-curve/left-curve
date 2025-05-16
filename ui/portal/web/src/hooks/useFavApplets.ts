@@ -6,21 +6,20 @@ import type { AppletMetadata } from "@left-curve/applets-kit";
 import { useCallback } from "react";
 
 export function useFavApplets() {
-  const [favApplets, setFavApplets] = useStorage<Record<string, AppletMetadata>>(
-    "app.favorite_applets",
-    { initialValue: DEFAULT_FAV_APPLETS },
-  );
+  const [favApplets, setFavApplets] = useStorage<Record<string, AppletMetadata>>("app.applets", {
+    initialValue: DEFAULT_FAV_APPLETS,
+  });
 
   const addFavApplet = useCallback((applet: AppletMetadata) => {
     setFavApplets((prev) => ({
       ...prev,
-      [applet.path]: applet,
+      [applet.id]: applet,
     }));
   }, []);
 
   const removeFavApplet = useCallback((applet: AppletMetadata) => {
     setFavApplets((prev) => {
-      const { [applet.path]: _, ...rest } = prev;
+      const { [applet.id]: _, ...rest } = prev;
       return rest;
     });
   }, []);
