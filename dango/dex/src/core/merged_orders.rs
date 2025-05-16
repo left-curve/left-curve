@@ -36,12 +36,14 @@ where
 
     fn next_passive(&mut self) -> Option<StdResult<((Udec128, u64), Order)>> {
         self.passive.next().map(|(price, amount)| {
-            Ok(((price, PASSIVE_ORDER_ID), Order {
+            let order = Order {
                 user: self.dex,
                 amount,
                 remaining: amount,
                 created_at_block_height: PASSIVE_ORDER_CREATION_BLOCK_HEIGHT,
-            }))
+            };
+
+            Ok(((price, PASSIVE_ORDER_ID), order))
         })
     }
 }
