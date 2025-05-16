@@ -5,8 +5,12 @@ mod keys;
 mod prompt;
 mod query;
 mod start;
+#[cfg(feature = "testing")]
+mod test;
 mod tx;
 
+#[cfg(feature = "testing")]
+use crate::test::TestCmd;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
@@ -47,6 +51,10 @@ enum Command {
     /// Start the node
     Start(StartCmd),
 
+    /// Run test
+    #[cfg(feature = "testing")]
+    Test(TestCmd),
+
     /// Send transactions
     #[command(next_display_order = None)]
     Tx(TxCmd),
@@ -85,6 +93,8 @@ async fn main() -> anyhow::Result<()> {
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
+        #[cfg(feature = "testing")]
+        Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
     }
 }

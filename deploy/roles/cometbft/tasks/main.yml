@@ -1,0 +1,65 @@
+- name: Ensure target dir exists
+  file:
+    path: "{{ cometbft_target_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - config
+    - data
+
+- name: Copy all files from cometbft role
+  copy:
+    src: "{{ playbook_dir }}/roles/cometbft/files/config"
+    dest: "{{ cometbft_target_dir }}"
+    mode: '0644'
+
+- name: Copy validator state only if missing
+  copy:
+    src: "{{ playbook_dir }}/roles/cometbft/files/data/priv_validator_state.json"
+    dest: "{{ cometbft_target_dir }}/data/priv_validator_state.json"
+    mode: '0644'
+    force: no
+
+- name: Render all templates from cometbft role
+  template:
+    src: "{{ item }}"
+    dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
+  loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/config/*', wantlist=True) }}"
+
+- name: Allow TCP ports
+  tags: setup
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 26656
+
+- name: Ensure backend network exists
+  community.docker.docker_network:
+    name: backend
+    driver: bridge
+    state: present
+
+- name: Deploy cometbft container
+  docker_container:
+    name: cometbft
+    image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    pull: always           # always pull the image
+    recreate: true         # destroy+recreate if anything changes
+    restart_policy: unless-stopped
+    state: started
+    env:
+      HOME: /app
+    ports:
+      - "26656:26656"
+      - "{{ tailscale_ip }}:26657:26657"
+    volumes:
+      - "{{ cometbft_target_dir }}:/app/.cometbft"
+    networks:
+      - name: backend
+    tty: true

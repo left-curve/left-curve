@@ -1,14 +1,23 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { createEventBus, useAccount, useConfig, useStorage } from "@left-curve/store";
+import {
+  createEventBus,
+  useAccount,
+  useAppConfig,
+  useConfig,
+  useSessionKey,
+  useStorage,
+} from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
+import { GRAPHQL_URI } from "../store.config";
 import { router } from "./app.router";
+import { Modals } from "./components/modals/RootModal";
 
 import type { AnyCoin } from "@left-curve/store/types";
 
-export type EventBusMap = {
+export type NotificationsMap = {
   submit_tx:
     | { isSubmitting: true; txResult?: never }
     | { isSubmitting: false; txResult: { hasSucceeded: boolean; message: string } };
@@ -21,10 +30,10 @@ export type EventBusMap = {
   };
 };
 
-export type Notifications<key extends keyof EventBusMap = keyof EventBusMap> = {
+export type Notifications<key extends keyof NotificationsMap = keyof NotificationsMap> = {
   createdAt: number;
   type: string;
-  data: EventBusMap[key];
+  data: NotificationsMap[key];
 };
 
 export type Subscription = {
@@ -37,11 +46,12 @@ export type Subscription = {
   };
 };
 
-export const eventBus = createEventBus<EventBusMap>();
+export const notifier = createEventBus<NotificationsMap>();
 
 type AppState = {
   router: typeof router;
-  eventBus: typeof eventBus;
+  config: ReturnType<typeof useAppConfig>;
+  notifier: typeof notifier;
   notifications: { type: string; data: any; createdAt: number }[];
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
@@ -66,8 +76,7 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const { chain, coins: chainsCoins } = useConfig();
-  const coins = chainsCoins[chain.id];
+  const { coins } = useConfig();
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -90,6 +99,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       },
     },
   });
+
+  // App Config
+  const config = useAppConfig();
 
   // App notifications
   const [notifications, setNotifications] = useStorage<
@@ -129,12 +141,32 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   }, [username]);
 
+  // Track session key expiration
+  const { session } = useSessionKey();
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (
+        (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+        settings.useSessionKey &&
+        connector &&
+        connector.type !== "session"
+      ) {
+        if (modal.modal !== Modals.RenewSession) {
+          showModal(Modals.RenewSession);
+        }
+      }
+    }, 1000);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [session, modal, settings.useSessionKey, connector]);
+
   // Track notifications
   useEffect(() => {
     if (!username) return;
     let client: GraphqlSubscriptionClient | undefined;
     (async () => {
-      client = createClient({ url: chain.urls.indexer });
+      client = createClient({ url: GRAPHQL_URI });
       const subscription = client.iterate({
         query: `subscription($address: String) {
           sentTransfers: transfers(fromAddress: $address) {
@@ -168,9 +200,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
             ...transfer,
             type: isSent ? "sent" : "received",
             coin,
-          } as EventBusMap["transfer"];
+          } as NotificationsMap["transfer"];
 
-          eventBus.publish("transfer", notification);
+          notifier.publish("transfer", notification);
           pushNotification({
             type: "transfer",
             data: notification,
@@ -188,7 +220,8 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     <AppContext.Provider
       value={{
         router,
-        eventBus,
+        config,
+        notifier,
         notifications,
         isSidebarVisible,
         setSidebarVisibility,
@@ -196,7 +229,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
-        isQuestBannerVisible,
+        isQuestBannerVisible: false,
         setQuestBannerVisibility,
         showModal,
         hideModal,

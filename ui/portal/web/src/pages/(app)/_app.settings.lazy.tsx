@@ -4,19 +4,20 @@ import {
   IconButton,
   IconChevronDown,
   IconFormatNumber,
+  IconInfo,
   IconLanguage,
   IconMobile,
   Select,
-  Tab,
-  Tabs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { useAccount, useSessionKey } from "@left-curve/store";
 import { Modals } from "~/components/modals/RootModal";
 import { KeyManagement } from "~/components/settings/KeyManagement";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
+
+import { SessionCountdown } from "~/components/settings/SessionCountdown";
 
 export const Route = createLazyFileRoute("/(app)/_app/settings")({
   component: SettingsComponent,
@@ -28,9 +29,10 @@ function SettingsComponent() {
   const { isConnected } = useAccount();
   const { showModal, changeSettings, settings } = useApp();
   const { formatNumberOptions } = settings;
+  const { session } = useSessionKey();
 
   return (
-    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
+    <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-5 p-4 pt-6 mb-16">
       <h2 className="flex gap-2 items-center">
         {isMd ? null : (
           <IconButton variant="link" onClick={() => history.go(-1)}>
@@ -39,6 +41,25 @@ function SettingsComponent() {
         )}
         <span className="h3-bold text-gray-900">{m["settings.title"]()}</span>
       </h2>
+      {session ? (
+        <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
+          <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.session.title"]()}</h3>
+          <div className="flex items-start justify-between py-2 rounded-md gap-8">
+            <div className="flex flex-col">
+              <p className="flex items-start gap-2 px-2">
+                <IconInfo className="text-gray-500" />
+                <span className="diatype-m-bold text-gray-700">
+                  {m["settings.session.remaining"]()}
+                </span>
+              </p>
+              <p className="text-gray-500 diatype-sm-regular pl-10 pb-2">
+                {m["settings.session.description"]()}
+              </p>
+            </div>
+            <SessionCountdown />
+          </div>
+        </div>
+      ) : null}
       <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
         <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.display"]()}</h3>
         <div className="flex items-center justify-between py-2 rounded-md">

@@ -32,6 +32,7 @@ use {
 ///   value.
 pub fn query_and_compute_health(
     querier: QuerierWrapper,
+    oracle_querier: &mut OracleQuerier,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
@@ -66,7 +67,7 @@ pub fn query_and_compute_health(
     let prices = denoms
         .iter()
         .map(|denom| {
-            let price = querier.query_price(cfg.addresses.oracle, denom, None)?;
+            let price = oracle_querier.query_price(denom, None)?;
             Ok((denom.clone(), price))
         })
         .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
@@ -88,7 +89,7 @@ pub fn query_health(
 ) -> anyhow::Result<HealthData> {
     // Query all debts for the account.
     let scaled_debts = querier
-        .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
+        .may_query_wasm_path(app_cfg.addresses.lending, &DEBTS.path(account))?
         .unwrap_or_default();
 
     // Query collateral balances.

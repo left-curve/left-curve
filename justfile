@@ -8,15 +8,6 @@ default:
 clean-branches:
   git branch | grep -v "main" | xargs git branch -D
 
-# Create a multi-arch Docker builder
-docker-create-builder name:
-  docker buildx create \
-    --name $1 \
-    --platform linux/amd64,linux/arm64 \
-    --driver docker-container \
-    --bootstrap \
-    --use
-
 # ------------------------------------ Rust ------------------------------------
 
 # Compile and install the Dango node software
@@ -68,3 +59,16 @@ optimize:
     --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
+
+# ------------------------------- Cross Builder --------------------------------
+
+docker-build-builder-images:
+  docker buildx bake --push
+
+  # Combine the two into a manifest
+  docker manifest create ghcr.io/left-curve/left-curve/native-builder:latest \
+    --amend ghcr.io/left-curve/left-curve/native-builder:amd64 \
+    --amend ghcr.io/left-curve/left-curve/native-builder:arm64
+
+  # Push the manifest
+  docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest

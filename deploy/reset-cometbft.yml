@@ -1,0 +1,17 @@
+- hosts: cometbft
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  vars_files:
+    - roles/cometbft/defaults/main.yml
+  tasks:
+    - name: Stop and remove cometbft container
+      docker_container:
+        name: cometbft
+        state: absent
+        keep_volumes: false
+    - name: Remove directory
+      file:
+        path: "{{ cometbft_target_dir }}"
+        state: absent

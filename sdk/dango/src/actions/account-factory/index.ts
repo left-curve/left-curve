@@ -74,6 +74,12 @@ export {
   getUsersByKeyHash,
 } from "./queries/getUsersByKeyHash.js";
 
+export {
+  type ForgotUsernameParameters,
+  type ForgotUsernameReturnType,
+  forgotUsername,
+} from "./queries/forgotUsername.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                  Mutations                                 */
 /* -------------------------------------------------------------------------- */

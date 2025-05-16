@@ -12,7 +12,7 @@ export const IconCheckedCircle: React.FC<React.SVGAttributes<HTMLOrSVGElement>> 
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <rect width="20" height="20" rx="10" fill="#ED4561" />
+      <rect width="20" height="20" rx="10" fill="currentColor" />
       <path
         fillRule="evenodd"
         clipRule="evenodd"

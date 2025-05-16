@@ -4,7 +4,7 @@ use {
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::PYTH_URL,
+    pyth_types::constants::PYTH_URL,
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };

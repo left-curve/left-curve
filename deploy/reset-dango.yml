@@ -1,0 +1,26 @@
+- hosts: dango
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars_files:
+    - roles/dango/defaults/main.yml
+  collections:
+    - community.docker
+  tasks:
+    - name: Stop and remove dango container
+      docker_container:
+        name: dango
+        state: absent
+        keep_volumes: false
+    - name: Remove directory
+      file:
+        path: "{{ dango_target_dir }}"
+        state: absent
+    - name: Drop Dango production database
+      tags: cleanup
+      community.postgresql.postgresql_db:
+        name: "{{ dango_db_name }}"
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_pass }}"
+        login_host: "{{ db_host }}"
+        login_port: "{{ db_port }}"
+        state: absent

@@ -136,7 +136,7 @@ where
     {
         let value = BorshDeserialize::deserialize_reader(reader)?;
 
-        Self::new(value).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+        Self::new(value).map_err(io::Error::other)
     }
 }
 

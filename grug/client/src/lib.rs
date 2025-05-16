@@ -59,7 +59,7 @@ impl TendermintRpcClient {
 #[async_trait]
 impl QueryClient for TendermintRpcClient {
     type Error = anyhow::Error;
-    type Proof = grug_jmt::Proof;
+    type Proof = grug_types::Proof;
 
     async fn query_app(
         &self,

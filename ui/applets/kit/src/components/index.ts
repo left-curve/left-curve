@@ -27,6 +27,8 @@ export { ExpandOptions } from "./ExpandOptions";
 export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
+export { Popover } from "./Popover";
+export { Pagination } from "./Pagination";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -50,6 +52,7 @@ export { IconLeft } from "./icons/IconLeft";
 export { IconLogOut } from "./icons/IconLogOut";
 export { IconKey } from "./icons/IconKey";
 export { IconClose } from "./icons/IconClose";
+export { IconCloseCircle } from "./icons/IconCloseCircle";
 export { IconStar } from "./icons/IconStar";
 export { IconEmptyStar } from "./icons/IconEmptyStar";
 export { IconCheckedCircle } from "./icons/IconCheckedCircle";
@@ -61,3 +64,5 @@ export { IconMobile } from "./icons/IconMobile";
 export { IconFormatNumber } from "./icons/IconFormatNumber";
 export { IconLanguage } from "./icons/IconLanguage";
 export { IconSwitch } from "./icons/IconSwitch";
+export { IconArrowDown } from "./icons/IconArrowDown";
+export { IconInfo } from "./icons/IconInfo";

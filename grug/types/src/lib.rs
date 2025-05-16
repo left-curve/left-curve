@@ -3,8 +3,10 @@ mod app;
 mod bank;
 mod binary;
 mod bound;
+mod buffer;
 mod builder;
 mod bytes;
+mod cache;
 mod changeset;
 mod code;
 mod coin;
@@ -19,9 +21,11 @@ mod encoders;
 mod error;
 mod events;
 mod ffi;
+mod git_info;
 mod hash;
 mod hashers;
 mod imports;
+mod jellyfish_merkle;
 mod json;
 mod length_bounded;
 mod lengthy;
@@ -32,6 +36,7 @@ mod query;
 mod response;
 mod result;
 mod serializers;
+mod shared;
 mod signer;
 mod status;
 mod time;
@@ -40,11 +45,12 @@ mod unique_vec;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
-    coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
-    encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
-    length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
-    serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
+    address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
+    changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*,
+    encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
+    imports::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*,
+    outcome::*, query::*, response::*, result::*, serializers::*, shared::*, signer::*, status::*,
+    time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

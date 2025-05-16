@@ -1,4 +1,5 @@
 mod address;
+pub mod constants;
 mod crypto;
 mod incremental_merkle_tree;
 pub mod isms;

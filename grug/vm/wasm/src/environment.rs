@@ -284,8 +284,10 @@ impl Environment {
 mod test {
     use {
         crate::{Environment, GAS_PER_OPERATION, Iterator, VmError, VmResult, WasmVm},
-        grug_app::{GasTracker, QuerierProviderImpl, Shared, StorageProvider},
-        grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
+        grug_app::{GasTracker, QuerierProviderImpl, StorageProvider},
+        grug_types::{
+            BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage, Timestamp,
+        },
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
