@@ -1,0 +1,41 @@
+name: Faucet bot
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-faucet:
+    permissions:
+      packages: read
+    runs-on: [self-hosted]
+    # Still using this as ENV for the ansible playbook to login properly
+    env:
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+      - name: Install Ansible & Docker SDK
+        run: |
+          pipx install ansible
+          pipx ensurepath
+          ln -f -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
+          cd deploy
+          ansible-galaxy collection install -r requirements.yml
+      - name: Run Ansible playbook
+        run: |
+          cd deploy
+          pipx ensurepath
+          ansible-playbook bots.yml
