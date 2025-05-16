@@ -75,9 +75,6 @@ pub struct PairParams {
 #[grug::derive(Serde, Borsh)]
 pub enum CurveInvariant {
     Xyk {
-        /// The number of orders from the current price to place on the
-        /// bid and ask sides respectively.
-        order_depth: u64,
         /// The order spacing for the passive liquidity pool. This is the price
         /// difference between two consecutive orders in when the passive
         /// liquidity is reflected onto the orderbook.
@@ -88,28 +85,11 @@ pub enum CurveInvariant {
 impl Display for CurveInvariant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            CurveInvariant::Xyk {
-                order_depth,
-                order_spacing,
-            } => format!("xyk, order_depth: {order_depth}, order_spacing: {order_spacing}"),
+            CurveInvariant::Xyk { order_spacing } => format!("xyk, order_spacing: {order_spacing}"),
         };
         write!(f, "{}", s)
     }
 }
-
-// impl FromStr for CurveInvariant {
-//     type Err = StdError;
-
-//     fn from_str(s: &str) -> StdResult<Self> {
-//         match s {
-//             "xyk" => Ok(CurveInvariant::Xyk),
-//             _ => Err(StdError::deserialize::<Self, _>(
-//                 "str",
-//                 "invalid curve type",
-//             )),
-//         }
-//     }
-// }
 
 /// Updates to a trading pair's parameters.
 #[grug::derive(Serde)]

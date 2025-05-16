@@ -322,52 +322,41 @@ impl PassiveLiquidityPool for PairParams {
         let marginal_price = self.marginal_price(&base_denom, &quote_denom, reserve)?;
 
         match self.curve_invariant {
-            CurveInvariant::Xyk {
-                order_depth,
-                order_spacing,
-            } => {
+            CurveInvariant::Xyk { order_spacing } => {
                 let swap_fee_rate = self.swap_fee_rate.into_inner();
 
                 // Construct the bid order iterator.
-                let mut bid_i = 1;
                 let mut bid_prev_amount = Uint128::ZERO;
                 let bid_price_multiplier = Udec128::ONE.checked_sub(swap_fee_rate)?;
                 let mut bid_price = marginal_price.checked_mul(bid_price_multiplier)?;
                 let bids = iter::from_fn(move || {
-                    if bid_i > order_depth {
-                        return None;
-                    }
-
                     bid_price.checked_sub_assign(order_spacing).ok()?;
 
                     let quote_reserve_div_price = quote_reserve.checked_div_dec(bid_price).ok()?;
                     let amount_bid = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
                     let amount_diff = amount_bid.checked_sub(bid_prev_amount).ok()?;
 
+                    quote_reserve.checked_sub(amount_diff).ok()?;
+
                     bid_prev_amount = amount_bid;
-                    bid_i += 1;
 
                     Some((bid_price, amount_diff))
                 });
 
                 // Construct the ask order iterator.
-                let mut ask_i = 1;
                 let mut ask_prev_amount = Uint128::ZERO;
                 let ask_price_multiplier = Udec128::ONE.checked_add(swap_fee_rate)?;
                 let mut ask_price = marginal_price.checked_mul(ask_price_multiplier)?;
                 let asks = iter::from_fn(move || {
-                    if ask_i > order_depth {
-                        return None;
-                    }
-
                     ask_price.checked_add_assign(order_spacing).ok()?;
 
                     let quote_reserve_div_price = quote_reserve.checked_div_dec(ask_price).ok()?;
                     let amount_ask = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
                     let amount_diff = amount_ask.checked_sub(ask_prev_amount).ok()?;
 
+                    base_reserve.checked_sub(amount_diff).ok()?;
+
                     ask_prev_amount = amount_ask;
-                    ask_i += 1;
 
                     Some((ask_price, amount_diff))
                 });
@@ -415,7 +404,6 @@ mod tests {
 
     #[test_case(
         CurveInvariant::Xyk {
-            order_depth: 10,
             order_spacing: Udec128::ONE,
         },
         Udec128::ZERO,
@@ -452,7 +440,6 @@ mod tests {
     )]
     #[test_case(
         CurveInvariant::Xyk {
-            order_depth: 10,
             order_spacing: Udec128::ONE,
         },
         Udec128::new_percent(1),
@@ -489,7 +476,6 @@ mod tests {
     )]
     #[test_case(
         CurveInvariant::Xyk {
-            order_depth: 10,
             order_spacing: Udec128::new_percent(1),
         },
         Udec128::ZERO,
@@ -526,7 +512,6 @@ mod tests {
     )]
     #[test_case(
         CurveInvariant::Xyk {
-            order_depth: 10,
             order_spacing: Udec128::new_percent(1),
         },
         Udec128::new_percent(1),

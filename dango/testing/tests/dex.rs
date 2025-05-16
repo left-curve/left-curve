@@ -1109,7 +1109,6 @@ fn only_owner_can_create_passive_pool() {
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
                     curve_invariant: CurveInvariant::Xyk {
-                        order_depth: 100,
                         order_spacing: Udec128::new_bps(1),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
@@ -1130,7 +1129,6 @@ fn only_owner_can_create_passive_pool() {
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
                     curve_invariant: CurveInvariant::Xyk {
-                        order_depth: 100,
                         order_spacing: Udec128::new_bps(1),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
@@ -2054,7 +2052,6 @@ fn swap_exact_amount_out(
 
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2100,7 +2097,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 one percent fee no matching orders")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::ZERO,
@@ -2144,7 +2140,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2188,7 +2183,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2234,7 +2228,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::ZERO,
@@ -2278,7 +2271,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::ZERO,
@@ -2322,7 +2314,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::ZERO,
@@ -2368,7 +2359,6 @@ fn swap_exact_amount_out(
     ; "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after")]
 #[test_case(
     CurveInvariant::Xyk {
-        order_depth: 10,
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
