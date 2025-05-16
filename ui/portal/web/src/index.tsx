@@ -4,11 +4,11 @@ import { router } from "./app.router";
 
 import * as Sentry from "@sentry/react";
 
-const SENTRY_DNS = import.meta.env.PUBLIC_SENTRY_DSN;
+const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN;
 
-if (SENTRY_DNS) {
+if (SENTRY_DSN) {
   Sentry.init({
-    dsn: SENTRY_DNS,
+    dsn: SENTRY_DSN,
     integrations: [
       Sentry.httpClientIntegration(),
       Sentry.replayIntegration(),
