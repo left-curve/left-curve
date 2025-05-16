@@ -19,13 +19,13 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, Int256, IsZero,
-        Message, MultiplyFraction, MutableCtx, NextNumber, NonZero, Number, NumberConst,
-        Order as IterationOrder, PrevNumber, QuerierExt, Response, Signed, StdResult, Storage,
-        SudoCtx, Udec128, Uint128, UniqueVec, Unsigned, coins,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
+        coins,
     },
     std::{
-        collections::{BTreeMap, BTreeSet, HashMap, btree_map::IntoIter, hash_map::Entry},
+        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
         iter,
     },
 };
@@ -612,7 +612,8 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    let mut reserve_changes = SignedCoins::new();
+    let mut inflows = Coins::new();
+    let mut outflows = Coins::new();
 
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
@@ -652,17 +653,24 @@ fn clear_orders_of_pair(
             // reserve.
             match order_direction {
                 Direction::Bid => {
-                    reserve_changes
-                        .insert(Coin::new(base_denom.clone(), filled)?)?
-                        .deduct(Coin::new(
-                            quote_denom.clone(),
-                            filled.checked_mul_dec_floor(clearing_price)?,
-                        )?)?;
+                    inflows.insert(Coin {
+                        denom: base_denom.clone(),
+                        amount: filled,
+                    })?;
+                    outflows.insert(Coin {
+                        denom: quote_denom.clone(),
+                        amount: filled.checked_mul_dec_floor(clearing_price)?,
+                    })?;
                 },
                 Direction::Ask => {
-                    reserve_changes
-                        .deduct(Coin::new(base_denom.clone(), filled)?)?
-                        .insert(Coin::new(quote_denom.clone(), refund_quote)?)?;
+                    inflows.insert(Coin {
+                        denom: quote_denom.clone(),
+                        amount: refund_quote,
+                    })?;
+                    outflows.insert(Coin {
+                        denom: base_denom.clone(),
+                        amount: filled,
+                    })?;
                 },
             }
         } else {
@@ -755,30 +763,19 @@ fn clear_orders_of_pair(
         }
     }
 
-    if !reserve_changes.is_empty() {
-        let mut reserve = RESERVES
-            .load(storage, (&base_denom, &quote_denom))
-            .map_err(|_| anyhow!("no reserve found for pair with passive orders"))?;
-
-        for (denom, amount) in reserve_changes.into_iter() {
-            match amount.cmp(&Int256::ZERO) {
-                std::cmp::Ordering::Less => {
-                    reserve.checked_sub(&Coin::new(
-                        denom.clone(),
-                        (-amount).checked_into_unsigned()?.checked_into_prev()?,
-                    )?)?;
-                },
-                std::cmp::Ordering::Greater => {
-                    reserve.checked_add(&Coin::new(
-                        denom.clone(),
-                        amount.checked_into_unsigned()?.checked_into_prev()?,
-                    )?)?;
-                },
-                std::cmp::Ordering::Equal => {},
+    // Update the pool reserve.
+    if inflows.is_non_empty() || outflows.is_non_empty() {
+        RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
+            for inflow in inflows {
+                reserve.checked_add(&inflow)?;
             }
-        }
 
-        RESERVES.save(storage, (&base_denom, &quote_denom), &reserve)?;
+            for outflow in outflows {
+                reserve.checked_sub(&outflow)?;
+            }
+
+            Ok::<_, StdError>(reserve)
+        })?;
     }
 
     Ok(())
@@ -844,59 +841,4 @@ fn update_trading_volumes(
     }
 
     Ok(())
-}
-
-struct SignedCoins(BTreeMap<Denom, Int256>);
-
-impl SignedCoins {
-    fn new() -> Self {
-        Self(BTreeMap::new())
-    }
-
-    fn deduct(&mut self, coin: Coin) -> StdResult<&mut Self> {
-        let Some(amount) = self.0.get_mut(&coin.denom) else {
-            // If the denom doesn't exist, and we are decreasing by a non-zero
-            // amount: just create a new record, and we are done.
-            if coin.amount.is_non_zero() {
-                self.0
-                    .insert(coin.denom, -coin.amount.into_next().checked_into_signed()?);
-            }
-
-            return Ok(self);
-        };
-
-        amount.checked_sub_assign(coin.amount.into_next().checked_into_signed()?)?;
-
-        Ok(self)
-    }
-
-    fn insert(&mut self, coin: Coin) -> StdResult<&mut Self> {
-        let Some(amount) = self.0.get_mut(&coin.denom) else {
-            // If the denom doesn't exist, and we are increasing by a non-zero
-            // amount: just create a new record, and we are done.
-            if coin.amount.is_non_zero() {
-                self.0
-                    .insert(coin.denom, coin.amount.into_next().checked_into_signed()?);
-            }
-
-            return Ok(self);
-        };
-
-        amount.checked_add_assign(coin.amount.into_next().checked_into_signed()?)?;
-
-        Ok(self)
-    }
-
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl IntoIterator for SignedCoins {
-    type IntoIter = IntoIter<Denom, Int256>;
-    type Item = (Denom, Int256);
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
 }
