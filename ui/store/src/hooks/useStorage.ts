@@ -70,7 +70,7 @@ export function useStorage<T = undefined>(
       storage.setItem(key, { version: __version__, value: newState });
       refetch();
     },
-    [storage],
+    [storage, key, refetch, __version__],
   );
 
   return [data as any, setValue];
