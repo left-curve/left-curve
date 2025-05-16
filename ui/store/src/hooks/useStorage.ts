@@ -33,32 +33,25 @@ export function useStorage<T = undefined>(
   const { data, refetch } = useQuery<T | null, Error, T, string[]>({
     queryKey: ["dango", key],
     queryFn: () => {
-      const { value } = storage.getItem(key, {
-        version: __version__,
-        value: initialValue!,
-      }) as { version: number; value: T };
+      const { value } = storage.getItem(key) as { value: T };
 
-      const returnValue = value ?? null;
-      return returnValue;
+      return value ?? null;
     },
     initialData: () => {
       const item = storage.getItem(key, {
-        version: __version__,
         value: initialValue!,
       });
 
       const { version, value } = item as { version: number; value: T };
 
-      if (__version__ > version) {
+      if (!version || __version__ > version) {
         storage.setItem(key, {
           version: __version__,
           value: initialValue,
         });
-        return value as T;
       }
 
-      const returnValue = value ?? null;
-      return returnValue;
+      return value ?? null;
     },
   });
 
@@ -66,10 +59,7 @@ export function useStorage<T = undefined>(
     (valOrFunc: T | ((t: T) => void)) => {
       const newState = (() => {
         if (typeof valOrFunc !== "function") return valOrFunc as T;
-        const { value } = storage.getItem(key, {
-          version: __version__,
-          value: initialValue!,
-        }) as { version: number; value: T };
+        const { value } = storage.getItem(key) as { value: T };
         return (valOrFunc as (prevState: T) => T)(value);
       })();
 
