@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { coinsBySymbol } from "../../../store.config";
+import { coinsBySymbol } from "~/store";
 
 const BASE_DENOM = "USDC";
 const DEFAULT_QUOTE = "BTC";

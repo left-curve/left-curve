@@ -4,7 +4,8 @@
     "paths": {
       "~/*": ["./src/*"],
       "~/paraglide/*": ["./.paraglide/*"],
-      "~/constants": ["./constants.config.ts"]
+      "~/constants": ["./constants.config.ts"],
+      "~/store": ["./store.config.dev.ts"]
     },
     "noEmit": true
   },

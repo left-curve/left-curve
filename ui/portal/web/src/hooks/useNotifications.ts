@@ -1,12 +1,10 @@
 import { createEventBus, useConfig, useStorage } from "@left-curve/store";
 import { format, isToday } from "date-fns";
-import { useCallback, useMemo } from "react";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
+import { useCallback, useMemo } from "react";
 
-import { GRAPHQL_URI } from "../../store.config";
-
-import type { AnyCoin } from "@left-curve/store/types";
 import type { Account } from "@left-curve/dango/types";
+import type { AnyCoin } from "@left-curve/store/types";
 
 export type NotificationsMap = {
   submit_tx:
@@ -47,7 +45,7 @@ export const notifier = createEventBus<NotificationsMap>();
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
 
-  const { coins } = useConfig();
+  const { coins, chain } = useConfig();
 
   const [__notifications__, setNotifications] = useStorage<
     { type: string; data: unknown; createdAt: number }[]
@@ -78,7 +76,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const subscribe = useCallback((account: Account) => {
     let client: GraphqlSubscriptionClient | undefined;
     (async () => {
-      client = createClient({ url: GRAPHQL_URI });
+      client = createClient({ url: chain.urls.indexer });
       const subscription = client.iterate({
         query: `subscription($address: String) {
               sentTransfers: transfers(fromAddress: $address) {

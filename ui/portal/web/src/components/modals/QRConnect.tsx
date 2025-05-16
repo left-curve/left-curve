@@ -7,6 +7,7 @@ import { useApp } from "~/hooks/useApp";
 import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
 import { toast } from "../foundation/Toast";
 
+import { WEBRTC_URI } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type { JsonValue } from "@left-curve/dango/types";
@@ -15,7 +16,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
   const id = useId();
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
-    url: import.meta.env.PUBLIC_WEBRTC_URI,
+    url: WEBRTC_URI,
     key: id,
   });
 
