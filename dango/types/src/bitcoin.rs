@@ -65,6 +65,7 @@ pub struct Transaction {
 #[grug::derive(Serde)]
 pub struct Utxo {
     pub transaction_hash: Hash256,
+    pub vout: Vout,
     pub amount: Uint128,
 }
 
@@ -151,9 +152,9 @@ pub enum QueryMsg {
         order: Order,
     },
     /// Enumerate pending outbound transactions in the queue.
-    #[returns(BTreeMap<Binary, Uint128>)]
+    #[returns(BTreeMap<BitcoinAddress, Uint128>)]
     OutboundQueue {
-        start_after: Option<Binary>,
+        start_after: Option<BitcoinAddress>,
         limit: Option<u32>,
     },
     /// Query the last outbound transaction ID.
