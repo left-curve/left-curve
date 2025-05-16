@@ -1,8 +1,8 @@
+import { useCallback } from "react";
+import { useQuery } from "../query.js";
 import { createStorage } from "../storages/createStorage.js";
 
-import { useQuery } from "../query.js";
-
-import { type Dispatch, type SetStateAction, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { Storage } from "../types/storage.js";
 
 export type UseStorageOptions<T = undefined> = {
@@ -14,7 +14,6 @@ export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
-  const dataRef = useRef<T | null>(null);
   const { initialValue: _initialValue_, storage: _storage_, version: __version__ = 1 } = options;
 
   const storage = (() => {
@@ -34,6 +33,12 @@ export function useStorage<T = undefined>(
   const { data, refetch } = useQuery<T | null, Error, T, string[]>({
     queryKey: ["dango", key],
     queryFn: () => {
+      const { value } = storage.getItem(key) as { version: number; value: T };
+
+      const returnValue = value ?? null;
+      return returnValue;
+    },
+    initialData: () => {
       const item = storage.getItem(key, {
         version: __version__,
         value: initialValue!,
@@ -50,24 +55,23 @@ export function useStorage<T = undefined>(
       }
 
       const returnValue = value ?? null;
-      dataRef.current = returnValue;
       return returnValue;
-    },
-    initialData: () => {
-      dataRef.current = initialValue as T;
-      return initialValue;
     },
   });
 
-  const setValue = (valOrFunc: T | ((t: T) => void)) => {
-    const newState = (() => {
-      if (typeof valOrFunc !== "function") return valOrFunc as T;
-      return (valOrFunc as (prevState: T) => T)(dataRef.current as T);
-    })();
+  const setValue = useCallback(
+    (valOrFunc: T | ((t: T) => void)) => {
+      const newState = (() => {
+        if (typeof valOrFunc !== "function") return valOrFunc as T;
+        const { value } = storage.getItem(key) as { version: number; value: T };
+        return (valOrFunc as (prevState: T) => T)(value);
+      })();
 
-    storage.setItem(key, { version: __version__, value: newState });
-    refetch();
-  };
+      storage.setItem(key, { version: __version__, value: newState });
+      refetch();
+    },
+    [storage, key, refetch, __version__],
+  );
 
   return [data as any, setValue];
 }

@@ -3,9 +3,10 @@ import { camelToTitleCase, wait } from "@left-curve/dango/utils";
 import { useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
-import { useReducer, useState } from "react";
+import { useMemo, useReducer, useState } from "react";
+import { useFavApplets } from "./useFavApplets";
 
-import { m } from "~/paraglide/messages";
+import { APPLETS } from "~/constants";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
 import type {
@@ -20,28 +21,6 @@ type UseSearchBarParameters = {
   debounceMs?: number;
 };
 
-const applets = Array.from(
-  { length: Object.keys(m).filter((k) => k.includes("applet")).length / 5 },
-  (_, i) =>
-    ({
-      title: m[`applets.${i as 0}.title`](),
-      description: m[`applets.${i as 0}.description`](),
-      img: m[`applets.${i as 0}.img`](),
-      keywords: m[`applets.${i as 0}.keywords`]().split(","),
-      path: m[`applets.${i as 0}.path`](),
-    }) as AppletMetadata,
-);
-
-const defaultApplets = applets.slice(0, 4);
-
-const noResult: SearchBarResult = {
-  block: undefined,
-  txs: [],
-  applets: defaultApplets,
-  contract: undefined,
-  account: undefined,
-};
-
 export type SearchBarResult = {
   block?: IndexedBlock;
   txs: IndexedTransaction[];
@@ -53,6 +32,18 @@ export type SearchBarResult = {
 export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const { debounceMs = 300 } = parameters;
   const [searchText, setSearchText] = useState("");
+  const { favApplets } = useFavApplets();
+
+  const noResult: SearchBarResult = useMemo(
+    () => ({
+      block: undefined,
+      txs: [],
+      applets: Object.values(favApplets).slice(0, 5),
+      contract: undefined,
+      account: undefined,
+    }),
+    [favApplets],
+  );
 
   const [searchResult, setSearchResult] = useReducer(
     (os: SearchBarResult, ns: Partial<SearchBarResult>) => ({ ...os, ...ns }),
@@ -73,7 +64,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
 
       setSearchResult({
         applets: fuzzysort
-          .go(searchText, applets, {
+          .go(searchText, APPLETS, {
             threshold: 0.5,
             all: false,
             keys: ["title", "description", (obj: AppletMetadata) => obj.keywords?.join()],
