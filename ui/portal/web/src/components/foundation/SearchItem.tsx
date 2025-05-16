@@ -21,9 +21,9 @@ const Root: React.FC<PropsWithChildren> = ({ children }) => {
 type SearchAppletItemProps = AppletMetadata;
 
 const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
-  const { title, description, img, path } = applet;
+  const { id, title, description, img } = applet;
   const { favApplets, addFavApplet, removeFavApplet } = useFavApplets();
-  const isFav = favApplets[path];
+  const isFav = favApplets[id];
 
   const onClickStar = (e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
