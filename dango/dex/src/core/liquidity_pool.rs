@@ -109,32 +109,32 @@ pub trait PassiveLiquidityPool {
     ///
     /// - `base_denom`: The base asset of the pool.
     /// - `quote_denom`: The quote asset of the pool.
-    /// - `reserves`: The current pool reserves.
+    /// - `reserve`: The current pool reserve.
     /// - `spread`: The spread between the ask and bid.
     ///
     /// ## Outputs
     ///
-    /// - A tuple of two vectors of orders to place on the orderbook. The first vector
-    ///   contains the bids, the second contains the asks, specified as a tuple of
-    ///   (price, amount).
+    /// - A tuple of two iterators of orders to place on the orderbook. The
+    ///   first contains the bids, the second contains the asks, specified as a
+    ///   tuple of (price, amount).
     fn reflect_curve(
         &self,
         base_denom: Denom,
         quote_denom: Denom,
-        reserves: &CoinPair,
+        reserve: &CoinPair,
     ) -> StdResult<(
         impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
         impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
     )>;
 
-    /// Returns the spot price of the pool at the current reserves, given as the number
-    /// of quote asset units per base asset unit.
+    /// Returns the spot price of the pool at the current reserve, given as the
+    /// number of quote asset units per base asset unit.
     ///
     /// ## Inputs
     ///
     /// - `base_denom`: The base asset of the pool.
     /// - `quote_denom`: The quote asset of the pool.
-    /// - `reserves`: The current pool reserves.
+    /// - `reserve`: The current pool reserve.
     ///
     /// ## Outputs
     ///
@@ -143,7 +143,7 @@ pub trait PassiveLiquidityPool {
         &self,
         base_denom: &Denom,
         quote_denom: &Denom,
-        reserves: &CoinPair,
+        reserve: &CoinPair,
     ) -> StdResult<Udec128>;
 }
 
@@ -311,14 +311,14 @@ impl PassiveLiquidityPool for PairParams {
         &self,
         base_denom: Denom,
         quote_denom: Denom,
-        reserves: &CoinPair,
+        reserve: &CoinPair,
     ) -> StdResult<(
         impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
         impl Iterator<Item = StdResult<(Udec128, Uint128)>>,
     )> {
-        let base_reserves = reserves.amount_of(&base_denom)?;
-        let quote_reserves = reserves.amount_of(&quote_denom)?;
-        let spot_price = self.spot_price(&base_denom, &quote_denom, reserves)?;
+        let base_reserve = reserve.amount_of(&base_denom)?;
+        let quote_reserve = reserve.amount_of(&quote_denom)?;
+        let spot_price = self.spot_price(&base_denom, &quote_denom, reserve)?;
 
         let swap_fee_rate = self.swap_fee_rate.into_inner();
 
@@ -337,9 +337,9 @@ impl PassiveLiquidityPool for PairParams {
 
                 bid_price = unwrap_or_return_err_as_option!(bid_price.checked_sub(order_spacing));
                 let amount_bid = unwrap_or_return_err_as_option!(
-                    quote_reserves
+                    quote_reserve
                         .checked_div_dec(bid_price)
-                        .and_then(|v| v.checked_sub(base_reserves))
+                        .and_then(|v| v.checked_sub(base_reserve))
                 );
                 let amount_diff =
                     unwrap_or_return_err_as_option!(amount_bid.checked_sub(bid_prev_amount));
@@ -366,9 +366,9 @@ impl PassiveLiquidityPool for PairParams {
 
                 ask_price = unwrap_or_return_err_as_option!(ask_price.checked_add(order_spacing));
                 let quote_reserves_div_price =
-                    unwrap_or_return_err_as_option!(quote_reserves.checked_div_dec(ask_price));
+                    unwrap_or_return_err_as_option!(quote_reserve.checked_div_dec(ask_price));
                 let amount_ask = unwrap_or_return_err_as_option!(
-                    base_reserves.checked_sub(quote_reserves_div_price)
+                    base_reserve.checked_sub(quote_reserves_div_price)
                 );
                 let amount_diff =
                     unwrap_or_return_err_as_option!(amount_ask.checked_sub(ask_prev_amount));
@@ -387,14 +387,14 @@ impl PassiveLiquidityPool for PairParams {
         &self,
         base_denom: &Denom,
         quote_denom: &Denom,
-        reserves: &CoinPair,
+        reserve: &CoinPair,
     ) -> StdResult<Udec128> {
-        let base_reserves = reserves.amount_of(base_denom)?;
-        let quote_reserves = reserves.amount_of(quote_denom)?;
+        let base_reserve = reserve.amount_of(base_denom)?;
+        let quote_reserve = reserve.amount_of(quote_denom)?;
 
         match self.curve_invariant {
             CurveInvariant::Xyk { .. } => {
-                Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?)
+                Ok(Udec128::checked_from_ratio(quote_reserve, base_reserve)?)
             },
         }
     }
@@ -581,9 +581,9 @@ mod tests {
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
 
-        let reserves = pool_liquidity.try_into().unwrap();
+        let reserve = pool_liquidity.try_into().unwrap();
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserves)
+            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
             .unwrap();
 
         for (bid, expected_bid) in bids.zip(expected_bids.iter()) {
