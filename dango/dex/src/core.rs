@@ -1,7 +1,11 @@
 mod invariant;
 mod liquidity_pool;
+mod merged_orders;
 mod order_filling;
 mod order_matching;
 mod router;
 
-pub use {invariant::*, liquidity_pool::*, order_filling::*, order_matching::*, router::*};
+pub use {
+    invariant::*, liquidity_pool::*, merged_orders::*, order_filling::*, order_matching::*,
+    router::*,
+};

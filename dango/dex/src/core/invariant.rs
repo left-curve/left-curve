@@ -14,7 +14,7 @@ impl TradingFunction for CurveInvariant {
     fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
         match self {
             // k = x * y
-            CurveInvariant::Xyk => {
+            CurveInvariant::Xyk { .. } => {
                 let first = *reserve.first().amount;
                 let second = *reserve.second().amount;
                 Ok(first.checked_mul(second)?)
@@ -25,7 +25,7 @@ impl TradingFunction for CurveInvariant {
     fn normalized_invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
         match self {
             // sqrt(k)
-            CurveInvariant::Xyk => Ok(self.invariant(reserve)?.checked_sqrt()?),
+            CurveInvariant::Xyk { .. } => Ok(self.invariant(reserve)?.checked_sqrt()?),
         }
     }
 }

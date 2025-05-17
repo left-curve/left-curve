@@ -277,7 +277,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        curve_invariant: CurveInvariant::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -286,7 +288,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        curve_invariant: CurveInvariant::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -295,7 +299,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        curve_invariant: CurveInvariant::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -304,7 +310,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        curve_invariant: CurveInvariant::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
