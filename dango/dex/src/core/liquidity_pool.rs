@@ -124,28 +124,6 @@ pub trait PassiveLiquidityPool {
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
     )>;
-
-    /// Returns the marginal price of the pool at the current reserve.
-    ///
-    /// The margin price is defined as the price, as the number of quote asset
-    /// units per base asset unit, if one swaps an _infinitesimal amount_ of the
-    /// quote asset for the base asset.
-    ///
-    /// ## Inputs
-    ///
-    /// - `base_denom`: The base asset of the pool.
-    /// - `quote_denom`: The quote asset of the pool.
-    /// - `reserve`: The current pool reserve.
-    ///
-    /// ## Outputs
-    ///
-    /// - The marginal price of the pool.
-    fn marginal_price(
-        &self,
-        base_denom: &Denom,
-        quote_denom: &Denom,
-        reserve: &CoinPair,
-    ) -> StdResult<Udec128>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -319,7 +297,9 @@ impl PassiveLiquidityPool for PairParams {
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
-        let marginal_price = self.marginal_price(&base_denom, &quote_denom, reserve)?;
+
+        // Compute the marginal price. We will place orders above and below this price.
+        let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
 
         match self.curve_invariant {
             CurveInvariant::Xyk { order_spacing } => {
@@ -362,22 +342,6 @@ impl PassiveLiquidityPool for PairParams {
                 });
 
                 Ok((Box::new(bids), Box::new(asks)))
-            },
-        }
-    }
-
-    fn marginal_price(
-        &self,
-        base_denom: &Denom,
-        quote_denom: &Denom,
-        reserve: &CoinPair,
-    ) -> StdResult<Udec128> {
-        let base_reserve = reserve.amount_of(base_denom)?;
-        let quote_reserve = reserve.amount_of(quote_denom)?;
-
-        match self.curve_invariant {
-            CurveInvariant::Xyk { .. } => {
-                Ok(Udec128::checked_from_ratio(quote_reserve, base_reserve)?)
             },
         }
     }
