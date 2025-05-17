@@ -6,7 +6,7 @@ use {
         Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
         StdResult, Udec128, Uint128,
     },
-    std::iter,
+    std::{cmp, iter},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -306,39 +306,85 @@ impl PassiveLiquidityPool for PairParams {
                 let swap_fee_rate = self.swap_fee_rate.into_inner();
 
                 // Construct the bid order iterator.
-                let mut bid_prev_amount = Uint128::ZERO;
-                let bid_price_multiplier = Udec128::ONE.checked_sub(swap_fee_rate)?;
-                let mut bid_price = marginal_price.checked_mul(bid_price_multiplier)?;
+                // Start from the marginal price minus the swap fee rate.
+                let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
+                let mut maybe_price = Some(marginal_price.checked_mul(one_sub_fee_rate)?);
+                let mut prev_size = Uint128::ZERO;
+                let mut prev_size_quote = Uint128::ZERO;
                 let bids = iter::from_fn(move || {
-                    bid_price.checked_sub_assign(order_spacing).ok()?;
+                    // Terminate if price is less or equal to zero.
+                    let price = match maybe_price {
+                        Some(price) if price.is_non_zero() => price,
+                        _ => return None,
+                    };
 
-                    let quote_reserve_div_price = quote_reserve.checked_div_dec(bid_price).ok()?;
-                    let amount_bid = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
-                    let amount_diff = amount_bid.checked_sub(bid_prev_amount).ok()?;
+                    // Compute the total order size (in base asset) at this price.
+                    let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+                    let mut size = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
 
-                    quote_reserve.checked_sub(amount_diff).ok()?;
+                    // Compute the order size (in base asset) at this price.
+                    //
+                    // This is the difference between the total order size at
+                    // this price, and that at the previous price.
+                    let mut amount = size.checked_sub(prev_size).ok()?;
 
-                    bid_prev_amount = amount_bid;
+                    // Compute the total order size (in quote asset) at this price.
+                    let mut amount_quote = amount.checked_mul_dec_ceil(price).ok()?;
+                    let mut size_quote = prev_size_quote.checked_add(amount_quote).ok()?;
 
-                    Some((bid_price, amount_diff))
+                    // If total order size (in quote asset) is greater than the
+                    // reserve, cap it to the reserve size.
+                    if size_quote > quote_reserve {
+                        size_quote = quote_reserve;
+                        amount_quote = size_quote.checked_sub(prev_size_quote).ok()?;
+                        amount = amount_quote.checked_div_dec_floor(price).ok()?;
+                        size = prev_size.checked_add(amount).ok()?;
+                    }
+
+                    // If order size is zero, we have ran out of liquidity.
+                    // Terminate the iterator.
+                    if amount.is_zero() {
+                        return None;
+                    }
+
+                    // Update the iterator state.
+                    prev_size = size;
+                    prev_size_quote = size_quote;
+                    maybe_price = price.checked_sub(order_spacing).ok();
+
+                    Some((price, amount))
                 });
 
                 // Construct the ask order iterator.
-                let mut ask_prev_amount = Uint128::ZERO;
-                let ask_price_multiplier = Udec128::ONE.checked_add(swap_fee_rate)?;
-                let mut ask_price = marginal_price.checked_mul(ask_price_multiplier)?;
+                let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
+                let mut price = marginal_price.checked_mul(one_plus_fee_rate)?;
+                let mut prev_size = Uint128::ZERO;
                 let asks = iter::from_fn(move || {
-                    ask_price.checked_add_assign(order_spacing).ok()?;
+                    // Compute the total order size (in base asset) at this price.
+                    let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+                    let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
 
-                    let quote_reserve_div_price = quote_reserve.checked_div_dec(ask_price).ok()?;
-                    let amount_ask = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
-                    let amount_diff = amount_ask.checked_sub(ask_prev_amount).ok()?;
+                    // If total order size (in base asset) exceeds the base asset
+                    // reserve, cap it to the reserve size.
+                    let size = cmp::min(size, base_reserve);
 
-                    base_reserve.checked_sub(amount_diff).ok()?;
+                    // Compute the order size (in base asset) at this price.
+                    //
+                    // This is the difference between the total order size at
+                    // this price, and that at the previous price.
+                    let amount = size.checked_sub(prev_size).ok()?;
 
-                    ask_prev_amount = amount_ask;
+                    // If order size is zero, we have ran out of liquidity.
+                    // Terminate the iterator.
+                    if amount.is_zero() {
+                        return None;
+                    }
 
-                    Some((ask_price, amount_diff))
+                    // Update the iterator state.
+                    prev_size = size;
+                    price.checked_add_assign(order_spacing).ok()?;
+
+                    Some((price, amount))
                 });
 
                 Ok((Box::new(bids), Box::new(asks)))
