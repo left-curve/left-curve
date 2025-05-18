@@ -37,5 +37,3 @@
       - "127.0.0.1:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
-    networks:
-      - name: backend
