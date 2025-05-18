@@ -8,7 +8,7 @@
   tasks:
     - name: Stop and remove cometbft container
       docker_container:
-        name: cometbft
+        name: "{{ dango_network }}_cometbft"
         state: absent
         keep_volumes: false
     - name: Remove directory

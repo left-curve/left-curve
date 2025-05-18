@@ -1,3 +1,10 @@
 ---
-cometbft_target_dir: "{{ ansible_env.HOME }}/cometbft"
-host_port: 26657
+cometbft_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
+# should be opened to anyone
+cometbft_p2p_port: 26656
+# should be open to tailscale only
+cometbft_rpc_port: 26657
+# should be only to localhost or cometbft containers
+cometbft_abci_port: 26658
+cometbft_rpc_host: "{{ dango_network }}_cometbft"
+dango_rpc_host: "{{ dango_network }}_dango"

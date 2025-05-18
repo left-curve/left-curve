@@ -24,20 +24,18 @@
     driver: bridge
     state: present
 
-- name: run Postgres container as deploy
-  community.docker.docker_container:
+- name: Deploy postgres container
+  docker_container:
     name: "{{ container_name }}"
     image: "postgres:{{ psql_version }}"
+    restart_policy: unless-stopped
+    state: started
     env:
       POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
       POSTGRES_PASSWORD: "{{ db_password }}"
+    ports:
+      - "127.0.0.1:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
     networks:
-      - backend
-    published_ports:
-      - "127.0.0.1:{{ host_port }}:5432"
-    restart_policy: unless-stopped
-    state: started
-  become: true
-  become_user: "{{ deploy_user }}"
+      - name: backend

@@ -4,6 +4,12 @@
     state: present
     update_cache: yes
 
+- name: Set default system locale
+  lineinfile:
+    path: /etc/locale.gen
+    regexp: 'en_US.UTF-8 UTF-8'
+    line: 'en_US.UTF-8 UTF-8'
+
 - name: Generate en_US.UTF-8 locale
   command: locale-gen en_US.UTF-8
 

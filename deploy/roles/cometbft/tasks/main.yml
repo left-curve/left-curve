@@ -7,15 +7,9 @@
     - config
     - data
 
-- name: Copy all files from cometbft role
-  copy:
-    src: "{{ playbook_dir }}/roles/cometbft/files/config"
-    dest: "{{ cometbft_target_dir }}"
-    mode: '0644'
-
 - name: Copy validator state only if missing
   copy:
-    src: "{{ playbook_dir }}/roles/cometbft/files/data/priv_validator_state.json"
+    src: "{{ playbook_dir }}/roles/cometbft/files/{{ dango_network }}/data/priv_validator_state.json"
     dest: "{{ cometbft_target_dir }}/data/priv_validator_state.json"
     mode: '0644'
     force: no
@@ -24,7 +18,7 @@
   template:
     src: "{{ item }}"
     dest: "{{ cometbft_target_dir }}/config/{{ item | basename }}"
-  loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/config/*', wantlist=True) }}"
+  loop: "{{ lookup('fileglob', playbook_dir + '/roles/cometbft/templates/{{ dango_network }}/config/*', wantlist=True) }}"
 
 - name: Allow TCP ports
   tags: setup
@@ -36,11 +30,11 @@
     port: "{{ item }}"
     proto: tcp
   loop:
-    - 26656
+    - "{{ cometbft_p2p_port }}"
 
 - name: Ensure backend network exists
   community.docker.docker_network:
-    name: backend
+    name: "{{ dango_network }}_backend"
     driver: bridge
     state: present
 
@@ -52,7 +46,7 @@
 
 - name: Deploy cometbft container
   docker_container:
-    name: cometbft
+    name: "{{ dango_network }}_cometbft"
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always           # always pull the image
@@ -62,10 +56,10 @@
     env:
       HOME: /app
     ports:
-      - "26656:26656"
-      - "{{ tailscale_ip }}:26657:26657"
+      - "{{ cometbft_p2p_port }}:26656"
+      - "{{ tailscale_ip }}:{{ cometbft_rpc_port }}:26657"
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     networks:
-      - name: backend
+      - name: "{{ dango_network }}_backend"
     tty: true

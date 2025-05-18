@@ -1,6 +1,7 @@
 collections:
   - name: community.docker
   - name: community.postgresql
+  - name: community.general
 roles:
   - name: artis3n.tailscale
     src: artis3n.tailscale

@@ -56,10 +56,10 @@ port = 8080
 [tendermint]
 
 # Tendermint RPC listening address.
-rpc_addr = "http://cometbft:26657"
+rpc_addr = "http://{{ cometbft_rpc_host }}:{{ cometbft_rpc_port }}"
 
 # Tendermint ABCI listening address.
-abci_addr = "0.0.0.0:26658"
+abci_addr = "0.0.0.0:{{ cometbft_abci_port }}"
 
 ################################################################################
 ###                        Transaction Configuration                         ###
