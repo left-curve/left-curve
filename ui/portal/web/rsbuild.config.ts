@@ -14,7 +14,7 @@ const { publicVars } = loadEnv();
 const storePath = {
   local: path.resolve(__dirname, "./store.config.local.ts"),
   dev: path.resolve(__dirname, "./store.config.dev.ts"),
-  test: path.resolve(__dirname, "./store.config.test.ts"),
+  test: path.resolve(__dirname, "./store.config.testnet.ts"),
   prod: path.resolve(__dirname, "./store.config.prod.ts"),
 };
 

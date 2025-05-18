@@ -1,17 +1,17 @@
 import { defineChain } from "../defineChain.js";
 
-export const local = /*#__PURE__*/ defineChain({
-  id: "localdango-1",
-  name: "Local",
+export const testnet = /*#__PURE__*/ defineChain({
+  id: "dev-6",
+  name: "Testnet",
   nativeCoin: "dango",
   blockExplorers: {
     default: {
-      name: "Local Explorer",
+      name: "Testnet Explorer",
       txPage: "/tx/${txHash}",
       accountPage: "/account/${address}",
     },
   },
   urls: {
-    indexer: "http://localhost:8080/graphql",
+    indexer: "https://testnet.dango.exchange/graphql",
   },
 });
