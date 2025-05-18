@@ -1,7 +1,6 @@
 import { Button, Input, ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
 import { capitalize, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
-import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
@@ -59,33 +58,33 @@ export const CreateAccountDepositStep: React.FC = () => {
           txResult: { hasSucceeded: true, message: m["accountCreation.accountCreated"]() },
         });
 
-      return {
-        amount: parsedAmount,
-        accountType,
-        accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
-        denom: "hyp/eth/usdc",
-      };
-    },
-    onSuccess: async (data) => {
-      showModal(Modals.ConfirmAccount, data);
-      await refreshAccounts?.();
-      await refreshBalances();
-      // changeAccount?.(data.address);
-      queryClient.invalidateQueries({ queryKey: ["quests", account] });
-      navigate({ to: "/" });
-    },
-    onError: (e) => {
-      console.error(e);
-      toast.error(
-        {
-          title: m["signup.errors.couldntCompleteRequest"]() as string,
-          description: e instanceof Error ? e.message : e,
-        },
-        {
-          duration: Number.POSITIVE_INFINITY,
-        },
-      );
-      captureException(e);
+        showModal(Modals.ConfirmAccount, {
+          amount: parsedAmount,
+          accountType,
+          accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
+          denom: "bridge/usdc",
+        });
+        await refreshAccounts?.();
+        await refreshBalances();
+        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        navigate({ to: "/" });
+      } catch (e) {
+        console.error(e);
+        const error = ensureErrorMessage(e);
+        notifier.publish("submit_tx", {
+          isSubmitting: false,
+          txResult: { hasSucceeded: false, message: m["signup.errors.couldntCompleteRequest"]() },
+        });
+        toast.error(
+          {
+            title: m["signup.errors.couldntCompleteRequest"]() as string,
+            description: error,
+          },
+          {
+            duration: Number.POSITIVE_INFINITY,
+          },
+        );
+      }
     },
   });
 
