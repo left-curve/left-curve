@@ -62,6 +62,7 @@ export type CreateConfigParameters<
   transport extends Transport = Transport,
   coin extends AnyCoin = AnyCoin,
 > = {
+  version?: number;
   chain: Chain;
   coins?: Record<Denom, coin>;
   transport: transport;

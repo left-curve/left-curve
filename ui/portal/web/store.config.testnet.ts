@@ -1,4 +1,4 @@
-import { createConfig, testnet, graphql, passkey, session } from "@left-curve/store";
+import { createConfig, graphql, passkey, session, testnet } from "@left-curve/store";
 
 import type { Config } from "@left-curve/store/types";
 
@@ -63,6 +63,7 @@ export const coinsBySymbol = Object.values(coins).reduce((acc, coin) => {
 }, Object.create({}));
 
 export const config: Config = createConfig({
+  version: 0.4,
   multiInjectedProviderDiscovery: true,
   chain,
   transport: graphql(chain.urls.indexer, { batch: true }),
