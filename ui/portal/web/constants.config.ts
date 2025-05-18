@@ -6,8 +6,6 @@ export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export const WEBRTC_URI = import.meta.env.PUBLIC_WEBRTC_URI;
 
-export const FAUCET_URL = import.meta.env.PUBLIC_FAUCET_URI;
-
 export const APPLETS = Array.from(
   { length: Object.keys(m).filter((k) => k.includes("applet")).length },
   (_, i) => {

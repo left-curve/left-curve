@@ -39,7 +39,7 @@ import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
 import { AccountType } from "@left-curve/dango/types";
-import { DEFAULT_SESSION_EXPIRATION, FAUCET_URL } from "~/constants";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type { Address, Hex, Key } from "@left-curve/dango/types";
@@ -299,7 +299,9 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(`${FAUCET_URL}/mint/${address}`);
+        const response = await fetch(
+          `${config.chain.urls.indexer.replace("graphql", "faucet")}/mint/${address}`,
+        );
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {
