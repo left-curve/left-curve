@@ -10,6 +10,15 @@ const getPort = (pathname: string) => {
   throw new Error("Invalid path");
 };
 
+const withTimeout = async (promise: Promise<Response>, timeout: number) => {
+  // biome-ignore lint/suspicious/noAsyncPromiseExecutor: we need to use async executor to handle timeout
+  return await new Promise<Response>(async (resolve) => {
+    setTimeout(() => resolve({ ok: false } as Response), timeout);
+    const response = await promise;
+    resolve(response);
+  });
+};
+
 export default {
   async fetch(request: Request, env: Env) {
     if (request.method === "OPTIONS") {
@@ -69,10 +78,10 @@ export default {
     }
 
     const [questsStatus, graphqlStatus, rpcStatus, faucetStatus] = await Promise.all([
-      fetch(`http://${env.SERVER_URI}:8081/check_username/none`),
-      fetch(`http://${env.SERVER_URI}:8080`),
-      fetch(`http://${env.SERVER_URI}:26657`),
-      fetch(`http://${env.SERVER_URI}:8082/health`),
+      withTimeout(fetch(`http://${env.SERVER_URI}:8081/check_username/none`), 500),
+      withTimeout(fetch(`http://${env.SERVER_URI}:8080`), 500),
+      withTimeout(fetch(`http://${env.SERVER_URI}:26657`), 500),
+      withTimeout(fetch(`http://${env.SERVER_URI}:8082/health`), 500),
     ]);
 
     return new Response(
