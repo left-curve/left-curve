@@ -1,3 +1,9 @@
+- name: Ensure '{{ runner_user }}' user exists
+  user:
+    name: "{{ runner_user }}"
+    shell: /bin/bash
+    create_home: yes
+
 - name: Ensure dependencies are installed
   apt:
     name:

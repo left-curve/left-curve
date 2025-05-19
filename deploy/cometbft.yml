@@ -2,10 +2,6 @@
   become: true
   become_user: "{{ deploy_user }}"
   vars:
-    COMETBFT_NODE_KEY: "{{ lookup('env','COMETBFT_NODE_KEY') }}"
-    COMETBFT_VALIDATOR_ADDRESS: "{{ lookup('env','COMETBFT_VALIDATOR_ADDRESS') }}"
-    COMETBFT_VALIDATOR_PUB_KEY: "{{ lookup('env','COMETBFT_VALIDATOR_PUB_KEY') }}"
-    COMETBFT_VALIDATOR_PRIVATE_KEY: "{{ lookup('env','COMETBFT_VALIDATOR_PRIVATE_KEY') }}"
     tailscale_iface: tailscale0
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
     ghcr_user: "{{ lookup('env','GITHUB_USER') }}"

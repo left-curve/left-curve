@@ -4,12 +4,6 @@
   roles:
     - rust
   tasks:
-    - name: Ensure '{{ runner_user }}' user exists
-      user:
-        name: "{{ runner_user }}"
-        shell: /bin/bash
-        create_home: yes
-
     - name: Install required packages
       apt:
         name: [curl, tar, pipx, python3, python3-pip]
