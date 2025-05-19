@@ -12,7 +12,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
     symbol: "BTC",
     denom: "bridge/btc",
-    decimals: 6,
+    decimals: 8,
     coingeckoId: "bitcoin",
   },
   "bridge/eth": {
@@ -42,7 +42,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
     symbol: "USDC",
     denom: "bridge/usdc",
-    decimals: 6,
+    decimals: 18,
     coingeckoId: "usd-coin",
   },
   "bridge/sol": {
@@ -52,7 +52,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
     symbol: "SOL",
     denom: "bridge/sol",
-    decimals: 6,
+    decimals: 9,
     coingeckoId: "solana",
   },
 } as const;
