@@ -5,10 +5,11 @@
   ufw:
     rule: allow
     direction: in
-    port: "{{ item }}"
+    port: "{{ ports[dango_network].faucet_port }}"
     proto: tcp
-  loop:
-    - 8082
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
 - name: Login to GHCR
   community.docker.docker_login:
@@ -18,19 +19,21 @@
 
 - name: Deploy bots container
   docker_container:
-    name: bots
-    image: ghcr.io/left-curve/bots/bots:latest
+    name: "{{ dango_network }}_bots"
+    image: "ghcr.io/left-curve/bots/bots:{{ git_version }}"
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always
     recreate: true
     restart_policy: unless-stopped
     state: started
-    command: ["faucet", "--provider-url", "http://dango:8080"]
+    command: ["faucet", "--provider-url", "http://{{ dango_network }}_dango:8080"]
     env:
       HOME: /app
     ports:
-      - "8082:8082"
+      - "{{ ports[dango_network].faucet_port }}:8082"
     networks:
-      - name: backend
+      - name: "{{ dango_network }}_backend"
     tty: true
-
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network

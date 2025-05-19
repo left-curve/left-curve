@@ -1,7 +1,3 @@
-import type React from "react";
-import type { PropsWithChildren } from "react";
-import type { Notifications } from "~/app.provider";
-
 import { TruncateText, twMerge } from "@left-curve/applets-kit";
 import {
   differenceInDays,
@@ -13,6 +9,10 @@ import {
 
 import { formatUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
+
+import type { PropsWithChildren } from "react";
+import type React from "react";
+import type { Notifications } from "~/hooks/useNotifications";
 
 const formatNotificationTimestamp = (timestamp: Date): string => {
   const now = new Date();
@@ -40,7 +40,11 @@ const formatNotificationTimestamp = (timestamp: Date): string => {
   return format(timestamp, "MM/dd");
 };
 
-const Root: React.FC<PropsWithChildren> = ({ children }) => {
+export type NotificationProps = {
+  notification: Notifications;
+};
+
+const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
 };
 
@@ -81,6 +85,6 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   );
 };
 
-export const Notification = Object.assign(Root, {
+export const Notification = Object.assign(Container, {
   Transfer: NotificationTransfer,
 });

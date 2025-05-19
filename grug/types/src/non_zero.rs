@@ -107,7 +107,7 @@ where
         let inner = BorshDeserialize::deserialize_reader(reader)?;
 
         // We assert the number is non-zero here with `NonZero::new`.
-        NonZero::new(inner).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+        NonZero::new(inner).map_err(io::Error::other)
     }
 }
 

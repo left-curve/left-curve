@@ -1,7 +1,7 @@
 use {
     criterion::{
-        AxisScale, BatchSize, BenchmarkId, Criterion, PlotConfiguration, black_box,
-        criterion_group, criterion_main,
+        AxisScale, BatchSize, BenchmarkId, Criterion, PlotConfiguration, criterion_group,
+        criterion_main,
     },
     ed25519_dalek::Signer,
     grug_crypto::{
@@ -11,7 +11,7 @@ use {
     },
     p256::ecdsa::signature::DigestSigner,
     rand::{RngCore, rngs::OsRng},
-    std::time::Duration,
+    std::{hint::black_box, time::Duration},
 };
 
 struct Settings {

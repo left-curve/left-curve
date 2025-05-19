@@ -28,6 +28,7 @@ export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
+export { Pagination } from "./Pagination";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -35,7 +36,6 @@ export { CheckCircleIcon } from "./icons/CheckCircle";
 export { XCircleIcon } from "./icons/XCircle";
 
 export { IconDangoDots } from "./icons/IconDangoDots";
-export { IconProfile } from "./icons/IconProfile";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconDoubleChevronRight } from "./icons/IconDoubleChevronRight";
 export { IconChevronRight } from "./icons/IconChevronRight";
@@ -65,3 +65,4 @@ export { IconLanguage } from "./icons/IconLanguage";
 export { IconSwitch } from "./icons/IconSwitch";
 export { IconArrowDown } from "./icons/IconArrowDown";
 export { IconInfo } from "./icons/IconInfo";
+export { IconUser } from "./icons/IconUser";

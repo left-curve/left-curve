@@ -1,3 +1,5 @@
+import { useConfig } from "@left-curve/store";
+
 import { Button, twMerge } from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
@@ -6,11 +8,12 @@ import type React from "react";
 import { useApp } from "~/hooks/useApp";
 
 export const WelcomeModal: React.FC = () => {
+  const { chain } = useConfig();
   const { settings, changeSettings } = useApp();
 
   const { showWelcome } = settings;
 
-  if (!showWelcome) return null;
+  if (!showWelcome || chain.name !== "testnet") return null;
 
   return (
     <div

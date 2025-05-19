@@ -7,6 +7,7 @@ import {
   IconInfo,
   IconLanguage,
   IconMobile,
+  IconUser,
   Select,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -26,7 +27,7 @@ export const Route = createLazyFileRoute("/(app)/_app/settings")({
 function SettingsComponent() {
   const { isMd, isLg } = useMediaQuery();
   const { history } = useRouter();
-  const { isConnected } = useAccount();
+  const { isConnected, username } = useAccount();
   const { showModal, changeSettings, settings } = useApp();
   const { formatNumberOptions } = settings;
   const { session } = useSessionKey();
@@ -44,6 +45,17 @@ function SettingsComponent() {
       {session ? (
         <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
           <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.session.title"]()}</h3>
+          <div className="flex items-center justify-between py-2 rounded-md gap-8">
+            <div className="flex flex-col">
+              <p className="flex items-start gap-2 px-2">
+                <IconUser className="text-gray-500" />
+                <p className="diatype-m-bold text-gray-700">Username</p>
+              </p>
+            </div>
+            <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+              {username}
+            </div>
+          </div>
           <div className="flex items-start justify-between py-2 rounded-md gap-8">
             <div className="flex flex-col">
               <p className="flex items-start gap-2 px-2">

@@ -2,7 +2,7 @@ use {
     crate::context::Context,
     actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
     async_graphql::futures_util::TryFutureExt,
-    grug_app::GIT_COMMIT,
+    grug_types::GIT_COMMIT,
     indexer_sql::entity,
     sea_orm::{EntityTrait, Order, QueryOrder},
 };

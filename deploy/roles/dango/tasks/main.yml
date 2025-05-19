@@ -1,10 +1,12 @@
-- name: Install nginx as a proxy
+- name: Ensure target dir exists
   tags: setup
-  become: true
-  become_user: root
-  apt:
-    name: nginx
-    state: present
+  vars:
+    dango_target_dir: "{{ ansible_env.HOME }}/{{ item[0] }}/dango"
+  file:
+    path: "{{ dango_target_dir }}/{{ item[1] }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ dango_networks | product(['config']) | list }}"
 
 - name: Install psycopg2 so Ansible can talk to Postgres
   tags: setup
@@ -28,13 +30,16 @@
 - name: Create Dango production database
   tags: setup
   community.postgresql.postgresql_db:
-    name: "{{ dango_db_name }}"
+    name: "{{ dango_network }}_{{ dango_db_name }}"
     owner: "{{ dango_db_user }}"
     login_user: "{{ db_user }}"
     login_password: "{{ db_pass }}"
     login_host: "{{ db_host }}"
     login_port: "{{ db_port }}"
     state: present
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
 - name: Grant ALL privileges on the Dango database to the Dango user
   tags: setup
@@ -42,26 +47,48 @@
     type: database
     privs: ALL
     roles: "{{ dango_db_user }}"
-    login_db: "{{ dango_db_name }}"
+    login_db: "{{ dango_network }}_{{ dango_db_name }}"
     login_user: "{{ db_user }}"
     login_password: "{{ db_pass }}"
     login_host: "{{ db_host }}"
     login_port: "{{ db_port }}"
     state: present
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
-- name: Copy all files from dango role
+- name: Copy app.toml
+  vars:
+    dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
+    cometbft_host: "{{ dango_network }}_cometbft"
+    cometbft_rpc_port: "{{ ports[dango_network].cometbft_rpc_port }}"
   tags: setup
-  copy:
-    src: "{{ playbook_dir }}/roles/dango/files/config"
-    dest: "{{ dango_target_dir }}"
-    mode: '0644'
+  template:
+    src: "{{ playbook_dir }}/roles/dango/templates/{{ dango_network }}/config/app.toml"
+    dest: "{{ dango_target_dir }}/config/app.toml"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
 - name: Ensure backend network exists
   tags: setup
   community.docker.docker_network:
-    name: backend
+    name: "{{ dango_network }}_backend"
     driver: bridge
     state: present
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
+- name: Connect Postgres container to extra network
+  community.docker.docker_network:
+    name: "{{ dango_network }}_backend"
+    connected:
+      - "{{ docker_db_host }}"
+    appends: true
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
 - name: Allow TCP ports
   tags: setup
@@ -70,15 +97,18 @@
   ufw:
     rule: allow
     direction: in
-    port: "{{ item }}"
+    port: "{{ ports[dango_network].dango_port }}"
     proto: tcp
-  loop:
-    - 8080
-    - 26656
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
 - name: Deploy dango container
+  vars:
+    dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
+    dango_port: "{{ ports[dango_network].dango_port }}"
   docker_container:
-    name: dango
+    name: "{{ dango_network }}_dango"
     image: "ghcr.io/left-curve/left-curve/dango:{{ dango_image_tag }}"
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always           # always pull the image
@@ -87,16 +117,18 @@
     state: started
     env:
       HOME: /app
-      INDEXER__DATABASE_URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ dango_db_host }}:{{ db_port }}/{{ dango_db_name }}"
+      INDEXER__DATABASE_URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ docker_db_host }}:{{ db_port }}/{{ dango_network }}_{{ dango_db_name }}"
       SENTRY__ENABLED: "false"
       SENTRY__DSN: "https://your-dsn-here"
       SENTRY__ENVIRONMENT: "production"
     ports:
-      - "8080:8080"
-      - "26656:26656"
+      - "{{ dango_port }}:8080"
     volumes:
       - "{{ dango_target_dir }}:/app/.dango"
     networks:
-      - name: backend
+      - name: "{{ dango_network }}_backend"
     tty: true
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 

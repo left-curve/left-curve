@@ -16,7 +16,7 @@ version = "1.0.0"
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the CometBFT binary
-proxy_app = "tcp://dango:26658"
+proxy_app = "tcp://{{ dango_host }}:26658"
 
 # A custom human readable name for this node
 moniker = "dev"
@@ -564,7 +564,7 @@ initial_block_results_retain_height = 0
 # 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 #   3) "psql" - the indexer services backed by PostgreSQL.
 # When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
-indexer = "null"
+indexer = "kv"
 
 # The PostgreSQL connection configuration, the connection format:
 #   postgresql://<user>:<password>@<host>:<port>/<db>?<opts>

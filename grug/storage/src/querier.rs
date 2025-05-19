@@ -10,7 +10,7 @@ pub trait StorageQuerier: Querier {
     fn may_query_wasm_path<T, C>(
         &self,
         contract: Addr,
-        path: Path<'_, T, C>,
+        path: &Path<'_, T, C>,
     ) -> StdResult<Option<T>>
     where
         C: Codec<T>;
@@ -30,7 +30,7 @@ where
     fn may_query_wasm_path<T, C>(
         &self,
         contract: Addr,
-        path: Path<'_, T, C>,
+        path: &Path<'_, T, C>,
     ) -> StdResult<Option<T>>
     where
         C: Codec<T>,

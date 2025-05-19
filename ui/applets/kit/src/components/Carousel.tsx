@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronLeftCarousel } from "./icons/IconChevronLeftCarousel";
-import { IconChevronRight } from "./icons/IconChevronRight";
+import { IconChevronRightCarousel } from "./icons/IconChevronRightCarousel";
 
 import { twMerge } from "#utils/twMerge.js";
 
@@ -134,7 +134,7 @@ export const Carousel: React.FC<CarouselProps> = ({
           ))}
         </div>
 
-        <IconChevronRight
+        <IconChevronRightCarousel
           onClick={nextSlide}
           className="hidden lg:block w-[20px] h-[20px] text-blue-500 cursor-pointer"
         />

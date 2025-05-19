@@ -207,9 +207,9 @@ jobs:
 
       - name: Set GIT_COMMIT
         run: |
-          cp grug/app/src/git_info.rs grug/app/src/git_info.rs.in
-          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/app/src/git_info.rs.in > grug/app/src/git_info.rs
-          rm grug/app/src/git_info.rs.in
+          cp grug/types/src/git_info.rs grug/types/src/git_info.rs.in
+          sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/types/src/git_info.rs.in > grug/types/src/git_info.rs
+          rm grug/types/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@v3
 
@@ -289,10 +289,13 @@ jobs:
     env:
       DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      COMETBFT_NODE_KEY: ${{ secrets.COMETBFT_NODE_KEY }}
-      COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.COMETBFT_VALIDATOR_ADDRESS }}
-      COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.COMETBFT_VALIDATOR_PUB_KEY }}
-      COMETBFT_VALIDATOR_PRIVATE_KEY: ${{ secrets.COMETBFT_VALIDATOR_PRIVATE_KEY }}
+      DEVNET_COMETBFT_NODE_KEY: ${{ secrets.DEVNET_COMETBFT_NODE_KEY }}
+      DEVNET_COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_ADDRESS }}
+      DEVNET_COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PUB_KEY }}
+      DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY }}
+      # Still using this as ENV for the bots ansible playbook to login properly
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Check DEPLOY_KEY is set
@@ -319,12 +322,13 @@ jobs:
         run: |
           cd deploy
           pipx ensurepath
-          # TODO: Make sure we only deploy on devnet
-          ansible-playbook reset-cometbft.yml
-          ansible-playbook reset-dango.yml
-          ansible-playbook cometbft.yml
-          ansible-playbook dango.yml --tags setup
-          ansible-playbook dango.yml \
+          ansible-playbook reset-cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook reset-dango.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook dango.yml --tags setup --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook dango.yml --limit 100.96.253.40 \
             --skip-tags setup \
             -e dango_image_tag=${{ env.GIT_COMMIT }} \
-            -e "dango_db_password=$DANGO_DB_PASSWORD"
+            -e "dango_db_password=$DANGO_DB_PASSWORD" \
+            -e '{"dango_networks":["devnet"]}'
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'

@@ -13,7 +13,7 @@ use {
     grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
-    grug_types::HashExt,
+    grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
@@ -28,6 +28,8 @@ pub struct StartCmd;
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        tracing::info!("Using git commit: {GIT_COMMIT}");
+
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 

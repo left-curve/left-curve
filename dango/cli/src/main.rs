@@ -14,14 +14,12 @@ mod tx;
 use crate::test::TestCmd;
 use {
     crate::{
-        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
-        tx::TxCmd,
+        db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
+        query::QueryCmd, start::StartCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
     config_parser::parse_config,
-    grug_app::GIT_COMMIT,
-    indexer::IndexerCmd,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -81,8 +79,6 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
         .init();
-
-    tracing::info!("Using GIT version {GIT_COMMIT}");
 
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {

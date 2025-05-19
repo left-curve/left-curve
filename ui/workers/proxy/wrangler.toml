@@ -2,7 +2,7 @@
 compatibility_date  = "2024-10-04"
 compatibility_flags = ["nodejs_compat"]
 main                = "src/index.ts"
-name                = "proxy-devserver"
+name                = "proxy"
 
 [build]
 command   = "pnpm build"
@@ -10,3 +10,9 @@ watch_dir = "src"
 
 [observability]
 enabled = true
+
+[env.dev]
+name = "proxy-devnet"
+
+[env.test]
+name = "proxy-testnet"

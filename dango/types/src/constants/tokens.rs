@@ -7,10 +7,12 @@ pub mod dango {
     use super::*;
 
     pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["dango"]));
+
+    pub const DECIMAL: u8 = 6;
 }
 
 macro_rules! define_denom {
-    ($name:ident) => {
+    ($name:ident => $decimal:literal) => {
         pub mod $name {
             use super::*;
 
@@ -19,13 +21,26 @@ macro_rules! define_denom {
             pub static DENOM: LazyLock<Denom> = LazyLock::new(|| {
                 Denom::from_parts([crate::gateway::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
             });
+
+            pub const DECIMAL: u8 = $decimal;
         }
     };
-    ($($name:ident),*) => {
+    ($($name:ident => $decimal:literal),*) => {
         $(
-            define_denom!($name);
+            define_denom!($name => $decimal);
         )*
     };
 }
 
-define_denom!(atom, bch, bnb, btc, doge, eth, ltc, sol, usdc, xrp);
+define_denom! {
+    atom => 6,
+    bch  => 8,
+    bnb  => 18,
+    btc  => 8,
+    doge => 8,
+    eth  => 18,
+    ltc  => 8,
+    sol  => 9,
+    usdc => 6,
+    xrp  => 6
+}

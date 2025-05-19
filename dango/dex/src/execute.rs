@@ -705,14 +705,17 @@ fn clear_orders_of_pair(
 
         // Record trading volume for the user's username, if the trader is a
         // single-signature account (skip for multisig accounts).
-        if let Some(username) = account_querier.query_account(order.user)?.params.owner() {
+        if let Some(username) = account_querier
+            .query_account(order.user)?
+            .and_then(|account| account.params.owner())
+        {
             match volumes_by_username.entry(username.clone()) {
                 Entry::Occupied(mut v) => {
                     v.get_mut().checked_add_assign(new_volume)?;
                 },
                 Entry::Vacant(v) => {
                     let volume = VOLUMES_BY_USER
-                        .prefix(&username)
+                        .prefix(username)
                         .values(storage, None, None, IterationOrder::Descending)
                         .next()
                         .transpose()?

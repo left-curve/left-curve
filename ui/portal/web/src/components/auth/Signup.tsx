@@ -1,3 +1,4 @@
+import { useInputs, useUsernames, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,
@@ -5,46 +6,45 @@ import {
   usePublicClient,
   useSignin,
 } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useUsernames, useWizard, useInputs } from "@left-curve/applets-kit";
+import { useApp } from "~/hooks/useApp";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
+import { registerUser } from "@left-curve/dango/actions";
 import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 import { wait } from "@left-curve/dango/utils";
-import { registerUser } from "@left-curve/dango/actions";
 import { captureException } from "@sentry/react";
 
 import {
+  Button,
+  CheckCircleIcon,
   Checkbox,
   ExpandOptions,
   IconAlert,
   IconLeft,
-  ResizerContainer,
-  Stepper,
-  Button,
-  CheckCircleIcon,
   Input,
+  ResizerContainer,
   Spinner,
+  Stepper,
   XCircleIcon,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { AuthOptions } from "./AuthOptions";
-import { AuthCarousel } from "./AuthCarousel";
 import { toast } from "../foundation/Toast";
+import { AuthCarousel } from "./AuthCarousel";
+import { AuthOptions } from "./AuthOptions";
 
-import { m } from "~/paraglide/messages";
 import { AccountType } from "@left-curve/dango/types";
-import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
+import { DEFAULT_SESSION_EXPIRATION, FAUCET_URL } from "~/constants";
+import { m } from "~/paraglide/messages";
 
-import type React from "react";
 import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
+import type React from "react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -299,7 +299,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(`${import.meta.env.PUBLIC_FAUCET_URI}/mint/${address}`);
+        const response = await fetch(`${FAUCET_URL}/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {

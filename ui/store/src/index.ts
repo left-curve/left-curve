@@ -7,7 +7,7 @@ export {
   type DangoStoreProviderProps,
 } from "./context.js";
 
-export { devnet, http, graphql } from "@left-curve/dango";
+export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Hooks                                   */
