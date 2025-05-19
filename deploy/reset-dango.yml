@@ -11,10 +11,18 @@
         name: "{{ dango_network }}_dango"
         state: absent
         keep_volumes: false
+      loop: "{{ dango_networks }}"
+      loop_control:
+        loop_var: dango_network
     - name: Remove directory
+      vars:
+        dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
       file:
         path: "{{ dango_target_dir }}"
         state: absent
+      loop: "{{ dango_networks }}"
+      loop_control:
+        loop_var: dango_network
     - name: Drop Dango production database
       tags: cleanup
       community.postgresql.postgresql_db:
@@ -24,3 +32,6 @@
         login_host: "{{ db_host }}"
         login_port: "{{ db_port }}"
         state: absent
+      loop: "{{ dango_networks }}"
+      loop_control:
+        loop_var: dango_network

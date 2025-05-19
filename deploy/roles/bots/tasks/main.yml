@@ -5,10 +5,11 @@
   ufw:
     rule: allow
     direction: in
-    port: "{{ item }}"
+    port: "{{ ports[dango_network].faucet_port }}"
     proto: tcp
-  loop:
-    - "{{ faucet_port }}"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
 - name: Login to GHCR
   community.docker.docker_login:
@@ -25,12 +26,15 @@
     recreate: true
     restart_policy: unless-stopped
     state: started
-    command: ["faucet", "--provider-url", "http://{{ dango_network }}_dango:{{ dango_port }}"]
+    command: ["faucet", "--provider-url", "http://{{ dango_network }}_dango:{{ ports[dango_network].dango_port }}"]
     env:
       HOME: /app
     ports:
-      - "{{ faucet_port }}:8082"
+      - "{{ ports[dango_network].faucet_port }}:8082"
     networks:
       - name: "{{ dango_network }}_backend"
     tty: true
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
 
