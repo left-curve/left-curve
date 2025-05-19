@@ -1,8 +1,3 @@
-use {
-    sentry::integrations::tracing::layer as sentry_layer,
-    tracing_subscriber::{fmt, prelude::*, registry},
-};
-
 mod config;
 mod db;
 mod home_directory;
@@ -24,8 +19,10 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
+    sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
+    tracing_subscriber::{fmt, prelude::*, registry},
 };
 
 #[derive(Parser)]
