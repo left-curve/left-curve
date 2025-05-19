@@ -322,12 +322,13 @@ jobs:
         run: |
           cd deploy
           pipx ensurepath
-          ansible-playbook reset-cometbft.yml --limit 100.96.253.40
-          ansible-playbook reset-dango.yml --limit 100.96.253.40
-          ansible-playbook cometbft.yml --limit 100.96.253.40
-          ansible-playbook dango.yml --tags setup --limit 100.96.253.40
+          ansible-playbook reset-cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook reset-dango.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook dango.yml --tags setup --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
           ansible-playbook dango.yml --limit 100.96.253.40 \
             --skip-tags setup \
             -e dango_image_tag=${{ env.GIT_COMMIT }} \
-            -e "dango_db_password=$DANGO_DB_PASSWORD"
-          ansible-playbook bots.yml --limit 100.96.253.40
+            -e "dango_db_password=$DANGO_DB_PASSWORD" \
+            -e '{"dango_networks":["devnet"]}'
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'

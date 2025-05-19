@@ -12,10 +12,10 @@ ports:
     cometbft_rpc_port: 26657
     cometbft_abci_port: 26658
   devnet:
-    dango_port: 8090
-    faucet_port: 8092
-    cometbft_p2p_port: 36656
-    cometbft_rpc_port: 36657
+    dango_port: 8080
+    faucet_port: 8082
+    cometbft_p2p_port: 26656
+    cometbft_rpc_port: 26657
     cometbft_abci_port: 26658
 
 # in summary cometbft needs to expose:
