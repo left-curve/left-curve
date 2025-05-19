@@ -1,4 +1,5 @@
 - name: Ensure target dir exists
+  tags: setup
   vars:
     dango_target_dir: "{{ ansible_env.HOME }}/{{ item[0] }}/dango"
   file:
