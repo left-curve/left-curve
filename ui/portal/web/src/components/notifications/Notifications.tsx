@@ -66,7 +66,7 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
       ) : null}
       <ResizerContainer
         layoutId="notifications"
-        className={twMerge("bg-transparent py-2 px-1 rounded-xl shadow-lg", className)}
+        className={twMerge("bg-transparent py-1 px-1 rounded-xl shadow-lg", className)}
       >
         <AnimatePresence key={currentPage} mode="wait">
           {Object.entries(notifications).map(([dateKey, n]) => (
