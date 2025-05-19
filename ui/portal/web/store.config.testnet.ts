@@ -42,7 +42,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
     symbol: "USDC",
     denom: "bridge/usdc",
-    decimals: 18,
+    decimals: 6,
     coingeckoId: "usd-coin",
   },
   "bridge/sol": {
