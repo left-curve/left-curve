@@ -1,3 +1,8 @@
+use {
+    sentry::integrations::tracing::layer as sentry_layer,
+    tracing_subscriber::{fmt, prelude::*, registry},
+};
+
 mod config;
 mod db;
 mod home_directory;
@@ -71,17 +76,13 @@ async fn main() -> anyhow::Result<()> {
     // Parse the config file.
     let cfg: Config = parse_config(app_dir.config_file())?;
 
-    // Set up tracing.
-    tracing_subscriber::fmt()
-        .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
-        .init();
-
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
             environment: Some(cfg.sentry.environment.into()),
             release: sentry::release_name!(),
             sample_rate: cfg.sentry.sample_rate,
             traces_sample_rate: cfg.sentry.traces_sample_rate,
+            debug: true,
             ..Default::default()
         }));
 
@@ -89,7 +90,19 @@ async fn main() -> anyhow::Result<()> {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
         });
 
+        let max_level = cfg.log_level.parse::<LevelFilter>()?;
+
+        registry()
+            .with(fmt::layer().with_filter(max_level))
+            .with(sentry_layer())
+            .init();
+
         tracing::info!("Sentry initialized");
+    } else {
+        // Set up tracing.
+        tracing_subscriber::fmt()
+            .with_max_level(cfg.log_level.parse::<LevelFilter>()?)
+            .init();
     }
 
     match cli.command {
