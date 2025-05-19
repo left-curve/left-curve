@@ -760,7 +760,7 @@
       }
     ]
   },
-  "chain_id": "dev-6",
+  "chain_id": "dev-9",
   "consensus_params": {
     "abci": {
       "vote_extensions_enable_height": "0"
