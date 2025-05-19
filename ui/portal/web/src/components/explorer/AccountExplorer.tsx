@@ -94,7 +94,7 @@ const Details: React.FC = () => {
             ) : (
               <TruncateText text={codeHash} className="diatype-m-bold" />
             )}
-            <TextCopy className="w-4 h-4 text-gray-500" copyText={""} />
+            <TextCopy className="w-4 h-4 text-gray-500" copyText={codeHash} />
           </div>
           <div className="flex gap-1 items-center">
             <p className="diatype-md-medium text-gray-500">
