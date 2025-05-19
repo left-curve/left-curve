@@ -59,7 +59,7 @@
 - name: Copy app.toml
   vars:
     dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
-    cometbft_rpc_host: "{{ dango_network }}_cometbft"
+    cometbft_host: "{{ dango_network }}_cometbft"
     cometbft_rpc_port: "{{ ports[dango_network].cometbft_rpc_port }}"
     cometbft_abci_port: "{{ ports[dango_network].cometbft_abci_port }}"
   tags: setup
