@@ -13,7 +13,9 @@ use {
     dango_types::{
         auth::Key,
         bank::Metadata,
-        constants::{PYTH_PRICE_SOURCES, btc, dango, eth, sol, usdc},
+        constants::{
+            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
+        },
         dex::{CurveInvariant, PairParams, PairUpdate},
         gateway::{Remote, WithdrawalFee},
         lending::InterestRateModel,
@@ -260,9 +262,69 @@ impl Preset for BankOption {
                 dango::DENOM.clone() => Metadata {
                     name: LengthBounded::new_unchecked("Dango".to_string()),
                     symbol: LengthBounded::new_unchecked("DGX".to_string()),
-                    decimals: 6,
-                    description: Some(LengthBounded::new_unchecked("Native token of Dango".to_string()))
-                }
+                    decimals: dango::DECIMAL,
+                    description: Some(LengthBounded::new_unchecked("Native token of Dango".to_string())),
+                },
+                atom::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Atom".to_string()),
+                    symbol: LengthBounded::new_unchecked("ATOM".to_string()),
+                    decimals: atom::DECIMAL,
+                    description: None,
+                },
+                bch::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Bitcoin Cash".to_string()),
+                    symbol: LengthBounded::new_unchecked("BCH".to_string()),
+                    decimals: bch::DECIMAL,
+                    description: None,
+                },
+                bnb::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Binance Coin".to_string()),
+                    symbol: LengthBounded::new_unchecked("BNB".to_string()),
+                    decimals: bnb::DECIMAL,
+                    description: None,
+                },
+                btc::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Bitcoin".to_string()),
+                    symbol: LengthBounded::new_unchecked("BTC".to_string()),
+                    decimals: btc::DECIMAL,
+                    description: None,
+                },
+                doge::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Dogecoin".to_string()),
+                    symbol: LengthBounded::new_unchecked("DOGE".to_string()),
+                    decimals: doge::DECIMAL,
+                    description: None,
+                },
+                eth::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Ether".to_string()),
+                    symbol: LengthBounded::new_unchecked("ETH".to_string()),
+                    decimals: eth::DECIMAL,
+                    description: None,
+                },
+                ltc::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Litecoin".to_string()),
+                    symbol: LengthBounded::new_unchecked("LTC".to_string()),
+                    decimals: ltc::DECIMAL,
+                    description: None,
+                },
+                sol::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Solana".to_string()),
+                    symbol: LengthBounded::new_unchecked("SOL".to_string()),
+                    decimals: sol::DECIMAL,
+                    description: None,
+                },
+                usdc::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("USD Coin".to_string()),
+                    symbol: LengthBounded::new_unchecked("USDC".to_string()),
+                    decimals: usdc::DECIMAL,
+                    description: None,
+                },
+                xrp::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("XRP".to_string()),
+                    symbol: LengthBounded::new_unchecked("XRP".to_string()),
+                    decimals: xrp::DECIMAL,
+                    description: None,
+                },
             },
         }
     }
