@@ -65,7 +65,7 @@ export const UsernamesList: React.FC<Props> = ({ onClick, showRemove, usernames,
                 {showArrow && (
                   <IconButton
                     variant="link"
-                    className="text-gray-500"
+                    className="text-gray-500 p-0 h-fit w-fit"
                     onClick={() => onClick(username)}
                   >
                     <IconChevronRight className="w-6 h-6" />
