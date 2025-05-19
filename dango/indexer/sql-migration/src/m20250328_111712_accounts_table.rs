@@ -77,6 +77,22 @@ impl MigrationTrait for Migration {
                     .col(pk_uuid(AccountUser::Id))
                     .col(uuid(AccountUser::AccountId))
                     .col(uuid(AccountUser::UserId))
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk_account_users_account_id")
+                            .from_tbl(AccountUser::Table)
+                            .from_col(AccountUser::AccountId)
+                            .to_tbl(Account::Table)
+                            .to_col(Account::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk_account_users_user_id")
+                            .from_tbl(AccountUser::Table)
+                            .from_col(AccountUser::UserId)
+                            .to_tbl(User::Table)
+                            .to_col(User::Id),
+                    )
                     .to_owned(),
             )
             .await?;
