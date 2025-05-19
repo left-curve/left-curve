@@ -105,14 +105,6 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                       {m["common.signin"]()}
                     </Button>
                   </div>
-                  <Button
-                    fullWidth
-                    className="p-0 h-fit"
-                    variant="link"
-                    onClick={() => navigate({ to: "/forgot-username" })}
-                  >
-                    {m["signin.forgotUsername"]()}
-                  </Button>
                 </div>
               ) : null}
               {activeStep === 1 ? (
@@ -308,7 +300,7 @@ const Username: React.FC = () => {
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
         const response = await fetch(
-          `${config.chain.urls.indexer.replace("graphql", "faucet")}/mint/${address}`,
+          `${config.chain.urls.indexer.replace("/graphql", "").replace("8080", "8082")}/mint/${address}`,
         );
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
