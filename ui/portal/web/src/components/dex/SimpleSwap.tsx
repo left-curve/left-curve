@@ -1,4 +1,4 @@
-import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
+import { Skeleton, createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import {
   useSimpleSwap as state,
   useAccount,
@@ -174,6 +174,8 @@ export const SimpleSwapForm: React.FC = () => {
   const baseAmount = inputs.base?.value || "0";
   const quoteAmount = inputs.quote?.value || "0";
 
+  const coinPairs = Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom));
+
   useEffect(() => {
     if ((baseAmount === "0" && quoteAmount === "0") || !activeInput) return;
     (async () => {
@@ -303,11 +305,15 @@ export const SimpleSwapForm: React.FC = () => {
         }}
         startText="right"
         startContent={
-          <CoinSelector
-            coins={Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom))}
-            value={quote.denom}
-            onChange={(v) => changeQuote(coins[v].symbol)}
-          />
+          coinPairs.length ? (
+            <CoinSelector
+              coins={Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom))}
+              value={quote.denom}
+              onChange={(v) => changeQuote(coins[v].symbol)}
+            />
+          ) : (
+            <Skeleton className="w-36 h-11" />
+          )
         }
         insideBottomComponent={
           <div className="flex items-center justify-between gap-2 w-full h-[22px] text-gray-500 diatype-sm-regular pl-4">
