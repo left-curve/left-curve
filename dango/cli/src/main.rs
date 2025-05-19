@@ -82,7 +82,6 @@ async fn main() -> anyhow::Result<()> {
             release: sentry::release_name!(),
             sample_rate: cfg.sentry.sample_rate,
             traces_sample_rate: cfg.sentry.traces_sample_rate,
-            debug: true,
             ..Default::default()
         }));
 
