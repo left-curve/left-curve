@@ -4,6 +4,7 @@
   vars:
     ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
     ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
+    git_version: "{{ lookup('env','BOT_GIT_VERSION', default='latest') }}"
   collections:
     - community.docker
   roles:
