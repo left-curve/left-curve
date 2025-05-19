@@ -13,7 +13,7 @@ export const WelcomeModal: React.FC = () => {
 
   const { showWelcome } = settings;
 
-  if (!showWelcome || chain.name !== "testnet") return null;
+  if (!showWelcome || chain.name !== "Testnet") return null;
 
   return (
     <div
