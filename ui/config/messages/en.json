@@ -217,7 +217,7 @@
     },
     "renewSession": {
       "title": "Session expired",
-      "description": "For your security, each login session expires after 24 hours. Please sign in again.",
+      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
       "stayLogout": "Stay logged out"
     }
   },
