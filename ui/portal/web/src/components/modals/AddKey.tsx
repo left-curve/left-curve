@@ -1,4 +1,3 @@
-import { IconButton, IconClose, IconKey, forwardRef } from "@left-curve/applets-kit";
 import { useAccount, useConnectors, useSigningClient } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
