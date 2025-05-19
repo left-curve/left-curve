@@ -396,9 +396,21 @@ const SimpleSwapDetails: React.FC = () => {
 
 const SimpleSwapTrigger: React.FC = () => {
   const { isConnected } = useAccount();
+  const { controllers, submission } = useSimpleSwap();
+  const { inputs } = controllers;
+  const { isPending } = submission;
+
+  const { base, quote } = inputs;
 
   return isConnected ? (
-    <Button fullWidth size="md" type="submit" form="simple-swap-form">
+    <Button
+      fullWidth
+      size="md"
+      type="submit"
+      form="simple-swap-form"
+      isDisabled={Number(base?.value || 0) <= 0 || Number(quote?.value || 0) <= 0}
+      isLoading={isPending}
+    >
       Swap
     </Button>
   ) : (
