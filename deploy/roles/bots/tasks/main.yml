@@ -26,7 +26,7 @@
     recreate: true
     restart_policy: unless-stopped
     state: started
-    command: ["faucet", "--provider-url", "http://{{ dango_network }}_dango:{{ ports[dango_network].dango_port }}"]
+    command: ["faucet", "--provider-url", "http://{{ dango_network }}_dango:8080"]
     env:
       HOME: /app
     ports:
