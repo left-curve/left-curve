@@ -258,8 +258,8 @@ export const SimpleSwapForm: React.FC = () => {
                   size="xs"
                   className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                   onClick={() => {
-                    setActiveInput("quote");
-                    setValue("quote", quoteBalance);
+                    setActiveInput("base");
+                    setValue("base", baseBalance);
                   }}
                 >
                   {m["common.max"]()}
