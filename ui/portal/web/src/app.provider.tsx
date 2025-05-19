@@ -46,7 +46,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.1,
+    version: 1.2,
     initialValue: {
       showWelcome: true,
       isFirstVisit: true,
