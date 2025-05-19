@@ -57,7 +57,7 @@ export const WelcomeModal: React.FC = () => {
             <p>
               Reminder-- <span className="font-bold">in ~6 weeks, we expect to ship testnet-2</span>
               , which will come with our <span className="font-bold">Pro Trading interface</span>,
-              with features experience on par with major CEXs. Quests and
+              with features experience on par with major CEXs. Galxe quests are also coming.
             </p>
 
             <p>Have fun and g🍡</p>
