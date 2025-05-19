@@ -23,7 +23,7 @@
   vars:
     dango_network: "{{ item[0] }}"
     cometbft_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
-    dango_rpc_host: "{{ dango_network }}_dango"
+    dango_host: "{{ dango_network }}_dango"
     COMETBFT_NODE_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_NODE_KEY') }}"
     COMETBFT_VALIDATOR_ADDRESS: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_ADDRESS') }}"
     COMETBFT_VALIDATOR_PUB_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_PUB_KEY') }}"
