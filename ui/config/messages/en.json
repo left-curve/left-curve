@@ -106,10 +106,10 @@
     "1": {
       "id": "simple-swap",
       "img": "/images/emojis/simple/spot.svg",
-      "title": "Simple Swap",
-      "description": "Swap tokens",
+      "title": "Convert",
+      "description": "The easiest way to trade at all size.",
       "path": "/swap",
-      "keywords": "swap,trade,simple"
+      "keywords": "swap,trade,convert,exchange"
     },
     "2": {
       "id": "settings",

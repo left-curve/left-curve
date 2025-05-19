@@ -8,6 +8,7 @@ import { useCallback } from "react";
 export function useFavApplets() {
   const [favApplets, setFavApplets] = useStorage<Record<string, AppletMetadata>>("app.applets", {
     initialValue: DEFAULT_FAV_APPLETS,
+    version: 1.1,
   });
 
   const addFavApplet = useCallback((applet: AppletMetadata) => {
