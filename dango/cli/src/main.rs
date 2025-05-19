@@ -85,6 +85,10 @@ async fn main() -> anyhow::Result<()> {
             ..Default::default()
         }));
 
+        sentry::configure_scope(|scope| {
+            scope.set_tag("chain-id", &cfg.transactions.chain_id);
+        });
+
         tracing::info!("Sentry initialized");
     }
 
