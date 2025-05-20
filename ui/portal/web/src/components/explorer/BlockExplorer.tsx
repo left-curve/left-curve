@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,6 @@ import {
   TruncateText,
   twMerge,
   useCountdown,
-  useMediaQuery,
   useWatchEffect,
 } from "@left-curve/applets-kit";
 
@@ -227,7 +226,6 @@ const FutureBlock: React.FC = () => {
 };
 
 const BlockDetails: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { data } = useBlockExplorer();
 
   if (!data?.searchBlock) return null;
@@ -238,46 +236,49 @@ const BlockDetails: React.FC = () => {
     <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
         <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="col-span-1 md:col-span-2 flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+        <div className="grid grid-cols-1 gap-3 md:gap-2">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHash"]()}
             </p>
-            {isMd ? <p>{hash}</p> : <TruncateText text={hash} />}
-            <TextCopy className="w-4 h-4 cursor-pointer" copyText={hash} />
+            <p className="break-all whitespace-normal">
+              {hash}
+              <TextCopy
+                className="inline-block align-middle ml-1 w-4 h-4 cursor-pointer"
+                copyText={hash}
+              />
+            </p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHeight"]()}
             </p>
             <p>{blockHeight}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.proposer"]()}
             </p>
             <p>Leftcurve Validator</p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.numberOfTx"]()}
             </p>
             <p>{transactions.length}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockTime"]()}
             </p>
-            <p>{new Date(createdAt).toISOString()}</p>
+            <p className="break-all whitespace-normal">{new Date(createdAt).toISOString()}</p>
           </div>
         </div>
-        {isMd ? (
-          <img
-            src="/images/emojis/detailed/map-explorer.svg"
-            alt="map-emoji"
-            className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply"
-          />
-        ) : null}
+        <img
+          src="/images/emojis/detailed/map-explorer.svg"
+          alt="map-emoji"
+          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply hidden md:flex"
+        />
       </div>
     </div>
   );

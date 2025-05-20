@@ -167,7 +167,18 @@
         "pre": "We couldn’t find",
         "title": "Transaction not found",
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
-      }
+      },
+      "events": "Events",
+      "txHash": "Tx hash:",
+      "sender": "Sender:",
+      "time": "Time:",
+      "block": "Block:",
+      "index": "Index:",
+      "gasUsed": "Gas Used:",
+      "gasWanted": "Gas Wanted:",
+      "status": "Status:",
+      "success": "Success",
+      "failed": "Failed"
     },
     "contracts": {
       "notFound": {
