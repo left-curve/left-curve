@@ -102,25 +102,25 @@ const Details: React.FC = () => {
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
-          <p>{formatUnits(gasUsed, 6)}</p>
+          <p>{formatUnits(gasUsed, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
-          <p>{formatUnits(gasWanted, 6)}</p>
+          <p>{formatUnits(gasWanted, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
-          <p>
+          <div>
             <Badge
               text={hasSucceeded ? m["explorer.txs.success"]() : m["explorer.txs.failed"]()}
               color={hasSucceeded ? "green" : "red"}
               size="m"
             />
-          </p>
+          </div>
         </div>
       </div>
       <img
