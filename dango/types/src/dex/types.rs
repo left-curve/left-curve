@@ -1,8 +1,5 @@
-use {
-    grug::{
-        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
-    },
-    std::fmt::Display,
+use grug::{
+    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
 };
 
 /// Numerical identifier of an order.
@@ -79,15 +76,6 @@ pub enum CurveInvariant {
         /// the passive liquidity is reflected onto the orderbook.
         order_spacing: Udec128,
     },
-}
-
-impl Display for CurveInvariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            CurveInvariant::Xyk { order_spacing } => format!("xyk, order_spacing: {order_spacing}"),
-        };
-        write!(f, "{}", s)
-    }
 }
 
 /// Updates to a trading pair's parameters.
