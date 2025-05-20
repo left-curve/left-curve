@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,6 @@ import {
   TruncateText,
   twMerge,
   useCountdown,
-  useMediaQuery,
   useWatchEffect,
 } from "@left-curve/applets-kit";
 
@@ -227,7 +226,6 @@ const FutureBlock: React.FC = () => {
 };
 
 const BlockDetails: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { data } = useBlockExplorer();
 
   if (!data?.searchBlock) return null;
@@ -276,13 +274,11 @@ const BlockDetails: React.FC = () => {
             <p className="break-all whitespace-normal">{new Date(createdAt).toISOString()}</p>
           </div>
         </div>
-        {isMd ? (
-          <img
-            src="/images/emojis/detailed/map-explorer.svg"
-            alt="map-emoji"
-            className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply"
-          />
-        ) : null}
+        <img
+          src="/images/emojis/detailed/map-explorer.svg"
+          alt="map-emoji"
+          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply hidden md:flex"
+        />
       </div>
     </div>
   );

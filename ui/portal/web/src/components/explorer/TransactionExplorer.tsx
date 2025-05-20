@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import React from "react";
 
-import { AccordionItem, Badge, JsonVisualizer, TextCopy, twMerge } from "@left-curve/applets-kit";
+import { Badge, JsonVisualizer, TextCopy, twMerge } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
