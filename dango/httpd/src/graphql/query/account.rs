@@ -20,14 +20,14 @@ pub enum SortBy {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccountCursor {
     created_block_height: u64,
-    // username: String,
+    address: String,
 }
 
 impl From<types::account::Account> for AccountCursor {
     fn from(account: types::account::Account) -> Self {
         Self {
             created_block_height: account.created_block_height,
-            // username: account.username,
+            address: account.address,
         }
     }
 }
@@ -51,7 +51,7 @@ impl AccountQuery {
         sort_by: Option<SortBy>,
         // The block height of created account
         block_height: Option<u64>,
-        username: Option<String>,
+        // username: Option<String>,
         address: Option<String>,
     ) -> Result<Connection<AccountCursorType, Account, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
@@ -99,20 +99,16 @@ impl AccountQuery {
                     query = query.filter(entity::accounts::Column::Address.eq(&address));
                 }
 
-                if let Some(_username) = username {
-                    // query = query.filter(entity::accounts::Column::Username.eq(&username));
-                }
-
                 match sort_by {
                     SortBy::BlockHeightAsc => {
-                        query =
-                            query.order_by(entity::accounts::Column::CreatedBlockHeight, Order::Asc)
-                        // .order_by(entity::accounts::Column::Username, Order::Asc)
+                        query = query
+                            .order_by(entity::accounts::Column::CreatedBlockHeight, Order::Asc)
+                            .order_by(entity::accounts::Column::Address, Order::Asc)
                     },
                     SortBy::BlockHeightDesc => {
                         query = query
                             .order_by(entity::accounts::Column::CreatedBlockHeight, Order::Desc)
-                        // .order_by(entity::accounts::Column::Username, Order::Desc)
+                            .order_by(entity::accounts::Column::Address, Order::Desc)
                     },
                 }
 
@@ -160,14 +156,14 @@ fn apply_filter(
             .add(
                 entity::accounts::Column::CreatedBlockHeight
                     .eq(after.created_block_height as i64)
-                    // .and(entity::accounts::Column::Username.lt(&after.username)),
+                    .and(entity::accounts::Column::Address.lt(&after.address)),
             ),
         SortBy::BlockHeightDesc => Condition::any()
             .add(entity::accounts::Column::CreatedBlockHeight.gt(after.created_block_height as i64))
             .add(
                 entity::accounts::Column::CreatedBlockHeight
                     .eq(after.created_block_height as i64)
-                    // .and(entity::accounts::Column::Username.gt(&after.username)),
+                    .and(entity::accounts::Column::Address.gt(&after.address)),
             ),
     })
 }
