@@ -129,6 +129,18 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_index(
+                sea_query::Index::create()
+                    .if_not_exists()
+                    .name("public_keys-username")
+                    .table(PublicKey::Table)
+                    .col(PublicKey::Username)
+                    .unique()
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 

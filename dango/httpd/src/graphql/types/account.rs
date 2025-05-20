@@ -1,7 +1,10 @@
 use {
-    async_graphql::{ComplexObject, Enum, SimpleObject},
+    super::user::User,
+    async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
     dango_indexer_sql::entity,
+    indexer_httpd::context::Context,
+    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sqlx::types::uuid},
     serde::Deserialize,
 };
 
@@ -28,6 +31,9 @@ impl From<entity::accounts::AccountType> for AccountType {
 #[graphql(complex)]
 #[serde(default)]
 pub struct Account {
+    #[graphql(skip)]
+    pub id: uuid::Uuid,
+    pub account_index: u32,
     pub address: String,
     pub account_type: AccountType,
     pub created_at: DateTime<Utc>,
@@ -37,14 +43,38 @@ pub struct Account {
 impl From<entity::accounts::Model> for Account {
     fn from(item: entity::accounts::Model) -> Self {
         Self {
+            id: item.id,
             created_at: Utc.from_utc_datetime(&item.created_at),
             address: item.address,
-            // eth_address: item.eth_address,
             account_type: item.account_type.into(),
             created_block_height: item.created_block_height as u64,
+            account_index: item.account_index as u32,
         }
     }
 }
 
 #[ComplexObject]
-impl Account {}
+impl Account {
+    pub async fn users(&self, ctx: &async_graphql::Context<'_>) -> Result<Vec<User>> {
+        let app_ctx = ctx.data::<Context>()?;
+
+        // TODO: use a join query to get users
+        let user_ids = entity::accounts_users::Entity::find()
+            .filter(entity::accounts_users::Column::AccountId.eq(self.id))
+            .all(&app_ctx.db)
+            .await?
+            .into_iter()
+            .map(|au| au.user_id)
+            .collect::<Vec<_>>();
+
+        let users = entity::users::Entity::find()
+            .filter(entity::users::Column::Id.is_in(user_ids))
+            .all(&app_ctx.db)
+            .await?
+            .into_iter()
+            .map(User::from)
+            .collect::<Vec<_>>();
+
+        Ok(users)
+    }
+}
