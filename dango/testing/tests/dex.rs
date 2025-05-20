@@ -1111,7 +1111,7 @@ fn only_owner_can_create_passive_pool() {
                     curve_invariant: CurveInvariant::Xyk {
                         order_spacing: Udec128::new_bps(1),
                     },
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }]),
             Coins::new(),
@@ -1131,7 +1131,7 @@ fn only_owner_can_create_passive_pool() {
                     curve_invariant: CurveInvariant::Xyk {
                         order_spacing: Udec128::new_bps(1),
                     },
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }]),
             Coins::new(),
@@ -1144,8 +1144,8 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 100,
     },
-    Udec128::ZERO,
-    Uint128::new(100);
+    Udec128::new_permille(5),
+    Uint128::new(99);
     "provision at pool ratio"
 )]
 #[test_case(
@@ -1153,8 +1153,8 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 50,
         usdc::DENOM.clone() => 50,
     },
-    Udec128::ZERO,
-    Uint128::new(50);
+    Udec128::new_permille(5),
+    Uint128::new(49);
     "provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1162,8 +1162,8 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 50,
     },
-    Udec128::ZERO,
-    Uint128::new(73);
+    Udec128::new_permille(5),
+    Uint128::new(72);
     "provision at different ratio"
 )]
 fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: Uint128) {
@@ -1269,17 +1269,17 @@ fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: U
 }
 
 #[test_case(
-    Uint128::new(100),
-    Udec128::ZERO,
+    Uint128::new(99),
+    Udec128::new_permille(5),
     coins! {
-        dango::DENOM.clone() => 100,
-        usdc::DENOM.clone()  => 100,
+        dango::DENOM.clone() => 99,
+        usdc::DENOM.clone()  => 99,
     };
     "withdrawa all"
 )]
 #[test_case(
     Uint128::new(50),
-    Udec128::ZERO,
+    Udec128::new_permille(5),
     coins! {
         dango::DENOM.clone() => 50,
         usdc::DENOM.clone()  => 50,
@@ -1419,16 +1419,16 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 500000,
+        usdc::DENOM.clone() => 497500,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            dango::DENOM.clone() => 1000000 + 1000000,
+            usdc::DENOM.clone() => 1000000 - 497500,
         },
     };
     "1:1 pool no swap fee one step route input 100% of pool liquidity"
@@ -1448,16 +1448,16 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 500000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 333333,
+        usdc::DENOM.clone() => 331666,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1500000,
-            usdc::DENOM.clone() => 666667,
+            dango::DENOM.clone() => 1000000 + 500000,
+            usdc::DENOM.clone() => 1000000 - 331666,
         },
     };
     "1:1 pool no swap fee one step route input 50% of pool liquidity"
@@ -1474,19 +1474,19 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         quote_denom: usdc::DENOM.clone(),
     }],
     coins! {
-        dango::DENOM.clone() => 333333,
+        dango::DENOM.clone() => 331666,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 249999,
+        usdc::DENOM.clone() => 247814,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1333333,
-            usdc::DENOM.clone() => 1000000 - 249999,
+            dango::DENOM.clone() => 1000000 + 331666,
+            usdc::DENOM.clone() => 1000000 - 247814,
         },
     };
     "1:1 pool no swap fee one step route input 33% of pool liquidity"
@@ -1516,24 +1516,24 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 500000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        eth::DENOM.clone() => 249999,
+        eth::DENOM.clone() => 247814,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 500000,
-            usdc::DENOM.clone() => 1000000 - 333333,
+            usdc::DENOM.clone() => 1000000 - 331666,
         },
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            eth::DENOM.clone() => 1000000 - 249999,
-            usdc::DENOM.clone() => 1000000 + 333333,
+            eth::DENOM.clone() => 1000000 - 247814,
+            usdc::DENOM.clone() => 1000000 + 331666,
         },
     };
-    "1:1 pools no swap fee input 100% of pool liquidity two step route"
+    "1:1 pools 0.5% swap fee input 100% of pool liquidity two step route"
 )]
 #[test_case(
     btree_map! {
@@ -1550,7 +1550,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     Some(500000u128.into()),
     coins! {
@@ -1561,8 +1561,8 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             dango::DENOM.clone() => 2000000,
             usdc::DENOM.clone() => 500000,
         },
-    };
-    "1:1 pool no swap fee one step route input 100% of pool liquidity output is not less than minimum output"
+    } => panics "output amount is below the minimum: 497500 < 500000" ;
+    "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
 )]
 #[test_case(
     btree_map! {
@@ -1579,19 +1579,19 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
-    Some(499999u128.into()),
+    Some(497500u128.into()),
     coins! {
-        usdc::DENOM.clone() => 500000,
+        usdc::DENOM.clone() => 497500,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            usdc::DENOM.clone() => 1000000 - 497500,
         },
     };
-    "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
+    "1:1 pool no swap fee one step route input 100% of pool liquidity output is not less than minimum output"
 )]
 #[test_case(
     btree_map! {
@@ -1732,19 +1732,19 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
     coins! {
-        dango::DENOM.clone() => 1000000,
+        dango::DENOM.clone() => 1002006,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            dango::DENOM.clone() => 1000000 + 1002006,
+            usdc::DENOM.clone() => 1000000 - 500000,
         },
     };
-    "1:1 pool no swap fee one step route output 50% of pool liquidity"
+    "1:1 pool 0.1% swap fee one step route output 50% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -1759,19 +1759,19 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 333333).unwrap(),
     coins! {
-        dango::DENOM.clone() => 499999,
+        dango::DENOM.clone() => 500751,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 499999).unwrap(),
+    Coin::new(dango::DENOM.clone(), 500751).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 499999,
+            dango::DENOM.clone() => 1000000 + 500751,
             usdc::DENOM.clone() => 1000000 - 333333,
         },
     };
-    "1:1 pool no swap fee one step route output 33% of pool liquidity"
+    "1:1 pool 0.1% swap fee one step route output 33% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -1786,19 +1786,19 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 250000).unwrap(),
     coins! {
-        dango::DENOM.clone() => 333333,
+        dango::DENOM.clone() => 333779,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 333333).unwrap(),
+    Coin::new(dango::DENOM.clone(), 333779).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 333333,
+            dango::DENOM.clone() => 1000000 + 333779,
             usdc::DENOM.clone() => 1000000 - 250000,
         },
     };
-    "1:1 pool no swap fee one step route output 25% of pool liquidity"
+    "1:1 pool 0.1% swap fee one step route output 25% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -1816,7 +1816,7 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
@@ -1844,7 +1844,7 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 999999,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
@@ -1872,16 +1872,16 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 1100000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            dango::DENOM.clone() => 1000000 + 1002006,
+            usdc::DENOM.clone() => 1000000 - 500000,
         },
     };
-    "1:1 pool no swap fee one step route output 50% of pool liquidity excessive funds returned"
+    "1:1 pool 0.1% swap fee one step route output 50% of pool liquidity excessive funds returned"
 )]
 #[test_case(
     btree_map! {
@@ -1909,21 +1909,21 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 499999).unwrap(),
+    Coin::new(dango::DENOM.clone(), 501758).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 499999,
-            usdc::DENOM.clone() => 1000000 - 333333,
+            dango::DENOM.clone() => 1000000 + 501758,
+            usdc::DENOM.clone() => 1000000 - 333779,
         },
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             eth::DENOM.clone() => 1000000 - 250000,
-            usdc::DENOM.clone() => 1000000 + 333333,
+            usdc::DENOM.clone() => 1000000 + 333779,
         },
     };
-    "1:1 pool no swap fee two step route output 25% of pool liquidity"
+    "1:1 pool 0.1% swap fee two step route output 25% of pool liquidity"
 )]
 #[test_case(
     btree_map! {

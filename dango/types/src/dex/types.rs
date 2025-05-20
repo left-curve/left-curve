@@ -1,5 +1,5 @@
 use grug::{
-    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
+    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
 };
 
 /// Numerical identifier of an order.
@@ -60,10 +60,9 @@ pub struct PairParams {
     /// Curve invariant for the passive liquidity pool.
     pub curve_invariant: CurveInvariant,
     /// Fee rate for instant swaps in the passive liquidity pool.
-    ///
     /// For the xyk pool, this also sets the spread of the orders when the
     /// passive liquidity is reflected onto the orderbook.
-    pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    pub swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
     // TODO: minimum order size
 }
 
