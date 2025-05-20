@@ -1,19 +1,13 @@
-import { Secp256k1 } from "@left-curve/dango/crypto";
-import { encodeBase64 } from "@left-curve/dango/encoding";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 import { useChainId } from "./useChainId.js";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
 import { useSessionKey } from "./useSessionKey.js";
 
-import type { KeyHash, Username } from "@left-curve/dango/types";
+import type { KeyHash, SigningSession, Username } from "@left-curve/dango/types";
 
 export type UseSigninParameters = {
   connectors?: UseConnectorsReturnType;
-  sessionKey?:
-    | {
-        expireAt: number;
-      }
-    | false;
+  session?: false | SigningSession | { expireAt: number };
   mutation?: UseMutationParameters<
     Username,
     Error,
@@ -28,17 +22,17 @@ export type UseSigninReturnType = UseMutationReturnType<
 >;
 
 export function useSignin(parameters: UseSigninParameters) {
-  const { mutation, sessionKey = false } = parameters;
+  const { mutation, session } = parameters;
   const connectors = parameters?.connectors ?? useConnectors();
   const chainId = useChainId();
-  const { setSession } = useSessionKey();
+  const { createSessionKey, setSession } = useSessionKey();
 
   return useMutation({
     mutationFn: async ({ connectorId, username, keyHash }) => {
       const connector = connectors.find((connector) => connector.id === connectorId);
       if (!connector) throw new Error("error: missing connector");
 
-      if (!sessionKey) {
+      if (!session) {
         await connector.connect({
           username,
           chainId,
@@ -49,39 +43,20 @@ export function useSignin(parameters: UseSigninParameters) {
         return username;
       }
 
-      const keyPair = Secp256k1.makeKeyPair();
-      const publicKey = keyPair.getPublicKey();
+      const signingSession = await (async () => {
+        if ("authorization" in session) return session;
+        return await createSessionKey(
+          { connector, expireAt: session.expireAt },
+          { setSession: false },
+        );
+      })();
 
-      const sessionInfo = {
-        sessionKey: encodeBase64(publicKey),
-        expireAt: sessionKey.expireAt.toString(),
-      };
-
-      const { credential } = await connector.signArbitrary({
-        primaryType: "Message" as const,
-        message: sessionInfo,
-        types: {
-          Message: [
-            { name: "session_key", type: "string" },
-            { name: "expire_at", type: "string" },
-          ],
-        },
-      });
-
-      if ("session" in credential) throw new Error("unsupported credential type");
+      setSession(signingSession);
 
       await connector.connect({
         username,
         chainId,
-        keyHash: credential.standard.keyHash,
-      });
-
-      setSession({
-        keyHash: credential.standard.keyHash,
-        sessionInfo,
-        privateKey: keyPair.privateKey,
-        publicKey,
-        authorization: credential.standard,
+        keyHash: signingSession.keyHash,
       });
 
       return username;
