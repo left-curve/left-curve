@@ -51,7 +51,7 @@ impl AccountQuery {
         sort_by: Option<SortBy>,
         // The block height of created account
         block_height: Option<u64>,
-        // username: Option<String>,
+        username: Option<String>,
         address: Option<String>,
     ) -> Result<Connection<AccountCursorType, Account, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
@@ -99,6 +99,12 @@ impl AccountQuery {
                     query = query.filter(entity::accounts::Column::Address.eq(&address));
                 }
 
+                let mut query = query.find_with_related(entity::users::Entity);
+
+                if let Some(username) = username {
+                    query = query.filter(entity::users::Column::Username.eq(&username));
+                }
+
                 match sort_by {
                     SortBy::BlockHeightAsc => {
                         query = query
@@ -116,7 +122,7 @@ impl AccountQuery {
                     .all(&app_ctx.db)
                     .await?
                     .into_iter()
-                    .map(|account| account.into())
+                    .map(|account| account.0.into())
                     .collect::<Vec<_>>();
 
                 if has_before {

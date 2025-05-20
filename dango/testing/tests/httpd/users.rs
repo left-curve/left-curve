@@ -2,14 +2,11 @@ use {
     super::build_actix_app,
     assert_json_diff::*,
     dango_testing::create_accounts,
-    grug::setup_tracing_subscriber,
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (_, test_account, httpd_context) = create_accounts();
 
     let graphql_query = r#"

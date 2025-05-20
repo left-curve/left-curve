@@ -8,7 +8,7 @@ use {
         account_factory::{self, AccountParams},
         constants::usdc,
     },
-    grug::{Addressable, Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
+    grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
@@ -19,8 +19,6 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -84,8 +82,6 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
 
                 assert_that!(response.data.edges).has_length(2);
 
-                dbg!(&response.data);
-
                 assert_that!(
                     response
                         .data
@@ -115,8 +111,6 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -238,8 +232,6 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
