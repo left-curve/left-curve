@@ -26,9 +26,7 @@ impl From<entity::accounts::AccountType> for AccountType {
 }
 
 #[derive(Clone, Debug, SimpleObject, Eq, PartialEq, Hash)]
-// #[serde(rename_all = "camelCase")]
 #[graphql(complex)]
-// #[serde(default)]
 pub struct Account {
     #[graphql(skip)]
     pub id: uuid::Uuid,
