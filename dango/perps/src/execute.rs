@@ -8,11 +8,15 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
-        perps::{ExecuteMsg, InstantiateMsg, PerpsMarketParams, PerpsMarketState, PerpsVaultState},
+        perps::{
+            ExecuteMsg, InstantiateMsg, PerpsMarketParams, PerpsMarketState, PerpsPosition,
+            PerpsVaultState,
+        },
     },
     grug::{
-        Coins, Denom, Int128, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt,
-        Response, Sign, Signed, StorageQuerier, Uint128,
+        Coins, Dec128, Denom, Inner, Int128, IsZero, Message, MultiplyFraction, MutableCtx, Number,
+        NumberConst, QuerierExt, Response, Sign, Signed, StorageQuerier, Udec128, Uint128,
+        Unsigned,
     },
     std::collections::BTreeMap,
 };
@@ -184,5 +188,101 @@ fn create_position(
     let price = oracle_querier.query_price(&denom, None)?;
     let position_value = price.value_of_unit_amount(amount.unsigned_abs())?;
 
+    // Ensure minimum position value
+    ensure!(
+        position_value.into_int() >= params.min_position_size,
+        "position value is below the minimum position value"
+    );
+
+    // TODO: Implement max position size ?
+
     Ok(Response::new())
+}
+
+fn modify_position(
+    ctx: &MutableCtx,
+    denom: Denom,
+    amount: Int128,
+    params: &PerpsMarketParams,
+) -> anyhow::Result<Response> {
+    let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
+    let vault_state = PERPS_VAULT.load(ctx.storage)?;
+
+    // Query the oracle for the price
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let price = oracle_querier.query_price(&denom, None)?;
+    let oracle_unit_price = price.unit_price()?.checked_into_signed()?;
+    let position_value = price.value_of_unit_amount(amount.unsigned_abs())?;
+
+    // Query current position
+    let current_pos = PERPS_POSITIONS
+        .may_load(ctx.storage, (&ctx.sender, &denom))?
+        .unwrap_or_else(|| PerpsPosition {
+            denom,
+            size: Int128::ZERO,
+            entry_price: Udec128::ZERO,
+            entry_execution_price: Udec128::ZERO,
+            entry_skew: Udec128::ZERO,
+            realized_pnl: Int128::ZERO,
+        });
+
+    // Calculate fill price
+    let skew = market_state.skew()?;
+    let skew_scale = params.skew_scale.checked_into_signed()?;
+    let pd_before = Dec128::checked_from_ratio(skew, skew_scale)?;
+    let pd_after = Dec128::checked_from_ratio(skew.checked_add(amount)?, skew_scale)?;
+    let price_before = oracle_unit_price.checked_add(oracle_unit_price.checked_mul(pd_before)?)?;
+    let price_after = oracle_unit_price.checked_add(oracle_unit_price.checked_mul(pd_after)?)?;
+    let fill_price = price_before
+        .checked_add(price_after)?
+        .checked_div(Dec128::new(2))?;
+
+    // TODO: assert slippage based on fill price
+
+    // Calculate order fee
+    let notional_diff = amount.checked_mul_dec(fill_price)?;
+
+    // Check if trade keeps skew on one side
+    let new_skew = skew.checked_add(amount)?;
+    let fee_usd = if same_side(skew, new_skew) {
+        // This trade keeps the skew on the same side.
+        let fee_rate = if same_side(notional_diff, skew) {
+            params.taker_fee
+        } else {
+            params.maker_fee
+        };
+
+        fee_rate
+            .into_inner()
+            .checked_mul(notional_diff.unsigned_abs().checked_into_dec()?)?
+    } else {
+        // This trade flips the skew. Apply maker fee on the portion that
+        // decreases the skew towards zero, and taker fee on the portion that
+        // increases the skew away from zero.
+        let taker_portion =
+            Dec128::checked_from_ratio(amount.checked_add(skew)?, amount)?.unsigned_abs();
+        let maker_portion = Udec128::ONE.checked_sub(taker_portion)?;
+        let taker_fee = taker_portion
+            .checked_mul(params.taker_fee.into_inner())?
+            .checked_mul(notional_diff.unsigned_abs().checked_into_dec()?)?;
+        let maker_fee = maker_portion
+            .checked_mul(params.maker_fee.into_inner())?
+            .checked_mul(notional_diff.unsigned_abs().checked_into_dec()?)?;
+
+        taker_fee.checked_add(maker_fee)?
+    };
+
+    // Convert fee to vault denom
+    let vault_denom_price = oracle_querier.query_price(&vault_state.denom, None)?;
+    let fee_in_vault_denom = vault_denom_price.unit_amount_from_value(fee_usd)?;
+
+    // Ensure the fee is sent
+    let sent_fee = ctx.funds.as_one_coin_of_denom(&vault_state.denom)?;
+    ensure!(sent_fee.amount == &fee_in_vault_denom, "fee is not sent");
+
+    Ok(Response::new())
+}
+
+fn same_side(a: Int128, b: Int128) -> bool {
+    (a.is_positive() == b.is_positive()) || a.is_zero() || b.is_zero()
 }

@@ -1,4 +1,7 @@
-use grug::{Bounded, Denom, Int128, Timestamp, Udec128, Uint128, ZeroInclusiveOneExclusive};
+use grug::{
+    Bounded, Denom, Int128, MathError, Number, Timestamp, Udec128, Uint128, Unsigned,
+    ZeroInclusiveOneExclusive,
+};
 
 /// The state of the perps vault
 #[grug::derive(Serde, Borsh)]
@@ -24,6 +27,14 @@ pub struct PerpsMarketState {
     pub last_updated: Timestamp,
 }
 
+impl PerpsMarketState {
+    pub fn skew(&self) -> Result<Int128, MathError> {
+        self.long_oi
+            .checked_into_signed()?
+            .checked_sub(self.short_oi.checked_into_signed()?)
+    }
+}
+
 /// Parameters for a perps market.
 #[grug::derive(Serde, Borsh)]
 pub struct PerpsMarketParams {
@@ -35,11 +46,11 @@ pub struct PerpsMarketParams {
     pub max_long_oi: Uint128,
     /// The maximum short open interest of the market.
     pub max_short_oi: Uint128,
-    /// The fee for opening a position in the market.
-    pub position_open_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    /// The fee for closing a position in the market.
-    pub position_close_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    /// The minimum size of a position.
+    /// The fee for opening or increasing a position that is used if the position reduces the skew.
+    pub maker_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    /// The fee for opening or increasing a position that is used if the position increases the skew.
+    pub taker_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    /// The minimum size of a position. Denominated in USD.
     pub min_position_size: Uint128,
     /// Determines the funding rate for a given level of skew.
     /// The lower the `skew_scale` the higher the funding rate.
@@ -54,7 +65,7 @@ pub struct PerpsMarketParams {
 pub struct PerpsPosition {
     /// The denom of the position.
     pub denom: Denom,
-    /// The size of the position.
+    /// The size of the position, denominated in the Market's Denom.
     pub size: Int128,
     /// The entry price of the position.
     pub entry_price: Udec128,
