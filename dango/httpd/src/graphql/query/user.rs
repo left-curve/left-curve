@@ -62,6 +62,7 @@ impl UserQuery {
         // The block height of created user
         block_height: Option<u64>,
         public_key: Option<String>,
+        public_key_hash: Option<String>,
     ) -> Result<Connection<UserCursorType, types::user::User, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
@@ -106,6 +107,10 @@ impl UserQuery {
 
                 if let Some(public_key) = public_key {
                     query = query.filter(entity::public_keys::Column::PublicKey.eq(&public_key));
+                }
+
+                if let Some(public_key_hash) = public_key_hash {
+                    query = query.filter(entity::public_keys::Column::KeyHash.eq(&public_key_hash));
                 }
 
                 query = query

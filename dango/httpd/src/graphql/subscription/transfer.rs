@@ -5,6 +5,7 @@ use {
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity::blocks::latest_block_height,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
+    std::ops::RangeInclusive,
 };
 
 #[derive(Default)]
@@ -14,11 +15,11 @@ impl TransferSubscription {
     /// Get all transfers for the given block_height
     async fn get_transfers(
         app_ctx: &indexer_httpd::context::Context,
-        block_height: i64,
+        block_heights: RangeInclusive<i64>,
         from_address: Option<String>,
         to_address: Option<String>,
     ) -> Vec<Transfer> {
-        let mut filter = entity::transfers::Column::BlockHeight.eq(block_height);
+        let mut filter = entity::transfers::Column::BlockHeight.is_in(block_heights);
 
         if let Some(from_address) = from_address {
             filter = filter.and(entity::transfers::Column::FromAddress.eq(from_address));
@@ -30,6 +31,7 @@ impl TransferSubscription {
 
         entity::transfers::Entity::find()
             .filter(filter)
+            .order_by_asc(entity::transfers::Column::BlockHeight)
             .order_by_asc(entity::transfers::Column::Idx)
             .all(&app_ctx.db)
             .await
@@ -50,16 +52,24 @@ impl TransferSubscription {
         from_address: Option<String>,
         // The to address of the transfer
         to_address: Option<String>,
+        // The block height of the transfer
+        // This is used to get the older transfers in case of disconnection
+        since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<Transfer>> + 'a> {
         let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 
+        let block_range = match since_block_height {
+            Some(block_height) => block_height as i64..=latest_block_height,
+            None => latest_block_height..=latest_block_height,
+        };
+
         let f = from_address.clone();
         let t = to_address.clone();
 
         Ok(
-            once(async move { Self::get_transfers(app_ctx, latest_block_height, f, t).await })
+            once(async move { Self::get_transfers(app_ctx, block_range, f, t).await })
                 .chain(
                     app_ctx
                         .pubsub
@@ -69,7 +79,13 @@ impl TransferSubscription {
                             let f = from_address.clone();
                             let t = to_address.clone();
                             async move {
-                                Self::get_transfers(app_ctx, block_height as i64, f, t).await
+                                Self::get_transfers(
+                                    app_ctx,
+                                    block_height as i64..=block_height as i64,
+                                    f,
+                                    t,
+                                )
+                                .await
                             }
                         }),
                 )
