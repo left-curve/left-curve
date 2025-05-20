@@ -1,14 +1,7 @@
 use {
-    actix_web::{
-        App,
-        body::MessageBody,
-        dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-    },
+    super::build_actix_app,
     assertor::*,
-    dango_httpd::{
-        graphql::{build_schema, types::transfer::Transfer},
-        server::config_app,
-    },
+    dango_httpd::graphql::types::transfer::Transfer,
     dango_testing::setup_test_with_indexer,
     dango_types::{
         account::single,
@@ -16,10 +9,9 @@ use {
         constants::usdc,
     },
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
-    indexer_httpd::context::Context,
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, build_actix_app_with_config, call_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
     serde_json::json,
     tokio::sync::mpsc,
@@ -59,8 +51,9 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
             toAddress
             amount
             denom
+            accounts { users { username } }
           }
-          edges { node { blockHeight fromAddress toAddress amount denom } cursor }
+          edges { node { blockHeight fromAddress toAddress amount denom accounts { users { username } } } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -90,6 +83,8 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
                     call_graphql::<PaginatedResponse<Transfer>>(app, request_body).await?;
 
                 assert_that!(response.data.edges).has_length(2);
+
+                dbg!(&response.data);
 
                 assert_that!(
                     response
@@ -372,22 +367,4 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             .await
         })
         .await?
-}
-
-fn build_actix_app(
-    app_ctx: Context,
-) -> App<
-    impl ServiceFactory<
-        ServiceRequest,
-        Response = ServiceResponse<impl MessageBody>,
-        Config = (),
-        InitError = (),
-        Error = actix_web::Error,
-    >,
-> {
-    let graphql_schema = build_schema(app_ctx.clone());
-
-    build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
-        config_app(app_ctx, graphql_schema)
-    })
 }

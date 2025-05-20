@@ -1,7 +1,7 @@
 use {
     crate::graphql::types::{self, transfer::Transfer},
     async_graphql::{types::connection::*, *},
-    dango_indexer_sql::entity::{self, prelude::Transfers},
+    dango_indexer_sql::entity::{self},
     indexer_httpd::context::Context,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
@@ -149,10 +149,10 @@ impl TransferQuery {
 }
 
 fn apply_filter(
-    query: Select<Transfers>,
+    query: Select<entity::transfers::Entity>,
     sort_by: SortBy,
     after: &TransferCursor,
-) -> Select<Transfers> {
+) -> Select<entity::transfers::Entity> {
     query.filter(match sort_by {
         SortBy::BlockHeightAsc => Condition::any()
             .add(entity::transfers::Column::BlockHeight.lt(after.block_height as i64))

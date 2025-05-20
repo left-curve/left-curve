@@ -62,7 +62,7 @@ pub fn build_app_service(
     build_actix_app(app_ctx, graphql_schema)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedResponse<X> {
@@ -71,14 +71,14 @@ pub struct PaginatedResponse<X> {
     pub page_info: PageInfo,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 pub struct Edge<X> {
     pub node: X,
     pub cursor: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
@@ -113,12 +113,12 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    // println!("text response: \n{:#?}", graphql_response);
+    println!("text response: \n{:#?}", graphql_response);
 
     let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
 
     // When I need to debug the response
-    // println!("GraphQLResponse: {:#?}", graphql_response);
+    println!("GraphQLResponse: {:#?}", graphql_response);
 
     if let Some(data) = graphql_response.data.remove(request_body.name) {
         Ok(GraphQLCustomResponse {

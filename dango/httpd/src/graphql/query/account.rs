@@ -1,7 +1,7 @@
 use {
     crate::graphql::types::{self, account::Account},
     async_graphql::{types::connection::*, *},
-    dango_indexer_sql::entity::{self, prelude::Accounts},
+    dango_indexer_sql::entity::{self},
     indexer_httpd::context::Context,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
@@ -150,10 +150,10 @@ impl AccountQuery {
 }
 
 fn apply_filter(
-    query: Select<Accounts>,
+    query: Select<entity::accounts::Entity>,
     sort_by: SortBy,
     after: &AccountCursor,
-) -> Select<Accounts> {
+) -> Select<entity::accounts::Entity> {
     query.filter(match sort_by {
         SortBy::BlockHeightAsc => Condition::any()
             .add(entity::accounts::Column::CreatedBlockHeight.lt(after.created_block_height as i64))

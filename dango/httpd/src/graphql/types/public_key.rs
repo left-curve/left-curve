@@ -2,13 +2,11 @@ use {
     async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
     dango_indexer_sql::entity,
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
-    serde::Deserialize,
+    sea_orm::ModelTrait,
 };
 
-#[derive(Enum, Copy, Clone, Debug, Deserialize, Default, Eq, PartialEq, Hash)]
+#[derive(Enum, Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum KeyType {
-    #[default]
     Secp256r1,
     Secp256k1,
     Ethereum,
@@ -24,11 +22,11 @@ impl From<entity::public_keys::KeyType> for KeyType {
     }
 }
 
-#[derive(Clone, Debug, SimpleObject, Deserialize, Default, Eq, PartialEq, Hash)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, SimpleObject, Eq, PartialEq, Hash)]
 #[graphql(complex)]
-#[serde(default)]
 pub struct PublicKey {
+    #[graphql(skip)]
+    pub model: entity::public_keys::Model,
     pub username: String,
     pub key_hash: String,
     pub public_key: String,
@@ -40,6 +38,7 @@ pub struct PublicKey {
 impl From<entity::public_keys::Model> for PublicKey {
     fn from(item: entity::public_keys::Model) -> Self {
         Self {
+            model: item.clone(),
             created_at: Utc.from_utc_datetime(&item.created_at),
             username: item.username,
             key_hash: item.key_hash,
@@ -55,12 +54,20 @@ impl PublicKey {
     pub async fn user(&self, ctx: &async_graphql::Context<'_>) -> Result<super::user::User> {
         let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
 
-        let user = entity::users::Entity::find()
-            .filter(entity::users::Column::Username.eq(&self.username))
+        Ok(self
+            .model
+            .find_related(entity::users::Entity)
             .one(&app_ctx.db)
             .await?
-            .ok_or_else(|| async_graphql::Error::new("User not found"))?;
+            .ok_or_else(|| async_graphql::Error::new("User not found"))?
+            .into())
 
-        Ok(super::user::User::from(user))
+        // let user = entity::users::Entity::find()
+        //     .filter(entity::users::Column::Username.eq(&self.username))
+        //     .one(&app_ctx.db)
+        //     .await?
+        //     .ok_or_else(|| async_graphql::Error::new("User not found"))?;
+
+        // Ok(super::user::User::from(user))
     }
 }

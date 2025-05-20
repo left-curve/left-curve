@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
+#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Hash)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum KeyType {
     #[sea_orm(num_value = 0)]
@@ -21,7 +21,7 @@ impl From<dango_types::auth::Key> for KeyType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash)]
 #[sea_orm(table_name = "users_public_keys")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

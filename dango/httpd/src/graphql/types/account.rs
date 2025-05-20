@@ -4,13 +4,12 @@ use {
     chrono::{DateTime, TimeZone, Utc},
     dango_indexer_sql::entity,
     indexer_httpd::context::Context,
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, sqlx::types::uuid},
+    sea_orm::{ModelTrait, sqlx::types::uuid},
     serde::Deserialize,
 };
 
-#[derive(Enum, Copy, Clone, Debug, Deserialize, Default, Eq, PartialEq, Hash)]
+#[derive(Enum, Copy, Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
 pub enum AccountType {
-    #[default]
     Spot,
     Margin,
     Multi,
@@ -26,13 +25,15 @@ impl From<entity::accounts::AccountType> for AccountType {
     }
 }
 
-#[derive(Clone, Debug, SimpleObject, Deserialize, Default, Eq, PartialEq, Hash)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, SimpleObject, Eq, PartialEq, Hash)]
+// #[serde(rename_all = "camelCase")]
 #[graphql(complex)]
-#[serde(default)]
+// #[serde(default)]
 pub struct Account {
     #[graphql(skip)]
     pub id: uuid::Uuid,
+    #[graphql(skip)]
+    pub model: entity::accounts::Model,
     pub account_index: u32,
     pub address: String,
     pub account_type: AccountType,
@@ -44,6 +45,7 @@ impl From<entity::accounts::Model> for Account {
     fn from(item: entity::accounts::Model) -> Self {
         Self {
             id: item.id,
+            model: item.clone(),
             created_at: Utc.from_utc_datetime(&item.created_at),
             address: item.address,
             account_type: item.account_type.into(),
@@ -58,23 +60,32 @@ impl Account {
     pub async fn users(&self, ctx: &async_graphql::Context<'_>) -> Result<Vec<User>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        // TODO: use a join query to get users
-        let user_ids = entity::accounts_users::Entity::find()
-            .filter(entity::accounts_users::Column::AccountId.eq(self.id))
-            .all(&app_ctx.db)
-            .await?
-            .into_iter()
-            .map(|au| au.user_id)
-            .collect::<Vec<_>>();
-
-        let users = entity::users::Entity::find()
-            .filter(entity::users::Column::Id.is_in(user_ids))
+        Ok(self
+            .model
+            .find_related(entity::users::Entity)
             .all(&app_ctx.db)
             .await?
             .into_iter()
             .map(User::from)
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>>())
 
-        Ok(users)
+        // NOTE: keeping the old code for reference in case the join query doesn't work
+        // let user_ids = entity::accounts_users::Entity::find()
+        //     .filter(entity::accounts_users::Column::AccountId.eq(self.id))
+        //     .all(&app_ctx.db)
+        //     .await?
+        //     .into_iter()
+        //     .map(|au| au.user_id)
+        //     .collect::<Vec<_>>();
+
+        // let users = entity::users::Entity::find()
+        //     .filter(entity::users::Column::Id.is_in(user_ids))
+        //     .all(&app_ctx.db)
+        //     .await?
+        //     .into_iter()
+        //     .map(User::from)
+        //     .collect::<Vec<_>>();
+
+        // Ok(users)
     }
 }
