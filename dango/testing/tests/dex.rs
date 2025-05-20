@@ -16,7 +16,7 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coins,
+        ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
     std::{
@@ -2079,10 +2079,10 @@ fn swap_exact_amount_out(
         !1u64 => (Udec128::new_percent(20100), Uint128::from(49751), Direction::Bid),
     },
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000,
             usdc::DENOM.clone() => 200 * 10000000,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Unchanged,
@@ -2092,9 +2092,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone() => BalanceChange::Decreased(49751 * 201),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 one percent fee no matching orders")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee no matching orders"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2122,10 +2123,10 @@ fn swap_exact_amount_out(
     ],
     BTreeMap::new(),
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 - 49751,
             usdc::DENOM.clone() => 200 * 10000000 + 49751 * 201,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Decreased(49751),
@@ -2135,9 +2136,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Increased(49751),
             usdc::DENOM.clone() => BalanceChange::Decreased(49751 * 201),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2165,10 +2167,10 @@ fn swap_exact_amount_out(
     ],
     BTreeMap::new(),
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 - 47783,
             usdc::DENOM.clone() => 200 * 10000000 + 47783 * 202,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Decreased(47783),
@@ -2178,9 +2180,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Increased(47783),
             usdc::DENOM.clone() => BalanceChange::Decreased(47783 * 202),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2210,10 +2213,10 @@ fn swap_exact_amount_out(
         !1u64 => (Udec128::new_percent(20300), Uint128::from(10000), Direction::Bid),
     },
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 - 147784,
             usdc::DENOM.clone() => 200 * 10000000 + 147784 * 203,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Decreased(147784),
@@ -2224,8 +2227,9 @@ fn swap_exact_amount_out(
             eth::DENOM.clone() => BalanceChange::Increased(147784),
             usdc::DENOM.clone() => BalanceChange::Decreased(157784 * 203),
         }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after")]
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2253,10 +2257,10 @@ fn swap_exact_amount_out(
     ],
     BTreeMap::new(),
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 + 50251,
             usdc::DENOM.clone() => 200 * 10000000 - 50251 * 199,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Increased(50251),
@@ -2266,9 +2270,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Decreased(50251),
             usdc::DENOM.clone() => BalanceChange::Increased(50251 * 199),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2296,10 +2301,10 @@ fn swap_exact_amount_out(
     ],
     BTreeMap::new(),
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 + 30000,
             usdc::DENOM.clone() => 200 * 10000000 - 30000 * 199,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Increased(30000),
@@ -2309,9 +2314,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Decreased(30000),
             usdc::DENOM.clone() => BalanceChange::Increased(30000 * 199),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2341,10 +2347,10 @@ fn swap_exact_amount_out(
         1u64 => (Udec128::new_percent(19900), Uint128::from(10000), Direction::Ask),
     },
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 + 50251,
             usdc::DENOM.clone() => 200 * 10000000 - 50251 * 199,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Increased(60251),
@@ -2354,9 +2360,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Decreased(60251),
             usdc::DENOM.clone() => BalanceChange::Increased(50251 * 199),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after"
+)]
 #[test_case(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
@@ -2396,10 +2403,10 @@ fn swap_exact_amount_out(
     ],
     BTreeMap::new(),
     btree_map! {
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
             eth::DENOM.clone() => 10000000 + 4500, // only the remaining amount of the ask order traded against the passive pool
             usdc::DENOM.clone() => 200 * 10000000 - 4500 * 198,
-        }.try_into().unwrap(),
+        },
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Increased(162284 - 157784),
@@ -2413,9 +2420,10 @@ fn swap_exact_amount_out(
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Increased(157784),
             usdc::DENOM.clone() => BalanceChange::Decreased(157784 * 198),
-        }
-    ]
-    ; "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders")]
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders"
+)]
 fn curve_on_orderbook(
     curve_invariant: CurveInvariant,
     swap_fee_rate: Udec128,
