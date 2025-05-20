@@ -4,9 +4,9 @@ use {
     std::{cmp::Ordering, iter::Peekable},
 };
 
+// Orders from the passive liquidity pool are not real phyiscal orders placed in
+// the orderbook, so they don't have order IDs or creation block heights.
 const PASSIVE_ORDER_ID: u64 = 0;
-
-// Use block height 0, so that the passive pool is always charged the maker rate.
 const PASSIVE_ORDER_CREATION_BLOCK_HEIGHT: u64 = 0;
 
 pub struct MergedOrders<A, B>
