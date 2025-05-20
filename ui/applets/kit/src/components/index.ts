@@ -29,6 +29,7 @@ export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
 export { Pagination } from "./Pagination";
+export { JsonVisualizer } from "./JsonVisualizer";
 
 /* ---------------------------------- Icons --------------------------------- */
 

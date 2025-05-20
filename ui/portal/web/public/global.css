@@ -54,3 +54,7 @@ body {
   @apply diatype-sm-medium text-gray-500;
   padding: 0 11px;
 }
+
+.react-json-view .variable-value div {
+  color: theme("colors.white.100") !important;
+}

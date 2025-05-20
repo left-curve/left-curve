@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import React from "react";
 
-import { AccordionItem, TextCopy, twMerge } from "@left-curve/applets-kit";
+import { AccordionItem, JsonVisualizer, TextCopy, twMerge } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
@@ -100,8 +100,8 @@ const Messages: React.FC = () => {
     <div className="w-full shadow-card-shadow bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold">Message</p>
       <AccordionItem text="Nested Events">
-        <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md text-white-100">
-          {nestedEvents}
+        <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md">
+          <JsonVisualizer json={nestedEvents} />
         </div>
       </AccordionItem>
       {/* {events.length ? <p className="h4-bold">Events</p> : null}
