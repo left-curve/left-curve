@@ -4,16 +4,17 @@ import type React from "react";
 
 type JsonVisualizerProps = {
   json: string;
+  collapsed?: boolean | number;
 };
 
-export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json }) => {
+export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json, collapsed }) => {
   return (
     <JsonView
       name={false}
       src={JSON.parse(json)}
       displayObjectSize={false}
       displayDataTypes={false}
-      collapsed={true}
+      collapsed={collapsed}
       indentWidth={1}
       theme={{
         base00: "#453d39",

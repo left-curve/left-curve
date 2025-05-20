@@ -142,7 +142,7 @@ const Messages: React.FC = () => {
     <div className="w-full shadow-card-shadow bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold">{m["explorer.txs.events"]()}</p>
       <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md">
-        <JsonVisualizer json={nestedEvents} />
+        <JsonVisualizer json={nestedEvents} collapsed={1} />
       </div>
       {/* {events.length ? <p className="h4-bold">Events</p> : null}
           {events.map((event) => (
