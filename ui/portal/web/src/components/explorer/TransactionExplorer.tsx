@@ -125,7 +125,7 @@ const Details: React.FC = () => {
       <img
         src="/images/emojis/detailed/map-explorer.svg"
         alt="map-emoji"
-        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply hidden md:block"
+        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] mix-blend-multiply hidden md:block"
       />
     </div>
   );
