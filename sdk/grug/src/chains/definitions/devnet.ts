@@ -1,7 +1,7 @@
 import { defineChain } from "../defineChain.js";
 
 export const devnet = /*#__PURE__*/ defineChain({
-  id: "dev-6",
+  id: "dev-9",
   name: "Devnet",
   nativeCoin: "dango",
   blockExplorers: {
