@@ -132,6 +132,14 @@
       "description": "Create subaccounts.",
       "path": "/create-account",
       "keywords": "account,create,register"
+    },
+    "5": {
+      "id": "pro-swap",
+      "img": "/images/emojis/simple/spot.svg",
+      "title": "Pro Swap",
+      "description": "Real-Time Charts, Data & Trading",
+      "path": "/pro-swap",
+      "keywords": "swap,trade,pro,charts,data,trading"
     }
   },
   "explorer": {
@@ -541,6 +549,10 @@
         }
       }
     }
+  },
+  "proSwap": {
+    "buy": "Buy",
+    "sell": "Sell"
   },
   "searchBar": {
     "noResult": "No results found.",
