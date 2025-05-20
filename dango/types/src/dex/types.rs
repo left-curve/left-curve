@@ -63,21 +63,20 @@ pub struct PairParams {
     /// Curve invariant for the passive liquidity pool.
     pub curve_invariant: CurveInvariant,
     /// Fee rate for instant swaps in the passive liquidity pool.
-    /// This also sets the spread of the orders when the passive
-    /// liquidity is reflected onto the orderbook.
+    ///
+    /// For the xyk pool, this also sets the spread of the orders when the
+    /// passive liquidity is reflected onto the orderbook.
     pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    // TODO:
-    // - orderbook fee rate (either here or as a global parameter)
-    // - tick size (necessary or not?)
-    // - minimum order size
+    // TODO: minimum order size
 }
 
 #[grug::derive(Serde, Borsh)]
 pub enum CurveInvariant {
     Xyk {
-        /// The order spacing for the passive liquidity pool. This is the price
-        /// difference between two consecutive orders in when the passive
-        /// liquidity is reflected onto the orderbook.
+        /// The order spacing for the passive liquidity pool.
+        ///
+        /// This is the price difference between two consecutive orders in when
+        /// the passive liquidity is reflected onto the orderbook.
         order_spacing: Udec128,
     },
 }
