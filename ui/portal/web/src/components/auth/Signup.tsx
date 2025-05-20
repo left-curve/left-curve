@@ -370,7 +370,6 @@ const Username: React.FC = () => {
 
 const Signin: React.FC = () => {
   const navigate = useNavigate();
-  const { addUsername } = useUsernames();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
   const { settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
@@ -378,11 +377,10 @@ const Signin: React.FC = () => {
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
+    session: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
-        addUsername(username);
         done();
       },
       onError: (err) => {

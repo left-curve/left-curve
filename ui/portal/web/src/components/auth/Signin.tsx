@@ -6,7 +6,13 @@ import {
   useMediaQuery,
   useWizard,
 } from "@left-curve/applets-kit";
-import { useAccount, useConnectors, usePublicClient, useSignin } from "@left-curve/store";
+import {
+  useAccount,
+  useConnectors,
+  usePublicClient,
+  useSessionKey,
+  useSignin,
+} from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -23,7 +29,7 @@ import { UsernamesList } from "./UsernamesList";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
-import type { Hex, Username } from "@left-curve/dango/types";
+import type { Hex, SigningSession, Username } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
@@ -49,8 +55,9 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 
 const CredentialStep: React.FC = () => {
   const { settings, changeSettings, showModal } = useApp();
+  const { createSessionKey } = useSessionKey();
   const { nextStep, setData } = useWizard();
-  const { useSessionKey } = settings;
+  const { useSessionKey: session } = settings;
   const connectors = useConnectors();
   const navigate = useNavigate();
   const publicClient = usePublicClient();
@@ -62,9 +69,20 @@ const CredentialStep: React.FC = () => {
       try {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
-        const keyHash = await connector.getKeyHash();
-        const usernames = await publicClient.forgotUsername({ keyHash });
-        setData({ usernames, connectorId, keyHash });
+
+        if (session) {
+          const signingSession = await createSessionKey(
+            { connector, expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
+            { setSession: false },
+          );
+          const usernames = await publicClient.forgotUsername({ keyHash: signingSession.keyHash });
+
+          setData({ usernames, connectorId, signingSession });
+        } else {
+          const keyHash = await connector.getKeyHash();
+          const usernames = await publicClient.forgotUsername({ keyHash });
+          setData({ usernames, connectorId, keyHash });
+        }
         nextStep();
       } catch (err) {
         toast.error({ title: m["errors.failureRequest"]() });
@@ -100,7 +118,7 @@ const CredentialStep: React.FC = () => {
 
       <div className="flex flex-col items-center w-full gap-4">
         {isMd ? (
-          <Button as={Link} fullWidth variant="secondary" to="/">
+          <Button as={Link} fullWidth variant="secondary" to="/" isDisabled={isPending}>
             {m["signin.continueWithoutSignin"]()}
           </Button>
         ) : (
@@ -119,7 +137,7 @@ const CredentialStep: React.FC = () => {
             <Checkbox
               size="md"
               label={m["common.signinWithSession"]()}
-              checked={useSessionKey}
+              checked={session}
               onChange={(v) => changeSettings({ useSessionKey: v })}
             />
           </div>
@@ -127,7 +145,11 @@ const CredentialStep: React.FC = () => {
         {isMd ? (
           <div className="flex justify-center items-center">
             <p>{m["signin.noAccount"]()}</p>
-            <Button variant="link" onClick={() => navigate({ to: "/signup" })}>
+            <Button
+              variant="link"
+              onClick={() => navigate({ to: "/signup" })}
+              isDisabled={isPending}
+            >
               {m["common.signup"]()}
             </Button>
           </div>
@@ -144,16 +166,15 @@ const CredentialStep: React.FC = () => {
 const UsernameStep: React.FC = () => {
   const { data, previousStep } = useWizard<{
     usernames: Username[];
-    keyHash: Hex;
+    keyHash?: Hex;
+    signingSession?: SigningSession;
     connectorId: string;
   }>();
   const navigate = useNavigate();
-  const { settings } = useApp();
-  const { useSessionKey } = settings;
-  const { usernames, connectorId, keyHash } = data;
+  const { usernames, connectorId, keyHash, signingSession } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
+    session: signingSession,
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
