@@ -64,7 +64,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   ) {
     const c = parameters.connector || connector;
     if (!c) throw new Error("connector not found");
-    const { expireAt = true } = parameters;
+    const { expireAt } = parameters;
     const { setSession: loadSession = true } = options;
 
     const keyPair = Secp256k1.makeKeyPair();
