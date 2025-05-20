@@ -300,7 +300,7 @@ const Username: React.FC = () => {
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
         const response = await fetch(
-          `${config.chain.urls.indexer.replace("/graphql", "").replace("8080", "8082")}/mint/${address}`,
+          `${config.chain.urls.indexer.replace("graphql", "faucet")}/mint/${address}`,
         );
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
