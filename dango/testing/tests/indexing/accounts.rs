@@ -1,14 +1,10 @@
 use {
-    assertor::*,
-    dango_indexer_sql::entity,
-    dango_testing::create_accounts,
-    grug::{Inner, setup_tracing_subscriber},
+    assertor::*, dango_indexer_sql::entity, dango_testing::create_accounts, grug::Inner,
     sea_orm::EntityTrait,
 };
 
 #[test]
 fn index_account_creations() {
-    setup_tracing_subscriber(tracing::Level::INFO);
     let (suite, test_account, _) = create_accounts();
 
     suite
@@ -64,7 +60,6 @@ fn index_account_creations() {
 
 #[test]
 fn index_previous_blocks() {
-    setup_tracing_subscriber(tracing::Level::INFO);
     let (suite, test_account, _) = create_accounts();
 
     suite
