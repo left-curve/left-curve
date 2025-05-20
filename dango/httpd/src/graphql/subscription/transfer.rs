@@ -17,17 +17,36 @@ impl TransferSubscription {
     async fn get_transfers(
         app_ctx: &indexer_httpd::context::Context,
         block_heights: RangeInclusive<i64>,
-        from_address: Option<String>,
-        to_address: Option<String>,
+        address: Option<String>,
+        username: Option<String>,
     ) -> Vec<Transfer> {
         let mut filter = entity::transfers::Column::BlockHeight.is_in(block_heights);
 
-        if let Some(from_address) = from_address {
-            filter = filter.and(entity::transfers::Column::FromAddress.eq(from_address));
+        if let Some(username) = username {
+            if let Ok(accounts) = entity::accounts::Entity::find()
+                .find_also_related(entity::users::Entity)
+                .filter(entity::users::Column::Username.eq(username))
+                .all(&app_ctx.db)
+                .await
+            {
+                let addresses = accounts
+                    .into_iter()
+                    .map(|(account, _)| account.address)
+                    .collect::<Vec<_>>();
+                filter = filter.and(
+                    entity::transfers::Column::FromAddress
+                        .is_in(&addresses)
+                        .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+                );
+            }
         }
 
-        if let Some(to_address) = to_address {
-            filter = filter.and(entity::transfers::Column::ToAddress.eq(to_address));
+        if let Some(address) = address {
+            filter = filter.and(
+                entity::transfers::Column::FromAddress
+                    .eq(&address)
+                    .or(entity::transfers::Column::ToAddress.eq(&address)),
+            );
         }
 
         entity::transfers::Entity::find()
@@ -49,10 +68,9 @@ impl TransferSubscription {
     async fn transfers<'a>(
         &self,
         ctx: &Context<'a>,
-        // The from address of the transfer
-        from_address: Option<String>,
-        // The to address of the transfer
-        to_address: Option<String>,
+        // The address of the transfer, either origin or destination
+        address: Option<String>,
+        username: Option<String>,
         // The block height of the transfer
         // This is used to get the older transfers in case of disconnection
         since_block_height: Option<u64>,
@@ -70,25 +88,25 @@ impl TransferSubscription {
             return Err(async_graphql::Error::new("since_block_height is too old"));
         }
 
-        let f = from_address.clone();
-        let t = to_address.clone();
+        let a = address.clone();
+        let u = username.clone();
 
         Ok(
-            once(async move { Self::get_transfers(app_ctx, block_range, f, t).await })
+            once(async move { Self::get_transfers(app_ctx, block_range, a, u).await })
                 .chain(
                     app_ctx
                         .pubsub
                         .subscribe_block_minted()
                         .await?
                         .then(move |block_height| {
-                            let f = from_address.clone();
-                            let t = to_address.clone();
+                            let a = address.clone();
+                            let u = username.clone();
                             async move {
                                 Self::get_transfers(
                                     app_ctx,
                                     block_height as i64..=block_height as i64,
-                                    f,
-                                    t,
+                                    a,
+                                    u,
                                 )
                                 .await
                             }
