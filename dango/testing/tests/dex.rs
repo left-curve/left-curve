@@ -2099,7 +2099,7 @@ fn swap_exact_amount_out(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
     },
-    Udec128::ZERO,
+    Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
         usdc::DENOM.clone() => 200 * 10000000,
@@ -2154,30 +2154,30 @@ fn swap_exact_amount_out(
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: Uint128::from(47783),
-                price: Udec128::new_percent(20300),
+                price: Udec128::new_percent(20200),
             },
         ],
     ],
     vec![
         coins! {
-            usdc::DENOM.clone() => 47783 * 203,
+            usdc::DENOM.clone() => 47783 * 202,
         },
     ],
     BTreeMap::new(),
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             eth::DENOM.clone() => 10000000 - 47783,
-            usdc::DENOM.clone() => 200 * 10000000 + 47783 * 203,
+            usdc::DENOM.clone() => 200 * 10000000 + 47783 * 202,
         }.try_into().unwrap(),
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Decreased(47783),
-        usdc::DENOM.clone() => BalanceChange::Increased(47783 * 203),
+        usdc::DENOM.clone() => BalanceChange::Increased(47783 * 202),
     },
     vec![
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Increased(47783),
-            usdc::DENOM.clone() => BalanceChange::Decreased(47783 * 203),
+            usdc::DENOM.clone() => BalanceChange::Decreased(47783 * 202),
         }
     ]
     ; "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order")]
@@ -2230,7 +2230,7 @@ fn swap_exact_amount_out(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
     },
-    Udec128::ZERO,
+    Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
         usdc::DENOM.clone() => 200 * 10000000,
@@ -2273,7 +2273,7 @@ fn swap_exact_amount_out(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
     },
-    Udec128::ZERO,
+    Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
         usdc::DENOM.clone() => 200 * 10000000,
@@ -2316,7 +2316,7 @@ fn swap_exact_amount_out(
     CurveInvariant::Xyk {
         order_spacing: Udec128::ONE,
     },
-    Udec128::ZERO,
+    Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
         usdc::DENOM.clone() => 200 * 10000000,
@@ -2373,7 +2373,7 @@ fn swap_exact_amount_out(
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: Uint128::from(162284),
-                price: Udec128::new_percent(19700),
+                price: Udec128::new_percent(19800),
             },
         ],
         vec![
@@ -2382,7 +2382,7 @@ fn swap_exact_amount_out(
                     quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: Uint128::from(157784),
-                price: Udec128::new_percent(20300),
+                price: Udec128::new_percent(20200),
             },
         ],
     ],
@@ -2398,21 +2398,21 @@ fn swap_exact_amount_out(
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             eth::DENOM.clone() => 10000000 + 4500, // only the remaining amount of the ask order traded against the passive pool
-            usdc::DENOM.clone() => 200 * 10000000 - 4500 * 197,
+            usdc::DENOM.clone() => 200 * 10000000 - 4500 * 198,
         }.try_into().unwrap(),
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Increased(162284 - 157784),
-        usdc::DENOM.clone() => BalanceChange::Decreased(4500 * 197),
+        usdc::DENOM.clone() => BalanceChange::Decreased(4500 * 198),
     },
     vec![
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Decreased(162284),
-            usdc::DENOM.clone() => BalanceChange::Increased(162284 * 197),
+            usdc::DENOM.clone() => BalanceChange::Increased(162284 * 198),
         },
         btree_map! {
             eth::DENOM.clone() => BalanceChange::Increased(157784),
-            usdc::DENOM.clone() => BalanceChange::Decreased(157784 * 197),
+            usdc::DENOM.clone() => BalanceChange::Decreased(157784 * 198),
         }
     ]
     ; "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders")]
@@ -2551,6 +2551,7 @@ fn curve_on_orderbook(
     // Assert that user balances have changed as expected
     for (user, expected_user_balance_change) in accounts.users().zip(expected_user_balance_changes)
     {
+        println!("user");
         suite
             .balances()
             .should_change(&user.address(), expected_user_balance_change);
