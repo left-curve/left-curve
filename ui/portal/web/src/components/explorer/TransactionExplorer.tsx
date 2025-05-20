@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import React from "react";
 
-import { AccordionItem, JsonVisualizer, TextCopy, twMerge } from "@left-curve/applets-kit";
+import { AccordionItem, Badge, JsonVisualizer, TextCopy, twMerge } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
@@ -54,14 +54,17 @@ const Details: React.FC = () => {
 
   if (!tx) return null;
 
-  const { sender, hash, blockHeight, createdAt, transactionIdx } = tx;
+  const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
+    tx;
   return (
     <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
-      <h1 className="h4-bold">Transaction Detail</h1>
+      <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Tx hash:</p>
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.txHash"]()}
+          </p>
           <p className="break-all whitespace-normal">
             {hash}
             <TextCopy
@@ -71,20 +74,52 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Sender:</p>
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.sender"]()}
+          </p>
           <p className="break-all whitespace-normal">{sender}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Time:</p>
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.time"]()}
+          </p>
           <p className="break-all whitespace-normal">{createdAt}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Block:</p>
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.block"]()}
+          </p>
           <p>{blockHeight}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Index:</p>
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.index"]()}
+          </p>
           <p>{transactionIdx}</p>
+        </div>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.gasUsed"]()}
+          </p>
+          <p>{gasUsed}</p>
+        </div>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.gasWanted"]()}
+          </p>
+          <p>{gasWanted}</p>
+        </div>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            {m["explorer.txs.status"]()}
+          </p>
+          <p>
+            <Badge
+              text={hasSucceeded ? m["explorer.txs.success"]() : m["explorer.txs.failed"]()}
+              color={hasSucceeded ? "green" : "red"}
+              size="m"
+            />
+          </p>
         </div>
       </div>
       <img
@@ -104,12 +139,10 @@ const Messages: React.FC = () => {
   const { nestedEvents } = tx;
   return (
     <div className="w-full shadow-card-shadow bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
-      <p className="h4-bold">Message</p>
-      <AccordionItem text="Nested Events">
-        <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md">
-          <JsonVisualizer json={nestedEvents} />
-        </div>
-      </AccordionItem>
+      <p className="h4-bold">{m["explorer.txs.events"]()}</p>
+      <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md">
+        <JsonVisualizer json={nestedEvents} />
+      </div>
       {/* {events.length ? <p className="h4-bold">Events</p> : null}
           {events.map((event) => (
             <AccordionItem key={crypto.randomUUID()} text={event.type}>
