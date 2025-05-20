@@ -252,8 +252,8 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         .should_succeed();
 
     let graphql_query = r#"
-      subscription Transfer($from_address: String) {
-        transfers(fromAddress: $from_address) {
+      subscription Transfer($address: String) {
+        transfers(address: $address) {
           blockHeight
           fromAddress
           toAddress
@@ -266,7 +266,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let request_body = GraphQLCustomRequest {
         name: "transfers",
         query: graphql_query,
-        variables: json!({"from_address": accounts.user1.address})
+        variables: json!({"address": accounts.user1.address})
             .as_object()
             .unwrap()
             .to_owned(),
