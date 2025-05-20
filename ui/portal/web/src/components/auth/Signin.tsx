@@ -1,4 +1,11 @@
-import { Checkbox, ExpandOptions, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import {
+  Checkbox,
+  ExpandOptions,
+  IconPasskey,
+  IconQR,
+  useMediaQuery,
+  useWizard,
+} from "@left-curve/applets-kit";
 import { useAccount, useConnectors, usePublicClient, useSignin } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -8,8 +15,10 @@ import { useApp } from "~/hooks/useApp";
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { toast } from "../foundation/Toast";
+import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
+import { UsernamesList } from "./UsernamesList";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
@@ -17,7 +26,6 @@ import { m } from "~/paraglide/messages";
 import type { Hex, Username } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { UsernamesList } from "./UsernamesList";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();
@@ -40,7 +48,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const CredentialStep: React.FC = () => {
-  const { settings, changeSettings } = useApp();
+  const { settings, changeSettings, showModal } = useApp();
   const { nextStep, setData } = useWizard();
   const { useSessionKey } = settings;
   const connectors = useConnectors();
@@ -49,7 +57,7 @@ const CredentialStep: React.FC = () => {
 
   const { isMd } = useMediaQuery();
 
-  const { isPending, mutateAsync: createCredential } = useMutation({
+  const { isPending, mutateAsync: signInWithCredential } = useMutation({
     mutationFn: async (connectorId: string) => {
       try {
         const connector = connectors.find((c) => c.id === connectorId);
@@ -76,12 +84,36 @@ const CredentialStep: React.FC = () => {
         <h1 className="h2-heavy">{m["common.signin"]()}</h1>
       </div>
 
-      <AuthOptions action={createCredential} isPending={isPending} mode="signin" />
+      {isMd ? (
+        <AuthOptions action={signInWithCredential} isPending={isPending} mode="signin" />
+      ) : (
+        <Button
+          fullWidth
+          onClick={() => signInWithCredential("passkey")}
+          isLoading={isPending}
+          className="gap-2"
+        >
+          <IconPasskey className="w-6 h-6" />
+          <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
+        </Button>
+      )}
 
       <div className="flex flex-col items-center w-full gap-4">
-        <Button as={Link} fullWidth variant="secondary" to="/">
-          {m["signin.continueWithoutSignin"]()}
-        </Button>
+        {isMd ? (
+          <Button as={Link} fullWidth variant="secondary" to="/">
+            {m["signin.continueWithoutSignin"]()}
+          </Button>
+        ) : (
+          <Button
+            fullWidth
+            onClick={() => showModal(Modals.SignWithDesktop)}
+            className="gap-2"
+            variant="secondary"
+          >
+            <IconQR className="w-6 h-6" />
+            <p className="min-w-20"> {m["common.signinWithDesktop"]()}</p>
+          </Button>
+        )}
         <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
           <div className="flex items-center gap-2 flex-col">
             <Checkbox
@@ -99,7 +131,11 @@ const CredentialStep: React.FC = () => {
               {m["common.signup"]()}
             </Button>
           </div>
-        ) : null}
+        ) : (
+          <Button as={Link} fullWidth variant="link" to="/">
+            {m["signin.continueWithoutSignin"]()}
+          </Button>
+        )}
       </div>
     </div>
   );
