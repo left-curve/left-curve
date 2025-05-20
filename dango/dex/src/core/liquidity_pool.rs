@@ -309,6 +309,10 @@ impl PassiveLiquidityPool for PairParams {
                 // Start from the marginal price minus the swap fee rate.
                 let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
                 let mut maybe_price = Some(marginal_price.checked_mul(one_sub_fee_rate)?);
+                println!(
+                    "bid start: {}",
+                    marginal_price.checked_mul(one_sub_fee_rate)?
+                );
                 let mut prev_size = Uint128::ZERO;
                 let mut prev_size_quote = Uint128::ZERO;
                 let bids = iter::from_fn(move || {
@@ -358,6 +362,7 @@ impl PassiveLiquidityPool for PairParams {
                 // Construct the ask order iterator.
                 let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
                 let mut price = marginal_price.checked_mul(one_plus_fee_rate)?;
+                println!("ask start: {}", price);
                 let mut prev_size = Uint128::ZERO;
                 let asks = iter::from_fn(move || {
                     // Compute the total order size (in base asset) at this price.
@@ -374,6 +379,11 @@ impl PassiveLiquidityPool for PairParams {
                     // this price, and that at the previous price.
                     let amount = size.checked_sub(prev_size).ok()?;
 
+                    println!("ask amount: {}", amount);
+                    println!("ask size: {}", size);
+                    println!("ask price: {}", price);
+                    println!("ask prev_size: {}", prev_size);
+
                     // If order size is zero, we have ran out of liquidity.
                     // Terminate the iterator.
                     if amount.is_zero() {
@@ -382,9 +392,12 @@ impl PassiveLiquidityPool for PairParams {
 
                     // Update the iterator state.
                     prev_size = size;
+                    let order_price = price.clone();
+
+                    // Increment the price for the next order.
                     price.checked_add_assign(order_spacing).ok()?;
 
-                    Some((price, amount))
+                    Some((order_price, amount))
                 });
 
                 Ok((Box::new(bids), Box::new(asks)))
@@ -458,7 +471,8 @@ mod tests {
             usdc::DENOM.clone() => 200 * 10000000,
         },
         vec![
-            (Udec128::new_percent(19700), Uint128::from(152284)),
+            (Udec128::new_percent(19800), Uint128::from(101010)),
+            (Udec128::new_percent(19700), Uint128::from(51274)),
             (Udec128::new_percent(19600), Uint128::from(51797)),
             (Udec128::new_percent(19500), Uint128::from(52329)),
             (Udec128::new_percent(19400), Uint128::from(52868)),
@@ -467,10 +481,10 @@ mod tests {
             (Udec128::new_percent(19100), Uint128::from(54538)),
             (Udec128::new_percent(19000), Uint128::from(55112)),
             (Udec128::new_percent(18900), Uint128::from(55694)),
-            (Udec128::new_percent(18800), Uint128::from(56287)),
         ],
         vec![
-            (Udec128::new_percent(20300), Uint128::from(147783)),
+            (Udec128::new_percent(20200), Uint128::from(99010)),
+            (Udec128::new_percent(20300), Uint128::from(48774)),
             (Udec128::new_percent(20400), Uint128::from(48295)),
             (Udec128::new_percent(20500), Uint128::from(47824)),
             (Udec128::new_percent(20600), Uint128::from(47360)),
@@ -479,7 +493,6 @@ mod tests {
             (Udec128::new_percent(20900), Uint128::from(46007)),
             (Udec128::new_percent(21000), Uint128::from(45568)),
             (Udec128::new_percent(21100), Uint128::from(45137)),
-            (Udec128::new_percent(21200), Uint128::from(44711)),
         ],
         1;
         "xyk pool balance 1:200 tick size 1 one percent fee"
@@ -530,7 +543,8 @@ mod tests {
             usdc::DENOM.clone() => 10000000,
         },
         vec![
-            (Udec128::new_percent(98), Uint128::from(204081)),
+            (Udec128::new_percent(99), Uint128::from(101010)),
+            (Udec128::new_percent(98), Uint128::from(103072)),
             (Udec128::new_percent(97), Uint128::from(105196)),
             (Udec128::new_percent(96), Uint128::from(107388)),
             (Udec128::new_percent(95), Uint128::from(109649)),
@@ -539,10 +553,10 @@ mod tests {
             (Udec128::new_percent(92), Uint128::from(116877)),
             (Udec128::new_percent(91), Uint128::from(119445)),
             (Udec128::new_percent(90), Uint128::from(122100)),
-            (Udec128::new_percent(89), Uint128::from(124843)),
         ],
         vec![
-            (Udec128::new_percent(102), Uint128::from(196078)),
+            (Udec128::new_percent(101), Uint128::from(99010)),
+            (Udec128::new_percent(102), Uint128::from(97070)),
             (Udec128::new_percent(103), Uint128::from(95184)),
             (Udec128::new_percent(104), Uint128::from(93353)),
             (Udec128::new_percent(105), Uint128::from(91575)),
@@ -551,7 +565,6 @@ mod tests {
             (Udec128::new_percent(108), Uint128::from(86535)),
             (Udec128::new_percent(109), Uint128::from(84947)),
             (Udec128::new_percent(110), Uint128::from(83403)),
-            (Udec128::new_percent(111), Uint128::from(81900)),
         ],
         1;
         "xyk pool balance 1:1 one percent fee"
@@ -571,7 +584,7 @@ mod tests {
         };
 
         let reserve = pool_liquidity.try_into().unwrap();
-        let (bids, asks) = pair
+        let (bids, mut asks) = pair
             .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
             .unwrap();
 
