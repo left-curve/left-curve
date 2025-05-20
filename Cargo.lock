@@ -3393,6 +3393,7 @@ dependencies = [
  "dango-indexer-sql",
  "indexer-httpd",
  "indexer-sql",
+ "itertools 0.14.0",
  "sea-orm",
  "serde",
  "thiserror 2.0.12",

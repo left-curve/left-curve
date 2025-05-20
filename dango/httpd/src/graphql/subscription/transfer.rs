@@ -4,6 +4,7 @@ use {
     dango_indexer_sql::entity,
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity::blocks::latest_block_height,
+    itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::ops::RangeInclusive,
 };
@@ -64,6 +65,10 @@ impl TransferSubscription {
             Some(block_height) => block_height as i64..=latest_block_height,
             None => latest_block_height..=latest_block_height,
         };
+
+        if block_range.try_len().unwrap_or(0) > 100 {
+            return Err(async_graphql::Error::new("since_block_height is too old"));
+        }
 
         let f = from_address.clone();
         let t = to_address.clone();
