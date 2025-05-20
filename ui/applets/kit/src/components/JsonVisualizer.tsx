@@ -9,6 +9,7 @@ type JsonVisualizerProps = {
 export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json }) => {
   return (
     <JsonView
+      name={false}
       src={JSON.parse(json)}
       displayObjectSize={false}
       displayDataTypes={false}

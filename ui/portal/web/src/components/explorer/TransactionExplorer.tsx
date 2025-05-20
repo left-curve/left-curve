@@ -8,6 +8,7 @@ import { HeaderExplorer } from "./HeaderExplorer";
 import { m } from "~/paraglide/messages";
 
 import type { IndexedTransaction } from "@left-curve/dango/types";
+import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 
 type TransactionProps = {
@@ -101,13 +102,13 @@ const Details: React.FC = () => {
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
-          <p>{gasUsed}</p>
+          <p>{formatUnits(gasUsed, 6)}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
-          <p>{gasWanted}</p>
+          <p>{formatUnits(gasWanted, 6)}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
