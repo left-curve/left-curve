@@ -89,6 +89,11 @@ const tabsVariants = tv({
         "animated-element":
           "bg-green-bean-50 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
+      red: {
+        base: "bg-red-100",
+        "animated-element":
+          "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+      },
       "light-green": {
         base: "bg-green-bean-100",
         "animated-element":
@@ -136,6 +141,7 @@ const tabVariants = tv({
   variants: {
     color: {
       green: "",
+      red: "",
       "light-green": "",
       "line-red": "",
     },
@@ -158,6 +164,16 @@ const tabVariants = tv({
       isActive: true,
       color: "green",
       class: "text-black",
+    },
+    {
+      isActive: true,
+      color: "red",
+      class: "text-white-100",
+    },
+    {
+      isActive: false,
+      color: "red",
+      class: "text-gray-300",
     },
     {
       isActive: false,
