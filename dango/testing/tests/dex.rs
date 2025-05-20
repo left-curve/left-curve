@@ -2551,7 +2551,6 @@ fn curve_on_orderbook(
     // Assert that user balances have changed as expected
     for (user, expected_user_balance_change) in accounts.users().zip(expected_user_balance_changes)
     {
-        println!("user");
         suite
             .balances()
             .should_change(&user.address(), expected_user_balance_change);
