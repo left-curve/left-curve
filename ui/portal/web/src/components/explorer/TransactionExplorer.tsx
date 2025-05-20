@@ -58,33 +58,39 @@ const Details: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
       <h1 className="h4-bold">Transaction Detail</h1>
-      <div className="flex gap-1 items-center">
-        <p className="diatype-md-medium text-gray-500">Tx hash:</p>
-        <p>{hash}</p>
-        <TextCopy className="w-4 h-4 text-gray-500" copyText={hash} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2">
-        <div className="flex items-center gap-1">
-          <p className="diatype-md-medium text-gray-500">Sender:</p>
-          <p>{sender}</p>
+
+      <div className="grid grid-cols-1 gap-3 md:gap-2">
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Tx hash:</p>
+          <p className="break-all whitespace-normal">
+            {hash}
+            <TextCopy
+              className="inline-block align-middle ml-1 w-4 h-4 cursor-pointer"
+              copyText={hash}
+            />
+          </p>
         </div>
-        <div className="flex items-center gap-1">
-          <p className="diatype-md-medium text-gray-500">Time:</p>
-          <p>{createdAt}</p>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Sender:</p>
+          <p className="break-all whitespace-normal">{sender}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <p className="diatype-md-medium text-gray-500">Block:</p>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Time:</p>
+          <p className="break-all whitespace-normal">{createdAt}</p>
+        </div>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Block:</p>
           <p>{blockHeight}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <p className="diatype-md-medium text-gray-500">Index:</p>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">Index:</p>
           <p>{transactionIdx}</p>
         </div>
       </div>
       <img
         src="/images/emojis/detailed/map-explorer.svg"
         alt="map-emoji"
-        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply "
+        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply hidden md:block"
       />
     </div>
   );
