@@ -1,6 +1,6 @@
 use {
     grug::{
-        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
+        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
     },
     std::fmt::Display,
 };
@@ -65,7 +65,7 @@ pub struct PairParams {
     /// Fee rate for instant swaps in the passive liquidity pool.
     /// This also sets the spread of the orders when the passive
     /// liquidity is reflected onto the orderbook.
-    pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    pub swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
     // TODO:
     // - orderbook fee rate (either here or as a global parameter)
     // - tick size (necessary or not?)
