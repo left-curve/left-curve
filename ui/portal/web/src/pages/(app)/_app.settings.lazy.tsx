@@ -47,10 +47,10 @@ function SettingsComponent() {
           <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.session.title"]()}</h3>
           <div className="flex items-center justify-between py-2 rounded-md gap-8">
             <div className="flex flex-col">
-              <p className="flex items-start gap-2 px-2">
+              <div className="flex items-start gap-2 px-2">
                 <IconUser className="text-gray-500" />
                 <p className="diatype-m-bold text-gray-700">Username</p>
-              </p>
+              </div>
             </div>
             <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
               {username}

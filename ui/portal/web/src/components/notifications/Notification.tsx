@@ -72,7 +72,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
                 "text-status-success": type === "received",
                 "text-status-fail": type === "sent",
               })}
-            >{`${isSent ? "-" : ""} ${formatUnits(amount, coin.decimals)} ${coin.symbol}`}</span>
+            >{`${isSent ? "−" : "+"} ${formatUnits(amount, coin.decimals)} ${coin.symbol}`}</span>
             <span>{m["notifications.notification.transfer.direction"]({ direction: type })}</span>
             <TruncateText text={address} end={10} />
           </div>

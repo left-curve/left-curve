@@ -105,14 +105,6 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                       {m["common.signin"]()}
                     </Button>
                   </div>
-                  <Button
-                    fullWidth
-                    className="p-0 h-fit"
-                    variant="link"
-                    onClick={() => navigate({ to: "/forgot-username" })}
-                  >
-                    {m["signin.forgotUsername"]()}
-                  </Button>
                 </div>
               ) : null}
               {activeStep === 1 ? (
@@ -325,15 +317,7 @@ const Username: React.FC = () => {
       } catch (err) {
         toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
-        captureException(err, {
-          data: {
-            key,
-            keyHash,
-            username,
-            connectorId,
-            seed,
-          },
-        });
+        captureException(err);
       }
     },
   });
@@ -407,6 +391,7 @@ const Signin: React.FC = () => {
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
         });
+        captureException(err);
       },
     },
   });

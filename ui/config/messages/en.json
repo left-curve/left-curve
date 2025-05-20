@@ -233,6 +233,10 @@
     }
   },
   "signin": {
+    "usernamesFound": "Usernames found",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
     "advancedOptions": "Advanced Options",
     "continueWithoutSignin": "Continue without sign in",
@@ -331,14 +335,6 @@
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
     }
-  },
-  "forgotUsername": {
-    "greetings": "Hi there",
-    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
-    "usernamesFound": "Usernames found",
-    "chooseCredentialFoundUsername": "Choose any of the credentials that have been associated with your username.",
-    "noUsernamesFound": "No usernames found",
-    "noUsernameMessage": "We could not find any username associated with the credential you connected."
   },
   "pagination": {
     "page": "Page",

@@ -9,13 +9,15 @@ const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN;
 if (SENTRY_DSN) {
   Sentry.init({
     dsn: SENTRY_DSN,
-    integrations: [
-      Sentry.httpClientIntegration(),
-      Sentry.replayIntegration(),
-      Sentry.tanstackRouterBrowserTracingIntegration(router),
-    ],
+    integrations: (defaultIntegrations) =>
+      defaultIntegrations
+        .filter((integration) => integration.name !== "GlobalHandlers")
+        .concat([
+          Sentry.httpClientIntegration(),
+          Sentry.tanstackRouterBrowserTracingIntegration(router),
+        ]),
     tracesSampleRate: 0.5,
-    tracePropagationTargets: [/^https:\/\/devnet\.dango\.exchange\//],
+    tracePropagationTargets: [/^https:\/\/testnet\.dango\.exchange\//],
     replaysOnErrorSampleRate: 0.5,
     maxValueLength: 5000,
   });
