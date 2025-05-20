@@ -308,7 +308,7 @@ impl PassiveLiquidityPool for PairParams {
                 // Construct the bid order iterator.
                 // Start from the marginal price minus the swap fee rate.
                 let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
-                let mut maybe_price = Some(marginal_price.checked_mul(one_sub_fee_rate)?);
+                let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
                 let mut prev_size = Uint128::ZERO;
                 let mut prev_size_quote = Uint128::ZERO;
                 let bids = iter::from_fn(move || {
@@ -357,9 +357,11 @@ impl PassiveLiquidityPool for PairParams {
 
                 // Construct the ask order iterator.
                 let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
-                let mut price = marginal_price.checked_mul(one_plus_fee_rate)?;
+                let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
                 let mut prev_size = Uint128::ZERO;
                 let asks = iter::from_fn(move || {
+                    let price = maybe_price?;
+
                     // Compute the total order size (in base asset) at this price.
                     let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
                     let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
@@ -382,12 +384,9 @@ impl PassiveLiquidityPool for PairParams {
 
                     // Update the iterator state.
                     prev_size = size;
-                    let order_price = price;
+                    maybe_price = price.checked_add(order_spacing).ok();
 
-                    // Increment the price for the next order.
-                    price.checked_add_assign(order_spacing).ok()?;
-
-                    Some((order_price, amount))
+                    Some((price, amount))
                 });
 
                 Ok((Box::new(bids), Box::new(asks)))
