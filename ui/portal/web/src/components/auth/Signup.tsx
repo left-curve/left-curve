@@ -1,4 +1,4 @@
-import { useInputs, useUsernames, useWizard } from "@left-curve/applets-kit";
+import { ensureErrorMessage, useInputs, useUsernames, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,
@@ -39,7 +39,7 @@ import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
 import { AccountType } from "@left-curve/dango/types";
-import { DEFAULT_SESSION_EXPIRATION, FAUCET_URL } from "~/constants";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 import type { Address, Hex, Key } from "@left-curve/dango/types";
@@ -179,27 +179,33 @@ const Credential: React.FC = () => {
         const challenge = "Please sign this message to confirm your identity.";
         const { key, keyHash } = await (async () => {
           if (connectorId === "passkey") {
-            const { id, getPublicKey } = await createWebAuthnCredential({
-              challenge: encodeUtf8(challenge),
-              user: {
-                name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
-              },
-              rp: {
-                name: window.document.title,
-                id: getRootDomain(window.location.hostname),
-              },
-              authenticatorSelection: {
-                residentKey: "preferred",
-                requireResidentKey: false,
-                userVerification: "preferred",
-              },
-            });
+            try {
+              const { id, getPublicKey } = await createWebAuthnCredential({
+                challenge: encodeUtf8(challenge),
+                user: {
+                  name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
+                },
+                rp: {
+                  name: window.document.title,
+                  id: getRootDomain(window.location.hostname),
+                },
+                authenticatorSelection: {
+                  residentKey: "preferred",
+                  requireResidentKey: false,
+                  userVerification: "preferred",
+                },
+              });
 
-            const publicKey = await getPublicKey();
-            const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash(id);
+              const publicKey = await getPublicKey();
+              const key: Key = { secp256r1: encodeBase64(publicKey) };
+              const keyHash = createKeyHash(id);
 
-            return { key, keyHash };
+              return { key, keyHash };
+            } catch (err) {
+              throw new Error(
+                "Your device is not compatible with passkey or you cancelled the request",
+              );
+            }
           }
 
           const provider = await (
@@ -217,9 +223,11 @@ const Credential: React.FC = () => {
         })();
         setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
-      } catch (err) {
-        toast.error({ title: m["errors.failureRequest"]() });
-        console.log(err);
+      } catch (e) {
+        const error = ensureErrorMessage(e);
+        toast.error({ title: m["errors.failureRequest"](), description: error });
+        console.log(e);
+        captureException(e);
       }
     },
   });
@@ -299,7 +307,9 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(`${FAUCET_URL}/mint/${address}`);
+        const response = await fetch(
+          `${config.chain.urls.indexer.replace("graphql", "faucet")}/mint/${address}`,
+        );
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {

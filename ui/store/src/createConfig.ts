@@ -33,6 +33,7 @@ export function createConfig<
 >(parameters: CreateConfigParameters<transport, coin>): Config<transport, coin> {
   const {
     multiInjectedProviderDiscovery = true,
+    version = 0,
     storage = createStorage({
       storage:
         typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
@@ -151,7 +152,7 @@ export function createConfig<
   const stateCreator = storage
     ? persist(getInitialState, {
         name: "store",
-        version: 0.3,
+        version,
         storage,
         migrate(state, version) {
           const persistedState = state as State;

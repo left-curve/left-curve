@@ -38,7 +38,7 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
 
   if (!hasNotifications) {
     return (
-      <div className="min-h-[19rem] flex flex-col gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat">
+      <div className="min-h-[19rem] flex flex-col gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat rounded-xl ">
         <img
           src="/images/notifications/no-notifications.svg"
           alt="no-notifications"
@@ -66,7 +66,7 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
       ) : null}
       <ResizerContainer
         layoutId="notifications"
-        className={twMerge("bg-transparent py-2 px-1 rounded-xl shadow-lg", className)}
+        className={twMerge("bg-transparent py-1 px-1 rounded-xl shadow-lg", className)}
       >
         <AnimatePresence key={currentPage} mode="wait">
           {Object.entries(notifications).map(([dateKey, n]) => (

@@ -57,8 +57,8 @@ function SettingsComponent() {
             </div>
           </div>
           <div className="flex items-start justify-between py-2 rounded-md gap-8">
-            <div className="flex flex-col">
-              <p className="flex items-start gap-2 px-2">
+            <div className="flex flex-col gap-1">
+              <p className="flex items-start gap-2 px-2 capitalize">
                 <IconInfo className="text-gray-500" />
                 <span className="diatype-m-bold text-gray-700">
                   {m["settings.session.remaining"]()}

@@ -106,10 +106,10 @@
     "1": {
       "id": "simple-swap",
       "img": "/images/emojis/simple/spot.svg",
-      "title": "Simple Swap",
-      "description": "Swap tokens",
+      "title": "Convert",
+      "description": "The easiest way to trade at all sizes.",
       "path": "/swap",
-      "keywords": "swap,trade,simple"
+      "keywords": "swap,trade,convert,exchange"
     },
     "2": {
       "id": "settings",
@@ -217,7 +217,7 @@
     },
     "renewSession": {
       "title": "Session expired",
-      "description": "For your security, each login session expires after 24 hours. Please sign in again.",
+      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
       "stayLogout": "Stay logged out"
     }
   },

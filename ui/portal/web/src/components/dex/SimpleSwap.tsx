@@ -1,4 +1,4 @@
-import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
+import { Skeleton, createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import {
   useSimpleSwap as state,
   useAccount,
@@ -174,6 +174,8 @@ export const SimpleSwapForm: React.FC = () => {
   const baseAmount = inputs.base?.value || "0";
   const quoteAmount = inputs.quote?.value || "0";
 
+  const coinPairs = Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom));
+
   useEffect(() => {
     if ((baseAmount === "0" && quoteAmount === "0") || !activeInput) return;
     (async () => {
@@ -221,7 +223,7 @@ export const SimpleSwapForm: React.FC = () => {
         {...register("base", {
           strategy: "onChange",
           validate: (v) => {
-            if (!isConnected) return true;
+            if (!isConnected || isReverse) return true;
             if (Number(v) > Number(baseBalance)) return m["errors.validations.insufficientFunds"]();
             return true;
           },
@@ -249,18 +251,20 @@ export const SimpleSwapForm: React.FC = () => {
               <p>
                 {baseBalance} {base.symbol}
               </p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                onClick={() => {
-                  setActiveInput("base");
-                  setValue("base", baseBalance);
-                }}
-              >
-                {m["common.max"]()}
-              </Button>
+              {isReverse ? null : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                  onClick={() => {
+                    setActiveInput("base");
+                    setValue("base", baseBalance);
+                  }}
+                >
+                  {m["common.max"]()}
+                </Button>
+              )}
             </div>
             <p>
               {getPrice(baseAmount, base.denom, {
@@ -288,7 +292,7 @@ export const SimpleSwapForm: React.FC = () => {
         {...register("quote", {
           strategy: "onChange",
           validate: (v) => {
-            if (!isConnected) return true;
+            if (!isConnected || !isReverse) return true;
             if (Number(v) > Number(quoteBalance))
               return m["errors.validations.insufficientFunds"]();
             return true;
@@ -303,11 +307,15 @@ export const SimpleSwapForm: React.FC = () => {
         }}
         startText="right"
         startContent={
-          <CoinSelector
-            coins={Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom))}
-            value={quote.denom}
-            onChange={(v) => changeQuote(coins[v].symbol)}
-          />
+          coinPairs.length ? (
+            <CoinSelector
+              coins={Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom))}
+              value={quote.denom}
+              onChange={(v) => changeQuote(coins[v].symbol)}
+            />
+          ) : (
+            <Skeleton className="w-36 h-11" />
+          )
         }
         insideBottomComponent={
           <div className="flex items-center justify-between gap-2 w-full h-[22px] text-gray-500 diatype-sm-regular pl-4">
@@ -315,18 +323,20 @@ export const SimpleSwapForm: React.FC = () => {
               <p>
                 {quoteBalance} {quote.symbol}
               </p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                onClick={() => {
-                  setActiveInput("quote");
-                  setValue("quote", quoteBalance);
-                }}
-              >
-                {m["common.max"]()}
-              </Button>
+              {isReverse ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                  onClick={() => {
+                    setActiveInput("quote");
+                    setValue("quote", quoteBalance);
+                  }}
+                >
+                  {m["common.max"]()}
+                </Button>
+              ) : null}
             </div>
             <p>
               {" "}
@@ -345,7 +355,7 @@ export const SimpleSwapForm: React.FC = () => {
 const SimpleSwapDetails: React.FC = () => {
   const { isConnected } = useAccount();
   const { settings } = useApp();
-  const { state, controllers } = useSimpleSwap();
+  const { state } = useSimpleSwap();
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
   const { input, data } = simulation;
@@ -363,7 +373,7 @@ const SimpleSwapDetails: React.FC = () => {
     <div className="flex flex-col gap-1 w-full">
       <div className="flex w-full gap-2 items-center justify-between">
         <p className="text-gray-500 diatype-sm-regular">
-          {m["dex.fee"]()} ({pair?.params.swapFeeRate || 0}%)
+          {m["dex.fee"]()} ({Number(pair?.params.swapFeeRate || 0) * 100}%)
         </p>
         <p className="text-gray-700 diatype-sm-medium">
           {formatNumber(fee, { ...formatNumberOptions, currency: "usd" })}
@@ -386,9 +396,21 @@ const SimpleSwapDetails: React.FC = () => {
 
 const SimpleSwapTrigger: React.FC = () => {
   const { isConnected } = useAccount();
+  const { controllers, submission } = useSimpleSwap();
+  const { inputs } = controllers;
+  const { isPending } = submission;
+
+  const { base, quote } = inputs;
 
   return isConnected ? (
-    <Button fullWidth size="md" type="submit" form="simple-swap-form">
+    <Button
+      fullWidth
+      size="md"
+      type="submit"
+      form="simple-swap-form"
+      isDisabled={Number(base?.value || 0) <= 0 || Number(quote?.value || 0) <= 0}
+      isLoading={isPending}
+    >
       Swap
     </Button>
   ) : (
