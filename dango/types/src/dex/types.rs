@@ -72,7 +72,7 @@ pub enum CurveInvariant {
     Xyk {
         /// The order spacing for the passive liquidity pool.
         ///
-        /// This is the price difference between two consecutive orders in when
+        /// This is the price difference between two consecutive orders when
         /// the passive liquidity is reflected onto the orderbook.
         order_spacing: Udec128,
     },
