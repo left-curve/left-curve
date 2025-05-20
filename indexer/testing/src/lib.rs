@@ -113,12 +113,12 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    println!("text response: \n{:#?}", graphql_response);
+    // println!("text response: \n{:#?}", graphql_response);
 
     let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
 
     // When I need to debug the response
-    println!("GraphQLResponse: {:#?}", graphql_response);
+    // println!("GraphQLResponse: {:#?}", graphql_response);
 
     if let Some(data) = graphql_response.data.remove(request_body.name) {
         Ok(GraphQLCustomResponse {
