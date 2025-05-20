@@ -55,6 +55,7 @@ impl TransferQuery {
         from_address: Option<String>,
         // The to address of the transfer
         to_address: Option<String>,
+        username: Option<String>,
     ) -> Result<Connection<TransferCursorType, Transfer, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
@@ -102,6 +103,25 @@ impl TransferQuery {
 
                 if let Some(to_address) = to_address {
                     query = query.filter(entity::transfers::Column::ToAddress.eq(to_address));
+                }
+
+                if let Some(username) = username {
+                    let accounts = entity::accounts::Entity::find()
+                        .find_also_related(entity::users::Entity)
+                        .filter(entity::users::Column::Username.eq(username))
+                        .all(&app_ctx.db)
+                        .await?;
+
+                    let addresses = accounts
+                        .into_iter()
+                        .map(|(account, _)| account.address)
+                        .collect::<Vec<_>>();
+
+                    query = query.filter(
+                        entity::transfers::Column::FromAddress
+                            .is_in(&addresses)
+                            .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+                    );
                 }
 
                 match sort_by {
