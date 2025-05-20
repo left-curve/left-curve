@@ -422,6 +422,7 @@ mod tests {
         super::*,
         dango_types::constants::{eth, usdc},
         grug::{Bounded, Coins, coins},
+        std::mem::take,
         test_case::test_case,
     };
 
@@ -588,14 +589,21 @@ mod tests {
             .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
             .unwrap();
 
-        for (bid, expected_bid) in bids.zip(expected_bids.iter()) {
+        // Assert that at least 10 orders are returned.
+        let bids = bids.take(10).collect::<Vec<_>>();
+        let asks = asks.take(10).collect::<Vec<_>>();
+        assert_eq!(bids.len(), 10);
+        assert_eq!(asks.len(), 10);
+
+        // Assert that the orders are correct.
+        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
             assert_eq!(bid.0, expected_bid.0);
             assert!(
                 bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
             );
         }
 
-        for (ask, expected_ask) in asks.zip(expected_asks.iter()) {
+        for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
             assert_eq!(ask.0, expected_ask.0);
             assert!(
                 ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
