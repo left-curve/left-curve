@@ -309,10 +309,6 @@ impl PassiveLiquidityPool for PairParams {
                 // Start from the marginal price minus the swap fee rate.
                 let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
                 let mut maybe_price = Some(marginal_price.checked_mul(one_sub_fee_rate)?);
-                println!(
-                    "bid start: {}",
-                    marginal_price.checked_mul(one_sub_fee_rate)?
-                );
                 let mut prev_size = Uint128::ZERO;
                 let mut prev_size_quote = Uint128::ZERO;
                 let bids = iter::from_fn(move || {
@@ -362,7 +358,6 @@ impl PassiveLiquidityPool for PairParams {
                 // Construct the ask order iterator.
                 let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
                 let mut price = marginal_price.checked_mul(one_plus_fee_rate)?;
-                println!("ask start: {}", price);
                 let mut prev_size = Uint128::ZERO;
                 let asks = iter::from_fn(move || {
                     // Compute the total order size (in base asset) at this price.
@@ -378,11 +373,6 @@ impl PassiveLiquidityPool for PairParams {
                     // This is the difference between the total order size at
                     // this price, and that at the previous price.
                     let amount = size.checked_sub(prev_size).ok()?;
-
-                    println!("ask amount: {}", amount);
-                    println!("ask size: {}", size);
-                    println!("ask price: {}", price);
-                    println!("ask prev_size: {}", prev_size);
 
                     // If order size is zero, we have ran out of liquidity.
                     // Terminate the iterator.
@@ -422,7 +412,6 @@ mod tests {
         super::*,
         dango_types::constants::{eth, usdc},
         grug::{Bounded, Coins, coins},
-        std::mem::take,
         test_case::test_case,
     };
 
@@ -430,7 +419,7 @@ mod tests {
         CurveInvariant::Xyk {
             order_spacing: Udec128::ONE,
         },
-        Udec128::ZERO,
+        Udec128::new_permille(5),
         coins! {
             eth::DENOM.clone() => 10000000,
             usdc::DENOM.clone() => 200 * 10000000,
@@ -460,7 +449,7 @@ mod tests {
             (Udec128::new_percent(21000), Uint128::from(45568)),
         ],
         1;
-        "xyk pool balance 1:200 tick size 1 no fee"
+        "xyk pool balance 1:200 tick size 1 0.5% fee"
     )]
     #[test_case(
         CurveInvariant::Xyk {
@@ -502,37 +491,37 @@ mod tests {
         CurveInvariant::Xyk {
             order_spacing: Udec128::new_percent(1),
         },
-        Udec128::ZERO,
+        Udec128::new_permille(5),
         coins! {
             eth::DENOM.clone() => 10000000,
             usdc::DENOM.clone() => 10000000,
         },
         vec![
-            (Udec128::new_percent(99), Uint128::from(101010)),
-            (Udec128::new_percent(98), Uint128::from(103072)),
-            (Udec128::new_percent(97), Uint128::from(105197)),
-            (Udec128::new_percent(96), Uint128::from(107388)),
-            (Udec128::new_percent(95), Uint128::from(109649)),
-            (Udec128::new_percent(94), Uint128::from(111982)),
-            (Udec128::new_percent(93), Uint128::from(114390)),
-            (Udec128::new_percent(92), Uint128::from(116877)),
-            (Udec128::new_percent(91), Uint128::from(119446)),
-            (Udec128::new_percent(90), Uint128::from(122100)),
+            (Udec128::new_permille(995), Uint128::from(50251)),
+            (Udec128::new_permille(985), Uint128::from(102033)),
+            (Udec128::new_permille(975), Uint128::from(104126)),
+            (Udec128::new_permille(965), Uint128::from(106284)),
+            (Udec128::new_permille(955), Uint128::from(108510)),
+            (Udec128::new_permille(945), Uint128::from(110806)),
+            (Udec128::new_permille(935), Uint128::from(113177)),
+            (Udec128::new_permille(925), Uint128::from(115624)),
+            (Udec128::new_permille(915), Uint128::from(118151)),
+            (Udec128::new_permille(905), Uint128::from(120762)),
         ],
         vec![
-            (Udec128::new_percent(101), Uint128::from(99010)),
-            (Udec128::new_percent(102), Uint128::from(97069)),
-            (Udec128::new_percent(103), Uint128::from(95184)),
-            (Udec128::new_percent(104), Uint128::from(93353)),
-            (Udec128::new_percent(105), Uint128::from(91575)),
-            (Udec128::new_percent(106), Uint128::from(89847)),
-            (Udec128::new_percent(107), Uint128::from(88168)),
-            (Udec128::new_percent(108), Uint128::from(86535)),
-            (Udec128::new_percent(109), Uint128::from(84947)),
-            (Udec128::new_percent(110), Uint128::from(83403)),
+            (Udec128::new_permille(1005), Uint128::from(49751)),
+            (Udec128::new_permille(1015), Uint128::from(98032)),
+            (Udec128::new_permille(1025), Uint128::from(96119)),
+            (Udec128::new_permille(1035), Uint128::from(94262)),
+            (Udec128::new_permille(1045), Uint128::from(92458)),
+            (Udec128::new_permille(1055), Uint128::from(90705)),
+            (Udec128::new_permille(1065), Uint128::from(89002)),
+            (Udec128::new_permille(1075), Uint128::from(87346)),
+            (Udec128::new_permille(1085), Uint128::from(85736)),
+            (Udec128::new_permille(1095), Uint128::from(84170)),
         ],
         1;
-        "xyk pool balance 1:1 no fee"
+        "xyk pool balance 1:1 0.5% fee"
     )]
     #[test_case(
         CurveInvariant::Xyk {
@@ -580,7 +569,7 @@ mod tests {
     ) {
         let pair = PairParams {
             curve_invariant,
-            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+            swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
 
