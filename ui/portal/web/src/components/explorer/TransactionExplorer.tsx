@@ -8,6 +8,7 @@ import { HeaderExplorer } from "./HeaderExplorer";
 import { m } from "~/paraglide/messages";
 
 import type { IndexedTransaction } from "@left-curve/dango/types";
+import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 
 type TransactionProps = {
@@ -101,25 +102,25 @@ const Details: React.FC = () => {
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
-          <p>{gasUsed}</p>
+          <p>{formatUnits(gasUsed, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
-          <p>{gasWanted}</p>
+          <p>{formatUnits(gasWanted, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
-          <p>
+          <div>
             <Badge
               text={hasSucceeded ? m["explorer.txs.success"]() : m["explorer.txs.failed"]()}
               color={hasSucceeded ? "green" : "red"}
               size="m"
             />
-          </p>
+          </div>
         </div>
       </div>
       <img
@@ -141,7 +142,7 @@ const Messages: React.FC = () => {
     <div className="w-full shadow-card-shadow bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold">{m["explorer.txs.events"]()}</p>
       <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md">
-        <JsonVisualizer json={nestedEvents} />
+        <JsonVisualizer json={nestedEvents} collapsed={1} />
       </div>
       {/* {events.length ? <p className="h4-bold">Events</p> : null}
           {events.map((event) => (

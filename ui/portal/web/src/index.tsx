@@ -13,6 +13,7 @@ if (SENTRY_DSN) {
       defaultIntegrations
         .filter((integration) => integration.name !== "GlobalHandlers")
         .concat([
+          Sentry.contextLinesIntegration(),
           Sentry.httpClientIntegration(),
           Sentry.tanstackRouterBrowserTracingIntegration(router),
         ]),
