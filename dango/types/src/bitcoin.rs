@@ -20,7 +20,7 @@ pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked([NAMESP
 /// Bitcoin address of the P2WPKH (pay to witness public key hash) type, which
 /// is 20-bytes long.
 // TODO: There are other types of Bitcoin addresses.
-pub type BitcoinAddress = HexBinary;
+pub type BitcoinAddress = String;
 
 /// An Bitcoin signature.
 pub type BitcoinSignature = HexBinary;

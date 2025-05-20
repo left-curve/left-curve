@@ -2,8 +2,8 @@ use {
     crate::{CONFIG, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, QueryMsg, Transaction, Utxo},
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, HexBinary, ImmutableCtx, Inner, Json, JsonSerExt, Order,
-        StdResult, Storage, Uint128,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
+        Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -87,17 +87,12 @@ fn query_outbound_queue(
     start_after: Option<BitcoinAddress>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<BitcoinAddress, Uint128>> {
-    let start = start_after
-        .as_ref()
-        .map(|address| address.inner().as_slice());
-
-    let start = start.map(Bound::Exclusive);
+    let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     OUTBOUND_QUEUE
         .range(storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|res| res.map(|(recipient, amount)| (HexBinary::from_inner(recipient), amount)))
         .collect()
 }
 

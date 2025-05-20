@@ -1,5 +1,5 @@
 use {
-    dango_types::bitcoin::{BitcoinSignature, Config, Transaction, Vout},
+    dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction, Vout},
     grug::{
         Addr, Counter, Empty, Hash256, IndexedMap, Item, Map, Serde, Set, Uint128, UniqueIndex,
     },
@@ -37,7 +37,7 @@ pub const PROCESSED_UTXOS: Set<(Hash256, Vout)> = Set::new("processed_utxo");
 /// ```plain
 /// recipient_bitcoin_address => amount
 /// ```
-pub const OUTBOUND_QUEUE: Map<&[u8], Uint128> = Map::new("outbound");
+pub const OUTBOUND_QUEUE: Map<BitcoinAddress, Uint128> = Map::new("outbound");
 
 pub const NEXT_OUTBOUND_ID: Counter<u32> = Counter::new("next_outbound_id", 0, 1);
 

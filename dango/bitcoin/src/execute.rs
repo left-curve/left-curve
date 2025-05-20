@@ -15,8 +15,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coin, Coins, Empty, Hash256, HexBinary, Inner, Message, MutableCtx, Number,
-        NumberConst, Order, QuerierExt as _, Response, StdResult, SudoCtx, Uint128, btree_map,
+        Addr, Coin, Coins, Empty, Hash256, Message, MutableCtx, Number, NumberConst, Order,
+        QuerierExt as _, Response, StdResult, SudoCtx, Uint128, btree_map,
     },
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -179,7 +179,7 @@ fn withdraw(ctx: MutableCtx, recipient: BitcoinAddress) -> anyhow::Result<Respon
 
     let amount_after_fee = coin.amount - cfg.outbound_fee;
 
-    OUTBOUND_QUEUE.may_update(ctx.storage, recipient.inner(), |outbound| -> StdResult<_> {
+    OUTBOUND_QUEUE.may_update(ctx.storage, recipient, |outbound| -> StdResult<_> {
         Ok(outbound.unwrap_or_default().checked_add(amount_after_fee)?)
     })?;
 
@@ -214,11 +214,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
     // Take the pending outbound transfers from the storage.
-    let mut outputs = OUTBOUND_QUEUE
-        .drain(ctx.storage, None, None)?
-        .into_iter()
-        .map(|(recipient, amount)| (HexBinary::from_inner(recipient), amount))
-        .collect::<BTreeMap<HexBinary, Uint128>>();
+    let mut outputs = OUTBOUND_QUEUE.drain(ctx.storage, None, None)?;
 
     // If there's no pending outbound transfers, nothing to do.
     if outputs.is_empty() {
