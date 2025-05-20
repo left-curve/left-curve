@@ -392,7 +392,7 @@ impl PassiveLiquidityPool for PairParams {
 
                     // Update the iterator state.
                     prev_size = size;
-                    let order_price = price.clone();
+                    let order_price = price;
 
                     // Increment the price for the next order.
                     price.checked_add_assign(order_spacing).ok()?;
@@ -584,7 +584,7 @@ mod tests {
         };
 
         let reserve = pool_liquidity.try_into().unwrap();
-        let (bids, mut asks) = pair
+        let (bids, asks) = pair
             .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
             .unwrap();
 
