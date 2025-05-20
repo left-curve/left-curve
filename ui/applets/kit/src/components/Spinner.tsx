@@ -1,6 +1,6 @@
 import { type VariantProps, tv } from "tailwind-variants";
 
-type SpinnerProps = {
+export type SpinnerProps = {
   className?: string;
 } & SpinnerVariantProps;
 

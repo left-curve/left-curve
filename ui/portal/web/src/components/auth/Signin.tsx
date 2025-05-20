@@ -1,10 +1,4 @@
-import {
-  Checkbox,
-  ExpandOptions,
-  useMediaQuery,
-  useUsernames,
-  useWizard,
-} from "@left-curve/applets-kit";
+import { Checkbox, ExpandOptions, useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import { useAccount, useConnectors, usePublicClient, useSignin } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -20,10 +14,10 @@ import { AuthOptions } from "./AuthOptions";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
+import type { Hex, Username } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { UsernamesList } from "./UsernamesList";
-import type { Hex, Username } from "@left-curve/dango/types";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();
@@ -118,7 +112,6 @@ const UsernameStep: React.FC = () => {
     connectorId: string;
   }>();
   const navigate = useNavigate();
-  const { addUsername } = useUsernames();
   const { settings } = useApp();
   const { useSessionKey } = settings;
   const { usernames, connectorId, keyHash } = data;
@@ -126,10 +119,8 @@ const UsernameStep: React.FC = () => {
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     sessionKey: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
-      onSuccess: (username) => {
+      onSuccess: () => {
         navigate({ to: "/" });
-        addUsername(username);
-        done();
       },
       onError: (err) => {
         console.error(err);
@@ -137,7 +128,6 @@ const UsernameStep: React.FC = () => {
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
         });
-        previousStep();
       },
     },
   });
@@ -174,8 +164,8 @@ const UsernameStep: React.FC = () => {
             showArrow={true}
             onClick={(username) => connectWithConnector({ username, connectorId, keyHash })}
           />
-          <Button variant="link" onClick={previousStep}>
-            <IconLeft className="w-[22px] h-[22px] text-blue-500" />
+          <Button variant="link" onClick={previousStep} isLoading={isPending}>
+            <IconLeft className="w-[22px] h-[22px]" />
             <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
           </Button>
         </div>
