@@ -1,4 +1,5 @@
 use {
+    corepc_client::bitcoin::Network,
     dango_testing::setup_test_naive,
     dango_types::bitcoin::{BitcoinAddress, Config, ExecuteMsg, InstantiateMsg},
     grug::{
@@ -20,6 +21,7 @@ fn instantiate() {
         .build();
 
     let config = Config {
+        network: Network::Testnet,
         vault: BitcoinAddress::default(),
         guardians: NonEmpty::new_unchecked(btree_set!(
             accounts.user1.address.inner().clone(),

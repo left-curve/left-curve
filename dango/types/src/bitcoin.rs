@@ -1,5 +1,6 @@
 use {
-    grug::{Addr, Denom, Hash256, HexBinary, HexByteArray, NonEmpty, Order, Uint128},
+    corepc_client::bitcoin::Network,
+    grug::{Addr, Denom, Hash256, HexBinary, NonEmpty, Order, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
@@ -19,7 +20,7 @@ pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked([NAMESP
 /// Bitcoin address of the P2WPKH (pay to witness public key hash) type, which
 /// is 20-bytes long.
 // TODO: There are other types of Bitcoin addresses.
-pub type BitcoinAddress = HexByteArray<20>;
+pub type BitcoinAddress = HexBinary;
 
 /// An Bitcoin signature.
 pub type BitcoinSignature = HexBinary;
@@ -27,8 +28,9 @@ pub type BitcoinSignature = HexBinary;
 /// The index of the output in a Bitcoin transaction.
 pub type Vout = u32;
 
-#[grug::derive(Serde, Borsh)]
+#[grug::derive(Serde)]
 pub struct Config {
+    pub network: Network,
     pub vault: BitcoinAddress,
     pub guardians: NonEmpty<BTreeSet<Addr>>,
     pub threshold: u8,

@@ -11,6 +11,7 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow          = { workspace = true }
+corepc-client   = { workspace = true }
 grug            = { workspace = true }
 hyperlane-types = { workspace = true }
 paste           = { workspace = true }

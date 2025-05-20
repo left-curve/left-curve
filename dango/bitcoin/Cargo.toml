@@ -18,8 +18,9 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-anyhow      = { workspace = true }
-dango-types = { workspace = true }
-grug        = { workspace = true }
+anyhow        = { workspace = true }
+corepc-client = { workspace = true }
+dango-types   = { workspace = true }
+grug          = { workspace = true }
 
 [dev-dependencies]
