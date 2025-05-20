@@ -142,7 +142,7 @@ const CredentialStep: React.FC = () => {
 };
 
 const UsernameStep: React.FC = () => {
-  const { data, previousStep, done } = useWizard<{
+  const { data, previousStep } = useWizard<{
     usernames: Username[];
     keyHash: Hex;
     connectorId: string;
