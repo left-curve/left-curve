@@ -309,10 +309,6 @@ impl PassiveLiquidityPool for PairParams {
                 // Start from the marginal price minus the swap fee rate.
                 let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
                 let mut maybe_price = Some(marginal_price.checked_mul(one_sub_fee_rate)?);
-                println!(
-                    "bid start: {}",
-                    marginal_price.checked_mul(one_sub_fee_rate)?
-                );
                 let mut prev_size = Uint128::ZERO;
                 let mut prev_size_quote = Uint128::ZERO;
                 let bids = iter::from_fn(move || {
@@ -362,7 +358,6 @@ impl PassiveLiquidityPool for PairParams {
                 // Construct the ask order iterator.
                 let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
                 let mut price = marginal_price.checked_mul(one_plus_fee_rate)?;
-                println!("ask start: {}", price);
                 let mut prev_size = Uint128::ZERO;
                 let asks = iter::from_fn(move || {
                     // Compute the total order size (in base asset) at this price.
@@ -378,11 +373,6 @@ impl PassiveLiquidityPool for PairParams {
                     // This is the difference between the total order size at
                     // this price, and that at the previous price.
                     let amount = size.checked_sub(prev_size).ok()?;
-
-                    println!("ask amount: {}", amount);
-                    println!("ask size: {}", size);
-                    println!("ask price: {}", price);
-                    println!("ask prev_size: {}", prev_size);
 
                     // If order size is zero, we have ran out of liquidity.
                     // Terminate the iterator.
