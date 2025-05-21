@@ -211,12 +211,8 @@ const UsernameStep: React.FC = () => {
       {existUsernames ? (
         <div className="flex flex-col gap-4 w-full items-center">
           <UsernamesList
-            usernames={usernames.reduce((acc, u) => {
-              acc[u] = {};
-              return acc;
-            }, Object.create({}))}
-            showArrow={true}
-            onClick={(username) => connectWithConnector({ username, connectorId, keyHash })}
+            usernames={usernames}
+            onUserSelection={(username) => connectWithConnector({ username, connectorId, keyHash })}
           />
           <Button variant="link" onClick={previousStep} isLoading={isPending}>
             <IconLeft className="w-[22px] h-[22px]" />
