@@ -16,7 +16,7 @@ export const router = createRouter({
   routeTree,
   defaultPreload: "intent",
   defaultStaleTime: 5000,
-  scrollRestoration: true,
+  scrollRestoration: false,
   defaultPendingComponent: () => (
     <div className="flex-1 w-full flex justify-center items-center h-screen">
       <Spinner size="lg" color="pink" />
