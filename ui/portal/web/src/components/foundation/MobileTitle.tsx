@@ -4,12 +4,12 @@ import { IconButton, IconChevronDown, twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 
-interface Props {
+type MobileTitleProps = {
   title: string;
   className?: string;
-}
+};
 
-export const MobileTitle: React.FC<Props> = ({ title, className }) => {
+export const MobileTitle: React.FC<MobileTitleProps> = ({ title, className }) => {
   const { history } = useRouter();
   return (
     <div className={twMerge("flex gap-2 items-center lg:hidden", className)}>

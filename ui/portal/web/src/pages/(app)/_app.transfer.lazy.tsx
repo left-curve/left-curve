@@ -18,6 +18,7 @@ import {
 } from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { Modals } from "~/components/modals/RootModal";
+import { MobileTitle } from "~/components/foundation/MobileTitle";
 
 import { m } from "~/paraglide/messages";
 import { toast } from "~/components/foundation/Toast";
@@ -30,7 +31,6 @@ import {
   parseUnits,
   withResolvers,
 } from "@left-curve/dango/utils";
-import { MobileTitle } from "~/components/foundation/MobileTitle";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
