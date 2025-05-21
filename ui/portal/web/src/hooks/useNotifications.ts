@@ -1,9 +1,9 @@
-import { createEventBus, useConfig, useStorage } from "@left-curve/store";
+import { createEventBus, useAccount, useConfig, useStorage } from "@left-curve/store";
 import { format, isToday } from "date-fns";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { useCallback, useMemo } from "react";
 
-import type { Account } from "@left-curve/dango/types";
+import type { Account, Username } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 
 export type NotificationsMap = {
@@ -45,18 +45,29 @@ export const notifier = createEventBus<NotificationsMap>();
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
 
+  const { username = "" } = useAccount();
   const { coins, chain } = useConfig();
 
-  const [__notifications__, setNotifications] = useStorage<
-    { type: string; data: unknown; createdAt: number }[]
-  >("app.notifications", { initialValue: [], version: 0.1 });
+  const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notifications[]>>(
+    "app.notifications",
+    {
+      enabled: Boolean(username),
+      initialValue: {},
+      version: 0.2,
+      migrations: {
+        0.1: (notifications: Notifications[]) => ({ [username]: notifications }),
+      },
+    },
+  );
 
-  const totalNotifications = __notifications__.length;
+  const userNotification = allNotifications[username] || [];
+
+  const totalNotifications = userNotification.length;
   const hasNotifications = totalNotifications > 0;
 
   const notifications: Record<string, Notifications[]> = useMemo(() => {
     const current = (page - 1) * limit;
-    return [...__notifications__]
+    return [...userNotification]
       .reverse()
       .slice(current, current + limit)
       .sort((a, b) => b.createdAt - a.createdAt)
@@ -71,7 +82,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         acc[dateKey].push(notification);
         return acc;
       }, Object.create({}));
-  }, [__notifications__, limit, page]);
+  }, [userNotification, limit, page]);
 
   const subscribe = useCallback((account: Account) => {
     let client: GraphqlSubscriptionClient | undefined;
@@ -113,14 +124,16 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
           } as NotificationsMap["transfer"];
 
           notifier.publish("transfer", notification);
-          setNotifications((prev) => [
-            ...prev,
-            {
-              type: "transfer",
-              data: notification,
-              createdAt: Date.now(),
-            },
-          ]);
+          setAllNotifications((prev) => {
+            const previousUserNotification = prev[username] || [];
+            return {
+              ...prev,
+              [username]: [
+                ...previousUserNotification,
+                { type: "transfer", data: notification, createdAt: Date.now() },
+              ],
+            };
+          });
         }
       }
     })();
