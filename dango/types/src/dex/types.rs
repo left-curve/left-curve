@@ -1,8 +1,5 @@
-use {
-    grug::{
-        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
-    },
-    std::fmt::Display,
+use grug::{
+    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
 };
 
 /// Numerical identifier of an order.
