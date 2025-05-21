@@ -101,7 +101,7 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 }
 
 #[inline]
-pub fn batch_update_orders(
+fn batch_update_orders(
     mut ctx: MutableCtx,
     creates_market: Vec<CreateMarketOrderRequest>,
     creates_limit: Vec<CreateLimitOrderRequest>,
