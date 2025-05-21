@@ -24,7 +24,7 @@ function SwapApplet() {
           <IconChevronDown className="rotate-90" />
         </IconButton>
 
-        <span className="h3-bold text-gray-900">{m["convert.title"]()}</span>
+        <span className="h3-bold text-gray-900">{m["dex.convert.title"]()}</span>
       </h2>
       <SimpleSwap pair={{ from, to }} onChangePair={onChangePair}>
         <SimpleSwap.Header />

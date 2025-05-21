@@ -54,7 +54,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
         </IconButton>
 
         <div className="md:flex flex-col gap-4 md:pt-3 items-center hidden">
-          <p className="text-gray-900 diatype-lg-medium">{m["dex.swap"]()}</p>
+          <p className="text-gray-900 diatype-lg-medium">{m["dex.convert.swap"]()}</p>
         </div>
         <div className="flex flex-col gap-3 items-center">
           <div className="flex flex-col gap-1 w-full">

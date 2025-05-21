@@ -338,9 +338,6 @@
     "page": "Page",
     "of": "of"
   },
-  "convert": {
-    "title": "Convert"
-  },
   "notFound": {
     "title": "Page not found!",
     "description": "Sorry! We couldn’t find what you were looking for...",
@@ -532,10 +529,11 @@
     "apy": "APY",
     "tvl": "TVL",
     "24h": "24h",
-    "swap": "Swap",
     "swapping": "Swapping",
-    "simpleSwap": {
-      "swapSuccessfully": "Swap Successfully",
+    "convert": {
+      "swap": "Swap",
+      "title": "Convert",
+      "convertSuccessfully": "Swap Successfully",
       "youGet": "You get",
       "youSwap": "You swap",
       "rate": "Rate",
