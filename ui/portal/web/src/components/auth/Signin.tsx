@@ -102,21 +102,21 @@ const CredentialStep: React.FC = () => {
         <h1 className="h2-heavy">{m["common.signin"]()}</h1>
       </div>
 
-      {isMd ? (
-        <AuthOptions action={signInWithCredential} isPending={isPending} mode="signin" />
-      ) : (
-        <Button
-          fullWidth
-          onClick={() => signInWithCredential("passkey")}
-          isLoading={isPending}
-          className="gap-2"
-        >
-          <IconPasskey className="w-6 h-6" />
-          <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
-        </Button>
-      )}
-
       <div className="flex flex-col items-center w-full gap-4">
+        {isMd ? (
+          <AuthOptions action={signInWithCredential} isPending={isPending} mode="signin" />
+        ) : (
+          <Button
+            fullWidth
+            onClick={() => signInWithCredential("passkey")}
+            isLoading={isPending}
+            className="gap-2"
+          >
+            <IconPasskey className="w-6 h-6" />
+            <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
+          </Button>
+        )}
+
         {isMd ? (
           <Button as={Link} fullWidth variant="secondary" to="/" isDisabled={isPending}>
             {m["signin.continueWithoutSignin"]()}
@@ -142,23 +142,20 @@ const CredentialStep: React.FC = () => {
             />
           </div>
         </ExpandOptions>
-        {isMd ? (
-          <div className="flex justify-center items-center">
-            <p>{m["signin.noAccount"]()}</p>
-            <Button
-              variant="link"
-              onClick={() => navigate({ to: "/signup" })}
-              isDisabled={isPending}
-            >
-              {m["common.signup"]()}
-            </Button>
-          </div>
-        ) : (
-          <Button as={Link} fullWidth variant="link" to="/">
-            {m["signin.continueWithoutSignin"]()}
-          </Button>
-        )}
       </div>
+
+      {isMd ? (
+        <div className="flex justify-center items-center">
+          <p>{m["signin.noAccount"]()}</p>
+          <Button variant="link" onClick={() => navigate({ to: "/signup" })} isDisabled={isPending}>
+            {m["common.signup"]()}
+          </Button>
+        </div>
+      ) : (
+        <Button as={Link} fullWidth variant="link" to="/">
+          {m["signin.continueWithoutSignin"]()}
+        </Button>
+      )}
     </div>
   );
 };
