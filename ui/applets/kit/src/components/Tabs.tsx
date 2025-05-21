@@ -42,7 +42,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   });
 
   return (
-    <motion.div layoutId={layoutId} className={twMerge(styles.base())}>
+    <motion.div initial={false} layoutId={layoutId} className={twMerge(styles.base())}>
       {tabs.map((e, i) => {
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
@@ -66,7 +66,10 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
               cloneElement(e as React.ReactElement, { isActive })
             )}
             {isActive ? (
-              <motion.div className={twMerge(styles["animated-element"]())} layoutId="active" />
+              <motion.div
+                layoutId={`active-tab-indicator-${layoutId}`}
+                className={twMerge(styles["animated-element"]())}
+              />
             ) : null}
           </motion.button>
         );
@@ -77,7 +80,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
 const tabsVariants = tv({
   slots: {
-    base: "flex text-base relative items-center w-fit  p-1 rounded-md",
+    base: "flex text-base relative items-center w-fit p-1 rounded-md",
     button:
       "relative capitalize transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
     "animated-element": "absolute bottom-0 left-0",
