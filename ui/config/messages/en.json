@@ -35,8 +35,7 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet",
-          "action=forgot-username": "Retrieve with wallet"
+          "action=signup": "Sign up with wallet"
         }
       }
     ],
@@ -46,8 +45,7 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey",
-          "action=forgot-username": "Retrieve with Passkey"
+          "action=signup": "Sign up with Passkey"
         }
       }
     ]
