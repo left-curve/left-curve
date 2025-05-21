@@ -1,15 +1,9 @@
-import { useRouter } from "@tanstack/react-router";
 import { Sheet } from "react-modal-sheet";
 import { useApp } from "~/hooks/useApp";
 
-import { motion } from "framer-motion";
+import { IconButton, IconChevronDown, IconUser, Tabs } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
-
-import { IconButton, IconChevronDown, IconUser, Tabs, twMerge } from "@left-curve/applets-kit";
-import { AnimatePresence } from "framer-motion";
-
-import { act, useState, type PropsWithChildren } from "react";
+import { useState, type PropsWithChildren } from "react";
 import type React from "react";
 
 const Root: React.FC<PropsWithChildren> = ({ children }) => {
@@ -17,13 +11,12 @@ const Root: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 type TradeMenuProps = {
-  backAllowed?: boolean;
+  action?: "sell" | "buy";
 };
 
-const Menu: React.FC<TradeMenuProps> = ({ backAllowed }) => {
+const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction }) => {
   const { isTradeBarVisible, setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const { history } = useRouter();
-  const [action, setAction] = useState<"sell" | "buy">("sell");
+  const [action, setAction] = useState<"sell" | "buy">(defaultAction || "buy");
 
   if (!isTradeBarVisible) return null;
 
@@ -35,6 +28,7 @@ const Menu: React.FC<TradeMenuProps> = ({ backAllowed }) => {
             variant="utility"
             size="lg"
             type="button"
+            className="lg:hidden"
             onClick={() => setTradeBarVisibility(false)}
           >
             <IconChevronDown className="h-6 w-6" />
@@ -42,7 +36,7 @@ const Menu: React.FC<TradeMenuProps> = ({ backAllowed }) => {
           <Tabs
             layoutId="tabs-sell-and-buy"
             selectedTab={action}
-            keys={["sell", "buy"]}
+            keys={["buy", "sell"]}
             fullWidth
             onTabChange={() => setAction(action === "sell" ? "buy" : "sell")}
             color={action === "sell" ? "red" : "green"}
@@ -51,6 +45,7 @@ const Menu: React.FC<TradeMenuProps> = ({ backAllowed }) => {
             variant="utility"
             size="lg"
             type="button"
+            className="lg:hidden"
             onClick={() => [setTradeBarVisibility(false), setSidebarVisibility(true)]}
           >
             <IconUser className="h-6 w-6" />
