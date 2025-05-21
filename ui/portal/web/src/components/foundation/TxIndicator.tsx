@@ -47,7 +47,7 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   return isSubmittingTx ? (
     <WrapperComponent {...props}>
       <IndicatorComponent
-        size="sm"
+        size="md"
         color="current"
         className={twMerge({
           "text-green-bean-300 w-6 h-6": indicator === "success",
