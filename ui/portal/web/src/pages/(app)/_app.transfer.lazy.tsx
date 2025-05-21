@@ -17,6 +17,7 @@ import {
   IconButton,
   IconChevronDown,
   Input,
+  MobileTitle,
   QRCode,
   ResizerContainer,
   Tabs,
@@ -145,13 +146,7 @@ function TransferApplet() {
 
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
-      <h2 className="flex gap-2 items-center lg:hidden" onClick={() => navigate({ to: "/" })}>
-        <IconButton variant="link">
-          <IconChevronDown className="rotate-90" />
-        </IconButton>
-
-        <span className="h3-bold text-gray-900">{m["sendAndReceive.title"]()}</span>
-      </h2>
+      <MobileTitle action={() => navigate({ to: "/" })} title={m["sendAndReceive.title"]()} />
 
       <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer

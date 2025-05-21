@@ -8,6 +8,7 @@ import {
   IconLanguage,
   IconMobile,
   IconUser,
+  MobileTitle,
   Select,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -25,7 +26,7 @@ export const Route = createLazyFileRoute("/(app)/_app/settings")({
 });
 
 function SettingsComponent() {
-  const { isMd, isLg } = useMediaQuery();
+  const { isLg } = useMediaQuery();
   const { history } = useRouter();
   const { isConnected, username } = useAccount();
   const { showModal, changeSettings, settings } = useApp();
@@ -34,14 +35,7 @@ function SettingsComponent() {
 
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-5 p-4 pt-6 mb-16">
-      <h2 className="flex gap-2 items-center">
-        {isMd ? null : (
-          <IconButton variant="link" onClick={() => history.go(-1)}>
-            <IconChevronDown className="rotate-90" />
-          </IconButton>
-        )}
-        <span className="h3-bold text-gray-900">{m["settings.title"]()}</span>
-      </h2>
+      <MobileTitle action={() => history.go(-1)} title={m["settings.title"]()} />
       {session ? (
         <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
           <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.session.title"]()}</h3>

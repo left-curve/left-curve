@@ -136,6 +136,7 @@
   },
   "explorer": {
     "block": {
+      "title": "Block Explorer",
       "notFound": {
         "title": "Block not found",
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
@@ -160,6 +161,7 @@
       }
     },
     "txs": {
+      "title": "Transaction Explorer",
       "txDetails": "Transaction Details",
       "notFound": {
         "pre": "We couldn’t find",
@@ -179,6 +181,7 @@
       "failed": "Failed"
     },
     "contracts": {
+      "title": "Contract Explorer",
       "notFound": {
         "pre": "We couldn’t find ",
         "title": "Contract not found",
@@ -193,6 +196,7 @@
       }
     },
     "accounts": {
+      "title": "Account Explorer",
       "notFound": {
         "pre": "We couldn’t find ",
         "title": "Account not found",

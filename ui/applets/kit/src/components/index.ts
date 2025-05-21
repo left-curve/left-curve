@@ -30,6 +30,7 @@ export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
 export { Pagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
+export { MobileTitle } from "./MobileTitle";
 
 /* ---------------------------------- Icons --------------------------------- */
 
