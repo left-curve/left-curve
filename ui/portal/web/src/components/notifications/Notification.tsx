@@ -1,4 +1,4 @@
-import { TruncateText, twMerge } from "@left-curve/applets-kit";
+import { AddressVisualizer, IconInfo, twMerge } from "@left-curve/applets-kit";
 import {
   differenceInDays,
   differenceInHours,
@@ -60,7 +60,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   return (
     <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100">
       <div className="flex items-start gap-2">
-        <img src={"/images/notifications/user.svg"} alt="Icon" className="w-6 h-6 rounded-full" />
+        <IconInfo className="text-gray-700 w-5 h-5" />
 
         <div className="flex flex-col">
           <p className="diatype-m-medium text-gray-700">
@@ -74,7 +74,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
               })}
             >{`${isSent ? "−" : "+"} ${formatUnits(amount, coin.decimals)} ${coin.symbol}`}</span>
             <span>{m["notifications.notification.transfer.direction"]({ direction: type })}</span>
-            <TruncateText text={address} end={10} />
+            <AddressVisualizer address={address} withIcon />
           </div>
         </div>
       </div>

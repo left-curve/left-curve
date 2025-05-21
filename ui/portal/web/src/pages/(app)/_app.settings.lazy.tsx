@@ -4,15 +4,15 @@ import { useApp } from "~/hooks/useApp";
 
 import {
   IconFormatNumber,
-  IconInfo,
   IconLanguage,
   IconMobile,
+  IconTimer,
   IconUser,
   Select,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { Modals } from "~/components/modals/RootModal";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
+import { Modals } from "~/components/modals/RootModal";
 import { KeyManagement } from "~/components/settings/KeyManagement";
 import { SessionCountdown } from "~/components/settings/SessionCountdown";
 
@@ -40,7 +40,7 @@ function SettingsComponent() {
             <div className="flex flex-col">
               <div className="flex items-start gap-2 px-2">
                 <IconUser className="text-gray-500" />
-                <p className="diatype-m-bold text-gray-700">Username</p>
+                <p className="diatype-m-bold text-gray-700">{m["common.username"]()}</p>
               </div>
             </div>
             <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
@@ -50,7 +50,7 @@ function SettingsComponent() {
           <div className="flex items-start justify-between py-2 rounded-md gap-8">
             <div className="flex flex-col gap-1">
               <p className="flex items-start gap-2 px-2 capitalize">
-                <IconInfo className="text-gray-500" />
+                <IconTimer className="text-gray-500" />
                 <span className="diatype-m-bold text-gray-700">
                   {m["settings.session.remaining"]()}
                 </span>

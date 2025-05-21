@@ -1,21 +1,17 @@
-import { Badge, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
+import { AddressVisualizer, Badge, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
+
+import type { Address } from "@left-curve/dango/types";
 import type React from "react";
 
 type ContractCardProps = {
-  address: string;
+  address: Address;
   balance: string;
-  name: string;
   balanceChange?: string;
   isSelectorActive?: boolean;
   onTriggerAction?: () => void;
 };
 
-export const ContractCard: React.FC<ContractCardProps> = ({
-  name,
-  address,
-  balance,
-  balanceChange,
-}) => {
+export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, balanceChange }) => {
   return (
     <div
       className={twMerge(
@@ -31,7 +27,7 @@ export const ContractCard: React.FC<ContractCardProps> = ({
       <div className="flex items-center justify-between relative z-10">
         <div className="flex gap-4 ">
           <div className="flex flex-col">
-            <p className="exposure-m-italic capitalize">{name}</p>
+            <AddressVisualizer address={address} className="exposure-m-italic capitalize" />
             <div className="flex gap-1 items-center">
               <TruncateText
                 text={address}
