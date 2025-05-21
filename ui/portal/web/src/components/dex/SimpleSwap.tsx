@@ -75,7 +75,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
           .catch(() => {
             notifier.publish("submit_tx", {
               isSubmitting: false,
-              txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
+              txResult: { hasSucceeded: false, message: m["dex.convert.errors.failure"]() },
             });
             return false;
           });
@@ -88,21 +88,21 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
         });
 
         reset();
-        toast.success({ title: m["dex.simpleSwap.swapSuccessfully"]() });
+        toast.success({ title: m["dex.convert.convertSuccessfully"]() });
         notifier.publish("submit_tx", {
           isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["dex.simpleSwap.swapSuccessfully"]() },
+          txResult: { hasSucceeded: true, message: m["dex.convert.convertSuccessfully"]() },
         });
         refreshBalances();
       } catch (e) {
         console.error(e);
         notifier.publish("submit_tx", {
           isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["dex.simpleSwap.errors.failure"]() },
+          txResult: { hasSucceeded: false, message: m["dex.convert.errors.failure"]() },
         });
         toast.error(
           {
-            title: m["dex.simpleSwap.errors.failure"](),
+            title: m["dex.convert.errors.failure"](),
           },
           {
             duration: Number.POSITIVE_INFINITY,
@@ -229,7 +229,7 @@ export const SimpleSwapForm: React.FC = () => {
           },
           mask: numberMask,
         })}
-        label={isReverse ? m["dex.simpleSwap.youGet"]() : m["dex.simpleSwap.youSwap"]()}
+        label={isReverse ? m["dex.convert.youGet"]() : m["dex.convert.youSwap"]()}
         classNames={{
           base: "z-20",
           inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
@@ -288,7 +288,7 @@ export const SimpleSwapForm: React.FC = () => {
         isDisabled={isPending}
         placeholder="0"
         onFocus={() => setActiveInput("quote")}
-        label={isReverse ? m["dex.simpleSwap.youSwap"]() : m["dex.simpleSwap.youGet"]()}
+        label={isReverse ? m["dex.convert.youSwap"]() : m["dex.convert.youGet"]()}
         {...register("quote", {
           strategy: "onChange",
           validate: (v) => {
@@ -380,7 +380,7 @@ const SimpleSwapDetails: React.FC = () => {
         </p>
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">{m["dex.simpleSwap.rate"]()}</p>
+        <p className="text-gray-500 diatype-sm-regular">{m["dex.convert.rate"]()}</p>
         <p className="text-gray-700 diatype-sm-medium">
           1 {inputCoin.symbol} ≈{" "}
           {formatNumber(Number(outputAmount) / Number(inputAmount), {

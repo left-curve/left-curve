@@ -35,8 +35,7 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet",
-          "action=forgot-username": "Retrieve with wallet"
+          "action=signup": "Sign up with wallet"
         }
       }
     ],
@@ -46,8 +45,7 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey",
-          "action=forgot-username": "Retrieve with Passkey"
+          "action=signup": "Sign up with Passkey"
         }
       }
     ]
@@ -138,6 +136,7 @@
   },
   "explorer": {
     "block": {
+      "title": "Block Explorer",
       "notFound": {
         "title": "Block not found",
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
@@ -162,6 +161,7 @@
       }
     },
     "txs": {
+      "title": "Transaction Explorer",
       "txDetails": "Transaction Details",
       "notFound": {
         "pre": "We couldn’t find",
@@ -181,6 +181,7 @@
       "failed": "Failed"
     },
     "contracts": {
+      "title": "Contract Explorer",
       "notFound": {
         "pre": "We couldn’t find ",
         "title": "Contract not found",
@@ -195,6 +196,7 @@
       }
     },
     "accounts": {
+      "title": "Account Explorer",
       "notFound": {
         "pre": "We couldn’t find ",
         "title": "Account not found",
@@ -531,10 +533,11 @@
     "apy": "APY",
     "tvl": "TVL",
     "24h": "24h",
-    "swap": "Swap",
     "swapping": "Swapping",
-    "simpleSwap": {
-      "swapSuccessfully": "Swap Successfully",
+    "convert": {
+      "swap": "Swap",
+      "title": "Convert",
+      "convertSuccessfully": "Swap Successfully",
       "youGet": "You get",
       "youSwap": "You swap",
       "rate": "Rate",
