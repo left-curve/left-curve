@@ -3,7 +3,7 @@ use {
         PERPS_MARKET_PARAMS, PERPS_MARKETS, PERPS_POSITIONS, PERPS_VAULT, PERPS_VAULT_DEPOSITS,
         core,
     },
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_account_factory::ACCOUNTS,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -20,6 +20,9 @@ use {
     },
     std::collections::BTreeMap,
 };
+
+pub const NANOSECONDS_PER_DAY: u128 = 86_400_000_000_000;
+pub const MAX_FUNDING_RATE: Dec128 = Dec128::new_percent(96);
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
@@ -38,6 +41,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             long_oi: Uint128::ZERO,
             short_oi: Uint128::ZERO,
             last_updated: ctx.block.timestamp,
+            funding_rate: Dec128::ZERO,
+            funding_entry: Dec128::ZERO,
         })?;
     }
 
@@ -279,6 +284,58 @@ fn modify_position(
     // Ensure the fee is sent
     let sent_fee = ctx.funds.as_one_coin_of_denom(&vault_state.denom)?;
     ensure!(sent_fee.amount == &fee_in_vault_denom, "fee is not sent");
+
+    // Validate position size against OI limits
+    // TODO: Should we instead store OI limits as market denom units instead of USD?
+    if notional_diff.is_positive() {
+        ensure!(
+            market_state
+                .long_oi
+                .checked_add(notional_diff.unsigned_abs())?
+                <= params.max_long_oi,
+            "long position size is too large"
+        );
+    } else {
+        ensure!(
+            market_state
+                .short_oi
+                .checked_add(notional_diff.unsigned_abs())?
+                <= params.max_short_oi,
+            "short position size is too large"
+        );
+    }
+
+    // Update funding rate
+    let time_elapsed_days = Udec128::checked_from_ratio(
+        ctx.block
+            .timestamp
+            .into_nanos()
+            .checked_sub(market_state.last_updated.into_nanos())
+            .ok_or_else(|| anyhow!("time elapsed is negative"))?,
+        NANOSECONDS_PER_DAY,
+    )?
+    .checked_into_signed()?;
+    let proportional_skew = market_state.proportional_skew(params.skew_scale)?;
+    let current_funding_velocity =
+        proportional_skew.checked_mul(params.max_funding_velocity.checked_into_signed()?)?;
+    let funding_rate = market_state
+        .funding_rate
+        .checked_add(current_funding_velocity)?
+        .checked_mul(time_elapsed_days)?;
+    let funding_rate = funding_rate.clamp(funding_rate, MAX_FUNDING_RATE);
+
+    // Update funding entry accumulator
+    let average_funding_rate = market_state
+        .funding_rate
+        .checked_add(funding_rate)?
+        .checked_div(Dec128::ONE + Dec128::ONE)?;
+    let market_denom_price_in_vault_denom = price
+        .unit_price()?
+        .checked_div(vault_denom_price.unit_price()?)?;
+    let unrecorded_funding = average_funding_rate
+        .checked_mul(time_elapsed_days)?
+        .checked_mul(market_denom_price_in_vault_denom.checked_into_signed()?)?;
+    let funding_entry = market_state.funding_entry.checked_sub(unrecorded_funding)?;
 
     Ok(Response::new())
 }

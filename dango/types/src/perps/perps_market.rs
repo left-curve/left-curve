@@ -1,6 +1,6 @@
 use grug::{
-    Bounded, Denom, Int128, MathError, Number, Timestamp, Udec128, Uint128, Unsigned,
-    ZeroInclusiveOneExclusive,
+    Bounded, Dec128, Denom, Inner, Int128, MathError, Number, NumberConst, Timestamp, Udec128,
+    Uint128, Unsigned, ZeroInclusiveOneExclusive,
 };
 
 /// The state of the perps vault
@@ -25,6 +25,10 @@ pub struct PerpsMarketState {
     pub short_oi: Uint128,
     /// The last time the market was updated.
     pub last_updated: Timestamp,
+    /// The latest funding rate of the market as a daily rate.
+    pub funding_rate: Dec128,
+    /// Accumulator for funding rate changes.
+    pub funding_entry: Dec128,
 }
 
 impl PerpsMarketState {
@@ -32,6 +36,15 @@ impl PerpsMarketState {
         self.long_oi
             .checked_into_signed()?
             .checked_sub(self.short_oi.checked_into_signed()?)
+    }
+
+    /// Returns the pSkew = skew / skewScale capping the pSkew between [-1, 1].
+    pub fn proportional_skew(&self, skew_scale: Uint128) -> Result<Dec128, MathError> {
+        Ok(Dec128::checked_from_ratio(
+            self.skew()?,
+            skew_scale.checked_into_signed()?.into_inner(),
+        )?
+        .clamp(-Dec128::ONE, Dec128::ONE))
     }
 }
 
@@ -42,9 +55,9 @@ pub struct PerpsMarketParams {
     pub denom: Denom,
     /// Whether trading is enabled for the market.
     pub trading_enabled: bool,
-    /// The maximum long open interest of the market.
+    /// The maximum long open interest of the market, denominated in USD.
     pub max_long_oi: Uint128,
-    /// The maximum short open interest of the market.
+    /// The maximum short open interest of the market, denominated in USD.
     pub max_short_oi: Uint128,
     /// The fee for opening or increasing a position that is used if the position reduces the skew.
     pub maker_fee: Bounded<Udec128, ZeroInclusiveOneExclusive>,
