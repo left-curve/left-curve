@@ -1,4 +1,3 @@
-import { useUsernames } from "@left-curve/applets-kit";
 import { useAccount, useAppConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
