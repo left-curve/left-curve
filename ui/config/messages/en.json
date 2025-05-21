@@ -338,6 +338,9 @@
     "page": "Page",
     "of": "of"
   },
+  "convert": {
+    "title": "Convert"
+  },
   "notFound": {
     "title": "Page not found!",
     "description": "Sorry! We couldn’t find what you were looking for...",
