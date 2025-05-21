@@ -36,7 +36,9 @@ export function createConfig<
     version = 0,
     storage = createStorage({
       storage:
-        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
+        typeof window !== "undefined" && window.localStorage
+          ? () => window.localStorage
+          : undefined,
     }),
     ssr,
     ...rest

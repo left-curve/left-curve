@@ -11,8 +11,15 @@ export function createStorage<inner extends Record<string, unknown> = Record<str
     deserialize = deserializeJson,
     key: prefix = "dango",
     serialize = serializeJson,
-    storage = createMemoryStorage(),
   } = parameters;
+
+  const storage = (() => {
+    if (parameters.storage) {
+      const _storage = parameters.storage();
+      if (_storage) return _storage;
+    }
+    return createMemoryStorage();
+  })();
 
   return {
     ...storage,
@@ -40,8 +47,15 @@ export function createAsyncStorage<inner extends Record<string, unknown> = Recor
     deserialize = deserializeJson,
     key: prefix = "dango",
     serialize = serializeJson,
-    storage = createMemoryStorage(),
   } = parameters;
+
+  const storage = (() => {
+    if (parameters.storage) {
+      const _storage = parameters.storage();
+      if (_storage) return _storage;
+    }
+    return createMemoryStorage();
+  })();
 
   function unwrap<type>(value: type): type | Promise<type> {
     if (value instanceof Promise) return value.then((x) => x).catch(() => null);

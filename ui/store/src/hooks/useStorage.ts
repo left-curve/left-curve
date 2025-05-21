@@ -3,11 +3,11 @@ import { useQuery } from "../query.js";
 import { createStorage } from "../storages/createStorage.js";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { Storage } from "../types/storage.js";
+import type { AbstractStorage } from "../types/storage.js";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);
-  storage?: Storage;
+  storage?: () => AbstractStorage;
   version?: number;
   enabled?: boolean;
   migrations?: Record<number, (data: any) => T>;
@@ -25,11 +25,13 @@ export function useStorage<T = undefined>(
   } = options;
 
   const storage = (() => {
-    if (_storage_) return _storage_;
     return createStorage({
       key: "dango",
-      storage:
-        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
+      storage: _storage_
+        ? _storage_
+        : typeof window !== "undefined" && window.localStorage
+          ? () => window.localStorage
+          : undefined,
     });
   })();
 

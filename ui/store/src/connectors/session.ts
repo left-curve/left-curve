@@ -23,7 +23,7 @@ type SessionConnectorParameters = {
 export function session(parameters: SessionConnectorParameters = {}) {
   let _provider_ = async (): Promise<SigningSession | null> => await storage.getItem("session");
 
-  const { storage = createStorage({ storage: sessionStorage }), target } = parameters;
+  const { storage = createStorage({ storage: () => sessionStorage }), target } = parameters;
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 

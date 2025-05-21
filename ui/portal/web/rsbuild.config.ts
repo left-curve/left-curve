@@ -68,7 +68,7 @@ export default defineConfig({
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,
           project: "../../config/project.inlang",
-          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+          strategy: ["preferredLanguage", "baseLocale"],
           localStorageKey: "dango.locale",
         }),
         TanStackRouterRspack({

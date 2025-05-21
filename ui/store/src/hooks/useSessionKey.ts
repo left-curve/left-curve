@@ -1,6 +1,5 @@
 import { createSessionSigner, createSignerClient } from "@left-curve/dango";
 import { Secp256k1 } from "@left-curve/dango/crypto";
-import { createStorage } from "../storages/createStorage.js";
 
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "./useAccount.js";
@@ -40,7 +39,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   const { username, connector } = useAccount();
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
-    storage: createStorage({ storage: sessionStorage }),
+    storage: () => sessionStorage,
     version: 1.1,
   });
 

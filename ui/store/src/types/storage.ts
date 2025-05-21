@@ -8,7 +8,7 @@ export type AbstractStorage = {
 
 export type CreateStorageParameters = {
   key?: string;
-  storage?: AbstractStorage;
+  storage?: () => AbstractStorage;
   deserialize?: <type>(value: string) => type | unknown;
   serialize?: <type>(value: type | any) => string;
 };
