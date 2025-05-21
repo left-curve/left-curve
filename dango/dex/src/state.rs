@@ -50,15 +50,6 @@ pub type MarketOrderKey = ((Denom, Denom), Direction, OrderId);
 /// ```
 pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
 
-pub enum OrderType {
-    /// A limit order that has already existed at the beginning of this block.
-    Maker,
-    /// A limit order that was received during the current block.
-    Incoming,
-    /// A market order.
-    Market,
-}
-
 #[grug::derive(Borsh)]
 pub struct MarketOrder {
     pub user: Addr,
