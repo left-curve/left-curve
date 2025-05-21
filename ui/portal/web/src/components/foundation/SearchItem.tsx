@@ -1,4 +1,4 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
+import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
 import { useFavApplets } from "~/hooks/useFavApplets";
 
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
@@ -133,24 +133,24 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
 };
 
 type SearchContractItemProps = {
-  contract: ContractInfo & { name: string; address: Address };
+  contract: ContractInfo & { address: Address };
 };
 
 const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
-  const { name, address } = contract;
+  const { address } = contract;
   const { isMd } = useMediaQuery();
   return (
     <motion.div
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
       variants={childVariants}
-      key={name}
+      key={address}
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
           <img src="/images/emojis/detailed/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
-          <p className="flex gap-2 diatype-m-medium">{name}</p>
+          <AddressVisualizer address={address} withIcon className="diatype-m-medium" />
           {isMd ? (
             <p className="diatype-sm-regular text-gray-500">{address}</p>
           ) : (
