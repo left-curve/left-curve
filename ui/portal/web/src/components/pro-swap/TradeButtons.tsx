@@ -24,9 +24,6 @@ export const TradeButtons: React.FC = () => {
       </IconButton>
       {isConnected ? (
         <div className="flex-1 flex gap-2">
-          <Button className="h-full" fullWidth onClick={() => setTradeBarVisibility(true)}>
-            {m["proSwap.sell"]()}
-          </Button>
           <Button
             className="h-full"
             fullWidth
@@ -34,6 +31,9 @@ export const TradeButtons: React.FC = () => {
             onClick={() => setTradeBarVisibility(true)}
           >
             {m["proSwap.buy"]()}
+          </Button>
+          <Button className="h-full" fullWidth onClick={() => setTradeBarVisibility(true)}>
+            {m["proSwap.sell"]()}
           </Button>
         </div>
       ) : (
