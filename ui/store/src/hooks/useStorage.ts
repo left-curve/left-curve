@@ -42,7 +42,7 @@ export function useStorage<T = undefined>(
     enabled,
     queryKey: ["dango", enabled.toString(), key],
     queryFn: () => {
-      const { value } = storage.getItem(key) as { value: T };
+      const { value } = storage.getItem(key, { value: initialValue! }) as { value: T };
 
       return value ?? null;
     },
