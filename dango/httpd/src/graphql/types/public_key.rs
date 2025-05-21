@@ -51,16 +51,17 @@ impl From<entity::public_keys::Model> for PublicKey {
 
 #[ComplexObject]
 impl PublicKey {
-    pub async fn user(&self, ctx: &async_graphql::Context<'_>) -> Result<super::user::User> {
+    pub async fn users(&self, ctx: &async_graphql::Context<'_>) -> Result<Vec<super::user::User>> {
         let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
 
         Ok(self
             .model
             .find_related(entity::users::Entity)
-            .one(&app_ctx.db)
+            .all(&app_ctx.db)
             .await?
-            .ok_or_else(|| async_graphql::Error::new("User not found"))?
-            .into())
+            .into_iter()
+            .map(super::user::User::from)
+            .collect())
 
         // let user = entity::users::Entity::find()
         //     .filter(entity::users::Column::Username.eq(&self.username))

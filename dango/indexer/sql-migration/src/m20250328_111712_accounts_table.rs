@@ -124,7 +124,6 @@ impl MigrationTrait for Migration {
                     .name("public_keys-keyhash")
                     .table(PublicKey::Table)
                     .col(PublicKey::KeyHash)
-                    .unique()
                     .to_owned(),
             )
             .await?;
@@ -136,7 +135,6 @@ impl MigrationTrait for Migration {
                     .name("public_keys-username")
                     .table(PublicKey::Table)
                     .col(PublicKey::Username)
-                    .unique()
                     .to_owned(),
             )
             .await?;

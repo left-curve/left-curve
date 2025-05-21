@@ -44,7 +44,7 @@ impl UserQuery {
         let app_ctx = ctx.data::<Context>()?;
 
         let user = entity::users::Entity::find()
-            .filter(entity::users::Column::Username.eq(username))
+            .filter(entity::users::Column::Username.eq(&username))
             .one(&app_ctx.db)
             .await?
             .map(Into::into);
