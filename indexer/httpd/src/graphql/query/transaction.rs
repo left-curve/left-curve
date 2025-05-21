@@ -54,6 +54,7 @@ impl TransactionQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
+        sender_address: Option<String>,
     ) -> Result<Connection<TransactionCursorType, Transaction, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
@@ -96,7 +97,11 @@ impl TransactionQuery {
                 }
 
                 if let Some(hash) = hash {
-                    query = query.filter(entity::transactions::Column::Hash.eq(hash));
+                    query = query.filter(entity::transactions::Column::Hash.eq(&hash));
+                }
+
+                if let Some(sender_address) = sender_address {
+                    query = query.filter(entity::transactions::Column::Sender.eq(&sender_address));
                 }
 
                 match sort_by {
