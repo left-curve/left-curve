@@ -27,6 +27,9 @@ export { ExpandOptions } from "./ExpandOptions";
 export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
+export { Popover } from "./Popover";
+export { Pagination } from "./Pagination";
+export { JsonVisualizer } from "./JsonVisualizer";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -34,7 +37,6 @@ export { CheckCircleIcon } from "./icons/CheckCircle";
 export { XCircleIcon } from "./icons/XCircle";
 
 export { IconDangoDots } from "./icons/IconDangoDots";
-export { IconProfile } from "./icons/IconProfile";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconDoubleChevronRight } from "./icons/IconDoubleChevronRight";
 export { IconChevronRight } from "./icons/IconChevronRight";
@@ -50,6 +52,7 @@ export { IconLeft } from "./icons/IconLeft";
 export { IconLogOut } from "./icons/IconLogOut";
 export { IconKey } from "./icons/IconKey";
 export { IconClose } from "./icons/IconClose";
+export { IconCloseCircle } from "./icons/IconCloseCircle";
 export { IconStar } from "./icons/IconStar";
 export { IconEmptyStar } from "./icons/IconEmptyStar";
 export { IconCheckedCircle } from "./icons/IconCheckedCircle";
@@ -61,3 +64,6 @@ export { IconMobile } from "./icons/IconMobile";
 export { IconFormatNumber } from "./icons/IconFormatNumber";
 export { IconLanguage } from "./icons/IconLanguage";
 export { IconSwitch } from "./icons/IconSwitch";
+export { IconArrowDown } from "./icons/IconArrowDown";
+export { IconInfo } from "./icons/IconInfo";
+export { IconUser } from "./icons/IconUser";

@@ -1,0 +1,16 @@
+- name: Ensure dir exists
+  file:
+    path: "{{ dozzle_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy docker-compose
+  template:
+    src: "{{ playbook_dir }}/roles/dozzle/templates/docker-compose.yml"
+    dest: "{{ dozzle_dir }}/docker-compose.yml"
+
+- name: Launch Dozzle stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ dozzle_dir }}"
+    pull: missing
+    state: present

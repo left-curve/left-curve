@@ -1,6 +1,7 @@
 use {
     crate::core,
     dango_auth::query_seen_nonces,
+    dango_oracle::OracleQuerier,
     dango_types::{DangoQuerier, account::margin::QueryMsg},
     grug::{ImmutableCtx, Json, JsonSerExt},
 };
@@ -18,8 +19,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::Health {} => {
+            let oracle = ctx.querier.query_oracle()?;
+            let mut oracle_querier = OracleQuerier::new_remote(oracle, ctx.querier);
             let res = core::query_and_compute_health(
                 ctx.querier,
+                &mut oracle_querier,
                 ctx.contract,
                 ctx.block.timestamp,
                 None,

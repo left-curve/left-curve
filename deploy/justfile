@@ -1,0 +1,58 @@
+set positional-arguments
+
+# List available recipes
+default:
+  @just --list
+
+cold-provision:
+  ansible-playbook playbook.yml
+
+provision:
+  ansible-playbook playbook.yml --skip-tags setup
+
+# Set up Python environment and install Ansible + role
+setup:
+  python3 -m venv .venv
+  source .venv/bin/activate && pip install --upgrade pip
+  source .venv/bin/activate && pip install ansible
+  source .venv/bin/activate && ansible-galaxy collection install -r requirements.yml
+
+# Run the github runner installation playbooks
+install-runners:
+  source .venv/bin/activate && ansible-playbook setup-github-runner-hosts.yml
+  source .venv/bin/activate && ansible-playbook install-github-runner-hosts.yml
+
+deploy-bots:
+  ansible-playbook bots.yml
+
+deploy-dozzle:
+  ansible-playbook dozzle.yml
+
+cold-deploy-dango:
+  ansible-playbook dango.yml
+
+deploy-dango:
+  ansible-playbook dango.yml --tags setup
+  ansible-playbook dango.yml --skip-tags setup
+
+reset-deploy:
+  ansible-playbook reset-cometbft.yml
+  ansible-playbook reset-dango.yml
+
+setup-deploy-dango:
+  ansible-playbook dango.yml --tags setup
+
+deploy-cometbft:
+  ansible-playbook cometbft.yml
+
+deploy-tailscale:
+  ansible-playbook tailscale.yml
+
+deploy-db:
+  ansible-playbook db.yml
+
+logs-cometbft:
+  ansible cometbft -m shell -a "docker logs cometbft -f"
+
+logs-dango:
+  ansible dango -m shell -a "docker logs dango -f"

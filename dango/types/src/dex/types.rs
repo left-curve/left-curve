@@ -1,8 +1,5 @@
-use {
-    grug::{
-        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
-    },
-    std::{fmt::Display, str::FromStr},
+use grug::{
+    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
 };
 
 /// Numerical identifier of an order.
@@ -63,39 +60,21 @@ pub struct PairParams {
     /// Curve invariant for the passive liquidity pool.
     pub curve_invariant: CurveInvariant,
     /// Fee rate for instant swaps in the passive liquidity pool.
-    pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-    // TODO:
-    // - orderbook fee rate (either here or as a global parameter)
-    // - tick size (necessary or not?)
-    // - minimum order size
+    /// For the xyk pool, this also sets the spread of the orders when the
+    /// passive liquidity is reflected onto the orderbook.
+    pub swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    // TODO: minimum order size
 }
 
 #[grug::derive(Serde, Borsh)]
 pub enum CurveInvariant {
-    Xyk,
-}
-
-impl Display for CurveInvariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            CurveInvariant::Xyk => "xyk",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-impl FromStr for CurveInvariant {
-    type Err = StdError;
-
-    fn from_str(s: &str) -> StdResult<Self> {
-        match s {
-            "xyk" => Ok(CurveInvariant::Xyk),
-            _ => Err(StdError::deserialize::<Self, _>(
-                "str",
-                "invalid curve type",
-            )),
-        }
-    }
+    Xyk {
+        /// The order spacing for the passive liquidity pool.
+        ///
+        /// This is the price difference between two consecutive orders when
+        /// the passive liquidity is reflected onto the orderbook.
+        order_spacing: Udec128,
+    },
 }
 
 /// Updates to a trading pair's parameters.

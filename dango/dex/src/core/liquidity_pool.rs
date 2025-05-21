@@ -3,9 +3,10 @@ use {
     anyhow::ensure,
     dango_types::dex::{CurveInvariant, PairParams},
     grug::{
-        Coin, CoinPair, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
+        StdResult, Udec128, Uint128,
     },
+    std::{cmp, iter},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -93,6 +94,36 @@ pub trait PassiveLiquidityPool {
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
+
+    /// Reflect the curve onto the orderbook.
+    ///
+    /// ## Inputs
+    ///
+    /// - `base_denom`: The base asset of the pool.
+    /// - `quote_denom`: The quote asset of the pool.
+    /// - `reserve`: The current pool reserve.
+    /// - `spread`: The spread between the ask and bid.
+    ///
+    /// ## Outputs
+    ///
+    /// - A tuple of two iterators of orders to place on the orderbook. The
+    ///   first contains the bids, the second contains the asks, specified as a
+    ///   tuple of (price, amount).
+    ///
+    /// ## Notes
+    ///
+    /// Note that the iterator item doesn't a `Result` type. If there is an
+    /// error in computing the order, the iterator should return `None` and thus
+    /// terminates.
+    fn reflect_curve(
+        self,
+        base_denom: Denom,
+        quote_denom: Denom,
+        reserve: &CoinPair,
+    ) -> StdResult<(
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
+    )>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -176,7 +207,7 @@ impl PassiveLiquidityPool for PairParams {
         let output_reserve = reserve.amount_of(&output_denom)?;
 
         let output_amount_after_fee = match self.curve_invariant {
-            CurveInvariant::Xyk => {
+            CurveInvariant::Xyk { .. } => {
                 // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
                 // => output_amount = B - (A * B) / (A + input_amount)
                 // Round so that user takes the loss.
@@ -224,7 +255,7 @@ impl PassiveLiquidityPool for PairParams {
         );
 
         let input_amount = match self.curve_invariant {
-            CurveInvariant::Xyk => {
+            CurveInvariant::Xyk { .. } => {
                 // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
                 // offer amount after fees. So in this case we need to divide ask by (1 - fee)
                 // to get the ask amount after fees.
@@ -254,6 +285,114 @@ impl PassiveLiquidityPool for PairParams {
 
         Ok((reserve, input))
     }
+
+    fn reflect_curve(
+        self,
+        base_denom: Denom,
+        quote_denom: Denom,
+        reserve: &CoinPair,
+    ) -> StdResult<(
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+        Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+    )> {
+        let base_reserve = reserve.amount_of(&base_denom)?;
+        let quote_reserve = reserve.amount_of(&quote_denom)?;
+
+        // Compute the marginal price. We will place orders above and below this price.
+        let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+
+        match self.curve_invariant {
+            CurveInvariant::Xyk { order_spacing } => {
+                let swap_fee_rate = self.swap_fee_rate.into_inner();
+
+                // Construct the bid order iterator.
+                // Start from the marginal price minus the swap fee rate.
+                let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
+                let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
+                let mut prev_size = Uint128::ZERO;
+                let mut prev_size_quote = Uint128::ZERO;
+                let bids = iter::from_fn(move || {
+                    // Terminate if price is less or equal to zero.
+                    let price = match maybe_price {
+                        Some(price) if price.is_non_zero() => price,
+                        _ => return None,
+                    };
+
+                    // Compute the total order size (in base asset) at this price.
+                    let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+                    let mut size = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
+
+                    // Compute the order size (in base asset) at this price.
+                    //
+                    // This is the difference between the total order size at
+                    // this price, and that at the previous price.
+                    let mut amount = size.checked_sub(prev_size).ok()?;
+
+                    // Compute the total order size (in quote asset) at this price.
+                    let mut amount_quote = amount.checked_mul_dec_ceil(price).ok()?;
+                    let mut size_quote = prev_size_quote.checked_add(amount_quote).ok()?;
+
+                    // If total order size (in quote asset) is greater than the
+                    // reserve, cap it to the reserve size.
+                    if size_quote > quote_reserve {
+                        size_quote = quote_reserve;
+                        amount_quote = size_quote.checked_sub(prev_size_quote).ok()?;
+                        amount = amount_quote.checked_div_dec_floor(price).ok()?;
+                        size = prev_size.checked_add(amount).ok()?;
+                    }
+
+                    // If order size is zero, we have ran out of liquidity.
+                    // Terminate the iterator.
+                    if amount.is_zero() {
+                        return None;
+                    }
+
+                    // Update the iterator state.
+                    prev_size = size;
+                    prev_size_quote = size_quote;
+                    maybe_price = price.checked_sub(order_spacing).ok();
+
+                    Some((price, amount))
+                });
+
+                // Construct the ask order iterator.
+                let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
+                let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
+                let mut prev_size = Uint128::ZERO;
+                let asks = iter::from_fn(move || {
+                    let price = maybe_price?;
+
+                    // Compute the total order size (in base asset) at this price.
+                    let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+                    let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
+
+                    // If total order size (in base asset) exceeds the base asset
+                    // reserve, cap it to the reserve size.
+                    let size = cmp::min(size, base_reserve);
+
+                    // Compute the order size (in base asset) at this price.
+                    //
+                    // This is the difference between the total order size at
+                    // this price, and that at the previous price.
+                    let amount = size.checked_sub(prev_size).ok()?;
+
+                    // If order size is zero, we have ran out of liquidity.
+                    // Terminate the iterator.
+                    if amount.is_zero() {
+                        return None;
+                    }
+
+                    // Update the iterator state.
+                    prev_size = size;
+                    maybe_price = price.checked_add(order_spacing).ok();
+
+                    Some((price, amount))
+                });
+
+                Ok((Box::new(bids), Box::new(asks)))
+            },
+        }
+    }
 }
 
 fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
@@ -261,5 +400,202 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
         a - b
     } else {
         b - a
+    }
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::constants::{eth, usdc},
+        grug::{Bounded, Coins, coins},
+        test_case::test_case,
+    };
+
+    #[test_case(
+        CurveInvariant::Xyk {
+            order_spacing: Udec128::ONE,
+        },
+        Udec128::new_permille(5),
+        coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 200 * 10000000,
+        },
+        vec![
+            (Udec128::new_percent(19900), Uint128::from(50251)),
+            (Udec128::new_percent(19800), Uint128::from(50759)),
+            (Udec128::new_percent(19700), Uint128::from(51274)),
+            (Udec128::new_percent(19600), Uint128::from(51797)),
+            (Udec128::new_percent(19500), Uint128::from(52329)),
+            (Udec128::new_percent(19400), Uint128::from(52868)),
+            (Udec128::new_percent(19300), Uint128::from(53416)),
+            (Udec128::new_percent(19200), Uint128::from(53972)),
+            (Udec128::new_percent(19100), Uint128::from(54538)),
+            (Udec128::new_percent(19000), Uint128::from(55112)),
+        ],
+        vec![
+            (Udec128::new_percent(20100), Uint128::from(49751)),
+            (Udec128::new_percent(20200), Uint128::from(49259)),
+            (Udec128::new_percent(20300), Uint128::from(48773)),
+            (Udec128::new_percent(20400), Uint128::from(48295)),
+            (Udec128::new_percent(20500), Uint128::from(47824)),
+            (Udec128::new_percent(20600), Uint128::from(47360)),
+            (Udec128::new_percent(20700), Uint128::from(46902)),
+            (Udec128::new_percent(20800), Uint128::from(46451)),
+            (Udec128::new_percent(20900), Uint128::from(46007)),
+            (Udec128::new_percent(21000), Uint128::from(45568)),
+        ],
+        1;
+        "xyk pool balance 1:200 tick size 1 0.5% fee"
+    )]
+    #[test_case(
+        CurveInvariant::Xyk {
+            order_spacing: Udec128::ONE,
+        },
+        Udec128::new_percent(1),
+        coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 200 * 10000000,
+        },
+        vec![
+            (Udec128::new_percent(19800), Uint128::from(101010)),
+            (Udec128::new_percent(19700), Uint128::from(51274)),
+            (Udec128::new_percent(19600), Uint128::from(51797)),
+            (Udec128::new_percent(19500), Uint128::from(52329)),
+            (Udec128::new_percent(19400), Uint128::from(52868)),
+            (Udec128::new_percent(19300), Uint128::from(53416)),
+            (Udec128::new_percent(19200), Uint128::from(53972)),
+            (Udec128::new_percent(19100), Uint128::from(54538)),
+            (Udec128::new_percent(19000), Uint128::from(55112)),
+            (Udec128::new_percent(18900), Uint128::from(55694)),
+        ],
+        vec![
+            (Udec128::new_percent(20200), Uint128::from(99010)),
+            (Udec128::new_percent(20300), Uint128::from(48774)),
+            (Udec128::new_percent(20400), Uint128::from(48295)),
+            (Udec128::new_percent(20500), Uint128::from(47824)),
+            (Udec128::new_percent(20600), Uint128::from(47360)),
+            (Udec128::new_percent(20700), Uint128::from(46902)),
+            (Udec128::new_percent(20800), Uint128::from(46451)),
+            (Udec128::new_percent(20900), Uint128::from(46007)),
+            (Udec128::new_percent(21000), Uint128::from(45568)),
+            (Udec128::new_percent(21100), Uint128::from(45137)),
+        ],
+        1;
+        "xyk pool balance 1:200 tick size 1 one percent fee"
+    )]
+    #[test_case(
+        CurveInvariant::Xyk {
+            order_spacing: Udec128::new_percent(1),
+        },
+        Udec128::new_permille(5),
+        coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_permille(995), Uint128::from(50251)),
+            (Udec128::new_permille(985), Uint128::from(102033)),
+            (Udec128::new_permille(975), Uint128::from(104126)),
+            (Udec128::new_permille(965), Uint128::from(106284)),
+            (Udec128::new_permille(955), Uint128::from(108510)),
+            (Udec128::new_permille(945), Uint128::from(110806)),
+            (Udec128::new_permille(935), Uint128::from(113177)),
+            (Udec128::new_permille(925), Uint128::from(115624)),
+            (Udec128::new_permille(915), Uint128::from(118151)),
+            (Udec128::new_permille(905), Uint128::from(120762)),
+        ],
+        vec![
+            (Udec128::new_permille(1005), Uint128::from(49751)),
+            (Udec128::new_permille(1015), Uint128::from(98032)),
+            (Udec128::new_permille(1025), Uint128::from(96119)),
+            (Udec128::new_permille(1035), Uint128::from(94262)),
+            (Udec128::new_permille(1045), Uint128::from(92458)),
+            (Udec128::new_permille(1055), Uint128::from(90705)),
+            (Udec128::new_permille(1065), Uint128::from(89002)),
+            (Udec128::new_permille(1075), Uint128::from(87346)),
+            (Udec128::new_permille(1085), Uint128::from(85736)),
+            (Udec128::new_permille(1095), Uint128::from(84170)),
+        ],
+        1;
+        "xyk pool balance 1:1 0.5% fee"
+    )]
+    #[test_case(
+        CurveInvariant::Xyk {
+            order_spacing: Udec128::new_percent(1),
+        },
+        Udec128::new_percent(1),
+        coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_percent(99), Uint128::from(101010)),
+            (Udec128::new_percent(98), Uint128::from(103072)),
+            (Udec128::new_percent(97), Uint128::from(105196)),
+            (Udec128::new_percent(96), Uint128::from(107388)),
+            (Udec128::new_percent(95), Uint128::from(109649)),
+            (Udec128::new_percent(94), Uint128::from(111982)),
+            (Udec128::new_percent(93), Uint128::from(114390)),
+            (Udec128::new_percent(92), Uint128::from(116877)),
+            (Udec128::new_percent(91), Uint128::from(119445)),
+            (Udec128::new_percent(90), Uint128::from(122100)),
+        ],
+        vec![
+            (Udec128::new_percent(101), Uint128::from(99010)),
+            (Udec128::new_percent(102), Uint128::from(97070)),
+            (Udec128::new_percent(103), Uint128::from(95184)),
+            (Udec128::new_percent(104), Uint128::from(93353)),
+            (Udec128::new_percent(105), Uint128::from(91575)),
+            (Udec128::new_percent(106), Uint128::from(89847)),
+            (Udec128::new_percent(107), Uint128::from(88168)),
+            (Udec128::new_percent(108), Uint128::from(86535)),
+            (Udec128::new_percent(109), Uint128::from(84947)),
+            (Udec128::new_percent(110), Uint128::from(83403)),
+        ],
+        1;
+        "xyk pool balance 1:1 one percent fee"
+    )]
+    fn curve_on_orderbook(
+        curve_invariant: CurveInvariant,
+        swap_fee_rate: Udec128,
+        pool_liquidity: Coins,
+        expected_bids: Vec<(Udec128, Uint128)>,
+        expected_asks: Vec<(Udec128, Uint128)>,
+        order_size_tolerance: u128,
+    ) {
+        let pair = PairParams {
+            curve_invariant,
+            swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        let reserve = pool_liquidity.try_into().unwrap();
+        let (bids, asks) = pair
+            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .unwrap();
+
+        // Assert that at least 10 orders are returned.
+        let bids = bids.take(10).collect::<Vec<_>>();
+        let asks = asks.take(10).collect::<Vec<_>>();
+        assert_eq!(bids.len(), 10);
+        assert_eq!(asks.len(), 10);
+
+        // Assert that the orders are correct.
+        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert!(
+                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
+            );
+        }
+
+        for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
+            assert_eq!(ask.0, expected_ask.0);
+            assert!(
+                ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
+            );
+        }
     }
 }

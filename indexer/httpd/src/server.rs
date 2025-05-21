@@ -44,6 +44,8 @@ where
 
         if let Some(origin) = cors_allowed_origin.as_deref() {
             cors = cors.allowed_origin(origin);
+        } else {
+            cors = cors.allow_any_origin();
         }
 
         let app = App::new()
@@ -67,6 +69,7 @@ where
 {
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
+            .service(routes::index::up)
             .service(routes::api::services::api_services())
             .service(routes::graphql::graphql_route())
             .default_service(web::to(HttpResponse::NotFound))

@@ -1,10 +1,20 @@
 [Greeting](README.md)
 
-- [Audits](audits/README.md)
+---
+
+# Dango DEX
+
+- [Passive liquidity](dex/passive-liquidity/README.md)
 
 ---
 
-# Notes
+# Audits
+
+- [List of audits completed](audits/README.md)
+
+---
+
+# Unorganized notes
 
 - [Bounded values](notes/bounded-values.md)
 - [Exports](notes/exports.md)

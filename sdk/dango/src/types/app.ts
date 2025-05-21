@@ -3,17 +3,15 @@ import type { Address } from "@left-curve/sdk/types";
 export type AppConfig = {
   addresses: {
     accountFactory: Address;
-    ibcTransfer: Address;
-    tokenFactory: Address;
+    gateway: Address;
     lending: Address;
     oracle: Address;
     dex: Address;
     warp: Address;
+    taxman: Address;
     hyperlane: {
-      fee: Address;
       ism: Address;
       mailbox: Address;
-      merkle: Address;
       va: Address;
     };
   };

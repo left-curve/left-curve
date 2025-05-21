@@ -5,8 +5,8 @@ use {
         Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
     grug::{
-        Addr, BankMsg, Coin, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst, Part,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, coins,
+        Addr, BankMsg, Coins, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst, Part,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::HashMap,
 };
@@ -54,18 +54,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             set_namespace_owner(ctx, namespace, owner)
         },
         ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
-        ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
-        ExecuteMsg::Burn {
-            from,
-            denom,
-            amount,
-        } => burn(ctx, from, denom, amount),
-        ExecuteMsg::ForceTransfer {
-            from,
-            to,
-            denom,
-            amount,
-        } => force_transfer(ctx, from, to, denom, amount),
+        ExecuteMsg::Mint { to, coins } => mint(ctx, to, coins),
+        ExecuteMsg::Burn { from, coins } => burn(ctx, from, coins),
+        ExecuteMsg::ForceTransfer { from, to, coins } => force_transfer(ctx, from, to, coins),
         ExecuteMsg::RecoverTransfer { sender, recipient } => {
             recover_transfer(ctx, sender, recipient)
         },
@@ -100,54 +91,58 @@ fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Re
     Ok(Response::default())
 }
 
-fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
-    ensure_namespace_owner(&ctx, &denom)?;
-
+fn mint(ctx: MutableCtx, to: Addr, coins: Coins) -> anyhow::Result<Response> {
     // Handle orphaned transfers.
     // See the comments in `bank_execute` for more details.
     let recipient_exists = ctx.querier.query_contract(to).is_ok();
     let recipient = if recipient_exists {
         to
     } else {
-        ORPHANED_TRANSFERS.may_update(ctx.storage, (ctx.sender, to), |coins| {
-            let mut coins = coins.unwrap_or_default();
-            coins.insert(Coin::new(denom.clone(), amount)?)?;
-            Ok::<_, StdError>(coins)
+        ORPHANED_TRANSFERS.may_update(ctx.storage, (ctx.sender, to), |transfers| {
+            let mut transfers = transfers.unwrap_or_default();
+            transfers.insert_many(coins.clone())?;
+            Ok::<_, StdError>(transfers)
         })?;
 
         ctx.contract
     };
 
-    increase_supply(ctx.storage, &denom, amount)?;
-    increase_balance(ctx.storage, &recipient, &denom, amount)?;
+    for coin in &coins {
+        ensure_namespace_owner(&ctx, coin.denom)?;
+
+        increase_supply(ctx.storage, coin.denom, *coin.amount)?;
+        increase_balance(ctx.storage, &recipient, coin.denom, *coin.amount)?;
+    }
 
     Ok(Response::new()
         .add_event(Minted {
             user: recipient,
             minter: ctx.sender,
-            coins: coins! { denom.clone() => amount },
+            coins: coins.clone(),
         })?
         .may_add_event(if !recipient_exists {
             Some(TransferOrphaned {
                 from: ctx.sender,
                 to: recipient,
-                coins: coins! { denom => amount },
+                coins,
             })
         } else {
             None
         })?)
 }
 
-fn burn(ctx: MutableCtx, from: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
-    ensure_namespace_owner(&ctx, &denom)?;
+fn burn(ctx: MutableCtx, from: Addr, coins: Coins) -> anyhow::Result<Response> {
+    for coin in &coins {
+        ensure_namespace_owner(&ctx, coin.denom)?;
 
-    decrease_supply(ctx.storage, &denom, amount)?;
-    decrease_balance(ctx.storage, &from, &denom, amount)?;
+        decrease_supply(ctx.storage, coin.denom, *coin.amount)?;
+        decrease_balance(ctx.storage, &from, coin.denom, *coin.amount)?;
+    }
 
     Ok(Response::new().add_event(Burned {
         user: from,
         burner: ctx.sender,
-        coins: coins! { denom => amount },
+        coins,
     })?)
 }
 
@@ -177,32 +172,28 @@ fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()>
 /// Note: we don't handle orphaned transfers here. This function can only be
 /// called by the taxman contract. We assume the taxman is properly programmed
 /// to never force an orphaned transfer.
-fn force_transfer(
-    ctx: MutableCtx,
-    from: Addr,
-    to: Addr,
-    denom: Denom,
-    amount: Uint128,
-) -> anyhow::Result<Response> {
+fn force_transfer(ctx: MutableCtx, from: Addr, to: Addr, coins: Coins) -> anyhow::Result<Response> {
     // Only taxman can force transfer.
     ensure!(
         ctx.sender == ctx.querier.query_taxman()?,
         "you don't have the right, O you don't have the right"
     );
 
-    decrease_balance(ctx.storage, &from, &denom, amount)?;
-    increase_balance(ctx.storage, &to, &denom, amount)?;
+    for coin in &coins {
+        decrease_balance(ctx.storage, &from, coin.denom, *coin.amount)?;
+        increase_balance(ctx.storage, &to, coin.denom, *coin.amount)?;
+    }
 
     Ok(Response::new()
         .add_event(Sent {
             user: from,
             to,
-            coins: coins! { denom.clone() => amount },
+            coins: coins.clone(),
         })?
         .add_event(Received {
             user: to,
             from,
-            coins: coins! { denom => amount },
+            coins,
         })?)
 }
 

@@ -6,6 +6,7 @@ import type {
   Client,
   Denom,
   Hex,
+  PairUpdate,
   Transport,
   UID,
 } from "@left-curve/dango/types";
@@ -35,7 +36,7 @@ export type State = {
 
 export type Config<transport extends Transport = Transport, coin extends AnyCoin = AnyCoin> = {
   readonly chain: Chain;
-  readonly coins: Record<ChainId, Record<Denom, coin>>;
+  readonly coins: Record<Denom, coin>;
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
   readonly state: State;
@@ -49,7 +50,10 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
     },
   ): () => void;
   getAppConfig(): Promise<
-    AppConfig & { accountFactory: { codeHashes: Record<AccountTypes, Hex> } }
+    AppConfig & {
+      accountFactory: { codeHashes: Record<AccountTypes, Hex> };
+      pairs: Record<Denom, PairUpdate>;
+    }
   >;
   getClient(): Client<transport>;
   _internal: Internal<transport>;
@@ -58,8 +62,9 @@ export type CreateConfigParameters<
   transport extends Transport = Transport,
   coin extends AnyCoin = AnyCoin,
 > = {
+  version?: number;
   chain: Chain;
-  coins?: Record<ChainId, Record<Denom, coin>>;
+  coins?: Record<Denom, coin>;
   transport: transport;
   ssr?: boolean;
   batch?: boolean;

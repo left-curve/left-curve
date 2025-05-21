@@ -81,6 +81,11 @@ impl Coins {
         self.0.len()
     }
 
+    /// Iterate over the coins as immutable references.
+    pub fn iter(&self) -> CoinsIter {
+        self.into_iter()
+    }
+
     /// Return whether there is a non-zero amount of the given denom.
     pub fn has(&self, denom: &Denom) -> bool {
         self.0.contains_key(denom)

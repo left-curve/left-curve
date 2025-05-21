@@ -1,48 +1,20 @@
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { createEventBus, useAccount, useConfig, useStorage } from "@left-curve/store";
+import { useUsernames } from "@left-curve/applets-kit";
+import { useAccount, useAppConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
-import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
 import { router } from "./app.router";
+import { Modals } from "./components/modals/RootModal";
 
-import type { AnyCoin } from "@left-curve/store/types";
+import { useNotifications } from "./hooks/useNotifications";
 
-export type EventBusMap = {
-  submit_tx:
-    | { isSubmitting: true; txResult?: never }
-    | { isSubmitting: false; txResult: { hasSucceeded: boolean; message: string } };
-  transfer: {
-    amount: number;
-    coin: AnyCoin;
-    fromAddress: string;
-    toAddress: string;
-    type: "received" | "sent";
-  };
-};
-
-export type Notifications<key extends keyof EventBusMap = keyof EventBusMap> = {
-  createdAt: number;
-  type: string;
-  data: EventBusMap[key];
-};
-
-export type Subscription = {
-  transfers: {
-    amount: number;
-    denom: string;
-    fromAddress: string;
-    toAddress: string;
-    blockHeight: number;
-  };
-};
-
-export const eventBus = createEventBus<EventBusMap>();
+import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { notifier as notifierType } from "./hooks/useNotifications";
 
 type AppState = {
   router: typeof router;
-  eventBus: typeof eventBus;
-  notifications: { type: string; data: any; createdAt: number }[];
+  config: ReturnType<typeof useAppConfig>;
+  notifier: typeof notifierType;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isNotificationMenuVisible: boolean;
@@ -66,8 +38,6 @@ type AppState = {
 export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const { chain, coins: chainsCoins } = useConfig();
-  const coins = chainsCoins[chain.id];
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -76,7 +46,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.1,
+    version: 1.2,
     initialValue: {
       showWelcome: true,
       isFirstVisit: true,
@@ -91,16 +61,8 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     },
   });
 
-  // App notifications
-  const [notifications, setNotifications] = useStorage<
-    { type: string; data: unknown; createdAt: number }[]
-  >("app.notifications", { initialValue: [], version: 0.1 });
-  const pushNotification = useCallback(
-    (notification: { type: string; data: unknown; createdAt: number }) => {
-      setNotifications((prev) => [...prev, notification]);
-    },
-    [],
-  );
+  // App Config
+  const config = useAppConfig();
 
   const changeSettings = useCallback(
     (s: Partial<AppState["settings"]>) => setSettings((prev) => ({ ...prev, ...s })),
@@ -129,74 +91,49 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   }, [username]);
 
-  // Track notifications
+  // App notifications
+  const { notifier, subscribe } = useNotifications();
   useEffect(() => {
-    if (!username) return;
-    let client: GraphqlSubscriptionClient | undefined;
-    (async () => {
-      client = createClient({ url: chain.urls.indexer });
-      const subscription = client.iterate({
-        query: `subscription($address: String) {
-          sentTransfers: transfers(fromAddress: $address) {
-            fromAddress
-            toAddress
-            blockHeight
-            amount
-            denom
-          }
-          receivedTransfers: transfers(toAddress: $address) {
-            fromAddress
-            toAddress
-            blockHeight
-            amount
-            denom
-          }
-        }`,
-        variables: { address: account?.address },
-      });
-      for await (const { data } of subscription) {
-        if (!data) continue;
-        if ("receivedTransfers" in data || "sentTransfers" in data) {
-          const isSent = "sentTransfers" in data;
+    if (!account) return;
+    const unsubscribe = subscribe(account);
+    return () => unsubscribe();
+  }, [account]);
 
-          const [transfer] = data[
-            isSent ? "sentTransfers" : "receivedTransfers"
-          ] as Subscription["transfers"][];
-          if (!transfer) continue;
-          const coin = coins[transfer.denom];
-          const notification = {
-            ...transfer,
-            type: isSent ? "sent" : "received",
-            coin,
-          } as EventBusMap["transfer"];
-
-          eventBus.publish("transfer", notification);
-          pushNotification({
-            type: "transfer",
-            data: notification,
-            createdAt: Date.now(),
-          });
+  // Track session key expiration
+  const { session } = useSessionKey();
+  const { usernames } = useUsernames();
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (
+        (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+        usernames.length &&
+        settings.useSessionKey &&
+        connector &&
+        connector.type !== "session"
+      ) {
+        if (modal.modal !== Modals.RenewSession) {
+          showModal(Modals.RenewSession);
         }
       }
-    })();
+    }, 1000);
     return () => {
-      if (client) client.dispose();
+      clearInterval(intervalId);
     };
-  }, [username]);
+  }, [session, modal, settings.useSessionKey, connector]);
 
   return (
     <AppContext.Provider
       value={{
         router,
-        eventBus,
-        notifications,
+        config,
+        notifier,
         isSidebarVisible,
         setSidebarVisibility,
         isNotificationMenuVisible,
         setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
-        isQuestBannerVisible,
+        isQuestBannerVisible: false,
         setQuestBannerVisibility,
         showModal,
         hideModal,

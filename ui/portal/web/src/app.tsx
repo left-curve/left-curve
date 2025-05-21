@@ -4,7 +4,7 @@ import { RootModal } from "./components/modals/RootModal";
 
 import { DangoStoreProvider } from "@left-curve/store";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { config } from "../store.config";
+import { config } from "~/store";
 
 import { AppProvider } from "./app.provider";
 import { AppRouter } from "./app.router";

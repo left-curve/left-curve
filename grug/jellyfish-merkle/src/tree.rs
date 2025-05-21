@@ -1,10 +1,10 @@
 use {
-    crate::{
-        BitArray, Child, InternalNode, LeafNode, MembershipProof, Node, NonMembershipProof, Proof,
-        ProofNode,
-    },
+    crate::{BitArray, Child, InternalNode, LeafNode, Node},
     grug_storage::{Map, PrefixBound, Set},
-    grug_types::{Batch, Hash256, HashExt, Op, Order, StdResult, Storage},
+    grug_types::{
+        Batch, Hash256, HashExt, MembershipProof, NonMembershipProof, Op, Order, Proof, ProofNode,
+        StdResult, Storage,
+    },
 };
 
 // Default storage namespaces
@@ -758,7 +758,7 @@ fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
 mod tests {
     use {
         super::*,
-        grug_types::{MockStorage, ResultExt, StdError},
+        grug_types::{MembershipProof, MockStorage, NonMembershipProof, ResultExt, StdError},
         hex_literal::hex,
         test_case::test_case,
     };

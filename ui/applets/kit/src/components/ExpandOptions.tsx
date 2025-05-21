@@ -11,21 +11,23 @@ import type { PropsWithChildren } from "react";
 type ExpandOptionsProps = {
   showOptionText: string;
   className?: string;
+  showLine?: boolean;
 };
 
 export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
   children,
   showOptionText,
   className,
+  showLine = false,
 }) => {
   const [isOptionExpanded, setOptionExpanded] = useState(false);
 
   const options = Children.toArray(children) as React.ReactElement[];
 
   return (
-    <div className={className}>
+    <div className={twMerge("w-full", className)}>
       <div className="flex items-center justify-center text-gray-500">
-        <span className="flex-1 h-[1px] bg-gray-100" />
+        {showLine ? <span className="flex-1 h-[1px] bg-gray-100" /> : null}
         <div
           className="flex items-center justify-center gap-1 px-2 cursor-pointer"
           onClick={() => setOptionExpanded(!isOptionExpanded)}
@@ -38,7 +40,7 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
             )}
           />
         </div>
-        <span className="flex-1 h-[1px] bg-gray-100" />
+        {showLine ? <span className="flex-1 h-[1px] bg-gray-100" /> : null}
       </div>
       <motion.div layout className="overflow-hidden">
         <AnimatePresence>

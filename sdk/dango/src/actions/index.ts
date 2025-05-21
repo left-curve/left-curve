@@ -50,6 +50,10 @@ export { indexerActions, type IndexerActions } from "./indexer/indexerActions.js
 /* -------------------------------------------------------------------------- */
 
 export {
+  // queries
+  type GetAppConfigParameters,
+  type GetAppConfigReturnType,
+  getAppConfig,
   // mutations
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -119,6 +123,9 @@ export {
   type GetUsersByKeyhashParameters,
   type GetUsersByKeyHashReturnType,
   getUsersByKeyHash,
+  type ForgotUsernameParameters,
+  type ForgotUsernameReturnType,
+  forgotUsername,
   // mutations
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
@@ -233,9 +240,6 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export {
-  type GetAppConfigParameters,
-  type GetAppConfigReturnType,
-  getAppConfig,
   type GetBalanceParameters,
   type GetBalanceReturnType,
   getBalance,

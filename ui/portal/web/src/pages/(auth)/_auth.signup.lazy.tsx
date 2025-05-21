@@ -3,10 +3,10 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { Signup } from "~/components/auth/Signup";
 
 export const Route = createLazyFileRoute("/(auth)/_auth/signup")({
-  component: SignupComponent,
+  component: SignupApplet,
 });
 
-function SignupComponent() {
+function SignupApplet() {
   return (
     <WizardProvider wrapper={<Signup />} persistKey="dango.signup">
       <Signup.Credential />

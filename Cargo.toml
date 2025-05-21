@@ -7,11 +7,13 @@ members = [
   "dango/cli",
   "dango/client",
   "dango/dex",
+  "dango/gateway",
   "dango/genesis",
   "dango/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
+  "dango/mocks/*",
   "dango/oracle",
   "dango/proposal-preparer",
   "dango/taxman",
@@ -37,6 +39,7 @@ members = [
   "grug/vm/*",
   "hyperlane/isms/*",
   "hyperlane/mailbox",
+  "hyperlane/testing",
   "hyperlane/va",
   "indexer/*",
   "pyth/client",
@@ -66,7 +69,7 @@ actix-http              = "3"
 actix-test              = "0.1"
 actix-web               = "4"
 aes-gcm                 = "0.10"
-alloy                   = "0.12"
+alloy                   = "1"
 anyhow                  = "1"
 assert-json-diff        = "2"
 assertor                = { version = "0.0", git = "https://github.com/google/assertor" }
@@ -90,7 +93,7 @@ colored                 = "3"
 colored_json            = "5"
 config                  = "0.15"
 config-parser           = { path = "config-parser" }
-criterion               = "0.5"
+criterion               = "0.6"
 data-encoding           = "2"
 dialoguer               = "0.11"
 digest                  = "0.10"
@@ -123,21 +126,21 @@ reqwest                 = { version = "0.12", features = ["stream"] }
 reqwest-eventsource     = "0.6.0"
 ripemd                  = "0.1"
 rocksdb                 = "0.23"
-sentry                  = { version = "0.37", features = ["log", "tracing"] }
-sentry-actix            = "0.37"
+sentry                  = { version = "0.38", features = ["log", "tracing"] }
+sentry-actix            = "0.38"
 serde                   = "1"
 serde_json              = "1"
 serde_with              = "3"
 sha2                    = "0.10"
 sha3                    = "0.10"
 signature               = "2"
-sqlx                    = "0"
+sqlx                    = "0.8"
 strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
-tendermint              = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
-tendermint-rpc          = { git = "https://github.com/left-curve/tendermint-rs.git", rev = "2e323c8" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
+tendermint              = "0.40.4"
+tendermint-rpc          = "0.40.4"
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
@@ -145,14 +148,14 @@ tokio                   = { version = "1", features = ["full"] }
 tokio-stream            = { version = "0.1", features = ["sync"] }
 toml                    = "0.8"
 tower                   = "0.5"
-tower-abci              = { git = "https://github.com/left-curve/tower-abci.git", rev = "6ba8190" } # TODO: https://github.com/informalsystems/tendermint-rs/issues/1500
+tower-abci              = "0.19"
 tracing                 = "0.1"
 tracing-actix-web       = "0.7"
 tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
 url                     = "2.5.4"
 uuid                    = { version = "1", features = ["serde", "v4"] }
-wasmer                  = "5"
-wasmer-middlewares      = "5"
+wasmer                  = "5" # keep at v5 because there's license change for v6
+wasmer-middlewares      = "5" # keep at v5 because there's license change for v6
 
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
@@ -164,12 +167,14 @@ dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
+dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/httpd" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
+dango-mock-httpd            = { path = "dango/mock/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }
@@ -201,6 +206,7 @@ grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
+hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-client              = { path = "indexer/client" }

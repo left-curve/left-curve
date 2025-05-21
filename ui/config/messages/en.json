@@ -20,6 +20,7 @@
     "hi": "Hi",
     "to": "To",
     "error": "Error",
+    "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
@@ -34,7 +35,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet"
+          "action=signup": "Sign up with wallet",
+          "action=forgot-username": "Retrieve with wallet"
         }
       }
     ],
@@ -44,7 +46,8 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey"
+          "action=signup": "Sign up with Passkey",
+          "action=forgot-username": "Retrieve with Passkey"
         }
       }
     ]
@@ -93,6 +96,7 @@
   },
   "applets": {
     "0": {
+      "id": "transfer",
       "img": "/images/applets/send-and-receive.svg",
       "title": "Transfer",
       "description": "Send and receive crypto.",
@@ -100,20 +104,31 @@
       "keywords": "transfer,send,receive"
     },
     "1": {
+      "id": "simple-swap",
+      "img": "/images/emojis/simple/spot.svg",
+      "title": "Convert",
+      "description": "The easiest way to trade at all sizes.",
+      "path": "/swap",
+      "keywords": "swap,trade,convert,exchange"
+    },
+    "2": {
+      "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
       "title": "Settings",
       "description": "Optimize your display, security, and more.",
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "2": {
+    "3": {
+      "id": "notifications",
       "img": "/images/emojis/simple/notifications.svg",
       "title": "Notifications",
       "description": "View recent transactions.",
       "path": "/notifications",
       "keywords": "notifications,alerts"
     },
-    "3": {
+    "4": {
+      "id": "create-account",
       "img": "/images/applets/account-creation.svg",
       "title": "Subaccount creation",
       "description": "Create subaccounts.",
@@ -152,7 +167,18 @@
         "pre": "We couldn’t find",
         "title": "Transaction not found",
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
-      }
+      },
+      "events": "Events",
+      "txHash": "Tx hash:",
+      "sender": "Sender:",
+      "time": "Time:",
+      "block": "Block:",
+      "index": "Index:",
+      "gasUsed": "Gas Used:",
+      "gasWanted": "Gas Wanted:",
+      "status": "Status:",
+      "success": "Success",
+      "failed": "Failed"
     },
     "contracts": {
       "notFound": {
@@ -199,15 +225,29 @@
       "accountName": "Account Name",
       "accountBalance": "Account Balance",
       "getStarted": "Get Started!"
+    },
+    "renewSession": {
+      "title": "Session expired",
+      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
+      "stayLogout": "Stay logged out"
     }
   },
   "signin": {
+    "usernamesFound": "Usernames found",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
     "advancedOptions": "Advanced Options",
     "continueWithoutSignin": "Continue without sign in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
+    "forgotUsername": "Forgot my username",
+    "useAnotherAccount": "Use another account",
+    "rememberUsername": {
+      "lastLogin": "Last login: {time}"
+    },
     "errors": {
       "failedSignInWithDesktop": "Failed to sign in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
@@ -295,6 +335,15 @@
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
     }
+  },
+  "pagination": {
+    "page": "Page",
+    "of": "of"
+  },
+  "notFound": {
+    "title": "Page not found!",
+    "description": "Sorry! We couldn’t find what you were looking for...",
+    "goToHome": "Go to Homepage"
   },
   "accountCreation": {
     "accountCreated": "Account Created",
@@ -408,6 +457,12 @@
     "title": "Settings",
     "display": "Display",
     "language": "Language",
+    "session": {
+      "title": "Session",
+      "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
+      "remaining": "Remaining time",
+      "time": { "hours": "h", "minutes": "m", "seconds": "s" }
+    },
     "languages": [
       {
         "declarations": ["input language"],
@@ -471,12 +526,30 @@
       "addAccount": "Add Account"
     }
   },
-  "validations": {
-    "errors": {
+  "dex": {
+    "fee": "Fee",
+    "apy": "APY",
+    "tvl": "TVL",
+    "24h": "24h",
+    "swap": "Swap",
+    "swapping": "Swapping",
+    "simpleSwap": {
+      "swapSuccessfully": "Swap Successfully",
+      "youGet": "You get",
+      "youSwap": "You swap",
+      "rate": "Rate",
+      "errors": {
+        "failure": "Swap failed"
+      }
+    }
+  },
+  "errors": {
+    "validations": {
       "amountIsRequired": "Amount is required",
       "amountIsZero": "Amount must be greater than 0",
       "insufficientFunds": "Insufficient funds",
       "invalidAddress": "Invalid address"
-    }
+    },
+    "failureRequest": "Couldn't complete the request"
   }
 }

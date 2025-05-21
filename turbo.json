@@ -28,6 +28,7 @@
   },
   "globalEnv": [
     "NEXT_PUBLIC_FULLPAGE_KEY",
+    "CONFIG_ENVIRONMENT",
     "PUBLIC_WEBRTC_URI",
     "PUBLIC_SENTRY_DSN",
     "SENTRY_ORG",

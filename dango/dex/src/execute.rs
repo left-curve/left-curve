@@ -3,10 +3,11 @@ mod order_creation;
 
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MatchingOutcome, PAIRS,
+        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MatchingOutcome, MergedOrders, PAIRS,
         PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders, match_orders,
     },
     anyhow::{anyhow, ensure},
+    dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
@@ -21,10 +22,13 @@ use {
     },
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt,
-        QuerierWrapper, Response, Storage, StorageQuerier, SudoCtx, Udec128, Uint128, UniqueVec,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        QuerierExt, Response, StdError, Storage, SudoCtx, Udec128, Uint128, UniqueVec, coins,
     },
-    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+    std::{
+        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+        iter,
+    },
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -157,7 +161,7 @@ pub fn batch_update_orders(
     // Compute the amount of tokens that should be sent back to the users.
     //
     // This equals the amount that user has sent to the contract, plus the
-    // amount that are to be refunded from the cancaled orders, and the amount
+    // amount that are to be refunded from the cancelled orders, and the amount
     // that the user is supposed to deposit for creating the new orders.
     ctx.funds
         .insert_many(refunds)?
@@ -215,8 +219,7 @@ fn provide_liquidity(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom: pair.lp_denom,
-                amount: lp_mint_amount,
+                coins: coins! { pair.lp_denom => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
         )?
@@ -265,8 +268,7 @@ fn withdraw_liquidity(
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: pair.lp_denom,
-                    amount: lp_burn_amount,
+                    coins: coins! { pair.lp_denom => lp_burn_amount },
                 },
                 Coins::new(), // No funds needed for burning
             )?
@@ -349,6 +351,8 @@ fn swap_exact_amount_out(
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
+    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
@@ -384,10 +388,10 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            ctx.querier,
             ctx.block.height,
-            app_cfg.addresses.oracle,
-            app_cfg.addresses.account_factory,
+            app_cfg.addresses.dex,
+            &mut oracle_querier,
+            &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
             base_denom,
@@ -436,10 +440,10 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 #[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    querier: QuerierWrapper,
     current_block_height: u64,
-    oracle: Addr,          // TODO: replace this with an `OracleQuerier` with caching
-    account_factory: Addr, // TODO: replace this with an `AccountQuerier` with caching
+    dex_addr: Addr,
+    oracle_querier: &mut OracleQuerier,
+    account_querier: &mut AccountQuerier,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     base_denom: Denom,
@@ -451,6 +455,8 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
+    // Create iterators over user orders.
+    //
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
     let bid_iter = LIMIT_ORDERS
@@ -462,13 +468,41 @@ fn clear_orders_of_pair(
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending);
 
+    // Create iterators over passive orders.
+    //
+    // If the pool doesn't have passive liquidity (reserve is `None`), simply
+    // use empty iterators.
+    let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
+    let (passive_bid_iter, passive_ask_iter) = match &reserve {
+        Some(reserve) => {
+            // Create the passive liquidity orders if the pair has a pool.
+            let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+            pair.reflect_curve(base_denom.clone(), quote_denom.clone(), reserve)?
+        },
+        None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
+    };
+
+    // Merge the orders from users and from the passive pool.
+    let merged_bid_iter = MergedOrders::new(
+        bid_iter,
+        passive_bid_iter,
+        IterationOrder::Descending,
+        dex_addr,
+    );
+    let merged_ask_iter = MergedOrders::new(
+        ask_iter,
+        passive_ask_iter,
+        IterationOrder::Ascending,
+        dex_addr,
+    );
+
     // Run the order matching algorithm.
     let MatchingOutcome {
         range,
         volume,
         bids,
         asks,
-    } = match_orders(bid_iter, ask_iter)?;
+    } = match_orders(merged_bid_iter, merged_ask_iter)?;
 
     // If no matching orders were found, then we're done with this pair.
     // Continue to the next pair.
@@ -493,7 +527,10 @@ fn clear_orders_of_pair(
         volume,
     })?;
 
-    // Fill orders
+    let mut inflows = Coins::new();
+    let mut outflows = Coins::new();
+
+    // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
         order_price,
@@ -514,135 +551,206 @@ fn clear_orders_of_pair(
         maker_fee_rate,
         taker_fee_rate,
     )? {
-        let refund = Coins::try_from([
-            Coin {
-                denom: base_denom.clone(),
-                amount: refund_base,
-            },
-            Coin {
-                denom: quote_denom.clone(),
-                amount: refund_quote,
-            },
-        ])?;
-
-        // Handle fees.
-        if fee_base.is_non_zero() {
-            fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
-            fee_payments
-                .entry(order.user)
-                .or_default()
-                .insert(Coin::new(base_denom.clone(), fee_base)?)?;
-        }
-
-        if fee_quote.is_non_zero() {
-            fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-            fee_payments
-                .entry(order.user)
-                .or_default()
-                .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-        }
-
-        // Include fee information in the event
-        let fee = if fee_base.is_non_zero() {
-            Some(Coin {
-                denom: base_denom.clone(),
-                amount: fee_base,
-            })
-        } else if fee_quote.is_non_zero() {
-            Some(Coin {
-                denom: quote_denom.clone(),
-                amount: fee_quote,
-            })
-        } else {
-            None
-        };
-
-        events.push(OrderFilled {
-            user: order.user,
-            order_id,
-            clearing_price,
+        update_trading_volumes(
+            storage,
+            oracle_querier,
+            account_querier,
+            &base_denom,
             filled,
-            refund: refund.clone(),
-            fee,
-            cleared,
-        })?;
+            order.user,
+            volumes,
+            volumes_by_username,
+        )?;
 
-        refunds.entry(order.user).or_default().insert_many(refund)?;
-
-        if cleared {
-            LIMIT_ORDERS.remove(
-                storage,
-                (
-                    (base_denom.clone(), quote_denom.clone()),
-                    order_direction,
-                    order_price,
-                    order_id,
-                ),
-            )?;
+        if order.user == dex_addr {
+            // The order only exists in the storage if it's not owned by the dex, since
+            // the passive orders are "virtual". If it is virtual, we need to update the
+            // reserve.
+            match order_direction {
+                Direction::Bid => {
+                    inflows.insert(Coin {
+                        denom: base_denom.clone(),
+                        amount: filled,
+                    })?;
+                    outflows.insert(Coin {
+                        denom: quote_denom.clone(),
+                        amount: filled.checked_mul_dec_floor(clearing_price)?,
+                    })?;
+                },
+                Direction::Ask => {
+                    inflows.insert(Coin {
+                        denom: quote_denom.clone(),
+                        amount: refund_quote,
+                    })?;
+                    outflows.insert(Coin {
+                        denom: base_denom.clone(),
+                        amount: filled,
+                    })?;
+                },
+            }
         } else {
-            LIMIT_ORDERS.save(
-                storage,
-                (
-                    (base_denom.clone(), quote_denom.clone()),
-                    order_direction,
-                    order_price,
-                    order_id,
-                ),
-                &order,
-            )?;
-        }
-
-        // Calculate the volume in USD for the filled order
-        let base_asset_price = querier.query_price(oracle, &base_denom, None)?;
-        let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int(); // TODO: Better to store as Decimal?
-
-        // Record trading volume for the user's address.
-        {
-            match volumes.entry(order.user) {
-                Entry::Occupied(mut v) => {
-                    v.get_mut().checked_add_assign(new_volume)?;
+            let refund = Coins::try_from([
+                Coin {
+                    denom: base_denom.clone(),
+                    amount: refund_base,
                 },
-                Entry::Vacant(v) => {
-                    let volume = VOLUMES
-                        .prefix(&order.user)
-                        .values(storage, None, None, IterationOrder::Descending)
-                        .next()
-                        .transpose()?
-                        .unwrap_or(Uint128::ZERO)
-                        .checked_add(new_volume)?;
-
-                    v.insert(volume);
+                Coin {
+                    denom: quote_denom.clone(),
+                    amount: refund_quote,
                 },
+            ])?;
+
+            refunds
+                .entry(order.user)
+                .or_default()
+                .insert_many(refund.clone())?;
+
+            // Handle fees.
+            if fee_base.is_non_zero() {
+                fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+                fee_payments
+                    .entry(order.user)
+                    .or_default()
+                    .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+            }
+
+            if fee_quote.is_non_zero() {
+                fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+                fee_payments
+                    .entry(order.user)
+                    .or_default()
+                    .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+            }
+
+            // Include fee information in the event
+            let fee = if fee_base.is_non_zero() {
+                Some(Coin {
+                    denom: base_denom.clone(),
+                    amount: fee_base,
+                })
+            } else if fee_quote.is_non_zero() {
+                Some(Coin {
+                    denom: quote_denom.clone(),
+                    amount: fee_quote,
+                })
+            } else {
+                None
+            };
+
+            // Emit event for filled user orders to be used by the frontend
+            events.push(OrderFilled {
+                user: order.user,
+                order_id,
+                clearing_price,
+                filled,
+                refund,
+                fee,
+                cleared,
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                direction: order_direction,
+            })?;
+
+            if cleared {
+                // Remove the order from the storage if it was fully filled
+                LIMIT_ORDERS.remove(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order_direction,
+                        order_price,
+                        order_id,
+                    ),
+                )?;
+            } else {
+                LIMIT_ORDERS.save(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order_direction,
+                        order_price,
+                        order_id,
+                    ),
+                    &order,
+                )?;
             }
         }
+    }
 
-        // Record trading volume for the user's username, if the trader is a
-        // single-signature account (skip for multisig accounts).
-        // TODO: this query can use caching, so we don't re-do queries for the same user.
-        if let Some(username) = querier
-            .query_wasm_path(
-                account_factory,
-                &dango_account_factory::ACCOUNTS.path(order.user),
-            )?
-            .params
-            .owner()
-        {
-            match volumes_by_username.entry(username.clone()) {
-                Entry::Occupied(mut v) => {
-                    v.get_mut().checked_add_assign(new_volume)?;
-                },
-                Entry::Vacant(v) => {
-                    let volume = VOLUMES_BY_USER
-                        .prefix(&username)
-                        .values(storage, None, None, IterationOrder::Descending)
-                        .next()
-                        .transpose()?
-                        .unwrap_or(Uint128::ZERO)
-                        .checked_add(new_volume)?;
-
-                    v.insert(volume);
-                },
+    // Update the pool reserve.
+    if inflows.is_non_empty() || outflows.is_non_empty() {
+        RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
+            for inflow in inflows {
+                reserve.checked_add(&inflow)?;
             }
+
+            for outflow in outflows {
+                reserve.checked_sub(&outflow)?;
+            }
+
+            Ok::<_, StdError>(reserve)
+        })?;
+    }
+
+    Ok(())
+}
+
+/// Updates trading volumes for both user addresses and usernames
+fn update_trading_volumes(
+    storage: &mut dyn Storage,
+    oracle_querier: &mut OracleQuerier,
+    account_querier: &mut AccountQuerier,
+    base_denom: &Denom,
+    filled: Uint128,
+    order_user: Addr,
+    volumes: &mut HashMap<Addr, Uint128>,
+    volumes_by_username: &mut HashMap<Username, Uint128>,
+) -> anyhow::Result<()> {
+    // Calculate the vo lume in USD for the filled order
+    let base_asset_price = oracle_querier.query_price(base_denom, None)?;
+    let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
+
+    // Record trading volume for the user's address
+    {
+        match volumes.entry(order_user) {
+            Entry::Occupied(mut v) => {
+                v.get_mut().checked_add_assign(new_volume)?;
+            },
+            Entry::Vacant(v) => {
+                let volume = VOLUMES
+                    .prefix(&order_user)
+                    .values(storage, None, None, IterationOrder::Descending)
+                    .next()
+                    .transpose()?
+                    .unwrap_or(Uint128::ZERO)
+                    .checked_add(new_volume)?;
+
+                v.insert(volume);
+            },
+        }
+    }
+
+    // Record trading volume for the user's username, if the trader is a
+    // single-signature account (skip for multisig accounts).
+    if let Some(username) = account_querier
+        .query_account(order_user)?
+        .and_then(|account| account.params.owner())
+    {
+        match volumes_by_username.entry(username.clone()) {
+            Entry::Occupied(mut v) => {
+                v.get_mut().checked_add_assign(new_volume)?;
+            },
+            Entry::Vacant(v) => {
+                let volume = VOLUMES_BY_USER
+                    .prefix(username)
+                    .values(storage, None, None, IterationOrder::Descending)
+                    .next()
+                    .transpose()?
+                    .unwrap_or(Uint128::ZERO)
+                    .checked_add(new_volume)?;
+
+                v.insert(volume);
+            },
         }
     }
 

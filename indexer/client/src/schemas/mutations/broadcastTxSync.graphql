@@ -1,8 +1,3 @@
 mutation BroadcastTxSync($tx: String!) {
-  broadcastTxSync(tx: $tx) {
-    code
-    data
-    log
-    hash
-  }
+  broadcastTxSync(tx: $tx)
 }

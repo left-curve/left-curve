@@ -1,34 +1,46 @@
 use {
-    grug::Denom,
-    std::{str::FromStr, sync::LazyLock},
+    grug::{Denom, Part},
+    std::sync::LazyLock,
 };
 
-pub static ATOM_DENOM: LazyLock<Denom> =
-    LazyLock::new(|| Denom::from_str("hyp/atom/atom").unwrap());
+pub mod dango {
+    use super::*;
 
-pub static BCH_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/bch/bch").unwrap());
+    pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["dango"]));
 
-pub static BNB_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/bnb/bnb").unwrap());
+    pub const DECIMAL: u8 = 6;
+}
 
-pub static BTC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/btc/btc").unwrap());
+macro_rules! define_denom {
+    ($name:ident => $decimal:literal) => {
+        pub mod $name {
+            use super::*;
 
-pub static DANGO_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("dango").unwrap());
+            pub static SUBDENOM: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked(stringify!($name)));
 
-pub static DOGE_DENOM: LazyLock<Denom> =
-    LazyLock::new(|| Denom::from_str("hyp/doge/doge").unwrap());
+            pub static DENOM: LazyLock<Denom> = LazyLock::new(|| {
+                Denom::from_parts([crate::gateway::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
+            });
 
-pub static ETH_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/eth").unwrap()); // TODO: update this to alloyed denom
+            pub const DECIMAL: u8 = $decimal;
+        }
+    };
+    ($($name:ident => $decimal:literal),*) => {
+        $(
+            define_denom!($name => $decimal);
+        )*
+    };
+}
 
-pub static LTC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/ltc/ltc").unwrap());
-
-pub static SHIB_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/shib").unwrap());
-
-pub static SOL_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/sol/sol").unwrap());
-
-pub static SUI_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/sui/sui").unwrap());
-
-pub static USDC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/usdc").unwrap()); // TODO: update this to alloyed denom
-
-pub static WBTC_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/eth/wbtc").unwrap());
-
-pub static XRP_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/xrp/xrp").unwrap());
+define_denom! {
+    atom => 6,
+    bch  => 8,
+    bnb  => 18,
+    btc  => 8,
+    doge => 8,
+    eth  => 18,
+    ltc  => 8,
+    sol  => 9,
+    usdc => 6,
+    xrp  => 6
+}

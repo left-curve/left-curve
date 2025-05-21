@@ -100,8 +100,7 @@ where
     {
         let unchecked: UncheckedChangeSet<K, V> = BorshDeserialize::deserialize_reader(reader)?;
 
-        ChangeSet::new(unchecked.add, unchecked.remove)
-            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+        ChangeSet::new(unchecked.add, unchecked.remove).map_err(io::Error::other)
     }
 }
 
