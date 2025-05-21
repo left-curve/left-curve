@@ -1,8 +1,11 @@
-import type React from "react";
-import { useSessionKey } from "@left-curve/store";
-import { m } from "~/paraglide/messages";
 import { useCountdown } from "@left-curve/applets-kit";
+import { useSessionKey } from "@left-curve/store";
+
 import { AnimatePresence, motion } from "framer-motion";
+
+import { m } from "~/paraglide/messages";
+
+import type React from "react";
 
 const hoursLabel = m["settings.session.time.hours"]();
 const minutesLabel = m["settings.session.time.minutes"]();
