@@ -36,6 +36,12 @@ pub const LIMIT_ORDERS: IndexedMap<LimitOrderKey, LimitOrder, LimitOrderIndex> =
 pub const INCOMING_ORDERS: Map<(Addr, OrderId), (LimitOrderKey, LimitOrder)> =
     Map::new("incoming_orders");
 
+/// Stores the total trading volume in USD for each account address and timestamp.
+pub const VOLUMES: Map<(&Addr, Timestamp), Uint128> = Map::new("volume");
+
+/// Stores the total trading volume in USD for each username and timestamp.
+pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Uint128> = Map::new("volume_by_user");
+
 /// Storage key for market orders.
 ///
 /// ```plain
@@ -81,9 +87,3 @@ pub struct LimitOrderIndex<'a> {
     pub order_id: UniqueIndex<'a, LimitOrderKey, OrderId, LimitOrder>,
     pub user: MultiIndex<'a, LimitOrderKey, Addr, LimitOrder>,
 }
-
-/// Stores the total trading volume in USD for each account address and timestamp.
-pub const VOLUMES: Map<(&Addr, Timestamp), Uint128> = Map::new("volume");
-
-/// Stores the total trading volume in USD for each username and timestamp.
-pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Uint128> = Map::new("volume_by_user");
