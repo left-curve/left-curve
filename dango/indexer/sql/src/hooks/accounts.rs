@@ -236,6 +236,14 @@ impl Hooks {
                 };
                 model.insert(&txn).await?;
             }
+        }
+
+        if !account_key_removed_events.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                "Detected account_key_removed_events: {:?}",
+                account_key_removed_events
+            );
 
             for account_key_removed_event in account_key_removed_events {
                 entity::public_keys::Entity::delete_many()
