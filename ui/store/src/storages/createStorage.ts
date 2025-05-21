@@ -1,5 +1,6 @@
 import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
 
+import { isStorageAvailable } from "./isStorageAvailable.js";
 import { createMemoryStorage } from "./memoryStorage.js";
 
 import type { CreateStorageParameters, Storage } from "../types/storage.js";
@@ -11,14 +12,12 @@ export function createStorage<inner extends Record<string, unknown> = Record<str
     deserialize = deserializeJson,
     key: prefix = "dango",
     serialize = serializeJson,
+    storage: _storage_,
   } = parameters;
 
   const storage = (() => {
-    if (parameters.storage) {
-      const _storage = parameters.storage();
-      if (_storage) return _storage;
-    }
-    return createMemoryStorage();
+    if (!_storage_) return createMemoryStorage();
+    return isStorageAvailable(_storage_) ? _storage_() : createMemoryStorage();
   })();
 
   return {
