@@ -59,11 +59,6 @@ pub enum OrderType {
     Market,
 }
 
-pub enum Order {
-    Market(MarketOrder),
-    Limit(LimitOrder),
-}
-
 #[grug::derive(Borsh)]
 pub struct MarketOrder {
     pub user: Addr,
