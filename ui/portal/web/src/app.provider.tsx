@@ -1,4 +1,3 @@
-import { useUsernames } from "@left-curve/applets-kit";
 import { useAccount, useAppConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
@@ -101,12 +100,11 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   // Track session key expiration
   const { session } = useSessionKey();
-  const { usernames } = useUsernames();
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (
         (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
-        usernames.length &&
+        account &&
         settings.useSessionKey &&
         connector &&
         connector.type !== "session"
