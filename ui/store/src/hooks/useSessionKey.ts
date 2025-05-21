@@ -5,13 +5,23 @@ import { createStorage } from "../storages/createStorage.js";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "./useAccount.js";
 import { useConfig } from "./useConfig.js";
-import { useConnectorClient } from "./useConnectorClient.js";
 import useStorage from "./useStorage.js";
 
-import type { SigningSession } from "@left-curve/dango/types";
+import { encodeBase64 } from "@left-curve/dango/encoding";
+import type { SigningSession, SigningSessionInfo } from "@left-curve/dango/types";
+import type { Connector } from "../types/connector.js";
 
 export type UseSessionKeyParameters = {
   session?: SigningSession;
+};
+
+type CreateSessionKeyParameters = {
+  connector?: Connector;
+  expireAt: number;
+};
+
+type CreateSessionKeyOptions = {
+  setSession?: boolean;
 };
 
 export type UseSessionKeyReturnType = {
@@ -19,13 +29,15 @@ export type UseSessionKeyReturnType = {
   session: SigningSession | null;
   setSession: (session: SigningSession | null) => void;
   deleteSessionKey: () => void;
-  createSessionKey: (parameters: { expireAt: number }) => Promise<void>;
+  createSessionKey: (
+    parameters: CreateSessionKeyParameters,
+    options?: CreateSessionKeyOptions,
+  ) => Promise<SigningSession>;
 };
 
 export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSessionKeyReturnType {
   const config = useConfig();
-  const { username } = useAccount();
-  const { data: connectorClient } = useConnectorClient();
+  const { username, connector } = useAccount();
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
     storage: createStorage({ storage: sessionStorage }),
@@ -46,26 +58,47 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     },
   });
 
-  async function createSessionKey(parameters: {
-    expireAt: number;
-  }) {
-    if (!connectorClient) throw new Error("connector client not found");
+  async function createSessionKey(
+    parameters: CreateSessionKeyParameters,
+    options: CreateSessionKeyOptions = {},
+  ) {
+    const c = parameters.connector || connector;
+    if (!c) throw new Error("connector not found");
     const { expireAt } = parameters;
+    const { setSession: loadSession = true } = options;
+
     const keyPair = Secp256k1.makeKeyPair();
     const publicKey = keyPair.getPublicKey();
 
-    const { authorization, keyHash, sessionInfo } = await connectorClient.createSession({
-      expireAt,
-      pubKey: publicKey,
+    const sessionInfo: SigningSessionInfo = {
+      sessionKey: encodeBase64(publicKey),
+      expireAt: expireAt.toString(),
+    };
+
+    const { credential } = await c.signArbitrary({
+      primaryType: "Message" as const,
+      message: sessionInfo,
+      types: {
+        Message: [
+          { name: "session_key", type: "string" },
+          { name: "expire_at", type: "string" },
+        ],
+      },
     });
 
-    setSession({
-      keyHash,
+    if (!("standard" in credential)) throw new Error("unsupported credential type");
+
+    const session = {
+      keyHash: credential.standard.keyHash,
       sessionInfo,
       privateKey: keyPair.privateKey,
       publicKey,
-      authorization,
-    });
+      authorization: credential.standard,
+    };
+
+    if (loadSession) setSession(session);
+
+    return session;
   }
 
   function deleteSessionKey() {

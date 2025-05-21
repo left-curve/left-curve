@@ -21,9 +21,9 @@ export const ConfirmSend = forwardRef(
   ({ amount, denom, to, confirmSend, rejectSend }: ConfirmSendProps, ref) => {
     const { hideModal, settings } = useApp();
     const { formatNumberOptions } = settings;
-    const { coins, state } = useConfig();
+    const { coins } = useConfig();
     const client = usePublicClient();
-    const coin = coins[state.chainId][denom];
+    const coin = coins[denom];
 
     const { data: username, isLoading } = useQuery({
       queryKey: ["username", to],

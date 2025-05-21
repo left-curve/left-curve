@@ -13,12 +13,9 @@ interface Props {
 }
 
 export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
-  const config = useConfig();
-  const chainId = useChainId();
+  const { coins } = useConfig();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-
-  const coins = config.coins[chainId];
 
   const sortedCoinsByBalance = Object.entries(coins).sort(([denomA], [denomB]) => {
     const balanceA = BigInt(balances[denomA] || "0");

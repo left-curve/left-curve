@@ -7,7 +7,7 @@ use {
         lending::{Borrowed, ExecuteMsg, InstantiateMsg, InterestRateModel, Market, Repaid},
     },
     grug::{
-        Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response, StdResult,
+        Coin, Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response,
         StorageQuerier,
     },
     std::collections::BTreeMap,
@@ -75,23 +75,17 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     }
 
     // Mint the LP tokens to the sender.
-    let bank = ctx.querier.query_bank()?;
-    let msgs = lp_tokens
-        .into_iter()
-        .map(|coin| {
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::Mint {
-                    to: ctx.sender,
-                    denom: coin.denom,
-                    amount: coin.amount,
-                },
-                Coins::new(),
-            )
-        })
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(Response::new().add_messages(msgs))
+    Ok(Response::new().add_message({
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::Mint {
+                to: ctx.sender,
+                coins: lp_tokens,
+            },
+            Coins::new(),
+        )?
+    }))
 }
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -108,26 +102,20 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
-    // Burn the LP tokens.
-    let bank = ctx.querier.query_bank()?;
-    let msgs = ctx
-        .funds
-        .into_iter()
-        .map(|coin| {
+    // 1. Burn the LP tokens.
+    // 2. Transfer the underlying coins to the caller.
+    Ok(Response::new()
+        .add_message({
+            let bank = ctx.querier.query_bank()?;
             Message::execute(
                 bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
-                    denom: coin.denom,
-                    amount: coin.amount,
+                    coins: ctx.funds,
                 },
                 Coins::new(),
-            )
+            )?
         })
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(Response::new()
-        .add_messages(msgs)
         .add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
@@ -207,32 +195,33 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
 fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
     let bank = ctx.querier.query_bank()?;
     let owner = ctx.querier.query_owner()?;
+    let mut coins_to_mint = Coins::new();
 
-    let (msgs, markets) = MARKETS
+    let markets = MARKETS
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|res| -> anyhow::Result<_> {
             let (denom, market) = res?;
             let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
-            Ok((
-                Message::execute(
-                    bank,
-                    &bank::ExecuteMsg::Mint {
-                        to: owner,
-                        denom: market.supply_lp_denom.clone(),
-                        amount: market.pending_protocol_fee_scaled,
-                    },
-                    Coins::new(),
-                )?,
-                (denom, market),
-            ))
+
+            coins_to_mint.insert(Coin {
+                denom: market.supply_lp_denom.clone(),
+                amount: market.pending_protocol_fee_scaled,
+            })?;
+
+            Ok((denom, market.reset_pending_protocol_fee()))
         })
-        .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
+        .collect::<anyhow::Result<Vec<_>>>()?;
 
     for (denom, market) in markets {
-        let market = market.reset_pending_protocol_fee();
-
         MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
-    Ok(Response::new().add_messages(msgs))
+    Ok(Response::new().add_message(Message::execute(
+        bank,
+        &bank::ExecuteMsg::Mint {
+            to: owner,
+            coins: coins_to_mint,
+        },
+        Coins::new(),
+    )?))
 }

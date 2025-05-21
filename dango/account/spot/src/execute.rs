@@ -1,5 +1,3 @@
-#[cfg(debug_assertions)]
-use grug::ResultExt;
 use {
     anyhow::ensure,
     dango_auth::authenticate_tx,
@@ -20,14 +18,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
     Ok(
         Response::new().may_add_submessage(if msg.minimum_deposit.is_non_empty() {
-            let bank_addr = ctx.querier.query_bank()?;
-            let warp = ctx.querier.query_warp()?;
+            let bank = ctx.querier.query_bank()?;
+            let gateway = ctx.querier.query_gateway()?;
 
             Some(SubMessage::reply_on_success(
                 Message::execute(
-                    bank_addr,
+                    bank,
                     &bank::ExecuteMsg::RecoverTransfer {
-                        sender: warp,
+                        sender: gateway,
                         recipient: ctx.contract,
                     },
                     Coins::default(),
@@ -56,7 +54,11 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn reply(ctx: SudoCtx, minimum_deposit: Coins, _res: SubMsgResult) -> anyhow::Result<Response> {
     #[cfg(debug_assertions)]
-    _res.should_succeed();
+    {
+        use grug::ResultExt;
+
+        _res.should_succeed();
+    }
 
     let balances = ctx.querier.query_balances(ctx.contract, None, None)?;
 

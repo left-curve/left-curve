@@ -1,12 +1,4 @@
-import {
-  Checkbox,
-  ExpandOptions,
-  IconAlert,
-  IconLeft,
-  ResizerContainer,
-  Stepper,
-  useWizard,
-} from "@left-curve/applets-kit";
+import { ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,
@@ -17,38 +9,42 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
+import { registerUser } from "@left-curve/dango/actions";
 import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
-
-import { registerUser } from "@left-curve/dango/actions";
-import { AccountType } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
-import { toast } from "../foundation/Toast";
+import { captureException } from "@sentry/react";
 
 import {
   Button,
   CheckCircleIcon,
+  Checkbox,
+  ExpandOptions,
+  IconAlert,
+  IconLeft,
   Input,
+  ResizerContainer,
   Spinner,
+  Stepper,
   XCircleIcon,
-  useInputs,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
+import { toast } from "../foundation/Toast";
+import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
+import { AccountType } from "@left-curve/dango/types";
+import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
-import type { Address, AppConfig, Hex, Key } from "@left-curve/dango/types";
+import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { AuthCarousel } from "./AuthCarousel";
-
-import { captureException } from "@sentry/react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep, data } = useWizard<{ username: string }>();
@@ -98,15 +94,17 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
               </div>
               {children}
               {activeStep === 0 ? (
-                <div className="flex items-center gap-1">
-                  <p>{m["signup.alreadyHaveAccount"]()}</p>
-                  <Button
-                    variant="link"
-                    autoFocus={false}
-                    onClick={() => navigate({ to: "/signin" })}
-                  >
-                    {m["common.signin"]()}
-                  </Button>
+                <div className="w-full flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <p>{m["signup.alreadyHaveAccount"]()}</p>
+                    <Button
+                      variant="link"
+                      autoFocus={false}
+                      onClick={() => navigate({ to: "/signin" })}
+                    >
+                      {m["common.signin"]()}
+                    </Button>
+                  </div>
                 </div>
               ) : null}
               {activeStep === 1 ? (
@@ -173,27 +171,33 @@ const Credential: React.FC = () => {
         const challenge = "Please sign this message to confirm your identity.";
         const { key, keyHash } = await (async () => {
           if (connectorId === "passkey") {
-            const { id, getPublicKey } = await createWebAuthnCredential({
-              challenge: encodeUtf8(challenge),
-              user: {
-                name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
-              },
-              rp: {
-                name: window.document.title,
-                id: getRootDomain(window.location.hostname),
-              },
-              authenticatorSelection: {
-                residentKey: "preferred",
-                requireResidentKey: false,
-                userVerification: "preferred",
-              },
-            });
+            try {
+              const { id, getPublicKey } = await createWebAuthnCredential({
+                challenge: encodeUtf8(challenge),
+                user: {
+                  name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
+                },
+                rp: {
+                  name: window.document.title,
+                  id: getRootDomain(window.location.hostname),
+                },
+                authenticatorSelection: {
+                  residentKey: "preferred",
+                  requireResidentKey: false,
+                  userVerification: "preferred",
+                },
+              });
 
-            const publicKey = await getPublicKey();
-            const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash(id);
+              const publicKey = await getPublicKey();
+              const key: Key = { secp256r1: encodeBase64(publicKey) };
+              const keyHash = createKeyHash(id);
 
-            return { key, keyHash };
+              return { key, keyHash };
+            } catch (err) {
+              throw new Error(
+                "Your device is not compatible with passkey or you cancelled the request",
+              );
+            }
           }
 
           const provider = await (
@@ -211,9 +215,11 @@ const Credential: React.FC = () => {
         })();
         setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
-      } catch (err) {
-        toast.error({ title: "Couldn't complete the request" });
-        console.log(err);
+      } catch (e) {
+        const error = ensureErrorMessage(e);
+        toast.error({ title: m["errors.failureRequest"](), description: error });
+        console.log(e);
+        captureException(e);
       }
     },
   });
@@ -294,7 +300,7 @@ const Username: React.FC = () => {
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
         const response = await fetch(
-          `${import.meta.env.PUBLIC_FAUCET_URI || "https://devnet.dango.exchange/faucet"}/mint/${address}`,
+          `${config.chain.urls.indexer.replace("graphql", "faucet")}/mint/${address}`,
         );
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
@@ -311,15 +317,7 @@ const Username: React.FC = () => {
       } catch (err) {
         toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
-        captureException(err, {
-          data: {
-            key,
-            keyHash,
-            username,
-            connectorId,
-            seed,
-          },
-        });
+        captureException(err);
       }
     },
   });
@@ -379,8 +377,7 @@ const Signin: React.FC = () => {
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
-    username,
-    sessionKey: useSessionKey,
+    session: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
@@ -392,13 +389,18 @@ const Signin: React.FC = () => {
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
         });
+        captureException(err);
       },
     },
   });
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <Button fullWidth onClick={() => connectWithConnector({ connectorId })} isLoading={isPending}>
+      <Button
+        fullWidth
+        onClick={() => connectWithConnector({ username, connectorId })}
+        isLoading={isPending}
+      >
         {m["common.signin"]()}
       </Button>
       <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>

@@ -11,16 +11,33 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { publicVars } = loadEnv();
 
+const storePath = {
+  local: path.resolve(__dirname, "./store.config.local.ts"),
+  dev: path.resolve(__dirname, "./store.config.dev.ts"),
+  test: path.resolve(__dirname, "./store.config.testnet.ts"),
+  prod: path.resolve(__dirname, "./store.config.prod.ts"),
+};
+
 export default defineConfig({
+  resolve: {
+    aliasStrategy: "prefer-alias",
+    alias: {
+      // Order matters
+      "~/paraglide": path.resolve(__dirname, "./.paraglide"),
+      "~/constants": path.resolve(__dirname, "./constants.config.ts"),
+      "~/store": storePath[(process.env.CONFIG_ENVIRONMENT || "local") as keyof typeof storePath],
+      "~": path.resolve(__dirname, "./src"),
+    },
+  },
   source: {
     entry: {
       index: "./src/index.tsx",
     },
-    alias: {
-      "~": "./src",
-      "~/paraglide": path.resolve(__dirname, "./.paraglide"),
+    define: {
+      ...publicVars,
+      "process.env": {},
+      "import.meta.env": {},
     },
-    define: publicVars,
   },
   server: { port: 5080 },
   html: { template: "public/index.html" },

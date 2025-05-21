@@ -4,7 +4,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
-import { NotificationsList } from "./NotificationsList";
+import { Notifications } from "./Notifications";
 
 import type React from "react";
 
@@ -43,7 +43,7 @@ export const NotificationsMenu: React.FC<Props> = ({ buttonRef }) => {
           {m["common.viewAll"]()}
         </Button>
       </div>
-      <NotificationsList
+      <Notifications
         className="max-h-[41rem] overflow-y-scroll scrollbar-none"
         maxNotifications={5}
       />

@@ -1,13 +1,19 @@
 import { twMerge } from "@left-curve/applets-kit";
+import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "~/components/foundation/Header";
+import { NotFound } from "~/components/foundation/NotFound";
 import { QuestBanner } from "~/components/foundation/QuestBanner";
 import { WelcomeModal } from "~/components/modals/WelcomeModal";
 
 export const Route = createFileRoute("/(app)/_app")({
   component: LayoutApp,
-  errorComponent: () => {
+  errorComponent: ({ error }) => {
+    useEffect(() => {
+      captureException(error);
+    }, []);
+
     return (
       <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none bg-white-100">
         <img
@@ -18,13 +24,7 @@ export const Route = createFileRoute("/(app)/_app")({
           )}
         />
         <Header isScrolled={false} />
-        <div className="flex items-center justify-start w-full z-30 h-full relative flex-col">
-          <div className="w-full flex flex-1 justify-center items-center p-4">
-            <h3 className="text-center max-w-4xl diatype text-[40px] md:text-[80px] font-extrabold text-gray-500">
-              Sorry, we couldn't find the page you were looking for.
-            </h3>
-          </div>
-        </div>
+        <NotFound />
       </main>
     );
   },

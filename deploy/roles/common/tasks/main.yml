@@ -1,0 +1,116 @@
+- name: Install locales package
+  apt:
+    name: locales
+    state: present
+    update_cache: yes
+
+- name: Set default system locale
+  lineinfile:
+    path: /etc/locale.gen
+    regexp: 'en_US.UTF-8 UTF-8'
+    line: 'en_US.UTF-8 UTF-8'
+
+- name: Generate en_US.UTF-8 locale
+  command: locale-gen en_US.UTF-8
+
+- name: Set default system locale
+  lineinfile:
+    path: /etc/default/locale
+    regexp: '^LANG='
+    line: 'LANG=en_US.UTF-8'
+    create: yes
+
+- name: Reconfigure locales
+  command: dpkg-reconfigure --frontend=noninteractive locales
+
+- name: Set hostname in /etc/hostname
+  hostname:
+    name: "{{ hostname }}"
+    use: debian
+
+- name: Update /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: "127.0.1.1 {{ hostname }}"
+
+- name: Install base packages
+  apt:
+    name:
+      - ufw
+      - curl
+      - git
+      - ca-certificates
+      - fail2ban
+      - tmux
+      - mosh
+      - sudo
+      - gnupg
+      - apt-transport-https
+      - vim
+      - btop
+      - htop
+    state: present
+    update_cache: yes
+
+- name: Refresh network facts
+  setup:
+    gather_subset:
+      - network
+- ufw: state=reset
+  tags: setup
+- ufw: default=allow direction=outgoing
+  tags: setup
+- ufw: default=deny direction=incoming
+  tags: setup
+- name: Allow SSH on non-tailscale when no tailscale0 exists
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - ssh
+    # mosh
+    - '60000:61000'
+  when: "'tailscale0' not in ansible_facts.interfaces"
+- name: Allow any port on tailscale0
+  ufw:
+    rule: allow
+    direction: in
+    interface: tailscale0
+    proto: tcp
+  when: "'tailscale0' in ansible_facts.interfaces"
+- ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: udp
+  # Tailscale
+  with_items: ['41641']
+- ufw: logging=low
+  tags: setup
+- ufw: state=enabled
+  tags: setup
+
+- copy:
+    src: "jail.local"
+    dest: /etc/fail2ban/
+    mode: '0644'
+
+- name: Restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+
+- file:
+    state: absent
+    path: /etc/motd
+
+- copy:
+    src: "{{ item }}"
+    dest: /etc/update-motd.d/
+    mode: '0755'
+  with_items:
+    - 10-banner
+    - 20-sysinfo

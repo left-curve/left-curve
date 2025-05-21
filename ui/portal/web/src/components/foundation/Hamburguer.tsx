@@ -6,13 +6,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { capitalize } from "@left-curve/dango/utils";
 
-import {
-  IconBell,
-  IconButton,
-  IconDangoDots,
-  IconGear,
-  IconProfile,
-} from "@left-curve/applets-kit";
+import { IconBell, IconButton, IconDangoDots, IconGear, IconUser } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 import { TxIndicator } from "./TxIndicator";
 
@@ -52,7 +46,7 @@ export const Hamburger: React.FC = () => {
             type="button"
             className={twMerge("shadow-btn-shadow-gradient", { "shadow-none": !showOptions })}
           >
-            <IconProfile className="h-6 w-6 " />
+            <IconUser className="h-6 w-6 " />
           </IconButton>
         </div>
 

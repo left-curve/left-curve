@@ -64,9 +64,6 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
           onClick={() => setShowMenu(true)}
           onChange={(e) => [setInputValue(e.target.value), onChange?.(e)]}
           endContent={isFetching ? <Spinner size="sm" color="gray" /> : null}
-          classNames={{
-            inputWrapper: showMenu && options.length ? "rounded-b-none" : "",
-          }}
           {...props}
         />
         <div

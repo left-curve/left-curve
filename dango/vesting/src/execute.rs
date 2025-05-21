@@ -2,7 +2,7 @@ use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
     anyhow::{bail, ensure},
     dango_types::{
-        constants::DANGO_DENOM,
+        constants::dango,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
     grug::{
@@ -39,7 +39,7 @@ fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Res
         "you don't have the right, O you don't have the right"
     );
 
-    let coin = ctx.funds.into_one_coin_of_denom(&DANGO_DENOM)?;
+    let coin = ctx.funds.into_one_coin_of_denom(&dango::DENOM)?;
 
     POSITIONS.save(ctx.storage, user, &Position {
         vesting_status: VestingStatus::Active(schedule),
@@ -73,7 +73,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     let refund_msg = if refund.is_non_zero() {
         Some(Message::transfer(
             owner,
-            Coin::new(DANGO_DENOM.clone(), refund)?,
+            Coin::new(dango::DENOM.clone(), refund)?,
         )?)
     } else {
         None
@@ -98,6 +98,6 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     Ok(Response::new().add_message(Message::transfer(
         ctx.sender,
-        Coin::new(DANGO_DENOM.clone(), claimable)?,
+        Coin::new(dango::DENOM.clone(), claimable)?,
     )?))
 }

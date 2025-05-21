@@ -1,0 +1,38 @@
+- name: Ensure '{{ runner_user }}' user exists
+  user:
+    name: "{{ runner_user }}"
+    shell: /bin/bash
+    create_home: yes
+
+- name: Ensure dependencies are installed
+  apt:
+    name:
+      - curl
+      - build-essential
+      - libssl-dev
+      - clang
+      - pkg-config
+    state: present
+    update_cache: yes
+
+- name: Install rustup
+  become: true
+  become_user: "{{ runner_user }}"
+  shell: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    executable: /bin/bash
+    creates: /home/{{ runner_user }}/.cargo/bin/rustup
+
+- name: Install Rust components
+  become: true
+  become_user: "{{ runner_user }}"
+  shell: |
+    source /etc/profile
+    export PATH=$CARGO_HOME/bin:$PATH
+    . "$HOME/.cargo/env"
+    rustup component add clippy rustfmt rust-src
+    rustup component add rustfmt clippy rust-src --toolchain nightly
+    cargo install mdbook mdbook-katex
+  args:
+    executable: /bin/bash

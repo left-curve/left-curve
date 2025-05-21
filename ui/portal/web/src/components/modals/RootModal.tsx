@@ -16,6 +16,12 @@ export const Modals = {
   ConfirmSend: "confirm-send",
   ConfirmAccount: "confirm-account",
   SignWithDesktop: "sign-with-desktop",
+  ConfirmSwap: "confirm-swap",
+  RenewSession: "renew-session",
+};
+
+export type ModalRef = {
+  triggerOnClose: () => void;
 };
 
 const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
@@ -41,18 +47,43 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     ),
   },
   [Modals.SignWithDesktop]: {
-    header: m["common.signin"](),
     component: lazy(() =>
       import("./SignWithDesktop").then(({ SignWithDesktop }) => ({
         default: SignWithDesktop,
       })),
     ),
+    options: {
+      header: m["common.signin"](),
+    },
+  },
+  [Modals.ConfirmSwap]: {
+    component: lazy(() =>
+      import("./ConfirmSwap").then(({ ConfirmSwap }) => ({
+        default: ConfirmSwap,
+      })),
+    ),
+    options: {
+      header: m["dex.convert.swap"](),
+    },
+  },
+  [Modals.RenewSession]: {
+    component: lazy(() =>
+      import("./RenewSession").then(({ RenewSession }) => ({
+        default: RenewSession,
+      })),
+    ),
+    options: {
+      disableClosing: true,
+    },
   },
 };
 
 type ModalDefinition = {
-  header?: string;
   component: React.LazyExoticComponent<React.ForwardRefExoticComponent<any>>;
+  options?: {
+    header?: string;
+    disableClosing?: boolean;
+  };
 };
 
 export const RootModal: React.FC = () => {
@@ -65,7 +96,7 @@ export const RootModal: React.FC = () => {
 
   const { modal: activeModal, props: modalProps } = modal;
 
-  const { component: Modal, header } =
+  const { component: Modal, options = {} } =
     useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
 
   const closeModal = () => {
@@ -79,6 +110,7 @@ export const RootModal: React.FC = () => {
   if (!isMd) {
     return (
       <Sheet
+        disableDrag={options.disableClosing}
         ref={sheetRef}
         isOpen={!!activeModal}
         onClose={closeModal}
@@ -87,12 +119,12 @@ export const RootModal: React.FC = () => {
       >
         <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
           <Sheet.Header>
-            {header ? (
+            {options.header ? (
               <div className="flex items-center justify-between w-full">
                 <Button variant="link" onClick={hideModal}>
                   {m["common.cancel"]()}
                 </Button>
-                <p className="mt-1 text-gray-500 font-semibold">{header}</p>
+                <p className="mt-1 text-gray-500 font-semibold">{options.header}</p>
                 <div className="w-[66px]" />
               </div>
             ) : null}
@@ -103,7 +135,7 @@ export const RootModal: React.FC = () => {
             </Suspense>
           </Sheet.Content>
         </Sheet.Container>
-        <Sheet.Backdrop onTap={closeModal} />
+        <Sheet.Backdrop onTap={() => !options.disableClosing && closeModal()} />
       </Sheet>
     );
   }
@@ -113,7 +145,7 @@ export const RootModal: React.FC = () => {
       <motion.div
         ref={overlayRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current) closeModal();
+          if (e.target === overlayRef.current && !options.disableClosing) closeModal();
         }}
         className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}

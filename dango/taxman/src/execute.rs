@@ -8,6 +8,7 @@ use {
     grug::{
         Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Message, MultiplyFraction,
         MutableCtx, Number, NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome, Uint128,
+        coins,
     },
     std::collections::BTreeMap,
 };
@@ -113,8 +114,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             &bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
-                denom: fee_cfg.fee_denom.clone(),
-                amount: withhold_amount,
+                coins: coins! { fee_cfg.fee_denom.clone() => withhold_amount },
             },
             Coins::new(),
         )?)
@@ -159,8 +159,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
             &bank::ExecuteMsg::ForceTransfer {
                 from: ctx.contract,
                 to: tx.sender,
-                denom: fee_cfg.fee_denom,
-                amount: refund_amount,
+                coins: coins! { fee_cfg.fee_denom.clone() => refund_amount },
             },
             Coins::new(),
         )?)

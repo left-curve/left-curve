@@ -14,6 +14,7 @@ import {
   TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
+import { useApp } from "~/hooks/useApp";
 
 export const AccountCardOptions = {
   [AccountType.Spot]: {
@@ -139,8 +140,14 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
 
   const { data: balances = {} } = useBalances({ address });
   const { calculateBalance } = usePrices();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
 
-  const totalBalance = calculateBalance(balances, { format: true });
+  const totalBalance = calculateBalance(balances, {
+    format: true,
+    formatOptions: { ...formatNumberOptions, currency: "usd" },
+  });
+
   return (
     <div
       className={twMerge(

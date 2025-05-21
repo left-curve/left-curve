@@ -112,7 +112,7 @@ impl BorshDeserialize for Part {
     {
         <String as BorshDeserialize>::deserialize_reader(reader)?
             .try_into()
-            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+            .map_err(io::Error::other)
     }
 }
 
@@ -297,7 +297,7 @@ impl BorshDeserialize for Denom {
     {
         <String as BorshDeserialize>::deserialize_reader(reader)?
             .try_into()
-            .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+            .map_err(io::Error::other)
     }
 }
 

@@ -2,6 +2,8 @@ import { Cell, Table } from "@left-curve/applets-kit";
 import { useConfig, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
+import { formatUnits } from "@left-curve/dango/utils";
+
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { Coins } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount, WithPrice } from "@left-curve/store/types";
@@ -11,16 +13,17 @@ export type AssetsTableProps = {
 };
 
 export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
-  const { coins: allCoins, state } = useConfig();
+  const { coins } = useConfig();
   const { settings } = useApp();
   const { getPrice } = usePrices();
   const { formatNumberOptions } = settings;
 
-  const coins = allCoins[state.chainId];
-
   const data = Object.entries(balances).map(([denom, amount]) => {
     const coin = coins[denom];
-    const price = getPrice(amount, denom, { format: true, formatOptions: formatNumberOptions });
+    const price = getPrice(formatUnits(amount, coin.decimals).toString(), denom, {
+      format: true,
+      formatOptions: formatNumberOptions,
+    });
 
     return { ...coin, price, amount };
   });

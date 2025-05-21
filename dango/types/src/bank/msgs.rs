@@ -1,6 +1,6 @@
 use {
     crate::bank::Metadata,
-    grug::{Addr, Coins, Denom, Part, Uint128},
+    grug::{Addr, Coins, Denom, Part},
     std::collections::BTreeMap,
 };
 
@@ -35,29 +35,16 @@ pub enum ExecuteMsg {
     SetMetadata { denom: Denom, metadata: Metadata },
     /// Mint tokens of the specified amount to a recipient.
     /// Can only be called by the namespace owner.
-    Mint {
-        to: Addr,
-        denom: Denom,
-        amount: Uint128,
-    },
+    Mint { to: Addr, coins: Coins },
     /// Burn tokens of the specified amount from an account.
     /// Can only be called by the namespace owner.
-    Burn {
-        from: Addr,
-        denom: Denom,
-        amount: Uint128,
-    },
-    /// Forcily transfer a coin from an account to a receiver.
+    Burn { from: Addr, coins: Coins },
+    /// Forcily transfer coins from an account to a receiver.
     /// Can only be called by the chain's taxman contract.
     /// Used by taxman to withhold pending transaction fees.
     ///
     /// Note: The `receive` method isn't invoked when calling this.
-    ForceTransfer {
-        from: Addr,
-        to: Addr,
-        denom: Denom,
-        amount: Uint128,
-    },
+    ForceTransfer { from: Addr, to: Addr, coins: Coins },
     /// Retrieve funds sent to a non-existing recipient.
     RecoverTransfer { sender: Addr, recipient: Addr },
 }

@@ -6,22 +6,22 @@ use grug_types::JsonSerExt;
 use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
-        APP_CONFIG, AppError, AppResult, Buffer, CHAIN_ID, CODES, CONFIG, Db, EventResult,
-        GasTracker, Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer,
-        NaiveQuerier, NullIndexer, ProposalPreparer, QuerierProviderImpl, Shared, Vm,
-        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
-        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
-        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
-        query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
+        APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
+        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
+        NullIndexer, ProposalPreparer, QuerierProviderImpl, Vm, catch_and_push_event,
+        catch_and_update_event, do_authenticate, do_backrun, do_configure, do_cron_execute,
+        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upload,
+        do_withhold_fee, query_app_config, query_balance, query_balances, query_code, query_codes,
+        query_config, query_contract, query_contracts, query_supplies, query_supply,
         query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxEvents, CheckTxOutcome,
-        CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GENESIS_SENDER,
-        GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
-        MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult,
-        Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
+        Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
+        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus,
+        GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
+        MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
+        StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
 };
@@ -168,7 +168,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(
             chain_id,
-            time = into_utc_string(block.timestamp),
+            time = block.timestamp.to_rfc3339_string(),
             app_hash = root_hash.as_ref().unwrap().to_string(),
             gas_used = gas_tracker.used(),
             "Completed genesis"
@@ -282,7 +282,7 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 idx = _idx,
-                time = into_utc_string(time),
+                time = time.to_rfc3339_string(),
                 contract = contract.to_string(),
                 "Performing cronjob"
             );
@@ -367,7 +367,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(
             height = block.info.height,
-            time = into_utc_string(block.info.timestamp),
+            time = block.info.timestamp.to_rfc3339_string(),
             app_hash = app_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
@@ -1067,7 +1067,7 @@ pub(crate) fn schedule_cronjob(
 ) -> StdResult<()> {
     #[cfg(feature = "tracing")]
     tracing::info!(
-        time = into_utc_string(next_time),
+        time = next_time.to_rfc3339_string(),
         contract = contract.to_string(),
         "Scheduled cronjob"
     );
@@ -1099,12 +1099,4 @@ fn new_tx_outcome(
         events,
         result,
     }
-}
-
-#[cfg(feature = "tracing")]
-pub fn into_utc_string(timestamp: Timestamp) -> String {
-    // This panics if the timestamp (as nanoseconds) overflows `i64` range.
-    // But that'd be 500 years or so from now...
-    chrono::DateTime::from_timestamp_nanos(timestamp.into_nanos() as i64)
-        .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
 }

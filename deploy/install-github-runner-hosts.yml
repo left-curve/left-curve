@@ -1,0 +1,44 @@
+- name: Install GitHub Actions runners
+  hosts: github_runners
+  become: true
+  vars:
+    github_account: left-curve
+    runner_org: yes
+    access_token: "{{ lookup('env', 'RUNNERS_GITHUB_TOKEN') }}"
+  roles:
+    - MonolithProjects.github_actions_runner
+  tasks:
+    - name: Set environment variables in GitHub Actions runner systemd service
+      blockinfile:
+        path: "/etc/systemd/system/actions.runner.{{ github_account }}.{{ hostname }}.service"
+        marker: "# {mark} GitHub Runner Env Vars"
+        insertafter: '[Service]'
+        block: |
+          Environment="PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          Environment="CARGO_HOME=/home/{{ runner_user }}/.cargo"
+          Environment="RUSTUP_HOME=/home/{{ runner_user }}/.rustup"
+      notify:
+        - Reload systemd
+        - Restart github-actions-runner
+      become: yes
+
+    - name: Ensure Rust env vars are set in .bashrc for the runner user
+      blockinfile:
+        path: "/home/{{ runner_user }}/.bashrc"
+        marker: "# {mark} Rust Env Vars"
+        block: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+      become: yes
+      become_user: "{{ runner_user }}"
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+      become: yes
+
+    - name: Restart github-actions-runner
+      ansible.builtin.systemd:
+        name: "actions.runner.{{ github_account }}.{{ hostname }}.service"
+        state: restarted
+      become: yes

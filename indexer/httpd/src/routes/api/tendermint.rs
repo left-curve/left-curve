@@ -1,24 +1,21 @@
 use {
     actix_web::{Error, HttpResponse, error::ErrorInternalServerError, get, web},
+    grug_types::Hash256,
     std::str::FromStr,
-    tendermint_rpc::Client,
 };
 
 use crate::context::Context;
 
 #[get("/search_tx/{hash}")]
 pub async fn search_tx(
-    path: web::Path<u64>,
+    path: web::Path<String>,
     app_ctx: web::Data<Context>,
 ) -> Result<HttpResponse, Error> {
-    let http_client = tendermint_rpc::HttpClient::new(app_ctx.tendermint_endpoint.as_str())
-        .map_err(ErrorInternalServerError)?;
+    let tx_hash = Hash256::from_str(&path.into_inner()).map_err(ErrorInternalServerError)?;
 
-    let tx_hash = tendermint::hash::Hash::from_str(&path.into_inner().to_string())
-        .map_err(ErrorInternalServerError)?;
-
-    let tx = http_client
-        .tx(tx_hash, false)
+    let tx = app_ctx
+        .consensus_client
+        .search_tx(tx_hash)
         .await
         .map_err(ErrorInternalServerError)?;
 

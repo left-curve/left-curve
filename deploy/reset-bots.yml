@@ -1,0 +1,14 @@
+- hosts: bots
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  tasks:
+    - name: Stop and remove bots container
+      docker_container:
+        name: "{{ dango_network }}_bots"
+        state: absent
+        keep_volumes: false
+      loop: "{{ dango_networks }}"
+      loop_control:
+        loop_var: dango_network

@@ -1,0 +1,31 @@
+- name: Prepare host for GitHub runners
+  hosts: github_runners
+  become: yes
+  roles:
+    - rust
+  tasks:
+    - name: Install required packages
+      apt:
+        name: [curl, tar, pipx, python3, python3-pip]
+        update_cache: yes
+
+    - name: Ensure '{{ runner_user }}' owns its home directory
+      file:
+        path: "/home/{{ runner_user }}"
+        owner: "{{ runner_user }}"
+        group: "{{ runner_user }}"
+        recurse: yes
+
+    - name: Adding runner user to group docker
+      become: true
+      user:
+        name: "{{ runner_user }}"
+        append: true
+        groups:
+          - docker
+
+    - name: Install just CLI
+      ansible.builtin.shell: |
+        curl -sL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+      args:
+        creates: /usr/local/bin/just

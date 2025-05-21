@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { camelToTitleCase } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
 import { Badge, TextCopy, TruncateText } from "@left-curve/applets-kit";
@@ -18,8 +17,8 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 
 const ContractExplorerContext = createContext<
-  | (UseQueryResult<(ContractInfo & { name: string; balances: Coins }) | null, Error> & {
-      address: string;
+  | (UseQueryResult<(ContractInfo & { balances: Coins }) | null, Error> & {
+      address: Address;
     })
   | null
 >(null);
@@ -55,16 +54,8 @@ const Root: React.FC<PropsWithChildren<ContractExplorerProps>> = ({ address, chi
 
       if (isAccount) return null;
 
-      const appContract = Object.entries(appConfig.addresses).find(
-        ([_, cAddress]) => cAddress === address,
-      );
-      const name = appContract
-        ? `Dango ${camelToTitleCase(appContract[0])}`
-        : (contractInfo.label ?? "Contract");
-
       return {
         ...contractInfo,
-        name,
         address,
         balances,
       };
@@ -87,7 +78,7 @@ const Details: React.FC = () => {
 
   if (!contract || isLoading) return null;
 
-  const { name, codeHash, admin, balances } = contract;
+  const { codeHash, admin, balances } = contract;
   const totalCoins = Object.values(balances).length;
   const totalBalance = calculateBalance(balances, {
     format: true,
@@ -96,7 +87,7 @@ const Details: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
-      <ContractCard name={name} address={address} balance={totalBalance} />
+      <ContractCard address={address} balance={totalBalance} />
       <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow relative overflow-hidden w-full">
         <h4 className="h4-heavy">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">

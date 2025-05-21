@@ -13,13 +13,17 @@ import { ConnectionStatus } from "./types/store.js";
 
 import type {
   AccountTypes,
+  Address,
   AppConfig,
   Client,
+  Denom,
   Hex,
   PairUpdate,
   PublicClient,
   Transport,
 } from "@left-curve/dango/types";
+
+import { invertObject } from "@left-curve/dango/utils";
 
 import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
@@ -32,6 +36,7 @@ export function createConfig<
 >(parameters: CreateConfigParameters<transport, coin>): Config<transport, coin> {
   const {
     multiInjectedProviderDiscovery = true,
+    version = 0,
     storage = createStorage({
       storage:
         typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
@@ -105,10 +110,11 @@ export function createConfig<
   }
 
   let _appConfig:
-    | (AppConfig & {
+    | {
+        addresses: AppConfig["addresses"] & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
-        pairs: PairUpdate[];
-      })
+        pairs: Record<Denom, PairUpdate>;
+      }
     | undefined;
 
   async function getAppConfig() {
@@ -120,7 +126,17 @@ export function createConfig<
       client.getPairs(),
     ]);
 
-    _appConfig = { ...appConfig, accountFactory: { codeHashes }, pairs };
+    _appConfig = {
+      addresses: {
+        ...appConfig.addresses,
+        ...invertObject(appConfig.addresses),
+      },
+      accountFactory: { codeHashes },
+      pairs: pairs.reduce((acc, pair) => {
+        acc[pair.baseDenom] = pair;
+        return acc;
+      }, Object.create({})),
+    };
     return _appConfig;
   }
 
@@ -143,7 +159,7 @@ export function createConfig<
   const stateCreator = storage
     ? persist(getInitialState, {
         name: "store",
-        version: 0.3,
+        version,
         storage,
         migrate(state, version) {
           const persistedState = state as State;

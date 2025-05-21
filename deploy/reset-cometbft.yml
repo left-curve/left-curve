@@ -1,0 +1,24 @@
+- hosts: cometbft
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  tasks:
+    - name: Stop and remove cometbft container
+      docker_container:
+        name: "{{ dango_network }}_cometbft"
+        state: absent
+        keep_volumes: false
+      loop: "{{ dango_networks }}"
+      loop_control:
+        loop_var: dango_network
+
+    - name: Remove directory
+      vars:
+        cometbft_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
+      file:
+        path: "{{ cometbft_target_dir }}"
+        state: absent
+      loop: "{{ dango_networks }}"
+      loop_control:
+        loop_var: dango_network

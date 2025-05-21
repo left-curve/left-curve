@@ -1,4 +1,4 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
+import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
 import { usePrices, usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
@@ -94,13 +94,13 @@ const Details: React.FC = () => {
             ) : (
               <TruncateText text={codeHash} className="diatype-m-bold" />
             )}
-            <TextCopy className="w-4 h-4 text-gray-500" copyText={""} />
+            <TextCopy className="w-4 h-4 text-gray-500" copyText={codeHash} />
           </div>
           <div className="flex gap-1 items-center">
             <p className="diatype-md-medium text-gray-500">
               {m["explorer.contracts.details.admin"]()}
             </p>
-            <p className="diatype-m-bold">{admin ? admin : "None"}</p>
+            {admin ? <AddressVisualizer address={admin} /> : <p className="diatype-m-bold">None</p>}
           </div>
           <div className="flex gap-1 items-center">
             <p className="diatype-md-medium text-gray-500">

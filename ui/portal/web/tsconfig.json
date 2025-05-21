@@ -3,7 +3,9 @@
   "compilerOptions": {
     "paths": {
       "~/*": ["./src/*"],
-      "~/paraglide/*": ["./.paraglide/*"]
+      "~/paraglide/*": ["./.paraglide/*"],
+      "~/constants": ["./constants.config.ts"],
+      "~/store": ["./store.config.dev.ts"]
     },
     "noEmit": true
   },

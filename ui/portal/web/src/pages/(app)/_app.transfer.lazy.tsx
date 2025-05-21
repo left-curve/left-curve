@@ -1,19 +1,7 @@
-import {
-  capitalize,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-  withResolvers,
-} from "@left-curve/dango/utils";
-import {
-  useAccount,
-  useBalances,
-  useChainId,
-  useConfig,
-  usePrices,
-  useSigningClient,
-} from "@left-curve/store";
+import { useAccount, useBalances, useConfig, usePrices, useSigningClient } from "@left-curve/store";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -21,25 +9,28 @@ import {
   AccountSearchInput,
   Button,
   CoinSelector,
-  IconButton,
-  IconChevronDown,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
   TextCopy,
   TruncateText,
-  useInputs,
-  useMediaQuery,
-  useWatchEffect,
 } from "@left-curve/applets-kit";
-import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { toast } from "~/components/foundation/Toast";
 import { Modals } from "~/components/modals/RootModal";
+import { MobileTitle } from "~/components/foundation/MobileTitle";
+
 import { m } from "~/paraglide/messages";
+import { toast } from "~/components/foundation/Toast";
+
+import { isValidAddress } from "@left-curve/dango";
+import {
+  capitalize,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+  withResolvers,
+} from "@left-curve/dango/utils";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
@@ -48,22 +39,19 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 function TransferApplet() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal, eventBus } = useApp();
+  const { settings, showModal, notifier } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
   const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
-  const [selectedDenom, setSelectedDenom] = useState("hyp/eth/usdc");
+  const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({
     strategy: "onSubmit",
   });
 
   const { account, isConnected } = useAccount();
-  const chainId = useChainId();
-  const config = useConfig();
+  const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
-
-  const { isMd } = useMediaQuery();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
@@ -73,7 +61,6 @@ function TransferApplet() {
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
-  const coins = config.coins[chainId];
   const selectedCoin = coins[selectedDenom];
 
   const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
@@ -90,7 +77,7 @@ function TransferApplet() {
   >({
     mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
-      eventBus.publish("submit_tx", { isSubmitting: true });
+      notifier.publish("submit_tx", { isSubmitting: true });
       try {
         const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
@@ -107,7 +94,7 @@ function TransferApplet() {
         const response = await promise
           .then(() => true)
           .catch(() => {
-            eventBus.publish("submit_tx", {
+            notifier.publish("submit_tx", {
               isSubmitting: false,
               txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
             });
@@ -127,7 +114,7 @@ function TransferApplet() {
 
         reset();
         toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
         });
@@ -135,7 +122,7 @@ function TransferApplet() {
         queryClient.invalidateQueries({ queryKey: ["quests", account] });
       } catch (e) {
         console.error(e);
-        eventBus.publish("submit_tx", {
+        notifier.publish("submit_tx", {
           isSubmitting: false,
           txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
         });
@@ -154,15 +141,7 @@ function TransferApplet() {
 
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
-      {isMd ? null : (
-        <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
-          <IconButton variant="link">
-            <IconChevronDown className="rotate-90" />
-          </IconButton>
-
-          <span className="h3-bold text-gray-900">{m["sendAndReceive.title"]()}</span>
-        </h2>
-      )}
+      <MobileTitle title={m["sendAndReceive.title"]()} />
 
       <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer
@@ -193,10 +172,10 @@ function TransferApplet() {
                   {...register("amount", {
                     strategy: "onChange",
                     validate: (v) => {
-                      if (!v) return m["validations.errors.amountIsRequired"]();
-                      if (Number(v) <= 0) return m["validations.errors.amountIsZero"]();
+                      if (!v) return m["errors.validations.amountIsRequired"]();
+                      if (Number(v) <= 0) return m["errors.validations.amountIsZero"]();
                       if (Number(v) > Number(humanAmount))
-                        return m["validations.errors.insufficientFunds"]();
+                        return m["errors.validations.insufficientFunds"]();
                       return true;
                     },
                     mask: (v, prev) => {
@@ -241,7 +220,7 @@ function TransferApplet() {
                 />
                 <AccountSearchInput
                   {...register("address", {
-                    validate: (v) => isValidAddress(v) || m["validations.errors.invalidAddress"](),
+                    validate: (v) => isValidAddress(v) || m["errors.validations.invalidAddress"](),
                     mask: (v) => v.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                   })}
                   label="To"
