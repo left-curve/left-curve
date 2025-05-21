@@ -45,9 +45,11 @@ export const notifier = createEventBus<NotificationsMap>();
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
 
-  const graphqlClient = useRef<GraphqlSubscriptionClient>();
   const { username = "" } = useAccount();
   const { coins, chain } = useConfig();
+  const graphqlClient = useRef<GraphqlSubscriptionClient>(
+    createClient({ url: chain.urls.indexer }),
+  );
 
   const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notifications[]>>(
     "app.notifications",
@@ -87,9 +89,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
 
   const subscribe = useCallback(
     (account: Account) => {
-      const client = graphqlClient.current
-        ? graphqlClient.current
-        : createClient({ url: chain.urls.indexer });
+      const client = graphqlClient.current;
 
       (async () => {
         const subscription = client.iterate({
