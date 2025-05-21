@@ -3,7 +3,7 @@ import { TradeMenu } from "~/components/foundation/TradeMenu";
 import { OpenOrder } from "~/components/pro-swap/OpenOrder";
 import { OrderBook } from "~/components/pro-swap/OrderBook";
 import { PairHeader } from "~/components/pro-swap/PairHeader";
-import { TradingViewChart } from "~/components/pro-swap/TragingViewChart";
+import { TradingViewChart } from "~/components/pro-swap/TradingViewChart";
 
 export const Route = createFileRoute("/(app)/_app/pro-swap")({
   component: RouteComponent,
