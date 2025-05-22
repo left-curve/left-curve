@@ -4,7 +4,7 @@
 
 body {
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: scroll;
   min-height: 100svh;
   scrollbar-gutter: stable;
   background: theme("colors.white.100");

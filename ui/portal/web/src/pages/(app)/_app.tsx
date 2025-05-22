@@ -15,7 +15,7 @@ export const Route = createFileRoute("/(app)/_app")({
     }, []);
 
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none bg-white-100">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-white-100">
         <img
           src="/images/union.png"
           alt="bg-image"
@@ -46,7 +46,7 @@ function LayoutApp() {
   }, []);
 
   return (
-    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen">
+    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen ">
       <img
         src="/images/union.png"
         alt="bg-image"
