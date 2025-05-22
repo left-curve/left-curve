@@ -1,4 +1,4 @@
-import { Badge, IconEmptyStar, IconShare } from "@left-curve/applets-kit";
+import { Badge, IconEmptyStar } from "@left-curve/applets-kit";
 import type React from "react";
 
 export const PairHeader: React.FC = () => {
@@ -19,7 +19,7 @@ export const PairHeader: React.FC = () => {
         </div>
         <div className="flex gap-2 items-center">
           <IconEmptyStar className="w-5 h-5 text-gray-500" />
-          <IconShare className="w-5 h-5 text-gray-500" />
+          {/* <Iconlink className="w-5 h-5 text-gray-500" /> */}
         </div>
       </div>
       <div className="gap-2 lg:gap-4 grid grid-cols-1 lg:flex lg:flex-wrap">
