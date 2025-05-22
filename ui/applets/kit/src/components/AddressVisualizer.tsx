@@ -1,28 +1,37 @@
-import { useAccount, useAppConfig, usePublicClient } from "@left-curve/store";
+import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { twMerge } from "#utils/twMerge.js";
-import { IconUserCircle } from "./icons/IconUserCircle";
-
-import type { Address } from "@left-curve/dango/types";
 import { camelToTitleCase } from "@left-curve/dango/utils";
-import type React from "react";
+
+import { IconUserCircle } from "./icons/IconUserCircle";
 import { TruncateResponsive } from "./TruncateResponsive";
+
+import type React from "react";
+import type { Address } from "@left-curve/dango/types";
+import { IconLink } from "./icons/IconLink";
 
 type AddressVisualizerProps = {
   address: Address;
   className?: string;
   withIcon?: boolean;
+  onClick?: (url: string) => void;
 };
 
 export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   address,
   className,
   withIcon,
+  onClick,
 }) => {
   const { data: config } = useAppConfig();
+  const { chain } = useConfig();
   const { accounts } = useAccount();
   const client = usePublicClient();
+
+  const blockExplorer = chain.blockExplorer;
+
+  const isOnClickAvailable = !!onClick;
 
   const { data: account } = useQuery({
     queryKey: ["address_visualizer", address],
@@ -33,7 +42,14 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 
   if (dangoContract)
     return (
-      <p className={twMerge("flex items-center gap-1", className)}>
+      <p
+        className={twMerge(
+          "flex items-center gap-1",
+          { "cursor-pointer": isOnClickAvailable },
+          className,
+        )}
+        onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
+      >
         {withIcon ? (
           <img
             src="/favicon.svg"
@@ -41,7 +57,10 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
             className="h-4 w-4 border border-rice-100 rounded-full"
           />
         ) : null}
-        <span className="diatype-m-bold">{camelToTitleCase(dangoContract)}</span>
+        <span className="diatype-m-bold">
+          {camelToTitleCase(dangoContract).replace("dex", "DEX")}
+        </span>
+        {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
     );
 
@@ -51,11 +70,21 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 
   if (anyAccount)
     return (
-      <p className={twMerge("flex items-center gap-1", className)}>
+      <p
+        className={twMerge(
+          "flex items-center gap-1",
+          { "cursor-pointer": isOnClickAvailable },
+          className,
+        )}
+        onClick={() =>
+          onClick?.(blockExplorer.accountPage.replace("${address}", anyAccount.address))
+        }
+      >
         {withIcon ? (
           <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
         ) : null}
         <span className="diatype-m-bold">{`${anyAccount.username} #${anyAccount.index}`}</span>
+        {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
     );
 

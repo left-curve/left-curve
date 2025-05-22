@@ -6,12 +6,14 @@ type TruncateResponsiveProps = {
   text: string;
   lastNumbers?: number;
   className?: string;
+  onClick?: () => void;
 };
 
 export const TruncateResponsive: React.FC<TruncateResponsiveProps> = ({
   text,
   lastNumbers = 6,
   className,
+  onClick,
 }) => {
   const { start, end } = useMemo(() => {
     const visibleEnd = text.slice(-lastNumbers);
@@ -23,7 +25,7 @@ export const TruncateResponsive: React.FC<TruncateResponsiveProps> = ({
   }, [text, lastNumbers]);
 
   return (
-    <span className={twMerge("flex overflow-hidden", className)}>
+    <span className={twMerge("flex overflow-hidden", className)} onClick={onClick}>
       <span className="truncate">{start}</span>
       <span>{end}</span>
     </span>

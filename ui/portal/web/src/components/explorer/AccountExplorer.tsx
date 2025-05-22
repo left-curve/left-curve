@@ -14,6 +14,7 @@ import { HeaderExplorer } from "./HeaderExplorer";
 import type { Account, Address, Coins, ContractInfo } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
 const AccountExplorerContext = createContext<
   | (UseQueryResult<(Account & ContractInfo & { balances: Coins }) | null, Error> & {
@@ -65,8 +66,8 @@ const Root: React.FC<PropsWithChildren<AccountExplorerProps>> = ({ address, chil
 
 const Details: React.FC = () => {
   const { isLoading, data: account } = useAccountExplorer();
+  const navigate = useNavigate();
   const { calculateBalance } = usePrices();
-  const { isMd } = useMediaQuery();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
@@ -100,7 +101,11 @@ const Details: React.FC = () => {
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? (
-              <AddressVisualizer address={admin} withIcon />
+              <AddressVisualizer
+                address={admin}
+                withIcon
+                onClick={(url) => navigate({ to: url })}
+              />
             ) : (
               <p className="diatype-m-bold">None</p>
             )}

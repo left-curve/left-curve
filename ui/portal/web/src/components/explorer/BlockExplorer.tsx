@@ -4,6 +4,8 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  AddressVisualizer,
+  IconLink,
   Skeleton,
   Table,
   type TableColumn,
@@ -317,16 +319,24 @@ const BlockTable: React.FC = () => {
     {
       header: "Hash",
       cell: ({ row }) => (
-        <TruncateText
-          className="cursor-pointer"
-          text={row.original.hash}
+        <div
+          className="flex items-center gap-1 cursor-pointer"
           onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
-        />
+        >
+          <TruncateText text={row.original.hash} />
+          <IconLink className="w-4 h-4" />
+        </div>
       ),
     },
     {
       header: "Account",
-      cell: ({ row }) => <p>{row.original.sender}</p>,
+      cell: ({ row }) => (
+        <AddressVisualizer
+          address={row.original.sender}
+          withIcon
+          onClick={(url) => navigate({ to: url })}
+        />
+      ),
     },
     {
       header: "Result",
