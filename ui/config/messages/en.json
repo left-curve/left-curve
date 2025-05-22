@@ -142,13 +142,13 @@
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
       "details": {
-        "blockDetails": "Block Details",
-        "blockHash": "Block Hash:",
-        "blockHeight": "Block Height:",
-        "blockTime": "Time:",
+        "blockDetails": "Block {height}",
+        "blockHash": "Block Hash",
+        "blockHeight": "Block Height",
+        "blockTime": "Time",
         "transactions": "Transactions",
-        "proposer": "Proposer:",
-        "numberOfTx": "Number of Tx:"
+        "proposer": "Proposer",
+        "numberOfTx": "Number of Txs"
       },
       "futureBlock": {
         "targetBlock": "Target Block",
@@ -169,14 +169,14 @@
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
       "events": "Events",
-      "txHash": "Tx hash:",
-      "sender": "Sender:",
-      "time": "Time:",
-      "block": "Block:",
-      "index": "Index:",
-      "gasUsed": "Gas Used:",
-      "gasWanted": "Gas Wanted:",
-      "status": "Status:",
+      "txHash": "Tx hash",
+      "sender": "Sender",
+      "time": "Time",
+      "block": "Block",
+      "index": "Index",
+      "gasUsed": "Gas Used",
+      "gasWanted": "Gas Wanted",
+      "status": "Status",
       "success": "Success",
       "failed": "Failed"
     },
@@ -189,10 +189,10 @@
       },
       "details": {
         "contractDetails": "Contract Details",
-        "codeHash": "Code Hash:",
-        "contractAddress": "Contract Address:",
-        "admin": "Admin:",
-        "balances": "Balances:"
+        "codeHash": "Code Hash",
+        "contractAddress": "Contract Address",
+        "admin": "Admin",
+        "balances": "Balances"
       }
     },
     "accounts": {
