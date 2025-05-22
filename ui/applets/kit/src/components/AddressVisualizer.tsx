@@ -34,7 +34,13 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   if (dangoContract)
     return (
       <p className={twMerge("flex items-center gap-1", className)}>
-        {withIcon ? <img src="/favicon.svg" alt="dango logo" className="h-4 w-4" /> : null}
+        {withIcon ? (
+          <img
+            src="/favicon.svg"
+            alt="dango logo"
+            className="h-4 w-4 border border-rice-100 rounded-full"
+          />
+        ) : null}
         <span className="diatype-m-bold">{camelToTitleCase(dangoContract)}</span>
       </p>
     );

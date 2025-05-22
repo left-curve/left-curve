@@ -99,7 +99,11 @@ const Details: React.FC = () => {
             <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
-            {admin ? <AddressVisualizer address={admin} /> : <p className="diatype-m-bold">None</p>}
+            {admin ? (
+              <AddressVisualizer address={admin} withIcon />
+            ) : (
+              <p className="diatype-m-bold">None</p>
+            )}
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
