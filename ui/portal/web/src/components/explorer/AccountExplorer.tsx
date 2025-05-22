@@ -85,24 +85,23 @@ const Details: React.FC = () => {
       <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow relative overflow-hidden w-full min-h-[9.8rem]">
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
-          <div className="flex gap-1 items-center">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
-            {isMd ? (
-              <p className="diatype-m-bold">{codeHash}</p>
-            ) : (
-              <TruncateText text={codeHash} className="diatype-m-bold" />
-            )}
-            <TextCopy className="w-4 h-4 text-gray-500" copyText={codeHash} />
+
+            <p className="diatype-m-bold break-all whitespace-normal">
+              {codeHash}
+              <TextCopy className="w-4 h-4 text-gray-500 ml-1" copyText={codeHash} />
+            </p>
           </div>
-          <div className="flex gap-1 items-center">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? <AddressVisualizer address={admin} /> : <p className="diatype-m-bold">None</p>}
           </div>
-          <div className="flex gap-1 items-center">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
