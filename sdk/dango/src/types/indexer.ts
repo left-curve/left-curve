@@ -1,3 +1,5 @@
+import type { Address } from "@left-curve/sdk/types";
+
 export type IndexedBlock = {
   blockHeight: number;
   createdAt: string;
@@ -11,7 +13,7 @@ export type IndexedTransaction = {
   createdAt: string;
   transactionType: IndexedTransactionType;
   transactionIdx: number;
-  sender: string;
+  sender: Address;
   hash: string;
   hasSucceeded: boolean;
   errorMessage: string;
