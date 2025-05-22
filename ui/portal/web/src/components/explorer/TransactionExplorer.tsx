@@ -63,7 +63,7 @@ const Details: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.txHash"]()}
           </p>
           <p className="break-all whitespace-normal">
@@ -75,43 +75,41 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.sender"]()}
           </p>
           <p className="break-all whitespace-normal">{sender}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
-            {m["explorer.txs.time"]()}
-          </p>
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">{m["explorer.txs.time"]()}</p>
           <p className="break-all whitespace-normal">{createdAt}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
           <p>{blockHeight}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.index"]()}
           </p>
           <p>{transactionIdx}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
           <p>{formatUnits(gasUsed, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{formatUnits(gasWanted, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
           <div>

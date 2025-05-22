@@ -26,7 +26,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   return (
     <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] lg:flex rounded-md p-4 gap-2 w-full h-full  min-h-[9.8rem]">
       <div className="flex items-center justify-between w-full">
-        <p className="diatype-m-bold">{m["common.assets"]()}</p>
+        <p className="h4-bold">{m["common.assets"]()}</p>
         {showAllAssets ? (
           <Button variant="link" size="xs" onClick={showAllAssets}>
             {m["common.viewAll"]()}

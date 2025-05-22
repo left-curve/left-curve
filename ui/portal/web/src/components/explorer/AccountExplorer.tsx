@@ -83,10 +83,10 @@ const Details: React.FC = () => {
     <div className="flex flex-col gap-4 lg:flex-row">
       <AccountCard account={account} balance={totalBalance} />
       <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow relative overflow-hidden w-full min-h-[9.8rem]">
-        <h4 className="diatype-m-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
+        <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex gap-1 items-center">
-            <p className="diatype-md-medium text-gray-500">
+            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
             {isMd ? (
@@ -97,13 +97,13 @@ const Details: React.FC = () => {
             <TextCopy className="w-4 h-4 text-gray-500" copyText={codeHash} />
           </div>
           <div className="flex gap-1 items-center">
-            <p className="diatype-md-medium text-gray-500">
+            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? <AddressVisualizer address={admin} /> : <p className="diatype-m-bold">None</p>}
           </div>
           <div className="flex gap-1 items-center">
-            <p className="diatype-md-medium text-gray-500">
+            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />
