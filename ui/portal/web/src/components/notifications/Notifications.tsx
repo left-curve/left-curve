@@ -75,9 +75,9 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {Object.entries(notifications).map(([dateKey, n], i) => (
+            {Object.entries(notifications).map(([dateKey, n]) => (
               <motion.div key={dateKey}>
-                <p className="text-sm text-gray-500 mx-2">{dateKey}</p>
+                <p className="text-sm text-gray-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
                   {n.map((notification, i) => {
                     const NotificationCard = Notification[
