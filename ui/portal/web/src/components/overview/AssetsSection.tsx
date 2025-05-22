@@ -36,6 +36,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
       <div className="flex flex-wrap gap-4 items-center justify-between">
         {sortedCoinsByBalance.map(([denom, coin]) => {
           const amount = balances[denom];
+          if (denom === "dango") return null;
           return (
             <div className="flex gap-2 items-center" key={`preview-asset-${denom}`}>
               <img src={coin.logoURI} alt={coin.name} className="h-7 w-7 drag-none select-none" />
