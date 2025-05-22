@@ -12,7 +12,7 @@ type MobileTitleProps = {
 export const MobileTitle: React.FC<MobileTitleProps> = ({ title, className }) => {
   const { history } = useRouter();
   return (
-    <div className={twMerge("flex gap-2 items-center lg:hidden", className)}>
+    <div className={twMerge("flex gap-2 items-center lg:hidden self-start", className)}>
       <IconButton variant="link" onClick={() => history.go(-1)}>
         <IconChevronDown className="rotate-90" />
       </IconButton>
