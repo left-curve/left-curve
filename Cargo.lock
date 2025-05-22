@@ -3484,6 +3484,7 @@ dependencies = [
  "dango-account-multi",
  "dango-account-spot",
  "dango-bank",
+ "dango-bitcoin",
  "dango-dex",
  "dango-gateway",
  "dango-lending",

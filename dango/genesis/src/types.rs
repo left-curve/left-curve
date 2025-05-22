@@ -3,6 +3,7 @@ use {
         account_factory::Username,
         auth::Key,
         bank,
+        bitcoin::{BitcoinAddress, Network},
         config::Hyperlane,
         dex::PairUpdate,
         gateway::{RateLimit, Remote, WithdrawalFee},
@@ -10,7 +11,7 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
+    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, NonEmpty, Order, Part, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
@@ -32,6 +33,7 @@ pub struct Contracts {
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
+    pub bitcoin: Addr,
 }
 
 #[derive(Clone, Copy)]
@@ -49,6 +51,7 @@ pub struct Codes<T> {
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
+    pub bitcoin: T,
 }
 pub struct GenesisUser {
     pub key: Key,
@@ -66,6 +69,7 @@ pub struct GenesisOption {
     pub lending: LendingOption,
     pub oracle: OracleOption,
     pub vesting: VestingOption,
+    pub bitcoin: BitcoinOption,
 }
 
 pub struct GrugOption {
@@ -133,4 +137,14 @@ pub struct VestingOption {
     pub unlocking_cliff: Duration,
     /// Period for Dango token unlocking.
     pub unlocking_period: Duration,
+}
+
+pub struct BitcoinOption {
+    pub network: Network,
+    pub vault: BitcoinAddress,
+    pub guardians: NonEmpty<BTreeSet<Username>>,
+    pub threshold: u8,
+    pub sats_per_vbyte: Uint128,
+    pub outbound_fee: Uint128,
+    pub outbound_strategy: Order,
 }

@@ -1,11 +1,12 @@
 use {
-    corepc_client::bitcoin::Network,
     grug::{Addr, Denom, Hash256, HexBinary, NonEmpty, Order, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
         sync::LazyLock,
     },
 };
+
+pub use corepc_client::bitcoin::Network;
 
 pub const OVERHEAD_SIZE: Uint128 = Uint128::new(11);
 pub const INPUT_SIZE: Uint128 = Uint128::new(105);

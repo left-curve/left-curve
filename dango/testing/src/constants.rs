@@ -14,6 +14,9 @@ pub const MOCK_BLOCK_TIME: Duration = Duration::from_millis(250);
 
 pub const DEFAULT_GAS_LIMIT: u64 = 1_000_000;
 
+/// Number of users in the genesis.
+pub const GENESIS_USER_COUNT: u32 = 13;
+
 macro_rules! mock_user {
     ($username:ident, $vk:literal, $sk:literal) => {
         pub mod $username {
@@ -84,5 +87,20 @@ mock_user! {
         user9,
         "0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52",
         "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
+    },
+    {
+        val1,
+        "03b5c11ec757d56611d236364da8de302b3c97fc4fd09c5726ef0a4f928b1e61bd",
+        "4a4e1e48b4b83326f841cd4ccaf6f7664a92ef6d4f5e9ad26be7a7f86b067b4c"
+    },
+    {
+        val2,
+        "036a12540da8fb58c5a0ddc05c528c58a10a4907696c5fb12d4363bca9601a1d2f",
+        "158c36edb489a51e14f189bdce2898edf01c42f14f1e84bda5baf82e178d1025"
+    },
+    {
+        val3,
+        "02eed953937bbca44aef8b8b1eceb4210aaf20ada69dd49286735166d16da00df3",
+        "1d41ad0d131600152718facd6c0b3af15b51810791b4dc3a3df90b7c17ce3b54"
     }
 }

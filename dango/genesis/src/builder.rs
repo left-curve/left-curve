@@ -1,16 +1,17 @@
 use {
     crate::{Addresses, Codes, Contracts, GenesisOption},
+    anyhow::anyhow,
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt},
-        bank,
+        bank, bitcoin,
         config::{AppAddresses, AppConfig, Hyperlane},
         constants::dango,
         dex, gateway, lending, oracle, taxman, vesting, warp,
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
-        IsZero, JsonSerExt, Message, Permission, Permissions, ResultExt, StdResult, btree_map,
-        btree_set, coins,
+        IsZero, JsonSerExt, Message, NonEmpty, Permission, Permissions, ResultExt, StdResult,
+        btree_map, btree_set, coins,
     },
     hyperlane_types::{isms, mailbox, va},
     serde::Serialize,
@@ -43,6 +44,7 @@ where
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
+    let bitcoin_code_hash = upload(&mut msgs, codes.bitcoin);
 
     // Instantiate account factory.
     let users = opt
@@ -250,6 +252,37 @@ where
         "dango/vesting",
     )?;
 
+    // Instantiate the bitcoin bridge contract.
+    let btc_guardians_addresses = opt
+        .bitcoin
+        .guardians
+        .iter()
+        .map(|username| {
+            addresses.get(&username).cloned().ok_or(anyhow!(
+                "Missing address for bitcoin guardian: {}",
+                username
+            ))
+        })
+        .collect::<anyhow::Result<_>>()?;
+
+    let bitcoin = instantiate(
+        &mut msgs,
+        bitcoin_code_hash,
+        &bitcoin::InstantiateMsg {
+            config: bitcoin::Config {
+                network: opt.bitcoin.network,
+                vault: opt.bitcoin.vault,
+                guardians: NonEmpty::new(btc_guardians_addresses)?,
+                threshold: opt.bitcoin.threshold,
+                sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
+                outbound_fee: opt.bitcoin.outbound_fee,
+                outbound_strategy: opt.bitcoin.outbound_strategy,
+            },
+        },
+        "dango/bitcoin",
+        "dango/bitcoin",
+    )?;
+
     let contracts = Contracts {
         account_factory,
         bank,
@@ -261,6 +294,7 @@ where
         taxman,
         vesting,
         warp,
+        bitcoin,
     };
 
     let config = Config {
@@ -288,6 +322,7 @@ where
             oracle,
             taxman,
             warp,
+            bitcoin,
         },
         ..Default::default()
     };

@@ -57,6 +57,7 @@ pub struct AppAddresses {
     pub oracle: Addr,
     pub taxman: Addr,
     pub warp: Addr,
+    pub bitcoin: Addr,
 }
 
 // Default implementation that can be used in tests when the addresses are not
@@ -72,6 +73,7 @@ impl Default for AppAddresses {
             oracle: Addr::mock(0),
             taxman: Addr::mock(0),
             warp: Addr::mock(0),
+            bitcoin: Addr::mock(0),
         }
     }
 }

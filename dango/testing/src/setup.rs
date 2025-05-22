@@ -1,7 +1,9 @@
 use {
     crate::{
         Preset, TestAccount, TestAccounts,
-        constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
+        constants::{
+            owner, user1, user2, user3, user4, user5, user6, user7, user8, user9, val1, val2, val3,
+        },
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
     dango_proposal_preparer::ProposalPreparer,
@@ -200,6 +202,7 @@ pub fn setup_benchmark_hybrid(
         codes.taxman.to_bytes().hash256(),
         codes.vesting.to_bytes().hash256(),
         codes.warp.to_bytes().hash256(),
+        codes.bitcoin.to_bytes().hash256(),
     ]);
 
     setup_suite_with_db_and_vm(
@@ -281,6 +284,9 @@ where
         let user7 = TestAccount::new_from_private_key(user7::USERNAME.clone(), user7::PRIVATE_KEY);
         let user8 = TestAccount::new_from_private_key(user8::USERNAME.clone(), user8::PRIVATE_KEY);
         let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
+        let val1 = TestAccount::new_from_private_key(val1::USERNAME.clone(), val1::PRIVATE_KEY);
+        let val2 = TestAccount::new_from_private_key(val2::USERNAME.clone(), val2::PRIVATE_KEY);
+        let val3 = TestAccount::new_from_private_key(val3::USERNAME.clone(), val3::PRIVATE_KEY);
 
         TestAccounts {
             owner: owner.set_address(&addresses),
@@ -293,6 +299,9 @@ where
             user7: user7.set_address(&addresses),
             user8: user8.set_address(&addresses),
             user9: user9.set_address(&addresses),
+            val1: val1.set_address(&addresses),
+            val2: val2.set_address(&addresses),
+            val3: val3.set_address(&addresses),
         }
     };
 

@@ -110,6 +110,11 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_warp::query))
             .build();
 
+        let bitcoin = ContractBuilder::new(Box::new(dango_bitcoin::instantiate))
+            .with_execute(Box::new(dango_bitcoin::execute))
+            .with_query(Box::new(dango_bitcoin::query))
+            .build();
+
         Codes {
             account_factory,
             account_margin,
@@ -124,6 +129,7 @@ impl GenesisCodes for RustVm {
             taxman,
             vesting,
             warp,
+            bitcoin,
         }
     }
 }
@@ -149,6 +155,7 @@ impl GenesisCodes for WasmVm {
         let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm")).unwrap();
         let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm")).unwrap();
         let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm")).unwrap();
+        let bitcoin = fs::read(artifacts_dir.join("dango_bitcoin.wasm")).unwrap();
 
         Codes {
             account_factory,
@@ -164,6 +171,7 @@ impl GenesisCodes for WasmVm {
             taxman,
             vesting,
             warp,
+            bitcoin,
         }
     }
 }

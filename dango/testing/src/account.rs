@@ -32,11 +32,14 @@ pub struct TestAccounts {
     pub user7: TestAccount,
     pub user8: TestAccount,
     pub user9: TestAccount,
+    pub val1: TestAccount,
+    pub val2: TestAccount,
+    pub val3: TestAccount,
 }
 
 impl TestAccounts {
     /// Iterate over all user accounts (the owner excluded).
-    pub fn users(&self) -> array::IntoIter<&TestAccount, 9> {
+    pub fn users(&self) -> array::IntoIter<&TestAccount, 12> {
         [
             &self.user1,
             &self.user2,
@@ -47,12 +50,15 @@ impl TestAccounts {
             &self.user7,
             &self.user8,
             &self.user9,
+            &self.val1,
+            &self.val2,
+            &self.val3,
         ]
         .into_iter()
     }
 
     /// Iterate over all user accounts as mutable (the owner excluded).
-    pub fn users_mut(&mut self) -> array::IntoIter<&mut TestAccount, 9> {
+    pub fn users_mut(&mut self) -> array::IntoIter<&mut TestAccount, 12> {
         [
             &mut self.user1,
             &mut self.user2,
@@ -63,6 +69,9 @@ impl TestAccounts {
             &mut self.user7,
             &mut self.user8,
             &mut self.user9,
+            &mut self.val1,
+            &mut self.val2,
+            &mut self.val3,
         ]
         .into_iter()
     }

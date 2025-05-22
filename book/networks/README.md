@@ -194,7 +194,7 @@ Dango mainnet, testnets, and devnets.
 
 ## Test accounts
 
-Each devnet comes with 10 genesis users: `owner` and `user{1-9}`. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
+Each devnet comes with 13 genesis users: `owner`, `user{1-9}` and `val{1-3}`. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
 
 **Do NOT use these keys in production!!!**
 
@@ -285,3 +285,30 @@ Each devnet comes with 10 genesis users: `owner` and `user{1-9}`. They use Secp2
 | **Private**  | `c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3`                                                                                              |
 | **Public**   | `0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52`                                                                                            |
 | **Mnemonic** | bird okay punch bridge peanut tonight solar stereo then oil clever flock thought example equip juice twenty unfold reform dragon various gossip design artefact |
+
+<br>
+
+|              |                                                                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `val1`                                                                                                                                                     |
+| **Private**  | `4a4e1e48b4b83326f841cd4ccaf6f7664a92ef6d4f5e9ad26be7a7f86b067b4c`                                                                                              |
+| **Public**   | `03b5c11ec757d56611d236364da8de302b3c97fc4fd09c5726ef0a4f928b1e61bd`                                                                                            |
+| **Mnemonic** | merry toy fork fish october material outer one grunt gossip lab draft fly argue strong clump recipe about gallery hen main morning guard august |
+
+<br>
+
+|              |                                                                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `val2`                                                                                                                                                     |
+| **Private**  | `158c36edb489a51e14f189bdce2898edf01c42f14f1e84bda5baf82e178d1025`                                                                                              |
+| **Public**   | `036a12540da8fb58c5a0ddc05c528c58a10a4907696c5fb12d4363bca9601a1d2f`                                                                                            |
+| **Mnemonic** | walnut shoot afraid forward silver slim powder panther make believe bulk insane tube tornado inhale park airport average wash exotic kidney pair glass hockey   |
+
+<br>
+
+|              |                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Username** | `val3`                                                                                                                                                        |
+| **Private**  | `1d41ad0d131600152718facd6c0b3af15b51810791b4dc3a3df90b7c17ce3b54`                                                                                                 |
+| **Public**   | `02eed953937bbca44aef8b8b1eceb4210aaf20ada69dd49286735166d16da00df3`                                                                                               |
+| **Mnemonic** | witness little famous require breeze pave charge resource mixture front across blue service stay mammal orange jewel anchor detail advice happy grocery title limb |

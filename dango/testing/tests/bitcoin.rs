@@ -82,7 +82,7 @@ fn instantiate() {
                 Some(owner_address),
                 Coins::new(),
             )
-            .should_fail_with_error("validation error");
+            .should_fail_with_error("is not a valid Bitcoin address for network");
     }
 
     // Try to instantiate the contract with right combination.

@@ -31,7 +31,15 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     );
 
     // Validate the vault address.
-    Address::from_str(&msg.config.vault.to_string())?.require_network(msg.config.network)?;
+    Address::from_str(&msg.config.vault.to_string())?
+        .require_network(msg.config.network)
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "vault address `{}` is not a valid Bitcoin address for network `{}`",
+                msg.config.vault,
+                msg.config.network
+            )
+        })?;
 
     CONFIG.save(ctx.storage, &msg.config)?;
 

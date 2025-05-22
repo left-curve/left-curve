@@ -1,18 +1,19 @@
 use {
     crate::{
-        BridgeOp, TestOption,
+        BridgeOp, MOCK_BITCOIN_REGTEST_VAULT, TestOption,
         constants::{
             DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner,
-            user1, user2, user3, user4, user5, user6, user7, user8, user9,
+            user1, user2, user3, user4, user5, user6, user7, user8, user9, val1, val2, val3,
         },
     },
     dango_genesis::{
-        AccountOption, BankOption, DexOption, GatewayOption, GenesisOption, GenesisUser,
-        GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
+        AccountOption, BankOption, BitcoinOption, DexOption, GatewayOption, GenesisOption,
+        GenesisUser, GrugOption, HyperlaneOption, LendingOption, OracleOption, VestingOption,
     },
     dango_types::{
         auth::Key,
         bank::Metadata,
+        bitcoin::Network,
         constants::{PYTH_PRICE_SOURCES, btc, dango, eth, sol, usdc},
         dex::{CurveInvariant, PairParams, PairUpdate},
         gateway::{Remote, WithdrawalFee},
@@ -21,8 +22,8 @@ use {
     },
     grug::{
         Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Udec128, Uint128, btree_map,
-        btree_set, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonEmpty, NumberConst, Order, Udec128,
+        Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -176,6 +177,7 @@ impl Preset for GenesisOption {
             lending: Preset::preset_test(),
             oracle: Preset::preset_test(),
             vesting: Preset::preset_test(),
+            bitcoin: Preset::preset_test(),
         }
     }
 }
@@ -245,6 +247,21 @@ impl Preset for AccountOption {
                 user9::USERNAME.clone() => GenesisUser {
                     key: Key::Secp256k1(user9::PUBLIC_KEY.into()),
                     key_hash: user9::PUBLIC_KEY.hash256(),
+                    dango_balance: Uint128::new(100_000_000_000_000),
+                },
+                val1::USERNAME.clone() => GenesisUser {
+                    key: Key::Secp256k1(val1::PUBLIC_KEY.into()),
+                    key_hash: val1::PUBLIC_KEY.hash256(),
+                    dango_balance: Uint128::new(100_000_000_000_000),
+                },
+                val2::USERNAME.clone() => GenesisUser {
+                    key: Key::Secp256k1(val2::PUBLIC_KEY.into()),
+                    key_hash: val2::PUBLIC_KEY.hash256(),
+                    dango_balance: Uint128::new(100_000_000_000_000),
+                },
+                val3::USERNAME.clone() => GenesisUser {
+                    key: Key::Secp256k1(val3::PUBLIC_KEY.into()),
+                    key_hash: val3::PUBLIC_KEY.hash256(),
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
             },
@@ -500,6 +517,24 @@ impl Preset for VestingOption {
         VestingOption {
             unlocking_cliff: Duration::from_weeks(4 * 9), // ~9 months
             unlocking_period: Duration::from_weeks(4 * 27), // ~27 months
+        }
+    }
+}
+
+impl Preset for BitcoinOption {
+    fn preset_test() -> Self {
+        BitcoinOption {
+            network: Network::Regtest,
+            vault: MOCK_BITCOIN_REGTEST_VAULT.to_string(),
+            guardians: NonEmpty::new_unchecked(btree_set! {
+                val1::USERNAME.clone(),
+                val2::USERNAME.clone(),
+                val3::USERNAME.clone(),
+            }),
+            threshold: 2,
+            sats_per_vbyte: Uint128::new(10),
+            outbound_fee: Uint128::new(1000),
+            outbound_strategy: Order::Ascending,
         }
     }
 }
