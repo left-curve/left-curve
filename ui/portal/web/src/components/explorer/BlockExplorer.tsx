@@ -4,6 +4,8 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  AddressVisualizer,
+  IconLink,
   Skeleton,
   Table,
   type TableColumn,
@@ -86,8 +88,8 @@ const BlockSkeleton: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
-      <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[147.22px] min-h-[208.5px]">
-        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
+      <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
+        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]({ height: "#" })}</h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
         <img
           src="/images/emojis/detailed/map-explorer.svg"
@@ -235,10 +237,12 @@ const BlockDetails: React.FC = () => {
   return (
     <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
-        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
+        <h1 className="h4-bold">
+          {m["explorer.block.details.blockDetails"]({ height: `#${blockHeight}` })}
+        </h1>
         <div className="grid grid-cols-1 gap-3 md:gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHash"]()}
             </p>
             <p className="break-all whitespace-normal">
@@ -250,25 +254,19 @@ const BlockDetails: React.FC = () => {
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
-              {m["explorer.block.details.blockHeight"]()}
-            </p>
-            <p>{blockHeight}</p>
-          </div>
-          <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.proposer"]()}
             </p>
             <p>Leftcurve Validator</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.numberOfTx"]()}
             </p>
             <p>{transactions.length}</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockTime"]()}
             </p>
             <p className="break-all whitespace-normal">{new Date(createdAt).toISOString()}</p>
@@ -321,16 +319,24 @@ const BlockTable: React.FC = () => {
     {
       header: "Hash",
       cell: ({ row }) => (
-        <TruncateText
-          className="cursor-pointer"
-          text={row.original.hash}
+        <div
+          className="flex items-center gap-1 cursor-pointer"
           onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
-        />
+        >
+          <TruncateText text={row.original.hash} />
+          <IconLink className="w-4 h-4" />
+        </div>
       ),
     },
     {
       header: "Account",
-      cell: ({ row }) => <p>{row.original.sender}</p>,
+      cell: ({ row }) => (
+        <AddressVisualizer
+          address={row.original.sender}
+          withIcon
+          onClick={(url) => navigate({ to: url })}
+        />
+      ),
     },
     {
       header: "Result",

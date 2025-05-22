@@ -69,27 +69,31 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
         className={twMerge("bg-transparent py-1 px-1 rounded-xl shadow-lg", className)}
       >
         <AnimatePresence key={currentPage} mode="wait">
-          {Object.entries(notifications).map(([dateKey, n]) => (
-            <motion.div
-              key={dateKey}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <p className="text-sm text-gray-500 mx-2">{dateKey}</p>
-              <div className="flex flex-col gap-2">
-                {n.map((notification) => {
-                  const NotificationCard = Notification[
-                    capitalize(notification.type) as keyof typeof Notification
-                  ] as React.FC<NotificationProps>;
-                  return (
-                    <NotificationCard key={notification.createdAt} notification={notification} />
-                  );
-                })}
-              </div>
-            </motion.div>
-          ))}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {Object.entries(notifications).map(([dateKey, n]) => (
+              <motion.div key={dateKey}>
+                <p className="text-sm text-gray-500 mx-2 my-1">{dateKey}</p>
+                <div className="flex flex-col gap-2 max-w-full">
+                  {n.map((notification, i) => {
+                    const NotificationCard = Notification[
+                      capitalize(notification.type) as keyof typeof Notification
+                    ] as React.FC<NotificationProps>;
+                    return (
+                      <NotificationCard
+                        key={`${notification.createdAt}-${i}`}
+                        notification={notification}
+                      />
+                    );
+                  })}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </AnimatePresence>
       </ResizerContainer>
     </div>

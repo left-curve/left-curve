@@ -15,7 +15,7 @@ export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, ba
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-md flex flex-col justify-between p-4",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.8rem] relative overflow-hidden rounded-md flex flex-col justify-between p-4",
         "bg-account-card-contract",
       )}
     >
