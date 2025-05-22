@@ -13,6 +13,7 @@ import { m } from "~/paraglide/messages";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 import type { Notifications } from "~/hooks/useNotifications";
+import { useNavigate } from "@tanstack/react-router";
 
 const formatNotificationTimestamp = (timestamp: Date): string => {
   const now = new Date();
@@ -53,6 +54,7 @@ type NotificationTransferProps = {
 };
 
 const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notification }) => {
+  const navigate = useNavigate();
   const { coin, type, fromAddress, toAddress, amount } = notification.data;
   const isSent = type === "sent";
 
@@ -74,7 +76,11 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
               })}
             >{`${isSent ? "−" : "+"} ${formatUnits(amount, coin.decimals)} ${coin.symbol}`}</span>
             <span>{m["notifications.notification.transfer.direction"]({ direction: type })}</span>
-            <AddressVisualizer address={address} withIcon />
+            <AddressVisualizer
+              address={address}
+              withIcon
+              onClick={(url) => navigate({ to: url })}
+            />
           </div>
         </div>
       </div>
