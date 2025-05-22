@@ -65,8 +65,8 @@ function OverviewComponent() {
   };
 
   return (
-    <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-8 p-4 pb-32">
-      <div className="w-full flex flex-col gap-8 min-h-[100dvh] lg:min-h-fit relative">
+    <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-6 p-4 pt-6 mb-16">
+      <div className="w-full flex flex-col gap-6 min-h-[100dvh] lg:min-h-fit relative">
         <WelcomeSection
           cardMobileVisible={cardMobileVisible}
           setCardMobileVisible={setCardMobileVisible}
@@ -85,7 +85,6 @@ function OverviewComponent() {
           <IconChevronDown />
         </IconButton>
       </div>
-
       {/*   <div
         ref={topYieldsRef}
         className="bg-rice-25 shadow-card-shadow flex flex-col rounded-xl w-full pt-4"
@@ -98,7 +97,6 @@ function OverviewComponent() {
           ))}
         </div>
       </div> */}
-
       {/*  <PoolTable data={mockDataTable} /> */}
     </div>
   );
