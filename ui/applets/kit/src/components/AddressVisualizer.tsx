@@ -1,29 +1,25 @@
 import { useAccount, useAppConfig, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
-import { useMediaQuery } from "#hooks/useMediaQuery.js";
 
 import { twMerge } from "#utils/twMerge.js";
-import TruncateText from "./TruncateText";
 import { IconUserCircle } from "./icons/IconUserCircle";
 
 import type { Address } from "@left-curve/dango/types";
 import { camelToTitleCase } from "@left-curve/dango/utils";
 import type React from "react";
+import { TruncateResponsive } from "./TruncateResponsive";
 
 type AddressVisualizerProps = {
   address: Address;
   className?: string;
-  truncate?: boolean;
   withIcon?: boolean;
 };
 
 export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   address,
-  truncate,
   className,
   withIcon,
 }) => {
-  const { isMd } = useMediaQuery();
   const { data: config } = useAppConfig();
   const { accounts } = useAccount();
   const client = usePublicClient();
@@ -55,9 +51,5 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
       </p>
     );
 
-  return !isMd && truncate ? (
-    <TruncateText className={className} text={address} />
-  ) : (
-    <p className={className}>{address}</p>
-  );
+  return <TruncateResponsive text={address} className={className} />;
 };
