@@ -25,6 +25,11 @@ pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderInde
             "market_order__id",
         ),
         user: MultiIndex::new(|_, order| order.user, "market_order", "market_order__user"),
+        pair: MultiIndex::new(
+            |(pair, ..), _| pair.clone(),
+            "market_order",
+            "market_order__pair",
+        ),
     });
 
 pub const LIMIT_ORDERS: IndexedMap<LimitOrderKey, LimitOrder, LimitOrderIndex> =
@@ -59,12 +64,14 @@ pub enum OrderType {
     Market,
 }
 
+#[grug::derive(Borsh, Serde)]
 pub enum Order {
     Market(MarketOrder),
     Limit(LimitOrder),
 }
 
-#[grug::derive(Borsh)]
+#[grug::derive(Borsh, Serde)]
+#[derive(Copy)]
 pub struct MarketOrder {
     pub user: Addr,
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
@@ -76,6 +83,7 @@ pub struct MarketOrder {
 pub struct MarketOrderIndex<'a> {
     pub order_id: UniqueIndex<'a, MarketOrderKey, OrderId, MarketOrder>,
     pub user: MultiIndex<'a, MarketOrderKey, Addr, MarketOrder>,
+    pub pair: MultiIndex<'a, MarketOrderKey, (Denom, Denom), MarketOrder>,
 }
 
 #[grug::derive(Borsh, Serde)]

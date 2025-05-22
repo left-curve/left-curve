@@ -1,7 +1,9 @@
 use {
-    crate::LimitOrder,
-    dango_types::dex::OrderId,
-    grug::{Number, NumberConst, StdResult, Udec128, Uint128},
+    super::FillingOutcome,
+    crate::{LIMIT_ORDERS, LimitOrder, MarketOrder, Order},
+    dango_types::dex::{Direction, OrderId},
+    grug::{MultiplyFraction, Number, NumberConst, StdError, StdResult, Udec128, Uint128},
+    std::{cmp::Ordering, collections::BTreeMap, iter::Peekable},
 };
 
 pub struct MatchingOutcome {
@@ -91,4 +93,112 @@ where
         bids,
         asks,
     })
+}
+
+pub fn match_market_bid_orders<M, L>(
+    mut market_bids: M,
+    mut limit_asks: Peekable<L>,
+) -> StdResult<Vec<FillingOutcome>>
+where
+    M: Iterator<Item = StdResult<MarketOrder>>,
+    L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
+{
+    let mut market_bid = market_bids.next().transpose()?;
+    let mut filling_outcomes = Vec::new();
+
+    loop {
+        let Some(Ok(((price, _), ref mut ask))) = limit_asks.peek_mut() else {
+            break;
+        };
+
+        let Some(mut bid) = market_bid else {
+            break;
+        };
+
+        // For a BUY market order the amount is in terms of the quote asset. So we must convert it to
+        // base asset amount using the limit order price.
+        let bid_amount_in_base = bid.amount.checked_div_dec_floor(*price)?;
+        match bid_amount_in_base.cmp(&ask.remaining) {
+            Ordering::Less => {
+                // The market order is smaller than the limit order, so we can directly match it
+                // take the next market order and decrement the remaining amount of the limit order
+                market_bid = market_bids.next().transpose()?;
+                ask.remaining.checked_sub_assign(bid_amount_in_base)?;
+            },
+            Ordering::Equal => {
+                // The market order is equal to the limit order, so we can directly match it
+                // take the next market order and the next limit order
+                market_bid = market_bids.next().transpose()?;
+                limit_asks.next();
+            },
+            Ordering::Greater => {
+                // The market order is greater than the limit order, so we can directly match it
+                // take the next limit order and decrement the market order amount
+                bid.amount
+                    .checked_sub_assign(ask.remaining.checked_mul_dec_ceil(*price)?)?;
+                limit_asks.next();
+            },
+        }
+    }
+
+    Ok(filling_outcomes)
+}
+
+pub fn match_market_ask_orders<M, L>(
+    mut market_asks: M,
+    mut limit_bids: Peekable<L>,
+) -> StdResult<Vec<FillingOutcome>>
+where
+    M: Iterator<Item = StdResult<(OrderId, MarketOrder)>>,
+    L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
+{
+    let mut market_ask = market_asks.next().transpose()?;
+    let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
+
+    loop {
+        let Some(Ok(((price, bid_id), ref mut bid))) = limit_bids.peek_mut() else {
+            break;
+        };
+
+        let Some((ask_id, mut ask)) = market_ask else {
+            break;
+        };
+
+        // For a market ASK order the amount is in terms of the base asset. So we can directly
+        // match it against the limit order remaining amount
+        match ask.amount.cmp(&bid.remaining) {
+            Ordering::Less => {
+                let mut bid_outcome = filling_outcomes.entry(*bid_id).or_insert(FillingOutcome {
+                    order_direction: Direction::Bid,
+                    order_price: *price,
+                    order_id: *bid_id,
+                    order: Order::Limit(bid.clone()),
+                    filled: todo!(),
+                    cleared: todo!(),
+                    refund_base: todo!(),
+                    refund_quote: todo!(),
+                    fee_base: todo!(),
+                    fee_quote: todo!(),
+                });
+                // The market ask order is smaller than the limit order, so we can directly match it
+                // take the next market order and decrement the remaining amount of the limit order
+                market_ask = market_asks.next().transpose()?;
+                bid.remaining.checked_sub_assign(ask.amount)?;
+            },
+            Ordering::Equal => {
+                // The market order is equal to the limit order, so we can directly match it
+                // take the next market order and the next limit order
+                market_ask = market_asks.next().transpose()?;
+                limit_bids.next();
+            },
+            Ordering::Greater => {
+                // The market order is greater than the limit order, so we can directly match it
+                // take the next limit order and decrement the market order amount
+                ask.amount.checked_sub_assign(bid.remaining)?;
+                limit_bids.next();
+            },
+        }
+    }
+
+    Ok(filling_outcomes.into_values().collect())
 }

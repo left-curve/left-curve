@@ -3,8 +3,9 @@ mod order_creation;
 
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MatchingOutcome, MergedOrders, PAIRS,
-        PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders, match_orders,
+        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MatchingOutcome,
+        MergedOrders, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core,
+        fill_orders, match_orders,
     },
     anyhow::{anyhow, ensure},
     dango_account_factory::AccountQuerier,
@@ -23,7 +24,8 @@ use {
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, Response, StdError, Storage, SudoCtx, Udec128, Uint128, UniqueVec, coins,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
+        coins,
     },
     std::{
         collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
@@ -495,6 +497,24 @@ fn clear_orders_of_pair(
         IterationOrder::Ascending,
         dex_addr,
     );
+
+    // Match bid market orders against resting ask limit orders and vice versa.
+    // We match market orders in a first in, first out manner based on the order
+    // id.
+    let mut market_bids = MARKET_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    let mut market_asks = MARKET_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    for (_, ask_order) in market_asks {
+        // TODO: match the market order against the resting limit orders
+    }
 
     // Run the order matching algorithm.
     let MatchingOutcome {
