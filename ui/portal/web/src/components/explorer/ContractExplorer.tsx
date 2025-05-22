@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
 import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
@@ -6,7 +5,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import { Badge, TextCopy, TruncateText } from "@left-curve/applets-kit";
+import { Badge, TextCopy } from "@left-curve/applets-kit";
 import { ContractCard } from "../foundation/ContractCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
@@ -72,7 +71,6 @@ const Root: React.FC<PropsWithChildren<ContractExplorerProps>> = ({ address, chi
 const Details: React.FC = () => {
   const { isLoading, data: contract, address } = useContractExplorer();
   const { calculateBalance } = usePrices();
-  const { isMd } = useMediaQuery();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
@@ -92,7 +90,7 @@ const Details: React.FC = () => {
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
             <p className="diatype-m-bold break-all whitespace-normal">
@@ -101,13 +99,13 @@ const Details: React.FC = () => {
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             <p className="diatype-m-bold">{admin ? admin : "None"}</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />

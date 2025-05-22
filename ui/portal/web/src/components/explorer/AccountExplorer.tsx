@@ -87,7 +87,7 @@ const Details: React.FC = () => {
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
 
@@ -97,7 +97,7 @@ const Details: React.FC = () => {
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? (
@@ -111,7 +111,7 @@ const Details: React.FC = () => {
             )}
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-bold text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />
