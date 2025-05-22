@@ -10,7 +10,6 @@ export const IconUserCircle: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = (
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <rect x="0.5" y="0.5" width="23" height="23" rx="11.5" fill="transparent" />
       <rect x="0.5" y="0.5" width="23" height="23" rx="11.5" stroke="currentColor" />
       <path
         fillRule="evenodd"

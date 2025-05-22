@@ -23,7 +23,7 @@ export const TruncateResponsive: React.FC<TruncateResponsiveProps> = ({
   }, [text, lastNumbers]);
 
   return (
-    <span className={twMerge("flex overflow-auto", className)}>
+    <span className={twMerge("flex overflow-hidden", className)}>
       <span className="truncate">{start}</span>
       <span>{end}</span>
     </span>

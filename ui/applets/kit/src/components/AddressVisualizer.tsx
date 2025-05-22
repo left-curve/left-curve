@@ -46,7 +46,9 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   if (anyAccount)
     return (
       <p className={twMerge("flex items-center gap-1", className)}>
-        {withIcon ? <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500" /> : null}
+        {withIcon ? (
+          <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
+        ) : null}
         <span className="diatype-m-bold">{`${anyAccount.username} #${anyAccount.index}`}</span>
       </p>
     );
