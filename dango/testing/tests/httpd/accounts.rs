@@ -2,7 +2,7 @@ use {
     super::build_actix_app,
     assert_json_diff::*,
     assertor::*,
-    dango_testing::{HyperlaneTestSuite, create_user_and_accounts, setup_test_with_indexer},
+    dango_testing::{HyperlaneTestSuite, create_user_and_account, setup_test_with_indexer},
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
 };
 
@@ -12,7 +12,7 @@ async fn query_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite.app.indexer.wait_for_finish();
 
@@ -73,7 +73,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
         setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite.app.indexer.wait_for_finish();
 
@@ -141,7 +141,7 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
         setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+    create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite.app.indexer.wait_for_finish();
 

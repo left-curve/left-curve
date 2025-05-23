@@ -3546,6 +3546,7 @@ dependencies = [
  "indexer-httpd",
  "indexer-sql",
  "indexer-testing",
+ "itertools 0.14.0",
  "k256",
  "proptest",
  "pyth-client",

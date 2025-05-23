@@ -1,8 +1,12 @@
 use {
     assertor::*,
     dango_indexer_sql::entity,
-    dango_testing::{HyperlaneTestSuite, create_user_and_accounts, setup_test_with_indexer},
+    dango_testing::{
+        HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
+        setup_test_with_indexer,
+    },
     grug::Inner,
+    itertools::Itertools,
     sea_orm::EntityTrait,
 };
 
@@ -11,7 +15,7 @@ fn index_account_creations() {
     let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite.app.indexer.wait_for_finish();
 
@@ -70,7 +74,7 @@ fn index_previous_blocks() {
     let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite.app.indexer.wait_for_finish();
 
@@ -95,6 +99,55 @@ fn index_previous_blocks() {
                     .collect::<Vec<_>>()
             )
             .is_equal_to(vec![user.username.as_ref()]);
+
+            Ok::<_, anyhow::Error>(())
+        })
+        .expect("Can't fetch accounts");
+}
+
+#[test]
+fn index_single_user_multiple_spot_accounts() {
+    let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let mut test_account1 =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+
+    suite.app.indexer.wait_for_finish();
+
+    suite
+        .app
+        .indexer
+        .handle
+        .block_on(async {
+            let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
+                dango_indexer_sql::entity::accounts::Entity::find()
+                    .find_with_related(dango_indexer_sql::entity::users::Entity)
+                    .all(&suite.app.indexer.context.db)
+                    .await?;
+
+            assert_that!(accounts).has_length(2);
+
+            let usernames = accounts
+                .iter()
+                .map(|(_, users)| &users[0].username)
+                .unique()
+                .collect::<Vec<_>>();
+
+            let addresses = accounts
+                .iter()
+                .map(|(account, _)| &account.address)
+                .unique()
+                .collect::<Vec<_>>();
+
+            assert_that!(usernames).has_length(1);
+            assert_that!(usernames[0].as_str()).is_equal_to("user");
+
+            assert_that!(addresses).has_length(2);
+            assert_that!(addresses).contains(&test_account1.address.into_inner().to_string());
+            assert_that!(addresses).contains(&test_account2.address.into_inner().to_string());
 
             Ok::<_, anyhow::Error>(())
         })

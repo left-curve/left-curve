@@ -57,6 +57,7 @@ hex                   = { workspace = true }
 home                  = { workspace = true }
 indexer-disk-saver    = { workspace = true }
 indexer-testing       = { workspace = true }
+itertools             = { workspace = true }
 proptest              = { workspace = true }
 rand                  = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }

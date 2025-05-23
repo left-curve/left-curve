@@ -4,19 +4,26 @@ use {
     dango_genesis::{Codes, Contracts},
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
-        account_factory::{self, RegisterUserData, Username},
-        auth::Key,
+        account::single::Params,
+        account_factory::{
+            self, AccountParams, AccountType, QueryCodeHashRequest, QueryNextAccountIndexRequest,
+            RegisterUserData, Salt, Username,
+        },
+        constants::usdc,
     },
-    grug::{Coins, ContractWrapper, Hash256, HashExt, Op, ResultExt},
+    grug::{Addr, Coins, ContractWrapper, Defined, HashExt, JsonSerExt, Op, QuerierExt, ResultExt},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
-    std::str::FromStr,
+    std::{
+        ops::{Deref, DerefMut},
+        str::FromStr,
+    },
 };
 
-pub fn create_user_account_with_key(
+pub fn create_user_account(
     suite: &mut HyperlaneTestSuite<
         MemDb,
         RustVm,
@@ -24,33 +31,48 @@ pub fn create_user_account_with_key(
         NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
     >,
     contracts: &Contracts,
-    user: &TestAccount,
-    chain_id: String,
-    public_key: Key,
-    public_key_hash: Hash256,
+    test_account: &mut TestAccount,
 ) {
-    // User uses account factory as sender to send an empty transaction.
-    // Account factory should interpret this action as the user wishes to create
-    // an account and claim the funds held in IBC transfer contract.
-    suite
-        .execute(
-            &mut Factory::new(contracts.account_factory),
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterUser {
-                seed: 0,
-                username: user.username.clone(),
-                key: public_key,
-                key_hash: public_key_hash,
-                signature: user
-                    .sign_arbitrary(RegisterUserData {
-                        username: user.username.clone(),
-                        chain_id,
-                    })
-                    .unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    test_account.register_user(suite.deref_mut(), contracts.account_factory, Coins::new());
+    // let chain_id = suite.chain_id.clone();
+
+    // suite
+    //     .execute(
+    //         &mut Factory::new(contracts.account_factory),
+    //         contracts.account_factory,
+    //         &account_factory::ExecuteMsg::RegisterUser {
+    //             seed: 0,
+    //             username: test_account.username.clone(),
+    //             key: test_account.first_key(),
+    //             key_hash: test_account.first_key_hash(),
+    //             signature: test_account
+    //                 .sign_arbitrary(RegisterUserData {
+    //                     username: test_account.username.clone(),
+    //                     chain_id,
+    //                 })
+    //                 .unwrap(),
+    //         },
+    //         Coins::new(),
+    //     )
+    //     .should_succeed();
+
+    // let index = suite
+    //     .deref()
+    //     .query_wasm_smart(contracts.account_factory, QueryNextAccountIndexRequest {})
+    //     .unwrap();
+
+    // let code_hash = suite
+    //     .deref()
+    //     .query_wasm_smart(contracts.account_factory, QueryCodeHashRequest {
+    //         account_type: AccountType::Spot,
+    //     })
+    //     .should_succeed();
+
+    // let address = Addr::derive(
+    //     contracts.account_factory,
+    //     code_hash,
+    //     Salt { index }.into_bytes().as_slice(),
+    // );
 }
 
 pub fn add_user_public_key(
@@ -61,39 +83,44 @@ pub fn add_user_public_key(
         NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
     >,
     contracts: &Contracts,
-    user: &TestAccount,
-    chain_id: String,
-    public_key: Key,
-    public_key_hash: Hash256,
+    mut test_account: TestAccount,
 ) {
-    // How to use this?
-    let _message = account_factory::ExecuteMsg::UpdateKey {
-        key_hash: public_key_hash,
-        key: Op::Insert(public_key),
-    };
-
+    let (_, pk) = TestAccount::new_key_pair();
+    let key_hash = pk.to_json_vec().unwrap().hash256();
     suite
         .execute(
-            &mut Factory::new(contracts.account_factory),
+            &mut test_account,
             contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterUser {
-                seed: 0,
-                username: user.username.clone(),
-                key: public_key,
-                key_hash: public_key_hash,
-                signature: user
-                    .sign_arbitrary(RegisterUserData {
-                        username: user.username.clone(),
-                        chain_id,
-                    })
-                    .unwrap(),
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Insert(pk),
+                key_hash,
             },
             Coins::new(),
         )
         .should_succeed();
 }
 
-pub fn create_user_and_accounts(
+pub fn add_account_with_existing_user(
+    suite: &mut HyperlaneTestSuite<
+        MemDb,
+        RustVm,
+        ProposalPreparer<PythClientCache>,
+        NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
+    >,
+    contracts: &Contracts,
+    test_account: &mut TestAccount,
+) -> TestAccount {
+    test_account
+        .register_new_account(
+            suite.deref_mut(),
+            contracts.account_factory,
+            AccountParams::Spot(Params::new(test_account.username.clone())),
+            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .unwrap()
+}
+
+pub fn create_user_and_account(
     suite: &mut HyperlaneTestSuite<
         MemDb,
         RustVm,
@@ -106,8 +133,7 @@ pub fn create_user_and_accounts(
     username: &str,
 ) -> TestAccount {
     let username = Username::from_str(username).unwrap();
-    let chain_id = suite.chain_id.clone();
-    let user = TestAccount::new_random(username.clone()).predict_address(
+    let mut user = TestAccount::new_random(username.clone()).predict_address(
         contracts.account_factory,
         0,
         codes.account_spot.to_bytes().hash256(),
@@ -121,18 +147,11 @@ pub fn create_user_and_accounts(
             solana::DOMAIN,
             solana::USDC_WARP,
             &user,
-            10_000_000,
+            150_000_000,
         )
         .should_succeed();
 
-    create_user_account_with_key(
-        suite,
-        contracts,
-        &user,
-        chain_id,
-        user.first_key(),
-        user.first_key_hash(),
-    );
+    create_user_account(suite, contracts, &mut user);
 
     user
 }
