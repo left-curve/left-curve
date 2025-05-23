@@ -1,14 +1,14 @@
 import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { twMerge } from "#utils/twMerge.js";
 import { camelToTitleCase } from "@left-curve/dango/utils";
+import { twMerge } from "#utils/twMerge.js";
 
-import { IconUserCircle } from "./icons/IconUserCircle";
 import { TruncateResponsive } from "./TruncateResponsive";
+import { IconUserCircle } from "./icons/IconUserCircle";
 
-import type React from "react";
 import type { Address } from "@left-curve/dango/types";
+import type React from "react";
 import { IconLink } from "./icons/IconLink";
 
 type AddressVisualizerProps = {
@@ -51,7 +51,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
         onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
       >
         {withIcon ? <img src="/DGX.svg" alt="dango logo" className="h-4 w-4" /> : null}
-        <span>{camelToTitleCase(dangoContract).replace("dex", "DEX")}</span>
+        <span>{camelToTitleCase(dangoContract).replace("Dex", "DEX")}</span>
         {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
     );
