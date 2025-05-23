@@ -103,7 +103,7 @@
     },
     "1": {
       "id": "simple-swap",
-      "img": "/images/emojis/simple/spot.svg",
+      "img": "/images/emojis/simple/swap.svg",
       "title": "Convert",
       "description": "The easiest way to trade at all sizes.",
       "path": "/swap",
