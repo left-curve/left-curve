@@ -63,12 +63,12 @@ const Details: React.FC = () => {
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
   return (
-    <div className="flex flex-col gap-4 rounded-md p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+    <div className="flex flex-col gap-4 rounded-md p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-sm-medium relative overflow-hidden">
       <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.txHash"]()}
           </p>
           <p className="break-all whitespace-normal">
@@ -80,48 +80,48 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.sender"]()}
           </p>
           <AddressVisualizer
             address={sender}
-            className="break-all whitespace-normal"
+            className="break-all whitespace-normal diatype-sm-medium"
             withIcon
             onClick={(url) => navigate({ to: url })}
           />
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.time"]()}
           </p>
           <p className="break-all whitespace-normal">{createdAt}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
           <p>{blockHeight}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.index"]()}
           </p>
           <p>{transactionIdx}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
           <p>{formatUnits(gasUsed, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{formatUnits(gasWanted, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
           <div>

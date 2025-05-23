@@ -87,31 +87,32 @@ const Details: React.FC = () => {
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
 
-            <p className="diatype-m-bold break-all whitespace-normal">
+            <p className="diatype-sm-medium break-all whitespace-normal">
               {codeHash}
               <TextCopy className="w-4 h-4 text-gray-500 ml-1" copyText={codeHash} />
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? (
               <AddressVisualizer
+                className="diatype-sm-medium"
                 address={admin}
                 withIcon
                 onClick={(url) => navigate({ to: url })}
               />
             ) : (
-              <p className="diatype-m-bold">None</p>
+              <p className="diatype-sm-medium">None</p>
             )}
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />

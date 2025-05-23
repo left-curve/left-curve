@@ -235,14 +235,14 @@ const BlockDetails: React.FC = () => {
   const { transactions, createdAt, blockHeight, hash } = data.searchBlock;
 
   return (
-    <div className="flex flex-col rounded-md p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+    <div className="flex flex-col rounded-md p-4 bg-rice-25 shadow-card-shadow text-gray-700 relative overflow-hidden diatype-sm-medium">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
         <h1 className="h4-bold">
           {m["explorer.block.details.blockDetails"]({ height: `#${blockHeight}` })}
         </h1>
         <div className="grid grid-cols-1 gap-3 md:gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHash"]()}
             </p>
             <p className="break-all whitespace-normal">
@@ -254,19 +254,19 @@ const BlockDetails: React.FC = () => {
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.proposer"]()}
             </p>
             <p>Leftcurve Validator</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.numberOfTx"]()}
             </p>
             <p>{transactions.length}</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-m-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockTime"]()}
             </p>
             <p className="break-all whitespace-normal">{new Date(createdAt).toISOString()}</p>

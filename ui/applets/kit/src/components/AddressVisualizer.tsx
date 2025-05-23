@@ -44,7 +44,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
     return (
       <p
         className={twMerge(
-          "flex items-center gap-1",
+          "flex items-center gap-1 diatype-m-bold",
           { "cursor-pointer": isOnClickAvailable },
           className,
         )}
@@ -57,9 +57,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
             className="h-4 w-4 border border-rice-100 rounded-full"
           />
         ) : null}
-        <span className="diatype-m-bold">
-          {camelToTitleCase(dangoContract).replace("dex", "DEX")}
-        </span>
+        <span>{camelToTitleCase(dangoContract).replace("dex", "DEX")}</span>
         {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
     );
