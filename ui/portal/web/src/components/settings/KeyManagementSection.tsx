@@ -24,7 +24,7 @@ const KeyTranslation = {
   ethereum: "Ethereum Wallet",
 };
 
-export const KeyManagement: React.FC = () => {
+export const KeyManagementSection: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { showModal } = useApp();
