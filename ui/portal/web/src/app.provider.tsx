@@ -20,6 +20,8 @@ type AppState = {
   setNotificationMenuVisibility: (visibility: boolean) => void;
   isSearchBarVisible: boolean;
   setSearchBarVisibility: (visibility: boolean) => void;
+  isTradeBarVisible: boolean;
+  setTradeBarVisibility: (visibility: boolean) => void;
   isQuestBannerVisible: boolean;
   setQuestBannerVisibility: (visibility: boolean) => void;
   showModal: (modalName: string, props?: Record<string, unknown>) => void;
@@ -41,6 +43,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
+  const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
 
   // App settings
@@ -131,6 +134,8 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
+        isTradeBarVisible,
+        setTradeBarVisibility,
         isQuestBannerVisible: false,
         setQuestBannerVisibility,
         showModal,

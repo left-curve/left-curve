@@ -42,7 +42,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   });
 
   return (
-    <motion.div layoutId={layoutId} className={twMerge(styles.base())}>
+    <motion.div initial={false} layoutId={layoutId} className={twMerge(styles.base())}>
       {tabs.map((e, i) => {
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
@@ -66,7 +66,10 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
               cloneElement(e as React.ReactElement, { isActive })
             )}
             {isActive ? (
-              <motion.div className={twMerge(styles["animated-element"]())} layoutId="active" />
+              <motion.div
+                layoutId={`active-tab-indicator-${layoutId}`}
+                className={twMerge(styles["animated-element"]())}
+              />
             ) : null}
           </motion.button>
         );
@@ -77,7 +80,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
 const tabsVariants = tv({
   slots: {
-    base: "flex text-base relative items-center w-fit  p-1 rounded-md",
+    base: "flex text-base relative items-center w-fit p-1 rounded-md",
     button:
       "relative capitalize transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
     "animated-element": "absolute bottom-0 left-0",
@@ -88,6 +91,11 @@ const tabsVariants = tv({
         base: "bg-green-bean-200",
         "animated-element":
           "bg-green-bean-50 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+      },
+      red: {
+        base: "bg-red-100",
+        "animated-element":
+          "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "light-green": {
         base: "bg-green-bean-100",
@@ -136,6 +144,7 @@ const tabVariants = tv({
   variants: {
     color: {
       green: "",
+      red: "",
       "light-green": "",
       "line-red": "",
     },
@@ -158,6 +167,16 @@ const tabVariants = tv({
       isActive: true,
       color: "green",
       class: "text-black",
+    },
+    {
+      isActive: true,
+      color: "red",
+      class: "text-white-100",
+    },
+    {
+      isActive: false,
+      color: "red",
+      class: "text-gray-300",
     },
     {
       isActive: false,
