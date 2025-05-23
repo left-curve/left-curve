@@ -33,7 +33,12 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
   const { rows } = table.getRowModel();
 
   return (
-    <div className="bg-rice-25 shadow-card-shadow grid rounded-xl w-full px-4 pt-4 pb-2 gap-4 overflow-hidden">
+    <div
+      className={twMerge(
+        "bg-rice-25 shadow-card-shadow grid rounded-xl w-full px-4 pt-4 gap-4 overflow-hidden",
+        rows.length ? "pb-2" : "pb-4",
+      )}
+    >
       {topContent}
       <div
         style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
