@@ -1,8 +1,17 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 import { useEffect, useState } from "react";
+import { useApp } from "~/hooks/useApp";
 import { useNotifications } from "~/hooks/useNotifications";
 
-import { IconNetwork, IconTimer, IconUser, Skeleton } from "@left-curve/applets-kit";
+import {
+  IconMobile,
+  IconNetwork,
+  IconTimer,
+  IconUser,
+  Skeleton,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
+import { Modals } from "../modals/RootModal";
 import { SessionCountdown } from "./SessionCountdown";
 
 import { m } from "~/paraglide/messages";
@@ -17,8 +26,8 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
   if (!session) return null;
 
   return (
-    <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
-      <h3 className="h4-bold text-gray-900">{m["settings.session.title"]()}</h3>
+    <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4 gap-4">
+      <h3 className="h4-bold text-gray-900 px-2">{m["settings.session.title"]()}</h3>
       {children}
     </div>
   );
@@ -27,7 +36,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 const UsernameSection: React.FC = () => {
   const { username } = useAccount();
   return (
-    <div className="flex items-center justify-between rounded-md gap-8">
+    <div className="flex items-center justify-between rounded-md gap-8 px-2">
       <div className="flex flex-col">
         <div className="flex items-start gap-2">
           <IconUser className="text-gray-500" />
@@ -43,7 +52,7 @@ const UsernameSection: React.FC = () => {
 
 const RemainingTimeSection: React.FC = () => {
   return (
-    <div className="flex items-start justify-between rounded-md gap-8">
+    <div className="flex items-start justify-between rounded-md gap-8 px-2">
       <div className="flex flex-col gap-2 md:gap-0 w-full">
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 items-center">
@@ -80,7 +89,7 @@ const NetworkSection: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex items-start justify-between rounded-md gap-8 w-full">
+    <div className="flex items-start justify-between rounded-md gap-8 w-full px-2">
       <div className="flex flex-col gap-2 md:gap-0 w-full">
         <div className="flex justify-between items-center gap-2 capitalize">
           <div className="flex gap-2 items-center">
@@ -138,8 +147,32 @@ const NetworkSection: React.FC = () => {
   );
 };
 
+const ConnectMobileSection: React.FC = () => {
+  const { showModal } = useApp();
+  const { isConnected } = useAccount();
+  const { isLg } = useMediaQuery();
+
+  if (!isConnected && !isLg) return null;
+
+  return (
+    <div className="flex w-full pr-2">
+      <button
+        type="button"
+        className="flex items-center justify-between pl-2 py-4 rounded-md hover:bg-rice-50 transition-all cursor-pointer w-full"
+        onClick={() => showModal(Modals.QRConnect)}
+      >
+        <span className="flex items-center justify-center gap-2">
+          <IconMobile className="text-gray-500" />
+          <span className="diatype-m-bold text-gray-700">{m["settings.connectToMobile"]()}</span>
+        </span>
+      </button>
+    </div>
+  );
+};
+
 export const SessionSection = Object.assign(Container, {
   Username: UsernameSection,
   RemainingTime: RemainingTimeSection,
   Network: NetworkSection,
+  ConnectMobile: ConnectMobileSection,
 });

@@ -1,16 +1,6 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
-import { local, useAccount } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
-import {
-  IconFormatNumber,
-  IconLanguage,
-  IconMobile,
-  Select,
-  Tab,
-  Tabs,
-} from "@left-curve/applets-kit";
-import { Modals } from "../modals/RootModal";
+import { IconFormatNumber, IconLanguage, Select, Tab, Tabs } from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
@@ -21,8 +11,8 @@ import type React from "react";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 pt-2 pb-4 gap-4">
-      <h3 className="h4-bold text-gray-900 px-2 pt-2">{m["settings.display"]()}</h3>
+    <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4 gap-4">
+      <h3 className="h4-bold text-gray-900 px-2">{m["settings.display"]()}</h3>
       {children}
     </div>
   );
@@ -76,29 +66,6 @@ const FormatNumberSection: React.FC = () => {
   );
 };
 
-const ConnectMobileSection: React.FC = () => {
-  const { showModal } = useApp();
-  const { isConnected } = useAccount();
-  const { isLg } = useMediaQuery();
-
-  if (!isConnected && !isLg) return null;
-
-  return (
-    <div className="flex w-full pr-2">
-      <button
-        type="button"
-        className="flex items-center justify-between pl-2 py-4 rounded-md hover:bg-rice-50 transition-all cursor-pointer w-full"
-        onClick={() => showModal(Modals.QRConnect)}
-      >
-        <span className="flex items-center justify-center gap-2">
-          <IconMobile className="text-gray-500" />
-          <span className="diatype-m-bold text-gray-700">{m["settings.connectToMobile"]()}</span>
-        </span>
-      </button>
-    </div>
-  );
-};
-
 const ThemeSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
@@ -114,6 +81,5 @@ const ThemeSection: React.FC = () => {
 export const DisplaySection = Object.assign(Container, {
   Language: LanguageSection,
   FormatNumber: FormatNumberSection,
-  ConnectMobile: ConnectMobileSection,
   Theme: ThemeSection,
 });

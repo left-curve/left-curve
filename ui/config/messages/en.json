@@ -498,7 +498,7 @@
         }
       }
     ],
-    "number": "Format Number",
+    "number": "Number Format",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",

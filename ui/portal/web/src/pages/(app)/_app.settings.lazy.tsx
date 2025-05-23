@@ -17,13 +17,13 @@ function SettingsApplet() {
       <MobileTitle title={m["settings.title"]()} />
       <SessionSection>
         <SessionSection.Username />
+        <SessionSection.ConnectMobile />
         <SessionSection.RemainingTime />
         <SessionSection.Network />
       </SessionSection>
       <DisplaySection>
         <DisplaySection.Language />
         <DisplaySection.FormatNumber />
-        <DisplaySection.ConnectMobile />
       </DisplaySection>
       <KeyManagementSection />
     </div>

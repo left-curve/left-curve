@@ -41,7 +41,7 @@ export const KeyManagementSection: React.FC = () => {
   return (
     <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
-        <div className="flex flex-col gap-1 max-w-lg">
+        <div className="flex flex-col gap-4 max-w-lg">
           <h3 className="h4-bold text-gray-900">{m["settings.keyManagement.title"]()}</h3>
           <p className="text-gray-500 diatype-sm-regular">
             {m["settings.keyManagement.description"]()}
