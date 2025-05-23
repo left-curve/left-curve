@@ -1,5 +1,5 @@
 import { useMediaQuery } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store";
+import { local, useAccount } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -15,6 +15,7 @@ import { Modals } from "../modals/RootModal";
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
 
+import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 
@@ -34,7 +35,7 @@ const LanguageSection: React.FC = () => {
         <IconLanguage className="text-gray-500" />
         <span className="diatype-m-bold text-gray-700">{m["settings.language"]()}</span>
       </p>
-      <Select value={getLocale()} onChange={(key) => setLocale(key as "en")}>
+      <Select value={getLocale()} onChange={(key) => setLocale(key as (typeof locales)[number])}>
         {locales.map((locale) => (
           <Select.Item key={locale} value={locale}>
             {m["settings.languages"]({ language: locale })}
@@ -59,7 +60,10 @@ const FormatNumberSection: React.FC = () => {
         defaultValue={formatNumberOptions?.mask.toString() || "1"}
         onChange={(key) => [
           changeSettings({
-            formatNumberOptions: { ...formatNumberOptions, mask: Number(key) as 1 },
+            formatNumberOptions: {
+              ...formatNumberOptions,
+              mask: Number(key) as FormatNumberOptions["mask"],
+            },
           }),
         ]}
       >
