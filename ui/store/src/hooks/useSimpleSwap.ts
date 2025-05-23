@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
+import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { Coin, PairUpdate } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";
+
+import type { Coin, PairUpdate } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
-import { usePrices } from "./usePrices.js";
 
 const BASE_DENOM = "USDC";
 

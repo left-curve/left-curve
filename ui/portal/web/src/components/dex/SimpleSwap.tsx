@@ -166,7 +166,7 @@ export const SimpleSwapForm: React.FC = () => {
   const { register, setValue, inputs } = controllers;
   const { isPending } = submission;
   const { formatNumberOptions } = settings;
-  const { simulate } = state.simulation;
+  const { simulate, isFetching } = state.simulation;
 
   const baseBalance = formatUnits(balances?.[base.denom] || 0, base.decimals);
   const quoteBalance = formatUnits(balances?.[quote.denom] || 0, quote.decimals);
@@ -339,11 +339,14 @@ export const SimpleSwapForm: React.FC = () => {
               ) : null}
             </div>
             <p>
-              {" "}
-              {getPrice(quoteAmount, quote.denom, {
-                format: true,
-                formatOptions: formatNumberOptions,
-              })}
+              {isFetching ? (
+                <Skeleton className="w-14 h-4" />
+              ) : (
+                getPrice(quoteAmount, quote.denom, {
+                  format: true,
+                  formatOptions: formatNumberOptions,
+                })
+              )}
             </p>
           </div>
         }
@@ -358,7 +361,7 @@ const SimpleSwapDetails: React.FC = () => {
   const { state } = useSimpleSwap();
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
-  const { input, data } = simulation;
+  const { input, data, isFetching } = simulation;
 
   if (!input || !data || !isConnected || input.amount === "0") return <div />;
 
@@ -375,20 +378,28 @@ const SimpleSwapDetails: React.FC = () => {
         <p className="text-gray-500 diatype-sm-regular">
           {m["dex.fee"]()} ({Number(pair?.params.swapFeeRate || 0) * 100}%)
         </p>
-        <p className="text-gray-700 diatype-sm-medium">
-          {formatNumber(fee, { ...formatNumberOptions, currency: "usd" })}
-        </p>
+        {isFetching ? (
+          <Skeleton className="w-14 h-4" />
+        ) : (
+          <p className="text-gray-700 diatype-sm-medium">
+            {formatNumber(fee, { ...formatNumberOptions, currency: "usd" })}
+          </p>
+        )}
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
         <p className="text-gray-500 diatype-sm-regular">{m["dex.convert.rate"]()}</p>
-        <p className="text-gray-700 diatype-sm-medium">
-          1 {inputCoin.symbol} ≈{" "}
-          {formatNumber(Number(outputAmount) / Number(inputAmount), {
-            ...formatNumberOptions,
-            maxFractionDigits: outputCoin.decimals,
-          })}{" "}
-          {outputCoin.symbol}
-        </p>
+        {isFetching ? (
+          <Skeleton className="w-36 h-4" />
+        ) : (
+          <p className="text-gray-700 diatype-sm-medium">
+            1 {inputCoin.symbol} ≈{" "}
+            {formatNumber(Number(outputAmount) / Number(inputAmount), {
+              ...formatNumberOptions,
+              maxFractionDigits: outputCoin.decimals,
+            })}{" "}
+            {outputCoin.symbol}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -396,11 +407,10 @@ const SimpleSwapDetails: React.FC = () => {
 
 const SimpleSwapTrigger: React.FC = () => {
   const { isConnected } = useAccount();
-  const { controllers, submission } = useSimpleSwap();
-  const { inputs } = controllers;
+  const { submission, state } = useSimpleSwap();
+  const { simulation } = state;
   const { isPending } = submission;
-
-  const { base, quote } = inputs;
+  const { isFetching } = simulation;
 
   return isConnected ? (
     <Button
@@ -408,7 +418,7 @@ const SimpleSwapTrigger: React.FC = () => {
       size="md"
       type="submit"
       form="simple-swap-form"
-      isDisabled={Number(base?.value || 0) <= 0 || Number(quote?.value || 0) <= 0}
+      isDisabled={Number(simulation.data?.amount || 0) < 0 || isFetching}
       isLoading={isPending}
     >
       Swap
