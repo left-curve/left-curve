@@ -166,7 +166,7 @@ export const SimpleSwapForm: React.FC = () => {
   const { register, setValue, inputs } = controllers;
   const { isPending } = submission;
   const { formatNumberOptions } = settings;
-  const { simulate } = state.simulation;
+  const { simulate, isFetching } = state.simulation;
 
   const baseBalance = formatUnits(balances?.[base.denom] || 0, base.decimals);
   const quoteBalance = formatUnits(balances?.[quote.denom] || 0, quote.decimals);
@@ -340,10 +340,12 @@ export const SimpleSwapForm: React.FC = () => {
             </div>
             <p>
               {" "}
-              {getPrice(quoteAmount, quote.denom, {
-                format: true,
-                formatOptions: formatNumberOptions,
-              })}
+              {isFetching
+                ? null
+                : getPrice(quoteAmount, quote.denom, {
+                    format: true,
+                    formatOptions: formatNumberOptions,
+                  })}
             </p>
           </div>
         }
@@ -396,11 +398,10 @@ const SimpleSwapDetails: React.FC = () => {
 
 const SimpleSwapTrigger: React.FC = () => {
   const { isConnected } = useAccount();
-  const { controllers, submission } = useSimpleSwap();
-  const { inputs } = controllers;
+  const { submission, state } = useSimpleSwap();
+  const { simulation } = state;
   const { isPending } = submission;
-
-  const { base, quote } = inputs;
+  const { isFetching } = simulation;
 
   return isConnected ? (
     <Button
@@ -408,7 +409,7 @@ const SimpleSwapTrigger: React.FC = () => {
       size="md"
       type="submit"
       form="simple-swap-form"
-      isDisabled={Number(base?.value || 0) <= 0 || Number(quote?.value || 0) <= 0}
+      isDisabled={Number(simulation.data?.amount || 0) < 0 || isFetching}
       isLoading={isPending}
     >
       Swap
