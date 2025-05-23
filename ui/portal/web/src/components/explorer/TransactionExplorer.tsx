@@ -63,7 +63,7 @@ const Details: React.FC = () => {
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
   return (
-    <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+    <div className="flex flex-col gap-4 rounded-md p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
       <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
