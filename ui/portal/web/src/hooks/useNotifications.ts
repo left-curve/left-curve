@@ -3,7 +3,7 @@ import { format, isToday } from "date-fns";
 import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
 import { useCallback, useMemo, useRef } from "react";
 
-import type { Account, Address, Username } from "@left-curve/dango/types";
+import type { Account, Address, Hex, IndexedBlock, Username } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 
 export type NotificationsMap = {
@@ -17,6 +17,7 @@ export type NotificationsMap = {
     toAddress: Address;
     type: "received" | "sent";
   };
+  block: IndexedBlock;
 };
 
 export type Notifications<key extends keyof NotificationsMap = keyof NotificationsMap> = {
@@ -33,6 +34,7 @@ export type Subscription = {
     toAddress: Address;
     blockHeight: number;
   };
+  block: IndexedBlock;
 };
 
 type UseNotificationsParameters = {
@@ -94,6 +96,13 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       (async () => {
         const subscription = client.iterate({
           query: `subscription($address: String) {
+              block {
+              blockHeight
+              createdAt
+              hash
+              transactionsCount
+              appHash
+              }
               sentTransfers: transfers(fromAddress: $address) {
                 fromAddress
                 toAddress
@@ -113,6 +122,8 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         });
         for await (const { data } of subscription) {
           if (!data) continue;
+          if ("block" in data) notifier.publish("block", data.block as Subscription["block"]);
+
           if ("receivedTransfers" in data || "sentTransfers" in data) {
             const isSent = "sentTransfers" in data;
 

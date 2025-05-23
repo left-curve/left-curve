@@ -460,9 +460,16 @@
     "display": "Display",
     "language": "Language",
     "session": {
-      "title": "Session",
+      "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
+      "network": {
+        "title": "Network",
+        "chainId": "Chain ID",
+        "latestBlockHeight": "Latest Block Height",
+        "latestBlockTime": "Latest Block Time",
+        "endpoint": "Endpoint"
+      },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" }
     },
     "languages": [
@@ -491,7 +498,7 @@
         }
       }
     ],
-    "number": "Format Number",
+    "number": "Number Format",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",

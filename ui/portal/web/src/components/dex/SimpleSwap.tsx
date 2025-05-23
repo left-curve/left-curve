@@ -309,7 +309,9 @@ export const SimpleSwapForm: React.FC = () => {
         startContent={
           coinPairs.length ? (
             <CoinSelector
-              coins={Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom))}
+              coins={Object.values(coins).filter(
+                (c) => Object.keys(pairs.data).includes(c.denom) && c.denom !== "dango",
+              )}
               value={quote.denom}
               onChange={(v) => changeQuote(coins[v].symbol)}
             />
