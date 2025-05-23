@@ -8,7 +8,7 @@ export const coins = {
   dango: {
     type: "native",
     name: "Dango",
-    logoURI: "/favicon.svg",
+    logoURI: "/DGX.svg",
     symbol: "DGX",
     denom: "dango",
     decimals: 6,
