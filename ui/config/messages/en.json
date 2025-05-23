@@ -103,7 +103,7 @@
     },
     "1": {
       "id": "simple-swap",
-      "img": "/images/emojis/simple/spot.svg",
+      "img": "/images/emojis/simple/swap.svg",
       "title": "Convert",
       "description": "The easiest way to trade at all sizes.",
       "path": "/swap",
@@ -502,7 +502,7 @@
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",
-      "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
+      "description": "Add or remove keys associated with your user profile. You can sign in to Dango with any of these keys.",
       "add": "Add",
       "management": {
         "add": {

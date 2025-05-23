@@ -88,7 +88,7 @@ const BlockSkeleton: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
-      <div className="flex flex-col gap-4 rounded-md p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
         <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]({ height: "#" })}</h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
         <img
