@@ -537,7 +537,7 @@
     "convert": {
       "swap": "Swap",
       "title": "Convert",
-      "convertSuccessfully": "Swap Successfully",
+      "convertSuccessfully": "Order Executed",
       "youGet": "You get",
       "youSwap": "You swap",
       "rate": "Rate",
