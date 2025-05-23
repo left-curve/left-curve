@@ -7,7 +7,7 @@ use {
         account_factory::{self, RegisterUserData, Username},
         auth::Key,
     },
-    grug::{Coins, ContractWrapper, Hash256, HashExt, ResultExt},
+    grug::{Coins, ContractWrapper, Hash256, HashExt, Op, ResultExt},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
@@ -32,6 +32,46 @@ pub fn create_user_account_with_key(
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
     // an account and claim the funds held in IBC transfer contract.
+    suite
+        .execute(
+            &mut Factory::new(contracts.account_factory),
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                seed: 0,
+                username: user.username.clone(),
+                key: public_key,
+                key_hash: public_key_hash,
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        username: user.username.clone(),
+                        chain_id,
+                    })
+                    .unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+pub fn add_user_public_key(
+    suite: &mut HyperlaneTestSuite<
+        MemDb,
+        RustVm,
+        ProposalPreparer<PythClientCache>,
+        NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
+    >,
+    contracts: &Contracts,
+    user: &TestAccount,
+    chain_id: String,
+    public_key: Key,
+    public_key_hash: Hash256,
+) {
+    // How to use this?
+    let _message = account_factory::ExecuteMsg::UpdateKey {
+        key_hash: public_key_hash,
+        key: Op::Insert(public_key),
+    };
+
     suite
         .execute(
             &mut Factory::new(contracts.account_factory),

@@ -13,6 +13,8 @@ fn index_account_creations() {
 
     let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
 
+    suite.app.indexer.wait_for_finish();
+
     suite
         .app
         .indexer
@@ -69,6 +71,8 @@ fn index_previous_blocks() {
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    suite.app.indexer.wait_for_finish();
 
     suite
         .app
