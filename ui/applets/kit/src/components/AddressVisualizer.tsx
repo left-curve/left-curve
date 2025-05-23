@@ -50,13 +50,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
         )}
         onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
       >
-        {withIcon ? (
-          <img
-            src="/favicon.svg"
-            alt="dango logo"
-            className="h-4 w-4 border border-rice-100 rounded-full"
-          />
-        ) : null}
+        {withIcon ? <img src="/DGX.svg" alt="dango logo" className="h-4 w-4" /> : null}
         <span>{camelToTitleCase(dangoContract).replace("dex", "DEX")}</span>
         {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
