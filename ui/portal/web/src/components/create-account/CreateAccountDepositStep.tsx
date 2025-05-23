@@ -61,7 +61,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         showModal(Modals.ConfirmAccount, {
           amount: parsedAmount,
           accountType,
-          accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
+          accountName: `${account!.username} #${nextIndex}`,
           denom: "bridge/usdc",
         });
         await refreshAccounts?.();
