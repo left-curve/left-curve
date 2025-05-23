@@ -265,6 +265,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
                 let expected_accounts = serde_json::json!([{
                     "accountType": "SPOT",
+                    "createdBlockHeight": 3,
                     "address": test_account2.address.inner().to_string(),
                     "users": [
                         {
@@ -274,6 +275,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                 },
                 {
                     "accountType": "SPOT",
+                    "createdBlockHeight": 2,
                     "address": test_account1.address.inner().to_string(),
                     "users": [
                         {

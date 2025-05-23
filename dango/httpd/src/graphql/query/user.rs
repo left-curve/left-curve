@@ -103,6 +103,11 @@ impl UserQuery {
                         .filter(entity::users::Column::CreatedBlockHeight.eq(block_height as i64));
                 }
 
+                //  sort must be before `find_with_related`
+                query = query
+                    .order_by(entity::users::Column::CreatedBlockHeight, Order::Desc)
+                    .order_by(entity::users::Column::Username, Order::Desc);
+
                 let mut query = query.find_with_related(entity::public_keys::Entity);
 
                 if let Some(public_key) = public_key {
@@ -112,10 +117,6 @@ impl UserQuery {
                 if let Some(public_key_hash) = public_key_hash {
                     query = query.filter(entity::public_keys::Column::KeyHash.eq(&public_key_hash));
                 }
-
-                query = query
-                    .order_by(entity::users::Column::CreatedBlockHeight, Order::Desc)
-                    .order_by(entity::users::Column::Username, Order::Desc);
 
                 let mut users: Vec<types::user::User> = query
                     .all(&app_ctx.db)

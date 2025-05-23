@@ -99,12 +99,8 @@ impl AccountQuery {
                     query = query.filter(entity::accounts::Column::Address.eq(&address));
                 }
 
-                let mut query = query.find_with_related(entity::users::Entity);
-
-                if let Some(username) = username {
-                    query = query.filter(entity::users::Column::Username.eq(&username));
-                }
-
+                // see https://github.com/SeaQL/sea-orm/issues/2220
+                // order *must* be before `find_with_related`
                 match sort_by {
                     SortBy::BlockHeightAsc => {
                         query = query
@@ -116,6 +112,12 @@ impl AccountQuery {
                             .order_by(entity::accounts::Column::CreatedBlockHeight, Order::Desc)
                             .order_by(entity::accounts::Column::Address, Order::Desc)
                     },
+                }
+
+                let mut query = query.find_with_related(entity::users::Entity);
+
+                if let Some(username) = username {
+                    query = query.filter(entity::users::Column::Username.eq(&username));
                 }
 
                 let mut accounts: Vec<types::account::Account> = query
