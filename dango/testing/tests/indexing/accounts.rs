@@ -1,11 +1,17 @@
 use {
-    assertor::*, dango_indexer_sql::entity, dango_testing::create_accounts, grug::Inner,
+    assertor::*,
+    dango_indexer_sql::entity,
+    dango_testing::{HyperlaneTestSuite, create_user_and_accounts, setup_test_with_indexer},
+    grug::Inner,
     sea_orm::EntityTrait,
 };
 
 #[test]
 fn index_account_creations() {
-    let (suite, test_account, _) = create_accounts();
+    let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite
         .app
@@ -34,7 +40,7 @@ fn index_account_creations() {
                     .map(|t| t.username.as_str())
                     .collect::<Vec<_>>()
             )
-            .is_equal_to(vec![test_account.username.as_ref()]);
+            .is_equal_to(vec![user.username.as_ref()]);
 
             assert_that!(users).has_length(1);
             assert_that!(accounts).has_length(1);
@@ -43,10 +49,9 @@ fn index_account_creations() {
 
             let public_key = public_keys.first().unwrap();
 
-            assert_that!(&public_key.username).is_equal_to(test_account.username.inner());
-            assert_that!(public_key.key_hash)
-                .is_equal_to(test_account.first_key_hash().to_string());
-            assert_that!(public_key.public_key).is_equal_to(test_account.first_key().to_string());
+            assert_that!(&public_key.username).is_equal_to(user.username.inner());
+            assert_that!(public_key.key_hash).is_equal_to(user.first_key_hash().to_string());
+            assert_that!(public_key.public_key).is_equal_to(user.first_key().to_string());
 
             // dbg!(users);
             // dbg!(public_keys);
@@ -60,7 +65,10 @@ fn index_account_creations() {
 
 #[test]
 fn index_previous_blocks() {
-    let (suite, test_account, _) = create_accounts();
+    let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite
         .app
@@ -82,7 +90,7 @@ fn index_previous_blocks() {
                     .map(|t| t.username.as_str())
                     .collect::<Vec<_>>()
             )
-            .is_equal_to(vec![test_account.username.as_ref()]);
+            .is_equal_to(vec![user.username.as_ref()]);
 
             Ok::<_, anyhow::Error>(())
         })

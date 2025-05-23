@@ -4,7 +4,6 @@ use {
         constants::{owner, user1, user2, user3, user4, user5, user6, user7, user8, user9},
     },
     dango_genesis::{Codes, Contracts, GenesisCodes, GenesisOption, build_genesis},
-    dango_indexer_sql::hooks::ContractAddrs,
     dango_proposal_preparer::ProposalPreparer,
     dango_types::{
         gateway::{Domain, Remote},
@@ -130,11 +129,7 @@ pub fn setup_test_with_indexer() -> (
 ) {
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
-        .with_hooks(dango_indexer_sql::hooks::Hooks {
-            contract_addrs: ContractAddrs {
-                account_factory: Addr::mock(0),
-            },
-        })
+        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()
         .unwrap();
 

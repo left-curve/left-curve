@@ -2,13 +2,19 @@ use {
     super::build_actix_app,
     assert_json_diff::*,
     assertor::*,
-    dango_testing::create_accounts,
+    dango_testing::{HyperlaneTestSuite, create_user_and_accounts, setup_test_with_indexer},
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts() -> anyhow::Result<()> {
-    let (_, test_account, httpd_context) = create_accounts();
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    suite.app.indexer.wait_for_finish();
 
     let graphql_query = r#"
       query Accounts {
@@ -47,7 +53,7 @@ async fn query_accounts() -> anyhow::Result<()> {
                     "accountType": "SPOT",
                     "users": [
                         {
-                            "username": test_account.username.to_string(),
+                            "username": user.username.to_string(),
                         }
                     ],
                 });
@@ -63,7 +69,13 @@ async fn query_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
-    let (_, test_account, httpd_context) = create_accounts();
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    suite.app.indexer.wait_for_finish();
 
     let graphql_query = r#"
       query Accounts($username: String) {
@@ -83,7 +95,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
     "#;
 
     let variables = serde_json::json!({
-        "username": test_account.username.to_string(),
+        "username": user.username.to_string(),
     })
     .as_object()
     .unwrap()
@@ -109,7 +121,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
                     "accountType": "SPOT",
                     "users": [
                         {
-                            "username": test_account.username.to_string(),
+                            "username": user.username.to_string(),
                         }
                     ],
                 });
@@ -125,7 +137,13 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
-    let (_, _idx, httpd_context) = create_accounts();
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    suite.app.indexer.wait_for_finish();
 
     let graphql_query = r#"
       query Accounts($username: String) {

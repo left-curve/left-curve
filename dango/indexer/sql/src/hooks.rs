@@ -5,7 +5,6 @@ use {
     },
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
-    grug::Addr,
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{
         Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
@@ -17,14 +16,7 @@ use {
 mod accounts;
 
 #[derive(Clone)]
-pub struct ContractAddrs {
-    pub account_factory: Addr,
-}
-
-#[derive(Clone)]
-pub struct Hooks {
-    pub contract_addrs: ContractAddrs,
-}
+pub struct Hooks;
 
 #[async_trait]
 impl HooksTrait for Hooks {
@@ -154,11 +146,7 @@ mod tests {
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
-            .with_hooks(Hooks {
-                contract_addrs: ContractAddrs {
-                    account_factory: Addr::mock(0),
-                },
-            })
+            .with_hooks(Hooks)
             .build()?;
 
         let storage = MockStorage::new();

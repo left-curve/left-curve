@@ -1,4 +1,5 @@
 use {
+    super::MAX_PAST_BLOCKS,
     crate::graphql::types::message::Message,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
@@ -50,7 +51,7 @@ impl MessageSubscription {
             None => latest_block_height..=latest_block_height,
         };
 
-        if block_range.try_len().unwrap_or(0) > 100 {
+        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
             return Err(async_graphql::Error::new("since_block_height is too old"));
         }
 

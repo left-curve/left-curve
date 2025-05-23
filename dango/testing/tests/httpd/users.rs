@@ -1,13 +1,17 @@
 use {
     super::build_actix_app,
     assert_json_diff::*,
-    dango_testing::create_accounts,
+    dango_testing::{HyperlaneTestSuite, create_user_and_accounts, setup_test_with_indexer},
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user() -> anyhow::Result<()> {
-    let (_, test_account, httpd_context) = create_accounts();
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let user = create_user_and_accounts(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     let graphql_query = r#"
       query Users {
@@ -39,11 +43,11 @@ async fn query_user() -> anyhow::Result<()> {
                     call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
 
                 let expected_data = serde_json::json!({
-                    "username": test_account.username.to_string(),
+                    "username": user.username.to_string(),
                     "publicKeys": [
                         {
-                            "publicKey": test_account.first_key().to_string(),
-                            "keyHash": test_account.first_key_hash().to_string(),
+                            "publicKey": user.first_key().to_string(),
+                            "keyHash": user.first_key_hash().to_string(),
                         }
                     ],
                 });

@@ -3,6 +3,7 @@ use {
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity,
     futures_util::stream::{StreamExt, once},
+    indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::entity::blocks::latest_block_height,
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
@@ -84,7 +85,7 @@ impl TransferSubscription {
             None => latest_block_height..=latest_block_height,
         };
 
-        if block_range.try_len().unwrap_or(0) > 100 {
+        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
             return Err(async_graphql::Error::new("since_block_height is too old"));
         }
 

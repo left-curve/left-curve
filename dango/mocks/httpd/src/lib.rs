@@ -1,12 +1,10 @@
 use {
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
-    dango_indexer_sql::hooks::ContractAddrs,
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
     grug_db_memory::MemDb,
     grug_testing::MockClient,
-    grug_types::Addr,
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
     std::sync::Arc,
@@ -41,11 +39,7 @@ pub async fn run(
         .with_keep_blocks(keep_blocks)
         .with_sqlx_pubsub()
         .with_tmpdir()
-        .with_hooks(dango_indexer_sql::hooks::Hooks {
-            contract_addrs: ContractAddrs {
-                account_factory: Addr::mock(0),
-            },
-        })
+        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()?;
 
     let indexer_context = indexer.context.clone();
