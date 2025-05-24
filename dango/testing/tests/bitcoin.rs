@@ -176,11 +176,11 @@ fn observe_inbound() {
 
     // Ensure the inbound works with None recipient.
     {
+        let tx_hash =
+            Hash256::from_str("14A0BF02F69BD13C274ED22E20C1BF4CC5DABF99753DB32E5B8959BF4C5F1F5C")
+                .unwrap();
         let msg = ExecuteMsg::ObserveInbound {
-            transaction_hash: Hash256::from_str(
-                "14A0BF02F69BD13C274ED22E20C1BF4CC5DABF99753DB32E5B8959BF4C5F1F5C",
-            )
-            .unwrap(),
+            transaction_hash: tx_hash,
             vout: 2,
             amount,
             recipient: None,
@@ -196,6 +196,19 @@ fn observe_inbound() {
         // Broadcast the message with a non guardian signer.
         suite
             .send_message(&mut accounts.val2, msg.clone())
-            .should_succeed();
+            .should_succeed()
+            .events
+            .search_event::<CheckedContractEvent>()
+            .with_predicate(|evt| evt.ty == "inbound_confirmed")
+            .take()
+            .one()
+            .event
+            .data
+            .deserialize_json::<InboundConfirmed>()
+            .should_succeed_and_equal(InboundConfirmed {
+                transaction_hash: tx_hash,
+                amount,
+                recipient: None,
+            });
     }
 }
