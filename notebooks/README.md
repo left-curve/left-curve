@@ -4,7 +4,7 @@ Python prototypes of algorithms used in [Dango](https://dango.exchange/) DeFi pr
 
 ## How to use
 
-We recommand [uv](https://github.com/astral-sh/uv) for managing Python development environments. To install on macOS:
+We recommend [uv](https://github.com/astral-sh/uv) for managing Python development environments. To install on macOS:
 
 ```zsh
 brew install uv
