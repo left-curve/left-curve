@@ -1,4 +1,3 @@
-import { Skeleton, createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import {
   useSimpleSwap as state,
   useAccount,
@@ -7,22 +6,31 @@ import {
   usePrices,
   useSigningClient,
 } from "@left-curve/store";
+import { useMutation } from "@tanstack/react-query";
+import { useApp } from "~/hooks/useApp";
 
-import { Badge, Button, CoinSelector, IconArrowDown, Input } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Button,
+  CoinSelector,
+  IconArrowDown,
+  Input,
+  Skeleton,
+} from "@left-curve/applets-kit";
+import { Link } from "@tanstack/react-router";
 import { toast } from "../foundation/Toast";
+import { Modals } from "../modals/RootModal";
 
 import { m } from "~/paraglide/messages";
 
+import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
-import { useMutation } from "@tanstack/react-query";
+
 import { type PropsWithChildren, useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
-import { Modals } from "../modals/RootModal";
 
 import type { Address } from "@left-curve/dango/types";
 import type { UseSimpleSwapParameters } from "@left-curve/store";
 import type { UseMutationResult } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import type React from "react";
 
 const [SimpleSwapProvider, useSimpleSwap] = createContext<{
@@ -42,7 +50,6 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
   const { notifier, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const { reset } = controllers;
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
   const { pair, simulation, fee, coins } = simpleSwapState;
   const { formatNumberOptions } = settings;
@@ -87,7 +94,8 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
           input: simulation.input,
         });
 
-        reset();
+        controllers.reset();
+        simulation.reset();
         toast.success({ title: m["dex.convert.convertSuccessfully"]() });
         notifier.publish("submit_tx", {
           isSubmitting: false,
@@ -219,6 +227,7 @@ export const SimpleSwapForm: React.FC = () => {
       <Input
         isDisabled={isPending}
         placeholder="0"
+        isLoading={isReverse ? isFetching : false}
         onFocus={() => setActiveInput("base")}
         {...register("base", {
           strategy: "onChange",
@@ -267,10 +276,14 @@ export const SimpleSwapForm: React.FC = () => {
               )}
             </div>
             <p>
-              {getPrice(baseAmount, base.denom, {
-                format: true,
-                formatOptions: formatNumberOptions,
-              })}
+              {isFetching && isReverse ? (
+                <Skeleton className="w-14 h-4" />
+              ) : (
+                getPrice(baseAmount, base.denom, {
+                  format: true,
+                  formatOptions: formatNumberOptions,
+                })
+              )}
             </p>
           </div>
         }
@@ -287,6 +300,7 @@ export const SimpleSwapForm: React.FC = () => {
       <Input
         isDisabled={isPending}
         placeholder="0"
+        isLoading={isReverse ? false : isFetching}
         onFocus={() => setActiveInput("quote")}
         label={isReverse ? m["dex.convert.youSwap"]() : m["dex.convert.youGet"]()}
         {...register("quote", {
@@ -341,7 +355,7 @@ export const SimpleSwapForm: React.FC = () => {
               ) : null}
             </div>
             <p>
-              {isFetching ? (
+              {isFetching && !isReverse ? (
                 <Skeleton className="w-14 h-4" />
               ) : (
                 getPrice(quoteAmount, quote.denom, {
@@ -420,10 +434,10 @@ const SimpleSwapTrigger: React.FC = () => {
       size="md"
       type="submit"
       form="simple-swap-form"
-      isDisabled={Number(simulation.data?.amount || 0) < 0 || isFetching}
+      isDisabled={Number(simulation.data?.amount || 0) <= 0 || isFetching}
       isLoading={isPending}
     >
-      Swap
+      {m["dex.convert.swap"]()}
     </Button>
   ) : (
     <Button fullWidth size="md" as={Link} to="/signin">
