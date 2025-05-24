@@ -74,7 +74,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <div className={inputParent({ className: classNames?.inputParent })}>
             {startContent ? startContent : null}
             <div className="relative flex-1 flex items-center">
-              {!props.value && placeholder ? (
+              {!props.value && !isLoading && placeholder ? (
                 <div
                   className={twMerge("w-full absolute z-0 text-gray-500 text-left ", {
                     "text-right": startText === "right",
