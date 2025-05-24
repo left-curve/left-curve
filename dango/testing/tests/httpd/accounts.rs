@@ -15,7 +15,8 @@ async fn query_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user1");
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user2");
 
     suite.app.indexer.wait_for_finish();
 
@@ -56,7 +57,7 @@ async fn query_accounts() -> anyhow::Result<()> {
                     "accountType": "SPOT",
                     "users": [
                         {
-                            "username": user.username.to_string(),
+                            "username": user1.username.to_string(),
                         }
                     ],
                 });
