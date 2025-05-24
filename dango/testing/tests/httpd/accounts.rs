@@ -15,8 +15,8 @@ async fn query_accounts() -> anyhow::Result<()> {
         setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user1");
-    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user2");
+    let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "bar");
 
     suite.app.indexer.wait_for_finish();
 
@@ -53,16 +53,31 @@ async fn query_accounts() -> anyhow::Result<()> {
                 let response =
                     call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
 
-                let expected_data = serde_json::json!({
+                let received_accounts = response
+                    .data
+                    .edges
+                    .into_iter()
+                    .map(|e| e.node)
+                    .collect::<Vec<_>>();
+
+                let expected_data = serde_json::json!([{
+                    "accountType": "SPOT",
+                    "users": [
+                        {
+                            "username": user2.username.to_string(),
+                        }
+                    ],
+                },{
                     "accountType": "SPOT",
                     "users": [
                         {
                             "username": user1.username.to_string(),
                         }
                     ],
-                });
+                }
+                ]);
 
-                assert_json_include!(actual: response.data.edges[0].node, expected: expected_data);
+                assert_json_include!(actual: received_accounts, expected: expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
