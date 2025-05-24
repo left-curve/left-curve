@@ -293,7 +293,10 @@ export const SimpleSwapForm: React.FC = () => {
         type="button"
         disabled={isPending}
         className="flex items-center justify-center border border-gray-300 rounded-full h-5 w-5 cursor-pointer mt-4"
-        onClick={() => toggleDirection()}
+        onClick={() => {
+          toggleDirection();
+          setActiveInput(activeInput === "base" ? "quote" : "base");
+        }}
       >
         <IconArrowDown className="h-3 w-3 text-gray-300" />
       </button>

@@ -77,10 +77,9 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
 
   const simulation = useQuery({
     enabled: false,
-    queryKey: ["pair_simulation"],
+    queryKey: ["pair_simulation", pair],
     queryFn: async () => {
-      if (!simulationInput.current || !config?.pairs) return null;
-      const pair = config.pairs[quoteCoin.denom];
+      if (!simulationInput.current || !pair) return null;
       return await client.simulateSwapExactAmountIn({
         input: simulationInput.current,
         route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
