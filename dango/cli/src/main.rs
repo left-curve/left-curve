@@ -1,6 +1,7 @@
 mod config;
 mod db;
 mod home_directory;
+mod indexer;
 mod keys;
 mod prompt;
 mod query;
@@ -13,8 +14,8 @@ mod tx;
 use crate::test::TestCmd;
 use {
     crate::{
-        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
-        tx::TxCmd,
+        db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
+        query::QueryCmd, start::StartCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -52,6 +53,9 @@ enum Command {
 
     /// Start the node
     Start(StartCmd),
+
+    /// Indexer related commands
+    Indexer(IndexerCmd),
 
     /// Run test
     #[cfg(feature = "testing")]
@@ -106,5 +110,6 @@ async fn main() -> anyhow::Result<()> {
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
+        Command::Indexer(cmd) => cmd.run(app_dir).await,
     }
 }

@@ -49,7 +49,7 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Create a new user, following an initial deposit.
+    /// Create a new user, following an initial deposit. Creates a spot account too.
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {

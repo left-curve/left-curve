@@ -1,7 +1,8 @@
 use {
-    async_graphql::{ComplexObject, SimpleObject},
+    async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
     dango_indexer_sql::entity,
+    sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
     serde::Deserialize,
 };
 
@@ -34,4 +35,59 @@ impl From<entity::transfers::Model> for Transfer {
 }
 
 #[ComplexObject]
-impl Transfer {}
+impl Transfer {
+    pub async fn accounts(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> Result<Vec<super::account::Account>> {
+        let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
+
+        let accounts = entity::accounts::Entity::find()
+            .filter(
+                entity::accounts::Column::Address
+                    .eq(&self.from_address)
+                    .or(entity::accounts::Column::Address.eq(&self.to_address)),
+            )
+            .all(&app_ctx.db)
+            .await?
+            .into_iter()
+            .map(super::account::Account::from)
+            .collect::<Vec<_>>();
+
+        Ok(accounts)
+    }
+
+    pub async fn from_accounts(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> Result<Vec<super::account::Account>> {
+        let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
+
+        let accounts = entity::accounts::Entity::find()
+            .filter(entity::accounts::Column::Address.eq(&self.from_address))
+            .all(&app_ctx.db)
+            .await?
+            .into_iter()
+            .map(super::account::Account::from)
+            .collect::<Vec<_>>();
+
+        Ok(accounts)
+    }
+
+    pub async fn to_accounts(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+    ) -> Result<Vec<super::account::Account>> {
+        let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
+
+        let accounts = entity::accounts::Entity::find()
+            .filter(entity::accounts::Column::Address.eq(&self.to_address))
+            .all(&app_ctx.db)
+            .await?
+            .into_iter()
+            .map(super::account::Account::from)
+            .collect::<Vec<_>>();
+
+        Ok(accounts)
+    }
+}

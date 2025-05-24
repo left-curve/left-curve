@@ -105,9 +105,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
             pubsub: self.pubsub,
         }
     }
-}
 
-impl<DB, P, H> IndexerBuilder<DB, P, H> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,

@@ -1,25 +1,17 @@
 use {
-    actix_web::{
-        App,
-        body::MessageBody,
-        dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-    },
+    super::build_actix_app,
     assertor::*,
-    dango_httpd::{
-        graphql::{build_schema, types::transfer::Transfer},
-        server::config_app,
-    },
+    dango_httpd::graphql::types::transfer::Transfer,
     dango_testing::setup_test_with_indexer,
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
         constants::usdc,
     },
-    grug::{Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
-    indexer_httpd::context::Context,
+    grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, build_actix_app_with_config, call_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
     serde_json::json,
     tokio::sync::mpsc,
@@ -27,8 +19,6 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -59,8 +49,9 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
             toAddress
             amount
             denom
+            accounts { users { username } }
           }
-          edges { node { blockHeight fromAddress toAddress amount denom } cursor }
+          edges { node { blockHeight fromAddress toAddress amount denom accounts { users { username } } } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -120,8 +111,6 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -165,15 +154,9 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
-            // Copied from benchmarks.rs
-            let msgs = vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterAccount {
-                    params: AccountParams::Spot(single::Params::new(
-                        accounts.user1.username.clone(),
-                    )),
-                },
-                Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+            let msgs = vec![Message::transfer(
+                accounts.user2.address(),
+                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
             )?];
 
             suite
@@ -223,7 +206,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                         .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![2, 2]);
+                .is_equal_to(vec![2]);
 
                 crate_block_tx.send(3).await.unwrap();
 
@@ -238,7 +221,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                         .map(|t| t.block_height)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![3, 3]);
+                .is_equal_to(vec![3]);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -249,8 +232,6 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -271,8 +252,8 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         .should_succeed();
 
     let graphql_query = r#"
-      subscription Transfer($from_address: String) {
-        transfers(fromAddress: $from_address) {
+      subscription Transfer($address: String) {
+        transfers(address: $address) {
           blockHeight
           fromAddress
           toAddress
@@ -285,7 +266,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let request_body = GraphQLCustomRequest {
         name: "transfers",
         query: graphql_query,
-        variables: json!({"from_address": accounts.user1.address})
+        variables: json!({"address": accounts.user1.address})
             .as_object()
             .unwrap()
             .to_owned(),
@@ -378,22 +359,4 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             .await
         })
         .await?
-}
-
-fn build_actix_app(
-    app_ctx: Context,
-) -> App<
-    impl ServiceFactory<
-        ServiceRequest,
-        Response = ServiceResponse<impl MessageBody>,
-        Config = (),
-        InitError = (),
-        Error = actix_web::Error,
-    >,
-> {
-    let graphql_schema = build_schema(app_ctx.clone());
-
-    build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
-        config_app(app_ctx, graphql_schema)
-    })
 }

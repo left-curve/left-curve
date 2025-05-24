@@ -1,5 +1,8 @@
 use {
-    crate::{entity, error::Error},
+    crate::{
+        entity::{self},
+        error::Error,
+    },
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
@@ -9,6 +12,8 @@ use {
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
     uuid::Uuid,
 };
+
+mod accounts;
 
 #[derive(Clone)]
 pub struct Hooks;
@@ -28,6 +33,7 @@ impl HooksTrait for Hooks {
         block: BlockToIndex,
     ) -> Result<(), Self::Error> {
         self.save_transfers(&context, &block).await?;
+        self.save_accounts(&context, &block).await?;
 
         Ok(())
     }

@@ -11,7 +11,7 @@ use {
 };
 
 #[test]
-fn index_transfer_events() {
+fn index_transfer_events() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -84,33 +84,28 @@ fn index_transfer_events() {
     suite.app.indexer.wait_for_finish();
 
     // The transfer should have been indexed.
-    suite
-        .app
-        .indexer
-        .handle
-        .block_on(async {
-            let blocks = indexer_sql::entity::blocks::Entity::find()
-                .all(&suite.app.indexer.context.db)
-                .await?;
+    suite.app.indexer.handle.block_on(async {
+        let blocks = indexer_sql::entity::blocks::Entity::find()
+            .all(&suite.app.indexer.context.db)
+            .await?;
 
-            assert_that!(blocks).has_length(2);
+        assert_that!(blocks).has_length(2);
 
-            let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-                .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
-                .all(&suite.app.indexer.context.db)
-                .await?;
+        let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+            .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
+            .all(&suite.app.indexer.context.db)
+            .await?;
 
-            assert_that!(transfers).has_length(1);
+        assert_that!(transfers).has_length(1);
 
-            assert_that!(
-                transfers
-                    .iter()
-                    .map(|t| t.amount.as_str())
-                    .collect::<Vec<_>>()
-            )
-            .is_equal_to(vec!["123"]);
+        assert_that!(
+            transfers
+                .iter()
+                .map(|t| t.amount.as_str())
+                .collect::<Vec<_>>()
+        )
+        .is_equal_to(vec!["123"]);
 
-            Ok::<_, anyhow::Error>(())
-        })
-        .expect("Can't fetch transfers");
+        Ok(())
+    })
 }

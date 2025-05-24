@@ -2,10 +2,7 @@ use {
     dango_oracle::PRICES,
     dango_testing::setup_test,
     dango_types::oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
-    grug::{
-        Coins, Denom, NonEmpty, QuerierExt, ResultExt, StorageQuerier, btree_map,
-        setup_tracing_subscriber,
-    },
+    grug::{Coins, Denom, NonEmpty, QuerierExt, ResultExt, StorageQuerier, btree_map},
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{PythId, constants::PYTH_URL},
@@ -23,8 +20,6 @@ const NOT_USED_ID: PythId = PythId::from_inner(hex!(
 
 #[test]
 fn proposal_pyth() {
-    setup_tracing_subscriber(tracing::Level::DEBUG);
-
     // Ensure there are all cache file for the PythIds in oracle and also for
     // the NOT_USED_ID and retrieve them if not presents. This is needed since
     // the PythPPHandler create a thread to get the data from Pyth and if the

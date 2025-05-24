@@ -3,7 +3,7 @@ use {
     assertor::*,
     grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
-    grug_testing::{MockClient, TestAccounts, TestBuilder, setup_tracing_subscriber},
+    grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
     indexer_httpd::{
@@ -26,8 +26,6 @@ async fn create_block() -> anyhow::Result<(
     Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
     TestAccounts,
 )> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let denom = Denom::from_str("ugrug")?;
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
