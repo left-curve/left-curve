@@ -1,4 +1,5 @@
 use {
+    crate::gateway::bridge::BridgeMsg,
     grug::{Addr, Denom, Hash256, HexBinary, NonEmpty, Order, Uint128},
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -37,14 +38,6 @@ pub struct Config {
     pub threshold: u8,
     /// The amount of Sats for each vByte to calculate the fee.
     pub sats_per_vbyte: Uint128,
-    /// For outbound transactions, a flat fee deducted from the withdraw amount.
-    ///
-    /// We expect this to be updated often to reflect the gas price on Bitcoin
-    /// network, and roughly inline with the withdrawal fee on major centralized
-    /// exchanges. For example:
-    ///
-    /// - [Binance](https://www.binance.com/en/fee/cryptoFee)
-    pub outbound_fee: Uint128,
     /// Strategy for choosing the UTXOs as inputs for outbound transactions.
     ///
     /// During periods of high gas price on Bitcoin network, we want to minimize
@@ -84,7 +77,6 @@ pub enum ExecuteMsg {
     /// Can only be called by the chain owner.
     UpdateConfig {
         sats_per_vbyte: Option<Uint128>,
-        outbound_fee: Option<Uint128>,
         outbound_strategy: Option<Order>,
         // TODO: Allow changing the vault address and guardian set? This requires resetting the UTXO set.
     },
@@ -117,14 +109,15 @@ pub enum ExecuteMsg {
     /// Outbound transactions are pushed into a queue. Every once in a while (as
     /// defined by the contract's cronjob frequency), the contract finds all
     /// withdrawals in the queue, and builds a transaction.
-    Withdraw {
-        /// The recipient Bitcoin address.
-        ///
-        /// TODO: There are various bitcoin address formats. Should we enforce one?
-        ///
-        /// https://bitcoin.stackexchange.com/questions/119736
-        recipient: BitcoinAddress,
-    },
+    // Withdraw {
+    //     /// The recipient Bitcoin address.
+    //     ///
+    //     /// TODO: There are various bitcoin address formats. Should we enforce one?
+    //     ///
+    //     /// https://bitcoin.stackexchange.com/questions/119736
+    //     recipient: BitcoinAddress,
+    // },
+    Bridge(BridgeMsg),
     /// Authorize an outbound transaction.
     ///
     /// Can only be called by the guardians.

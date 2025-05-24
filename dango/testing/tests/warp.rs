@@ -4,7 +4,7 @@ use {
     dango_testing::{HyperlaneTestSuite, setup_test, setup_test_with_indexer},
     dango_types::{
         constants::{sol, usdc},
-        gateway::{self, Remote},
+        gateway::{self, Remote, WarpRemote, bridge::TransferRemoteRequest},
         warp::TokenMessage,
     },
     grug::{
@@ -73,13 +73,13 @@ fn sending_remote() {
         .execute(
             &mut accounts.user1,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 },
                 recipient: RECIPIENT,
-            },
+            }),
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
         .should_succeed();
@@ -169,7 +169,7 @@ fn sending_remote_incorrect_route() {
     const RECIPIENT: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
-    const ETHEREUM_WETH_REMOTE: Remote = Remote::Warp {
+    const ETHEREUM_WETH_REMOTE: WarpRemote = WarpRemote {
         domain: ethereum::DOMAIN,
         contract: ethereum::WETH_WARP, // Wrong!!
     };
@@ -182,15 +182,15 @@ fn sending_remote_incorrect_route() {
         .execute(
             &mut accounts.user1,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: ETHEREUM_WETH_REMOTE,
+            &gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
+                warp_remote: ETHEREUM_WETH_REMOTE,
                 recipient: RECIPIENT,
-            },
+            }),
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
         .should_fail_with_error(StdError::data_not_found::<Addr>(
             REVERSE_ROUTES
-                .path((&usdc::DENOM, ETHEREUM_WETH_REMOTE))
+                .path((&usdc::DENOM, Remote::Warp(ETHEREUM_WETH_REMOTE)))
                 .storage_key(),
         ));
 }
@@ -203,7 +203,7 @@ fn sending_remote_insufficient_reserve() {
     const MOCK_SOLANA_RECIPIENT: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
 
-    const SOLANA_USDC_REMOTE: Remote = Remote::Warp {
+    const SOLANA_USDC_REMOTE: WarpRemote = WarpRemote {
         domain: solana::DOMAIN,
         contract: solana::USDC_WARP,
     };
@@ -220,15 +220,18 @@ fn sending_remote_insufficient_reserve() {
         .execute(
             &mut accounts.user1,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: SOLANA_USDC_REMOTE,
+            &gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
+                warp_remote: SOLANA_USDC_REMOTE,
                 recipient: MOCK_SOLANA_RECIPIENT,
-            },
+            }),
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
         .should_fail_with_error(format!(
             "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
-            contracts.warp, SOLANA_USDC_REMOTE, 0, SEND_AMOUNT_AFTER_FEE
+            contracts.warp,
+            Remote::Warp(SOLANA_USDC_REMOTE),
+            0,
+            SEND_AMOUNT_AFTER_FEE
         ));
 
     // User2 receives some USDC so that we have sufficient reserve.
@@ -247,10 +250,10 @@ fn sending_remote_insufficient_reserve() {
         .execute(
             &mut accounts.user1,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: SOLANA_USDC_REMOTE,
+            &gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
+                warp_remote: SOLANA_USDC_REMOTE,
                 recipient: MOCK_SOLANA_RECIPIENT,
-            },
+            }),
             coins! { usdc::DENOM.clone() => SEND_AMOUNT },
         )
         .should_succeed();

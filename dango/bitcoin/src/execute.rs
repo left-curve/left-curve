@@ -3,20 +3,22 @@ use {
         CONFIG, INBOUNDS, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
         UTXOS,
     },
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     corepc_client::bitcoin::Address,
     dango_types::{
-        bank,
+        DangoQuerier,
         bitcoin::{
-            BitcoinAddress, BitcoinSignature, DENOM, ExecuteMsg, INPUT_SIZE, InboundConfirmed,
-            InstantiateMsg, OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed, OutboundRequested,
-            Transaction, Vout,
+            BitcoinSignature, ExecuteMsg, INPUT_SIZE, InboundConfirmed, InstantiateMsg,
+            OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed, OutboundRequested, Transaction, Vout,
         },
-        taxman::{self, FeeType},
+        gateway::{
+            self, Remote,
+            bridge::{BridgeMsg, TransferRemoteRequest},
+        },
     },
     grug::{
-        Addr, Coin, Coins, Empty, Hash256, Message, MutableCtx, Number, NumberConst, Order,
-        QuerierExt as _, Response, StdResult, SudoCtx, Uint128, btree_map,
+        Addr, Coins, Empty, Hash256, Message, MutableCtx, Number, NumberConst, Order,
+        QuerierExt as _, Response, StdResult, SudoCtx, Uint128,
     },
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -51,16 +53,17 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateConfig {
             sats_per_vbyte,
-            outbound_fee,
             outbound_strategy,
-        } => update_config(ctx, sats_per_vbyte, outbound_fee, outbound_strategy),
+        } => update_config(ctx, sats_per_vbyte, outbound_strategy),
         ExecuteMsg::ObserveInbound {
             transaction_hash,
             vout,
             amount,
             recipient,
         } => observe_inbound(ctx, transaction_hash, vout, amount, recipient),
-        ExecuteMsg::Withdraw { recipient } => withdraw(ctx, recipient),
+        ExecuteMsg::Bridge(BridgeMsg::TransferRemote { req, amount }) => {
+            transfer_remote(ctx, req, amount)
+        },
         ExecuteMsg::AuthorizeOutbound { id, signatures } => authorize_outbound(ctx, id, signatures),
     }
 }
@@ -68,7 +71,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn update_config(
     ctx: MutableCtx,
     sats_per_vbyte: Option<Uint128>,
-    outbound_fee: Option<Uint128>,
     outbound_strategy: Option<Order>,
 ) -> anyhow::Result<Response> {
     ensure!(
@@ -79,10 +81,6 @@ fn update_config(
     CONFIG.update(ctx.storage, |mut cfg| -> StdResult<_> {
         if let Some(sats_per_vbyte) = sats_per_vbyte {
             cfg.sats_per_vbyte = sats_per_vbyte;
-        }
-
-        if let Some(outbound_fee) = outbound_fee {
-            cfg.outbound_fee = outbound_fee;
         }
 
         if let Some(outbound_strategy) = outbound_strategy {
@@ -134,12 +132,13 @@ fn observe_inbound(
         INBOUNDS.remove(ctx.storage, inbound);
 
         let maybe_msg = if let Some(recipient) = recipient {
-            let bank = ctx.querier.query_bank()?;
+            let gateway = ctx.querier.query_gateway()?;
             Some(Message::execute(
-                bank,
-                &bank::ExecuteMsg::Mint {
-                    to: recipient,
-                    coins: Coin::new(DENOM.clone(), amount)?.into(),
+                gateway,
+                &gateway::ExecuteMsg::ReceiveRemote {
+                    remote: Remote::Bitcoin,
+                    amount,
+                    recipient,
                 },
                 Coins::new(),
             )?)
@@ -165,7 +164,20 @@ fn observe_inbound(
         .may_add_event(maybe_event)?)
 }
 
-fn withdraw(ctx: MutableCtx, recipient: BitcoinAddress) -> anyhow::Result<Response> {
+fn transfer_remote(
+    ctx: MutableCtx,
+    req: TransferRemoteRequest,
+    amount: Uint128,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_gateway()?,
+        "only gateway can call `transfer_remote`"
+    );
+
+    let TransferRemoteRequest::Bitcoin { recipient } = req else {
+        bail!("incorrect TransferRemoteRequest type! expected: Bitcoin, found: {req:?}");
+    };
+
     let cfg = CONFIG.load(ctx.storage)?;
 
     // Validate the address.
@@ -176,45 +188,11 @@ fn withdraw(ctx: MutableCtx, recipient: BitcoinAddress) -> anyhow::Result<Respon
         "cannot withdraw to the vault address"
     );
 
-    let coin = ctx.funds.into_one_coin_of_denom(&DENOM)?;
-
-    ensure!(
-        coin.amount > cfg.outbound_fee,
-        "withdrawal amount ({}) must be greater than outbound fee ({})",
-        coin.amount,
-        cfg.outbound_fee
-    );
-
-    let amount_after_fee = coin.amount - cfg.outbound_fee;
-
     OUTBOUND_QUEUE.may_update(ctx.storage, recipient, |outbound| -> StdResult<_> {
-        Ok(outbound.unwrap_or_default().checked_add(amount_after_fee)?)
+        Ok(outbound.unwrap_or_default().checked_add(amount)?)
     })?;
 
-    Ok(Response::new()
-        .add_message({
-            let bank = ctx.querier.query_bank()?;
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::Burn {
-                    from: ctx.contract,
-                    coins: Coin::new(coin.denom.clone(), amount_after_fee)?.into(),
-                },
-                Coins::new(),
-            )?
-        })
-        .add_message({
-            let taxman = ctx.querier.query_taxman()?;
-            let fee = Coins::one(coin.denom, cfg.outbound_fee)?;
-            Message::execute(
-                taxman,
-                &taxman::ExecuteMsg::Pay {
-                    ty: FeeType::Withdraw,
-                    payments: btree_map! { ctx.sender => fee.clone() },
-                },
-                fee,
-            )?
-        }))
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -279,7 +257,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let transaction = Transaction {
         inputs,
         outputs,
-        fee: cfg.outbound_fee,
+        fee,
     };
 
     // Save the outbound transaction.

@@ -103,9 +103,7 @@ pub struct DexOption {
 }
 
 pub struct GatewayOption {
-    // Note: these are only the Hyperlane Warp routes. No need to specify the
-    // bitcoin bridge route here.
-    pub warp_routes: BTreeSet<(Part, Remote)>,
+    pub routes: BTreeSet<(Part, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub rate_limit_refresh_period: Duration,
     pub withdrawal_fees: Vec<WithdrawalFee>,

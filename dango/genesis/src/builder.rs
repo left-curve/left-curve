@@ -165,6 +165,36 @@ where
         "dango/lending",
     )?;
 
+    // Instantiate the bitcoin bridge contract.
+    let btc_guardians_addresses = opt
+        .bitcoin
+        .guardians
+        .iter()
+        .map(|username| {
+            addresses.get(&username).cloned().ok_or(anyhow!(
+                "Missing address for bitcoin guardian: {}",
+                username
+            ))
+        })
+        .collect::<anyhow::Result<_>>()?;
+
+    let bitcoin = instantiate(
+        &mut msgs,
+        bitcoin_code_hash,
+        &bitcoin::InstantiateMsg {
+            config: bitcoin::Config {
+                network: opt.bitcoin.network,
+                vault: opt.bitcoin.vault,
+                guardians: NonEmpty::new(btc_guardians_addresses)?,
+                threshold: opt.bitcoin.threshold,
+                sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
+                outbound_strategy: opt.bitcoin.outbound_strategy,
+            },
+        },
+        "dango/bitcoin",
+        "dango/bitcoin",
+    )?;
+
     // Instantiate the gateway contract.
     let gateway = instantiate(
         &mut msgs,
@@ -172,9 +202,16 @@ where
         &gateway::InstantiateMsg {
             routes: opt
                 .gateway
-                .warp_routes
+                .routes
                 .into_iter()
-                .map(|(part, remote)| (part, warp, remote))
+                .map(|(part, remote)| {
+                    let contract = match remote {
+                        gateway::Remote::Warp { .. } => warp,
+                        gateway::Remote::Bitcoin => bitcoin,
+                    };
+
+                    (part, contract, remote)
+                })
                 .collect(),
             rate_limits: opt.gateway.rate_limits,
             withdrawal_fees: opt.gateway.withdrawal_fees,
@@ -250,37 +287,6 @@ where
         },
         "dango/vesting",
         "dango/vesting",
-    )?;
-
-    // Instantiate the bitcoin bridge contract.
-    let btc_guardians_addresses = opt
-        .bitcoin
-        .guardians
-        .iter()
-        .map(|username| {
-            addresses.get(&username).cloned().ok_or(anyhow!(
-                "Missing address for bitcoin guardian: {}",
-                username
-            ))
-        })
-        .collect::<anyhow::Result<_>>()?;
-
-    let bitcoin = instantiate(
-        &mut msgs,
-        bitcoin_code_hash,
-        &bitcoin::InstantiateMsg {
-            config: bitcoin::Config {
-                network: opt.bitcoin.network,
-                vault: opt.bitcoin.vault,
-                guardians: NonEmpty::new(btc_guardians_addresses)?,
-                threshold: opt.bitcoin.threshold,
-                sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
-                outbound_fee: opt.bitcoin.outbound_fee,
-                outbound_strategy: opt.bitcoin.outbound_strategy,
-            },
-        },
-        "dango/bitcoin",
-        "dango/bitcoin",
     )?;
 
     let contracts = Contracts {

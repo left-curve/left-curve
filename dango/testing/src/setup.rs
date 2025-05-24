@@ -312,13 +312,13 @@ where
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {
-            Remote::Warp { domain, contract } => {
+            Remote::Warp(warp_remote) => {
                 genesis_state.msgs.push(build_genesis_warp_msg(
                     &contracts,
                     &validator_sets,
-                    domain,
+                    warp_remote.domain,
                     local_domain,
-                    contract,
+                    warp_remote.contract,
                     op.amount,
                     op.recipient,
                 ));
