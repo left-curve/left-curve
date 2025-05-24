@@ -79,7 +79,8 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     enabled: false,
     queryKey: ["pair_simulation"],
     queryFn: async () => {
-      if (!simulationInput.current || !pair) return null;
+      if (!simulationInput.current || !config?.pairs) return null;
+      const pair = config.pairs[quoteCoin.denom];
       return await client.simulateSwapExactAmountIn({
         input: simulationInput.current,
         route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
@@ -111,7 +112,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
         ),
       ) * Number(pair?.params.swapFeeRate)
     );
-  }, [simulation.data]);
+  }, [simulation.data, pair]);
 
   return {
     coins,

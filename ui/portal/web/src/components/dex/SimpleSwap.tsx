@@ -227,7 +227,7 @@ export const SimpleSwapForm: React.FC = () => {
       <Input
         isDisabled={isPending}
         placeholder="0"
-        isLoading={isReverse ? isFetching : false}
+        isLoading={activeInput !== "base" ? isFetching : false}
         onFocus={() => setActiveInput("base")}
         {...register("base", {
           strategy: "onChange",
@@ -276,7 +276,7 @@ export const SimpleSwapForm: React.FC = () => {
               )}
             </div>
             <p>
-              {isFetching && isReverse ? (
+              {isFetching && activeInput !== "base" ? (
                 <Skeleton className="w-14 h-4" />
               ) : (
                 getPrice(baseAmount, base.denom, {
@@ -300,7 +300,7 @@ export const SimpleSwapForm: React.FC = () => {
       <Input
         isDisabled={isPending}
         placeholder="0"
-        isLoading={isReverse ? false : isFetching}
+        isLoading={activeInput !== "quote" ? isFetching : false}
         onFocus={() => setActiveInput("quote")}
         label={isReverse ? m["dex.convert.youSwap"]() : m["dex.convert.youGet"]()}
         {...register("quote", {
@@ -355,7 +355,7 @@ export const SimpleSwapForm: React.FC = () => {
               ) : null}
             </div>
             <p>
-              {isFetching && !isReverse ? (
+              {isFetching && activeInput !== "quote" ? (
                 <Skeleton className="w-14 h-4" />
               ) : (
                 getPrice(quoteAmount, quote.denom, {
