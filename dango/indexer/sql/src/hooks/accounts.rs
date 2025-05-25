@@ -37,6 +37,7 @@ impl Hooks {
             if tx.result.is_err() {
                 #[cfg(feature = "tracing")]
                 tracing::debug!("tx failed, skipping");
+
                 continue;
             }
 
@@ -113,10 +114,7 @@ impl Hooks {
 
         if !user_registered_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                "Detected user_registered_events: {:?}",
-                user_registered_events
-            );
+            tracing::info!("Detected user_registered_events: {user_registered_events:?}");
 
             for user_register_events in user_registered_events.chunks(chunk_size) {
                 let new_users = user_register_events
@@ -153,10 +151,7 @@ impl Hooks {
 
         if !account_registered_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                "Detected account_registered_events: {:?}",
-                account_registered_events
-            );
+            tracing::info!("Detected account_registered_events: {account_registered_events:?}");
 
             for account_registered_event in account_registered_events {
                 let new_account_id = Uuid::new_v4();
@@ -168,6 +163,7 @@ impl Hooks {
                     created_at: Set(created_at),
                     created_block_height: Set(block.block.info.height as i64),
                 };
+
                 entity::accounts::Entity::insert(new_account)
                     .exec_without_returning(&txn)
                     .await?;
@@ -188,6 +184,7 @@ impl Hooks {
                                 account_id: Set(new_account_id),
                                 user_id: Set(user_id),
                             };
+
                             entity::accounts_users::Entity::insert(new_account_user)
                                 .exec_without_returning(&txn)
                                 .await?;
@@ -207,6 +204,7 @@ impl Hooks {
                                     account_id: Set(new_account_id),
                                     user_id: Set(user_id),
                                 };
+
                                 entity::accounts_users::Entity::insert(new_account_user)
                                     .exec_without_returning(&txn)
                                     .await?;
@@ -219,10 +217,7 @@ impl Hooks {
 
         if !account_key_added_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                "Detected account_key_added_events: {:?}",
-                account_key_added_events
-            );
+            tracing::info!("Detected account_key_added_events: {account_key_added_events:?}");
 
             for account_key_added_event in account_key_added_events {
                 let model = entity::public_keys::ActiveModel {
@@ -234,16 +229,14 @@ impl Hooks {
                     created_at: Set(created_at),
                     created_block_height: Set(block.block.info.height as i64),
                 };
+
                 model.insert(&txn).await?;
             }
         }
 
         if !account_key_removed_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                "Detected account_key_removed_events: {:?}",
-                account_key_removed_events
-            );
+            tracing::info!("Detected `account_key_removed_events`: {account_key_removed_events:?}");
 
             for account_key_removed_event in account_key_removed_events {
                 entity::public_keys::Entity::delete_many()
