@@ -43,6 +43,9 @@ enum Command {
     #[command(subcommand, next_display_order = None)]
     Db(DbCmd),
 
+    /// Indexer related commands
+    Indexer(IndexerCmd),
+
     /// Manage keys
     #[command(subcommand, next_display_order = None)]
     Keys(KeysCmd),
@@ -53,9 +56,6 @@ enum Command {
 
     /// Start the node
     Start(StartCmd),
-
-    /// Indexer related commands
-    Indexer(IndexerCmd),
 
     /// Run test
     #[cfg(feature = "testing")]
@@ -104,12 +104,12 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
+        Command::Indexer(cmd) => cmd.run(app_dir).await,
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
-        Command::Indexer(cmd) => cmd.run(app_dir).await,
     }
 }
