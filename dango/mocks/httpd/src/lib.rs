@@ -4,12 +4,11 @@ use {
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
     grug_db_memory::MemDb,
-    grug_testing::{MockClient, setup_tracing_subscriber},
+    grug_testing::MockClient,
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
     std::sync::Arc,
     tokio::sync::Mutex,
-    tracing::Level,
 };
 
 pub use {
@@ -28,8 +27,6 @@ pub async fn run(
     keep_blocks: bool,
     database_url: Option<String>,
 ) -> Result<(), Error> {
-    setup_tracing_subscriber(Level::INFO);
-
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
 
     let indexer = if let Some(url) = database_url {

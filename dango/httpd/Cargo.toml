@@ -18,6 +18,7 @@ clap                    = { workspace = true }
 dango-indexer-sql       = { workspace = true }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true }
+itertools               = { workspace = true }
 sea-orm                 = { workspace = true }
 serde                   = { workspace = true }
 thiserror               = { workspace = true }

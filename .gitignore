@@ -1,3 +1,6 @@
+# Git
+.gitattributes
+
 # Editors
 .idea/
 .vscode/

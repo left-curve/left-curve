@@ -5,6 +5,7 @@ use {
         Timestamp,
     },
     sha2::Sha256,
+    std::fmt::Display,
 };
 
 /// A number that included in each transaction's sign doc for the purpose of
@@ -30,6 +31,16 @@ pub enum Key {
     /// sign a message, and extracting the pubkey from the signature. This would
     /// however be a bad UX, and deter the more security-minded users.
     Ethereum(Addr),
+}
+
+impl Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Key::Secp256r1(key) => write!(f, "{key}"),
+            Key::Secp256k1(key) => write!(f, "{key}"),
+            Key::Ethereum(addr) => write!(f, "{addr}"),
+        }
+    }
 }
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)

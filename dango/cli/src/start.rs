@@ -9,7 +9,7 @@ use {
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, AppError, Db, Indexer, NullIndexer},
+    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_types::{GIT_COMMIT, HashExt},
@@ -68,20 +68,25 @@ impl StartCmd {
                 .build()
                 .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
-            let app = App::new(
-                db.clone(),
-                vm.clone(),
-                ProposalPreparer::new(),
-                NullIndexer,
-                cfg.grug.query_gas_limit,
-            );
+            let indexer_path = indexer.indexer_path.clone();
+            let indexer_context = indexer.context.clone();
 
             if cfg.indexer.httpd.enabled {
+                // This app instance allows the httpd daemon to interact with the chain
+                // but it doesn't need to have an indexer at all.
+                let app = App::new(
+                    db.clone(),
+                    vm.clone(),
+                    NaiveProposalPreparer,
+                    NullIndexer,
+                    cfg.grug.query_gas_limit,
+                );
+
                 let httpd_context = Context::new(
-                    indexer.context.clone(),
+                    indexer_context,
                     Arc::new(app),
                     Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
-                    indexer.indexer_path.clone(),
+                    indexer_path,
                 );
 
                 // NOTE: If the httpd was heavily used, it would be better to

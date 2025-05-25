@@ -62,7 +62,7 @@ pub fn build_app_service(
     build_actix_app(app_ctx, graphql_schema)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedResponse<X> {
@@ -71,14 +71,14 @@ pub struct PaginatedResponse<X> {
     pub page_info: PageInfo,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 pub struct Edge<X> {
     pub node: X,
     pub cursor: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {

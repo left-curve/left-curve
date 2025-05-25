@@ -36,7 +36,7 @@ impl From<types::message::Message> for MessageCursor {
 
 pub type MessageCursorType = OpaqueCursor<MessageCursor>;
 
-static MAX_MESSAGES: u64 = 100;
+const MAX_MESSAGES: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct MessageQuery {}

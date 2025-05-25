@@ -7,6 +7,7 @@ use {
     transfer::TransferSubscription,
 };
 
+pub mod account;
 pub mod transfer;
 
 #[derive(MergedSubscription, Default)]
