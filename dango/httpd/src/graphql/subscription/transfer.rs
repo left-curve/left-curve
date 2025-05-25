@@ -34,6 +34,7 @@ impl TransferSubscription {
                     .into_iter()
                     .map(|(account, _)| account.address)
                     .collect::<Vec<_>>();
+
                 filter = filter.and(
                     entity::transfers::Column::FromAddress
                         .is_in(&addresses)
