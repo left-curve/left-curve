@@ -1,8 +1,8 @@
 use {
-    super::Hooks,
     crate::{
         entity::{self},
         error::Error,
+        hooks::Hooks,
     },
     dango_types::account_factory::{self, AccountParams},
     grug::{EventName, Inner, JsonDeExt},
