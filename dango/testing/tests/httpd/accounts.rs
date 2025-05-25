@@ -279,26 +279,28 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     .map(|e| e.node)
                     .collect::<Vec<_>>();
 
-                let expected_accounts = serde_json::json!([{
-                    "accountType": "SPOT",
-                    "createdBlockHeight": 3,
-                    "address": test_account2.address.inner().to_string(),
-                    "users": [
-                        {
-                            "username": "user",
-                        },
-                    ],
-                },
-                {
-                    "accountType": "SPOT",
-                    "createdBlockHeight": 2,
-                    "address": test_account1.address.inner().to_string(),
-                    "users": [
-                        {
-                            "username": "user",
-                        },
-                    ],
-                }]);
+                let expected_accounts = serde_json::json!([
+                    {
+                        "accountType": "SPOT",
+                        "createdBlockHeight": 3,
+                        "address": test_account2.address.inner().to_string(),
+                        "users": [
+                            {
+                                "username": "user",
+                            },
+                        ],
+                    },
+                    {
+                        "accountType": "SPOT",
+                        "createdBlockHeight": 2,
+                        "address": test_account1.address.inner().to_string(),
+                        "users": [
+                            {
+                                "username": "user",
+                            },
+                        ],
+                    }
+                ]);
 
                 assert_json_include!(actual: received_accounts, expected: expected_accounts);
 
