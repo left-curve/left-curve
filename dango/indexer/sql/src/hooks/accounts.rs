@@ -158,7 +158,7 @@ impl Hooks {
                 let new_account = entity::accounts::ActiveModel {
                     id: Set(new_account_id),
                     address: Set(account_registered_event.address.to_string()),
-                    account_type: Set(account_registered_event.clone().params.into()),
+                    account_type: Set(account_registered_event.clone().params.ty()),
                     account_index: Set(account_registered_event.index as i32),
                     created_at: Set(created_at),
                     created_block_height: Set(block.block.info.height as i64),

@@ -3,27 +3,10 @@ use {
     async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
     dango_indexer_sql::entity,
+    dango_types::account_factory,
     indexer_httpd::context::Context,
     sea_orm::{ModelTrait, sqlx::types::uuid},
-    serde::Deserialize,
 };
-
-#[derive(Enum, Copy, Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
-pub enum AccountType {
-    Spot,
-    Margin,
-    Multi,
-}
-
-impl From<entity::accounts::AccountType> for AccountType {
-    fn from(account_type: entity::accounts::AccountType) -> AccountType {
-        match account_type {
-            entity::accounts::AccountType::Spot => AccountType::Spot,
-            entity::accounts::AccountType::Margin => AccountType::Margin,
-            entity::accounts::AccountType::Multi => AccountType::Multi,
-        }
-    }
-}
 
 #[derive(Clone, Debug, SimpleObject, Eq, PartialEq, Hash)]
 #[graphql(complex)]
@@ -34,7 +17,7 @@ pub struct Account {
     pub model: entity::accounts::Model,
     pub account_index: u32,
     pub address: String,
-    pub account_type: AccountType,
+    pub account_type: account_factory::AccountType,
     pub created_at: DateTime<Utc>,
     pub created_block_height: u64,
 }

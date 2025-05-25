@@ -1,25 +1,4 @@
-use sea_orm::entity::prelude::*;
-
-#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Hash)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
-pub enum AccountType {
-    #[sea_orm(num_value = 0)]
-    Spot,
-    #[sea_orm(num_value = 1)]
-    Margin,
-    #[sea_orm(num_value = 2)]
-    Multi,
-}
-
-impl From<dango_types::account_factory::AccountParams> for AccountType {
-    fn from(account: dango_types::account_factory::AccountParams) -> Self {
-        match account {
-            dango_types::account_factory::AccountParams::Spot(_) => AccountType::Spot,
-            dango_types::account_factory::AccountParams::Margin(_) => AccountType::Margin,
-            dango_types::account_factory::AccountParams::Multi(_) => AccountType::Multi,
-        }
-    }
-}
+use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash)]
 #[sea_orm(table_name = "accounts")]
@@ -29,7 +8,7 @@ pub struct Model {
     pub account_index: i32,
     #[sea_orm(unique)]
     pub address: String,
-    pub account_type: AccountType,
+    pub account_type: account_factory::AccountType,
     pub created_at: DateTime,
     pub created_block_height: i64,
 }
