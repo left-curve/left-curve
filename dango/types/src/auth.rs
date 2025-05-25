@@ -36,11 +36,10 @@ pub enum Key {
 impl Display for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Key::Secp256r1(key) => write!(f, "{}", key),
-            Key::Secp256k1(key) => write!(f, "{}", key),
-            Key::Ethereum(addr) => write!(f, "{}", addr),
-        }?;
-        Ok(())
+            Key::Secp256r1(key) => write!(f, "{key}"),
+            Key::Secp256k1(key) => write!(f, "{key}"),
+            Key::Ethereum(addr) => write!(f, "{addr}"),
+        }
     }
 }
 
