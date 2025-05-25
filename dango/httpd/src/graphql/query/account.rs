@@ -34,7 +34,7 @@ impl From<types::account::Account> for AccountCursor {
 
 pub type AccountCursorType = OpaqueCursor<AccountCursor>;
 
-static MAX_ACCOUNTS: u64 = 100;
+const MAX_ACCOUNTS: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct AccountQuery {}

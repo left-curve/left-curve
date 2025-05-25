@@ -36,7 +36,7 @@ impl From<types::transaction::Transaction> for TransactionCursor {
 
 pub type TransactionCursorType = OpaqueCursor<TransactionCursor>;
 
-static MAX_TRANSACTIONS: u64 = 100;
+const MAX_TRANSACTIONS: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct TransactionQuery {}

@@ -32,7 +32,7 @@ impl From<types::block::Block> for BlockCursor {
 
 pub type BlockCursorType = OpaqueCursor<BlockCursor>;
 
-static MAX_BLOCKS: u64 = 100;
+const MAX_BLOCKS: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct BlockQuery {}

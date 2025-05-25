@@ -36,7 +36,7 @@ impl From<types::event::Event> for EventCursor {
 
 pub type EventCursorType = OpaqueCursor<EventCursor>;
 
-static MAX_EVENTS: u64 = 100;
+const MAX_EVENTS: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct EventQuery {}
