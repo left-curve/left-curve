@@ -50,7 +50,7 @@ async fn query_user() -> anyhow::Result<()> {
                         {
                             "publicKey": user.first_key().to_string(),
                             "keyHash": user.first_key_hash().to_string(),
-                        }
+                        },
                     ],
                 });
 
@@ -115,7 +115,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
                         {
                             "publicKey": pk.to_string(),
                             "keyHash": key_hash.to_string(),
-                        }
+                        },
                     ],
                 });
 

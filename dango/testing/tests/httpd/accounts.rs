@@ -60,21 +60,23 @@ async fn query_accounts() -> anyhow::Result<()> {
                     .map(|e| e.node)
                     .collect::<Vec<_>>();
 
-                let expected_data = serde_json::json!([{
-                    "accountType": "SPOT",
-                    "users": [
-                        {
-                            "username": user2.username.to_string(),
-                        }
-                    ],
-                },{
-                    "accountType": "SPOT",
-                    "users": [
-                        {
-                            "username": user1.username.to_string(),
-                        }
-                    ],
-                }
+                let expected_data = serde_json::json!([
+                    {
+                        "accountType": "SPOT",
+                        "users": [
+                            {
+                                "username": user2.username.to_string(),
+                            },
+                        ],
+                    },
+                    {
+                        "accountType": "SPOT",
+                        "users": [
+                            {
+                                "username": user1.username.to_string(),
+                            },
+                        ],
+                    },
                 ]);
 
                 assert_json_include!(actual: received_accounts, expected: expected_data);
@@ -211,7 +213,9 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
                     .expect("Failed to get nodes")
                     .iter()
                     .collect::<Vec<_>>();
+
                 assert_that!(nodes).is_empty();
+
                 Ok::<(), anyhow::Error>(())
             })
             .await
