@@ -2,9 +2,17 @@ import { Spinner } from "./Spinner";
 
 import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/index.js";
+import { forwardRefPolymorphic } from "#utils/polymorph.js";
 
 import type { VariantProps } from "tailwind-variants";
-import { forwardRefPolymorphic } from "#utils/polymorph.js";
+
+const SpinnerColor = {
+  link: "blue",
+  primary: "white",
+  secondary: "white",
+  utility: "white",
+  current: "current",
+} as const;
 
 export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   /**
@@ -33,7 +41,7 @@ export const Button = forwardRefPolymorphic<"button", ButtonProps>(
 
     return (
       <Component className={twMerge(styles, className)} ref={ref} {...props} disabled={disabled}>
-        {isLoading ? <Spinner size={size} /> : children}
+        {isLoading ? <Spinner size={size} color={SpinnerColor[variant || "current"]} /> : children}
       </Component>
     );
   },

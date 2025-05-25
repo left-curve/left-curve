@@ -1,6 +1,7 @@
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
 import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { forwardRef, useId, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -43,11 +44,13 @@ export const QRConnect = forwardRef((_props, _ref) => {
       toast.success({ title: "Connection established" });
       hideModal();
     } catch (error) {
+      captureException(error);
       console.error("Error creating session: ", error);
       toast.error({
         title: m["common.error"](),
         description: m["signin.errors.mobileSessionAborted"](),
       });
+      captureException(error);
       hideModal();
       dataChannel.sendMessage({
         id,

@@ -293,6 +293,7 @@ jobs:
       DEVNET_COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_ADDRESS }}
       DEVNET_COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PUB_KEY }}
       DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY }}
+      SENTRY__DSN: ${{ secrets.SENTRY__DSN }}
       # Still using this as ENV for the bots ansible playbook to login properly
       GITHUB_USER: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

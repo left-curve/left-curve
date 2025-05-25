@@ -29,6 +29,8 @@ export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
 export { Pagination } from "./Pagination";
+export { JsonVisualizer } from "./JsonVisualizer";
+export { AddressVisualizer } from "./AddressVisualizer";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -66,3 +68,7 @@ export { IconSwitch } from "./icons/IconSwitch";
 export { IconArrowDown } from "./icons/IconArrowDown";
 export { IconInfo } from "./icons/IconInfo";
 export { IconUser } from "./icons/IconUser";
+export { IconUserCircle } from "./icons/IconUserCircle";
+export { IconTimer } from "./icons/IconTimer";
+export { IconLink } from "./icons/IconLink";
+export { IconNetwork } from "./icons/IconNetwork";

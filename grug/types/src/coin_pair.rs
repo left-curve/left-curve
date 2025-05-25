@@ -6,6 +6,20 @@ use {
     std::{cmp::Ordering, collections::BTreeMap, io},
 };
 
+/// Build a [`CoinPair`](crate::CoinPair) with the given pair of denoms and amounts.
+///
+/// Panic if input is invalid, e.g. the two denoms are the same.
+#[macro_export]
+macro_rules! coin_pair {
+    ($denom1:expr => $amount1:expr, $denom2:expr => $amount2:expr $(,)?) => {
+        $crate::CoinPair::new(
+            Coin::new($denom1, $amount1).unwrap(),
+            Coin::new($denom2, $amount2).unwrap(),
+        )
+        .unwrap()
+    };
+}
+
 /// A _sorted_ pair of coins of distinct denoms and possibly zero amounts.
 #[derive(Serialize, BorshSerialize, Clone, Debug, PartialEq, Eq)]
 pub struct CoinPair([Coin; 2]);

@@ -1,4 +1,5 @@
 import { useAccount, useConnectors, useSigningClient } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -36,6 +37,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
       queryClient.invalidateQueries({ queryKey: ["quests", account] });
       hideModal();
     },
+    onError: (e) => captureException(e),
   });
 
   return (

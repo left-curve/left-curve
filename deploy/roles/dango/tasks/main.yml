@@ -118,9 +118,9 @@
     env:
       HOME: /app
       INDEXER__DATABASE_URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ docker_db_host }}:{{ db_port }}/{{ dango_network }}_{{ dango_db_name }}"
-      SENTRY__ENABLED: "false"
-      SENTRY__DSN: "https://your-dsn-here"
-      SENTRY__ENVIRONMENT: "production"
+      SENTRY__ENABLED: "true"
+      SENTRY__DSN: "{{ lookup('env','SENTRY__DSN') }}"
+      SENTRY__ENVIRONMENT: "production-{{ dango_network }}"
     ports:
       - "{{ dango_port }}:8080"
     volumes:

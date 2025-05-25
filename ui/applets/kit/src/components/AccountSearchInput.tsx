@@ -64,9 +64,6 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
           onClick={() => setShowMenu(true)}
           onChange={(e) => [setInputValue(e.target.value), onChange?.(e)]}
           endContent={isFetching ? <Spinner size="sm" color="gray" /> : null}
-          classNames={{
-            inputWrapper: showMenu && options.length ? "rounded-b-none" : "",
-          }}
           {...props}
         />
         <div
@@ -97,7 +94,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
                 <div className="w-fit flex flex-col gap-1 overflow-x-hidden">
                   <p className="diatype-lg-medium">{accountName}</p>
                   <TruncateText
-                    className="diatype-md-regular text-gray-500"
+                    className="diatype-m-regular text-gray-500"
                     text={address}
                     start={20}
                   />

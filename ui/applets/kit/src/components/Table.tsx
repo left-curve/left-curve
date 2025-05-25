@@ -30,8 +30,15 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const { rows } = table.getRowModel();
+
   return (
-    <div className="bg-rice-25 shadow-card-shadow grid rounded-xl w-full p-4 gap-4 overflow-hidden">
+    <div
+      className={twMerge(
+        "bg-rice-25 shadow-card-shadow grid rounded-xl w-full px-4 pt-4 gap-4 overflow-hidden",
+        rows.length ? "pb-2" : "pb-4",
+      )}
+    >
       {topContent}
       <div
         style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
@@ -57,7 +64,7 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
           </React.Fragment>
         ))}
 
-        {table.getRowModel().rows.map((row) => {
+        {rows.map((row, rowIndex) => {
           const cells = row.getVisibleCells();
           return (
             <React.Fragment key={row.id}>
@@ -69,7 +76,9 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
                       paddingLeft: index === 0 ? "1rem" : undefined,
                       paddingRight: index === cells.length - 1 ? "1rem" : undefined,
                     }}
-                    className="px-4 py-2 diatype-sm-medium border-b border-gray-100"
+                    className={twMerge("px-4 py-2 diatype-sm-medium", {
+                      "border-b border-gray-100": rowIndex !== rows.length - 1,
+                    })}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>

@@ -14,6 +14,7 @@ import {
   TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
+import { useApp } from "~/hooks/useApp";
 
 export const AccountCardOptions = {
   [AccountType.Spot]: {
@@ -62,7 +63,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4",
         bgColor,
       )}
     >
@@ -139,12 +140,18 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
 
   const { data: balances = {} } = useBalances({ address });
   const { calculateBalance } = usePrices();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
 
-  const totalBalance = calculateBalance(balances, { format: true });
+  const totalBalance = calculateBalance(balances, {
+    format: true,
+    formatOptions: { ...formatNumberOptions, currency: "usd" },
+  });
+
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[9.75rem] relative overflow-hidden rounded-md flex flex-col justify-between p-4 cursor-pointer",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 cursor-pointer",
         "mb-[-6.2rem]",
         "flex-shrink-0",
         bgColor,

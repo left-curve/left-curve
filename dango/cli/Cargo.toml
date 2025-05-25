@@ -10,7 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-default = ["testing"]
+default = []
 testing = ["pyth-client", "pyth-types", "tokio-stream"]
 
 [dependencies]

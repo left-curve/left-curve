@@ -39,7 +39,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
         className={twMerge("absolute right-0 bottom-0", { "right-2": accountType === "margin" })}
       />
       <IconCheckedCircle
-        className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all", {
+        className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {
           "opacity-1": isSelected,
         })}
       />

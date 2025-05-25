@@ -1,4 +1,3 @@
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import { useAccount, useAppConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
@@ -8,6 +7,7 @@ import { Modals } from "./components/modals/RootModal";
 
 import { useNotifications } from "./hooks/useNotifications";
 
+import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { notifier as notifierType } from "./hooks/useNotifications";
 
 type AppState = {
@@ -45,7 +45,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.1,
+    version: 1.2,
     initialValue: {
       showWelcome: true,
       isFirstVisit: true,
@@ -104,6 +104,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     const intervalId = setInterval(() => {
       if (
         (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+        account &&
         settings.useSessionKey &&
         connector &&
         connector.type !== "session"

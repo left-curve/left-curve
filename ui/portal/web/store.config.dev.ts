@@ -5,6 +5,14 @@ import type { Config } from "@left-curve/store/types";
 const chain = devnet;
 
 export const coins = {
+  dango: {
+    type: "native",
+    name: "Dango",
+    logoURI: "/DGX.svg",
+    symbol: "DGX",
+    denom: "dango",
+    decimals: 6,
+  },
   "bridge/btc": {
     type: "native",
     name: "Bitcoin",
@@ -63,6 +71,7 @@ export const coinsBySymbol = Object.values(coins).reduce((acc, coin) => {
 }, Object.create({}));
 
 export const config: Config = createConfig({
+  version: 0.4,
   multiInjectedProviderDiscovery: true,
   chain,
   transport: graphql(chain.urls.indexer, { batch: true }),

@@ -3,9 +3,10 @@ use {
     dango_types::{
         account::single::Params,
         account_factory::AccountParams,
+        config::AppConfig,
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
-            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
+            self, CancelOrderRequest, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId,
             OrderResponse, PairId, PairParams, PairUpdate, QueryOrdersByPairRequest,
             QueryOrdersRequest, QueryReserveRequest,
         },
@@ -15,7 +16,7 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coins,
+        ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
     std::{
@@ -34,7 +35,8 @@ fn cannot_submit_orders_in_non_existing_pairs() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: atom::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
@@ -66,31 +68,31 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         (Direction::Ask, 30, 10), // 5
     ],
     btree_map! {
-        !2 => 10,
-         5 => 10,
+        !3 => 10,
+         6 => 10,
     },
     btree_map! {
-        !0 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
-            usdc::DENOM.clone()  => BalanceChange::Decreased(200),
-        },
         !1 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             usdc::DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
+            usdc::DENOM.clone()  => BalanceChange::Decreased(200),
+        },
+        !3 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone()  => BalanceChange::Decreased(100),
-        },
-        3 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(10),
-            usdc::DENOM.clone()  => BalanceChange::Increased(199), // Receives one less due to fee
         },
         4 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Increased(199), // Receives one less due to fee
         },
         5 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(10),
+            usdc::DENOM.clone()  => BalanceChange::Increased(199), // Receives one less due to fee
+        },
+        6 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Unchanged,
         },
@@ -108,31 +110,31 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         (Direction::Ask, 25, 10), //  5
     ],
     btree_map! {
-        !2 => 10,
-         5 => 10,
+        !3 => 10,
+         6 => 10,
     },
     btree_map! {
-        !0 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
-            usdc::DENOM.clone()  => BalanceChange::Decreased(175),
-        },
         !1 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             usdc::DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !2 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
+            usdc::DENOM.clone()  => BalanceChange::Decreased(175),
+        },
+        !3 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone()  => BalanceChange::Decreased(100),
-        },
-        3 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(10),
-            usdc::DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         4 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         5 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(10),
+            usdc::DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
+        },
+        6 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Unchanged,
         },
@@ -151,26 +153,22 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         (Direction::Bid, 30,  5), // !6 - filled
     ],
     btree_map! {
-        !1 =>  5,
-        !2 => 10,
-         5 => 10,
+        !2 =>  5,
+        !3 => 10,
+         6 => 10,
     },
     btree_map! {
-        !0 => btree_map! {
+        !1 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(9), // Receives one less due to fee
             usdc::DENOM.clone()  => BalanceChange::Decreased(175),
         },
-        !1 => btree_map! {
+        !2 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(4),   // half filled, receives one less due to fee
             usdc::DENOM.clone()  => BalanceChange::Decreased(188), // -200 deposit, +12 refund
         },
-        !2 => btree_map! {
+        !3 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone()  => BalanceChange::Decreased(100),
-        },
-        3 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(10),
-            usdc::DENOM.clone()  => BalanceChange::Increased(174), // Receives one less due to fee
         },
         4 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
@@ -178,10 +176,14 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         5 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
+            usdc::DENOM.clone()  => BalanceChange::Increased(174),
+        },
+        6 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Unchanged,
         },
-        !6 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(4),  // receives one less due to fee
+        !7 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(4),
             usdc::DENOM.clone()  => BalanceChange::Decreased(88), // -150 deposit, +62 refund
         },
     };
@@ -198,32 +200,32 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         (Direction::Ask, 25, 10), //  5 - unfilled
     ],
     btree_map! {
-        !1 => 10,
         !2 => 10,
-         5 => 10,
+        !3 => 10,
+         6 => 10,
     },
     btree_map! {
-        !0 => btree_map! {
+        !1 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(19), // Receives one less due to fee
             usdc::DENOM.clone()  => BalanceChange::Decreased(450), // -600 deposit, +150 refund
         },
-        !1 => btree_map! {
+        !2 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone()  => BalanceChange::Decreased(200),
         },
-        !2 => btree_map! {
+        !3 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone()  => BalanceChange::Decreased(100),
-        },
-        3 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(10),
-            usdc::DENOM.clone()  => BalanceChange::Increased(224), // Receives one less due to fee
         },
         4 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Increased(224), // Receives one less due to fee
         },
         5 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(10),
+            usdc::DENOM.clone()  => BalanceChange::Increased(224),
+        },
+        6 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
             usdc::DENOM.clone()  => BalanceChange::Unchanged,
         },
@@ -241,26 +243,22 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         (Direction::Ask, 25, 10), //  5 - 50% filled
     ],
     btree_map! {
-        !1 => 10,
         !2 => 10,
-         5 =>  5,
+        !3 => 10,
+         6 =>  5,
     },
     btree_map! {
-        !0 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(24), // Receives one less due to fee
-            usdc::DENOM.clone()  => BalanceChange::Decreased(688), // -750 deposit, +62 refund
-        },
         !1 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Unchanged,
-            usdc::DENOM.clone()  => BalanceChange::Decreased(200),
+            dango::DENOM.clone() => BalanceChange::Increased(24),
+            usdc::DENOM.clone()  => BalanceChange::Decreased(688), // -750 deposit, +62 refund
         },
         !2 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Unchanged,
-            usdc::DENOM.clone()  => BalanceChange::Decreased(100),
+            usdc::DENOM.clone()  => BalanceChange::Decreased(200),
         },
-        3 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(10),
-            usdc::DENOM.clone()  => BalanceChange::Increased(273), // Receives two less due to fee
+        !3 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Unchanged,
+            usdc::DENOM.clone()  => BalanceChange::Decreased(100),
         },
         4 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
@@ -268,7 +266,11 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         },
         5 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(10),
-            usdc::DENOM.clone()  => BalanceChange::Increased(136), // refund: floor(5 * 27.5) = 137, minus 1 due to fee
+            usdc::DENOM.clone()  => BalanceChange::Increased(273), // Receives two less due to fee
+        },
+        6 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(10),
+            usdc::DENOM.clone()  => BalanceChange::Increased(136), // refund: floor(5 * 27.5) = 137 minus 1 due to fee
         },
     };
     "example 5"
@@ -319,7 +321,7 @@ fn dex_works(
         .zip(accounts.users())
         .enumerate()
         .map(|(order_id, ((direction, ..), signer))| {
-            let order_id = order_id as OrderId;
+            let order_id = (order_id + 1) as OrderId;
             match direction {
                 Direction::Bid => (!order_id, signer.address()),
                 Direction::Ask => (order_id, signer.address()),
@@ -349,7 +351,8 @@ fn dex_works(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates: vec![CreateLimitOrderRequest {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction,
@@ -409,7 +412,7 @@ fn dex_works(
     coins! { usdc::DENOM.clone() => 100 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
-        !0 => OrderResponse {
+        !1 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -429,7 +432,7 @@ fn dex_works(
         amount: Uint128::new(100),
         price: Udec128::new(1),
     }],
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     coins! { usdc::DENOM.clone() => 100 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {};
@@ -452,11 +455,11 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     coins! { usdc::DENOM.clone() => 200 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
-        !1 => OrderResponse {
+        !2 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -485,7 +488,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::Some(BTreeSet::from([!0, !1]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1, !2]))),
     coins! { usdc::DENOM.clone() => 200 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {};
@@ -508,7 +511,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::All),
+    Some(CancelOrderRequest::All),
     coins! { usdc::DENOM.clone() => 200 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {};
@@ -531,7 +534,7 @@ fn dex_works(
             price: Udec128::new(1),
         },
     ],
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     coins! { usdc::DENOM.clone() => 199 },
     btree_map! {},
     btree_map! {}
@@ -540,7 +543,7 @@ fn dex_works(
 )]
 fn submit_and_cancel_orders(
     submissions: Vec<CreateLimitOrderRequest>,
-    cancellations: Option<OrderIds>,
+    cancellations: Option<CancelOrderRequest>,
     funds: Coins,
     expected_balance_changes: BTreeMap<Denom, BalanceChange>,
     expected_orders_after: BTreeMap<OrderId, OrderResponse>,
@@ -556,7 +559,8 @@ fn submit_and_cancel_orders(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: submissions,
+                creates_market: vec![],
+                creates_limit: submissions,
                 cancels: None,
             },
             funds,
@@ -569,7 +573,8 @@ fn submit_and_cancel_orders(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![],
+                creates_market: vec![],
+                creates_limit: vec![],
                 cancels: cancellations,
             },
             coins! { dango::DENOM.clone() => 1 },
@@ -610,7 +615,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     vec![CreateLimitOrderRequest {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
@@ -621,7 +626,7 @@ fn submit_and_cancel_orders(
     Coins::new(),
     btree_map! { usdc::DENOM.clone() => BalanceChange::Unchanged },
     btree_map! {
-        !1 => OrderResponse {
+        !2 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -642,7 +647,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     vec![CreateLimitOrderRequest {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
@@ -653,7 +658,7 @@ fn submit_and_cancel_orders(
     Coins::new(),
     btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(50) },
     btree_map! {
-        !1 => OrderResponse {
+        !2 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -674,7 +679,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     vec![CreateLimitOrderRequest {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
@@ -685,7 +690,7 @@ fn submit_and_cancel_orders(
     coins! { usdc::DENOM.clone() => 100 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
-        !1 => OrderResponse {
+        !2 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -706,7 +711,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     vec![CreateLimitOrderRequest {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
@@ -717,7 +722,7 @@ fn submit_and_cancel_orders(
     Coins::new(),
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
-        !1 => OrderResponse {
+        !2 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -739,7 +744,7 @@ fn submit_and_cancel_orders(
         price: Udec128::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
-    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    Some(CancelOrderRequest::Some(BTreeSet::from([!1]))),
     vec![CreateLimitOrderRequest {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
@@ -750,7 +755,7 @@ fn submit_and_cancel_orders(
     coins! { usdc::DENOM.clone() => 100 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(50) },
     btree_map! {
-        !1 => OrderResponse {
+        !2 => OrderResponse {
             user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
@@ -765,7 +770,7 @@ fn submit_and_cancel_orders(
 fn submit_orders_then_cancel_and_submit_in_same_message(
     initial_orders: Vec<CreateLimitOrderRequest>,
     initial_funds: Coins,
-    cancellations: Option<OrderIds>,
+    cancellations: Option<CancelOrderRequest>,
     new_orders: Vec<CreateLimitOrderRequest>,
     second_funds: Coins,
     expected_balance_changes: BTreeMap<Denom, BalanceChange>,
@@ -779,7 +784,8 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: initial_orders,
+                creates_market: vec![],
+                creates_limit: initial_orders,
                 cancels: None,
             },
             initial_funds,
@@ -795,7 +801,8 @@ fn submit_orders_then_cancel_and_submit_in_same_message(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: new_orders,
+                creates_market: vec![],
+                creates_limit: new_orders,
                 cancels: cancellations,
             },
             second_funds,
@@ -838,7 +845,8 @@ fn submit_and_cancel_order_in_same_block() {
     let submit_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![CreateLimitOrderRequest {
+            creates_market: vec![],
+            creates_limit: vec![CreateLimitOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
@@ -854,8 +862,9 @@ fn submit_and_cancel_order_in_same_block() {
     let cancel_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![],
-            cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
+            creates_market: vec![],
+            creates_limit: vec![],
+            cancels: Some(dex::CancelOrderRequest::Some(BTreeSet::from([!1]))),
         },
         Coins::new(),
     )
@@ -908,10 +917,10 @@ fn submit_and_cancel_order_in_same_block() {
     None,
     None,
     btree_map! {
-        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
-        !1 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
-        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
-        3 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        !2 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
+        3 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+        4 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
     };
     "dango/usdc no pagination"
 )]
@@ -928,8 +937,8 @@ fn submit_and_cancel_order_in_same_block() {
     None,
     None,
     btree_map! {
-        !4 => (Direction::Bid, Udec128::new(20), Uint128::new(10)),
-        5 => (Direction::Ask, Udec128::new(25), Uint128::new(10)),
+        !5 => (Direction::Bid, Udec128::new(20), Uint128::new(10)),
+        6 => (Direction::Ask, Udec128::new(25), Uint128::new(10)),
     };
     "eth/usdc no pagination"
 )]
@@ -946,9 +955,9 @@ fn submit_and_cancel_order_in_same_block() {
     None,
     Some(3),
     btree_map! {
-        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
-        !1 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
-        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        !2 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
+        3 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
     };
     "dango/usdc with limit no start after"
 )]
@@ -962,10 +971,10 @@ fn submit_and_cancel_order_in_same_block() {
         ((eth::DENOM.clone(), usdc::DENOM.clone()), Direction::Ask, 25, 10), //  5
     ],
     (dango::DENOM.clone(), usdc::DENOM.clone()),
-    Some(2),
+    Some(3),
     None,
     btree_map! {
-        3 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
+        4 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
     };
     "dango/usdc with start after"
 )]
@@ -979,11 +988,11 @@ fn submit_and_cancel_order_in_same_block() {
         ((eth::DENOM.clone(), usdc::DENOM.clone()), Direction::Ask, 25, 10), //  5
     ],
     (dango::DENOM.clone(), usdc::DENOM.clone()),
-    Some(!1),
+    Some(!2),
     Some(2),
     btree_map! {
-        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
-        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        3 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
     };
     "dango/usdc with start after and limit"
 )]
@@ -1037,7 +1046,8 @@ fn query_orders_by_pair(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates: vec![CreateLimitOrderRequest {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
                         base_denom,
                         quote_denom,
                         direction,
@@ -1107,8 +1117,10 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    curve_invariant: CurveInvariant::Xyk {
+                        order_spacing: Udec128::new_bps(1),
+                    },
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }]),
             Coins::new(),
@@ -1125,8 +1137,10 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    curve_invariant: CurveInvariant::Xyk,
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    curve_invariant: CurveInvariant::Xyk {
+                        order_spacing: Udec128::new_bps(1),
+                    },
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }]),
             Coins::new(),
@@ -1139,8 +1153,8 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 100,
     },
-    Udec128::ZERO,
-    Uint128::new(100);
+    Udec128::new_permille(5),
+    Uint128::new(99);
     "provision at pool ratio"
 )]
 #[test_case(
@@ -1148,8 +1162,8 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 50,
         usdc::DENOM.clone() => 50,
     },
-    Udec128::ZERO,
-    Uint128::new(50);
+    Udec128::new_permille(5),
+    Uint128::new(49);
     "provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1157,8 +1171,8 @@ fn only_owner_can_create_passive_pool() {
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 50,
     },
-    Udec128::ZERO,
-    Uint128::new(73);
+    Udec128::new_permille(5),
+    Uint128::new(72);
     "provision at different ratio"
 )]
 fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: Uint128) {
@@ -1264,17 +1278,17 @@ fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: U
 }
 
 #[test_case(
-    Uint128::new(100),
-    Udec128::ZERO,
+    Uint128::new(99),
+    Udec128::new_permille(5),
     coins! {
-        dango::DENOM.clone() => 100,
-        usdc::DENOM.clone()  => 100,
+        dango::DENOM.clone() => 99,
+        usdc::DENOM.clone()  => 99,
     };
     "withdrawa all"
 )]
 #[test_case(
     Uint128::new(50),
-    Udec128::ZERO,
+    Udec128::new_permille(5),
     coins! {
         dango::DENOM.clone() => 50,
         usdc::DENOM.clone()  => 50,
@@ -1414,16 +1428,16 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 500000,
+        usdc::DENOM.clone() => 497500,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            dango::DENOM.clone() => 1000000 + 1000000,
+            usdc::DENOM.clone() => 1000000 - 497500,
         },
     };
     "1:1 pool no swap fee one step route input 100% of pool liquidity"
@@ -1443,16 +1457,16 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 500000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 333333,
+        usdc::DENOM.clone() => 331666,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1500000,
-            usdc::DENOM.clone() => 666667,
+            dango::DENOM.clone() => 1000000 + 500000,
+            usdc::DENOM.clone() => 1000000 - 331666,
         },
     };
     "1:1 pool no swap fee one step route input 50% of pool liquidity"
@@ -1469,19 +1483,19 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         quote_denom: usdc::DENOM.clone(),
     }],
     coins! {
-        dango::DENOM.clone() => 333333,
+        dango::DENOM.clone() => 331666,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 249999,
+        usdc::DENOM.clone() => 247814,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1333333,
-            usdc::DENOM.clone() => 1000000 - 249999,
+            dango::DENOM.clone() => 1000000 + 331666,
+            usdc::DENOM.clone() => 1000000 - 247814,
         },
     };
     "1:1 pool no swap fee one step route input 33% of pool liquidity"
@@ -1511,24 +1525,24 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 500000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     None,
     coins! {
-        eth::DENOM.clone() => 249999,
+        eth::DENOM.clone() => 247814,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 500000,
-            usdc::DENOM.clone() => 1000000 - 333333,
+            usdc::DENOM.clone() => 1000000 - 331666,
         },
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            eth::DENOM.clone() => 1000000 - 249999,
-            usdc::DENOM.clone() => 1000000 + 333333,
+            eth::DENOM.clone() => 1000000 - 247814,
+            usdc::DENOM.clone() => 1000000 + 331666,
         },
     };
-    "1:1 pools no swap fee input 100% of pool liquidity two step route"
+    "1:1 pools 0.5% swap fee input 100% of pool liquidity two step route"
 )]
 #[test_case(
     btree_map! {
@@ -1545,7 +1559,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
     Some(500000u128.into()),
     coins! {
@@ -1556,8 +1570,8 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             dango::DENOM.clone() => 2000000,
             usdc::DENOM.clone() => 500000,
         },
-    };
-    "1:1 pool no swap fee one step route input 100% of pool liquidity output is not less than minimum output"
+    } => panics "output amount is below the minimum: 497500 < 500000" ;
+    "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
 )]
 #[test_case(
     btree_map! {
@@ -1574,19 +1588,19 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
-    Some(499999u128.into()),
+    Some(497500u128.into()),
     coins! {
-        usdc::DENOM.clone() => 500000,
+        usdc::DENOM.clone() => 497500,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            usdc::DENOM.clone() => 1000000 - 497500,
         },
     };
-    "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
+    "1:1 pool no swap fee one step route input 100% of pool liquidity output is not less than minimum output"
 )]
 #[test_case(
     btree_map! {
@@ -1727,19 +1741,19 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
     coins! {
-        dango::DENOM.clone() => 1000000,
+        dango::DENOM.clone() => 1002006,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            dango::DENOM.clone() => 1000000 + 1002006,
+            usdc::DENOM.clone() => 1000000 - 500000,
         },
     };
-    "1:1 pool no swap fee one step route output 50% of pool liquidity"
+    "1:1 pool 0.1% swap fee one step route output 50% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -1754,19 +1768,19 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 333333).unwrap(),
     coins! {
-        dango::DENOM.clone() => 499999,
+        dango::DENOM.clone() => 500751,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 499999).unwrap(),
+    Coin::new(dango::DENOM.clone(), 500751).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 499999,
+            dango::DENOM.clone() => 1000000 + 500751,
             usdc::DENOM.clone() => 1000000 - 333333,
         },
     };
-    "1:1 pool no swap fee one step route output 33% of pool liquidity"
+    "1:1 pool 0.1% swap fee one step route output 33% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -1781,19 +1795,19 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 250000).unwrap(),
     coins! {
-        dango::DENOM.clone() => 333333,
+        dango::DENOM.clone() => 333779,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 333333).unwrap(),
+    Coin::new(dango::DENOM.clone(), 333779).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 333333,
+            dango::DENOM.clone() => 1000000 + 333779,
             usdc::DENOM.clone() => 1000000 - 250000,
         },
     };
-    "1:1 pool no swap fee one step route output 25% of pool liquidity"
+    "1:1 pool 0.1% swap fee one step route output 25% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -1811,7 +1825,7 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
@@ -1839,7 +1853,7 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 999999,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
     btree_map! {
@@ -1867,16 +1881,16 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 1100000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 2000000,
-            usdc::DENOM.clone() => 500000,
+            dango::DENOM.clone() => 1000000 + 1002006,
+            usdc::DENOM.clone() => 1000000 - 500000,
         },
     };
-    "1:1 pool no swap fee one step route output 50% of pool liquidity excessive funds returned"
+    "1:1 pool 0.1% swap fee one step route output 50% of pool liquidity excessive funds returned"
 )]
 #[test_case(
     btree_map! {
@@ -1904,21 +1918,21 @@ fn swap_exact_amount_in(
         dango::DENOM.clone() => 1000000,
     },
     btree_map! {
-        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
-        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::ZERO,
+        (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 499999).unwrap(),
+    Coin::new(dango::DENOM.clone(), 501758).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 499999,
-            usdc::DENOM.clone() => 1000000 - 333333,
+            dango::DENOM.clone() => 1000000 + 501758,
+            usdc::DENOM.clone() => 1000000 - 333779,
         },
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             eth::DENOM.clone() => 1000000 - 250000,
-            usdc::DENOM.clone() => 1000000 + 333333,
+            usdc::DENOM.clone() => 1000000 + 333779,
         },
     };
-    "1:1 pool no swap fee two step route output 25% of pool liquidity"
+    "1:1 pool 0.1% swap fee two step route output 25% of pool liquidity"
 )]
 #[test_case(
     btree_map! {
@@ -2045,6 +2059,554 @@ fn swap_exact_amount_out(
     }
 }
 
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_percent(1),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(49751),
+                price: Udec128::new_percent(20100),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            usdc::DENOM.clone() => 49751 * 201,
+        },
+    ],
+    btree_map! {
+        !1u64 => (Udec128::new_percent(20100), Uint128::from(49751), Direction::Bid),
+    },
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 200 * 10000000,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Increased(49751 * 201),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Unchanged,
+            usdc::DENOM.clone() => BalanceChange::Decreased(49751 * 201),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee no matching orders"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_permille(5),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(49751),
+                price: Udec128::new_percent(20100),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            usdc::DENOM.clone() => 49751 * 201,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 - 49751,
+            usdc::DENOM.clone() => 200 * 10000000 + 49751 * 201,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(49751),
+        usdc::DENOM.clone() => BalanceChange::Increased(49751 * 201),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Increased(49751),
+            usdc::DENOM.clone() => BalanceChange::Decreased(49751 * 201),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_percent(1),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(47783),
+                price: Udec128::new_percent(20200),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            usdc::DENOM.clone() => 47783 * 202,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 - 47783,
+            usdc::DENOM.clone() => 200 * 10000000 + 47783 * 202,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(47783),
+        usdc::DENOM.clone() => BalanceChange::Increased(47783 * 202),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Increased(47783),
+            usdc::DENOM.clone() => BalanceChange::Decreased(47783 * 202),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_percent(1),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(157784),
+                price: Udec128::new_percent(20300),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            usdc::DENOM.clone() => 157784 * 203,
+        },
+    ],
+    btree_map! {
+        !1u64 => (Udec128::new_percent(20300), Uint128::from(10000), Direction::Bid),
+    },
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 - 147784,
+            usdc::DENOM.clone() => 200 * 10000000 + 147784 * 203,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(147784),
+        usdc::DENOM.clone() => BalanceChange::Increased(157784 * 203),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Increased(147784),
+            usdc::DENOM.clone() => BalanceChange::Decreased(157784 * 203),
+        }
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_permille(5),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(50251),
+                price: Udec128::new_percent(19900),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            eth::DENOM.clone() => 50251,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 + 50251,
+            usdc::DENOM.clone() => 200 * 10000000 - 50251 * 199,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Increased(50251),
+        usdc::DENOM.clone() => BalanceChange::Decreased(50251 * 199),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Decreased(50251),
+            usdc::DENOM.clone() => BalanceChange::Increased(50251 * 199),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_permille(5),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(30000),
+                price: Udec128::new_percent(19900),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            eth::DENOM.clone() => 30000,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 + 30000,
+            usdc::DENOM.clone() => 200 * 10000000 - 30000 * 199,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Increased(30000),
+        usdc::DENOM.clone() => BalanceChange::Decreased(30000 * 199),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Decreased(30000),
+            usdc::DENOM.clone() => BalanceChange::Increased(30000 * 199),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_permille(5),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(60251),
+                price: Udec128::new_percent(19900),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            eth::DENOM.clone() => 60251,
+        },
+    ],
+    btree_map! {
+        1u64 => (Udec128::new_percent(19900), Uint128::from(10000), Direction::Ask),
+    },
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 + 50251,
+            usdc::DENOM.clone() => 200 * 10000000 - 50251 * 199,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Increased(60251),
+        usdc::DENOM.clone() => BalanceChange::Decreased(50251 * 199),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Decreased(60251),
+            usdc::DENOM.clone() => BalanceChange::Increased(50251 * 199),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after"
+)]
+#[test_case(
+    CurveInvariant::Xyk {
+        order_spacing: Udec128::ONE,
+    },
+    Udec128::new_percent(1),
+    coins! {
+        eth::DENOM.clone() => 10000000,
+        usdc::DENOM.clone() => 200 * 10000000,
+    },
+    vec![
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::from(162284),
+                price: Udec128::new_percent(19800),
+            },
+        ],
+        vec![
+            CreateLimitOrderRequest {
+                base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::from(157784),
+                price: Udec128::new_percent(20200),
+            },
+        ],
+    ],
+    vec![
+        coins! {
+            eth::DENOM.clone() => 162284,
+        },
+        coins! {
+            usdc::DENOM.clone() => 157784 * 203,
+        },
+    ],
+    BTreeMap::new(),
+    btree_map! {
+        (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
+            eth::DENOM.clone() => 10000000 + 4500, // only the remaining amount of the ask order traded against the passive pool
+            usdc::DENOM.clone() => 200 * 10000000 - 4500 * 198,
+        },
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Increased(162284 - 157784),
+        usdc::DENOM.clone() => BalanceChange::Decreased(4500 * 198),
+    },
+    vec![
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Decreased(162284),
+            usdc::DENOM.clone() => BalanceChange::Increased(162284 * 198),
+        },
+        btree_map! {
+            eth::DENOM.clone() => BalanceChange::Increased(157784),
+            usdc::DENOM.clone() => BalanceChange::Decreased(157784 * 198),
+        },
+    ];
+    "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders"
+)]
+fn curve_on_orderbook(
+    curve_invariant: CurveInvariant,
+    swap_fee_rate: Udec128,
+    pool_liquidity: Coins,
+    orders: Vec<Vec<CreateLimitOrderRequest>>,
+    order_creation_funds: Vec<Coins>,
+    expected_orders_after_clearing: BTreeMap<OrderId, (Udec128, Uint128, Direction)>,
+    expected_reserves_after_clearing: BTreeMap<(Denom, Denom), CoinPair>,
+    expected_dex_balance_changes: BTreeMap<Denom, BalanceChange>,
+    expected_user_balance_changes: Vec<BTreeMap<Denom, BalanceChange>>,
+) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Set maker and taker fee rates to 0 for simplicity
+    let mut app_config: AppConfig = suite.query_app_config().unwrap();
+    app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    suite
+        .configure(
+            &mut accounts.owner, // Must be the chain owner
+            None,                // No chain config update
+            Some(app_config),    // App config update
+        )
+        .should_succeed();
+
+    // Update pair params
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Provide liquidity with owner account
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            curve_invariant,
+                            swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                        },
+                    }]),
+                    pool_liquidity.clone(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Register oracle price source for USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Register oracle price source for ETH
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                eth::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new_percent(2000),
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Provide liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+
+    // Record dex and user balances
+    suite.balances().record(&contracts.dex.address());
+    suite.balances().record_many(accounts.users());
+
+    // Create txs for all the orders from all users.
+    let txs = accounts
+        .users_mut()
+        .zip(orders)
+        .zip(order_creation_funds)
+        .map(|((user, orders), order_creation_funds)| {
+            let msg = Message::execute(
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates_market: Vec::new(),
+                    creates_limit: orders,
+                    cancels: None,
+                },
+                order_creation_funds,
+            )?;
+
+            user.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+        })
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    // Assert that user balances have changed as expected
+    for (user, expected_user_balance_change) in accounts.users().zip(expected_user_balance_changes)
+    {
+        suite
+            .balances()
+            .should_change(&user.address(), expected_user_balance_change);
+    }
+
+    // Assert that dex balances have changed as expected
+    suite
+        .balances()
+        .should_change(&contracts.dex.address(), expected_dex_balance_changes);
+
+    // Assert that reserves have changed as expected
+    for ((base_denom, quote_denom), expected_reserve) in expected_reserves_after_clearing {
+        suite
+            .query_wasm_smart(contracts.dex, QueryReserveRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+            })
+            .should_succeed_and_equal(expected_reserve);
+    }
+
+    // Assert that the order book contains the expected orders
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders_after_clearing.len());
+            for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
+                let order = orders.get(&order_id).unwrap();
+                assert_eq!(order.price, price);
+                assert_eq!(order.remaining, remaining);
+                assert_eq!(order.direction, direction);
+            }
+            true
+        });
+}
+
 fn balance_changes_from_coins(
     increases: Coins,
     decreases: Coins,
@@ -2165,7 +2727,8 @@ fn volume_tracking_works() {
             &mut user1_addr_1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
@@ -2184,7 +2747,8 @@ fn volume_tracking_works() {
             &mut user2_addr_1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
@@ -2254,7 +2818,8 @@ fn volume_tracking_works() {
             &mut user1_addr_2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
@@ -2273,7 +2838,8 @@ fn volume_tracking_works() {
             &mut user2_addr_2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
@@ -2435,7 +3001,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
@@ -2470,7 +3037,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
@@ -2550,7 +3118,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
@@ -2594,7 +3163,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &mut accounts.user2,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![
+                creates_market: vec![],
+                creates_limit: vec![
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
@@ -2621,8 +3191,6 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
         .should_succeed();
-
-    println!("post man four");
 
     // Get timestamp after second trade
     let timestamp_after_second_trade = suite.block.timestamp;

@@ -35,8 +35,7 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet",
-          "action=forgot-username": "Retrieve with wallet"
+          "action=signup": "Sign up with wallet"
         }
       }
     ],
@@ -46,8 +45,7 @@
         "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey",
-          "action=forgot-username": "Retrieve with Passkey"
+          "action=signup": "Sign up with Passkey"
         }
       }
     ]
@@ -105,11 +103,11 @@
     },
     "1": {
       "id": "simple-swap",
-      "img": "/images/emojis/simple/spot.svg",
-      "title": "Simple Swap",
-      "description": "Swap tokens",
+      "img": "/images/emojis/simple/swap.svg",
+      "title": "Convert",
+      "description": "The easiest way to trade at all sizes.",
       "path": "/swap",
-      "keywords": "swap,trade,simple"
+      "keywords": "swap,trade,convert,exchange"
     },
     "2": {
       "id": "settings",
@@ -138,18 +136,19 @@
   },
   "explorer": {
     "block": {
+      "title": "Block Explorer",
       "notFound": {
         "title": "Block not found",
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
       "details": {
-        "blockDetails": "Block Details",
-        "blockHash": "Block Hash:",
-        "blockHeight": "Block Height:",
-        "blockTime": "Time:",
+        "blockDetails": "Block {height}",
+        "blockHash": "Block Hash",
+        "blockHeight": "Block Height",
+        "blockTime": "Time",
         "transactions": "Transactions",
-        "proposer": "Proposer:",
-        "numberOfTx": "Number of Tx:"
+        "proposer": "Proposer",
+        "numberOfTx": "Number of Txs"
       },
       "futureBlock": {
         "targetBlock": "Target Block",
@@ -162,14 +161,27 @@
       }
     },
     "txs": {
+      "title": "Transaction Explorer",
       "txDetails": "Transaction Details",
       "notFound": {
         "pre": "We couldn’t find",
         "title": "Transaction not found",
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
-      }
+      },
+      "events": "Events",
+      "txHash": "Tx hash",
+      "sender": "Sender",
+      "time": "Time",
+      "block": "Block",
+      "index": "Index",
+      "gasUsed": "Gas Used",
+      "gasWanted": "Gas Wanted",
+      "status": "Status",
+      "success": "Success",
+      "failed": "Failed"
     },
     "contracts": {
+      "title": "Contract Explorer",
       "notFound": {
         "pre": "We couldn’t find ",
         "title": "Contract not found",
@@ -177,13 +189,14 @@
       },
       "details": {
         "contractDetails": "Contract Details",
-        "codeHash": "Code Hash:",
-        "contractAddress": "Contract Address:",
-        "admin": "Admin:",
-        "balances": "Balances:"
+        "codeHash": "Code Hash",
+        "contractAddress": "Contract Address",
+        "admin": "Admin",
+        "balances": "Balances"
       }
     },
     "accounts": {
+      "title": "Account Explorer",
       "notFound": {
         "pre": "We couldn’t find ",
         "title": "Account not found",
@@ -217,11 +230,15 @@
     },
     "renewSession": {
       "title": "Session expired",
-      "description": "For your security, each login session expires after 24 hours. Please sign in again.",
+      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
       "stayLogout": "Stay logged out"
     }
   },
   "signin": {
+    "usernamesFound": "Usernames found",
+    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "noUsernamesFound": "No usernames found",
+    "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
     "advancedOptions": "Advanced Options",
     "continueWithoutSignin": "Continue without sign in",
@@ -320,14 +337,6 @@
       "failedSendingFunds": "Failed sending funds",
       "creatingAccount": "Error creating account"
     }
-  },
-  "forgotUsername": {
-    "greetings": "Hi there",
-    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
-    "usernamesFound": "Usernames found",
-    "chooseCredentialFoundUsername": "Choose any of the credentials that have been associated with your username.",
-    "noUsernamesFound": "No usernames found",
-    "noUsernameMessage": "We could not find any username associated with the credential you connected."
   },
   "pagination": {
     "page": "Page",
@@ -451,9 +460,16 @@
     "display": "Display",
     "language": "Language",
     "session": {
-      "title": "Session",
+      "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
       "remaining": "Remaining time",
+      "network": {
+        "title": "Network",
+        "chainId": "Chain ID",
+        "latestBlockHeight": "Latest Block Height",
+        "latestBlockTime": "Latest Block Time",
+        "endpoint": "Endpoint"
+      },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" }
     },
     "languages": [
@@ -482,11 +498,11 @@
         }
       }
     ],
-    "number": "Format Number",
+    "number": "Number Format",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",
-      "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
+      "description": "Add or remove keys associated with your user profile. You can sign in to Dango with any of these keys.",
       "add": "Add",
       "management": {
         "add": {
@@ -524,10 +540,11 @@
     "apy": "APY",
     "tvl": "TVL",
     "24h": "24h",
-    "swap": "Swap",
     "swapping": "Swapping",
-    "simpleSwap": {
-      "swapSuccessfully": "Swap Successfully",
+    "convert": {
+      "swap": "Swap",
+      "title": "Convert",
+      "convertSuccessfully": "Order Executed",
       "youGet": "You get",
       "youSwap": "You swap",
       "rate": "Rate",

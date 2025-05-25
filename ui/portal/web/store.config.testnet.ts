@@ -1,10 +1,18 @@
-import { createConfig, testnet, graphql, passkey, session } from "@left-curve/store";
+import { createConfig, graphql, passkey, session, testnet } from "@left-curve/store";
 
 import type { Config } from "@left-curve/store/types";
 
 const chain = testnet;
 
 export const coins = {
+  dango: {
+    type: "native",
+    name: "Dango",
+    logoURI: "/DGX.svg",
+    symbol: "DGX",
+    denom: "dango",
+    decimals: 6,
+  },
   "bridge/btc": {
     type: "native",
     name: "Bitcoin",
@@ -12,7 +20,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
     symbol: "BTC",
     denom: "bridge/btc",
-    decimals: 6,
+    decimals: 8,
     coingeckoId: "bitcoin",
   },
   "bridge/eth": {
@@ -22,7 +30,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
     symbol: "ETH",
     denom: "bridge/eth",
-    decimals: 6,
+    decimals: 18,
     coingeckoId: "ethereum",
   },
   "bridge/xrp": {
@@ -52,7 +60,7 @@ export const coins = {
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
     symbol: "SOL",
     denom: "bridge/sol",
-    decimals: 6,
+    decimals: 9,
     coingeckoId: "solana",
   },
 } as const;
@@ -63,6 +71,7 @@ export const coinsBySymbol = Object.values(coins).reduce((acc, coin) => {
 }, Object.create({}));
 
 export const config: Config = createConfig({
+  version: 0.4,
   multiInjectedProviderDiscovery: true,
   chain,
   transport: graphql(chain.urls.indexer, { batch: true }),
