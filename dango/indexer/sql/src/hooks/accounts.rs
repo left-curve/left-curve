@@ -220,7 +220,7 @@ impl Hooks {
         if !account_key_added_events.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::info!(
-                "Detected account_key_updated_events: {:?}",
+                "Detected account_key_added_events: {:?}",
                 account_key_added_events
             );
 

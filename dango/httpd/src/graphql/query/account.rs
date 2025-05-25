@@ -49,7 +49,7 @@ impl AccountQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
-        // The block height of created account
+        // The block height at which the account was created
         block_height: Option<u64>,
         username: Option<String>,
         address: Option<String>,

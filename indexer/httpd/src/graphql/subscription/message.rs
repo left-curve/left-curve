@@ -52,7 +52,7 @@ impl MessageSubscription {
         };
 
         if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
-            return Err(async_graphql::Error::new("since_block_height is too old"));
+            return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
         Ok(

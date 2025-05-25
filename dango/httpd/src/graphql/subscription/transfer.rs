@@ -14,7 +14,7 @@ use {
 pub struct TransferSubscription;
 
 impl TransferSubscription {
-    /// Get all transfers for the given block_height
+    /// Get all transfers for the given block_heights range
     async fn get_transfers(
         app_ctx: &indexer_httpd::context::Context,
         block_heights: RangeInclusive<i64>,
@@ -71,6 +71,7 @@ impl TransferSubscription {
         ctx: &Context<'a>,
         // The address of the transfer, either origin or destination
         address: Option<String>,
+        // The username related to the transfer, either as origin or as destination
         username: Option<String>,
         // The block height of the transfer
         // This is used to get the older transfers in case of disconnection

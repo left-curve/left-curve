@@ -22,7 +22,7 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
-    /// Search for a pattern in the given range of blocks
+    /// Search for a pattern in the given inclusive range of blocks
     // TODO: make block range optional and figure it out automatically
     Find {
         text: String,

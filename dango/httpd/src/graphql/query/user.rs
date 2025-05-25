@@ -59,7 +59,7 @@ impl UserQuery {
         before: Option<String>,
         first: Option<i32>,
         last: Option<i32>,
-        // The block height of created user
+        // The block height at which the user was created
         block_height: Option<u64>,
         public_key: Option<String>,
         public_key_hash: Option<String>,
