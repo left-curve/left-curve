@@ -9,7 +9,7 @@ use {
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, AppError, Db, Indexer, NullIndexer},
+    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk::DiskDb,
     grug_types::{GIT_COMMIT, HashExt},
@@ -77,8 +77,7 @@ impl StartCmd {
                 let app = App::new(
                     db.clone(),
                     vm.clone(),
-                    // NOTE: better if I have a NullProposalPreparer here?
-                    ProposalPreparer::new(),
+                    NaiveProposalPreparer,
                     NullIndexer,
                     cfg.grug.query_gas_limit,
                 );
