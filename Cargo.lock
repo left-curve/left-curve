@@ -3391,6 +3391,7 @@ dependencies = [
  "chrono",
  "clap",
  "dango-indexer-sql",
+ "dango-types",
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
@@ -3567,10 +3568,12 @@ name = "dango-types"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "grug",
  "hyperlane-types",
  "paste",
  "pyth-types",
+ "sea-orm",
  "serde",
  "sha2 0.10.9",
 ]

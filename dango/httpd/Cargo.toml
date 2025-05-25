@@ -16,6 +16,7 @@ async-graphql-actix-web = { workspace = true }
 chrono                  = { workspace = true }
 clap                    = { workspace = true }
 dango-indexer-sql       = { workspace = true }
+dango-types             = { workspace = true, features = ["async-graphql"] }
 indexer-httpd           = { workspace = true }
 indexer-sql             = { workspace = true }
 itertools               = { workspace = true }

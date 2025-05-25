@@ -1,25 +1,4 @@
-use sea_orm::entity::prelude::*;
-
-#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Hash)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
-pub enum KeyType {
-    #[sea_orm(num_value = 0)]
-    Secp256r1,
-    #[sea_orm(num_value = 1)]
-    Secp256k1,
-    #[sea_orm(num_value = 2)]
-    Ethereum,
-}
-
-impl From<dango_types::auth::Key> for KeyType {
-    fn from(key: dango_types::auth::Key) -> Self {
-        match key {
-            dango_types::auth::Key::Secp256r1(_) => KeyType::Secp256r1,
-            dango_types::auth::Key::Secp256k1(_) => KeyType::Secp256k1,
-            dango_types::auth::Key::Ethereum(_) => KeyType::Ethereum,
-        }
-    }
-}
+use {dango_types::auth, sea_orm::entity::prelude::*};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash)]
 #[sea_orm(table_name = "users_public_keys")]
@@ -29,7 +8,7 @@ pub struct Model {
     pub username: String,
     pub key_hash: String,
     pub public_key: String,
-    pub key_type: KeyType,
+    pub key_type: auth::KeyType,
     pub created_at: DateTime,
     pub created_block_height: i64,
 }

@@ -17,7 +17,7 @@ anyhow                      = { workspace = true }
 async-trait                 = { workspace = true }
 borsh                       = { workspace = true }
 dango-indexer-sql-migration = { workspace = true }
-dango-types                 = { workspace = true }
+dango-types                 = { workspace = true, features = ["sea-orm"] }
 grug                        = { workspace = true }
 grug-app                    = { workspace = true }
 grug-math                   = { workspace = true }

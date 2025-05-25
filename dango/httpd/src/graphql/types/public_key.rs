@@ -2,25 +2,9 @@ use {
     async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
     dango_indexer_sql::entity,
+    dango_types::auth,
     sea_orm::ModelTrait,
 };
-
-#[derive(Enum, Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum KeyType {
-    Secp256r1,
-    Secp256k1,
-    Ethereum,
-}
-
-impl From<entity::public_keys::KeyType> for KeyType {
-    fn from(key_type: entity::public_keys::KeyType) -> KeyType {
-        match key_type {
-            entity::public_keys::KeyType::Secp256r1 => KeyType::Secp256r1,
-            entity::public_keys::KeyType::Secp256k1 => KeyType::Secp256k1,
-            entity::public_keys::KeyType::Ethereum => KeyType::Ethereum,
-        }
-    }
-}
 
 #[derive(Clone, Debug, SimpleObject, Eq, PartialEq, Hash)]
 #[graphql(complex)]
@@ -30,7 +14,7 @@ pub struct PublicKey {
     pub username: String,
     pub key_hash: String,
     pub public_key: String,
-    pub key_type: KeyType,
+    pub key_type: auth::KeyType,
     pub created_at: DateTime<Utc>,
     pub created_block_height: u64,
 }
@@ -43,7 +27,7 @@ impl From<entity::public_keys::Model> for PublicKey {
             username: item.username,
             key_hash: item.key_hash,
             public_key: item.public_key,
-            key_type: item.key_type.into(),
+            key_type: item.key_type,
             created_block_height: item.created_block_height as u64,
         }
     }
