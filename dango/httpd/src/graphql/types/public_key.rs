@@ -63,6 +63,8 @@ impl PublicKey {
             .map(super::user::User::from)
             .collect())
 
+        // TODO: keeping the old code for reference
+
         // let user = entity::users::Entity::find()
         //     .filter(entity::users::Column::Username.eq(&self.username))
         //     .one(&app_ctx.db)

@@ -67,7 +67,8 @@ impl Account {
             .map(User::from)
             .collect::<Vec<_>>())
 
-        // NOTE: keeping the old code for reference in case the join query doesn't work
+        // TODO: keeping the old code for reference in case the join query doesn't work
+
         // let user_ids = entity::accounts_users::Entity::find()
         //     .filter(entity::accounts_users::Column::AccountId.eq(self.id))
         //     .all(&app_ctx.db)

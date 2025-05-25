@@ -42,7 +42,8 @@ impl User {
             .map(PublicKey::from)
             .collect::<Vec<_>>())
 
-        // NOTE: leaving this here for now, in case the relation doesn't work
+        // TODO: leaving this here for now, in case the relation doesn't work
+
         // let public_keys = entity::public_keys::Entity::find()
         //     .filter(entity::public_keys::Column::Username.eq(&self.username))
         //     .all(&app_ctx.db)
@@ -69,7 +70,8 @@ impl User {
             .map(Account::from)
             .collect::<Vec<_>>())
 
-        // NOTE: leaving this here for now, in case the relation doesn't work
+        // TODO: leaving this here for now, in case the relation doesn't work
+
         // let account_ids = entity::accounts_users::Entity::find()
         //     .filter(entity::accounts_users::Column::UserId.eq(self.username.clone()))
         //     .all(&app_ctx.db)
@@ -78,7 +80,6 @@ impl User {
         //     .map(|item| item.account_id)
         //     .collect::<Vec<_>>();
 
-        // NOTE: leaving this here for now, in case the relation doesn't work
         // let accounts = entity::accounts::Entity::find()
         //     .filter(entity::accounts::Column::Id.is_in(account_ids))
         //     .all(&app_ctx.db)
