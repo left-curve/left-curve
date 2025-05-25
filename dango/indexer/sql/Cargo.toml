@@ -21,7 +21,7 @@ dango-types                 = { workspace = true }
 grug                        = { workspace = true }
 grug-app                    = { workspace = true }
 grug-math                   = { workspace = true }
-grug-types                  = { workspace = true }
+grug-types                  = { workspace = true, features = ["chrono"] }
 indexer-disk-saver          = { workspace = true }
 indexer-sql                 = { workspace = true }
 itertools                   = { workspace = true }
