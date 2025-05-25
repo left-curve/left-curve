@@ -8,11 +8,7 @@ use {
         Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
         JsonSerExt, flatten_commitment_status,
     },
-    sea_orm::{
-        Set,
-        prelude::*,
-        sqlx::types::chrono::{NaiveDateTime, TimeZone},
-    },
+    sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
     std::collections::HashMap,
 };
 
@@ -26,15 +22,7 @@ pub struct Models {
 
 impl Models {
     pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
-        let epoch_millis = block.info.timestamp.into_millis();
-        let seconds = (epoch_millis / 1_000) as i64;
-        let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
-
-        let created_at = sea_orm::sqlx::types::chrono::Utc
-            .timestamp_opt(seconds, nanoseconds)
-            .single()
-            .unwrap_or_default()
-            .naive_utc();
+        let created_at = block.info.timestamp.to_naive_date_time();
 
         let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
 

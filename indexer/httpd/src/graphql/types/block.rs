@@ -56,18 +56,9 @@ pub struct BlockInfo {
 
 impl From<grug_types::BlockInfo> for BlockInfo {
     fn from(item: grug_types::BlockInfo) -> Self {
-        let epoch_millis = item.timestamp.into_millis();
-        let seconds = (epoch_millis / 1_000) as i64;
-        let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
-
-        let timestamp = sea_orm::sqlx::types::chrono::Utc
-            .timestamp_opt(seconds, nanoseconds)
-            .single()
-            .unwrap_or_default();
-
         Self {
             block_height: item.height,
-            timestamp,
+            timestamp: item.timestamp.to_utc_date_time(),
             hash: item.hash.to_string(),
         }
     }

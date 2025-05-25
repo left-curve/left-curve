@@ -9,8 +9,7 @@ use {
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
     indexer_sql::{Context, block_to_index::BlockToIndex},
     sea_orm::{
-        ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set,
-        TransactionTrait, sqlx::types::chrono::TimeZone,
+        ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
     },
     uuid::Uuid,
 };
@@ -96,19 +95,9 @@ impl Hooks {
             }
         }
 
-        // TODO: refactor this, used around multiple places
-        let epoch_millis = block.block.info.timestamp.into_millis();
-        let seconds = (epoch_millis / 1_000) as i64;
-        let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
-
-        let created_at = sea_orm::sqlx::types::chrono::Utc
-            .timestamp_opt(seconds, nanoseconds)
-            .single()
-            .unwrap_or_default()
-            .naive_utc();
-        //
-
+        let created_at = block.block.info.timestamp.to_naive_date_time();
         let txn = context.db.begin().await?;
+
         // I have to do with chunks to avoid psql errors with too many items
         let chunk_size = 1000;
 
