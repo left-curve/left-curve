@@ -14,7 +14,7 @@ use {
 pub struct TransferSubscription;
 
 impl TransferSubscription {
-    /// Get all transfers for the given block_heights range
+    /// Get all transfers for the given `block_heights` range.
     async fn get_transfers(
         app_ctx: &indexer_httpd::context::Context,
         block_heights: RangeInclusive<i64>,
