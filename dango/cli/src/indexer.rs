@@ -15,22 +15,20 @@ pub struct IndexerCmd {
 enum SubCmd {
     /// View a block and results
     Block { height: u64 },
-
     /// View a range of blocks and results
     Blocks {
-        /// Start height
+        /// Start height (inclusive)
         start: u64,
-        /// End height
+        /// End height (inclusive)
         end: u64,
     },
-
     /// Search for a pattern in the given range of blocks
     // TODO: make block range optional and figure it out automatically
     Find {
         text: String,
-        /// Start height
+        /// Start height (inclusive)
         start: u64,
-        /// End height
+        /// End height (inclusive)
         end: u64,
     },
 }
@@ -41,18 +39,11 @@ impl IndexerCmd {
             SubCmd::Block { height } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
                 let block_filename = indexer_path.block_path(height);
-
-                let block_to_index = match BlockToIndex::load_from_disk(block_filename) {
-                    Ok(block_to_index) => block_to_index,
-                    Err(err) => {
-                        return Err(err.into());
-                    },
-                };
+                let block_to_index = BlockToIndex::load_from_disk(block_filename)?;
 
                 println!("Block: {:#?}", block_to_index.block);
                 println!("Block Outcome: {:#?}", block_to_index.block_outcome);
             },
-
             SubCmd::Blocks { start, end } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
                 let mut set = JoinSet::new();
@@ -85,7 +76,6 @@ impl IndexerCmd {
                     }
                 }
             },
-
             SubCmd::Find { text, start, end } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
                 let mut set = JoinSet::new();
@@ -112,8 +102,8 @@ impl IndexerCmd {
 
                             if block_text.contains(&text) || block_results.contains(&text) {
                                 println!("Found in block {block}:");
-                                println!("Block: {}", block_text);
-                                println!("Block Outcome: {}", block_results);
+                                println!("Block: {:#?}", block_text);
+                                println!("Block Outcome: {:#?}", block_results);
                             }
                         });
                     });
