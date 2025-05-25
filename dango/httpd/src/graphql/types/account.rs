@@ -29,7 +29,7 @@ impl From<entity::accounts::Model> for Account {
             model: item.clone(),
             created_at: Utc.from_utc_datetime(&item.created_at),
             address: item.address,
-            account_type: item.account_type.into(),
+            account_type: item.account_type,
             created_block_height: item.created_block_height as u64,
             account_index: item.account_index as u32,
         }

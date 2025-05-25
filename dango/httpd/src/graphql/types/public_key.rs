@@ -27,7 +27,7 @@ impl From<entity::public_keys::Model> for PublicKey {
             username: item.username,
             key_hash: item.key_hash,
             public_key: item.public_key,
-            key_type: item.key_type.into(),
+            key_type: item.key_type,
             created_block_height: item.created_block_height as u64,
         }
     }
