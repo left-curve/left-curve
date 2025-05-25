@@ -1,3 +1,6 @@
+# Git
+.gitattributes
+
 # Editors
 .idea/
 .vscode/
@@ -65,4 +68,3 @@ ui/config/project.inlang/*
 networks/**/configs/cometbft/config/addrbook.json
 networks/**/configs/cometbft/config/write-file-atomic-*
 networks/**/data
-.gitattributes
