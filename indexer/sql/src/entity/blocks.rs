@@ -5,19 +5,10 @@ use {
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
     sea_orm::{QueryOrder, entity::prelude::*},
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    DeriveEntityModel,
-    Eq,
-    Default,
-    serde :: Serialize,
-    serde :: Deserialize,
-    Hash,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, DeriveEntityModel, Default, Hash)]
 #[sea_orm(table_name = "blocks")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
