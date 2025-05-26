@@ -19,16 +19,23 @@ use crate::dataloaders::{
 )]
 #[sea_orm(table_name = "blocks")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(name = "Block"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub id: Uuid,
     pub created_at: DateTime,
     #[sea_orm(unique)]
     pub block_height: i64,
     pub hash: String,
     pub app_hash: String,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub transactions_count: i32,
 }
 

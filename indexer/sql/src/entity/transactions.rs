@@ -1,21 +1,28 @@
-use crate::dataloaders::{
-    transaction_events::TransactionEventsDataLoader,
-    transaction_messages::TransactionMessagesDataLoader,
-};
 #[cfg(feature = "async-graphql")]
 use async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader};
+use {
+    crate::dataloaders::{
+        transaction_events::TransactionEventsDataLoader,
+        transaction_messages::TransactionMessagesDataLoader,
+    },
+    serde::Deserialize,
+};
 
 use {
     grug_types::{FlatCategory, JsonSerExt, Tx, TxOutcome},
     sea_orm::entity::prelude::*,
 };
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
 #[sea_orm(table_name = "transactions")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(name = "Transaction"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub id: Uuid,
     pub created_at: DateTime,
     pub block_height: i64,

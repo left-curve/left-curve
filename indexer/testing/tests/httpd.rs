@@ -106,7 +106,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<Block>(app, request_body).await?;
+                let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
@@ -196,7 +196,7 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<Block>(app, request_body).await?;
+                let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
@@ -559,7 +559,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 // 1st response is always the existing last block
                 let (framed, response) =
-                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
@@ -567,7 +568,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 // 2st response
                 let (framed, response) =
-                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(2);
 
@@ -575,7 +577,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 // 3rd response
                 let (_, response) =
-                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(3);
 
@@ -752,8 +755,10 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -765,8 +770,10 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -778,8 +785,10 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -860,7 +869,8 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
 
                 // 1st response is always the existing last block
                 let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Event>>(framed, name).await?;
+                    parse_graphql_subscription_response::<Vec<entity::events::Model>>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data).is_not_empty();
@@ -868,8 +878,10 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data).is_not_empty();
@@ -877,8 +889,10 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data).is_not_empty();

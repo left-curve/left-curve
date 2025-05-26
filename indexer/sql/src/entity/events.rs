@@ -3,6 +3,7 @@ use async_graphql::{Enum, Result, SimpleObject};
 use {
     grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
     sea_orm::entity::prelude::*,
+    serde::Deserialize,
 };
 
 #[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
@@ -26,7 +27,7 @@ impl From<FlatCommitmentStatus> for CommitmentStatus {
     }
 }
 
-#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Copy)]
+#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Copy, Deserialize)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 #[cfg_attr(feature = "async-graphql", derive(Enum))]
 pub enum EventStatus {
@@ -69,18 +70,31 @@ impl From<FlatCategory> for TransactionType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
 #[sea_orm(table_name = "events")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(name = "Event"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub id: Uuid,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub parent_id: Option<Uuid>,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub transaction_id: Option<Uuid>,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
     pub message_id: Option<Uuid>,
     pub created_at: DateTime,
     pub r#type: String,

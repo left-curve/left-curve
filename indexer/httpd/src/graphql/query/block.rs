@@ -1,7 +1,7 @@
 use {
     crate::context::Context,
     async_graphql::{types::connection::*, *},
-    indexer_sql::entity::{self, prelude::Blocks},
+    indexer_sql::entity::{self},
     sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select},
     serde::{Deserialize, Serialize},
 };
@@ -28,6 +28,7 @@ impl From<entity::blocks::Model> for BlockCursor {
 }
 
 pub type BlockCursorType = OpaqueCursor<BlockCursor>;
+type Blocks = entity::blocks::Model;
 
 const MAX_BLOCKS: u64 = 100;
 
@@ -67,7 +68,7 @@ impl BlockQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
-    ) -> Result<Connection<BlockCursorType, entity::blocks::Model, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<BlockCursorType, Blocks, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<BlockCursorType, _, _, _, _>(
@@ -140,7 +141,11 @@ impl BlockQuery {
     }
 }
 
-fn apply_filter(query: Select<Blocks>, sort_by: SortBy, after: &BlockCursor) -> Select<Blocks> {
+fn apply_filter(
+    query: Select<entity::blocks::Entity>,
+    sort_by: SortBy,
+    after: &BlockCursor,
+) -> Select<entity::blocks::Entity> {
     match sort_by {
         SortBy::BlockHeightAsc => {
             query.filter(entity::blocks::Column::BlockHeight.lt(after.block_height))

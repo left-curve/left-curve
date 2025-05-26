@@ -14,6 +14,7 @@ path = "src/lib.rs"
 
 [features]
 async-graphql = ["dep:async-graphql", "grug-types/async-graphql"]
+testing       = []
 tracing       = ["dep:tracing"]
 
 [dependencies]

@@ -155,6 +155,9 @@ where
 
     let text_response = read_body(res).await;
 
+    // When I need to debug the response
+    println!("text response: \n{:#?}", str::from_utf8(&text_response)?);
+
     Ok(serde_json::from_slice(&text_response)?)
 }
 
