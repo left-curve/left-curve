@@ -6,6 +6,7 @@ use {sea_orm::entity::prelude::*, serde::Deserialize};
 #[sea_orm(table_name = "messages")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "Message"))]
+#[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     #[cfg_attr(

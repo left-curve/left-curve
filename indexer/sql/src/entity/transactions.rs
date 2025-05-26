@@ -16,7 +16,9 @@ use {
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
 #[sea_orm(table_name = "transactions")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(complex))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "Transaction"))]
+#[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     #[cfg_attr(

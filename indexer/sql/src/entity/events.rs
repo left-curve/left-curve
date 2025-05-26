@@ -30,6 +30,8 @@ impl From<FlatCommitmentStatus> for CommitmentStatus {
 #[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Copy, Deserialize)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 #[cfg_attr(feature = "async-graphql", derive(Enum))]
+#[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
 pub enum EventStatus {
     #[sea_orm(num_value = 0)]
     Ok,
@@ -74,6 +76,7 @@ impl From<FlatCategory> for TransactionType {
 #[sea_orm(table_name = "events")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "Event"))]
+#[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     #[cfg_attr(

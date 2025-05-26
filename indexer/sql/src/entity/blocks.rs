@@ -19,7 +19,9 @@ use crate::dataloaders::{
 )]
 #[sea_orm(table_name = "blocks")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(complex))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "Block"))]
+#[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     #[cfg_attr(
