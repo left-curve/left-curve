@@ -118,7 +118,7 @@ impl UserQuery {
                     .all(&app_ctx.db)
                     .await?
                     .into_iter()
-                    .map(|user| user.0)
+                    .map(|(user, _)| user)
                     .collect::<Vec<_>>();
 
                 if has_before {

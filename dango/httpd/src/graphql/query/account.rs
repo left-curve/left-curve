@@ -124,7 +124,7 @@ impl AccountQuery {
                     .all(&app_ctx.db)
                     .await?
                     .into_iter()
-                    .map(|account| account.0)
+                    .map(|(account, _)| account)
                     .collect::<Vec<_>>();
 
                 if has_before {
