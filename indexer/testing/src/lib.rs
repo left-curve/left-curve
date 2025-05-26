@@ -113,12 +113,12 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    println!("text response: \n{:#?}", graphql_response);
+    // println!("text response: \n{:#?}", graphql_response);
 
     let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
 
     // When I need to debug the response
-    println!("GraphQLResponse: {:#?}", graphql_response);
+    // println!("GraphQLResponse: {:#?}", graphql_response);
 
     if let Some(data) = graphql_response.data.remove(request_body.name) {
         Ok(GraphQLCustomResponse {
@@ -156,7 +156,7 @@ where
     let text_response = read_body(res).await;
 
     // When I need to debug the response
-    println!("text response: \n{:#?}", str::from_utf8(&text_response)?);
+    // println!("text response: \n{:#?}", str::from_utf8(&text_response)?);
 
     Ok(serde_json::from_slice(&text_response)?)
 }
@@ -261,12 +261,12 @@ where
     match framed.next().await {
         Some(Ok(ws::Frame::Text(text))) => {
             // When I need to debug the response
-            println!("text response: \n{}", str::from_utf8(&text)?);
+            // println!("text response: \n{}", str::from_utf8(&text)?);
 
             let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
 
             // When I need to debug the response
-            println!("response: \n{:#?}", graphql_response);
+            // println!("response: \n{:#?}", graphql_response);
 
             if let Some(data) = graphql_response.payload.data.remove(name) {
                 Ok((framed, GraphQLCustomResponse {
