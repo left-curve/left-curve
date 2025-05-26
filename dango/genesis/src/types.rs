@@ -145,4 +145,6 @@ pub struct BitcoinOption {
     pub sats_per_vbyte: Uint128,
     pub outbound_fee: Uint128,
     pub outbound_strategy: Order,
+    /// Define how often the withdrawal requests are processed.
+    pub withdraw_timeout: Duration,
 }

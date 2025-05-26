@@ -594,6 +594,7 @@ impl Preset for BitcoinOption {
             sats_per_vbyte: Uint128::new(10),
             outbound_fee: Uint128::new(1000),
             outbound_strategy: Order::Ascending,
+            withdraw_timeout: Duration::from_minutes(10),
         }
     }
 }

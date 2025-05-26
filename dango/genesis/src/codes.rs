@@ -113,6 +113,7 @@ impl GenesisCodes for RustVm {
         let bitcoin = ContractBuilder::new(Box::new(dango_bitcoin::instantiate))
             .with_execute(Box::new(dango_bitcoin::execute))
             .with_query(Box::new(dango_bitcoin::query))
+            .with_cron_execute(Box::new(dango_bitcoin::cron_execute))
             .build();
 
         Codes {

@@ -34,6 +34,7 @@ where
     let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let bank_code_hash = upload(&mut msgs, codes.bank);
+    let bitcoin_code_hash = upload(&mut msgs, codes.bitcoin);
     let dex_code_hash = upload(&mut msgs, codes.dex);
     let gateway_code_hash = upload(&mut msgs, codes.gateway);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
@@ -44,7 +45,6 @@ where
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
     let warp_code_hash = upload(&mut msgs, codes.warp);
-    let bitcoin_code_hash = upload(&mut msgs, codes.bitcoin);
 
     // Instantiate account factory.
     let users = opt
@@ -310,6 +310,7 @@ where
         cronjobs: btree_map! {
             dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
             gateway => opt.gateway.rate_limit_refresh_period,
+            bitcoin => opt.bitcoin.withdraw_timeout,
         },
         permissions: Permissions {
             upload: Permission::Nobody,
