@@ -2,7 +2,7 @@
 use sea_orm::entity::prelude::*;
 
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject};
+use async_graphql::Enum;
 
 use {
     super::FlattenStatus,
@@ -63,12 +63,27 @@ impl FlatEventStatus {
 }
 
 #[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Copy,
+    Display,
 )]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "sea-orm", derive(EnumIter, DeriveActiveEnum))]
+#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i32", db_type = "Integer"))]
+#[cfg_attr(feature = "async-graphql", derive(Enum))]
 pub enum FlatCommitmentStatus {
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
     Committed,
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
     Failed,
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
     Reverted,
 }
 
@@ -99,6 +114,7 @@ impl FlatCommitmentStatus {
     Eq,
     Copy,
     Display,
+    Hash,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]

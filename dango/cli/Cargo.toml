@@ -37,7 +37,7 @@ grug-vm-hybrid          = { workspace = true }
 hex                     = { workspace = true }
 home                    = { workspace = true }
 indexer-httpd           = { workspace = true }
-indexer-sql             = { workspace = true, features = ["tracing"] }
+indexer-sql             = { workspace = true, features = ["async-graphql", "tracing"] }
 pyth-client             = { workspace = true, optional = true }
 pyth-types              = { workspace = true, optional = true }
 rand                    = { workspace = true }

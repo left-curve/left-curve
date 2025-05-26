@@ -1,8 +1,5 @@
 use {
-    crate::{
-        context::Context,
-        graphql::types::{self, event::Event},
-    },
+    crate::context::Context,
     async_graphql::{types::connection::*, *},
     indexer_sql::entity::{self, prelude::Events},
     sea_orm::{
@@ -25,11 +22,11 @@ pub struct EventCursor {
     event_idx: u32,
 }
 
-impl From<types::event::Event> for EventCursor {
-    fn from(event: types::event::Event) -> Self {
+impl From<entity::events::Model> for EventCursor {
+    fn from(event: entity::events::Model) -> Self {
         Self {
-            block_height: event.block_height,
-            event_idx: event.event_idx,
+            block_height: event.block_height as u64,
+            event_idx: event.event_idx as u32,
         }
     }
 }
@@ -52,7 +49,7 @@ impl EventQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
-    ) -> Result<Connection<EventCursorType, Event, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<EventCursorType, entity::events::Model, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<EventCursorType, _, _, _, _>(
@@ -101,12 +98,7 @@ impl EventQuery {
                     },
                 }
 
-                let mut events: Vec<types::event::Event> = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|event| event.into())
-                    .collect::<Vec<_>>();
+                let mut events = query.all(&app_ctx.db).await?;
 
                 if has_before {
                     events.reverse();

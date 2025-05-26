@@ -69,7 +69,7 @@ impl From<entity::events::Model> for Event {
             r#type: item.r#type,
             method: item.method,
             event_status: item.event_status.into(),
-            commitment_status: item.commitment_status.into(),
+            commitment_status: todo!(), // item.commitment_status.into(),
             data: item.data,
         }
     }

@@ -27,18 +27,17 @@ impl Loader<entity::blocks::Model> for BlockEventsDataLoader {
             .map(|m| (m.block_height, m.clone()))
             .collect::<HashMap<_, _>>();
 
-        let events_by_block_heights: HashMap<i64, Vec<entity::events::Model>> =
-            entity::events::Entity::find()
-                .filter(entity::events::Column::BlockHeight.is_in(block_block_heights))
-                .order_by(entity::events::Column::BlockHeight, Order::Asc)
-                .order_by(entity::events::Column::EventIdx, Order::Asc)
-                .all(&self.db)
-                .await?
-                .into_iter()
-                .chunk_by(|t| t.block_height)
-                .into_iter()
-                .map(|(key, group)| (key, group.collect::<Self::Value>()))
-                .collect();
+        let events_by_block_heights: HashMap<i64, Self::Value> = entity::events::Entity::find()
+            .filter(entity::events::Column::BlockHeight.is_in(block_block_heights))
+            .order_by(entity::events::Column::BlockHeight, Order::Asc)
+            .order_by(entity::events::Column::EventIdx, Order::Asc)
+            .all(&self.db)
+            .await?
+            .into_iter()
+            .chunk_by(|t| t.block_height)
+            .into_iter()
+            .map(|(key, group)| (key, group.collect::<Self::Value>()))
+            .collect();
 
         Ok(blocks_by_height
             .into_iter()

@@ -13,7 +13,7 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-async-graphql = ["dep:async-graphql"]
+async-graphql = ["dep:async-graphql", "grug-types/async-graphql"]
 tracing       = ["dep:tracing"]
 
 [dependencies]
@@ -25,7 +25,7 @@ borsh                 = { workspace = true }
 futures               = { workspace = true }
 grug-app              = { workspace = true }
 grug-math             = { workspace = true }
-grug-types            = { workspace = true }
+grug-types            = { workspace = true, features = ["sea-orm"] }
 indexer-disk-saver    = { workspace = true }
 indexer-sql-migration = { workspace = true }
 itertools             = { workspace = true }

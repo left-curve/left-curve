@@ -1,6 +1,5 @@
 use {
     super::MAX_PAST_BLOCKS,
-    crate::graphql::types::event::Event,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity,
@@ -16,7 +15,7 @@ impl EventSubscription {
     async fn get_events(
         app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
-    ) -> Vec<Event> {
+    ) -> Vec<entity::events::Model> {
         entity::events::Entity::find()
             .order_by_asc(entity::events::Column::BlockHeight)
             .order_by_asc(entity::events::Column::EventIdx)
@@ -28,9 +27,6 @@ impl EventSubscription {
                 tracing::error!("get_events error: {_e:?}");
             })
             .unwrap_or_default()
-            .into_iter()
-            .map(Into::into)
-            .collect()
     }
 }
 
@@ -41,7 +37,7 @@ impl EventSubscription {
         ctx: &Context<'a>,
         // This is used to get the older events in case of disconnection
         since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<Event>> + 'a> {
+    ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = entity::blocks::Entity::find()

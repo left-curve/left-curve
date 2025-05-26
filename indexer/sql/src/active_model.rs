@@ -1,6 +1,6 @@
 use {
     crate::{
-        entity::{self, events::TransactionType},
+        entity::{self},
         error::Result,
     },
     grug_math::Inner,

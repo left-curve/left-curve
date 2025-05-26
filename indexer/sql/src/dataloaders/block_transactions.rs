@@ -27,7 +27,7 @@ impl Loader<entity::blocks::Model> for BlockTransactionsDataLoader {
             .map(|m| (m.block_height, m.clone()))
             .collect::<HashMap<_, _>>();
 
-        let transactions_by_block_heights: HashMap<i64, Vec<entity::transactions::Model>> =
+        let transactions_by_block_heights: HashMap<i64, Self::Value> =
             entity::transactions::Entity::find()
                 .filter(entity::transactions::Column::BlockHeight.is_in(block_block_heights))
                 .order_by(entity::transactions::Column::BlockHeight, Order::Asc)
