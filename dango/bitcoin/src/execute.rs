@@ -8,7 +8,7 @@ use {
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            BitcoinSignature, ExecuteMsg, INPUT_SIZE, InboundConfirmed, InstantiateMsg,
+            BitcoinSignature, ExecuteMsg, INPUT_SIZE, InboundConfirmed, InstantiateMsg, Network,
             OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed, OutboundRequested, Transaction, Vout,
         },
         gateway::{
@@ -32,16 +32,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         msg.config.guardians.len()
     );
 
-    // Validate the vault address.
-    Address::from_str(&msg.config.vault.to_string())?
-        .require_network(msg.config.network)
-        .map_err(|_| {
-            anyhow::anyhow!(
-                "vault address `{}` is not a valid Bitcoin address for network `{}`",
-                msg.config.vault,
-                msg.config.network
-            )
-        })?;
+    // Ensure the vault address is valid.
+    check_bitcoin_address(&msg.config.vault, msg.config.network)?;
 
     CONFIG.save(ctx.storage, &msg.config)?;
 
@@ -180,8 +172,8 @@ fn transfer_remote(
 
     let cfg = CONFIG.load(ctx.storage)?;
 
-    // Validate the address.
-    Address::from_str(&recipient.to_string())?.require_network(cfg.network)?;
+    // Ensure the recipient address is valid.
+    check_bitcoin_address(&recipient, cfg.network)?;
 
     ensure!(
         recipient != cfg.vault,
@@ -314,4 +306,20 @@ fn authorize_outbound(
             },
         )?,
     )
+}
+
+/// Ensure the given Bitcoin address is valid for the specified network.
+fn check_bitcoin_address(address: &str, network: Network) -> anyhow::Result<()> {
+    Address::from_str(address)
+        .map_err(|_| anyhow::anyhow!("address `{}` is not a valid Bitcoin address", address,))?
+        .require_network(network)
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "address `{}` is not a valid Bitcoin address for network `{}`",
+                address,
+                network
+            )
+        })?;
+
+    Ok(())
 }

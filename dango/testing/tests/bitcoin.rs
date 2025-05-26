@@ -2,12 +2,18 @@ use {
     corepc_client::bitcoin::Network,
     dango_testing::setup_test_naive,
     dango_types::{
-        bitcoin::{Config, ExecuteMsg, InboundConfirmed, InstantiateMsg},
+        bitcoin::{
+            Config, ExecuteMsg, InboundConfirmed, InstantiateMsg, QueryOutboundQueueRequest,
+        },
         constants::btc,
+        gateway::{
+            self,
+            bridge::{BridgeMsg, TransferRemoteRequest},
+        },
     },
     grug::{
         CheckedContractEvent, Coins, Hash256, HashExt, JsonDeExt, Message, NonEmpty, Order,
-        ResultExt, SearchEvent, Uint128, btree_set,
+        QuerierExt, ResultExt, SearchEvent, Uint128, btree_map, btree_set, coins,
     },
     std::str::FromStr,
 };
@@ -45,7 +51,7 @@ fn instantiate() {
                 Some(owner_address),
                 Coins::new(),
             )
-            .should_fail();
+            .should_fail_with_error("is not a valid Bitcoin address");
     }
 
     // Try to instantiate the contract with wrong combination:
@@ -212,3 +218,131 @@ fn observe_inbound() {
             });
     }
 }
+
+#[test]
+fn transfer_remote() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    let btc_recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0".to_string();
+
+    // Deposit 100k sats do user1
+    {
+        let deposit_amount = Uint128::new(100_000);
+
+        let msg = ExecuteMsg::ObserveInbound {
+            transaction_hash: Hash256::from_str(
+                "C42F8B7FEFBDDE209F16A3084D9A5B44913030322F3AF27459A980674A7B9356",
+            )
+            .unwrap(),
+            vout: 1,
+            amount: deposit_amount,
+            recipient: Some(accounts.user1.address.inner().clone()),
+        };
+
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        // Needs 2/3 guardians to confirm the deposit.
+        suite
+            .send_message(&mut accounts.val1, msg.clone())
+            .should_succeed();
+
+        suite
+            .send_message(&mut accounts.val2, msg.clone())
+            .should_succeed();
+    }
+
+    // Interact directly to the bride (only gateway can).
+    {
+        let msg = ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
+            req: TransferRemoteRequest::Bitcoin {
+                recipient: btc_recipient.clone(),
+            },
+            amount: Uint128::new(100),
+        });
+
+        suite
+            .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("only gateway can call `transfer_remote`");
+    }
+
+    // Ensure the btc recipient is checked.
+    {
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: "invalid_bitcoin_address".to_string(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => 10_000 },
+            )
+            .should_fail_with_error("is not a valid Bitcoin address");
+
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4".to_string(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => 10_000 },
+            )
+            .should_fail_with_error("is not a valid Bitcoin address for network");
+    }
+
+    // Create a real withdrawal
+    {
+        let withdraw_amount = Uint128::new(10_000);
+
+        let withdraw_fee = Uint128::new(1000); // TODO: query the gateway for the fee.
+
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: btc_recipient.clone(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => withdraw_amount },
+            )
+            .should_succeed();
+
+        // Ensure the data is stored in the contract.
+        suite
+            .query_wasm_smart(contracts.bitcoin, QueryOutboundQueueRequest {
+                start_after: None,
+                limit: None,
+            })
+            .should_succeed_and_equal(btree_map!(
+                btc_recipient => withdraw_amount - withdraw_fee
+            ));
+    }
+}
+
+// // Try to withdraw with wrong remote.
+//     {
+//         let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
+//             warp_remote: WarpRemote {
+//                 domain: ethereum::DOMAIN,
+//                 contract: ethereum::USDC_WARP,
+//             },
+//             recipient: addr32!("0000000000000000000000000000000000000000000000000000000000000000"),
+//         });
+
+//         suite
+//             .execute(
+//                 &mut accounts.user1,
+//                 contracts.gateway,
+//                 &msg,
+//                 coins! { usdc::DENOM.clone() => 10_000_000 },
+//             )
+//             .should_fail_with_error(
+//                 "incorrect TransferRemoteRequest type! expected: Bitcoin, found",
+//             );
+//     }
