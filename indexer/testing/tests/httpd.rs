@@ -435,7 +435,20 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
             contractAddr
             senderAddr
           }
-          edges { node { id transactionId orderIdx createdAt data blockHeight methodName contractAddr senderAddr } cursor }
+          edges {
+            node {
+              id
+              transactionId
+              orderIdx
+              createdAt
+              data
+              blockHeight
+              methodName
+              contractAddr
+              senderAddr
+            }
+            cursor
+          }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -495,7 +508,26 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
             eventIdx
             data
           }
-          edges { node { id parentId transactionId messageId blockHeight createdAt type method eventStatus commitmentStatus transactionType transactionIdx messageIdx data eventIdx } cursor }
+          edges {
+            node {
+              id
+              parentId
+              transactionId
+              messageId
+              blockHeight
+              createdAt
+              type
+              method
+              eventStatus
+              commitmentStatus
+              transactionType
+              transactionIdx
+              messageIdx
+              data
+              eventIdx
+            }
+            cursor
+          }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
