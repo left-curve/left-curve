@@ -1,5 +1,4 @@
 use {
-    crate::graphql::types::block::Block,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity,
@@ -11,14 +10,16 @@ pub struct BlockSubscription;
 
 #[Subscription]
 impl BlockSubscription {
-    async fn block<'a>(&self, ctx: &Context<'a>) -> Result<impl Stream<Item = Block> + 'a> {
+    async fn block<'a>(
+        &self,
+        ctx: &Context<'a>,
+    ) -> Result<impl Stream<Item = entity::blocks::Model> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        let last_block: Option<Block> = entity::blocks::Entity::find()
+        let last_block = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)
             .one(&app_ctx.db)
-            .await?
-            .map(Into::into);
+            .await?;
 
         Ok(once(async { last_block })
             .chain(app_ctx.pubsub.subscribe_block_minted().await?.then(
@@ -33,7 +34,6 @@ impl BlockSubscription {
                         })
                         .ok()
                         .unwrap_or_default()
-                        .map(Into::into)
                 },
             ))
             .filter_map(|block| async { block }))

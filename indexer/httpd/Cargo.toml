@@ -31,7 +31,7 @@ clap                    = { workspace = true }
 grug-app                = { workspace = true }
 grug-math               = { workspace = true }
 grug-testing            = { workspace = true, optional = true }
-grug-types              = { workspace = true }
+grug-types              = { workspace = true, features = ["chrono"] }
 indexer-sql             = { workspace = true }
 itertools               = { workspace = true }
 num_cpus                = { workspace = true }

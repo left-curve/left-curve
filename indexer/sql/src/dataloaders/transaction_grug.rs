@@ -1,9 +1,9 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::{dataloader::Loader, *};
 use {
-    crate::graphql::types::transaction::Transaction,
+    crate::{block_to_index::BlockToIndex, entity, error::IndexerError, indexer_path::IndexerPath},
     anyhow::{anyhow, ensure},
-    async_graphql::dataloader::Loader,
     grug_types::{Cache, Tx, TxOutcome},
-    indexer_sql::{block_to_index::BlockToIndex, error::IndexerError, indexer_path::IndexerPath},
     std::{collections::HashMap, sync::Arc},
 };
 
@@ -13,14 +13,15 @@ pub struct FileTransactionDataLoader {
     pub indexer: IndexerPath,
 }
 
-impl Loader<Transaction> for FileTransactionDataLoader {
+#[cfg(feature = "async-graphql")]
+impl Loader<entity::transactions::Model> for FileTransactionDataLoader {
     type Error = Arc<anyhow::Error>;
     type Value = (Tx, TxOutcome);
 
     async fn load(
         &self,
-        keys: &[Transaction],
-    ) -> Result<HashMap<Transaction, Self::Value>, Self::Error> {
+        keys: &[entity::transactions::Model],
+    ) -> Result<HashMap<entity::transactions::Model, Self::Value>, Self::Error> {
         let mut cache = BlockCache::new(|block_height, _| {
             BlockToIndex::load_from_disk(self.indexer.block_path(*block_height))
         });
@@ -28,7 +29,7 @@ impl Loader<Transaction> for FileTransactionDataLoader {
         keys.iter()
             .map(|graphql_tx| {
                 // Load the block.
-                let indexed_block = cache.get_or_fetch(&graphql_tx.block_height, None)?;
+                let indexed_block = cache.get_or_fetch(&(graphql_tx.block_height as u64), None)?;
 
                 // Find the transaction in the block.
                 let (tx, hash) = indexed_block

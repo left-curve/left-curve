@@ -24,9 +24,9 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   });
 
   return (
-    <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] lg:flex rounded-md p-4 gap-2 w-full h-full">
+    <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] lg:flex rounded-xl p-4 gap-2 w-full h-full  min-h-[10rem]">
       <div className="flex items-center justify-between w-full">
-        <p className="text-md font-bold">{m["common.assets"]()}</p>
+        <p className="h4-bold">{m["common.assets"]()}</p>
         {showAllAssets ? (
           <Button variant="link" size="xs" onClick={showAllAssets}>
             {m["common.viewAll"]()}
@@ -36,6 +36,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
       <div className="flex flex-wrap gap-4 items-center justify-between">
         {sortedCoinsByBalance.map(([denom, coin]) => {
           const amount = balances[denom];
+          if (denom === "dango") return null;
           return (
             <div className="flex gap-2 items-center" key={`preview-asset-${denom}`}>
               <img src={coin.logoURI} alt={coin.name} className="h-7 w-7 drag-none select-none" />

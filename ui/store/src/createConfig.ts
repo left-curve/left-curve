@@ -13,6 +13,7 @@ import { ConnectionStatus } from "./types/store.js";
 
 import type {
   AccountTypes,
+  Address,
   AppConfig,
   Client,
   Denom,
@@ -21,6 +22,8 @@ import type {
   PublicClient,
   Transport,
 } from "@left-curve/dango/types";
+
+import { invertObject } from "@left-curve/dango/utils";
 
 import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
@@ -107,10 +110,11 @@ export function createConfig<
   }
 
   let _appConfig:
-    | (AppConfig & {
+    | {
+        addresses: AppConfig["addresses"] & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
         pairs: Record<Denom, PairUpdate>;
-      })
+      }
     | undefined;
 
   async function getAppConfig() {
@@ -123,7 +127,10 @@ export function createConfig<
     ]);
 
     _appConfig = {
-      ...appConfig,
+      addresses: {
+        ...appConfig.addresses,
+        ...invertObject(appConfig.addresses),
+      },
       accountFactory: { codeHashes },
       pairs: pairs.reduce((acc, pair) => {
         acc[pair.baseDenom] = pair;

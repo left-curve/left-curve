@@ -1,7 +1,7 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::{dataloader::*, *};
 use {
-    crate::graphql::types::{block::Block, event::Event},
-    async_graphql::{dataloader::*, *},
-    indexer_sql::entity,
+    crate::entity,
     itertools::Itertools,
     sea_orm::{DatabaseConnection, Order, QueryOrder, entity::prelude::*},
     std::{collections::HashMap, sync::Arc},
@@ -11,27 +11,28 @@ pub struct BlockEventsDataLoader {
     pub db: DatabaseConnection,
 }
 
-impl Loader<Block> for BlockEventsDataLoader {
+#[cfg(feature = "async-graphql")]
+impl Loader<entity::blocks::Model> for BlockEventsDataLoader {
     type Error = Arc<sea_orm::DbErr>;
-    type Value = Vec<Event>;
+    type Value = Vec<entity::events::Model>;
 
     // This allows to do a single SQL query to fetch all transactions related to a list of blocks.
-    async fn load(&self, keys: &[Block]) -> Result<HashMap<Block, Self::Value>, Self::Error> {
+    async fn load(
+        &self,
+        keys: &[entity::blocks::Model],
+    ) -> Result<HashMap<entity::blocks::Model, Self::Value>, Self::Error> {
         let block_block_heights = keys.iter().map(|m| m.block_height).collect::<Vec<_>>();
         let blocks_by_height = keys
             .iter()
             .map(|m| (m.block_height, m.clone()))
             .collect::<HashMap<_, _>>();
 
-        let events_by_block_heights: HashMap<u64, Vec<Event>> = entity::events::Entity::find()
+        let events_by_block_heights: HashMap<i64, Self::Value> = entity::events::Entity::find()
             .filter(entity::events::Column::BlockHeight.is_in(block_block_heights))
             .order_by(entity::events::Column::BlockHeight, Order::Asc)
             .order_by(entity::events::Column::EventIdx, Order::Asc)
             .all(&self.db)
             .await?
-            .into_iter()
-            .map(|event| event.into())
-            .collect::<Vec<Event>>()
             .into_iter()
             .chunk_by(|t| t.block_height)
             .into_iter()

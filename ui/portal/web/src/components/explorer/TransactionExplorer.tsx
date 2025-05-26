@@ -1,32 +1,36 @@
 import { usePublicClient } from "@left-curve/store";
-import { type UseQueryResult, useQuery } from "@tanstack/react-query";
-import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
-import { Badge, JsonVisualizer, TextCopy, twMerge } from "@left-curve/applets-kit";
+import { formatUnits } from "@left-curve/dango/utils";
+import { twMerge } from "@left-curve/applets-kit";
+
+import {
+  AddressVisualizer,
+  Badge,
+  createContext,
+  JsonVisualizer,
+  TextCopy,
+} from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
 
 import type { IndexedTransaction } from "@left-curve/dango/types";
-import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
+import type { UseQueryResult } from "@tanstack/react-query";
 
 type TransactionProps = {
   txHash: string;
   className?: string;
 };
 
-const TransactionContext = React.createContext<
-  (UseQueryResult<IndexedTransaction | null> & { txHash: string }) | null
->(null);
-
-const useTransactionExplorer = () => {
-  const context = React.useContext(TransactionContext);
-  if (!context) {
-    throw new Error("useTransactionExplorer must be used within a TransactionProvider");
-  }
-  return context;
-};
+const [TransactionExplorerProvider, useTransactionExplorer] = createContext<
+  UseQueryResult<IndexedTransaction | null> & { txHash: string }
+>({
+  strict: true,
+  name: "TransactionExplorerContext",
+});
 
 const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
   txHash,
@@ -40,17 +44,18 @@ const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
   });
 
   return (
-    <TransactionContext.Provider value={{ ...value, txHash }}>
+    <TransactionExplorerProvider value={{ ...value, txHash }}>
       <div
         className={twMerge("w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16", className)}
       >
         {children}
       </div>
-    </TransactionContext.Provider>
+    </TransactionExplorerProvider>
   );
 };
 
 const Details: React.FC = () => {
+  const navigate = useNavigate();
   const { data: tx } = useTransactionExplorer();
 
   if (!tx) return null;
@@ -58,12 +63,12 @@ const Details: React.FC = () => {
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
   return (
-    <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+    <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-sm-medium relative overflow-hidden">
       <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.txHash"]()}
           </p>
           <p className="break-all whitespace-normal">
@@ -75,43 +80,48 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.sender"]()}
           </p>
-          <p className="break-all whitespace-normal">{sender}</p>
+          <AddressVisualizer
+            address={sender}
+            className="break-all whitespace-normal diatype-sm-medium"
+            withIcon
+            onClick={(url) => navigate({ to: url })}
+          />
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.time"]()}
           </p>
           <p className="break-all whitespace-normal">{createdAt}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
           <p>{blockHeight}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.index"]()}
           </p>
           <p>{transactionIdx}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
           <p>{formatUnits(gasUsed, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{formatUnits(gasWanted, 6)} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-md-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
           <div>

@@ -63,7 +63,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
     options: {
-      header: m["dex.swap"](),
+      header: m["dex.convert.swap"](),
     },
   },
   [Modals.RenewSession]: {

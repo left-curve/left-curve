@@ -1,4 +1,4 @@
-import { ensureErrorMessage, useInputs, useUsernames, useWizard } from "@left-curve/applets-kit";
+import { ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,

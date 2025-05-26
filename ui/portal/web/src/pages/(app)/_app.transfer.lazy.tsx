@@ -1,12 +1,7 @@
-import {
-  capitalize,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-  withResolvers,
-} from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, usePrices, useSigningClient } from "@left-curve/store";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -14,25 +9,28 @@ import {
   AccountSearchInput,
   Button,
   CoinSelector,
-  IconButton,
-  IconChevronDown,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
   TextCopy,
   TruncateText,
-  useInputs,
-  useMediaQuery,
-  useWatchEffect,
 } from "@left-curve/applets-kit";
-import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { toast } from "~/components/foundation/Toast";
 import { Modals } from "~/components/modals/RootModal";
+import { MobileTitle } from "~/components/foundation/MobileTitle";
+
 import { m } from "~/paraglide/messages";
+import { toast } from "~/components/foundation/Toast";
+
+import { isValidAddress } from "@left-curve/dango";
+import {
+  capitalize,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+  withResolvers,
+} from "@left-curve/dango/utils";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
@@ -54,8 +52,6 @@ function TransferApplet() {
   const { account, isConnected } = useAccount();
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
-
-  const { isMd } = useMediaQuery();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
@@ -145,15 +141,7 @@ function TransferApplet() {
 
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
-      {isMd ? null : (
-        <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
-          <IconButton variant="link">
-            <IconChevronDown className="rotate-90" />
-          </IconButton>
-
-          <span className="h3-bold text-gray-900">{m["sendAndReceive.title"]()}</span>
-        </h2>
-      )}
+      <MobileTitle title={m["sendAndReceive.title"]()} />
 
       <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer

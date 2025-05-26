@@ -1,5 +1,5 @@
 use {
-    crate::Order,
+    crate::LimitOrder,
     grug::{Addr, Order as IterationOrder, StdResult, Udec128, Uint128},
     std::{cmp::Ordering, iter::Peekable},
 };
@@ -11,7 +11,7 @@ const PASSIVE_ORDER_CREATION_BLOCK_HEIGHT: u64 = 0;
 
 pub struct MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    A: Iterator<Item = StdResult<((Udec128, u64), LimitOrder)>>,
     B: Iterator<Item = (Udec128, Uint128)>,
 {
     real: Peekable<A>,
@@ -22,7 +22,7 @@ where
 
 impl<A, B> MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    A: Iterator<Item = StdResult<((Udec128, u64), LimitOrder)>>,
     B: Iterator<Item = (Udec128, Uint128)>,
 {
     pub fn new(real: A, passive: B, iteration_order: IterationOrder, dex: Addr) -> Self {
@@ -34,9 +34,9 @@ where
         }
     }
 
-    fn next_passive(&mut self) -> Option<StdResult<((Udec128, u64), Order)>> {
+    fn next_passive(&mut self) -> Option<StdResult<((Udec128, u64), LimitOrder)>> {
         self.passive.next().map(|(price, amount)| {
-            let order = Order {
+            let order = LimitOrder {
                 user: self.dex,
                 amount,
                 remaining: amount,
@@ -50,10 +50,10 @@ where
 
 impl<A, B> Iterator for MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<((Udec128, u64), Order)>>,
+    A: Iterator<Item = StdResult<((Udec128, u64), LimitOrder)>>,
     B: Iterator<Item = (Udec128, Uint128)>,
 {
-    type Item = StdResult<((Udec128, u64), Order)>;
+    type Item = StdResult<((Udec128, u64), LimitOrder)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.real.peek(), self.passive.peek()) {

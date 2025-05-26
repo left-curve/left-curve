@@ -62,7 +62,7 @@ pub fn build_app_service(
     build_actix_app(app_ctx, graphql_schema)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedResponse<X> {
@@ -71,14 +71,14 @@ pub struct PaginatedResponse<X> {
     pub page_info: PageInfo,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 pub struct Edge<X> {
     pub node: X,
     pub cursor: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
@@ -154,6 +154,9 @@ where
         .map_err(|err| anyhow!("failed to call service: {err:?}"))?;
 
     let text_response = read_body(res).await;
+
+    // When I need to debug the response
+    // println!("text response: \n{:#?}", str::from_utf8(&text_response)?);
 
     Ok(serde_json::from_slice(&text_response)?)
 }

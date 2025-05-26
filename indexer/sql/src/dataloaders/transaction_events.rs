@@ -1,7 +1,8 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::{dataloader::*, *};
 use {
-    crate::graphql::types::{event::Event, transaction::Transaction},
-    async_graphql::{dataloader::*, *},
-    indexer_sql::entity,
+    crate::entity,
+    // async_graphql::{dataloader::*, *},
     itertools::Itertools,
     sea_orm::{DatabaseConnection, Order, QueryOrder, entity::prelude::*},
     std::{collections::HashMap, sync::Arc},
@@ -11,22 +12,23 @@ pub struct TransactionEventsDataLoader {
     pub db: DatabaseConnection,
 }
 
-impl Loader<Transaction> for TransactionEventsDataLoader {
+#[cfg(feature = "async-graphql")]
+impl Loader<entity::transactions::Model> for TransactionEventsDataLoader {
     type Error = Arc<sea_orm::DbErr>;
-    type Value = Vec<Event>;
+    type Value = Vec<entity::events::Model>;
 
     // This allows to do a single SQL query to fetch all transactions related to a list of blocks.
     async fn load(
         &self,
-        keys: &[Transaction],
-    ) -> Result<HashMap<Transaction, Self::Value>, Self::Error> {
+        keys: &[entity::transactions::Model],
+    ) -> Result<HashMap<entity::transactions::Model, Self::Value>, Self::Error> {
         let transactions_ids = keys.iter().map(|m| m.id).collect::<Vec<_>>();
         let transactions_by_id = keys
             .iter()
             .map(|m| (m.id, m.clone()))
             .collect::<HashMap<_, _>>();
 
-        let events_by_transaction_ids: HashMap<uuid::Uuid, Vec<Event>> =
+        let events_by_transaction_ids: HashMap<uuid::Uuid, Self::Value> =
             entity::events::Entity::find()
                 // NOTE: this filtering could raise issue if `transaction_ids` is thousands of entries long
                 //       as it would generate a SQL query with thousands of `OR` conditions
@@ -42,7 +44,7 @@ impl Loader<Transaction> for TransactionEventsDataLoader {
                 .map(|(key, group)| {
                     (
                         key,
-                        group.into_iter().map(|m| m.into()).collect::<Self::Value>(),
+                        group.into_iter().collect::<Self::Value>(),
                     )
                 })
                 .collect();

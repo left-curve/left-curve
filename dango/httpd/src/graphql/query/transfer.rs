@@ -1,7 +1,6 @@
 use {
-    crate::graphql::types::{self, transfer::Transfer},
     async_graphql::{types::connection::*, *},
-    dango_indexer_sql::entity::{self, prelude::Transfers},
+    dango_indexer_sql::entity::{self},
     indexer_httpd::context::Context,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
@@ -23,10 +22,10 @@ pub struct TransferCursor {
     idx: i32,
 }
 
-impl From<types::transfer::Transfer> for TransferCursor {
-    fn from(transfer: types::transfer::Transfer) -> Self {
+impl From<entity::transfers::Model> for TransferCursor {
+    fn from(transfer: entity::transfers::Model) -> Self {
         Self {
-            block_height: transfer.block_height,
+            block_height: transfer.block_height as u64,
             idx: transfer.idx,
         }
     }
@@ -41,7 +40,6 @@ pub struct TransferQuery {}
 
 #[Object]
 impl TransferQuery {
-    /// Get a transfer
     async fn transfers(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -56,7 +54,9 @@ impl TransferQuery {
         from_address: Option<String>,
         // The to address of the transfer
         to_address: Option<String>,
-    ) -> Result<Connection<TransferCursorType, Transfer, EmptyFields, EmptyFields>> {
+        username: Option<String>,
+    ) -> Result<Connection<TransferCursorType, entity::transfers::Model, EmptyFields, EmptyFields>>
+    {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<TransferCursorType, _, _, _, _>(
@@ -105,6 +105,25 @@ impl TransferQuery {
                     query = query.filter(entity::transfers::Column::ToAddress.eq(to_address));
                 }
 
+                if let Some(username) = username {
+                    let accounts = entity::accounts::Entity::find()
+                        .find_also_related(entity::users::Entity)
+                        .filter(entity::users::Column::Username.eq(username))
+                        .all(&app_ctx.db)
+                        .await?;
+
+                    let addresses = accounts
+                        .into_iter()
+                        .map(|(account, _)| account.address)
+                        .collect::<Vec<_>>();
+
+                    query = query.filter(
+                        entity::transfers::Column::FromAddress
+                            .is_in(&addresses)
+                            .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+                    );
+                }
+
                 match sort_by {
                     SortBy::BlockHeightAsc => {
                         query = query.order_by(entity::transfers::Column::BlockHeight, Order::Asc)
@@ -114,12 +133,7 @@ impl TransferQuery {
                     },
                 }
 
-                let mut transfers: Vec<types::transfer::Transfer> = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|transfer| transfer.into())
-                    .collect::<Vec<_>>();
+                let mut transfers = query.all(&app_ctx.db).await?;
 
                 if has_before {
                     transfers.reverse();
@@ -150,23 +164,23 @@ impl TransferQuery {
 }
 
 fn apply_filter(
-    query: Select<Transfers>,
+    query: Select<entity::transfers::Entity>,
     sort_by: SortBy,
     after: &TransferCursor,
-) -> Select<Transfers> {
+) -> Select<entity::transfers::Entity> {
     query.filter(match sort_by {
         SortBy::BlockHeightAsc => Condition::any()
-            .add(entity::transfers::Column::BlockHeight.lt(after.block_height))
+            .add(entity::transfers::Column::BlockHeight.lt(after.block_height as i64))
             .add(
                 entity::transfers::Column::BlockHeight
-                    .eq(after.block_height)
+                    .eq(after.block_height as i64)
                     .and(entity::transfers::Column::Idx.lt(after.idx)),
             ),
         SortBy::BlockHeightDesc => Condition::any()
-            .add(entity::transfers::Column::BlockHeight.gt(after.block_height))
+            .add(entity::transfers::Column::BlockHeight.gt(after.block_height as i64))
             .add(
                 entity::transfers::Column::BlockHeight
-                    .eq(after.block_height)
+                    .eq(after.block_height as i64)
                     .and(entity::transfers::Column::Idx.gt(after.idx)),
             ),
     })

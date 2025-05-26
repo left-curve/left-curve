@@ -1,6 +1,7 @@
 mod config;
 mod db;
 mod home_directory;
+mod indexer;
 mod keys;
 mod prompt;
 mod query;
@@ -13,8 +14,8 @@ mod tx;
 use crate::test::TestCmd;
 use {
     crate::{
-        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
-        tx::TxCmd,
+        db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
+        query::QueryCmd, start::StartCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -41,6 +42,9 @@ enum Command {
     /// Manage the database
     #[command(subcommand, next_display_order = None)]
     Db(DbCmd),
+
+    /// Indexer related commands
+    Indexer(IndexerCmd),
 
     /// Manage keys
     #[command(subcommand, next_display_order = None)]
@@ -100,6 +104,7 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
+        Command::Indexer(cmd) => cmd.run(app_dir).await,
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,

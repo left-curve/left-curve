@@ -15,6 +15,7 @@ export {
   recursiveTransform,
   mayTransform,
   sortObject,
+  invertObject,
 } from "./mappers.js";
 
 export {

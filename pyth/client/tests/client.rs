@@ -10,7 +10,7 @@ use {
     },
     common_function::{test_latest_vaas, test_stream},
     futures::stream::{self, Stream},
-    grug::{JsonSerExt, NonEmpty, setup_tracing_subscriber},
+    grug::{JsonSerExt, NonEmpty},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::{
         LatestVaaBinaryResponse, LatestVaaResponse,
@@ -58,7 +58,6 @@ async fn test_client_reconnection() {
     let port = rng.gen_range(15000..16000);
 
     let mut client = PythClient::new(format!("http://127.0.0.1:{port}")).unwrap();
-    setup_tracing_subscriber(tracing::Level::INFO);
     let mut stream = client
         .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
         .await

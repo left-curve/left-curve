@@ -14,7 +14,7 @@ actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
 dango-genesis           = { workspace = true }
-dango-indexer-sql       = { workspace = true, features = ["tracing"] }
+dango-indexer-sql       = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-proposal-preparer = { workspace = true }
 dango-types             = { workspace = true }
 digest                  = { workspace = true }
@@ -30,7 +30,7 @@ hex-literal             = { workspace = true }
 hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
 indexer-httpd           = { workspace = true }
-indexer-sql             = { workspace = true, features = ["tracing"] }
+indexer-sql             = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 k256                    = { workspace = true }
 pyth-client             = { workspace = true }
 pyth-types              = { workspace = true }
@@ -41,6 +41,7 @@ sha2                    = { workspace = true }
 
 [dev-dependencies]
 anyhow                = { workspace = true }
+assert-json-diff      = { workspace = true }
 assertor              = { workspace = true }
 bip32                 = { workspace = true }
 chrono                = { workspace = true }
@@ -56,6 +57,7 @@ hex                   = { workspace = true }
 home                  = { workspace = true }
 indexer-disk-saver    = { workspace = true }
 indexer-testing       = { workspace = true }
+itertools             = { workspace = true }
 proptest              = { workspace = true }
 rand                  = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }

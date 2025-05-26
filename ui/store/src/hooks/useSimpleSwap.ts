@@ -1,13 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
+import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import type { Coin, PairUpdate } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";
+
+import type { Coin, PairUpdate } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
-import { usePrices } from "./usePrices.js";
 
 const BASE_DENOM = "USDC";
 
@@ -30,6 +31,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const { data: config, ...pairs } = useAppConfig();
   const { getPrice } = usePrices();
 
+  const queryClient = useQueryClient();
   const client = usePublicClient();
 
   const simulationInput = useRef<Coin | null>(null);
@@ -75,7 +77,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
 
   const simulation = useQuery({
     enabled: false,
-    queryKey: ["pair_simulation"],
+    queryKey: ["pair_simulation", pair],
     queryFn: async () => {
       if (!simulationInput.current || !pair) return null;
       return await client.simulateSwapExactAmountIn({
@@ -91,6 +93,11 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     return data;
   };
 
+  const reset = () => {
+    simulationInput.current = null;
+    queryClient.removeQueries({ queryKey: ["pair_simulation"] });
+  };
+
   const fee = useMemo(() => {
     if (!simulationInput.current || !simulation.data) return 0;
     return (
@@ -104,7 +111,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
         ),
       ) * Number(pair?.params.swapFeeRate)
     );
-  }, [simulation.data]);
+  }, [simulation.data, pair]);
 
   return {
     coins,
@@ -119,6 +126,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     toggleDirection,
     changeQuote,
     simulation: {
+      reset,
       simulate,
       input: simulationInput.current,
       ...simulation,

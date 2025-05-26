@@ -232,8 +232,9 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     let cancel_msg = Message::execute(
         app_cfg.addresses.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![],
-            cancels: Some(dex::OrderIds::All),
+            creates_market: vec![],
+            creates_limit: vec![],
+            cancels: Some(dex::CancelOrderRequest::All),
         },
         Coins::new(),
     )?;

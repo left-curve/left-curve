@@ -1,36 +1,22 @@
+mod order_cancellation;
+mod order_creation;
+
 use {
-    crate::{
-        FillingOutcome, INCOMING_ORDERS, MatchingOutcome, MergedOrders, NEXT_ORDER_ID, ORDERS,
-        Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core, fill_orders,
-        match_orders,
-    },
-    anyhow::{anyhow, bail, ensure},
-    dango_account_factory::AccountQuerier,
-    dango_oracle::OracleQuerier,
+    crate::{PAIRS, PassiveLiquidityPool, RESERVES, core},
+    anyhow::{anyhow, ensure},
     dango_types::{
-        DangoQuerier,
-        account_factory::Username,
         bank,
         dex::{
-            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
-            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairId,
-            PairUpdate, PairUpdated, SwapExactAmountIn, SwapExactAmountOut,
+            CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
+            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, PairUpdated,
+            SwapExactAmountIn, SwapExactAmountOut,
         },
-        taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
-        coins,
-    },
-    std::{
-        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
-        iter,
+        Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
+        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, coins,
     },
 };
-
-const HALF: Udec128 = Udec128::new_percent(50);
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
@@ -41,9 +27,11 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
-        ExecuteMsg::BatchUpdateOrders { creates, cancels } => {
-            batch_update_orders(ctx, creates, cancels)
-        },
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market,
+            creates_limit,
+            cancels,
+        } => batch_update_orders(ctx, creates_market, creates_limit, cancels),
         ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
@@ -100,146 +88,58 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 #[inline]
 fn batch_update_orders(
     mut ctx: MutableCtx,
-    creates: Vec<CreateLimitOrderRequest>,
-    cancels: Option<OrderIds>,
+    creates_market: Vec<CreateMarketOrderRequest>,
+    creates_limit: Vec<CreateLimitOrderRequest>,
+    cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
     let mut deposits = Coins::new();
     let mut refunds = Coins::new();
     let mut events = EventBuilder::new();
 
-    // --------------------------- 1. Cancel orders ----------------------------
-
-    // First, collect all orders to be cancelled into memory.
-    let orders_to_cancel = match cancels {
-        // Cancel all orders.
-        Some(OrderIds::All) => ORDERS
-            .idx
-            .user
-            .prefix(ctx.sender)
-            .range(ctx.storage, None, None, IterationOrder::Ascending)
-            .map(|order| Ok((order?, false)))
-            .chain(
-                INCOMING_ORDERS
-                    .prefix(ctx.sender)
-                    .values(ctx.storage, None, None, IterationOrder::Ascending)
-                    .map(|order| Ok((order?, true))),
-            )
-            .collect::<StdResult<Vec<_>>>()?,
+    match cancels {
         // Cancel selected orders.
-        Some(OrderIds::Some(order_ids)) => order_ids
-            .into_iter()
-            .map(|order_id| {
-                // First see if the order is the persistent storage. If not,
-                // check the transient storage.
-                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
-                    Ok((order, false))
-                } else if let Some(order) =
-                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
-                {
-                    Ok((order, true))
-                } else {
-                    bail!("order with id `{order_id}` not found");
-                }
-            })
-            .collect::<anyhow::Result<Vec<_>>>()?,
+        Some(CancelOrderRequest::Some(order_ids)) => {
+            for order_id in order_ids {
+                order_cancellation::cancel_order_from_user(
+                    ctx.storage,
+                    ctx.sender,
+                    order_id,
+                    &mut events,
+                    &mut refunds,
+                )?;
+            }
+        },
+        // Cancel all orders.
+        Some(CancelOrderRequest::All) => {
+            order_cancellation::cancel_all_orders_from_user(
+                ctx.storage,
+                ctx.sender,
+                &mut events,
+                &mut refunds,
+            )?;
+        },
         // Do nothing.
-        None => Vec::new(),
+        None => {},
     };
 
-    // Now, cancel the orders one by one.
-    for ((order_key, order), is_incoming) in orders_to_cancel {
-        let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
-
-        ensure!(
-            ctx.sender == order.user,
-            "only the user can cancel the order"
-        );
-
-        let refund = match direction {
-            Direction::Bid => Coin {
-                denom: quote_denom.clone(),
-                amount: order.remaining.checked_mul_dec_floor(*price)?,
-            },
-            Direction::Ask => Coin {
-                denom: base_denom.clone(),
-                amount: order.remaining,
-            },
-        };
-
-        refunds.insert(refund.clone())?;
-
-        events.push(OrderCanceled {
-            order_id: *order_id,
-            remaining: order.remaining,
-            refund,
-        })?;
-
-        if is_incoming {
-            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
-        } else {
-            ORDERS.remove(ctx.storage, order_key)?;
-        }
+    for order in creates_market {
+        order_creation::create_market_order(
+            ctx.storage,
+            ctx.sender,
+            order,
+            &mut events,
+            &mut deposits,
+        )?;
     }
 
-    // --------------------------- 2. Create orders ----------------------------
-
-    for order in creates {
-        ensure!(
-            PAIRS.has(ctx.storage, (&order.base_denom, &order.quote_denom)),
-            "pair not found with base `{}` and quote `{}`",
-            order.base_denom,
-            order.quote_denom
-        );
-
-        let deposit = match order.direction {
-            Direction::Bid => Coin {
-                denom: order.quote_denom.clone(),
-                amount: order.amount.checked_mul_dec_ceil(order.price)?,
-            },
-            Direction::Ask => Coin {
-                denom: order.base_denom.clone(),
-                amount: order.amount,
-            },
-        };
-
-        let (mut order_id, _) = NEXT_ORDER_ID.increment(ctx.storage)?;
-
-        // For BUY orders, invert the order ID. This is necessary for enforcing
-        // price-time priority. See the docs on `OrderId` for details.
-        if order.direction == Direction::Bid {
-            order_id = !order_id;
-        }
-
-        deposits.insert(deposit.clone())?;
-
-        events.push(OrderSubmitted {
-            order_id,
-            user: ctx.sender,
-            base_denom: order.base_denom.clone(),
-            quote_denom: order.quote_denom.clone(),
-            direction: order.direction,
-            price: order.price,
-            amount: order.amount,
-            deposit,
-        })?;
-
-        INCOMING_ORDERS.save(
+    for order in creates_limit {
+        order_creation::create_limit_order(
             ctx.storage,
-            (ctx.sender, order_id),
-            &(
-                (
-                    (order.base_denom, order.quote_denom),
-                    order.direction,
-                    order.price,
-                    order_id,
-                ),
-                Order {
-                    user: ctx.sender,
-                    amount: order.amount,
-                    remaining: order.amount,
-                    created_at_block_height: ctx.block.height,
-                },
-            ),
+            ctx.block.height,
+            ctx.sender,
+            order,
+            &mut events,
+            &mut deposits,
         )?;
     }
 
@@ -427,418 +327,4 @@ fn swap_exact_amount_out(
             input,
             output: output.into_inner(),
         })?)
-}
-
-/// Match and fill orders using the uniform price auction strategy.
-///
-/// Implemented according to:
-/// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    let app_cfg = ctx.querier.query_dango_config()?;
-    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
-    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
-
-    let mut events = EventBuilder::new();
-    let mut refunds = BTreeMap::new();
-    let mut volumes = HashMap::new();
-    let mut volumes_by_username = HashMap::new();
-    let mut fees = Coins::new();
-    let mut fee_payments = BTreeMap::new();
-
-    // Collect incoming orders and clear the temporary storage.
-    let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
-
-    // Add incoming orders to the persistent storage.
-    for (order_key, order) in incoming_orders.values() {
-        debug_assert!(
-            order.created_at_block_height == ctx.block.height,
-            "incoming order was created in a previous block! creation height: {}, current height: {}",
-            order.created_at_block_height,
-            ctx.block.height
-        );
-
-        ORDERS.save(ctx.storage, order_key.clone(), order)?;
-    }
-
-    // Find all the unique pairs that have received new orders in the block.
-    let pairs = incoming_orders
-        .into_values()
-        .map(|((pair, ..), _)| pair)
-        .collect::<BTreeSet<_>>();
-
-    // Loop through the pairs that have received new orders in the block.
-    // Match and clear the orders for each of them.
-    // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in pairs {
-        clear_orders_of_pair(
-            ctx.storage,
-            ctx.block.height,
-            app_cfg.addresses.dex,
-            &mut oracle_querier,
-            &mut account_querier,
-            app_cfg.maker_fee_rate.into_inner(),
-            app_cfg.taker_fee_rate.into_inner(),
-            base_denom,
-            quote_denom,
-            &mut events,
-            &mut refunds,
-            &mut fees,
-            &mut fee_payments,
-            &mut volumes,
-            &mut volumes_by_username,
-        )?;
-    }
-
-    // Save the updated volumes.
-    for (address, volume) in volumes {
-        VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
-    }
-
-    for (username, volume) in volumes_by_username {
-        VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
-    }
-
-    Ok(Response::new()
-        .may_add_message(if !refunds.is_empty() {
-            Some(Message::batch_transfer(refunds)?)
-        } else {
-            None
-        })
-        .may_add_message(if !fee_payments.is_empty() {
-            Some(Message::execute(
-                app_cfg.addresses.taxman,
-                &taxman::ExecuteMsg::Pay {
-                    ty: FeeType::Trade,
-                    payments: fee_payments,
-                },
-                fees,
-            )?)
-        } else {
-            None
-        })
-        .add_events(events)?)
-}
-
-#[inline]
-fn clear_orders_of_pair(
-    storage: &mut dyn Storage,
-    current_block_height: u64,
-    dex_addr: Addr,
-    oracle_querier: &mut OracleQuerier,
-    account_querier: &mut AccountQuerier,
-    maker_fee_rate: Udec128,
-    taker_fee_rate: Udec128,
-    base_denom: Denom,
-    quote_denom: Denom,
-    events: &mut EventBuilder,
-    refunds: &mut BTreeMap<Addr, Coins>,
-    fees: &mut Coins,
-    fee_payments: &mut BTreeMap<Addr, Coins>,
-    volumes: &mut HashMap<Addr, Uint128>,
-    volumes_by_username: &mut HashMap<Username, Uint128>,
-) -> anyhow::Result<()> {
-    // Create iterators over user orders.
-    //
-    // Iterate BUY orders from the highest price to the lowest.
-    // Iterate SELL orders from the lowest price to the highest.
-    let bid_iter = ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Descending);
-    let ask_iter = ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending);
-
-    // Create iterators over passive orders.
-    //
-    // If the pool doesn't have passive liquidity (reserve is `None`), simply
-    // use empty iterators.
-    let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
-    let (passive_bid_iter, passive_ask_iter) = match &reserve {
-        Some(reserve) => {
-            // Create the passive liquidity orders if the pair has a pool.
-            let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            pair.reflect_curve(base_denom.clone(), quote_denom.clone(), reserve)?
-        },
-        None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
-    };
-
-    // Merge the orders from users and from the passive pool.
-    let merged_bid_iter = MergedOrders::new(
-        bid_iter,
-        passive_bid_iter,
-        IterationOrder::Descending,
-        dex_addr,
-    );
-    let merged_ask_iter = MergedOrders::new(
-        ask_iter,
-        passive_ask_iter,
-        IterationOrder::Ascending,
-        dex_addr,
-    );
-
-    // Run the order matching algorithm.
-    let MatchingOutcome {
-        range,
-        volume,
-        bids,
-        asks,
-    } = match_orders(merged_bid_iter, merged_ask_iter)?;
-
-    // If no matching orders were found, then we're done with this pair.
-    // Continue to the next pair.
-    let Some((lower_price, higher_price)) = range else {
-        return Ok(());
-    };
-
-    // Choose the clearing price. Any price within `range` gives the same
-    // volume (measured in the base asset). We can either take
-    //
-    // - the lower end,
-    // - the higher end, or
-    // - the midpoint of the range.
-    //
-    // Here we choose the midpoint.
-    let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
-
-    events.push(OrdersMatched {
-        base_denom: base_denom.clone(),
-        quote_denom: quote_denom.clone(),
-        clearing_price,
-        volume,
-    })?;
-
-    let mut inflows = Coins::new();
-    let mut outflows = Coins::new();
-
-    // Handle order filling outcomes for the user placed orders.
-    for FillingOutcome {
-        order_direction,
-        order_price,
-        order_id,
-        order,
-        filled,
-        cleared,
-        refund_base,
-        refund_quote,
-        fee_base,
-        fee_quote,
-    } in fill_orders(
-        bids,
-        asks,
-        clearing_price,
-        volume,
-        current_block_height,
-        maker_fee_rate,
-        taker_fee_rate,
-    )? {
-        update_trading_volumes(
-            storage,
-            oracle_querier,
-            account_querier,
-            &base_denom,
-            filled,
-            order.user,
-            volumes,
-            volumes_by_username,
-        )?;
-
-        if order.user == dex_addr {
-            // The order only exists in the storage if it's not owned by the dex, since
-            // the passive orders are "virtual". If it is virtual, we need to update the
-            // reserve.
-            match order_direction {
-                Direction::Bid => {
-                    inflows.insert(Coin {
-                        denom: base_denom.clone(),
-                        amount: filled,
-                    })?;
-                    outflows.insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: filled.checked_mul_dec_floor(clearing_price)?,
-                    })?;
-                },
-                Direction::Ask => {
-                    inflows.insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: refund_quote,
-                    })?;
-                    outflows.insert(Coin {
-                        denom: base_denom.clone(),
-                        amount: filled,
-                    })?;
-                },
-            }
-        } else {
-            // Add refund to the refunds map
-            let refund = Coins::try_from([
-                Coin {
-                    denom: base_denom.clone(),
-                    amount: refund_base,
-                },
-                Coin {
-                    denom: quote_denom.clone(),
-                    amount: refund_quote,
-                },
-            ])?;
-
-            refunds
-                .entry(order.user)
-                .or_default()
-                .insert_many(refund.clone())?;
-
-            // Handle fees.
-            if fee_base.is_non_zero() {
-                fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
-                fee_payments
-                    .entry(order.user)
-                    .or_default()
-                    .insert(Coin::new(base_denom.clone(), fee_base)?)?;
-            }
-
-            if fee_quote.is_non_zero() {
-                fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-                fee_payments
-                    .entry(order.user)
-                    .or_default()
-                    .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-            }
-
-            // Include fee information in the event
-            let fee = if fee_base.is_non_zero() {
-                Some(Coin {
-                    denom: base_denom.clone(),
-                    amount: fee_base,
-                })
-            } else if fee_quote.is_non_zero() {
-                Some(Coin {
-                    denom: quote_denom.clone(),
-                    amount: fee_quote,
-                })
-            } else {
-                None
-            };
-
-            // Emit event for filled user orders to be used by the frontend
-            events.push(OrderFilled {
-                user: order.user,
-                order_id,
-                clearing_price,
-                filled,
-                refund,
-                fee,
-                cleared,
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: order_direction,
-            })?;
-
-            if cleared {
-                // Remove the order from the storage if it was fully filled
-                ORDERS.remove(
-                    storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                )?;
-            } else {
-                ORDERS.save(
-                    storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                    &order,
-                )?;
-            }
-        }
-    }
-
-    // Update the pool reserve.
-    if inflows.is_non_empty() || outflows.is_non_empty() {
-        RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
-            for inflow in inflows {
-                reserve.checked_add(&inflow)?;
-            }
-
-            for outflow in outflows {
-                reserve.checked_sub(&outflow)?;
-            }
-
-            Ok::<_, StdError>(reserve)
-        })?;
-    }
-
-    Ok(())
-}
-
-/// Updates trading volumes for both user addresses and usernames
-fn update_trading_volumes(
-    storage: &mut dyn Storage,
-    oracle_querier: &mut OracleQuerier,
-    account_querier: &mut AccountQuerier,
-    base_denom: &Denom,
-    filled: Uint128,
-    order_user: Addr,
-    volumes: &mut HashMap<Addr, Uint128>,
-    volumes_by_username: &mut HashMap<Username, Uint128>,
-) -> anyhow::Result<()> {
-    // Calculate the vo lume in USD for the filled order
-    let base_asset_price = oracle_querier.query_price(base_denom, None)?;
-    let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
-
-    // Record trading volume for the user's address
-    {
-        match volumes.entry(order_user) {
-            Entry::Occupied(mut v) => {
-                v.get_mut().checked_add_assign(new_volume)?;
-            },
-            Entry::Vacant(v) => {
-                let volume = VOLUMES
-                    .prefix(&order_user)
-                    .values(storage, None, None, IterationOrder::Descending)
-                    .next()
-                    .transpose()?
-                    .unwrap_or(Uint128::ZERO)
-                    .checked_add(new_volume)?;
-
-                v.insert(volume);
-            },
-        }
-    }
-
-    // Record trading volume for the user's username, if the trader is a
-    // single-signature account (skip for multisig accounts).
-    if let Some(username) = account_querier
-        .query_account(order_user)?
-        .and_then(|account| account.params.owner())
-    {
-        match volumes_by_username.entry(username.clone()) {
-            Entry::Occupied(mut v) => {
-                v.get_mut().checked_add_assign(new_volume)?;
-            },
-            Entry::Vacant(v) => {
-                let volume = VOLUMES_BY_USER
-                    .prefix(username)
-                    .values(storage, None, None, IterationOrder::Descending)
-                    .next()
-                    .transpose()?
-                    .unwrap_or(Uint128::ZERO)
-                    .checked_add(new_volume)?;
-
-                v.insert(volume);
-            },
-        }
-    }
-
-    Ok(())
 }
