@@ -1,16 +1,16 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader};
+use {
+    crate::dataloaders::transaction_grug::FileTransactionDataLoader,
+    async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
+};
 use {
     crate::dataloaders::{
         transaction_events::TransactionEventsDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
     },
-    serde::Deserialize,
-};
-
-use {
     grug_types::{FlatCategory, JsonSerExt, Tx, TxOutcome},
     sea_orm::entity::prelude::*,
+    serde::Deserialize,
 };
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
@@ -76,9 +76,8 @@ impl Model {
 
 #[cfg(feature = "async-graphql")]
 async fn load_tx_from_file(tx: &Model, ctx: &Context<'_>) -> Result<(Tx, TxOutcome)> {
-    use crate::dataloaders::transaction_grug::FileTransactionDataLoader;
-
     let loader = ctx.data_unchecked::<DataLoader<FileTransactionDataLoader>>();
+
     loader
         .load_one(tx.clone())
         .await?
