@@ -294,10 +294,45 @@ fn transfer_remote() {
             .should_fail_with_error("is not a valid Bitcoin address for network");
     }
 
-    // Create a real withdrawal
-    {
-        let withdraw_amount = Uint128::new(10_000);
+    // Retrieve the withdrawal fee from the gateway contract.
+    let withdraw_fee = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
+            denom: btc::DENOM.clone(),
+            remote: gateway::Remote::Bitcoin,
+        })
+        .unwrap()
+        .unwrap();
 
+    // Create a real withdrawal.
+    let withdraw_amount1 = Uint128::new(10_000);
+    {
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: btc_recipient.clone(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => withdraw_amount1 },
+            )
+            .should_succeed();
+
+        // Ensure the data is stored in the contract.
+        suite
+            .query_wasm_smart(contracts.bitcoin, QueryOutboundQueueRequest {
+                start_after: None,
+                limit: None,
+            })
+            .should_succeed_and_equal(btree_map!(
+                btc_recipient.clone() => withdraw_amount1 - withdraw_fee
+            ));
+    }
+
+    // Ensure that, If an user start a second withdrawal, the withdrawals are combined in one.
+    let withdraw_amount2 = Uint128::new(20_000);
+    {
         let withdraw_fee = suite
             .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
                 denom: btc::DENOM.clone(),
@@ -315,7 +350,7 @@ fn transfer_remote() {
                 &mut accounts.user1,
                 contracts.gateway,
                 &msg,
-                coins! { btc::DENOM.clone() => withdraw_amount },
+                coins! { btc::DENOM.clone() => withdraw_amount2 },
             )
             .should_succeed();
 
@@ -326,7 +361,37 @@ fn transfer_remote() {
                 limit: None,
             })
             .should_succeed_and_equal(btree_map!(
-                btc_recipient => withdraw_amount - withdraw_fee
+                btc_recipient.clone() => withdraw_amount1 + withdraw_amount2 - withdraw_fee - withdraw_fee
+            ));
+    }
+
+    // Adding a withdrawal with a different recipient.
+    {
+        let withdraw_amount3 = Uint128::new(30_000);
+        let recipient2 = "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9".to_string();
+
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: recipient2.clone(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => withdraw_amount3 },
+            )
+            .should_succeed();
+
+        // Ensure the data is stored in the contract.
+        suite
+            .query_wasm_smart(contracts.bitcoin, QueryOutboundQueueRequest {
+                start_after: None,
+                limit: None,
+            })
+            .should_succeed_and_equal(btree_map!(
+                btc_recipient.clone() => withdraw_amount1 + withdraw_amount2 - withdraw_fee - withdraw_fee,
+                recipient2.clone() => withdraw_amount3 - withdraw_fee
             ));
     }
 }
