@@ -564,9 +564,7 @@ impl Flatten for SubEvent {
     ) -> Vec<FlatEventInfo> {
         let mut events = vec![];
 
-        let sub_event = self
-            .event
-            .flatten_status(parent_id, next_id, commitment);
+        let sub_event = self.event.flatten_status(parent_id, next_id, commitment);
 
         let reply_events = if let Some(reply) = self.reply {
             next_id.increment_idx(&sub_event);
