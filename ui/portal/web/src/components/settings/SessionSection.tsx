@@ -20,10 +20,6 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
-  const { session } = useSessionKey();
-
-  if (!session) return null;
-
   return (
     <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4 gap-4">
       <h3 className="h4-bold text-gray-900 px-2">{m["settings.session.title"]()}</h3>
@@ -33,7 +29,10 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const UsernameSection: React.FC = () => {
-  const { username } = useAccount();
+  const { username, isConnected } = useAccount();
+
+  if (!isConnected) return null;
+
   return (
     <div className="flex items-center justify-between rounded-md gap-8 px-2">
       <div className="flex flex-col">
@@ -50,6 +49,9 @@ const UsernameSection: React.FC = () => {
 };
 
 const RemainingTimeSection: React.FC = () => {
+  const { session } = useSessionKey();
+  if (!session) return null;
+
   return (
     <div className="flex items-start justify-between rounded-md gap-8 px-2">
       <div className="flex flex-col gap-2 md:gap-0 w-full">
@@ -152,8 +154,9 @@ const ConnectMobileSection: React.FC = () => {
   const { showModal } = useApp();
   const { isConnected } = useAccount();
   const { isLg } = useMediaQuery();
+  const { session } = useSessionKey();
 
-  if (!isConnected && !isLg) return null;
+  if ((!isConnected && !isLg) || !session) return null;
 
   return (
     <div className="flex w-full pr-2">
