@@ -1,9 +1,7 @@
-#[cfg(feature = "sea-orm")]
-use sea_orm::entity::prelude::*;
-
 #[cfg(feature = "async-graphql")]
 use async_graphql::Enum;
-
+#[cfg(feature = "sea-orm")]
+use sea_orm::entity::prelude::*;
 use {
     super::FlattenStatus,
     crate::{

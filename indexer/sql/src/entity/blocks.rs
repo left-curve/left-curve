@@ -1,9 +1,10 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader};
-use sea_orm::{QueryOrder, entity::prelude::*};
-
-use crate::dataloaders::{
-    block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+use {
+    crate::dataloaders::{
+        block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+    },
+    sea_orm::{QueryOrder, entity::prelude::*},
 };
 
 #[derive(
