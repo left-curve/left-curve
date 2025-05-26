@@ -1,5 +1,4 @@
 use {
-    crate::graphql::types::{self, transfer::Transfer},
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity::{self},
     indexer_httpd::context::Context,
@@ -23,10 +22,10 @@ pub struct TransferCursor {
     idx: i32,
 }
 
-impl From<types::transfer::Transfer> for TransferCursor {
-    fn from(transfer: types::transfer::Transfer) -> Self {
+impl From<entity::transfers::Model> for TransferCursor {
+    fn from(transfer: entity::transfers::Model) -> Self {
         Self {
-            block_height: transfer.block_height,
+            block_height: transfer.block_height as u64,
             idx: transfer.idx,
         }
     }
@@ -56,7 +55,8 @@ impl TransferQuery {
         // The to address of the transfer
         to_address: Option<String>,
         username: Option<String>,
-    ) -> Result<Connection<TransferCursorType, Transfer, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<TransferCursorType, entity::transfers::Model, EmptyFields, EmptyFields>>
+    {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<TransferCursorType, _, _, _, _>(
@@ -133,12 +133,7 @@ impl TransferQuery {
                     },
                 }
 
-                let mut transfers: Vec<types::transfer::Transfer> = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|transfer| transfer.into())
-                    .collect::<Vec<_>>();
+                let mut transfers = query.all(&app_ctx.db).await?;
 
                 if has_before {
                     transfers.reverse();

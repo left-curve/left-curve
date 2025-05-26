@@ -4,6 +4,7 @@ use {
         Addr, Binary, ByteArray, Hash256, JsonSerExt, Message, NonEmpty, SignData, StdError,
         Timestamp,
     },
+    serde::{Deserialize, Serialize},
     sha2::Sha256,
     std::fmt::Display,
 };
@@ -12,7 +13,7 @@ use {
 /// replay protection.
 pub type Nonce = u32;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
 #[cfg_attr(
     feature = "sea-orm",

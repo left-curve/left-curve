@@ -1,5 +1,4 @@
 use {
-    crate::graphql::types::{self, account::Account},
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity::{self},
     indexer_httpd::context::Context,
@@ -23,10 +22,10 @@ pub struct AccountCursor {
     address: String,
 }
 
-impl From<types::account::Account> for AccountCursor {
-    fn from(account: types::account::Account) -> Self {
+impl From<entity::accounts::Model> for AccountCursor {
+    fn from(account: entity::accounts::Model) -> Self {
         Self {
-            created_block_height: account.created_block_height,
+            created_block_height: account.created_block_height as u64,
             address: account.address,
         }
     }
@@ -53,7 +52,8 @@ impl AccountQuery {
         block_height: Option<u64>,
         username: Option<String>,
         address: Option<String>,
-    ) -> Result<Connection<AccountCursorType, Account, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<AccountCursorType, entity::accounts::Model, EmptyFields, EmptyFields>>
+    {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<AccountCursorType, _, _, _, _>(
@@ -120,11 +120,11 @@ impl AccountQuery {
                     query = query.filter(entity::users::Column::Username.eq(&username));
                 }
 
-                let mut accounts: Vec<types::account::Account> = query
+                let mut accounts = query
                     .all(&app_ctx.db)
                     .await?
                     .into_iter()
-                    .map(|account| account.0.into())
+                    .map(|account| account.0)
                     .collect::<Vec<_>>();
 
                 if has_before {

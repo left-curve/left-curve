@@ -16,7 +16,7 @@ use {
 
 pub mod query;
 pub mod subscription;
-pub mod types;
+// pub mod types;
 
 pub(crate) type AppSchema = Schema<Query, Mutation, Subscription>;
 
@@ -63,6 +63,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     )
     .extension(extensions::Logger)
     .extension(SentryExtension)
+    .data(app_ctx.db.clone())
     .data(app_ctx)
     .data(block_transactions_loader)
     .data(block_events_loader)
