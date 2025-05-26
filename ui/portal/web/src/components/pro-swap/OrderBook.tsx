@@ -2,6 +2,8 @@ import { Tabs } from "@left-curve/applets-kit";
 import type React from "react";
 import { useState } from "react";
 
+const mockOrderBook = [];
+
 export const OrderBook: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades">("order book");
   return (
@@ -14,6 +16,11 @@ export const OrderBook: React.FC = () => {
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
       />
+      {activeTab === "order book" ? (
+        <div>Order book</div>
+      ) : (
+        <div className="flex flex-col gap-2">Life Trades</div>
+      )}
     </div>
   );
 };
