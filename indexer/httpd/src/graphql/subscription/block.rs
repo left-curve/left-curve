@@ -34,7 +34,6 @@ impl BlockSubscription {
                         })
                         .ok()
                         .unwrap_or_default()
-                        .map(Into::into)
                 },
             ))
             .filter_map(|block| async { block }))
