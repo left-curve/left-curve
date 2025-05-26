@@ -81,7 +81,7 @@ async fn load_tx_from_file(tx: &Model, ctx: &Context<'_>) -> Result<(Tx, TxOutco
     loader
         .load_one(tx.clone())
         .await?
-        .ok_or(Error::new(format!("Transaction not found: {}", tx.hash)))
+        .ok_or(Error::new(format!("transaction not found: {}", tx.hash)))
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
