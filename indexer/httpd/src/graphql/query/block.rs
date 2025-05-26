@@ -1,10 +1,7 @@
 use {
-    crate::{
-        context::Context,
-        graphql::types::{self, block::Block},
-    },
+    crate::context::Context,
     async_graphql::{types::connection::*, *},
-    indexer_sql::entity::{self, prelude::Blocks},
+    indexer_sql::entity::{self},
     sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select},
     serde::{Deserialize, Serialize},
 };
@@ -22,15 +19,16 @@ pub struct BlockCursor {
     block_height: u64,
 }
 
-impl From<types::block::Block> for BlockCursor {
-    fn from(block: types::block::Block) -> Self {
+impl From<entity::blocks::Model> for BlockCursor {
+    fn from(block: entity::blocks::Model) -> Self {
         Self {
-            block_height: block.block_height,
+            block_height: block.block_height as u64,
         }
     }
 }
 
 pub type BlockCursorType = OpaqueCursor<BlockCursor>;
+type Blocks = entity::blocks::Model;
 
 const MAX_BLOCKS: u64 = 100;
 
@@ -44,7 +42,7 @@ impl BlockQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         height: Option<u64>,
-    ) -> Result<Option<types::block::Block>> {
+    ) -> Result<Option<entity::blocks::Model>> {
         let app_ctx = ctx.data::<Context>()?;
 
         let mut query = entity::blocks::Entity::find();
@@ -58,7 +56,7 @@ impl BlockQuery {
             },
         }
 
-        Ok(query.one(&app_ctx.db).await?.map(|block| block.into()))
+        Ok(query.one(&app_ctx.db).await?)
     }
 
     /// Get a block
@@ -70,7 +68,7 @@ impl BlockQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
-    ) -> Result<Connection<BlockCursorType, Block, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<BlockCursorType, Blocks, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<BlockCursorType, _, _, _, _>(
@@ -115,12 +113,7 @@ impl BlockQuery {
                     },
                 }
 
-                let mut blocks: Vec<types::block::Block> = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|block| block.into())
-                    .collect::<Vec<_>>();
+                let mut blocks = query.all(&app_ctx.db).await?;
 
                 if has_before {
                     blocks.reverse();
@@ -148,7 +141,11 @@ impl BlockQuery {
     }
 }
 
-fn apply_filter(query: Select<Blocks>, sort_by: SortBy, after: &BlockCursor) -> Select<Blocks> {
+fn apply_filter(
+    query: Select<entity::blocks::Entity>,
+    sort_by: SortBy,
+    after: &BlockCursor,
+) -> Select<entity::blocks::Entity> {
     match sort_by {
         SortBy::BlockHeightAsc => {
             query.filter(entity::blocks::Column::BlockHeight.lt(after.block_height))

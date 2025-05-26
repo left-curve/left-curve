@@ -1,5 +1,4 @@
 use {
-    crate::graphql::types::account::Account,
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity,
     futures_util::stream::{StreamExt, once},
@@ -14,16 +13,13 @@ impl AccountSubscription {
     async fn accounts<'a>(
         &self,
         ctx: &Context<'a>,
-    ) -> Result<impl Stream<Item = Vec<Account>> + 'a> {
+    ) -> Result<impl Stream<Item = Vec<entity::accounts::Model>> + 'a> {
         let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
 
-        let last_accounts: Vec<Account> = entity::accounts::Entity::find()
+        let last_accounts = entity::accounts::Entity::find()
             .order_by_desc(entity::accounts::Column::CreatedBlockHeight)
             .all(&app_ctx.db)
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect();
+            .await?;
 
         Ok(once(async { Some(last_accounts) })
             .chain(
@@ -41,12 +37,6 @@ impl AccountSubscription {
                                 .all(&db)
                                 .await
                                 .ok()
-                                .map(|accounts| {
-                                    accounts
-                                        .into_iter()
-                                        .map(Into::into)
-                                        .collect::<Vec<Account>>()
-                                })
                         }
                     }),
             )

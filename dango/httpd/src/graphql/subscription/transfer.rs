@@ -1,5 +1,4 @@
 use {
-    crate::graphql::types::transfer::Transfer,
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity,
     futures_util::stream::{StreamExt, once},
@@ -20,7 +19,7 @@ impl TransferSubscription {
         block_heights: RangeInclusive<i64>,
         address: Option<String>,
         username: Option<String>,
-    ) -> Vec<Transfer> {
+    ) -> Vec<entity::transfers::Model> {
         let mut filter = entity::transfers::Column::BlockHeight.is_in(block_heights);
 
         if let Some(username) = username {
@@ -59,9 +58,6 @@ impl TransferSubscription {
             .await
             .inspect_err(|e| tracing::error!("get_transfers error: {:?}", e))
             .unwrap_or_default()
-            .into_iter()
-            .map(Into::into)
-            .collect()
     }
 }
 
@@ -77,7 +73,7 @@ impl TransferSubscription {
         // The block height of the transfer
         // This is used to get the older transfers in case of disconnection
         since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<Transfer>> + 'a> {
+    ) -> Result<impl Stream<Item = Vec<entity::transfers::Model>> + 'a> {
         let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();

@@ -1,6 +1,6 @@
 use {
     crate::{
-        entity::{self, events::TransactionType},
+        entity::{self},
         error::Result,
     },
     grug_math::Inner,
@@ -64,7 +64,7 @@ impl Models {
                 let new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
-                    transaction_type: Set(TransactionType::Tx),
+                    transaction_type: Set(FlatCategory::Tx),
                     has_succeeded: Set(tx_outcome.result.is_ok()),
                     error_message: Set(tx_outcome.clone().result.err()),
                     gas_wanted: Set(tx.gas_limit.try_into()?),
@@ -280,7 +280,7 @@ fn build_event_active_model(
         method: Set(method),
         data: Set(data),
         event_status: Set(index_event.event_status.clone().into()),
-        commitment_status: Set(index_event.commitment_status.clone().into()),
+        commitment_status: Set(index_event.commitment_status),
         transaction_idx: Set(index_event.id.category_index as i32),
         transaction_type: Set(index_event.id.category as i32),
         message_idx: Set(index_event.id.message_index.map(|i| i as i32)),

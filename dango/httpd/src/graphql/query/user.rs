@@ -1,5 +1,4 @@
 use {
-    crate::graphql::types,
     async_graphql::{
         connection::{Connection, Edge, EmptyFields, OpaqueCursor, query_with},
         *,
@@ -18,10 +17,10 @@ pub struct UserCursor {
     username: String,
 }
 
-impl From<types::user::User> for UserCursor {
-    fn from(user: types::user::User) -> Self {
+impl From<entity::users::Model> for UserCursor {
+    fn from(user: entity::users::Model) -> Self {
         Self {
-            created_block_height: user.created_block_height,
+            created_block_height: user.created_block_height as u64,
             username: user.username,
         }
     }
@@ -40,16 +39,13 @@ impl UserQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         username: String,
-    ) -> Result<Option<types::user::User>> {
+    ) -> Result<Option<entity::users::Model>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        let user = entity::users::Entity::find()
+        Ok(entity::users::Entity::find()
             .filter(entity::users::Column::Username.eq(&username))
             .one(&app_ctx.db)
-            .await?
-            .map(Into::into);
-
-        Ok(user)
+            .await?)
     }
 
     async fn users(
@@ -63,7 +59,7 @@ impl UserQuery {
         block_height: Option<u64>,
         public_key: Option<String>,
         public_key_hash: Option<String>,
-    ) -> Result<Connection<UserCursorType, types::user::User, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<UserCursorType, entity::users::Model, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<UserCursorType, _, _, _, _>(
@@ -118,11 +114,11 @@ impl UserQuery {
                     query = query.filter(entity::public_keys::Column::KeyHash.eq(&public_key_hash));
                 }
 
-                let mut users: Vec<types::user::User> = query
+                let mut users = query
                     .all(&app_ctx.db)
                     .await?
                     .into_iter()
-                    .map(|user| user.0.into())
+                    .map(|(user, _)| user)
                     .collect::<Vec<_>>();
 
                 if has_before {

@@ -1,7 +1,7 @@
 use {
     super::build_actix_app,
     assertor::*,
-    dango_httpd::graphql::types::transfer::Transfer,
+    dango_indexer_sql::entity,
     dango_testing::setup_test_with_indexer,
     dango_types::{
         account::single,
@@ -18,7 +18,7 @@ use {
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_returns_transfer() -> anyhow::Result<()> {
+async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -44,14 +44,17 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
       query Transfers($block_height: Int!) {
         transfers(blockHeight: $block_height) {
           nodes {
+            id
+            idx
             blockHeight
             fromAddress
             toAddress
             amount
             denom
-            accounts { users { username } }
+            createdAt
+            accounts { address }
           }
-          edges { node { blockHeight fromAddress toAddress amount denom accounts { users { username } } } cursor }
+          edges { node { id idx blockHeight fromAddress toAddress amount denom createdAt accounts { address } } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -78,7 +81,8 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
                 let app = build_actix_app(httpd_context);
 
                 let response =
-                    call_graphql::<PaginatedResponse<Transfer>>(app, request_body).await?;
+                    call_graphql::<PaginatedResponse<entity::transfers::Model>>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).has_length(2);
 
@@ -133,6 +137,9 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let graphql_query = r#"
       subscription Transfer {
         transfers {
+          id
+          idx
+          createdAt
           blockHeight
           fromAddress
           toAddress
@@ -181,8 +188,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transfers::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(
                     response
@@ -196,8 +205,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transfers::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(
                     response
@@ -211,8 +222,10 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transfers::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(
                     response
@@ -254,6 +267,9 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let graphql_query = r#"
       subscription Transfer($address: String) {
         transfers(address: $address) {
+          id
+          idx
+          createdAt
           blockHeight
           fromAddress
           toAddress
@@ -311,8 +327,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transfers::Model>,
+                >(framed, name)
+                .await?;
 
                 // 1 transfer because we filter on one address
                 assert_that!(
@@ -327,8 +345,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transfers::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(
                     response
@@ -342,8 +362,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transfers::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(
                     response

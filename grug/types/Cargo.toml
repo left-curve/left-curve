@@ -10,17 +10,22 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
+# Derive async-graphql traits for certain types.
+async-graphql = ["dep:async-graphql"]
+# Include methods to convert `Timestamp` to:
+# - a `chrono::NaiveDateTime`, which is used in SQL databases;
+# - an RFC-3339 string, used in tracing output.
+chrono = ["dep:chrono"]
+# Derive sea-orm traits for certain types.
+sea-orm = ["dep:sea-orm"]
 # Include methods to cast Tendermint types to Grug types. These include:
 # - tendermint::abci::types::ExecTxResult -> TxOutcome
 # - tendermint::abci::Event -> CronOutcome
 # - tendermint_rpc::endpoint::tx::Response -> SearchTxOutcome
 tendermint = ["dep:tendermint", "tendermint-rpc"]
-# Include methods to convert `Timestamp` to:
-# - a `chrono::NaiveDateTime`, which is used in SQL databases;
-# - an RFC-3339 string, used in tracing output.
-chrono = ["dep:chrono"]
 
 [dependencies]
+async-graphql  = { workspace = true, optional = true }
 bnum           = { workspace = true, features = ["borsh"] }
 borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono         = { workspace = true, optional = true }
@@ -32,6 +37,7 @@ hex-literal    = { workspace = true }
 paste          = { workspace = true }
 prost          = { workspace = true }
 ripemd         = { workspace = true }
+sea-orm        = { workspace = true, optional = true }
 serde          = { workspace = true, features = ["derive"] }
 serde_json     = { workspace = true }
 serde_with     = { workspace = true }

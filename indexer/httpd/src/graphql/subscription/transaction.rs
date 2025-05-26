@@ -1,6 +1,5 @@
 use {
     super::MAX_PAST_BLOCKS,
-    crate::graphql::types::transaction::Transaction,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity::{self, blocks::latest_block_height},
@@ -16,7 +15,7 @@ impl TransactionSubscription {
     async fn get_transactions(
         app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
-    ) -> Vec<Transaction> {
+    ) -> Vec<entity::transactions::Model> {
         entity::transactions::Entity::find()
             .order_by_asc(entity::transactions::Column::BlockHeight)
             .order_by_asc(entity::transactions::Column::TransactionIdx)
@@ -28,9 +27,6 @@ impl TransactionSubscription {
                 tracing::error!("get_transactions error: {_e:?}");
             })
             .unwrap_or_default()
-            .into_iter()
-            .map(Into::into)
-            .collect()
     }
 }
 
@@ -41,7 +37,7 @@ impl TransactionSubscription {
         ctx: &Context<'a>,
         // This is used to get the older transactions in case of disconnection
         since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<Transaction>> + 'a> {
+    ) -> Result<impl Stream<Item = Vec<entity::transactions::Model>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();

@@ -1,6 +1,5 @@
 use {
     super::MAX_PAST_BLOCKS,
-    crate::graphql::types::message::Message,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity::{self, blocks::latest_block_height},
@@ -16,7 +15,7 @@ impl MessageSubscription {
     async fn get_messages(
         app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
-    ) -> Vec<Message> {
+    ) -> Vec<entity::messages::Model> {
         entity::messages::Entity::find()
             .order_by_asc(entity::messages::Column::BlockHeight)
             .order_by_asc(entity::messages::Column::OrderIdx)
@@ -28,9 +27,6 @@ impl MessageSubscription {
                 tracing::error!("get_messages error: {_e:?}");
             })
             .unwrap_or_default()
-            .into_iter()
-            .map(Into::into)
-            .collect()
     }
 }
 
@@ -41,7 +37,7 @@ impl MessageSubscription {
         ctx: &Context<'a>,
         // This is used to get the older messages in case of disconnection
         since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<Message>> + 'a> {
+    ) -> Result<impl Stream<Item = Vec<entity::messages::Model>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();

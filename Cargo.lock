@@ -3407,8 +3407,10 @@ dependencies = [
 name = "dango-indexer-sql"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
  "anyhow",
  "assertor",
+ "async-graphql",
  "async-trait",
  "borsh 1.5.7",
  "dango-indexer-sql-migration",
@@ -4767,6 +4769,7 @@ dependencies = [
 name = "grug-types"
 version = "0.0.0"
 dependencies = [
+ "async-graphql",
  "async-trait",
  "bnum",
  "borsh 1.5.7",
@@ -4780,6 +4783,7 @@ dependencies = [
  "paste",
  "prost",
  "ripemd",
+ "sea-orm",
  "serde",
  "serde_json",
  "serde_with",
@@ -5609,6 +5613,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "async-graphql",
  "async-stream",
  "async-trait",
  "borsh 1.5.7",
@@ -5618,6 +5623,7 @@ dependencies = [
  "grug-types",
  "indexer-disk-saver",
  "indexer-sql-migration",
+ "itertools 0.14.0",
  "sea-orm",
  "serde",
  "serde_json",

@@ -13,19 +13,23 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-tracing = ["dep:tracing"]
+async-graphql = ["dep:async-graphql", "grug-types/async-graphql"]
+testing       = []
+tracing       = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
+async-graphql         = { workspace = true, optional = true }
 async-stream          = { workspace = true }
 async-trait           = { workspace = true }
 borsh                 = { workspace = true }
 futures               = { workspace = true }
 grug-app              = { workspace = true }
 grug-math             = { workspace = true }
-grug-types            = { workspace = true }
+grug-types            = { workspace = true, features = ["sea-orm"] }
 indexer-disk-saver    = { workspace = true }
 indexer-sql-migration = { workspace = true }
+itertools             = { workspace = true }
 sea-orm               = { workspace = true }
 serde                 = { workspace = true }
 serde_json            = { workspace = true }

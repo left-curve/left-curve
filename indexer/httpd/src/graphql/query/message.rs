@@ -1,8 +1,5 @@
 use {
-    crate::{
-        context::Context,
-        graphql::types::{self, message::Message},
-    },
+    crate::context::Context,
     async_graphql::{connection::*, *},
     indexer_sql::entity::{self, prelude::Messages},
     sea_orm::{
@@ -25,11 +22,11 @@ pub struct MessageCursor {
     order_idx: u32,
 }
 
-impl From<types::message::Message> for MessageCursor {
-    fn from(message: types::message::Message) -> Self {
+impl From<entity::messages::Model> for MessageCursor {
+    fn from(message: entity::messages::Model) -> Self {
         Self {
-            block_height: message.block_height,
-            order_idx: message.order_idx,
+            block_height: message.block_height as u64,
+            order_idx: message.order_idx as u32,
         }
     }
 }
@@ -56,7 +53,8 @@ impl MessageQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
-    ) -> Result<Connection<MessageCursorType, Message, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<MessageCursorType, entity::messages::Model, EmptyFields, EmptyFields>>
+    {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<MessageCursorType, _, _, _, _>(
@@ -122,12 +120,7 @@ impl MessageQuery {
                     },
                 }
 
-                let mut messages: Vec<types::message::Message> = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|message| message.into())
-                    .collect::<Vec<_>>();
+                let mut messages = query.all(&app_ctx.db).await?;
 
                 if has_before {
                     messages.reverse();
