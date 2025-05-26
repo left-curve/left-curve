@@ -100,7 +100,7 @@ impl FlattenStatus for MsgsAndBackrunEvents {
         for (msg_idx, msgs) in self.msgs.into_iter().enumerate() {
             next_id.message_index = Some(msg_idx as u32);
 
-            let i_events = msgs.flatten_status(parent_id, next_id, commitment.clone());
+            let i_events = msgs.flatten_status(parent_id, next_id, commitment);
 
             next_id.increment_idx(&i_events);
             events.extend(i_events);
@@ -187,7 +187,7 @@ impl Flatten for EvtTransfer {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Transfer(FlatEvtTransfer {
                 sender: self.sender,
@@ -199,14 +199,14 @@ impl Flatten for EvtTransfer {
 
         let bank_guest = self
             .bank_guest
-            .flatten_status(parent_id, next_id, commitment.clone());
+            .flatten_status(parent_id, next_id, commitment);
 
         next_id.increment_idx(&bank_guest);
 
         events.extend(bank_guest);
 
         for event in self.receive_guests.into_values() {
-            let receive_guest = event.flatten_status(parent_id, next_id, commitment.clone());
+            let receive_guest = event.flatten_status(parent_id, next_id, commitment);
             next_id.increment_idx(&receive_guest);
             events.extend(receive_guest);
         }
@@ -244,7 +244,7 @@ impl Flatten for EvtInstantiate {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Instantiate(FlatEvtInstantiate {
                 sender: self.sender,
@@ -261,7 +261,7 @@ impl Flatten for EvtInstantiate {
 
         let transfer = self
             .transfer_event
-            .flatten_status(&parent_id, next_id, commitment.clone());
+            .flatten_status(&parent_id, next_id, commitment);
 
         next_id.increment_idx(&transfer);
 
@@ -287,7 +287,7 @@ impl Flatten for EvtExecute {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Execute(FlatEvtExecute {
                 sender: self.sender,
@@ -302,7 +302,7 @@ impl Flatten for EvtExecute {
 
         let transfer = self
             .transfer_event
-            .flatten_status(&parent_id, next_id, commitment.clone());
+            .flatten_status(&parent_id, next_id, commitment);
 
         next_id.increment_idx(&transfer);
 
@@ -328,7 +328,7 @@ impl Flatten for EvtMigrate {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Migrate(FlatEvtMigrate {
                 sender: self.sender,
@@ -362,7 +362,7 @@ impl Flatten for EvtBackrun {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Backrun(FlatEvtBackrun {
                 sender: self.sender,
@@ -392,7 +392,7 @@ impl Flatten for EvtWithhold {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Withhold(FlatEvtWithhold {
                 sender: self.sender,
@@ -424,7 +424,7 @@ impl Flatten for EvtFinalize {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Finalize(FlatEvtFinalize {
                 sender: self.sender,
@@ -457,7 +457,7 @@ impl Flatten for EvtCron {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Cron(FlatEvtCron {
                 contract: self.contract,
@@ -489,7 +489,7 @@ impl Flatten for EvtAuthenticate {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Authenticate(FlatEvtAuthenticate {
                 sender: self.sender,
@@ -522,7 +522,7 @@ impl Flatten for EvtGuest {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status.clone(),
             event: FlatEvent::Guest(FlatEvtGuest {
                 contract: self.contract,
@@ -536,7 +536,7 @@ impl Flatten for EvtGuest {
             events.push(FlatEventInfo {
                 id: next_id.clone(),
                 parent_id: parent_id.clone(),
-                commitment_status: commitment.clone(),
+                commitment_status: commitment,
                 event_status: status.clone(),
                 event: FlatEvent::ContractEvent(contract_event),
             });
@@ -545,7 +545,7 @@ impl Flatten for EvtGuest {
         }
 
         for sub_event in self.sub_events {
-            let sub_events = sub_event.flatten_status(&current_id, next_id, commitment.clone());
+            let sub_events = sub_event.flatten_status(&current_id, next_id, commitment);
             next_id.increment_idx(&sub_events);
             events.extend(sub_events);
         }
@@ -566,7 +566,7 @@ impl Flatten for SubEvent {
 
         let sub_event = self
             .event
-            .flatten_status(parent_id, next_id, commitment.clone());
+            .flatten_status(parent_id, next_id, commitment);
 
         let reply_events = if let Some(reply) = self.reply {
             next_id.increment_idx(&sub_event);
@@ -593,7 +593,7 @@ impl Flatten for EvtReply {
         let mut events = vec![FlatEventInfo {
             id: next_id.clone(),
             parent_id: parent_id.clone(),
-            commitment_status: commitment.clone(),
+            commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Reply(FlatEvtReply {
                 contract: self.contract,

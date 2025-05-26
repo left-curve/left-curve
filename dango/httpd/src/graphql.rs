@@ -16,7 +16,6 @@ use {
 
 pub mod query;
 pub mod subscription;
-// pub mod types;
 
 pub(crate) type AppSchema = Schema<Query, Mutation, Subscription>;
 
