@@ -1,13 +1,17 @@
-use {super::events::TransactionType, sea_orm::entity::prelude::*};
+#[cfg(feature = "async-graphql")]
+use async_graphql::{Result, SimpleObject};
+use {grug_types::FlatCategory, sea_orm::entity::prelude::*};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "transactions")]
+#[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub id: Uuid,
     pub created_at: DateTime,
     pub block_height: i64,
-    pub transaction_type: TransactionType,
+    pub transaction_type: FlatCategory,
     pub transaction_idx: i32,
     pub sender: String,
     #[sea_orm(column_type = "JsonBinary")]

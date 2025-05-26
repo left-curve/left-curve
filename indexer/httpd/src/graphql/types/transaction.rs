@@ -54,7 +54,7 @@ impl From<entity::transactions::Model> for Transaction {
             id: item.id,
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
-            transaction_type: item.transaction_type.into(),
+            transaction_type: todo!(), // item.transaction_type.into(),
             transaction_idx: item.transaction_idx as u32,
             sender: item.sender.clone(),
             hash: item.hash.clone(),

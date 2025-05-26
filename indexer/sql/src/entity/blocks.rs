@@ -1,4 +1,10 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader};
 use sea_orm::{QueryOrder, entity::prelude::*};
+
+use crate::dataloaders::{
+    block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+};
 
 #[derive(
     Clone,
@@ -9,17 +15,36 @@ use sea_orm::{QueryOrder, entity::prelude::*};
     Default,
     serde :: Serialize,
     serde :: Deserialize,
+    Hash,
 )]
 #[sea_orm(table_name = "blocks")]
+#[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub id: Uuid,
     pub created_at: DateTime,
     #[sea_orm(unique)]
     pub block_height: i64,
     pub hash: String,
     pub app_hash: String,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub transactions_count: i32,
+}
+
+#[cfg(feature = "async-graphql")]
+#[ComplexObject]
+impl Model {
+    /// Transactions order isn't guaranteed, check `transactionIdx`
+    async fn transactions(&self, ctx: &Context<'_>) -> Result<Vec<super::transactions::Model>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockTransactionsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
+
+    async fn flatten_events(&self, ctx: &Context<'_>) -> Result<Vec<super::events::Model>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockEventsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

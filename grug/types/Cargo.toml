@@ -18,9 +18,12 @@ tendermint = ["dep:tendermint", "tendermint-rpc"]
 # Include methods to convert `Timestamp` to:
 # - a `chrono::NaiveDateTime`, which is used in SQL databases;
 # - an RFC-3339 string, used in tracing output.
-chrono = ["dep:chrono"]
+async-graphql = ["dep:async-graphql"]
+chrono        = ["dep:chrono"]
+sea-orm       = ["dep:sea-orm"]
 
 [dependencies]
+async-graphql  = { workspace = true, optional = true }
 bnum           = { workspace = true, features = ["borsh"] }
 borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono         = { workspace = true, optional = true }
@@ -32,6 +35,7 @@ hex-literal    = { workspace = true }
 paste          = { workspace = true }
 prost          = { workspace = true }
 ripemd         = { workspace = true }
+sea-orm        = { workspace = true, optional = true }
 serde          = { workspace = true, features = ["derive"] }
 serde_json     = { workspace = true }
 serde_with     = { workspace = true }
