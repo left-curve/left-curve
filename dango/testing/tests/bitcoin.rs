@@ -298,7 +298,13 @@ fn transfer_remote() {
     {
         let withdraw_amount = Uint128::new(10_000);
 
-        let withdraw_fee = Uint128::new(1000); // TODO: query the gateway for the fee.
+        let withdraw_fee = suite
+            .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
+                denom: btc::DENOM.clone(),
+                remote: gateway::Remote::Bitcoin,
+            })
+            .unwrap()
+            .unwrap();
 
         let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
             recipient: btc_recipient.clone(),
