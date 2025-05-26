@@ -3,7 +3,7 @@ use async_graphql::{ComplexObject, Result, SimpleObject};
 use {async_graphql::Context, dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
-    Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, serde :: Serialize, serde :: Deserialize,
+    Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, serde::Serialize, serde::Deserialize,
 )]
 #[sea_orm(table_name = "accounts")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]

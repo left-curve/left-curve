@@ -495,7 +495,7 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
             eventIdx
             data
           }
-          edges { node { id parentId transactionId messageId blockHeight createdAt eventIdx type method eventStatus commitmentStatus transactionType transactionIdx messageIdx data eventIdx } cursor }
+          edges { node { id parentId transactionId messageId blockHeight createdAt type method eventStatus commitmentStatus transactionType transactionIdx messageIdx data eventIdx } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -849,7 +849,6 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
         events {
           id
           parentId
-          messageId
           transactionId
           messageId
           transactionType
@@ -858,7 +857,6 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
           eventIdx
           blockHeight
           createdAt
-          eventIdx
           type
           method
           eventStatus
