@@ -6,12 +6,8 @@ use {
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
-    indexer_httpd::{
-        context::Context,
-        graphql::types::{block::Block, event::Event, message::Message, transaction::Transaction},
-        traits::QueryApp,
-    },
-    indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
+    indexer_httpd::{context::Context, traits::QueryApp},
+    indexer_sql::{entity, hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, build_app_service, call_api, call_graphql,
         call_ws_graphql_stream, parse_graphql_subscription_response,
@@ -291,7 +287,9 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<PaginatedResponse<Block>>(app, request_body).await?;
+                let response =
+                    call_graphql::<PaginatedResponse<entity::blocks::Model>>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).has_length(1);
                 assert_that!(response.data.edges[0].node.block_height).is_equal_to(1);
@@ -335,8 +333,11 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<Transaction>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 assert_that!(response.data.edges).has_length(1);
 
@@ -434,7 +435,8 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
                 let app = build_app_service(httpd_context);
 
                 let response =
-                    call_graphql::<PaginatedResponse<Message>>(app, request_body).await?;
+                    call_graphql::<PaginatedResponse<entity::messages::Model>>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).has_length(1);
 
@@ -484,7 +486,9 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<PaginatedResponse<Event>>(app, request_body).await?;
+                let response =
+                    call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).is_not_empty();
 
@@ -647,8 +651,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transaction>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transactions::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data).has_length(1);
@@ -656,8 +662,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transaction>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transactions::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data).has_length(1);
@@ -665,8 +673,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Transaction>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transactions::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data).has_length(1);
