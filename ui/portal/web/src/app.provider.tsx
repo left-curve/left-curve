@@ -53,8 +53,8 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       formatNumberOptions: {
         mask: 1,
         language: "en-US",
-        maxFractionDigits: 2,
-        minFractionDigits: 2,
+        maxFractionDigits: 4,
+        minFractionDigits: 0,
         notation: "standard",
       },
     },
