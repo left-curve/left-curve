@@ -96,21 +96,19 @@ const AccountCard: React.FC<AccountCardProps> = ({
           </IconButton>
         ) : null}
       </AnimatePresence>
-      <div className="flex items-center justify-between relative z-10">
-        <div className="flex gap-1 ">
-          <div className="flex flex-col">
-            <p className="exposure-m-italic capitalize">{name}</p>
-            <div className="flex gap-1 items-center">
-              <TruncateText
-                text={address}
-                className="diatype-xs-medium text-gray-500"
-                start={4}
-                end={4}
-              />
-              <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
-            </div>
-          </div>
+      <div className="flex flex-col relative z-10">
+        <div className="flex gap-1 items-center">
+          <p className="exposure-m-italic capitalize">{name}</p>
           <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
+        </div>
+        <div className="flex gap-1 items-center">
+          <TruncateText
+            text={address}
+            className="diatype-xs-medium text-gray-500"
+            start={4}
+            end={4}
+          />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
         </div>
       </div>
       {type === AccountType.Margin ? (
@@ -158,24 +156,24 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
       )}
       onClick={() => onAccountSelect(account)}
     >
-      <div className="flex items-center justify-between relative z-10">
-        <div className="flex gap-4 ">
-          <div className="flex flex-col">
+      <div className="flex items-start justify-between relative z-10">
+        <div className="flex flex-col">
+          <div className="flex gap-1 items-center">
             <p className="exposure-m-italic capitalize text-gray-400">{name}</p>
-            <div className="flex gap-1 items-center">
-              <TruncateText
-                text={address}
-                className="diatype-xs-medium text-gray-500"
-                start={4}
-                end={4}
-              />
-              <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
-            </div>
+            <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
+          </div>
+          <div className="flex gap-1 items-center">
+            <TruncateText
+              text={address}
+              className="diatype-xs-medium text-gray-500"
+              start={4}
+              end={4}
+            />
+            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">
           <p className="diatype-m-bold text-gray-400">{totalBalance}</p>
-          <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
         </div>
       </div>
     </div>
