@@ -25,11 +25,6 @@ pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderInde
             "market_order__id",
         ),
         user: MultiIndex::new(|_, order| order.user, "market_order", "market_order__user"),
-        pair: MultiIndex::new(
-            |(pair, ..), _| pair.clone(),
-            "market_order",
-            "market_order__pair",
-        ),
     });
 
 pub const LIMIT_ORDERS: IndexedMap<LimitOrderKey, LimitOrder, LimitOrderIndex> =
