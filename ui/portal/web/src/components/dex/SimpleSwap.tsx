@@ -51,8 +51,9 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
-  const { pair, simulation, fee, coins } = simpleSwapState;
+  const { pair, simulation, fee, coins, isReverse, base, quote } = simpleSwapState;
   const { formatNumberOptions } = settings;
+  const { inputs } = controllers;
 
   const submission = useMutation({
     mutationFn: async () => {
@@ -63,14 +64,37 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
 
       try {
         const { promise, resolve: confirmSwap, reject: rejectSwap } = withResolvers();
+
+        const input = isReverse
+          ? {
+              denom: quote.denom,
+              amount: parseUnits(inputs.quote.value, quote.decimals).toString(),
+            }
+          : {
+              denom: base.denom,
+              amount: parseUnits(inputs.base.value, base.decimals).toString(),
+            };
+
+        const output = isReverse
+          ? {
+              denom: base.denom,
+              amount: parseUnits(inputs.base.value, base.decimals).toString(),
+            }
+          : {
+              denom: quote.denom,
+              amount: parseUnits(inputs.quote.value, quote.decimals).toString(),
+            };
+
+        const operation = { input, output };
+
         showModal(Modals.ConfirmSwap, {
           input: {
-            coin: coins[simulation.input.denom],
-            amount: simulation.input.amount,
+            coin: coins[operation.input.denom],
+            amount: operation.input.amount,
           },
           output: {
-            coin: coins[simulation.data.denom],
-            amount: simulation.data.amount,
+            coin: coins[operation.output.denom],
+            amount: operation.output.amount,
           },
           fee: formatNumber(fee, { ...formatNumberOptions, currency: "usd" }),
           confirmSwap,
@@ -86,12 +110,16 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
             });
             return false;
           });
+
         if (!response) return undefined;
 
         await signingClient.swapExactAmountIn({
           sender: account!.address as Address,
           route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
-          input: simulation.input,
+          input: {
+            denom: operation.input.denom,
+            amount: operation.input.amount,
+          },
         });
 
         controllers.reset();
