@@ -71,6 +71,7 @@ impl FlatEventStatus {
     Eq,
     Copy,
     Display,
+    Hash,
 )]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "sea-orm", derive(EnumIter, DeriveActiveEnum))]

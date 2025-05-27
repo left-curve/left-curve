@@ -1,71 +1,16 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    grug_app::NaiveProposalPreparer,
-    grug_db_memory::MemDb,
-    grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
-    grug_vm_rust::RustVm,
-    indexer_httpd::{context::Context, traits::QueryApp},
-    indexer_sql::{entity, hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
+    indexer_sql::entity,
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, build_app_service, call_api, call_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginatedResponse, block::create_block, build_app_service, call_api,
+        call_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     serde_json::json,
-    std::{str::FromStr, sync::Arc},
-    tokio::sync::{Mutex, mpsc},
+    std::str::FromStr,
+    tokio::sync::mpsc,
 };
-
-async fn create_block() -> anyhow::Result<(
-    Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
-    TestAccounts,
-)> {
-    let denom = Denom::from_str("ugrug")?;
-
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
-        .with_memory_database()
-        .with_keep_blocks(true)
-        .build()?;
-
-    let context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
-
-    let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(denom.clone(), 30_000)?)
-        .set_owner("owner")
-        .build();
-
-    let chain_id = suite.chain_id().await?;
-
-    let suite = Arc::new(Mutex::new(suite));
-
-    let mock_client =
-        MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::OnBroadcast);
-
-    let sender = accounts["sender"].address;
-
-    mock_client
-        .send_message(
-            &mut accounts["sender"],
-            grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?,
-            grug_types::GasOption::Predefined { gas_limit: 2000 },
-            &chain_id,
-        )
-        .await?;
-
-    suite.lock().await.app.indexer.wait_for_finish();
-
-    assert_that!(suite.lock().await.app.indexer.indexing).is_true();
-
-    let client = Arc::new(mock_client);
-
-    let httpd_context = Context::new(context, suite, client.clone(), indexer_path);
-
-    Ok((httpd_context, client, accounts))
-}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn graphql_returns_block() -> anyhow::Result<()> {
@@ -483,82 +428,6 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
         .await?
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_returns_events() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
-
-    let graphql_query = r#"
-      query Events {
-        events {
-          nodes {
-            id
-            parentId
-            transactionId
-            messageId
-            blockHeight
-            createdAt
-            eventIdx
-            type
-            method
-            eventStatus
-            commitmentStatus
-            transactionType
-            transactionIdx
-            messageIdx
-            eventIdx
-            data
-          }
-          edges {
-            node {
-              id
-              parentId
-              transactionId
-              messageId
-              blockHeight
-              createdAt
-              type
-              method
-              eventStatus
-              commitmentStatus
-              transactionType
-              transactionIdx
-              messageIdx
-              data
-              eventIdx
-            }
-            cursor
-          }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "events",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
-    let local_set = tokio::task::LocalSet::new();
-
-    local_set
-        .run_until(async {
-            tokio::task::spawn_local(async move {
-                let app = build_app_service(httpd_context);
-
-                let response =
-                    call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
-                        .await?;
-
-                assert_that!(response.data.edges).is_not_empty();
-
-                Ok::<(), anyhow::Error>(())
-            })
-            .await
-        })
-        .await?
-}
-
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
@@ -864,111 +733,6 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 assert_that!(response.data.first().unwrap().sender_addr.as_str())
                     .is_equal_to(owner_addr.as_str());
                 assert_that!(response.data).has_length(1);
-
-                Ok::<(), anyhow::Error>(())
-            })
-            .await
-        })
-        .await?
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
-    let (httpd_context, client, mut accounts) = create_block().await?;
-
-    let graphql_query = r#"
-      subscription Events {
-        events {
-          id
-          parentId
-          transactionId
-          messageId
-          transactionType
-          transactionIdx
-          messageIdx
-          eventIdx
-          blockHeight
-          createdAt
-          type
-          method
-          eventStatus
-          commitmentStatus
-          data
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "events",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
-    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
-
-    // Can't call this from LocalSet so using channels instead.
-    tokio::spawn(async move {
-        while rx.recv().await.is_some() {
-            let to = accounts["owner"].address;
-
-            let chain_id = client.chain_id().await;
-
-            client
-                .send_message(
-                    &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
-                    &chain_id,
-                )
-                .await
-                .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
-        }
-
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let local_set = tokio::task::LocalSet::new();
-
-    local_set
-        .run_until(async {
-            tokio::task::spawn_local(async move {
-                let name = request_body.name;
-                let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
-
-                // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<entity::events::Model>>(framed, name)
-                        .await?;
-
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
-                assert_that!(response.data).is_not_empty();
-
-                crate_block_tx.send(2).await?;
-
-                // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<entity::events::Model>>(framed, name)
-                        .await?;
-
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
-                assert_that!(response.data).is_not_empty();
-
-                crate_block_tx.send(3).await?;
-
-                // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<entity::events::Model>>(framed, name)
-                        .await?;
-
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
-                assert_that!(response.data).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
