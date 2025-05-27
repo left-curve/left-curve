@@ -4,8 +4,9 @@ mod order_creation;
 use {
     crate::{PAIRS, PassiveLiquidityPool, RESERVES, core},
     anyhow::{anyhow, ensure},
+    dango_oracle::OracleQuerier,
     dango_types::{
-        bank,
+        DangoQuerier, bank,
         dex::{
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
             InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, PairUpdated,
@@ -193,7 +194,9 @@ fn provide_liquidity(
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
 
     // Compute the amount of LP tokens to mint.
-    let (reserve, lp_mint_amount) = pair.add_liquidity(reserve, lp_token_supply, deposit)?;
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let (reserve, lp_mint_amount) =
+        pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
