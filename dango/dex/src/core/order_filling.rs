@@ -94,7 +94,7 @@ fn fill_bids(
             order_direction: Direction::Bid,
             order_price,
             order_id,
-            order,
+            order: Order::Limit(order),
             filled,
             cleared: order.remaining.is_zero(),
             // Reduce the base refund by the fee amount.

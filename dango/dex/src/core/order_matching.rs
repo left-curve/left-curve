@@ -173,13 +173,35 @@ where
                     order_price: *price,
                     order_id: *bid_id,
                     order: Order::Limit(bid.clone()),
-                    filled: todo!(),
-                    cleared: todo!(),
-                    refund_base: todo!(),
-                    refund_quote: todo!(),
-                    fee_base: todo!(),
-                    fee_quote: todo!(),
+                    filled: Uint128::ZERO,
+                    cleared: false,
+                    refund_base: Uint128::ZERO,
+                    refund_quote: Uint128::ZERO,
+                    fee_base: Uint128::ZERO,
+                    fee_quote: Uint128::ZERO,
                 });
+                bid_outcome.filled.checked_add_assign(ask.amount)?;
+                bid_outcome.refund_base.checked_add_assign(ask.amount)?;
+                // TODO: calculate fee
+
+                let ask_outcome = filling_outcomes.entry(ask_id).or_insert(FillingOutcome {
+                    order_direction: Direction::Ask,
+                    order_price: *price,
+                    order_id: ask_id,
+                    order: Order::Market(ask),
+                    filled: Uint128::ZERO,
+                    cleared: false,
+                    refund_base: Uint128::ZERO,
+                    refund_quote: Uint128::ZERO,
+                    fee_base: Uint128::ZERO,
+                    fee_quote: Uint128::ZERO,
+                });
+                ask_outcome.filled.checked_add_assign(ask.amount)?;
+                ask_outcome
+                    .refund_quote
+                    .checked_add_assign(ask.amount.checked_mul_dec_floor(*price)?)?;
+                // TODO: calculate fee
+
                 // The market ask order is smaller than the limit order, so we can directly match it
                 // take the next market order and decrement the remaining amount of the limit order
                 market_ask = market_asks.next().transpose()?;
