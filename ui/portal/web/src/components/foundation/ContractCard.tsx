@@ -24,23 +24,22 @@ export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, ba
         alt="factory"
         className="absolute right-0 bottom-2 select-none drag-none h-[141px] opacity-50"
       />
-      <div className="flex items-center justify-between relative z-10">
-        <div className="flex gap-4 ">
-          <div className="flex flex-col">
-            <AddressVisualizer address={address} className="exposure-m-italic capitalize" />
-            <div className="flex gap-1 items-center">
-              <TruncateText
-                text={address}
-                className="diatype-xs-medium text-gray-500"
-                start={4}
-                end={4}
-              />
-              <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
-            </div>
-          </div>
+      <div className="flex flex-col relative z-10">
+        <div className="flex gap-1 items-center">
+          <AddressVisualizer address={address} className="exposure-m-italic capitalize" />
           <Badge text="App" color="green" className="h-fit capitalize" size="s" />
         </div>
+        <div className="flex gap-1 items-center">
+          <TruncateText
+            text={address}
+            className="diatype-xs-medium text-gray-500"
+            start={4}
+            end={4}
+          />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+        </div>
       </div>
+
       <div className="flex gap-2 items-center relative z-10">
         <p className="h4-regular">{balance}</p>
         {/*  <p className="text-sm font-bold text-status-success">{balanceChange}</p> */}
