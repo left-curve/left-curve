@@ -1,5 +1,6 @@
 use grug::{
     Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
+    ZeroExclusiveOneInclusive,
 };
 
 /// Numerical identifier of an order.
@@ -58,7 +59,7 @@ pub struct PairParams {
     /// Liquidity token denom of the passive liquidity pool.
     pub lp_denom: Denom,
     /// Curve invariant for the passive liquidity pool.
-    pub curve_invariant: CurveInvariant,
+    pub pool_type: PassiveLiquidity,
     /// Fee rate for instant swaps in the passive liquidity pool.
     /// For the xyk pool, this also sets the spread of the orders when the
     /// passive liquidity is reflected onto the orderbook.
@@ -67,13 +68,28 @@ pub struct PairParams {
 }
 
 #[grug::derive(Serde, Borsh)]
-pub enum CurveInvariant {
+pub enum PassiveLiquidity {
     Xyk {
         /// The order spacing for the passive liquidity pool.
         ///
         /// This is the price difference between two consecutive orders when
         /// the passive liquidity is reflected onto the orderbook.
         order_spacing: Udec128,
+    },
+    /// Places liquidity around the oracle price in a geometric progression,
+    /// such that the liquidity assigned to each price point is a fixed ratio of
+    /// the liquidity remaining to be assigned. Leading to a geometric
+    /// progression of order sizes. Where the first order has size `1 - ratio`,
+    /// the second order has size `(1 - ratio) * ratio`, the third order has size
+    /// `(1 - ratio) * ratio^2`, and so on.
+    Geometric {
+        /// The order spacing for the passive liquidity pool.
+        ///
+        /// This is the price difference between two consecutive orders when
+        /// the passive liquidity is reflected onto the orderbook.
+        order_spacing: Udec128,
+        /// The ratio of the size of consecutive orders.
+        ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
     },
 }
 
