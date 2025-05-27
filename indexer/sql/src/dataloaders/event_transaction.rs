@@ -23,7 +23,7 @@ impl Loader<entity::events::Model> for EventTransactionDataLoader {
         let transaction_ids = keys.iter().map(|m| m.transaction_id).collect::<Vec<_>>();
         let events_by_transaction_id = keys
             .iter()
-            .flat_map(|m| Some((m.transaction_id?, m.clone())))
+            .filter_map(|m| m.transaction_id.map(|id| (id, m.clone())))
             .collect::<HashMap<_, _>>();
 
         let transactions_by_transaction_ids: HashMap<uuid::Uuid, Self::Value> =
