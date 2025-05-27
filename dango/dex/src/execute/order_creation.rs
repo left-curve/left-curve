@@ -117,6 +117,7 @@ pub fn create_market_order(
         &MarketOrder {
             user,
             amount: order.amount,
+            max_slippage: order.max_slippage,
         },
     )?;
 
