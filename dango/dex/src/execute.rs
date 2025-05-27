@@ -5,7 +5,7 @@ use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MatchingOutcome,
         MergedOrders, Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core,
-        fill_orders, match_market_orders, match_orders,
+        fill_orders, match_limit_orders, match_market_orders,
     },
     anyhow::{anyhow, ensure},
     dango_account_factory::AccountQuerier,
@@ -528,7 +528,7 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-    } = match_orders(merged_bid_iter, merged_ask_iter)?;
+    } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
 
     // If no matching orders were found, then we're done with this pair.
     // Continue to the next pair.
