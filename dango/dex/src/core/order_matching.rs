@@ -100,48 +100,139 @@ pub fn match_market_bid_orders<M, L>(
     mut limit_asks: Peekable<L>,
 ) -> StdResult<Vec<FillingOutcome>>
 where
-    M: Iterator<Item = StdResult<MarketOrder>>,
+    M: Iterator<Item = StdResult<(OrderId, MarketOrder)>>,
     L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
     let mut market_bid = market_bids.next().transpose()?;
-    let mut filling_outcomes = Vec::new();
+    let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
+
+    let best_price = if let Some(Ok(((price, _), _))) = limit_asks.peek() {
+        price.clone()
+    } else {
+        // Return early if there are no limit orders
+        return Ok(Vec::new());
+    };
 
     loop {
-        let Some(Ok(((price, _), ref mut ask))) = limit_asks.peek_mut() else {
+        let Some(Ok(((price, ask_id), ref mut ask))) = limit_asks.peek_mut() else {
             break;
         };
 
-        let Some(mut bid) = market_bid else {
+        let Some((bid_id, mut bid)) = market_bid else {
             break;
         };
+
+        let max_price = Udec128::ONE
+            .checked_add(bid.max_slippage)?
+            .checked_mul(best_price)?;
+
+        // Populate the filling outcomes map with the initial values
+        filling_outcomes.entry(bid_id).or_insert(FillingOutcome {
+            order_direction: Direction::Bid,
+            order_price: *price,
+            order_id: bid_id,
+            order: Order::Market(bid.clone()),
+            filled: Uint128::ZERO,
+            cleared: false,
+            refund_base: Uint128::ZERO,
+            refund_quote: Uint128::ZERO,
+            fee_base: Uint128::ZERO,
+            fee_quote: Uint128::ZERO,
+        });
+        filling_outcomes.entry(*ask_id).or_insert(FillingOutcome {
+            order_direction: Direction::Ask,
+            order_price: *price,
+            order_id: *ask_id,
+            order: Order::Limit(ask.clone()),
+            filled: Uint128::ZERO,
+            cleared: false,
+            refund_base: Uint128::ZERO,
+            refund_quote: Uint128::ZERO,
+            fee_base: Uint128::ZERO,
+            fee_quote: Uint128::ZERO,
+        });
+
+        let bid_amount_in_quote = if *price <= max_price {
+            bid.amount
+        } else {
+            let FillingOutcome {
+                order_price: current_avg_price,
+                filled,
+                ..
+            } = filling_outcomes.get(&bid_id).unwrap();
+
+            let price_ratio = current_avg_price
+                .checked_sub(max_price)?
+                .checked_div(max_price.checked_sub(*price)?)?;
+
+            filled.checked_mul_dec_floor(price_ratio)?
+        };
+
+        // Convert the bid amount in quote to base asset amount using the limit order price
+        let bid_amount_in_base = bid_amount_in_quote.checked_div_dec_floor(*price)?;
 
         // For a BUY market order the amount is in terms of the quote asset. So we must convert it to
         // base asset amount using the limit order price.
-        let bid_amount_in_base = bid.amount.checked_div_dec_floor(*price)?;
-        match bid_amount_in_base.cmp(&ask.remaining) {
+        let (filled_amount, price, ask_id, bid_id) = match bid_amount_in_base.cmp(&ask.remaining) {
             Ordering::Less => {
                 // The market order is smaller than the limit order, so we can directly match it
                 // take the next market order and decrement the remaining amount of the limit order
                 market_bid = market_bids.next().transpose()?;
                 ask.remaining.checked_sub_assign(bid_amount_in_base)?;
+                (bid_amount_in_base, price.clone(), ask_id.clone(), bid_id)
             },
             Ordering::Equal => {
                 // The market order is equal to the limit order, so we can directly match it
                 // take the next market order and the next limit order
                 market_bid = market_bids.next().transpose()?;
+
+                // Clone values so we can next the limit order iterator
+                let return_tuple = (bid_amount_in_base, price.clone(), ask_id.clone(), bid_id);
+
+                // Pop the limit order iterator
                 limit_asks.next();
+
+                return_tuple
             },
             Ordering::Greater => {
                 // The market order is greater than the limit order, so we can directly match it
                 // take the next limit order and decrement the market order amount
                 bid.amount
                     .checked_sub_assign(ask.remaining.checked_mul_dec_ceil(*price)?)?;
+
+                // Clone values so we can next the limit order iterator
+                let return_tuple = (ask.amount.clone(), price.clone(), ask_id.clone(), bid_id);
+
+                // Pop the limit order iterator
                 limit_asks.next();
+
+                return_tuple
             },
-        }
+        };
+
+        let bid_filling_outcome = filling_outcomes.get_mut(&bid_id).unwrap();
+        bid_filling_outcome
+            .filled
+            .checked_add_assign(filled_amount)?;
+        // TODO handle fees
+
+        let ask_filling_outcome = filling_outcomes.get_mut(&ask_id).unwrap();
+        ask_filling_outcome
+            .filled
+            .checked_add_assign(filled_amount)?;
+
+        // Update average price of the market order
+        ask_filling_outcome.order_price = Udec128::checked_from_ratio(
+            ask_filling_outcome
+                .filled
+                .checked_mul_dec(ask_filling_outcome.order_price)?
+                .checked_add(filled_amount.checked_mul_dec(price)?)?,
+            ask_filling_outcome.filled.checked_add(filled_amount)?,
+        )?;
+        // TODO handle fees
     }
 
-    Ok(filling_outcomes)
+    Ok(filling_outcomes.into_values().collect())
 }
 
 pub fn match_market_ask_orders<M, L>(
