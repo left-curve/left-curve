@@ -65,6 +65,15 @@ pub enum Order {
     Limit(LimitOrder),
 }
 
+impl Order {
+    pub fn user(&self) -> Addr {
+        match self {
+            Order::Market(order) => order.user,
+            Order::Limit(order) => order.user,
+        }
+    }
+}
+
 #[grug::derive(Borsh, Serde)]
 #[derive(Copy)]
 pub struct MarketOrder {

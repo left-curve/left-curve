@@ -4,8 +4,8 @@ mod order_creation;
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MatchingOutcome,
-        MergedOrders, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core,
-        fill_orders, match_orders,
+        MergedOrders, Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core,
+        fill_orders, match_market_orders, match_orders,
     },
     anyhow::{anyhow, ensure},
     dango_account_factory::AccountQuerier,
@@ -485,18 +485,20 @@ fn clear_orders_of_pair(
     };
 
     // Merge the orders from users and from the passive pool.
-    let merged_bid_iter = MergedOrders::new(
+    let mut merged_bid_iter = MergedOrders::new(
         bid_iter,
         passive_bid_iter,
         IterationOrder::Descending,
         dex_addr,
-    );
-    let merged_ask_iter = MergedOrders::new(
+    )
+    .peekable();
+    let mut merged_ask_iter = MergedOrders::new(
         ask_iter,
         passive_ask_iter,
         IterationOrder::Ascending,
         dex_addr,
-    );
+    )
+    .peekable();
 
     // Match bid market orders against resting ask limit orders and vice versa.
     // We match market orders in a first in, first out manner based on the order
@@ -504,17 +506,21 @@ fn clear_orders_of_pair(
     let mut market_bids = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
+        .range(storage, None, None, IterationOrder::Ascending);
 
     let mut market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
-    for (_, ask_order) in market_asks {
-        // TODO: match the market order against the resting limit orders
-    }
+        .range(storage, None, None, IterationOrder::Ascending);
+
+    let market_order_filling_outcomes =
+        match_market_orders(&mut market_bids, &mut merged_ask_iter, Direction::Bid)?
+            .into_iter()
+            .chain(match_market_orders(
+                &mut market_asks,
+                &mut merged_bid_iter,
+                Direction::Ask,
+            )?);
 
     // Run the order matching algorithm.
     let MatchingOutcome {
@@ -550,6 +556,13 @@ fn clear_orders_of_pair(
     let mut inflows = Coins::new();
     let mut outflows = Coins::new();
 
+    // Drop market bids and asks so we can access the storage.
+    drop(market_bids);
+    drop(market_asks);
+
+    // Clear the market orders from the storage.
+    MARKET_ORDERS.clear(storage, None, None);
+
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
@@ -570,19 +583,22 @@ fn clear_orders_of_pair(
         current_block_height,
         maker_fee_rate,
         taker_fee_rate,
-    )? {
+    )?
+    .into_iter()
+    .chain(market_order_filling_outcomes)
+    {
         update_trading_volumes(
             storage,
             oracle_querier,
             account_querier,
             &base_denom,
             filled,
-            order.user,
+            order.user(),
             volumes,
             volumes_by_username,
         )?;
 
-        if order.user == dex_addr {
+        if order.user() == dex_addr {
             // The order only exists in the storage if it's not owned by the dex, since
             // the passive orders are "virtual". If it is virtual, we need to update the
             // reserve.
@@ -621,7 +637,7 @@ fn clear_orders_of_pair(
             ])?;
 
             refunds
-                .entry(order.user)
+                .entry(order.user())
                 .or_default()
                 .insert_many(refund.clone())?;
 
@@ -629,7 +645,7 @@ fn clear_orders_of_pair(
             if fee_base.is_non_zero() {
                 fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
                 fee_payments
-                    .entry(order.user)
+                    .entry(order.user())
                     .or_default()
                     .insert(Coin::new(base_denom.clone(), fee_base)?)?;
             }
@@ -637,7 +653,7 @@ fn clear_orders_of_pair(
             if fee_quote.is_non_zero() {
                 fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
                 fee_payments
-                    .entry(order.user)
+                    .entry(order.user())
                     .or_default()
                     .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
             }
@@ -659,7 +675,7 @@ fn clear_orders_of_pair(
 
             // Emit event for filled user orders to be used by the frontend
             events.push(OrderFilled {
-                user: order.user,
+                user: order.user(),
                 order_id,
                 clearing_price,
                 filled,
@@ -671,28 +687,34 @@ fn clear_orders_of_pair(
                 direction: order_direction,
             })?;
 
-            if cleared {
-                // Remove the order from the storage if it was fully filled
-                LIMIT_ORDERS.remove(
-                    storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                )?;
-            } else {
-                LIMIT_ORDERS.save(
-                    storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                    &order,
-                )?;
+            match order {
+                Order::Limit(limit_order) => {
+                    // TODO: update the limit order
+                    if cleared {
+                        // Remove the order from the storage if it was fully filled
+                        LIMIT_ORDERS.remove(
+                            storage,
+                            (
+                                (base_denom.clone(), quote_denom.clone()),
+                                order_direction,
+                                order_price,
+                                order_id,
+                            ),
+                        )?;
+                    } else {
+                        LIMIT_ORDERS.save(
+                            storage,
+                            (
+                                (base_denom.clone(), quote_denom.clone()),
+                                order_direction,
+                                order_price,
+                                order_id,
+                            ),
+                            &limit_order,
+                        )?;
+                    }
+                },
+                Order::Market(_) => {},
             }
         }
     }
