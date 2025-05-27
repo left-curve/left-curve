@@ -10,6 +10,8 @@ import { TextCopy } from "./TextCopy";
 import { IconLink } from "./icons/IconLink";
 
 import type { Address, IndexedMessage } from "@left-curve/dango/types";
+import { format } from "date-fns";
+
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
@@ -54,6 +56,7 @@ type CellMarketPriceProps = {
   formatOptions: FormatNumberOptions;
   denom: string;
 };
+
 const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatOptions }) => {
   const { prices = {} } = usePrices();
   const price = prices[denom] || {};
