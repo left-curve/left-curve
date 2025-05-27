@@ -1,8 +1,10 @@
 use {
     crate::gateway::bridge::BridgeMsg,
     grug::{Addr, Denom, Hash256, HexBinary, NonEmpty, Order, Uint128},
+    serde::{Deserialize, Serialize, Serializer},
     std::{
         collections::{BTreeMap, BTreeSet},
+        str::FromStr,
         sync::LazyLock,
     },
 };
@@ -53,9 +55,47 @@ pub struct Config {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Transaction {
+    #[serde(
+        serialize_with = "serialize_inputs",
+        deserialize_with = "deserialize_inputs"
+    )]
     pub inputs: BTreeMap<(Hash256, Vout), Uint128>,
     pub outputs: BTreeMap<BitcoinAddress, Uint128>,
     pub fee: Uint128,
+}
+
+fn serialize_inputs<S>(
+    inputs: &BTreeMap<(Hash256, Vout), Uint128>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let converted: BTreeMap<String, &Uint128> = inputs
+        .iter()
+        .map(|((hash, vout), amount)| (format!("{}/{}", hash, vout), amount))
+        .collect();
+    converted.serialize(serializer)
+}
+
+fn deserialize_inputs<'de, D>(
+    deserializer: D,
+) -> Result<BTreeMap<(Hash256, Vout), Uint128>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let map: BTreeMap<String, Uint128> = BTreeMap::deserialize(deserializer)?;
+    map.into_iter()
+        .map(|(key, amount)| {
+            let parts: Vec<&str> = key.split('/').collect();
+            if parts.len() != 2 {
+                return Err(serde::de::Error::custom("invalid input key format"));
+            }
+            let hash = Hash256::from_str(parts[0]).map_err(serde::de::Error::custom)?;
+            let vout = parts[1].parse::<Vout>().map_err(serde::de::Error::custom)?;
+            Ok(((hash, vout), amount))
+        })
+        .collect()
 }
 
 #[grug::derive(Serde)]

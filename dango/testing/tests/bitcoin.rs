@@ -1,9 +1,10 @@
 use {
     corepc_client::bitcoin::Network,
-    dango_testing::setup_test_naive,
+    dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         bitcoin::{
-            Config, ExecuteMsg, InboundConfirmed, InstantiateMsg, QueryOutboundQueueRequest,
+            Config, ExecuteMsg, InboundConfirmed, InstantiateMsg, QueryConfigRequest,
+            QueryOutboundQueueRequest, QueryOutboundTransactionRequest, QueryUtxosRequest,
         },
         constants::btc,
         gateway::{
@@ -12,11 +13,55 @@ use {
         },
     },
     grug::{
-        CheckedContractEvent, Coins, Hash256, HashExt, JsonDeExt, Message, NonEmpty, Order,
-        QuerierExt, ResultExt, SearchEvent, Uint128, btree_map, btree_set, coins,
+        Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, JsonDeExt, Message,
+        NonEmpty, Order, QuerierExt, ResultExt, SearchEvent, Uint128, btree_map, btree_set, coins,
     },
+    grug_app::NaiveProposalPreparer,
     std::str::FromStr,
 };
+
+// Create and confirm a deposit to bitcoin bridge contract.
+fn deposit(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    bitcoin_contract: Addr,
+    accounts: &mut TestAccounts,
+    amount: Uint128,
+    recipient: Option<Addr>,
+    index: u64,
+) {
+    let mut bytes = [0u8; 32];
+    bytes[24..].copy_from_slice(&index.to_le_bytes());
+
+    let msg = ExecuteMsg::ObserveInbound {
+        transaction_hash: Hash256::from_inner(bytes),
+        vout: 1,
+        amount,
+        recipient,
+    };
+
+    let msg = Message::execute(bitcoin_contract, &msg, Coins::new()).unwrap();
+
+    // Needs 2/3 guardians to confirm the deposit.
+    suite
+        .send_message(&mut accounts.val1, msg.clone())
+        .should_succeed();
+
+    suite
+        .send_message(&mut accounts.val2, msg.clone())
+        .should_succeed();
+}
+
+// Advance 10 minutes in the test suite, which is enough for the cron job to execute.
+fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) {
+    suite.block_time = Duration::from_minutes(10);
+    let b = suite.make_empty_block();
+    for cron_outcom in b.block_outcome.cron_outcomes {
+        if let Some(error) = cron_outcom.cron_event.maybe_error() {
+            panic!("cron job failed: {error}");
+        }
+    }
+    suite.block_time = Duration::ZERO;
+}
 
 #[test]
 fn instantiate() {
@@ -224,32 +269,17 @@ fn transfer_remote() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
     let btc_recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0".to_string();
+    let user1_address = accounts.user1.address.inner().clone();
 
     // Deposit 100k sats do user1
-    {
-        let deposit_amount = Uint128::new(100_000);
-
-        let msg = ExecuteMsg::ObserveInbound {
-            transaction_hash: Hash256::from_str(
-                "C42F8B7FEFBDDE209F16A3084D9A5B44913030322F3AF27459A980674A7B9356",
-            )
-            .unwrap(),
-            vout: 1,
-            amount: deposit_amount,
-            recipient: Some(accounts.user1.address.inner().clone()),
-        };
-
-        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
-
-        // Needs 2/3 guardians to confirm the deposit.
-        suite
-            .send_message(&mut accounts.val1, msg.clone())
-            .should_succeed();
-
-        suite
-            .send_message(&mut accounts.val2, msg.clone())
-            .should_succeed();
-    }
+    deposit(
+        &mut suite,
+        contracts.bitcoin,
+        &mut accounts,
+        Uint128::new(100_000),
+        Some(user1_address),
+        0,
+    );
 
     // Interact directly to the bride (only gateway can).
     {
@@ -303,7 +333,7 @@ fn transfer_remote() {
         .unwrap()
         .unwrap();
 
-    // Create a real withdrawal.
+    // Create a correct withdrawal.
     let withdraw_amount1 = Uint128::new(10_000);
     {
         let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
@@ -394,6 +424,124 @@ fn transfer_remote() {
                 recipient2.clone() => withdraw_amount3 - withdraw_fee
             ));
     }
+}
+
+#[test]
+fn cron_execute() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    suite.block_time = Duration::ZERO;
+
+    let vault = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .unwrap()
+        .vault;
+
+    let user1_address = accounts.user1.address.inner().clone();
+
+    let withdraw_fee = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
+            denom: btc::DENOM.clone(),
+            remote: gateway::Remote::Bitcoin,
+        })
+        .unwrap()
+        .unwrap();
+
+    // Deposit 100k sats do user1
+    deposit(
+        &mut suite,
+        contracts.bitcoin,
+        &mut accounts,
+        Uint128::new(100_000),
+        Some(user1_address),
+        0,
+    );
+
+    // Make 2 withdrawals.
+    let withdraw_amount1 = Uint128::new(10_000);
+    let net_withdraw1 = withdraw_amount1 - withdraw_fee;
+    let recipient1 = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0".to_string();
+    let withdraw_amount2 = Uint128::new(20_000);
+    let net_withdraw2 = withdraw_amount2 - withdraw_fee;
+    let recipient2 = "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9".to_string();
+
+    {
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: recipient1.clone(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => withdraw_amount1 },
+            )
+            .should_succeed();
+
+        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+            recipient: recipient2.clone(),
+        });
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &msg,
+                coins! { btc::DENOM.clone() => withdraw_amount2 },
+            )
+            .should_succeed();
+    }
+
+    // Ensure the data is stored in the contract.
+    suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundQueueRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map!(
+            recipient1.clone() => net_withdraw1,
+            recipient2.clone() => net_withdraw2
+        ));
+
+    // Wait for the cron job to execute.
+    advance_ten_minutes(&mut suite);
+
+    // Ensure the outbound queue is empty.
+    suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundQueueRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map!());
+
+    // Ensure there is a withdrawal.
+    let tx = suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 0 })
+        .should_succeed();
+
+    assert_eq!(
+        tx.inputs,
+        btree_map!( (Hash256::from_inner([0u8; 32]), 1) => Uint128::new(100_000) )
+    );
+
+    assert_eq!(
+        tx.outputs,
+        btree_map!(
+            recipient1.clone() => net_withdraw1,
+            recipient2.clone() => net_withdraw2,
+            vault => Uint128::new(100_000) - net_withdraw1 - net_withdraw2 -tx.fee
+        )
+    );
+
+    // Ensure the UTXO is no more in the available set.
+    suite
+        .query_wasm_smart(contracts.bitcoin, QueryUtxosRequest {
+            start_after: None,
+            limit: None,
+            order: Order::Ascending,
+        })
+        .should_succeed_and_equal(vec![]);
 }
 
 // // Try to withdraw with wrong remote.
