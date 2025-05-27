@@ -83,7 +83,6 @@ pub struct MarketOrder {
 pub struct MarketOrderIndex<'a> {
     pub order_id: UniqueIndex<'a, MarketOrderKey, OrderId, MarketOrder>,
     pub user: MultiIndex<'a, MarketOrderKey, Addr, MarketOrder>,
-    pub pair: MultiIndex<'a, MarketOrderKey, (Denom, Denom), MarketOrder>,
 }
 
 #[grug::derive(Borsh, Serde)]
