@@ -155,6 +155,13 @@ where
     let mut market_ask = market_asks.next().transpose()?;
     let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
 
+    let best_price = if let Some(Ok(((price, _), _))) = limit_bids.peek() {
+        price.clone()
+    } else {
+        // Return early if there are no limit orders
+        return Ok(Vec::new());
+    };
+
     loop {
         let Some(Ok(((price, bid_id), ref mut bid))) = limit_bids.peek_mut() else {
             break;
@@ -164,62 +171,111 @@ where
             break;
         };
 
+        let min_price = Udec128::ONE
+            .checked_sub(ask.max_slippage)?
+            .checked_mul(best_price)?;
+
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
-        match ask.amount.cmp(&bid.remaining) {
+
+        // Populate the filling outcomes map with the initial values
+        filling_outcomes.entry(*bid_id).or_insert(FillingOutcome {
+            order_direction: Direction::Bid,
+            order_price: *price,
+            order_id: *bid_id,
+            order: Order::Limit(bid.clone()),
+            filled: Uint128::ZERO,
+            cleared: false,
+            refund_base: Uint128::ZERO,
+            refund_quote: Uint128::ZERO,
+            fee_base: Uint128::ZERO,
+            fee_quote: Uint128::ZERO,
+        });
+        filling_outcomes.entry(ask_id).or_insert(FillingOutcome {
+            order_direction: Direction::Ask,
+            order_price: *price,
+            order_id: ask_id,
+            order: Order::Market(ask.clone()),
+            filled: Uint128::ZERO,
+            cleared: false,
+            refund_base: Uint128::ZERO,
+            refund_quote: Uint128::ZERO,
+            fee_base: Uint128::ZERO,
+            fee_quote: Uint128::ZERO,
+        });
+
+        let ask_amount = if *price >= min_price {
+            ask.amount
+        } else {
+            let FillingOutcome {
+                order_price: current_avg_price,
+                filled,
+                ..
+            } = filling_outcomes.get(&ask_id).unwrap();
+
+            let price_ratio = current_avg_price
+                .checked_sub(min_price)?
+                .checked_div(min_price.checked_sub(*price)?)?;
+
+            filled.checked_mul_dec_floor(price_ratio)?
+        };
+
+        let (filled_amount, price, ask_id, bid_id) = match ask_amount.cmp(&bid.remaining) {
             Ordering::Less => {
-                let mut bid_outcome = filling_outcomes.entry(*bid_id).or_insert(FillingOutcome {
-                    order_direction: Direction::Bid,
-                    order_price: *price,
-                    order_id: *bid_id,
-                    order: Order::Limit(bid.clone()),
-                    filled: Uint128::ZERO,
-                    cleared: false,
-                    refund_base: Uint128::ZERO,
-                    refund_quote: Uint128::ZERO,
-                    fee_base: Uint128::ZERO,
-                    fee_quote: Uint128::ZERO,
-                });
-                bid_outcome.filled.checked_add_assign(ask.amount)?;
-                bid_outcome.refund_base.checked_add_assign(ask.amount)?;
-                // TODO: calculate fee
-
-                let ask_outcome = filling_outcomes.entry(ask_id).or_insert(FillingOutcome {
-                    order_direction: Direction::Ask,
-                    order_price: *price,
-                    order_id: ask_id,
-                    order: Order::Market(ask),
-                    filled: Uint128::ZERO,
-                    cleared: false,
-                    refund_base: Uint128::ZERO,
-                    refund_quote: Uint128::ZERO,
-                    fee_base: Uint128::ZERO,
-                    fee_quote: Uint128::ZERO,
-                });
-                ask_outcome.filled.checked_add_assign(ask.amount)?;
-                ask_outcome
-                    .refund_quote
-                    .checked_add_assign(ask.amount.checked_mul_dec_floor(*price)?)?;
-                // TODO: calculate fee
-
                 // The market ask order is smaller than the limit order, so we can directly match it
                 // take the next market order and decrement the remaining amount of the limit order
                 market_ask = market_asks.next().transpose()?;
-                bid.remaining.checked_sub_assign(ask.amount)?;
+                bid.remaining.checked_sub_assign(ask_amount)?;
+                (ask_amount, price.clone(), ask_id, bid_id.clone())
             },
             Ordering::Equal => {
                 // The market order is equal to the limit order, so we can directly match it
                 // take the next market order and the next limit order
                 market_ask = market_asks.next().transpose()?;
+
+                // Clone values so we can next the limit order iterator
+                let return_tuple = (ask_amount, price.clone(), ask_id, bid_id.clone());
+
+                // Pop the limit order iterator
                 limit_bids.next();
+
+                return_tuple
             },
             Ordering::Greater => {
                 // The market order is greater than the limit order, so we can directly match it
                 // take the next limit order and decrement the market order amount
                 ask.amount.checked_sub_assign(bid.remaining)?;
+
+                // Clone values so we can next the limit order iterator
+                let return_tuple = (bid.amount.clone(), price.clone(), ask_id, bid_id.clone());
+
+                // Pop the limits iterator
                 limit_bids.next();
+
+                return_tuple
             },
-        }
+        };
+
+        let bid_filling_outcome = filling_outcomes.get_mut(&bid_id).unwrap();
+        bid_filling_outcome
+            .filled
+            .checked_add_assign(filled_amount)?;
+        // TODO handle fees
+
+        let ask_filling_outcome = filling_outcomes.get_mut(&ask_id).unwrap();
+        ask_filling_outcome
+            .filled
+            .checked_add_assign(filled_amount)?;
+
+        // Update average price of the market order
+        ask_filling_outcome.order_price = Udec128::checked_from_ratio(
+            ask_filling_outcome
+                .filled
+                .checked_mul_dec(ask_filling_outcome.order_price)?
+                .checked_add(filled_amount.checked_mul_dec(price)?)?,
+            ask_filling_outcome.filled.checked_add(filled_amount)?,
+        )?;
+        // TODO handle fees
     }
 
     Ok(filling_outcomes.into_values().collect())

@@ -72,6 +72,8 @@ pub struct MarketOrder {
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
     /// base asset.
     pub amount: Uint128,
+    /// Max slippage percentage.
+    pub max_slippage: Udec128,
 }
 
 #[grug::index_list(MarketOrderKey, MarketOrder)]
