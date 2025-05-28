@@ -1,13 +1,18 @@
-import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
+import {
+  useAccount,
+  useAppConfig,
+  useConfig,
+  usePublicClient,
+  useStorage,
+} from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { camelToTitleCase } from "@left-curve/dango/utils";
 import { twMerge } from "#utils/twMerge.js";
 
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconUserCircle } from "./icons/IconUserCircle";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address, AllLeafKeys, AppConfig } from "@left-curve/dango/types";
 import type React from "react";
 import { IconLink } from "./icons/IconLink";
 
@@ -16,6 +21,24 @@ type AddressVisualizerProps = {
   className?: string;
   withIcon?: boolean;
   onClick?: (url: string) => void;
+};
+
+type AddressInfo = {
+  name: string;
+  type: string;
+};
+
+const DANGO_CONTRACT_NAMES: Record<AllLeafKeys<AppConfig["addresses"]>, string> = {
+  accountFactory: "Account Factory",
+  dex: "DEX",
+  gateway: "Gateway",
+  ism: "ISM",
+  lending: "Lending",
+  mailbox: "Mailbox",
+  oracle: "Oracle",
+  taxman: "Taxman",
+  va: "VA",
+  warp: "Warp",
 };
 
 export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
@@ -29,18 +52,71 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   const { accounts } = useAccount();
   const client = usePublicClient();
 
+  const [addresses, setAddresses] = useStorage<
+    Record<string, { contract: AddressInfo } | { account: AddressInfo }>
+  >("app.known_addresses", {
+    initialValue: {},
+  });
+
   const blockExplorer = chain.blockExplorer;
 
   const isOnClickAvailable = !!onClick;
 
-  const { data: account } = useQuery({
-    queryKey: ["address_visualizer", address],
-    queryFn: () => client.getAccountInfo({ address }),
+  const { data } = useQuery({
+    queryKey: ["address_visualizer", config, address],
+    queryFn: async () => {
+      if (addresses[address]) return addresses[address];
+
+      const contractName = config?.addresses[address as keyof typeof config.addresses] as string;
+      if (contractName) {
+        return {
+          contract: {
+            name: DANGO_CONTRACT_NAMES[contractName as keyof typeof DANGO_CONTRACT_NAMES],
+            type: "dango",
+          },
+        };
+      }
+
+      const userAccount = accounts?.find((account) => account.address === address);
+
+      if (userAccount) {
+        return {
+          account: {
+            name: `${userAccount.username} #${userAccount.index}`,
+            type: "own",
+          },
+        };
+      }
+
+      const account = await client.getAccountInfo({ address });
+
+      if (account) {
+        const accountName = `${account.username} #${account.index}`;
+        const type = "other";
+        const info = { account: { name: accountName, type } };
+
+        setAddresses((prev) => ({ ...prev, [address]: info }));
+        return info;
+      }
+
+      const contract = await client.getContractInfo({ address });
+
+      if (contract?.label) {
+        const contractName = contract.label;
+        const type = "other";
+        const info = { contract: { name: contractName, type } };
+
+        setAddresses((prev) => ({ ...prev, [address]: info }));
+        return { contract: contractName };
+      }
+
+      return {};
+    },
   });
 
-  const dangoContract = config?.addresses[address as keyof typeof config.addresses] as string;
+  const { contract, account } = (data || {}) as { contract?: AddressInfo; account?: AddressInfo };
 
-  if (dangoContract)
+  if (contract)
     return (
       <p
         className={twMerge(
@@ -51,16 +127,12 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
         onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
       >
         {withIcon ? <img src="/DGX.svg" alt="dango logo" className="h-4 w-4" /> : null}
-        <span>{camelToTitleCase(dangoContract).replace("Dex", "DEX")}</span>
+        <span>{contract.name}</span>
         {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
     );
 
-  const userAccount = accounts?.find((account) => account.address === address);
-
-  const anyAccount = userAccount || account;
-
-  if (anyAccount)
+  if (account)
     return (
       <p
         className={twMerge(
@@ -68,14 +140,12 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
           { "cursor-pointer": isOnClickAvailable },
           className,
         )}
-        onClick={() =>
-          onClick?.(blockExplorer.accountPage.replace("${address}", anyAccount.address))
-        }
+        onClick={() => onClick?.(blockExplorer.accountPage.replace("${address}", address))}
       >
         {withIcon ? (
           <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
         ) : null}
-        <span className="diatype-m-bold">{`${anyAccount.username} #${anyAccount.index}`}</span>
+        <span className="diatype-m-bold">{account.name}</span>
         {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
       </p>
     );

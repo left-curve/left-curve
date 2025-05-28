@@ -111,6 +111,7 @@ export type {
   Success,
   Result,
   Option,
+  AllLeafKeys,
 } from "./utils.js";
 
 export type {
