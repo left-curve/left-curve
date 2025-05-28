@@ -4,8 +4,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import {
-  AddressVisualizer,
-  IconLink,
+  Cell,
   Skeleton,
   Table,
   type TableColumn,
@@ -21,6 +20,7 @@ import { m } from "~/paraglide/messages";
 import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { HeaderExplorer } from "./HeaderExplorer";
@@ -313,44 +313,52 @@ const BlockTable: React.FC = () => {
 
   const columns: TableColumn<IndexedTransaction> = [
     {
-      header: "Type",
-      cell: ({ row }) => <p>{row.original.transactionType}</p>,
-    },
-    {
       header: "Hash",
       cell: ({ row }) => (
         <div
-          className="flex items-center gap-1 cursor-pointer diatype-mono-sm-medium"
+          className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-blue-500 hover:text-blue-700"
           onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
         >
-          <TruncateText text={row.original.hash} />
-          <IconLink className="w-4 h-4" />
+          <div className="max-w-36">
+            <p className="truncate">{row.original.hash}</p>
+          </div>
+          <TextCopy
+            copyText={row.original.hash}
+            className="h-4 w-4 text-gray-300 hover:text-black"
+          />
         </div>
       ),
     },
     {
-      header: "Account",
+      header: "Block",
       cell: ({ row }) => (
-        <AddressVisualizer
-          address={row.original.sender}
-          withIcon
-          onClick={(url) => navigate({ to: url })}
+        <Cell.BlockHeight
+          blockHeight={row.original.blockHeight}
+          navigate={() => navigate({ to: `/block/${row.original.blockHeight}` })}
         />
+      ),
+    },
+    {
+      header: "Age",
+      cell: ({ row }) => <Cell.Age date={row.original.createdAt} addSuffix />,
+    },
+    {
+      header: "Sender",
+      cell: ({ row }) => (
+        <Cell.Sender sender={row.original.sender} navigate={(url) => navigate({ to: url })} />
       ),
     },
     {
       header: "Result",
       cell: ({ row }) => {
         const { hasSucceeded } = row.original;
+
         return (
-          <p
-            className={twMerge(
-              hasSucceeded ? "text-status-success" : "text-status-fail",
-              "text-end",
-            )}
-          >
-            {hasSucceeded ? "Success" : "Fail"}
-          </p>
+          <Cell.TxResult
+            className="justify-end"
+            isSuccess={hasSucceeded}
+            text={m["explorer.txs.result"]({ result: String(hasSucceeded) })}
+          />
         );
       },
     },

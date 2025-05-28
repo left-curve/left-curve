@@ -168,6 +168,16 @@
         "title": "Transaction not found",
         "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
+      "result": [
+        {
+          "declarations": ["input result"],
+          "selectors": ["result"],
+          "match": {
+            "result=true": "Success",
+            "result=false": "Failed"
+          }
+        }
+      ],
       "events": "Events",
       "txHash": "Tx hash",
       "sender": "Sender",
