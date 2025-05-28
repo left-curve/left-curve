@@ -113,14 +113,16 @@ type CellTxResultProps = {
   isSuccess: boolean;
   text: string;
   className?: string;
+  total: number;
 };
 
-const TxResult: React.FC<CellTxResultProps> = ({ className, isSuccess, text }) => {
+const TxResult: React.FC<CellTxResultProps> = ({ className, isSuccess, text, total }) => {
   const color = isSuccess ? "green" : "red";
 
   return (
-    <div className={twMerge("flex h-full items-center", className)}>
+    <div className={twMerge("flex h-full items-center gap-1", className)}>
       <Badge text={text} color={color} />
+      {total > 1 ? <Badge text={`+${total - 1}`} color={color} /> : null}
     </div>
   );
 };

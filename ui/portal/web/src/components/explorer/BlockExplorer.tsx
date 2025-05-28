@@ -347,13 +347,14 @@ const BlockTable: React.FC = () => {
     {
       header: "Result",
       cell: ({ row }) => {
-        const { hasSucceeded } = row.original;
+        const { hasSucceeded, messages } = row.original;
 
         return (
           <Cell.TxResult
             className="justify-end"
             isSuccess={hasSucceeded}
             text={m["explorer.txs.result"]({ result: String(hasSucceeded) })}
+            total={messages.length}
           />
         );
       },
