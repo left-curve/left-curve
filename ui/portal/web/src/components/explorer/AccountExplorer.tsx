@@ -1,12 +1,13 @@
 import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
 import { usePrices, usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import { Badge, TextCopy, TruncateText } from "@left-curve/applets-kit";
+import { Badge, TextCopy } from "@left-curve/applets-kit";
 import { AccountCard } from "../foundation/AccountCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
@@ -14,7 +15,6 @@ import { HeaderExplorer } from "./HeaderExplorer";
 import type { Account, Address, Coins, ContractInfo } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { useNavigate } from "@tanstack/react-router";
 
 const AccountExplorerContext = createContext<
   | (UseQueryResult<(Account & ContractInfo & { balances: Coins }) | null, Error> & {
