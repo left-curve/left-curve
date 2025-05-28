@@ -9,8 +9,8 @@ use {
     dango_types::{
         DangoQuerier,
         perps::{
-            ExecuteMsg, InstantiateMsg, PerpsMarketParams, PerpsMarketState, PerpsPosition,
-            PerpsVaultState,
+            ExecuteMsg, InstantiateMsg, PerpsMarketAccumulators, PerpsMarketParams,
+            PerpsMarketState, PerpsPosition, PerpsVaultState,
         },
     },
     grug::{
@@ -31,6 +31,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         denom: msg.perps_vault_denom,
         deposits: Uint128::ZERO,
         shares: Uint128::ZERO,
+        realised_cash_flow: Default::default(),
     })?;
 
     // Store the perps market params and initialize perps market states.
@@ -41,8 +42,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             long_oi: Uint128::ZERO,
             short_oi: Uint128::ZERO,
             last_updated: ctx.block.timestamp,
-            funding_rate: Dec128::ZERO,
-            funding_entry: Dec128::ZERO,
+            last_funding_rate: Dec128::ZERO,
+            last_funding_index: Dec128::ZERO,
+            accumulators: PerpsMarketAccumulators::new(),
         })?;
     }
 
@@ -89,6 +91,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
         denom: vault_state.denom,
         deposits: vault_state.deposits.checked_add(*deposited.amount)?,
         shares: vault_state.shares.checked_add(shares)?,
+        realised_cash_flow: vault_state.realised_cash_flow,
     })?;
 
     // Store the deposit
@@ -126,6 +129,7 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
         denom: vault_state.denom.clone(),
         deposits: vault_state.deposits.checked_sub(withdrawn_amount)?,
         shares: vault_state.shares.checked_sub(withdrawn_shares)?,
+        realised_cash_flow: vault_state.realised_cash_flow,
     })?;
 
     // Update the user's deposit
@@ -205,13 +209,15 @@ fn create_position(
 }
 
 fn modify_position(
-    ctx: &MutableCtx,
+    ctx: &mut MutableCtx,
     denom: Denom,
     amount: Int128,
     params: &PerpsMarketParams,
 ) -> anyhow::Result<Response> {
     let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
     let vault_state = PERPS_VAULT.load(ctx.storage)?;
+
+    let skew = market_state.skew()?;
 
     // Query the oracle for the price
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
@@ -223,16 +229,16 @@ fn modify_position(
     let current_pos = PERPS_POSITIONS
         .may_load(ctx.storage, (&ctx.sender, &denom))?
         .unwrap_or_else(|| PerpsPosition {
-            denom,
+            denom: denom.clone(),
             size: Int128::ZERO,
             entry_price: Udec128::ZERO,
             entry_execution_price: Udec128::ZERO,
-            entry_skew: Udec128::ZERO,
+            entry_skew: skew,
             realized_pnl: Int128::ZERO,
+            entry_funding_index: market_state.last_funding_index,
         });
 
     // Calculate fill price
-    let skew = market_state.skew()?;
     let skew_scale = params.skew_scale.checked_into_signed()?;
     let pd_before = Dec128::checked_from_ratio(skew, skew_scale)?;
     let pd_after = Dec128::checked_from_ratio(skew.checked_add(amount)?, skew_scale)?;
@@ -319,14 +325,14 @@ fn modify_position(
     let current_funding_velocity =
         proportional_skew.checked_mul(params.max_funding_velocity.checked_into_signed()?)?;
     let funding_rate = market_state
-        .funding_rate
+        .last_funding_rate
         .checked_add(current_funding_velocity)?
         .checked_mul(time_elapsed_days)?;
     let funding_rate = funding_rate.clamp(funding_rate, MAX_FUNDING_RATE);
 
-    // Update funding entry accumulator
+    // Update current funding index
     let average_funding_rate = market_state
-        .funding_rate
+        .last_funding_rate
         .checked_add(funding_rate)?
         .checked_div(Dec128::ONE + Dec128::ONE)?;
     let market_denom_price_in_vault_denom = price
@@ -335,7 +341,107 @@ fn modify_position(
     let unrecorded_funding = average_funding_rate
         .checked_mul(time_elapsed_days)?
         .checked_mul(market_denom_price_in_vault_denom.checked_into_signed()?)?;
-    let funding_entry = market_state.funding_entry.checked_sub(unrecorded_funding)?;
+    let funding_index = market_state
+        .last_funding_index
+        .checked_sub(unrecorded_funding)?;
+
+    // Create the new position
+    let new_size = current_pos.size.checked_add(amount)?;
+    let mut new_pos = PerpsPosition {
+        size: new_size,
+        entry_price: price.unit_price()?,
+        entry_execution_price: fill_price.checked_into_unsigned()?,
+        entry_skew: skew, // skew BEFORE trade
+        entry_funding_index: funding_index,
+        realized_pnl: current_pos.realized_pnl, // Will be updated later
+        denom: denom.clone(),
+    };
+
+    // Update the market accumulators
+    let mut accumulators = market_state.accumulators;
+    accumulators.decrease(&current_pos)?;
+    accumulators.increase(&new_pos)?;
+
+    // Update the market state
+    let (long_oi, short_oi) = if amount.is_positive() {
+        (
+            market_state.long_oi.checked_add(amount.unsigned_abs())?,
+            market_state.short_oi,
+        )
+    } else {
+        (
+            market_state.long_oi,
+            market_state.short_oi.checked_add(amount.unsigned_abs())?,
+        )
+    };
+    let new_market_state = PerpsMarketState {
+        long_oi,
+        short_oi,
+        last_updated: ctx.block.timestamp,
+        last_funding_rate: funding_rate,
+        last_funding_index: funding_index,
+        accumulators,
+        denom: denom.clone(),
+    };
+    PERPS_MARKETS.save(ctx.storage, &denom, &new_market_state)?;
+
+    // Update the cash flow
+    let mut realised_cash_flow = vault_state.realised_cash_flow;
+    if amount.unsigned_abs() > current_pos.size.unsigned_abs() {
+        // position notional ↑
+        realised_cash_flow
+            .opening_fee
+            .checked_add_assign(fee_in_vault_denom.checked_into_signed()?)?;
+    } else {
+        realised_cash_flow
+            .closing_fee
+            .checked_add_assign(fee_in_vault_denom.checked_into_signed()?)?;
+    }
+
+    let q_closed = if same_side(amount, current_pos.size) {
+        Int128::ZERO // pure increase or pure flip across zero
+    } else {
+        // Reduce or fully close in the opposite direction
+        // clamp so we don't overshoot
+        if amount.unsigned_abs() >= current_pos.size.unsigned_abs() {
+            current_pos.size
+        } else {
+            amount
+        }
+    };
+    if !q_closed.is_zero() {
+        let realised_price_pnl = q_closed.checked_mul_dec(
+            fill_price.checked_sub(current_pos.entry_execution_price.checked_into_signed()?)?,
+        )?;
+        let realised_funding_pnl =
+            q_closed.checked_mul_dec(funding_index - current_pos.entry_funding_index)?;
+        realised_cash_flow
+            .price_pnl
+            .checked_add_assign(realised_price_pnl)?;
+        realised_cash_flow
+            .accrued_funding
+            .checked_add_assign(realised_funding_pnl)?;
+
+        // realised ΔPnL for the trader
+        let trader_fee = -fee_usd.checked_into_signed()?.into_int();
+        let pnl_delta = realised_price_pnl
+            .checked_add(realised_funding_pnl)?
+            .checked_add(trader_fee)?;
+        new_pos.realized_pnl = new_pos.realized_pnl.checked_add(pnl_delta)?;
+    }
+
+    // Update the vault state
+    PERPS_VAULT.save(ctx.storage, &PerpsVaultState {
+        realised_cash_flow,
+        ..vault_state
+    })?;
+
+    // Store the new position
+    if new_size.is_zero() {
+        PERPS_POSITIONS.remove(ctx.storage, (&ctx.sender, &denom));
+    } else {
+        PERPS_POSITIONS.save(ctx.storage, (&ctx.sender, &denom), &new_pos)?;
+    }
 
     Ok(Response::new())
 }
