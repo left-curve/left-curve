@@ -666,27 +666,27 @@ mod tests {
         },
         vec![
             (Udec128::new_percent(99), Uint128::from(7070707)),
-            (Udec128::new_percent(98), Uint128::from(214285)),
-            (Udec128::new_percent(97), Uint128::from(63000)),
-            (Udec128::new_percent(96), Uint128::from(18900)),
-            (Udec128::new_percent(95), Uint128::from(5670)),
-            (Udec128::new_percent(94), Uint128::from(1701)),
-            (Udec128::new_percent(93), Uint128::from(510)),
-            (Udec128::new_percent(92), Uint128::from(153)),
-            (Udec128::new_percent(91), Uint128::from(46)),
-            (Udec128::new_percent(90), Uint128::from(14)),
+            (Udec128::new_percent(98), Uint128::from(2142857)),
+            (Udec128::new_percent(97), Uint128::from(649484)),
+            (Udec128::new_percent(96), Uint128::from(196875)),
+            (Udec128::new_percent(95), Uint128::from(59684)),
+            (Udec128::new_percent(94), Uint128::from(18095)),
+            (Udec128::new_percent(93), Uint128::from(5487)),
+            (Udec128::new_percent(92), Uint128::from(1663)),
+            (Udec128::new_percent(91), Uint128::from(504)),
+            (Udec128::new_percent(90), Uint128::from(152)),
         ],
         vec![
-            (Udec128::new_percent(101), Uint128::from(707070)),
-            (Udec128::new_percent(102), Uint128::from(214285)),
-            (Udec128::new_percent(103), Uint128::from(63000)),
-            (Udec128::new_percent(104), Uint128::from(18900)),
-            (Udec128::new_percent(105), Uint128::from(5670)),
-            (Udec128::new_percent(106), Uint128::from(1701)),
-            (Udec128::new_percent(107), Uint128::from(510)),
-            (Udec128::new_percent(108), Uint128::from(153)),
-            (Udec128::new_percent(109), Uint128::from(46)),
-            (Udec128::new_percent(110), Uint128::from(14)),
+            (Udec128::new_percent(101), Uint128::from(7000000)),
+            (Udec128::new_percent(102), Uint128::from(2100000)),
+            (Udec128::new_percent(103), Uint128::from(630000)),
+            (Udec128::new_percent(104), Uint128::from(189000)),
+            (Udec128::new_percent(105), Uint128::from(56700)),
+            (Udec128::new_percent(106), Uint128::from(17010)),
+            (Udec128::new_percent(107), Uint128::from(5103)),
+            (Udec128::new_percent(108), Uint128::from(1530)),
+            (Udec128::new_percent(109), Uint128::from(459)),
+            (Udec128::new_percent(110), Uint128::from(137)),
         ],
         1;
         "geometric pool balance 1:1 30% ratio"
@@ -717,19 +717,17 @@ mod tests {
         assert_eq!(asks.len(), 10);
 
         // Assert that the orders are correct.
-        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
-            println!("bid: {:?}", bid);
-            println!("expected_bid: {:?}", expected_bid);
-            assert_eq!(bid.0, expected_bid.0);
-            assert!(
-                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
-            );
-        }
-
         for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
             assert_eq!(ask.0, expected_ask.0);
             assert!(
                 ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
+            );
+        }
+
+        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert!(
+                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
             );
         }
     }
