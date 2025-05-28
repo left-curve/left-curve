@@ -46,6 +46,7 @@ fn deposit_works() {
             denom: usdc::DENOM.clone(),
             deposits: Uint128::from(123),
             shares: Uint128::from(123) * INITIAL_SHARES_PER_TOKEN,
+            realised_cash_flow: Default::default(),
         });
 
     // Ensure the user's deposit is updated
@@ -77,6 +78,7 @@ fn withdraw_works() {
             denom: usdc::DENOM.clone(),
             deposits: Uint128::from(123),
             shares: Uint128::from(123) * INITIAL_SHARES_PER_TOKEN,
+            realised_cash_flow: Default::default(),
         });
 
     // Ensure the user's deposit is updated
@@ -105,6 +107,7 @@ fn withdraw_works() {
             denom: usdc::DENOM.clone(),
             deposits: Uint128::from(23),
             shares: Uint128::from(23) * INITIAL_SHARES_PER_TOKEN,
+            realised_cash_flow: Default::default(),
         });
 
     // Ensure the user's deposit is updated
