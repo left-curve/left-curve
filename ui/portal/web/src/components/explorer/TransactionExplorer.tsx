@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge } from "@left-curve/applets-kit";
 
 import {
   AddressVisualizer,
@@ -93,13 +93,19 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.time"]()}
           </p>
-          <p className="break-all whitespace-normal">{createdAt}</p>
+          <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
-          <p>{blockHeight}</p>
+          <Button
+            className="m-0 p-0 pr-1"
+            variant="link"
+            onClick={() => navigate({ to: `/block/${blockHeight}` })}
+          >
+            {blockHeight}
+          </Button>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
