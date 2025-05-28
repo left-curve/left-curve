@@ -1,6 +1,6 @@
 use {
     corepc_client::bitcoin::Network,
-    dango_testing::{TestAccounts, TestSuite, setup_test_naive},
+    dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         bitcoin::{
             Config, ExecuteMsg, InboundConfirmed, InstantiateMsg, QueryConfigRequest,
@@ -48,6 +48,27 @@ fn deposit(
 
     suite
         .send_message(&mut accounts.val2, msg.clone())
+        .should_succeed();
+}
+
+fn withdraw(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    user: &mut TestAccount,
+    gateway_contract: Addr,
+    amount: Uint128,
+    recipient: &str,
+) {
+    let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
+        recipient: recipient.to_string(),
+    });
+
+    suite
+        .execute(
+            user,
+            gateway_contract,
+            &msg,
+            coins! { btc::DENOM.clone() => amount },
+        )
         .should_succeed();
 }
 
@@ -476,37 +497,26 @@ fn cron_execute() {
     let withdraw_amount1 = Uint128::new(10_000);
     let net_withdraw1 = withdraw_amount1 - withdraw_fee;
     let recipient1 = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0".to_string();
+
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        withdraw_amount1,
+        &recipient1,
+    );
+
     let withdraw_amount2 = Uint128::new(20_000);
     let net_withdraw2 = withdraw_amount2 - withdraw_fee;
     let recipient2 = "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9".to_string();
 
-    {
-        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
-            recipient: recipient1.clone(),
-        });
-
-        suite
-            .execute(
-                &mut accounts.user1,
-                contracts.gateway,
-                &msg,
-                coins! { btc::DENOM.clone() => withdraw_amount1 },
-            )
-            .should_succeed();
-
-        let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Bitcoin {
-            recipient: recipient2.clone(),
-        });
-
-        suite
-            .execute(
-                &mut accounts.user1,
-                contracts.gateway,
-                &msg,
-                coins! { btc::DENOM.clone() => withdraw_amount2 },
-            )
-            .should_succeed();
-    }
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        withdraw_amount2,
+        &recipient2,
+    );
 
     // Ensure the data is stored in the contract.
     suite
@@ -559,24 +569,60 @@ fn cron_execute() {
         .should_succeed_and_equal(vec![]);
 }
 
-// // Try to withdraw with wrong remote.
-//     {
-//         let msg = gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
-//             warp_remote: WarpRemote {
-//                 domain: ethereum::DOMAIN,
-//                 contract: ethereum::USDC_WARP,
-//             },
-//             recipient: addr32!("0000000000000000000000000000000000000000000000000000000000000000"),
-//         });
+#[test]
+fn authorize_outbound() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
-//         suite
-//             .execute(
-//                 &mut accounts.user1,
-//                 contracts.gateway,
-//                 &msg,
-//                 coins! { usdc::DENOM.clone() => 10_000_000 },
-//             )
-//             .should_fail_with_error(
-//                 "incorrect TransferRemoteRequest type! expected: Bitcoin, found",
-//             );
-//     }
+    suite.block_time = Duration::ZERO;
+
+    let user1_address = accounts.user1.address.inner().clone();
+
+    // Deposit 100k sats do user1
+    deposit(
+        &mut suite,
+        contracts.bitcoin,
+        &mut accounts,
+        Uint128::new(100_000),
+        Some(user1_address),
+        0,
+    );
+
+    // Create a withdrawal.
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        Uint128::new(10_000),
+        "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9",
+    );
+
+    advance_ten_minutes(&mut suite);
+
+    // Ensure that only validator can call `authorize_outbound`.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: vec![],
+        };
+
+        suite
+            .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("you don't have the right, O you don't have the right");
+    }
+
+    // Ensure there is 1 signature per input.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: vec![],
+        };
+
+        suite
+            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("transaction `0` has 1 inputs, but 0 signatures were provided");
+    }
+
+    // TODO:
+    // - check the signer does not sign 2 times
+    // - check the signatures are valid
+}

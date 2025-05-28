@@ -50,7 +50,7 @@ pub struct Config {
     /// consolidate the many small UTXOs into a few big ones. To achieve this,
     /// use `Order::Ascending`.
     pub outbound_strategy: Order,
-    /// Minimum amount of Sats that must be deposited to the vault.
+    /// Minimum amount of Sats.
     /// All deposits lower than this amount will be ignored.
     pub minimum_deposit: Uint128,
 }

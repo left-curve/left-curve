@@ -286,6 +286,8 @@ fn authorize_outbound(
         signatures.len()
     );
 
+    // TODO: validate the signatures.
+
     let cumulative_signatures =
         SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
             let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
