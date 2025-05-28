@@ -6,6 +6,7 @@ use {
     },
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+        event_transaction::EventTransactionDataLoader,
         transaction_events::TransactionEventsDataLoader,
         transaction_grug::FileTransactionDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
@@ -29,6 +30,13 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 
     let block_events_loader = DataLoader::new(
         BlockEventsDataLoader {
+            db: app_ctx.db.clone(),
+        },
+        tokio::spawn,
+    );
+
+    let event_transaction_loader = DataLoader::new(
+        EventTransactionDataLoader {
             db: app_ctx.db.clone(),
         },
         tokio::spawn,
@@ -69,5 +77,6 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     .data(transaction_messages_loader)
     .data(transaction_events_loader)
     .data(file_transaction_loader)
+    .data(event_transaction_loader)
     .finish()
 }

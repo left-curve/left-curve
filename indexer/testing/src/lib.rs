@@ -21,6 +21,8 @@ use {
     std::collections::HashMap,
 };
 
+pub mod block;
+
 #[derive(Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
     pub name: &'a str,

@@ -1,5 +1,7 @@
+use crate::dataloaders::event_transaction::EventTransactionDataLoader;
 #[cfg(feature = "async-graphql")]
-use async_graphql::{Enum, Result, SimpleObject};
+use async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader};
+
 use {
     grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
     sea_orm::entity::prelude::*,
@@ -27,7 +29,7 @@ impl From<FlatCommitmentStatus> for CommitmentStatus {
     }
 }
 
-#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Copy, Deserialize)]
+#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq, Copy, Deserialize, Hash)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 #[cfg_attr(feature = "async-graphql", derive(Enum))]
 #[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
@@ -72,9 +74,10 @@ impl From<FlatCategory> for TransactionType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize, Hash)]
 #[sea_orm(table_name = "events")]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(complex))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "Event"))]
 #[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct Model {
@@ -111,6 +114,15 @@ pub struct Model {
     #[sea_orm(column_type = "JsonBinary")]
     pub data: Json,
     pub block_height: i64,
+}
+
+#[cfg(feature = "async-graphql")]
+#[ComplexObject]
+impl Model {
+    async fn transaction(&self, ctx: &Context<'_>) -> Result<Option<super::transactions::Model>> {
+        let loader = ctx.data_unchecked::<DataLoader<EventTransactionDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?)
+    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
