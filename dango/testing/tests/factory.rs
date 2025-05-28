@@ -1,6 +1,10 @@
 use {
     dango_bank::ORPHANED_TRANSFERS,
-    dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_naive},
+    dango_genesis::{AccountOption, GenesisOption},
+    dango_testing::{
+        Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         account::single,
         account_factory::{
@@ -269,6 +273,82 @@ fn onboarding_without_deposit() {
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
+}
+
+#[test]
+fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
+    // Set up the test with minimum deposit set to zero.
+    let (mut suite, mut accounts, codes, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            account: AccountOption {
+                minimum_deposit: Coins::new(),
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
+
+    let chain_id = suite.chain_id.clone();
+
+    let username = Username::from_str("user").unwrap();
+    let user = TestAccount::new_random(username).predict_address(
+        contracts.account_factory,
+        3,
+        codes.account_spot.to_bytes().hash256(),
+        true,
+    );
+
+    // Attempt to register a user without making a deposit.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                username: user.username.clone(),
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 3,
+                signature: user
+                    .sign_arbitrary(RegisterUserData {
+                        username: user.username.clone(),
+                        chain_id,
+                    })
+                    .unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // The user's key should have been recorded in account factory.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryKeysByUserRequest {
+                username: user.username.clone(),
+            },
+        )
+        .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
+
+    // The user's account info should have been recorded in account factory.
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryAccountsByUserRequest {
+                username: user.username.clone(),
+            },
+        )
+        .should_succeed_and_equal(btree_map! {
+            user.address() => Account {
+                // We have 10 genesis accounts (owner + users 1-9), indexed from
+                // zero, so this one should have the index of 10.
+                index: 10,
+                params: AccountParams::Spot(single::Params::new(user.username.clone() )),
+            },
+        });
+
+    // The newly created account should have zero balance.
+    suite
+        .query_balances(&user)
+        .should_succeed_and_equal(Coins::new());
 }
 
 #[test]
