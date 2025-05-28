@@ -356,7 +356,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
 }
 
 #[test]
-fn onboarding_with_deposit_when_minimum_depsoit_is_zero() {
+fn onboarding_with_deposit_when_minimum_deposit_is_zero() {
     // Set up the test with minimum deposit set to zero.
     let (suite, mut accounts, codes, contracts, validator_sets) =
         setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
