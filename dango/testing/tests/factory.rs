@@ -348,7 +348,7 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     // The newly created account should have zero balance.
     suite
         .query_balances(&user)
-        .should_succeed_and_equal(Coins::new());
+        .should_succeed_and(|coins| coins.is_empty());
 }
 
 #[test]
