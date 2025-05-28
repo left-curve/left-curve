@@ -162,6 +162,7 @@ export const tailwindConfig: Partial<Config> = {
       },
       fontFamily: {
         "diatype-rounded": "ABCDiatypeRounded",
+        "diatype-mono": "ABCDiatypeRoundedMono",
         exposure: "Exposure",
       },
       fontSize: {
@@ -396,6 +397,12 @@ export const tailwindConfig: Partial<Config> = {
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
+        ".diatype-xs-regular": {
+          fontWeight: "400",
+          fontSize: "12px",
+          lineHeight: "16.8px",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
         ".diatype-xs-medium": {
           fontWeight: "500",
           fontSize: "12px",
@@ -407,6 +414,37 @@ export const tailwindConfig: Partial<Config> = {
           fontSize: "12px",
           lineHeight: "16.8px",
           fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        /* Diatype Mono */
+        ".diatype-mono-lg-bold": {
+          fontWeight: "600",
+          fontSize: "18px",
+          lineHeight: "25.2px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-m-bold": {
+          fontWeight: "600",
+          fontSize: "16px",
+          lineHeight: "22.4px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-sm-bold": {
+          fontWeight: "600",
+          fontSize: "14px",
+          lineHeight: "22.4px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-sm-medium": {
+          fontWeight: "500",
+          fontSize: "14px",
+          lineHeight: "22.4px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-xs-medium": {
+          fontWeight: "500",
+          fontSize: "12px",
+          lineHeight: "16.8px",
+          fontFamily: theme("fontFamily.diatype-mono"),
         },
         /* Exposure */
         ".display-heading-4xs": {
