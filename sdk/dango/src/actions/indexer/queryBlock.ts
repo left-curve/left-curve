@@ -28,6 +28,10 @@ export async function queryBlock<transport extends Transport>(
           createdAt
           transactionType
           hasSucceeded
+          messages {
+            methodName
+            contractAddr
+          }
         }
       }
     }

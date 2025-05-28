@@ -315,18 +315,10 @@ const BlockTable: React.FC = () => {
     {
       header: "Hash",
       cell: ({ row }) => (
-        <div
-          className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-blue-500 hover:text-blue-700"
-          onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
-        >
-          <div className="max-w-36">
-            <p className="truncate">{row.original.hash}</p>
-          </div>
-          <TextCopy
-            copyText={row.original.hash}
-            className="h-4 w-4 text-gray-300 hover:text-black"
-          />
-        </div>
+        <Cell.TxHash
+          hash={row.original.hash}
+          navigate={() => navigate({ to: `/tx/${row.original.hash}` })}
+        />
       ),
     },
     {
@@ -347,6 +339,10 @@ const BlockTable: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Sender sender={row.original.sender} navigate={(url) => navigate({ to: url })} />
       ),
+    },
+    {
+      header: "Actions",
+      cell: ({ row }) => <Cell.TxMessages messages={row.original.messages} />,
     },
     {
       header: "Result",

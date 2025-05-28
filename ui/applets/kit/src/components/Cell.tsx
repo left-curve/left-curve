@@ -1,18 +1,19 @@
 import { usePrices } from "@left-curve/store";
 
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "#utils/twMerge.js";
 
 import { AddressVisualizer } from "./AddressVisualizer";
-import { Button } from "./Button";
 
-import type { Address } from "@left-curve/dango/types";
+import type { Address, IndexedMessage } from "@left-curve/dango/types";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Badge } from "./Badge";
+import { TextCopy } from "./TextCopy";
+import { IconLink } from "./icons/IconLink";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -77,9 +78,9 @@ type CellBlockHeightProps = {
 const BlockHeight: React.FC<CellBlockHeightProps> = ({ blockHeight, navigate }) => {
   return (
     <div className="flex h-full items-center">
-      <Button variant="link" className="m-0 p-0 pr-1" onClick={navigate}>
+      <p className="diatype-mono-sm-medium cursor-pointer" onClick={navigate}>
         {blockHeight}
-      </Button>
+      </p>
     </div>
   );
 };
@@ -90,7 +91,9 @@ type CellAgeProps = {
 };
 
 const Age: React.FC<CellAgeProps> = ({ date, addSuffix }) => {
-  return <p className="h-full flex items-center">{formatDistanceToNow(date, { addSuffix })}</p>;
+  return (
+    <p className="h-full flex items-center min-w-32">{formatDistanceToNow(date, { addSuffix })}</p>
+  );
 };
 
 type CellSenderProps = {
@@ -100,7 +103,7 @@ type CellSenderProps = {
 
 const Sender: React.FC<CellSenderProps> = ({ sender, navigate }) => {
   return (
-    <div className="flex h-full items-center">
+    <div className="flex h-full items-center min-w-64">
       <AddressVisualizer address={sender} withIcon onClick={navigate} />
     </div>
   );
@@ -122,11 +125,48 @@ const TxResult: React.FC<CellTxResultProps> = ({ className, isSuccess, text }) =
   );
 };
 
+type CellTxHashProps = {
+  hash: string;
+  navigate?: () => void;
+};
+
+const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
+  return (
+    <div
+      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-gray-700"
+      onClick={navigate}
+    >
+      <div className="flex items-center hover:text-black">
+        <p className="truncate max-w-36">{hash}</p>
+        <IconLink className="h-4 w-4" />
+      </div>
+      <TextCopy copyText={hash} className="h-4 w-4 text-gray-300 hover:text-black" />
+    </div>
+  );
+};
+
+type CellTxMessagesProps = {
+  messages: IndexedMessage[];
+};
+
+const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
+  const [firstMessage] = messages;
+  const extraMessages = messages.length - 1;
+  return (
+    <div className="flex h-full items-center gap-1">
+      <Badge text={capitalize(firstMessage.methodName)} color="blue" />
+      {extraMessages ? <Badge text={`+${extraMessages}`} color="red" /> : null}
+    </div>
+  );
+};
+
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
   Amount,
   Sender,
+  TxHash,
+  TxMessages,
   TxResult,
   MarketPrice,
   BlockHeight,
