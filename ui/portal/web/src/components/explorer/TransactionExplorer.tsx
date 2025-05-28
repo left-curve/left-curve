@@ -2,23 +2,22 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { formatUnits } from "@left-curve/dango/utils";
 import { twMerge } from "@left-curve/applets-kit";
 
 import {
   AddressVisualizer,
   Badge,
-  createContext,
   JsonVisualizer,
   TextCopy,
+  createContext,
 } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";
 
 import type { IndexedTransaction } from "@left-curve/dango/types";
-import type { PropsWithChildren } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
 
 type TransactionProps = {
   txHash: string;
@@ -112,13 +111,13 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
-          <p>{formatUnits(gasUsed, 6)} DGX</p>
+          <p>{gasUsed} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
-          <p>{formatUnits(gasWanted, 6)} DGX</p>
+          <p>{gasWanted} DGX</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
