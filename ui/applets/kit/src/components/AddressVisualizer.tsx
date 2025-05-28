@@ -9,12 +9,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { twMerge } from "#utils/twMerge.js";
 
+import { Button } from "./Button";
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconUserCircle } from "./icons/IconUserCircle";
 
 import type { Address, AllLeafKeys, AppConfig } from "@left-curve/dango/types";
 import type React from "react";
-import { IconLink } from "./icons/IconLink";
 
 type AddressVisualizerProps = {
   address: Address;
@@ -60,7 +60,9 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 
   const blockExplorer = chain.blockExplorer;
 
-  const isOnClickAvailable = !!onClick;
+  const isClickable = !!onClick;
+
+  const Component = isClickable ? Button : "div";
 
   const { data } = useQuery({
     queryKey: ["address_visualizer", config, address],
@@ -118,26 +120,27 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
 
   if (contract)
     return (
-      <p
+      <Component
+        variant="link"
         className={twMerge(
-          "flex items-center gap-1 diatype-m-bold",
-          { "cursor-pointer": isOnClickAvailable },
+          "flex items-center gap-1 p-0 pr-1 m-0",
+          { "cursor-pointer": isClickable },
           className,
         )}
         onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
       >
         {withIcon ? <img src="/DGX.svg" alt="dango logo" className="h-4 w-4" /> : null}
         <span>{contract.name}</span>
-        {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
-      </p>
+      </Component>
     );
 
   if (account)
     return (
-      <p
+      <Component
+        variant="link"
         className={twMerge(
-          "flex items-center gap-1",
-          { "cursor-pointer": isOnClickAvailable },
+          "flex items-center gap-1 p-0 pr-1 m-0",
+          { "cursor-pointer": isClickable },
           className,
         )}
         onClick={() => onClick?.(blockExplorer.accountPage.replace("${address}", address))}
@@ -145,9 +148,8 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
         {withIcon ? (
           <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
         ) : null}
-        <span className="diatype-m-bold">{account.name}</span>
-        {isOnClickAvailable ? <IconLink className="w-4 h-4" /> : null}
-      </p>
+        <span>{account.name}</span>
+      </Component>
     );
 
   return <TruncateResponsive text={address} className={className} />;
