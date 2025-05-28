@@ -10,8 +10,16 @@ import { AppProvider } from "./app.provider";
 import { AppRouter } from "./app.router";
 
 import "../public/global.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/index.css";
-import "@left-curve/ui-config/fonts/Exposure/index.css";
+import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/800.css";
+import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/700.css";
+import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/500.css";
+import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/400.css";
+
+import "@left-curve/ui-config/fonts/ABCDiatypeRounded/mono/600.css";
+import "@left-curve/ui-config/fonts/ABCDiatypeRounded/mono/500.css";
+
+import "@left-curve/ui-config/fonts/Exposure/italic/400.css";
+import "@left-curve/ui-config/fonts/Exposure/italic/700.css";
 import { toast } from "./components/foundation/Toast";
 
 const queryClient = new QueryClient({

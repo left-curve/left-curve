@@ -245,7 +245,7 @@ const BlockDetails: React.FC = () => {
             <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHash"]()}
             </p>
-            <p className="break-all whitespace-normal">
+            <p className="break-all whitespace-normal diatype-mono-sm-medium">
               {hash}
               <TextCopy
                 className="inline-block align-middle ml-1 w-4 h-4 cursor-pointer"
@@ -269,7 +269,7 @@ const BlockDetails: React.FC = () => {
             <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockTime"]()}
             </p>
-            <p className="break-all whitespace-normal">{new Date(createdAt).toISOString()}</p>
+            <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
           </div>
         </div>
         <img
@@ -320,7 +320,7 @@ const BlockTable: React.FC = () => {
       header: "Hash",
       cell: ({ row }) => (
         <div
-          className="flex items-center gap-1 cursor-pointer"
+          className="flex items-center gap-1 cursor-pointer diatype-mono-sm-medium"
           onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
         >
           <TruncateText text={row.original.hash} />
