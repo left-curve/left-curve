@@ -71,7 +71,7 @@ pub fn reply(ctx: SudoCtx, minimum_deposit: Coins, _res: SubMsgResult) -> anyhow
             minimum_deposit
                 .iter()
                 .any(|coin| balances.amount_of(coin.denom) >= *coin.amount),
-            "minumum deposit not satisfied! requiring any of: {minimum_deposit}, got: {balances}"
+            "minimum deposit not satisfied! requiring any of: {minimum_deposit}, got: {balances}"
         );
     }
 
