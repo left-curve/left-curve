@@ -697,7 +697,6 @@ fn clear_orders_of_pair(
 
             match order {
                 Order::Limit(limit_order) => {
-                    // TODO: update the limit order
                     if cleared {
                         // Remove the order from the storage if it was fully filled
                         LIMIT_ORDERS.remove(
