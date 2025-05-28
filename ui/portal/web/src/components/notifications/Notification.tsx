@@ -88,18 +88,18 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
                 "text-status-success": type === "received",
                 "text-status-fail": type === "sent",
               })}
-            >{`${isSent ? "−" : "+"} ${formattedAmount}  ${coin.symbol}`}</span>
+            >{`${isSent ? "−" : "+"}${formattedAmount}  ${coin.symbol}`}</span>
           </div>
           <div className="flex diatype-m-medium text-gray-500 flex-wrap items-center gap-1">
             <div className="flex flex-wrap items-center gap-1">
-              <span>{m["notifications.notification.transfer.direction"]({ direction: type })}</span>
+              <span>
+                {m["notifications.notification.transfer.direction.first"]({ direction: type })}
+              </span>
               <AddressVisualizer address={originAddress} withIcon onClick={onNavigate} />
             </div>
             <div className="flex flex-wrap items-center gap-1">
               <span>
-                {m["notifications.notification.transfer.direction"]({
-                  direction: isSent ? "received" : "sent",
-                })}
+                {m["notifications.notification.transfer.direction.second"]({ direction: type })}
               </span>
               <AddressVisualizer address={targetAddress} withIcon onClick={onNavigate} />{" "}
             </div>
