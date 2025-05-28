@@ -199,7 +199,7 @@ export const SimpleSwapForm: React.FC = () => {
   const { getPrice } = usePrices();
 
   const { isReverse, direction, base, quote, pairs, changeQuote, toggleDirection } = state;
-  const { register, setValue, inputs } = controllers;
+  const { register, setValue, revalidate, inputs } = controllers;
   const { isPending } = submission;
   const { formatNumberOptions } = settings;
   const { simulate, isFetching } = state.simulation;
@@ -238,6 +238,7 @@ export const SimpleSwapForm: React.FC = () => {
       if (output) {
         setValue(request.target, formatUnits(output.amount, request.output.decimals));
       }
+      revalidate();
     })();
   }, [baseAmount, quoteAmount, quote, base]);
 
@@ -303,7 +304,7 @@ export const SimpleSwapForm: React.FC = () => {
                 </Button>
               )}
             </div>
-            <p>
+            <div>
               {isFetching && activeInput !== "base" ? (
                 <Skeleton className="w-14 h-4" />
               ) : (
@@ -312,7 +313,7 @@ export const SimpleSwapForm: React.FC = () => {
                   formatOptions: formatNumberOptions,
                 })
               )}
-            </p>
+            </div>
           </div>
         }
       />
@@ -385,7 +386,7 @@ export const SimpleSwapForm: React.FC = () => {
                 </Button>
               ) : null}
             </div>
-            <p>
+            <div>
               {isFetching && activeInput !== "quote" ? (
                 <Skeleton className="w-14 h-4" />
               ) : (
@@ -394,7 +395,7 @@ export const SimpleSwapForm: React.FC = () => {
                   formatOptions: formatNumberOptions,
                 })
               )}
-            </p>
+            </div>
           </div>
         }
       />
