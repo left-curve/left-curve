@@ -262,7 +262,7 @@ fn onboarding_without_deposit() {
     // Try again, should fail.
     suite
         .check_tx(tx.clone())
-        .should_fail_with_error("minumum deposit not satisfied");
+        .should_fail_with_error("minimum deposit not satisfied");
 
     // Make a deposit of the minimum amount.
     suite
@@ -674,7 +674,7 @@ fn malicious_register_user() {
             // The derived deposit address would be the attacker's address.
             // No orphaned transfer from the Warp contract to the attacker
             // is found.
-            "minumum deposit not satisfied!",
+            "minimum deposit not satisfied!",
         );
 
     // Finally, user properly registers the username.
