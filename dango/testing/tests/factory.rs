@@ -1,5 +1,4 @@
 use {
-    dango_bank::ORPHANED_TRANSFERS,
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
         Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
@@ -15,7 +14,7 @@ use {
     },
     grug::{
         Addressable, Coins, HashExt, Json, JsonSerExt, Message, NonEmpty, Op, QuerierExt,
-        ResultExt, StdError, Tx, Uint128, VerificationError, btree_map, coins,
+        ResultExt, Tx, Uint128, VerificationError, btree_map, coins,
     },
     hyperlane_types::constants::solana,
     std::str::FromStr,
@@ -198,6 +197,8 @@ fn onboarding_without_deposit() {
         setup_test_naive(Default::default());
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
+    suite.make_empty_block();
+
     let chain_id = suite.chain_id.clone();
 
     let username = Username::from_str("user").unwrap();
@@ -238,11 +239,7 @@ fn onboarding_without_deposit() {
 
     suite
         .check_tx(tx.clone())
-        .should_fail_with_error(StdError::data_not_found::<Coins>(
-            ORPHANED_TRANSFERS
-                .path((contracts.gateway, user.address()))
-                .storage_key(),
-        ));
+        .should_fail_with_error("minumum deposit not satisfied!");
 
     // Make a deposit but not enough.
     suite
@@ -349,6 +346,69 @@ fn onboarding_without_deposit_when_minimum_deposit_is_zero() {
     suite
         .query_balances(&user)
         .should_succeed_and(|coins| coins.is_empty());
+}
+
+#[test]
+fn onboarding_with_deposit_when_minimum_depsoit_is_zero() {
+    // Set up the test with minimum deposit set to zero.
+    let (suite, mut accounts, codes, contracts, validator_sets) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            account: AccountOption {
+                minimum_deposit: Coins::new(),
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    // Generate a random key for the user.
+    let user = TestAccount::new_random(Username::from_str("user").unwrap()).predict_address(
+        contracts.account_factory,
+        3,
+        codes.account_spot.to_bytes().hash256(),
+        true,
+    );
+
+    // Make the initial deposit, even though not required.
+    suite
+        .receive_warp_transfer(
+            &mut accounts.owner,
+            solana::DOMAIN,
+            solana::USDC_WARP,
+            &user,
+            10_000_000,
+        )
+        .should_succeed();
+
+    // Sign the `RegisterUserData`.
+    let signature = user
+        .sign_arbitrary(RegisterUserData {
+            username: user.username.clone(),
+            chain_id: suite.chain_id.clone(),
+        })
+        .unwrap();
+
+    // Onboard the user.
+    // Attempt to register a user without making a deposit.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                username: user.username.clone(),
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+                seed: 3,
+                signature,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Make sure a spot account is created with the deposited balance.
+    suite
+        .query_balance(&user, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 
 #[test]
@@ -607,11 +667,7 @@ fn malicious_register_user() {
             // The derived deposit address would be the attacker's address.
             // No orphaned transfer from the Warp contract to the attacker
             // is found.
-            StdError::data_not_found::<Coins>(
-                dango_bank::ORPHANED_TRANSFERS
-                    .path((contracts.gateway, attacker.address()))
-                    .storage_key(),
-            ),
+            "minumum deposit not satisfied!",
         );
 
     // Finally, user properly registers the username.

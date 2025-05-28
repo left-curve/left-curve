@@ -3,8 +3,8 @@ use {
     dango_auth::authenticate_tx,
     dango_types::{DangoQuerier, account::spot::InstantiateMsg, bank},
     grug::{
-        AuthCtx, AuthResponse, Coins, Message, MutableCtx, QuerierExt, Response, StdResult,
-        SubMessage, SubMsgResult, SudoCtx, Tx,
+        AuthCtx, AuthResponse, Coins, GENESIS_BLOCK_HEIGHT, Message, MutableCtx, QuerierExt,
+        Response, StdResult, SubMessage, SubMsgResult, SudoCtx, Tx,
     },
 };
 
@@ -16,8 +16,12 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         "you don't have the right, O you don't have the right"
     );
 
+    // Always claim orphaned transfers from the bank, regardless of whether a
+    // minimum deposit is required.
+    // However, skip this during genesis. Because during the genesis sequence,
+    // the bank contract doesn't exist yet at this point.
     Ok(
-        Response::new().may_add_submessage(if msg.minimum_deposit.is_non_empty() {
+        Response::new().may_add_submessage(if ctx.block.height > GENESIS_BLOCK_HEIGHT {
             let bank = ctx.querier.query_bank()?;
             let gateway = ctx.querier.query_gateway()?;
 
@@ -60,14 +64,16 @@ pub fn reply(ctx: SudoCtx, minimum_deposit: Coins, _res: SubMsgResult) -> anyhow
         _res.should_succeed();
     }
 
-    let balances = ctx.querier.query_balances(ctx.contract, None, None)?;
+    if minimum_deposit.is_non_empty() {
+        let balances = ctx.querier.query_balances(ctx.contract, None, None)?;
 
-    ensure!(
-        minimum_deposit
-            .into_iter()
-            .any(|coin| balances.amount_of(&coin.denom) >= coin.amount),
-        "minumum deposit not satisfied!"
-    );
+        ensure!(
+            minimum_deposit
+                .iter()
+                .any(|coin| balances.amount_of(coin.denom) >= *coin.amount),
+            "minumum deposit not satisfied! requiring any of: {minimum_deposit}, got: {balances}"
+        );
+    }
 
     Ok(Response::new())
 }
