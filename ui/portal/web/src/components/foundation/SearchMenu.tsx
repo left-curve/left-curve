@@ -38,9 +38,13 @@ const SearchMenu: React.FC = () => {
 
   useEffect(() => {
     if (!isLg) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) return;
-      if (isSearchBarVisible && e.key === "Escape") {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (!isSearchBarVisible && e.key === "k" && e.metaKey) {
+        inputRef.current?.focus();
+        setSearchBarVisibility(true);
+      } else if (e.metaKey || e.ctrlKey) {
+        return;
+      } else if (isSearchBarVisible && e.key === "Escape") {
         setSearchBarVisibility(false);
         setSearchText("");
         inputRef.current?.blur();
@@ -59,6 +63,11 @@ const SearchMenu: React.FC = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isSearchBarVisible]);
+
+  const openMenu = () => {
+    setSearchBarVisibility(true);
+    inputRef.current?.focus();
+  };
 
   const hideMenu = () => {
     setSearchBarVisibility(false);
@@ -109,7 +118,7 @@ const SearchMenu: React.FC = () => {
                     }}
                     transition={{ duration: 1 }}
                     className="flex absolute w-full h-full bg-transparent left-0 rounded-md cursor-text gap-1 items-center pl-9 pt-1 diatype-m-regular"
-                    onClick={() => setSearchBarVisibility(!isSearchBarVisible)}
+                    onClick={() => (isSearchBarVisible ? hideMenu() : openMenu())}
                   >
                     <span>{m["searchBar.placeholder.title"]()}</span>{" "}
                     <TextLoop

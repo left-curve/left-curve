@@ -4,8 +4,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import {
-  AddressVisualizer,
-  IconLink,
+  Cell,
   Skeleton,
   Table,
   type TableColumn,
@@ -21,9 +20,11 @@ import { m } from "~/paraglide/messages";
 import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { HeaderExplorer } from "./HeaderExplorer";
+import { TransactionsTable } from "./TransactionsTable";
 
 type BlockExplorerProps = {
   height: string;
@@ -304,59 +305,13 @@ const BlockNotFound: React.FC = () => {
 };
 
 const BlockTable: React.FC = () => {
-  const navigate = useNavigate();
   const { data } = useBlockExplorer();
 
   if (!data?.searchBlock) return null;
 
   const { transactions } = data.searchBlock;
 
-  const columns: TableColumn<IndexedTransaction> = [
-    {
-      header: "Type",
-      cell: ({ row }) => <p>{row.original.transactionType}</p>,
-    },
-    {
-      header: "Hash",
-      cell: ({ row }) => (
-        <div
-          className="flex items-center gap-1 cursor-pointer diatype-mono-sm-medium"
-          onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
-        >
-          <TruncateText text={row.original.hash} />
-          <IconLink className="w-4 h-4" />
-        </div>
-      ),
-    },
-    {
-      header: "Account",
-      cell: ({ row }) => (
-        <AddressVisualizer
-          address={row.original.sender}
-          withIcon
-          onClick={(url) => navigate({ to: url })}
-        />
-      ),
-    },
-    {
-      header: "Result",
-      cell: ({ row }) => {
-        const { hasSucceeded } = row.original;
-        return (
-          <p
-            className={twMerge(
-              hasSucceeded ? "text-status-success" : "text-status-fail",
-              "text-end",
-            )}
-          >
-            {hasSucceeded ? "Success" : "Fail"}
-          </p>
-        );
-      },
-    },
-  ];
-
-  return transactions.length ? <Table data={transactions} columns={columns} /> : null;
+  return <TransactionsTable transactions={transactions} />;
 };
 
 export const BlockExplorer = Object.assign(BlockContainer, {

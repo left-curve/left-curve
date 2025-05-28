@@ -19,7 +19,17 @@ export type IndexedTransaction = {
   errorMessage: string;
   gasWanted: number;
   gasUsed: number;
+  messages: IndexedMessage[];
   nestedEvents: string;
+};
+
+export type IndexedMessage = {
+  methodName: string;
+  blockHeight: number;
+  contractAddr: Address;
+  senderAddr: Address;
+  orderIdx: number;
+  createdAt: string;
 };
 
 export type IndexedTransactionType = "CRON" | "TX";

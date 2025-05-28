@@ -98,7 +98,12 @@ export type {
   SignatureOutcome,
 } from "./signature.js";
 
-export type { IndexedBlock, IndexedTransaction, IndexedTransactionType } from "./indexer.js";
+export type {
+  IndexedBlock,
+  IndexedTransaction,
+  IndexedMessage,
+  IndexedTransactionType,
+} from "./indexer.js";
 
 export type {
   DexExecuteMsg,

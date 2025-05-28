@@ -24,8 +24,14 @@ export async function queryBlock<transport extends Transport>(
         transactions {
           hash
           sender
+          blockHeight
+          createdAt
           transactionType
           hasSucceeded
+          messages {
+            methodName
+            contractAddr
+          }
         }
       }
     }
