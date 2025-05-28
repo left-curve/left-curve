@@ -126,9 +126,7 @@
               "multi": "D86E8112F3C4C4442126F8E9F44F16867DA487F29052BF91B810457DB34209A4",
               "spot": "35BE322D094F9D154A8ABA4733B8497F180353BD7AE7B0A15F90B586B549F28B"
             },
-            "minimum_deposit": {
-              "bridge/usdc": "10000000"
-            },
+            "minimum_deposit": {},
             "users": {
               "owner": [
                 "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2",
