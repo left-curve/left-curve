@@ -246,7 +246,7 @@ fn onboarding_without_deposit() {
 
     suite
         .check_tx(tx.clone())
-        .should_fail_with_error("minumum deposit not satisfied!");
+        .should_fail_with_error("minimum deposit not satisfied!");
 
     // Make a deposit but not enough.
     suite
