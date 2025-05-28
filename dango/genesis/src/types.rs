@@ -147,4 +147,5 @@ pub struct BitcoinOption {
     pub outbound_strategy: Order,
     /// Define how often the withdrawal requests are processed.
     pub withdraw_timeout: Duration,
+    pub minimum_deposit: Uint128,
 }

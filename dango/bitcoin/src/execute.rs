@@ -100,6 +100,13 @@ fn observe_inbound(
     );
 
     ensure!(
+        amount >= cfg.minimum_deposit,
+        "minimum deposit not met: {} < {}",
+        amount,
+        cfg.minimum_deposit
+    );
+
+    ensure!(
         !PROCESSED_UTXOS.has(ctx.storage, (hash, vout)),
         "transaction `{hash}` already exists in UTXO set"
     );

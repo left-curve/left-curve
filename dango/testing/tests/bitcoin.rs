@@ -84,6 +84,7 @@ fn instantiate() {
             threshold: 2,
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
+            minimum_deposit: Uint128::new(1000),
         };
 
         suite
@@ -114,6 +115,7 @@ fn instantiate() {
             threshold: 2,
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
+            minimum_deposit: Uint128::new(1000),
         };
 
         suite
@@ -142,6 +144,7 @@ fn instantiate() {
             threshold: 2,
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
+            minimum_deposit: Uint128::new(1000),
         };
 
         suite
@@ -162,12 +165,24 @@ fn instantiate() {
 fn observe_inbound() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
+    // Report a deposit with an amount lower than min deposit.
+    let msg = ExecuteMsg::ObserveInbound {
+        transaction_hash: Hash256::from_inner([0; 32]),
+        vout: 1,
+        amount: Uint128::new(100),
+        recipient: None,
+    };
+
+    suite
+        .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+        .should_fail_with_error("minimum deposit not met");
+
     // Report a deposit.
     let bitcoin_tx_hash =
         Hash256::from_str("C42F8B7FEFBDDE209F16A3084D9A5B44913030322F3AF27459A980674A7B9356")
             .unwrap();
     let vout = 1;
-    let amount = Uint128::new(100);
+    let amount = Uint128::new(2000);
     let recipient = accounts.user1.address.inner().clone();
 
     let msg = ExecuteMsg::ObserveInbound {

@@ -189,6 +189,7 @@ where
                 threshold: opt.bitcoin.threshold,
                 sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
                 outbound_strategy: opt.bitcoin.outbound_strategy,
+                minimum_deposit: opt.bitcoin.minimum_deposit,
             },
         },
         "dango/bitcoin",
