@@ -197,6 +197,13 @@ fn onboarding_without_deposit() {
         setup_test_naive(Default::default());
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
+    // Make an empty block to advance block height from 0 to 1.
+    //
+    // The reason of this is when the chain does `CheckTx`, it does it under the
+    // state of the _last finalized block_. Without advancing the block here,
+    // that would be block 0, in other words the genesis block. The spot account
+    // won't claim orphaned transfers during genesis. For a realistic test, we
+    // do `CheckTx` at a post-genesis block.
     suite.make_empty_block();
 
     let chain_id = suite.chain_id.clone();
