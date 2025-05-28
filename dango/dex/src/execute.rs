@@ -24,8 +24,7 @@ use {
     grug::{
         Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Udec128, Uint128, UniqueVec,
-        coins,
+        QuerierExt, Response, StdError, Storage, SudoCtx, Udec128, Uint128, UniqueVec, coins,
     },
     std::{
         collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
@@ -513,14 +512,23 @@ fn clear_orders_of_pair(
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending);
 
-    let market_order_filling_outcomes =
-        match_market_orders(&mut market_bids, &mut merged_ask_iter, Direction::Bid)?
-            .into_iter()
-            .chain(match_market_orders(
-                &mut market_asks,
-                &mut merged_bid_iter,
-                Direction::Ask,
-            )?);
+    let market_order_filling_outcomes = match_market_orders(
+        &mut market_bids,
+        &mut merged_ask_iter,
+        Direction::Bid,
+        maker_fee_rate,
+        taker_fee_rate,
+        current_block_height,
+    )?
+    .into_iter()
+    .chain(match_market_orders(
+        &mut market_asks,
+        &mut merged_bid_iter,
+        Direction::Ask,
+        maker_fee_rate,
+        taker_fee_rate,
+        current_block_height,
+    )?);
 
     // Run the order matching algorithm.
     let MatchingOutcome {
