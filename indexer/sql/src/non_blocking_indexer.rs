@@ -288,7 +288,7 @@ where
         let block_to_index = match blocks.remove_entry(block_height) {
             Some(block) => block,
             None => {
-                bail!("Block {block_height} not found");
+                bail!("block {block_height} not found");
             },
         };
 
