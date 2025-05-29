@@ -349,6 +349,24 @@ fn modify_position(
         denom: denom.clone(),
     };
 
+    // Ensure the position is not too small
+    ensure!(
+        price.value_of_unit_amount(new_pos.size.unsigned_abs())?
+            >= params.min_position_size.checked_into_dec()?,
+        "position size is too small"
+    );
+
+    // If increasing the position, ensure trading is enabled
+    let changing_side = !same_side(current_pos.size, new_size);
+    let increasing_mag = new_size.unsigned_abs() > current_pos.size.unsigned_abs();
+    let increasing = increasing_mag || (changing_side && !new_size.is_zero());
+    if increasing {
+        ensure!(
+            params.trading_enabled,
+            "trading is not enabled for this market. you can only decrease your position size"
+        );
+    }
+
     // Update the market accumulators
     let mut accumulators = market_state.accumulators;
     if current_pos.size.is_non_zero() {
