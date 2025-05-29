@@ -24,12 +24,20 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 type CellAssetProps = {
   className?: string;
   asset: AnyCoin;
+  noImage?: boolean;
 };
 
-const Asset: React.FC<CellAssetProps> = ({ asset }) => {
+const Asset: React.FC<CellAssetProps> = ({ asset, noImage }) => {
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
-      <img src={asset.logoURI} alt={asset.name} className="h-8 w-8" />
+      {!noImage && (
+        <img
+          src={asset.logoURI}
+          alt={asset.symbol}
+          className="w-6 h-6 rounded-full object-cover"
+          loading="lazy"
+        />
+      )}
       <p className="min-w-fit">{asset.symbol}</p>
     </div>
   );
