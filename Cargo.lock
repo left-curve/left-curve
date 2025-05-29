@@ -5658,6 +5658,7 @@ dependencies = [
  "assertor",
  "awc",
  "futures-util",
+ "grug",
  "grug-app",
  "grug-db-memory",
  "grug-storage",

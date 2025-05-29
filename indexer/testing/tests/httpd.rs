@@ -1,6 +1,7 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
+    grug::Inner,
     grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
     indexer_sql::entity,
     indexer_testing::{
@@ -775,9 +776,9 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
+                let response = call_graphql::<grug_types::Json>(app, request_body).await?;
 
-                assert_that!(response.data).is_equal_to(json!({"app_config": null}));
+                assert_that!(response.data.into_inner()).is_equal_to(json!({"app_config": null}));
 
                 Ok::<(), anyhow::Error>(())
             })

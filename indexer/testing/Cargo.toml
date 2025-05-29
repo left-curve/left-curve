@@ -12,6 +12,7 @@ actix-web      = { workspace = true }
 anyhow         = { workspace = true }
 awc            = { workspace = true }
 futures-util   = { workspace = true }
+grug           = { workspace = true }
 grug-app       = { workspace = true }
 grug-db-memory = { workspace = true }
 grug-testing   = { workspace = true }

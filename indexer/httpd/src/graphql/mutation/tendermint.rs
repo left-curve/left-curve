@@ -14,17 +14,17 @@ impl TendermintMutation {
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Transaction as JSON")] tx: grug_types::Json,
-    ) -> Result<serde_json::Value, Error> {
+    ) -> Result<grug_types::Json, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        let decoded_tx: Tx = tx.to_string().deserialize_json()?;
+        let decoded_tx: Tx = tx.clone().deserialize_json()?;
 
         match app_ctx
             .consensus_client
             .broadcast_tx(decoded_tx.clone())
             .await
         {
-            Ok(response) => Ok(response.to_json_value()?.into_inner()),
+            Ok(response) => Ok(response.to_json_value()?),
             Err(e) => {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = ?e, tx = ?decoded_tx, "broadcast_tx_sync failed");

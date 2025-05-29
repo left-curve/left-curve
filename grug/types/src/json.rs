@@ -33,7 +33,6 @@ macro_rules! json {
 /// A wrapper over [`serde_json::Value`](serde_json::Value) that implements
 /// [Borsh](https://github.com/near/borsh-rs) traits.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-// #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 pub struct Json(JsonValue);
 
 #[cfg(feature = "async-graphql")]

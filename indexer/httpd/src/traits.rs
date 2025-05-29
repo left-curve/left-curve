@@ -66,7 +66,7 @@ where
     }
 
     async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
-        let tx = raw_unsigned_tx.to_string().deserialize_json()?;
+        let tx = raw_unsigned_tx.deserialize_json()?;
 
         Ok(self.do_simulate(tx, 0, false)?)
     }
