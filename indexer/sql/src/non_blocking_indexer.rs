@@ -10,7 +10,10 @@ use {
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
-    sea_orm::{DatabaseConnection, TransactionTrait},
+    sea_orm::{
+        ConnectionTrait, DatabaseBackend, DatabaseConnection, EntityTrait, Statement,
+        TransactionTrait,
+    },
     std::{
         collections::HashMap,
         future::Future,
@@ -340,6 +343,39 @@ where
             Ok::<(), sea_orm::error::DbErr>(())
         })?;
         Ok(())
+    }
+
+    pub async fn is_database_empty(&self) -> error::Result<bool> {
+        let db = self.context.db.clone();
+
+        let tables_count = match db.get_database_backend() {
+            DatabaseBackend::Postgres | DatabaseBackend::MySql => {
+                db.query_one(Statement::from_string(
+                    db.get_database_backend(),
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'mysql', 'performance_schema')".to_owned(),
+                )).await?
+            },
+            DatabaseBackend::Sqlite => {
+                db.query_one(Statement::from_string(
+                    db.get_database_backend(),
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table'".to_owned(),
+                )).await?
+            },
+        };
+
+        let count: i64 = tables_count.unwrap().try_get("", "count")?;
+
+        if count == 0 {
+            #[cfg(feature = "tracing")]
+            tracing::info!("Database is empty");
+            return Ok(true);
+        }
+        #[cfg(feature = "tracing")]
+        tracing::info!("Database is not empty, found {count} tables, will check the blocks table",);
+
+        let block = entity::blocks::Entity::find().one(&db).await?;
+
+        Ok(block.is_none())
     }
 }
 

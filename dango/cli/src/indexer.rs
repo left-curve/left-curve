@@ -1,7 +1,14 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{config::Config, home_directory::HomeDirectory},
+    anyhow::anyhow,
     clap::{Parser, Subcommand},
-    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
+    config_parser::parse_config,
+    dango_genesis::GenesisCodes,
+    grug_app::{App, AppError, Db, Indexer, NullIndexer},
+    grug_db_disk::DiskDb,
+    grug_types::{GIT_COMMIT, HashExt},
+    grug_vm_hybrid::HybridVm,
+    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath, non_blocking_indexer},
     tokio::task::JoinSet,
 };
 
@@ -14,7 +21,9 @@ pub struct IndexerCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// View a block and results
-    Block { height: u64 },
+    Block {
+        height: u64,
+    },
     /// View a range of blocks and results
     Blocks {
         /// Start height (inclusive)
@@ -31,6 +40,7 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+    Reindex,
 }
 
 impl IndexerCmd {
@@ -114,6 +124,56 @@ impl IndexerCmd {
                         eprintln!("Task panicked: {e}");
                     }
                 }
+            },
+
+            SubCmd::Reindex => {
+                tracing::info!("Using git commit: {GIT_COMMIT}");
+
+                // Parse the config file.
+                let cfg: Config = parse_config(app_dir.config_file())?;
+
+                // Open disk DB.
+                let db = DiskDb::open(app_dir.data_dir())?;
+
+                // // Create Rust VM contract codes.
+                // let codes = HybridVm::genesis_codes();
+
+                // // Create hybird VM.
+                // let vm = HybridVm::new(cfg.grug.wasm_cache_capacity, [
+                //     codes.account_factory.to_bytes().hash256(),
+                //     codes.account_margin.to_bytes().hash256(),
+                //     codes.account_multi.to_bytes().hash256(),
+                //     codes.account_spot.to_bytes().hash256(),
+                //     codes.bank.to_bytes().hash256(),
+                //     codes.dex.to_bytes().hash256(),
+                //     codes.gateway.to_bytes().hash256(),
+                //     codes.hyperlane.ism.to_bytes().hash256(),
+                //     codes.hyperlane.mailbox.to_bytes().hash256(),
+                //     codes.hyperlane.va.to_bytes().hash256(),
+                //     codes.lending.to_bytes().hash256(),
+                //     codes.oracle.to_bytes().hash256(),
+                //     codes.taxman.to_bytes().hash256(),
+                //     codes.vesting.to_bytes().hash256(),
+                //     codes.warp.to_bytes().hash256(),
+                // ]);
+                let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+                    .with_keep_blocks(true) // ensures block files aren't deleted
+                    .with_database_url(&cfg.indexer.database_url)
+                    .with_dir(app_dir.indexer_dir())
+                    .with_sqlx_pubsub()
+                    .with_hooks(dango_indexer_sql::hooks::Hooks)
+                    .build()
+                    .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
+
+                if !indexer.is_database_empty().await? {
+                    return Err(anyhow!(
+                        "indexer database is not empty, reindexing aborted."
+                    ));
+                }
+
+                indexer
+                    .start(&db.state_storage(None)?)
+                    .expect("Can't start indexer");
             },
         }
 
