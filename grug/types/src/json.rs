@@ -35,60 +35,6 @@ macro_rules! json {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Json(JsonValue);
 
-#[cfg(feature = "async-graphql")]
-impl async_graphql::InputType for Json {
-    type RawValueType = Self;
-
-    fn type_name() -> std::borrow::Cow<'static, str> {
-        "JSON".into()
-    }
-
-    fn create_type_info(_registry: &mut async_graphql::registry::Registry) -> String {
-        "JSON".to_string()
-    }
-
-    fn parse(value: Option<async_graphql::Value>) -> async_graphql::InputValueResult<Self> {
-        async_graphql::types::Json::<JsonValue>::parse(value)
-            .map(|json| Json(json.0))
-            .map_err(|e| e.propagate())
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        async_graphql::types::Json(&self.0).to_value()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
-    }
-}
-
-#[cfg(feature = "async-graphql")]
-impl async_graphql::OutputType for Json {
-    fn type_name() -> std::borrow::Cow<'static, str> {
-        "JSON".into()
-    }
-
-    fn create_type_info(registry: &mut async_graphql::registry::Registry) -> String {
-        <async_graphql::types::Json<JsonValue> as async_graphql::OutputType>::create_type_info(
-            registry,
-        )
-    }
-
-    fn resolve(
-        &self,
-        ctx: &async_graphql::context::ContextSelectionSet<'_>,
-        field: &async_graphql::Positioned<async_graphql::parser::types::Field>,
-    ) -> impl std::future::Future<Output = async_graphql::ServerResult<async_graphql::Value>> + Send
-    {
-        let json_value = self.0.clone();
-        async move {
-            async_graphql::types::Json(json_value)
-                .resolve(ctx, field)
-                .await
-        }
-    }
-}
-
 impl Json {
     pub const fn null() -> Self {
         Self(JsonValue::Null)
@@ -340,6 +286,60 @@ where
     }
 
     Ok(object)
+}
+
+#[cfg(feature = "async-graphql")]
+impl async_graphql::InputType for Json {
+    type RawValueType = Self;
+
+    fn type_name() -> std::borrow::Cow<'static, str> {
+        "JSON".into()
+    }
+
+    fn create_type_info(_registry: &mut async_graphql::registry::Registry) -> String {
+        "JSON".to_string()
+    }
+
+    fn parse(value: Option<async_graphql::Value>) -> async_graphql::InputValueResult<Self> {
+        async_graphql::types::Json::<JsonValue>::parse(value)
+            .map(|json| Json(json.0))
+            .map_err(|e| e.propagate())
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::types::Json(&self.0).to_value()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+}
+
+#[cfg(feature = "async-graphql")]
+impl async_graphql::OutputType for Json {
+    fn type_name() -> std::borrow::Cow<'static, str> {
+        "JSON".into()
+    }
+
+    fn create_type_info(registry: &mut async_graphql::registry::Registry) -> String {
+        <async_graphql::types::Json<JsonValue> as async_graphql::OutputType>::create_type_info(
+            registry,
+        )
+    }
+
+    fn resolve(
+        &self,
+        ctx: &async_graphql::context::ContextSelectionSet<'_>,
+        field: &async_graphql::Positioned<async_graphql::parser::types::Field>,
+    ) -> impl std::future::Future<Output = async_graphql::ServerResult<async_graphql::Value>> + Send
+    {
+        let json_value = self.0.clone();
+        async move {
+            async_graphql::types::Json(json_value)
+                .resolve(ctx, field)
+                .await
+        }
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
