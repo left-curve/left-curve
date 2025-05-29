@@ -19,9 +19,22 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   topContent?: React.ReactNode;
   columns: TableColumn<T>;
   data: T[];
+  classNames?: {
+    base?: string;
+    header?: string;
+    cell?: string;
+    row?: string;
+  };
 }
 
-export const Table = <T,>({ topContent, bottomContent, columns, data, style }: TableProps<T>) => {
+export const Table = <T,>({
+  topContent,
+  bottomContent,
+  columns,
+  data,
+  style,
+  classNames,
+}: TableProps<T>) => {
   const table = useReactTable<T>({
     data,
     columns,
@@ -38,48 +51,42 @@ export const Table = <T,>({ topContent, bottomContent, columns, data, style }: T
   const { rows } = table.getRowModel();
 
   return (
-    <div className={twMerge(styles.base(), rows.length ? "pb-2" : "pb-4")}>
+    <div className={twMerge(styles.base(), rows.length ? "pb-2" : "pb-4", classNames?.base)}>
       {topContent}
-      <div
+      <table
         className={twMerge(
           "scrollbar-none w-full min-w-fit whitespace-nowrap overflow-hidden relative overflow-x-scroll ",
         )}
       >
         {table.getHeaderGroups().map((headerGroup) => (
-          <div
-            key={headerGroup.id}
-            style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
-            className="grid w-full"
-          >
+          <thead key={headerGroup.id}>
             {headerGroup.headers.map((header) => {
               return (
-                <div key={header.id} className={twMerge(styles.header(), "")}>
+                <td key={header.id} className={twMerge(styles.header(), "", classNames?.header)}>
                   {flexRender(header.column.columnDef.header, header.getContext())}
-                </div>
+                </td>
               );
             })}
-          </div>
+          </thead>
         ))}
 
-        {rows.map((row) => {
-          const cells = row.getVisibleCells();
-          return (
-            <div
-              key={row.id}
-              style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}
-              className={twMerge(styles.row(), "grid w-full")}
-            >
-              {cells.map((cell) => {
-                return (
-                  <div key={cell.id} className={twMerge(styles.cell())}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
+        <tbody>
+          {rows.map((row) => {
+            const cells = row.getVisibleCells();
+            return (
+              <tr key={row.id} className={twMerge(styles.row(), classNames?.row)}>
+                {cells.map((cell) => {
+                  return (
+                    <td key={cell.id} className={twMerge(styles.cell(), classNames?.cell)}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
       {bottomContent}
     </div>
   );
@@ -89,7 +96,7 @@ const tabsVariants = tv({
   slots: {
     base: "grid rounded-xl w-full gap-4 max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
-    cell: "min-w-fit",
+    cell: "",
     row: "",
   },
   variants: {
@@ -98,14 +105,14 @@ const tabsVariants = tv({
         base: "bg-rice-25 shadow-account-card px-4 pt-4",
         header:
           "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl",
-        cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 flex last:justify-end last:text-end",
+        cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end",
         row: "border-b border-gray-100 last:border-b-0",
       },
       simple: {
         base: "text-gray-500",
-        header: "p-2 text-gray-500 diatype-xs-regular flex last:justify-end",
-        cell: "px-2 items-center flex last:justify-end diatype-xs-medium",
-        row: "rounded-lg hover:bg-rice-50",
+        header: "p-2 text-gray-500 diatype-xs-regular last:text-end",
+        cell: "px-2 last:text-end diatype-xs-medium",
+        row: "rounded-xl hover:bg-rice-50",
       },
     },
   },
