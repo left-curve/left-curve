@@ -13,10 +13,12 @@ impl GrugQuery {
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Request as JSON string")] request: String,
         height: Option<u64>,
-    ) -> Result<String, Error> {
+    ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.query_app(request, height).await?)
+        Ok(serde_json::to_value(
+            app_ctx.grug_app.query_app(request, height).await?,
+        )?)
     }
 
     async fn query_store(
@@ -61,9 +63,9 @@ impl GrugQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Transaction as Json string")] tx: String,
-    ) -> Result<String, Error> {
+    ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.simulate(tx).await?)
+        Ok(serde_json::to_value(app_ctx.grug_app.simulate(tx).await?)?)
     }
 }

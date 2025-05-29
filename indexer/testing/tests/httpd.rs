@@ -775,9 +775,10 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<String>(app, request_body).await?;
+                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
 
-                assert_that!(response.data.as_str()).is_equal_to("{\"app_config\":null}");
+                assert_that!(response.data)
+                    .is_equal_to(json!({"app_config": serde_json::Value::Null}));
 
                 Ok::<(), anyhow::Error>(())
             })
