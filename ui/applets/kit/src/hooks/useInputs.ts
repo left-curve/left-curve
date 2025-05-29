@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { ChangeEvent } from "react";
 
@@ -28,6 +28,13 @@ export function useInputs(options: UseInputsOptions = {}) {
       ? Object.fromEntries(Object.entries(initialValues).map(([key, value]) => [key, { value }]))
       : {},
   );
+
+  const errors = useMemo(() => {
+    return Object.entries(inputs).reduce((acc, [key, input]) => {
+      if (input.error) acc[key] = input.error;
+      return acc;
+    }, Object.create({}));
+  }, [inputs]);
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const inputOptions = useRef<Record<string, InputOptions>>({});
@@ -134,5 +141,7 @@ export function useInputs(options: UseInputsOptions = {}) {
     };
   }, []);
 
-  return { register, setValue, setError, inputs, reset, handleSubmit, revalidate };
+  const isValid = !Object.keys(errors).length;
+
+  return { register, setValue, setError, inputs, errors, isValid, reset, handleSubmit, revalidate };
 }
