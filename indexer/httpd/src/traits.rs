@@ -15,7 +15,7 @@ pub trait QueryApp {
     /// Query the app, return a JSON String.
     async fn query_app(
         &self,
-        raw_req: serde_json::Value,
+        raw_req: grug_types::Json,
         height: Option<u64>,
     ) -> AppResult<QueryResponse>;
 
@@ -48,10 +48,10 @@ where
 {
     async fn query_app(
         &self,
-        raw_req: serde_json::Value,
+        raw_req: grug_types::Json,
         height: Option<u64>,
     ) -> AppResult<QueryResponse> {
-        let req: Query = raw_req.to_string().deserialize_json()?;
+        let req: Query = raw_req.deserialize_json()?;
 
         Ok(self.do_query_app(req, height.unwrap_or(0), false)?)
     }
@@ -98,7 +98,7 @@ where
 {
     async fn query_app(
         &self,
-        raw_req: serde_json::Value,
+        raw_req: grug_types::Json,
         height: Option<u64>,
     ) -> AppResult<QueryResponse> {
         self.app.query_app(raw_req, height).await
@@ -133,7 +133,7 @@ where
 {
     async fn query_app(
         &self,
-        raw_req: serde_json::Value,
+        raw_req: grug_types::Json,
         height: Option<u64>,
     ) -> AppResult<QueryResponse> {
         self.lock().await.query_app(raw_req, height).await

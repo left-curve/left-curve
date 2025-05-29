@@ -22,7 +22,7 @@ impl GrugQuery {
 
         Ok(app_ctx
             .grug_app
-            .query_app(request, height)
+            .query_app(grug_types::Json::from_inner(request), height)
             .await?
             .to_json_value()?
             .into_inner())
