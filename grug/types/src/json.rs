@@ -4,7 +4,7 @@ use {
         InputType, InputValueResult, OutputType, Positioned, ServerResult,
         context::ContextSelectionSet, parser::types::Field, registry::Registry,
     },
-    std::{borrow::Cow, future::Future},
+    std::borrow::Cow,
 };
 use {
     borsh::{BorshDeserialize, BorshSerialize},
@@ -333,16 +333,14 @@ impl OutputType for Json {
         <async_graphql::types::Json<JsonValue> as OutputType>::create_type_info(registry)
     }
 
-    fn resolve(
+    async fn resolve(
         &self,
         ctx: &ContextSelectionSet<'_>,
         field: &Positioned<Field>,
-    ) -> impl Future<Output = ServerResult<async_graphql::Value>> + Send {
-        async move {
-            async_graphql::types::Json(self.0.clone())
-                .resolve(ctx, field)
-                .await
-        }
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.0.clone())
+            .resolve(ctx, field)
+            .await
     }
 }
 
