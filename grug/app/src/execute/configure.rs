@@ -1,7 +1,9 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CONFIG, EventResult, NEXT_CRONJOBS, TraceOption,
-        dyn_event, schedule_cronjob,
+        schedule_cronjob,
     },
     grug_types::{Addr, BlockInfo, EvtConfigure, MsgConfigure, Storage},
 };

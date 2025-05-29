@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::AppError,
     grug_types::{CommitmentStatus, Event, EventStatus, SubEventStatus},
@@ -89,8 +91,6 @@ impl<T> EventResult<T> {
     where
         O: Fn(&T),
     {
-        use crate::dyn_event;
-
         match self {
             EventResult::Ok(val) => {
                 ok_closure(val);

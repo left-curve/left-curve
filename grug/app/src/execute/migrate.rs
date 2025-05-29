@@ -1,7 +1,9 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
         AppError, CHAIN_ID, CODES, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
-        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, dyn_event,
+        call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
     grug_types::{
         Addr, BlockInfo, CodeStatus, Context, EvtMigrate, MsgMigrate, StdResult, Storage,
