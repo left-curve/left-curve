@@ -17,7 +17,7 @@ grug-db-memory = { workspace = true }
 grug-testing   = { workspace = true }
 grug-types     = { workspace = true }
 grug-vm-rust   = { workspace = true }
-indexer-httpd  = { workspace = true }
+indexer-httpd  = { workspace = true, features = ["testing"] }
 indexer-sql    = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 sea-orm        = { workspace = true }
 serde          = { workspace = true }
@@ -28,5 +28,4 @@ tokio          = { workspace = true }
 assert-json-diff = { workspace = true }
 assertor         = { workspace = true }
 grug-storage     = { workspace = true }
-indexer-httpd    = { workspace = true, features = ["testing"] }
 tracing          = { workspace = true }
