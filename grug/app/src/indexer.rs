@@ -38,10 +38,7 @@ impl Indexer for NullIndexer {
         Ok(())
     }
 
-    fn reindex_blocks<S>(&mut self, _storage: &S) -> Result<(), Self::Error>
-    where
-        S: grug_types::Storage,
-    {
+    fn reindex_blocks(&self) -> Result<(), Self::Error> {
         Ok(())
     }
 }

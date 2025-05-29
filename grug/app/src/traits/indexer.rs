@@ -25,7 +25,5 @@ pub trait Indexer {
     fn post_indexing(&self, block_height: u64) -> Result<(), Self::Error>;
 
     /// Called when needing reindexing the blocks
-    fn reindex_blocks<S>(&mut self, storage: &S) -> Result<(), Self::Error>
-    where
-        S: Storage;
+    fn reindex_blocks(&self) -> Result<(), Self::Error>;
 }

@@ -1,6 +1,6 @@
 use {
     crate::{
-        Context, bail, block,
+        Context, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
@@ -471,6 +471,32 @@ where
             Ok::<(), error::IndexerError>(())
         })
     }
+
+    pub fn find_highest_saved_block_height(&self) -> u64 {
+        let mut upper = 1;
+        let mut block_filename = self.indexer_path.block_path(upper);
+
+        while BlockToIndex::exists(block_filename) {
+            upper *= 2;
+            block_filename = self.indexer_path.block_path(upper);
+        }
+
+        let mut left = upper / 2;
+        let mut right = upper;
+
+        while left < right {
+            let mid = (left + right).div_ceil(2);
+            let block_filename = self.indexer_path.block_path(mid);
+
+            if BlockToIndex::exists(block_filename) {
+                left = mid;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        left
+    }
 }
 
 impl<H> Indexer for NonBlockingIndexer<H>
@@ -554,10 +580,7 @@ where
         Ok(())
     }
 
-    fn reindex_blocks<S>(&mut self, storage: &S) -> Result<(), Self::Error>
-    where
-        S: Storage,
-    {
+    fn reindex_blocks(&self) -> Result<(), Self::Error> {
         self.handle.block_on(async {
             self.context.migrate_db().await?;
             self.hooks
@@ -568,23 +591,17 @@ where
             Ok::<(), error::IndexerError>(())
         })?;
 
-        match LAST_FINALIZED_BLOCK.load(storage) {
-            Err(_err) => {
-                // This happens when the chain starts at genesis
-                #[cfg(feature = "tracing")]
-                tracing::warn!(error = %_err, "No LAST_FINALIZED_BLOCK found");
-            },
-            Ok(block) => {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    block_height = block.height,
-                    "start called, found a previous block"
-                );
-                self.index_previous_unindexed_blocks(block.height)?;
-            },
-        }
+        let highest_saved_block_height = self.find_highest_saved_block_height();
 
-        self.indexing = true;
+        if highest_saved_block_height > 0 {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = highest_saved_block_height,
+                "Reindexing blocks"
+            );
+
+            self.index_previous_unindexed_blocks(highest_saved_block_height)?;
+        }
 
         Ok(())
     }

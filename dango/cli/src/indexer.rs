@@ -3,11 +3,8 @@ use {
     anyhow::anyhow,
     clap::{Parser, Subcommand},
     config_parser::parse_config,
-    dango_genesis::GenesisCodes,
-    grug_app::{App, AppError, Db, Indexer, NullIndexer},
-    grug_db_disk::DiskDb,
-    grug_types::{GIT_COMMIT, HashExt},
-    grug_vm_hybrid::HybridVm,
+    grug_app::Indexer,
+    grug_types::GIT_COMMIT,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath, non_blocking_indexer},
     tokio::task::JoinSet,
 };
@@ -129,34 +126,9 @@ impl IndexerCmd {
             SubCmd::Reindex => {
                 tracing::info!("Using git commit: {GIT_COMMIT}");
 
-                // Parse the config file.
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
-                // Open disk DB.
-                let db = DiskDb::open(app_dir.data_dir())?;
-
-                // // Create Rust VM contract codes.
-                // let codes = HybridVm::genesis_codes();
-
-                // // Create hybird VM.
-                // let vm = HybridVm::new(cfg.grug.wasm_cache_capacity, [
-                //     codes.account_factory.to_bytes().hash256(),
-                //     codes.account_margin.to_bytes().hash256(),
-                //     codes.account_multi.to_bytes().hash256(),
-                //     codes.account_spot.to_bytes().hash256(),
-                //     codes.bank.to_bytes().hash256(),
-                //     codes.dex.to_bytes().hash256(),
-                //     codes.gateway.to_bytes().hash256(),
-                //     codes.hyperlane.ism.to_bytes().hash256(),
-                //     codes.hyperlane.mailbox.to_bytes().hash256(),
-                //     codes.hyperlane.va.to_bytes().hash256(),
-                //     codes.lending.to_bytes().hash256(),
-                //     codes.oracle.to_bytes().hash256(),
-                //     codes.taxman.to_bytes().hash256(),
-                //     codes.vesting.to_bytes().hash256(),
-                //     codes.warp.to_bytes().hash256(),
-                // ]);
-                let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+                let indexer = non_blocking_indexer::IndexerBuilder::default()
                     .with_keep_blocks(true) // ensures block files aren't deleted
                     .with_database_url(&cfg.indexer.database_url)
                     .with_dir(app_dir.indexer_dir())
@@ -171,9 +143,7 @@ impl IndexerCmd {
                     ));
                 }
 
-                indexer
-                    .start(&db.state_storage(None)?)
-                    .expect("Can't start indexer");
+                indexer.reindex_blocks().expect("can't reindex blocks");
             },
         }
 
