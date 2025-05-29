@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { usePrices } from "./usePrices.js";
@@ -31,10 +31,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
   const { data: config, ...pairs } = useAppConfig();
   const { getPrice } = usePrices();
 
-  const queryClient = useQueryClient();
   const client = usePublicClient();
-
-  const simulationInput = useRef<Coin | null>(null);
 
   const changeQuote = (quote: string) => {
     const newPair = isReverse ? { from: quote, to } : { from, to: quote };
@@ -75,43 +72,30 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     },
   });
 
-  const simulation = useQuery({
-    enabled: false,
-    queryKey: ["pair_simulation", pair],
-    queryFn: async () => {
-      if (!simulationInput.current || !pair) return null;
-      return await client.simulateSwapExactAmountIn({
-        input: simulationInput.current,
+  const {
+    mutateAsync: simulate,
+    mutate: _,
+    ...simulation
+  } = useMutation({
+    mutationFn: async (operation: { input: Coin; pair: PairUpdate }) => {
+      const { input, pair } = operation;
+      const output = await client.simulateSwapExactAmountIn({
+        input,
         route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
       });
+
+      return { input, output };
     },
   });
 
-  const simulate = async (input: Coin) => {
-    simulationInput.current = input;
-    const { data } = await simulation.refetch();
-    return data;
-  };
-
-  const reset = () => {
-    simulationInput.current = null;
-    queryClient.removeQueries({ queryKey: ["pair_simulation"] });
-  };
-
   const fee = useMemo(() => {
-    if (!simulationInput.current || !simulation.data) return 0;
+    if (!simulation.data || !pair) return 0;
+    const { output } = simulation.data;
     return (
-      Math.round(
-        getPrice(
-          formatUnits(
-            simulationInput.current.amount,
-            coins[simulationInput.current.denom].decimals,
-          ),
-          simulationInput.current.denom,
-        ),
-      ) * Number(pair?.params.swapFeeRate)
+      Math.round(getPrice(formatUnits(output.amount, coins[output.denom].decimals), output.denom)) *
+      Number(pair.params.swapFeeRate)
     );
-  }, [simulation.data, pair]);
+  }, [pair, simulation.data]);
 
   return {
     coins,
@@ -126,9 +110,7 @@ export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
     toggleDirection,
     changeQuote,
     simulation: {
-      reset,
       simulate,
-      input: simulationInput.current,
       ...simulation,
     },
   };
