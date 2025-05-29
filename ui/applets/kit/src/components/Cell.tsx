@@ -193,7 +193,7 @@ type CellActionProps = {
 const Action: React.FC<CellActionProps> = ({ action, label, className }) => {
   return (
     <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
-      <Button variant="link" onClick={action}>
+      <Button variant="link" onClick={action} className="p-0 m-0">
         {label}
       </Button>
     </div>
