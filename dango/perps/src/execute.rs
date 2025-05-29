@@ -146,7 +146,7 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
 }
 
 fn batch_update_orders(
-    ctx: MutableCtx,
+    mut ctx: MutableCtx,
     orders: BTreeMap<Denom, Int128>,
 ) -> anyhow::Result<Response> {
     let account_factory = ctx.querier.query_account_factory()?;
@@ -161,59 +161,18 @@ fn batch_update_orders(
         "only margin accounts can update orders"
     );
 
+    // For each order, modify the position
     for (denom, amount) in orders {
-        let market_params = PERPS_MARKET_PARAMS.load(ctx.storage, &denom)?;
-
-        let current_pos = PERPS_POSITIONS.may_load(ctx.storage, (&ctx.sender, &denom))?;
-        match current_pos {
-            Some(pos) => {
-                todo!()
-            },
-            None => {
-                create_position(&ctx, denom, amount, &market_params)?;
-            },
-        }
+        modify_position(&mut ctx, denom, amount)?;
     }
 
-    Ok(Response::new())
-}
-
-fn create_position(
-    ctx: &MutableCtx,
-    denom: Denom,
-    amount: Int128,
-    params: &PerpsMarketParams,
-) -> anyhow::Result<Response> {
-    let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
-
-    // Ensure trading is enabled
-    ensure!(
-        params.trading_enabled,
-        "trading is not enabled for this market"
-    );
-
-    // Query the oracle for the price
-    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
-    let price = oracle_querier.query_price(&denom, None)?;
-    let position_value = price.value_of_unit_amount(amount.unsigned_abs())?;
-
-    // Ensure minimum position value
-    ensure!(
-        position_value.into_int() >= params.min_position_size,
-        "position value is below the minimum position value"
-    );
-
-    // TODO: Implement max position size ?
+    // TODO: Emit events
 
     Ok(Response::new())
 }
 
-fn modify_position(
-    ctx: &mut MutableCtx,
-    denom: Denom,
-    amount: Int128,
-    params: &PerpsMarketParams,
-) -> anyhow::Result<Response> {
+fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow::Result<()> {
+    let params = PERPS_MARKET_PARAMS.load(ctx.storage, &denom)?;
     let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
     let vault_state = PERPS_VAULT.load(ctx.storage)?;
 
@@ -223,7 +182,6 @@ fn modify_position(
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
     let price = oracle_querier.query_price(&denom, None)?;
     let oracle_unit_price = price.unit_price()?.checked_into_signed()?;
-    let position_value = price.value_of_unit_amount(amount.unsigned_abs())?;
 
     // Query current position
     let current_pos = PERPS_POSITIONS
@@ -457,7 +415,8 @@ fn modify_position(
         PERPS_POSITIONS.save(ctx.storage, (&ctx.sender, &denom), &new_pos)?;
     }
 
-    Ok(Response::new())
+    // TODO: Emit events
+    Ok(())
 }
 
 fn same_side(a: Int128, b: Int128) -> bool {
