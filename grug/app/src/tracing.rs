@@ -42,7 +42,7 @@ impl TraceOption {
     /// - `Query`
     /// - `CheckTx`
     pub const MUTE: Self = Self {
-        ok_level: Level::DEBUG,
-        error_level: Level::DEBUG,
+        ok_level: Level::TRACE,
+        error_level: Level::TRACE,
     };
 }
