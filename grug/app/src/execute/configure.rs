@@ -27,7 +27,7 @@ pub fn do_configure(
             dyn_event!(
                 trace_opt.error_level,
                 err = err.to_string(),
-                "Failed to updated config"
+                "Failed to update config"
             );
 
             EventResult::err(evt, err)
