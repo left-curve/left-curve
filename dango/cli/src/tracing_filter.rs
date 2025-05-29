@@ -1,7 +1,8 @@
 use {
     std::str::FromStr,
     tracing::{
-        Level, Metadata, Subscriber, level_filters::LevelFilter, metadata::ParseLevelFilterError,
+        Event, Level, Metadata, Subscriber, level_filters::LevelFilter,
+        metadata::ParseLevelFilterError,
     },
     tracing_subscriber::{Layer, layer::Context},
 };
@@ -37,6 +38,11 @@ where
         } else {
             level <= self.max_level
         }
+    }
+
+    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+        // Pass the event down to downstream layers.
+        ctx.event(event);
     }
 }
 
