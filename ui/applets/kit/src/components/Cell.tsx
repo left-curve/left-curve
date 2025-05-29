@@ -59,6 +59,19 @@ const Amount: React.FC<CellAmountProps> = ({ amount, price, decimals, className 
   );
 };
 
+type CellTextProps = {
+  className?: string;
+  text: string | number;
+};
+
+const Text: React.FC<CellTextProps> = ({ text, className }) => {
+  return (
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+      <p>{text}</p>
+    </div>
+  );
+};
+
 type CellMarketPriceProps = {
   className?: string;
   formatOptions: FormatNumberOptions;
@@ -158,6 +171,35 @@ const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
   );
 };
 
+type CellTimeProps = {
+  className?: string;
+  date: Date;
+};
+
+const Time: React.FC<CellTimeProps> = ({ date, className }) => {
+  return (
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+      <p>{format(date, "MM/dd")}</p>
+    </div>
+  );
+};
+
+type CellActionProps = {
+  className?: string;
+  action: () => void;
+  label: string;
+};
+
+const Action: React.FC<CellActionProps> = ({ action, label, className }) => {
+  return (
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+      <Button variant="link" onClick={action}>
+        {label}
+      </Button>
+    </div>
+  );
+};
+
 type CellTxMessagesProps = {
   messages: IndexedMessage[];
 };
@@ -176,8 +218,11 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
+  Action,
   Amount,
+  Time,
   Sender,
+  Text,
   TxHash,
   TxMessages,
   TxResult,
