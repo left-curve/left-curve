@@ -57,15 +57,15 @@ impl Context {
         match Database::connect(opt).await {
             Ok(db) => {
                 #[cfg(feature = "tracing")]
-                tracing::info!("Connected to database: {}", database_url);
+                tracing::info!(database_url, "Connected to database");
 
                 Ok(db)
             },
-            Err(e) => {
+            Err(error) => {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Failed to connect to database {}: {:?}", database_url, e);
+                tracing::error!(database_url, %error, "Failed to connect to database");
 
-                Err(e)
+                Err(error)
             },
         }
     }

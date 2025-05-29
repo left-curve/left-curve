@@ -42,7 +42,7 @@ impl HooksTrait for Hooks {
 impl Hooks {
     async fn save_transfers(&self, context: &Context, block: &BlockToIndex) -> Result<(), Error> {
         #[cfg(feature = "tracing")]
-        tracing::debug!("about to look at transfer events",);
+        tracing::debug!("About to look at transfer events");
 
         // 1. get all successful transfers events from the database for this block
         let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
@@ -65,8 +65,7 @@ impl Hooks {
                     } else {
                         #[cfg(feature = "tracing")]
                         tracing::error!(
-                            "wrong event type looking at transfers: {:?}",
-                            flat_transfer_event
+                            "Wrong event type looking at transfers: {flat_transfer_event:?}"
                         );
 
                         Err(Error::WrongEventType)
@@ -77,7 +76,7 @@ impl Hooks {
         #[cfg(feature = "tracing")]
         tracing::debug!(
             transfer_event_count = transfer_events.len(),
-            "looked at transfer events",
+            "Looked at transfer events",
         );
 
         let mut idx = 0;
@@ -115,7 +114,7 @@ impl Hooks {
         #[cfg(feature = "tracing")]
         tracing::debug!(
             new_transfers_count = new_transfers.len(),
-            "injecting new transfers",
+            "Injecting new transfers",
         );
 
         if !new_transfers.is_empty() {
@@ -126,7 +125,7 @@ impl Hooks {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!("injected new transfers");
+        tracing::debug!("Injected new transfers");
 
         Ok(())
     }
