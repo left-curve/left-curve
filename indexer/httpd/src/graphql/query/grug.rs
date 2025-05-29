@@ -70,14 +70,9 @@ impl GrugQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Transaction as Json")] tx: grug_types::Json,
-    ) -> Result<serde_json::Value, Error> {
+    ) -> Result<grug_types::Json, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx
-            .grug_app
-            .simulate(tx)
-            .await?
-            .to_json_value()?
-            .into_inner())
+        Ok(app_ctx.grug_app.simulate(tx).await?.to_json_value()?)
     }
 }
