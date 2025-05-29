@@ -14,6 +14,7 @@ awc            = { workspace = true }
 futures-util   = { workspace = true }
 grug-app       = { workspace = true }
 grug-db-memory = { workspace = true }
+grug-math      = { workspace = true }
 grug-testing   = { workspace = true }
 grug-types     = { workspace = true }
 grug-vm-rust   = { workspace = true }

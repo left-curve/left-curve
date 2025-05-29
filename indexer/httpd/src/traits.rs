@@ -5,13 +5,19 @@ use {
     grug_app::{
         App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
-    grug_types::{BlockInfo, BroadcastClient, JsonDeExt, JsonSerExt, SearchTxClient},
+    grug_types::{
+        BlockInfo, BroadcastClient, JsonDeExt, Query, QueryResponse, SearchTxClient, TxOutcome,
+    },
 };
 
 #[async_trait]
 pub trait QueryApp {
     /// Query the app, return a JSON String.
-    async fn query_app(&self, raw_req: String, height: Option<u64>) -> AppResult<String>;
+    async fn query_app(
+        &self,
+        raw_req: grug_types::Json,
+        height: Option<u64>,
+    ) -> AppResult<QueryResponse>;
 
     /// Query the app's underlying key-value store, return `(value, proof)`.
     async fn query_store(
@@ -21,8 +27,8 @@ pub trait QueryApp {
         prove: bool,
     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
-    /// Simulate a transaction, return a JSON String.
-    async fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String>;
+    /// Simulate a transaction.
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome>;
 
     /// Query the chain ID.
     async fn chain_id(&self) -> AppResult<String>;
@@ -40,11 +46,14 @@ where
     ID: Indexer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    async fn query_app(&self, raw_req: String, height: Option<u64>) -> AppResult<String> {
-        let req = raw_req.deserialize_json()?;
-        let res = self.do_query_app(req, height.unwrap_or(0), false)?;
+    async fn query_app(
+        &self,
+        raw_req: grug_types::Json,
+        height: Option<u64>,
+    ) -> AppResult<QueryResponse> {
+        let req: Query = raw_req.deserialize_json()?;
 
-        Ok(res.to_json_string()?)
+        Ok(self.do_query_app(req, height.unwrap_or(0), false)?)
     }
 
     async fn query_store(
@@ -56,11 +65,10 @@ where
         self.do_query_store(key, height.unwrap_or(0), prove)
     }
 
-    async fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String> {
-        let tx = raw_unsigned_tx.as_bytes().deserialize_json()?;
-        let res = self.do_simulate(tx, 0, false)?;
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
+        let tx = raw_unsigned_tx.deserialize_json()?;
 
-        Ok(res.to_json_string()?)
+        Ok(self.do_simulate(tx, 0, false)?)
     }
 
     async fn chain_id(&self) -> AppResult<String> {
@@ -88,7 +96,11 @@ where
     ID: Indexer + Send + Sync + 'static,
     App<DB, VM, PP, ID>: QueryApp,
 {
-    async fn query_app(&self, raw_req: String, height: Option<u64>) -> AppResult<String> {
+    async fn query_app(
+        &self,
+        raw_req: grug_types::Json,
+        height: Option<u64>,
+    ) -> AppResult<QueryResponse> {
         self.app.query_app(raw_req, height).await
     }
 
@@ -101,7 +113,7 @@ where
         self.app.query_store(key, height, prove).await
     }
 
-    async fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String> {
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
         self.app.simulate(raw_unsigned_tx).await
     }
 
@@ -119,7 +131,11 @@ impl<T> QueryApp for tokio::sync::Mutex<T>
 where
     T: QueryApp + Send + Sync + 'static,
 {
-    async fn query_app(&self, raw_req: String, height: Option<u64>) -> AppResult<String> {
+    async fn query_app(
+        &self,
+        raw_req: grug_types::Json,
+        height: Option<u64>,
+    ) -> AppResult<QueryResponse> {
         self.lock().await.query_app(raw_req, height).await
     }
 
@@ -132,7 +148,7 @@ where
         self.lock().await.query_store(key, height, prove).await
     }
 
-    async fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String> {
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
         self.lock().await.simulate(raw_unsigned_tx).await
     }
 

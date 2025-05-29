@@ -5660,6 +5660,7 @@ dependencies = [
  "futures-util",
  "grug-app",
  "grug-db-memory",
+ "grug-math",
  "grug-storage",
  "grug-testing",
  "grug-types",
