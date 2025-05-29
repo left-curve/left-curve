@@ -24,7 +24,7 @@ impl TransactionSubscription {
             .await
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("get_transactions error: {_e:?}");
+                tracing::error!(%_e, "`get_transactions` error");
             })
             .unwrap_or_default()
     }

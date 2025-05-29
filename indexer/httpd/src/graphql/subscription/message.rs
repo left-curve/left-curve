@@ -24,7 +24,7 @@ impl MessageSubscription {
             .await
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("get_messages error: {_e:?}");
+                tracing::error!(%_e, "`get_messages` error");
             })
             .unwrap_or_default()
     }

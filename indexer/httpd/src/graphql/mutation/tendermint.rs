@@ -27,7 +27,7 @@ impl TendermintMutation {
             Ok(response) => Ok(response.to_json_value()?),
             Err(e) => {
                 #[cfg(feature = "tracing")]
-                tracing::error!(error = ?e, tx = ?decoded_tx, "broadcast_tx_sync failed");
+                tracing::error!(error = ?e, tx = ?decoded_tx, "`broadcast_tx_sync` failed");
 
                 configure_scope(|scope| {
                     // NOTE: Sentry might truncate data if too large.
