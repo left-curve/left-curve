@@ -1,6 +1,8 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_2_out_1_handle_response, catch_and_update_event, catch_event,
     },
     grug_types::{Addr, BlockInfo, Context, EvtReply, Json, ReplyOn, Storage, SubMsgResult},
@@ -16,6 +18,7 @@ pub fn do_reply<VM>(
     msg: &Json,
     result: &SubMsgResult,
     reply_on: &ReplyOn,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtReply>
 where
     VM: Vm + Clone + 'static,
@@ -31,14 +34,20 @@ where
         msg,
         result,
         reply_on,
+        trace_opt,
     );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            tracing::info!(contract = contract.to_string(), "Performed reply");
+            dyn_event!(
+                trace_opt.ok_level,
+                contract = contract.to_string(),
+                "Performed reply"
+            );
         },
         "Failed to perform reply",
+        trace_opt.error_level,
     );
 
     evt
@@ -54,6 +63,7 @@ fn _do_reply<VM>(
     msg: &Json,
     result: &SubMsgResult,
     reply_on: &ReplyOn,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtReply>
 where
     VM: Vm + Clone + 'static,
@@ -93,6 +103,7 @@ where
             &ctx,
             msg,
             result,
+            trace_opt,
         ),
         evt => guest_event
     }

@@ -24,7 +24,7 @@ impl EventSubscription {
             .await
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("get_events error: {_e:?}");
+                tracing::error!(%_e, "`get_events` error");
             })
             .unwrap_or_default()
     }

@@ -1,6 +1,10 @@
 use {
-    super::super::types::status::Status, crate::graphql::types::store::Store, async_graphql::*,
-    grug_math::Inner, grug_types::Binary, std::str::FromStr,
+    super::super::types::status::Status,
+    crate::graphql::types::store::Store,
+    async_graphql::*,
+    grug_math::Inner,
+    grug_types::{Binary, JsonSerExt},
+    std::str::FromStr,
 };
 
 #[derive(Default, Debug)]
@@ -11,12 +15,16 @@ impl GrugQuery {
     async fn query_app(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Request as JSON string")] request: String,
+        #[graphql(desc = "Request as JSON")] request: grug_types::Json,
         height: Option<u64>,
-    ) -> Result<String, Error> {
+    ) -> Result<grug_types::Json, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.query_app(request, height).await?)
+        Ok(app_ctx
+            .grug_app
+            .query_app(grug_types::Json::from_inner(request.into_inner()), height)
+            .await?
+            .to_json_value()?)
     }
 
     async fn query_store(
@@ -60,10 +68,10 @@ impl GrugQuery {
     async fn simulate(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Transaction as Json string")] tx: String,
-    ) -> Result<String, Error> {
+        #[graphql(desc = "Transaction as Json")] tx: grug_types::Json,
+    ) -> Result<grug_types::Json, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.simulate(tx).await?)
+        Ok(app_ctx.grug_app.simulate(tx).await?.to_json_value()?)
     }
 }

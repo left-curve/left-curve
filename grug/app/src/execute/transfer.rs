@@ -1,6 +1,8 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, Vm,
+        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_insert_event,
         catch_and_update_event, catch_event,
     },
@@ -19,6 +21,7 @@ pub fn do_transfer<VM>(
     sender: Addr,
     msg: MsgTransfer,
     do_receive: bool,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtTransfer>
 where
     VM: Vm + Clone + 'static,
@@ -33,18 +36,21 @@ where
         sender,
         msg.clone(),
         do_receive,
+        trace_opt,
     );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            tracing::info!(
+            dyn_event!(
+                trace_opt.ok_level,
                 from = sender.to_string(),
                 transfers = ?msg,
                 "Transferred coins"
             );
         },
         "Failed to transfer coins",
+        trace_opt.error_level,
     );
 
     evt
@@ -63,6 +69,7 @@ pub(crate) fn _do_transfer<VM>(
     // - `true` when handling `Message::Transfer`
     // - `false` when handling `Message::{Instantaite,Execute}`
     do_receive: bool,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtTransfer>
 where
     VM: Vm + Clone + 'static,
@@ -107,6 +114,7 @@ where
             code_hash,
             &ctx,
             &msg,
+            trace_opt,
         ),
         evt => bank_guest
     }
@@ -126,6 +134,7 @@ where
                         to,
                         coins,
                         contract_info.code_hash,
+                        trace_opt,
                     ),
                     evt,
                     receive_guests,
@@ -148,6 +157,7 @@ fn _do_receive<VM>(
     to: Addr,
     coins: Coins,
     code_hash: Hash256,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtGuest>
 where
     VM: Vm + Clone + 'static,
@@ -180,5 +190,6 @@ where
         "receive",
         code_hash,
         &ctx,
+        trace_opt,
     )
 }
