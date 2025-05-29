@@ -1,3 +1,11 @@
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{
+        InputType, InputValueResult, OutputType, Positioned, ServerResult,
+        context::ContextSelectionSet, parser::types::Field, registry::Registry,
+    },
+    std::{borrow::Cow, future::Future},
+};
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Inner, InnerMut},
@@ -289,18 +297,18 @@ where
 }
 
 #[cfg(feature = "async-graphql")]
-impl async_graphql::InputType for Json {
+impl InputType for Json {
     type RawValueType = Self;
 
-    fn type_name() -> std::borrow::Cow<'static, str> {
+    fn type_name() -> Cow<'static, str> {
         "JSON".into()
     }
 
-    fn create_type_info(_registry: &mut async_graphql::registry::Registry) -> String {
+    fn create_type_info(_registry: &mut Registry) -> String {
         "JSON".to_string()
     }
 
-    fn parse(value: Option<async_graphql::Value>) -> async_graphql::InputValueResult<Self> {
+    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
         async_graphql::types::Json::<JsonValue>::parse(value)
             .map(|json| Json(json.0))
             .map_err(|e| e.propagate())
@@ -316,26 +324,22 @@ impl async_graphql::InputType for Json {
 }
 
 #[cfg(feature = "async-graphql")]
-impl async_graphql::OutputType for Json {
-    fn type_name() -> std::borrow::Cow<'static, str> {
+impl OutputType for Json {
+    fn type_name() -> Cow<'static, str> {
         "JSON".into()
     }
 
-    fn create_type_info(registry: &mut async_graphql::registry::Registry) -> String {
-        <async_graphql::types::Json<JsonValue> as async_graphql::OutputType>::create_type_info(
-            registry,
-        )
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<JsonValue> as OutputType>::create_type_info(registry)
     }
 
     fn resolve(
         &self,
-        ctx: &async_graphql::context::ContextSelectionSet<'_>,
-        field: &async_graphql::Positioned<async_graphql::parser::types::Field>,
-    ) -> impl std::future::Future<Output = async_graphql::ServerResult<async_graphql::Value>> + Send
-    {
-        let json_value = self.0.clone();
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> impl Future<Output = ServerResult<async_graphql::Value>> + Send {
         async move {
-            async_graphql::types::Json(json_value)
+            async_graphql::types::Json(self.0.clone())
                 .resolve(ctx, field)
                 .await
         }
