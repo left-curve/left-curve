@@ -1154,7 +1154,10 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    Uint128::new(99);
+    Uint128::new(99),
+    PassiveLiquidity::Xyk {
+        order_spacing: Udec128::ONE,
+    };
     "provision at pool ratio"
 )]
 #[test_case(
@@ -1163,7 +1166,10 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    Uint128::new(49);
+    Uint128::new(49),
+    PassiveLiquidity::Xyk {
+        order_spacing: Udec128::ONE,
+    };
     "provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1172,10 +1178,13 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    Uint128::new(72);
+    Uint128::new(72),
+    PassiveLiquidity::Xyk {
+        order_spacing: Udec128::ONE,
+    };
     "provision at different ratio"
 )]
-fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: Uint128) {
+fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: Uint128, pool_type: PassiveLiquidity) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
@@ -1203,7 +1212,7 @@ fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: U
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            pool_type: pair_params.pool_type.clone(),
+                            pool_type,
                         },
                     }]),
                     Coins::new(),
