@@ -28,7 +28,7 @@ pub trait QueryApp {
     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)>;
 
     /// Simulate a transaction.
-    async fn simulate(&self, raw_unsigned_tx: serde_json::Value) -> AppResult<TxOutcome>;
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome>;
 
     /// Query the chain ID.
     async fn chain_id(&self) -> AppResult<String>;
@@ -65,7 +65,7 @@ where
         self.do_query_store(key, height.unwrap_or(0), prove)
     }
 
-    async fn simulate(&self, raw_unsigned_tx: serde_json::Value) -> AppResult<TxOutcome> {
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
         let tx = raw_unsigned_tx.to_string().deserialize_json()?;
 
         Ok(self.do_simulate(tx, 0, false)?)
@@ -113,7 +113,7 @@ where
         self.app.query_store(key, height, prove).await
     }
 
-    async fn simulate(&self, raw_unsigned_tx: serde_json::Value) -> AppResult<TxOutcome> {
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
         self.app.simulate(raw_unsigned_tx).await
     }
 
@@ -148,7 +148,7 @@ where
         self.lock().await.query_store(key, height, prove).await
     }
 
-    async fn simulate(&self, raw_unsigned_tx: serde_json::Value) -> AppResult<TxOutcome> {
+    async fn simulate(&self, raw_unsigned_tx: grug_types::Json) -> AppResult<TxOutcome> {
         self.lock().await.simulate(raw_unsigned_tx).await
     }
 

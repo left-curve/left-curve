@@ -13,7 +13,7 @@ impl TendermintMutation {
     async fn broadcast_tx_sync(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Transaction as JSON")] tx: serde_json::Value,
+        #[graphql(desc = "Transaction as JSON")] tx: grug_types::Json,
     ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
@@ -31,7 +31,7 @@ impl TendermintMutation {
 
                 configure_scope(|scope| {
                     // NOTE: Sentry might truncate data if too large.
-                    scope.set_extra("transaction", tx);
+                    scope.set_extra("transaction", tx.into_inner());
                 });
 
                 Err(e.into())

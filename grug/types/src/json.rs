@@ -1,4 +1,7 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::{InputObject, InputType};
 use {
+    async_graphql::InputObjectType,
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Inner, InnerMut},
     serde::{Deserialize, Serialize},
@@ -33,7 +36,35 @@ macro_rules! json {
 /// A wrapper over [`serde_json::Value`](serde_json::Value) that implements
 /// [Borsh](https://github.com/near/borsh-rs) traits.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+// #[cfg_attr(feature = "async-graphql", derive(InputObject))]
 pub struct Json(JsonValue);
+
+#[cfg(feature = "async-graphql")]
+impl async_graphql::InputType for Json {
+    type RawValueType = Self;
+
+    fn type_name() -> std::borrow::Cow<'static, str> {
+        "JSON".into()
+    }
+
+    fn create_type_info(_registry: &mut async_graphql::registry::Registry) -> String {
+        "JSON".to_string()
+    }
+
+    fn parse(value: Option<async_graphql::Value>) -> async_graphql::InputValueResult<Self> {
+        async_graphql::types::Json::<JsonValue>::parse(value)
+            .map(|json| Json(json.0))
+            .map_err(|e| e.propagate())
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::types::Json(&self.0).to_value()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+}
 
 impl Json {
     pub const fn null() -> Self {
