@@ -59,13 +59,13 @@ impl PerpsMarketAccumulators {
         self.cost_basis_sum = self.cost_basis_sum.checked_sub(
             position
                 .size
-                .checked_into_dec()?
+                .checked_into_dec::<18>()?
                 .checked_mul(position.entry_execution_price.checked_into_signed()?)?,
         )?;
         self.funding_basis_sum = self.funding_basis_sum.checked_sub(
             position
                 .size
-                .checked_into_dec()?
+                .checked_into_dec::<18>()?
                 .checked_mul(position.entry_funding_index)?,
         )?;
         self.quadratic_fee_basis = self
@@ -81,13 +81,13 @@ impl PerpsMarketAccumulators {
         self.cost_basis_sum = self.cost_basis_sum.checked_add(
             position
                 .size
-                .checked_into_dec()?
+                .checked_into_dec::<18>()?
                 .checked_mul(position.entry_execution_price.checked_into_signed()?)?,
         )?;
         self.funding_basis_sum = self.funding_basis_sum.checked_add(
             position
                 .size
-                .checked_into_dec()?
+                .checked_into_dec::<18>()?
                 .checked_mul(position.entry_funding_index)?,
         )?;
         self.quadratic_fee_basis = self
