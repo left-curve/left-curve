@@ -1,7 +1,8 @@
+import { useMediaQuery } from "@left-curve/applets-kit";
 import { createFileRoute } from "@tanstack/react-router";
 import { TradeMenu } from "~/components/foundation/TradeMenu";
 import { OpenOrder } from "~/components/pro-swap/OpenOrder";
-import { OrderBook } from "~/components/pro-swap/OrderBook";
+import { OrderBookSection } from "~/components/pro-swap/OrderBookSection";
 import { PairHeader } from "~/components/pro-swap/PairHeader";
 import { TradingViewChart } from "~/components/pro-swap/TradingViewChart";
 
@@ -10,17 +11,20 @@ export const Route = createFileRoute("/(app)/_app/pro-swap")({
 });
 
 function RouteComponent() {
+  const { isLg } = useMediaQuery();
   return (
     <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)]">
       <div className="flex flex-col flex-1">
         <div className="flex flex-col xl:flex-row flex-1">
           <div className="flex flex-col flex-1">
             <PairHeader />
-            <div className="shadow-card-shadow bg-rice-25">
-              <TradingViewChart />
-            </div>
+            {isLg && (
+              <div className="shadow-card-shadow bg-rice-25">
+                <TradingViewChart />
+              </div>
+            )}
           </div>
-          <OrderBook />
+          <OrderBookSection />
         </div>
         <OpenOrder />
       </div>

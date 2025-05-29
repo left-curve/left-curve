@@ -1,6 +1,5 @@
-import { Tabs, twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/applets-kit";
 import type React from "react";
-import { useState } from "react";
 
 interface OrderBookRow {
   price: number;
@@ -13,27 +12,6 @@ type OrderBookData = {
   bids: OrderBookRow[];
   asks: OrderBookRow[];
 };
-
-function groupOrdersByPrice(orders: { price: number; amount: number }[]) {
-  const groupedMap = new Map<number, number>();
-
-  for (const order of orders) {
-    groupedMap.set(order.price, (groupedMap.get(order.price) || 0) + order.amount);
-  }
-
-  const groupedArray: OrderBookRow[] = [];
-  let cumulative = 0;
-
-  const sorted = [...groupedMap.entries()].sort((a, b) => b[0] - a[0]);
-
-  for (const [price, amount] of sorted) {
-    const total = price * amount;
-    cumulative += total;
-    groupedArray.push({ price, amount, total, cumulativeTotal: cumulative });
-  }
-
-  return groupedArray;
-}
 
 const mockOrderBookData: OrderBookData = {
   bids: [
@@ -142,7 +120,28 @@ const mockOrderBookData: OrderBookData = {
   ],
 };
 
-const OrderRowForImage: React.FC<
+function groupOrdersByPrice(orders: { price: number; amount: number }[]) {
+  const groupedMap = new Map<number, number>();
+
+  for (const order of orders) {
+    groupedMap.set(order.price, (groupedMap.get(order.price) || 0) + order.amount);
+  }
+
+  const groupedArray: OrderBookRow[] = [];
+  let cumulative = 0;
+
+  const sorted = [...groupedMap.entries()].sort((a, b) => b[0] - a[0]);
+
+  for (const [price, amount] of sorted) {
+    const total = price * amount;
+    cumulative += total;
+    groupedArray.push({ price, amount, total, cumulativeTotal: cumulative });
+  }
+
+  return groupedArray;
+}
+
+const OrderRow: React.FC<
   OrderBookRow & {
     type: "bid" | "ask";
     maxCumulativeTotal: number;
@@ -155,7 +154,7 @@ const OrderRowForImage: React.FC<
     type === "bid" ? "bg-green-300 left-0" : "bg-red-300 right-0 lg:left-0 lg:right-auto";
 
   return (
-    <div className="relative flex justify-between diatype-xs-medium text-gray-700">
+    <div className="relative flex-1 flex justify-between diatype-sm-medium text-gray-700">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -175,62 +174,45 @@ const OrderRowForImage: React.FC<
 };
 
 export const OrderBook: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"order book" | "trades">("order book");
   const { bids, asks } = mockOrderBookData;
   const maxCumulativeAsk = asks.length > 0 ? asks[asks.length - 1].cumulativeTotal : 0;
   const maxCumulativeBid = bids.length > 0 ? bids[bids.length - 1].cumulativeTotal : 0;
-
   const groupedAsks = groupOrdersByPrice(mockOrderBookData.asks).slice(0, 10);
   const groupedBids = groupOrdersByPrice(mockOrderBookData.bids).slice(0, 10);
 
   return (
-    <div className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 min-w-[20rem]">
-      <Tabs
-        color="line-red"
-        layoutId="tabs-order-history"
-        selectedTab={activeTab}
-        keys={["order book", "trades"]}
-        fullWidth
-        onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
-      />
-      {activeTab === "order book" ? (
-        <div className="flex gap-2 lg:flex-col">
-          <div className="asks-container flex flex-col">
-            {groupedAsks.slice().map((ask) => (
-              <OrderRowForImage
-                key={`ask-${ask.price}`}
-                {...ask}
-                type="ask"
-                maxCumulativeTotal={maxCumulativeAsk}
-              />
-            ))}
-          </div>
-          {bids.length > 0 && asks.length > 0 && (
-            <div className="diatype-xs-medium text-gray-500 hidden lg:block">
-              Spread:{" "}
-              {(
-                asks.reduce((min, p) => (p.price < min ? p.price : min), asks[0].price) -
-                bids[0].price
-              ).toFixed(1)}
-            </div>
-          )}
-          <div className="bid-container flex flex-col">
-            {groupedBids
-              .slice()
-              .sort((a, b) => b.price - a.price)
-              .map((bid) => (
-                <OrderRowForImage
-                  key={`bid-${bid.price}`}
-                  {...bid}
-                  type="bid"
-                  maxCumulativeTotal={maxCumulativeAsk}
-                />
-              ))}
-          </div>
+    <div className="flex gap-2 lg:flex-col items-center justify-center">
+      <div className="asks-container flex flex-col w-full">
+        {groupedAsks.slice().map((ask) => (
+          <OrderRow
+            key={`ask-${ask.price}`}
+            {...ask}
+            type="ask"
+            maxCumulativeTotal={maxCumulativeAsk}
+          />
+        ))}
+      </div>
+      {bids.length > 0 && asks.length > 0 && (
+        <div className="diatype-xs-medium text-gray-500 hidden lg:block">
+          Spread:{" "}
+          {(
+            asks.reduce((min, p) => (p.price < min ? p.price : min), asks[0].price) - bids[0].price
+          ).toFixed(1)}
         </div>
-      ) : (
-        <div className="flex flex-col gap-2">Life Trades</div>
       )}
+      <div className="bid-container flex flex-col w-full">
+        {groupedBids
+          .slice()
+          .sort((a, b) => b.price - a.price)
+          .map((bid) => (
+            <OrderRow
+              key={`bid-${bid.price}`}
+              {...bid}
+              type="bid"
+              maxCumulativeTotal={maxCumulativeBid}
+            />
+          ))}
+      </div>
     </div>
   );
 };

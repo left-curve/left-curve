@@ -16,6 +16,28 @@ export const OpenOrder: React.FC = () => {
         denom: "usdc",
         decimals: 6,
         type: "contract",
+        logoURI:
+          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
+      } as AnyCoin,
+      direction: "Long",
+      size: 0.063,
+      orderValue: 11.98,
+      price: 1.889,
+      reduceOnly: false,
+      triggerConditions: "N/A",
+      onCancel: () => console.log("cancel"),
+    },
+    {
+      time: new Date(),
+      type: "Limit",
+      coin: {
+        symbol: "USDC",
+        name: "USDC",
+        denom: "usdc",
+        decimals: 6,
+        type: "contract",
+        logoURI:
+          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
       } as AnyCoin,
       direction: "Long",
       size: 0.063,
@@ -49,7 +71,7 @@ export const OpenOrder: React.FC = () => {
     },
     {
       header: "Coin",
-      cell: ({ row }) => <Cell.Asset asset={row.original.coin} />,
+      cell: ({ row }) => <Cell.Asset noImage asset={row.original.coin} />,
     },
     {
       header: "Direction",
@@ -77,11 +99,11 @@ export const OpenOrder: React.FC = () => {
     },
     {
       header: "Cancel All",
-      cell: ({ row }) => <Cell.Action action={row.original.onCancel} label="Cancel" />,
+      cell: ({ row }) => <Cell.Action action={row.original.onCancel} label="Cancel" className="" />,
     },
   ];
   return (
-    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow">
+    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-0">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -90,9 +112,10 @@ export const OpenOrder: React.FC = () => {
           keys={["open order", "trade history"]}
           onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
         />
+
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
-      <Table data={data} columns={columns} />
+      <Table data={data} columns={columns} style="simple" />
     </div>
   );
 };
