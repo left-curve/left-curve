@@ -752,7 +752,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
     "#;
 
     let body_request =
-        grug_types::Query::AppConfig(grug_types::QueryAppConfigRequest {}).to_json_string()?;
+        grug_types::Query::AppConfig(grug_types::QueryAppConfigRequest {}).to_json_value()?;
 
     let variables = json!({
         "request": body_request,
