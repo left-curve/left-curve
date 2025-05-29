@@ -9,6 +9,7 @@ import {
   IconUser,
   Input,
   Tabs,
+  useMediaQuery,
 } from "@left-curve/applets-kit";
 
 import { useState, type PropsWithChildren } from "react";
@@ -25,6 +26,7 @@ type TradeMenuProps = {
 };
 
 export const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction }) => {
+  const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
   const [action, setAction] = useState<"sell" | "buy">(defaultAction || "buy");
   const [operation, setOperation] = useState<"market" | "limit">("limit");
@@ -42,7 +44,7 @@ export const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction }) => {
           <IconChevronDown className="h-6 w-6" />
         </IconButton>
         <Tabs
-          layoutId="tabs-sell-and-buy"
+          layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}
           selectedTab={action}
           keys={["buy", "sell"]}
           fullWidth
@@ -61,7 +63,7 @@ export const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction }) => {
       </div>
       <div className="w-full flex flex-col gap-4 p-4">
         <Tabs
-          layoutId="tabs-market-limit"
+          layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
           selectedTab={operation}
           keys={["market", "limit"]}
           fullWidth

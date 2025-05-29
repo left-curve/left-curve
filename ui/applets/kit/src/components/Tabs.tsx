@@ -7,6 +7,7 @@ import { tv } from "tailwind-variants";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { VariantProps } from "tailwind-variants";
+import { useHasMounted } from "#hooks/useHasMounted.js";
 
 export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onTabChange?: (tab: string) => void;
@@ -26,6 +27,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   layoutId,
   color,
 }) => {
+  const hasMounted = useHasMounted();
   const tabs = keys ? keys : Children.toArray(children);
   const [activeTab, setActiveTab] = useControlledState(selectedTab, onTabChange, () => {
     if (defaultKey) return defaultKey;
@@ -42,7 +44,15 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   });
 
   return (
-    <motion.div initial={false} layoutId={layoutId} className={twMerge(styles.base())}>
+    <motion.div
+      layout
+      layoutId={layoutId}
+      initial={false}
+      transition={{ duration: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className={twMerge(styles.base())}
+    >
       {tabs.map((e, i) => {
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
@@ -65,8 +75,9 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
             ) : (
               cloneElement(e as React.ReactElement, { isActive })
             )}
-            {isActive ? (
+            {isActive && hasMounted ? (
               <motion.div
+                initial={false}
                 layoutId={`active-tab-indicator-${layoutId}`}
                 className={twMerge(styles["animated-element"]())}
               />
