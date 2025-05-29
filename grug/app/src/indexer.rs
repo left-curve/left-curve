@@ -37,6 +37,10 @@ impl Indexer for NullIndexer {
     fn post_indexing(&self, _block_height: u64) -> Result<(), Self::Error> {
         Ok(())
     }
+
+    fn reindex_blocks(&self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 /// An error type that is never encountered.

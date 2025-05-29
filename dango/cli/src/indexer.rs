@@ -1,7 +1,11 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{config::Config, home_directory::HomeDirectory},
+    anyhow::anyhow,
     clap::{Parser, Subcommand},
-    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
+    config_parser::parse_config,
+    grug_app::Indexer,
+    grug_types::GIT_COMMIT,
+    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath, non_blocking_indexer},
     tokio::task::JoinSet,
 };
 
@@ -14,7 +18,9 @@ pub struct IndexerCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// View a block and results
-    Block { height: u64 },
+    Block {
+        height: u64,
+    },
     /// View a range of blocks and results
     Blocks {
         /// Start height (inclusive)
@@ -31,6 +37,7 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+    Reindex,
 }
 
 impl IndexerCmd {
@@ -114,6 +121,29 @@ impl IndexerCmd {
                         eprintln!("Task panicked: {e}");
                     }
                 }
+            },
+
+            SubCmd::Reindex => {
+                tracing::info!("Using git commit: {GIT_COMMIT}");
+
+                let cfg: Config = parse_config(app_dir.config_file())?;
+
+                let indexer = non_blocking_indexer::IndexerBuilder::default()
+                    .with_keep_blocks(true) // ensures block files aren't deleted
+                    .with_database_url(&cfg.indexer.database_url)
+                    .with_dir(app_dir.indexer_dir())
+                    .with_sqlx_pubsub()
+                    .with_hooks(dango_indexer_sql::hooks::Hooks)
+                    .build()
+                    .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
+
+                if !indexer.is_database_empty().await? {
+                    return Err(anyhow!(
+                        "indexer database is not empty, reindexing aborted."
+                    ));
+                }
+
+                indexer.reindex_blocks().expect("can't reindex blocks");
             },
         }
 

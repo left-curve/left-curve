@@ -10,7 +10,10 @@ use {
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
-    sea_orm::{DatabaseConnection, TransactionTrait},
+    sea_orm::{
+        ConnectionTrait, DatabaseBackend, DatabaseConnection, EntityTrait, Statement,
+        TransactionTrait,
+    },
     std::{
         collections::HashMap,
         future::Future,
@@ -20,7 +23,11 @@ use {
         thread::sleep,
         time::Duration,
     },
-    tokio::runtime::{Builder, Handle, Runtime},
+    tokio::{
+        runtime::{Builder, Handle, Runtime},
+        sync::Semaphore,
+        task::JoinSet,
+    },
 };
 
 // ------------------------------- IndexerBuilder ------------------------------
@@ -341,13 +348,50 @@ where
         })?;
         Ok(())
     }
+
+    pub async fn is_database_empty(&self) -> error::Result<bool> {
+        let db = self.context.db.clone();
+
+        let tables_count = match db.get_database_backend() {
+            DatabaseBackend::Postgres | DatabaseBackend::MySql => {
+                db.query_one(Statement::from_string(
+                    db.get_database_backend(),
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'mysql', 'performance_schema')".to_owned(),
+                )).await?
+            },
+            DatabaseBackend::Sqlite => {
+                db.query_one(Statement::from_string(
+                    db.get_database_backend(),
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table'".to_owned(),
+                )).await?
+            },
+        };
+
+        let count: i64 = tables_count.unwrap().try_get("", "count")?;
+
+        if count == 0 {
+            #[cfg(feature = "tracing")]
+            tracing::info!("Database is empty");
+            return Ok(true);
+        }
+        #[cfg(feature = "tracing")]
+        tracing::info!("Database is not empty, found {count} tables, will check the blocks table",);
+
+        let block = entity::blocks::Entity::find().one(&db).await?;
+
+        Ok(block.is_none())
+    }
 }
+
+// NOTE: this could be set to the current cpu cores, and taking into account the
+// max connections to the database.
+const REINDEXING_MAX_TASKS: usize = 1;
 
 impl<H> NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
 {
-    /// Index all previous blocks not yet indexed.
+    /// Index all previous blocks not yet indexed, doing it in parallel.
     fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
             entity::blocks::Entity::find_last_block_height(&self.context.db).await
@@ -359,47 +403,131 @@ where
         };
 
         let next_block_height = last_indexed_block_height + 1;
-        if latest_block_height > next_block_height {
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            next_block_height = next_block_height,
+            latest_block_height = latest_block_height,
+            "index_previous_unindexed_blocks called"
+        );
+
+        if latest_block_height <= next_block_height {
             return Ok(());
         }
 
-        for block_height in next_block_height..=latest_block_height {
-            let block_filename = self.indexer_path.block_path(block_height);
+        self.handle.block_on(async {
+            let mut set: JoinSet<Result<(), IndexerError>> = JoinSet::new();
+            let semaphore = Arc::new(Semaphore::new(REINDEXING_MAX_TASKS));
 
-            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, "can't load block from disk");
-                    panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
-            });
+            let keep_blocks = self.keep_blocks;
 
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks started"
-            );
+            for block_height in next_block_height..=latest_block_height {
+                let db = self.context.db.clone();
+                let block_filename = self.indexer_path.block_path(block_height);
 
-            self.handle.block_on(async {
-                let db = self.context.db.begin().await?;
-                block_to_index.save(&db).await?;
-                db.commit().await?;
-                Ok::<(), error::IndexerError>(())
-            })?;
-
-            if !self.keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+                // Avoid spawning too many tasks at once, to avoid memory issues
+                while set.len() > REINDEXING_MAX_TASKS * 2 {
+                    while let Some(result) = set.join_next().await {
+                        match result {
+                            Ok(result) => {
+                                match result {
+                                    Ok(_) => {},
+                                    Err(err) => {
+                                        #[cfg(feature = "tracing")]
+                                        tracing::error!(error = %err, block_height, "Error indexing block");
+                                        return Err(err);
+                                    },
+                                }
+                            },
+                            Err(err) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(error = %err, block_height, "Error indexing block");
+                                return Err(err.into());
+                            },
+                        }
+                    }
                 }
+
+                let permit = semaphore.clone().acquire_owned().await?;
+
+                set.spawn(async move {
+                    let txn = db.begin().await?;
+                    let _permit = permit;
+
+                    let block_filename_clone = block_filename.clone();
+
+                    let block_to_index = tokio::task::spawn_blocking(move || {
+                        BlockToIndex::load_from_disk(block_filename_clone).unwrap_or_else(|_err| {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %_err, block_height, "can't load block from disk");
+                            panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
+                        })
+                    }).await?;
+
+                    // #[cfg(feature = "tracing")]
+                    // tracing::info!(
+                    //     block_height = block_height,
+                    //     "index_previous_unindexed_blocks started"
+                    // );
+
+                    block_to_index.save(&db).await?;
+                    txn.commit().await?;
+
+                    if !keep_blocks {
+                        if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
+                        #[cfg(feature = "tracing")]
+                            tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+
+                        }
+                    }
+
+                    Ok::<(), error::IndexerError>(())
+                });
+
+                // #[cfg(feature = "tracing")]
+                // tracing::info!(
+                //     block_height = block_height,
+                //     "index_previous_unindexed_blocks ended"
+                // );
             }
 
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks ended"
-            );
+            // Wait for all tasks to finish
+            while (set.join_next().await).is_some() {}
+
+            Ok::<(), error::IndexerError>(())
+        })
+    }
+
+    pub fn find_highest_saved_block_height(&self) -> u64 {
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            blocks_path = self.indexer_path.blocks_path().to_str(),
+            "looking for highest saved block height"
+        );
+
+        let mut upper = 1;
+        let mut block_filename = self.indexer_path.block_path(upper);
+
+        while BlockToIndex::exists(block_filename) {
+            upper *= 2;
+            block_filename = self.indexer_path.block_path(upper);
         }
 
-        Ok(())
+        let mut left = upper / 2;
+        let mut right = upper;
+
+        while left < right {
+            let mid = (left + right).div_ceil(2);
+            let block_filename = self.indexer_path.block_path(mid);
+
+            if BlockToIndex::exists(block_filename) {
+                left = mid;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        left
     }
 }
 
@@ -479,6 +607,35 @@ where
                     "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
                 );
             }
+        }
+
+        Ok(())
+    }
+
+    fn reindex_blocks(&self) -> Result<(), Self::Error> {
+        self.handle.block_on(async {
+            self.context.migrate_db().await?;
+            self.hooks
+                .start(self.context.clone())
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+
+            Ok::<(), error::IndexerError>(())
+        })?;
+
+        let highest_saved_block_height = self.find_highest_saved_block_height();
+
+        if highest_saved_block_height > 0 {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = highest_saved_block_height,
+                "Reindexing blocks"
+            );
+
+            self.index_previous_unindexed_blocks(highest_saved_block_height)?;
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::info!("No blocks to reindex");
         }
 
         Ok(())
