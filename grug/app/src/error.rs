@@ -3,7 +3,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Debug, Clone, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),
@@ -19,6 +19,9 @@ pub enum AppError {
 
     #[error("indexer error: {0}")]
     Indexer(String),
+
+    #[error("indexer error: {0}")]
+    IndexerHttpd(String),
 
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {

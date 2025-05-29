@@ -11,7 +11,7 @@ impl GrugQuery {
     async fn query_app(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Request as JSON string")] request: String,
+        #[graphql(desc = "Request as JSON")] request: serde_json::Value,
         height: Option<u64>,
     ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
@@ -62,7 +62,7 @@ impl GrugQuery {
     async fn simulate(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Transaction as Json string")] tx: String,
+        #[graphql(desc = "Transaction as Json")] tx: serde_json::Value,
     ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 

@@ -1,4 +1,3 @@
-#[cfg(feature = "async-graphql")]
 use {
     crate::{
         Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
