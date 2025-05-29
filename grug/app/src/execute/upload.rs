@@ -1,7 +1,7 @@
 use {
     crate::{
         AppError, AppResult, CODES, CONFIG, EventResult, GasTracker, MeteredItem, MeteredMap,
-        has_permission,
+        TraceOption, dyn_event, has_permission,
     },
     grug_types::{
         Addr, BlockInfo, Code, CodeStatus, EvtUpload, Hash256, HashExt, MsgUpload, Storage,
@@ -14,6 +14,7 @@ pub fn do_upload(
     block: BlockInfo,
     uploader: Addr,
     msg: MsgUpload,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtUpload> {
     let code_hash = msg.code.hash256();
 
@@ -25,13 +26,21 @@ pub fn do_upload(
     match _do_upload(storage, gas_tracker, block, uploader, msg, code_hash) {
         Ok(_) => {
             #[cfg(feature = "tracing")]
-            tracing::info!(code_hash = code_hash.to_string(), "Uploaded code");
+            dyn_event!(
+                trace_opt.ok_level,
+                code_hash = code_hash.to_string(),
+                "Uploaded code"
+            );
 
             EventResult::Ok(evt)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(err = err.to_string(), "Failed to upload code");
+            dyn_event!(
+                trace_opt.error_level,
+                err = err.to_string(),
+                "Failed to upload code"
+            );
 
             EventResult::err(evt, err)
         },

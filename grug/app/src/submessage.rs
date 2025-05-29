@@ -1,5 +1,5 @@
 use {
-    crate::{AppError, EventResult, GasTracker, Vm, do_reply, process_msg},
+    crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
     grug_types::{
         Addr, BlockInfo, Buffer, EventStatus, GenericResult, ReplyOn, Shared, Storage, SubEvent,
         SubEventStatus, SubMessage,
@@ -66,6 +66,7 @@ pub fn handle_submessages<VM>(
     msg_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
+    trace_opt: TraceOption,
 ) -> EventResult<Vec<EventStatus<SubEvent>>>
 where
     VM: Vm + Clone + 'static,
@@ -90,6 +91,7 @@ where
             msg_depth + 1, // important: increase message depth
             sender,
             submsg.msg,
+            trace_opt,
         );
 
         match (&submsg.reply_on, result.clone().as_result()) {
@@ -108,6 +110,7 @@ where
                     payload,
                     &GenericResult::Ok(submsg_event.clone()),
                     &submsg.reply_on,
+                    trace_opt,
                 );
 
                 let submsg_event = SubEventStatus::Ok(submsg_event);
@@ -130,6 +133,7 @@ where
                     payload,
                     &GenericResult::Err(err.to_string()),
                     &submsg.reply_on,
+                    trace_opt,
                 );
 
                 let submsg_event = if reply.is_ok() {

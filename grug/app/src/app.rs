@@ -1,9 +1,11 @@
+use crate::TraceOption;
 #[cfg(all(feature = "abci", feature = "tracing"))]
 use data_encoding::BASE64;
 #[cfg(any(feature = "abci", feature = "tracing"))]
 use grug_types::JsonSerExt;
 #[cfg(feature = "abci")]
 use grug_types::{HashExt, JsonDeExt};
+
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
@@ -139,6 +141,7 @@ where
                 0,
                 GENESIS_SENDER,
                 msg,
+                TraceOption::LOUD,
             );
 
             if let Err((_event, err)) = output.as_result() {
@@ -251,6 +254,7 @@ where
                 block.info,
                 tx.clone(),
                 AuthMode::Finalize,
+                TraceOption::LOUD,
             );
 
             tx_outcomes.push(tx_outcome);
@@ -299,6 +303,7 @@ where
                 contract,
                 time,
                 next_time,
+                TraceOption::LOUD,
             );
 
             // Commit state changes if the cronjob was successful.
@@ -414,6 +419,7 @@ where
                 block,
                 &tx,
                 AuthMode::Check,
+                TraceOption::MUTE,
             )
             .into_commitment_status(),
         );
@@ -433,6 +439,7 @@ where
             block,
             &tx,
             AuthMode::Check,
+            TraceOption::MUTE,
         )
         .into_commitment_status();
 
@@ -563,6 +570,7 @@ where
             block,
             tx,
             AuthMode::Simulate,
+            TraceOption::MUTE, // Mute tracing outputs during simulation.
         ))
     }
 }
@@ -660,7 +668,14 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
+fn process_tx<S, VM>(
+    vm: VM,
+    storage: S,
+    block: BlockInfo,
+    tx: Tx,
+    mode: AuthMode,
+    trace_opt: TraceOption,
+) -> TxOutcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone + 'static,
@@ -696,6 +711,7 @@ where
             block,
             &tx,
             mode,
+            trace_opt,
         )
         .into_commitment_status(),
     );
@@ -726,6 +742,7 @@ where
         block,
         &tx,
         mode,
+        trace_opt,
     )
     .into_commitment_status();
 
@@ -742,6 +759,7 @@ where
                 mode,
                 events,
                 Err(err),
+                trace_opt,
             );
         },
         Ok(event) => {
@@ -770,6 +788,7 @@ where
         &tx,
         mode,
         request_backrun,
+        trace_opt,
     )
     .into_commitment();
 
@@ -786,6 +805,7 @@ where
                 mode,
                 events,
                 Err(err),
+                trace_opt,
             );
         },
         None => {
@@ -804,7 +824,17 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(vm, fee_buffer, gas_tracker, block, tx, mode, events, Ok(()))
+    process_finalize_fee(
+        vm,
+        fee_buffer,
+        gas_tracker,
+        block,
+        tx,
+        mode,
+        events,
+        Ok(()),
+        trace_opt,
+    )
 }
 
 #[inline]
@@ -816,6 +846,7 @@ fn process_msgs_then_backrun<S, VM>(
     tx: &Tx,
     mode: AuthMode,
     request_backrun: bool,
+    trace_opt: TraceOption,
 ) -> EventResult<MsgsAndBackrunEvents>
 where
     S: Storage + Clone + 'static,
@@ -838,6 +869,7 @@ where
                 0,
                 tx.sender,
                 msg.clone(),
+                trace_opt,
             ),
             evt,
             msgs
@@ -853,6 +885,7 @@ where
                 block,
                 tx,
                 mode,
+                trace_opt,
             ),
             evt => backrun
         };
@@ -870,6 +903,7 @@ fn process_finalize_fee<S, VM>(
     mode: AuthMode,
     mut events: TxEvents,
     result: GenericResult<()>,
+    trace_opt: TraceOption,
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
@@ -886,6 +920,7 @@ where
         &tx,
         &outcome_so_far,
         mode,
+        trace_opt,
     )
     .into_commitment_status();
 
@@ -915,6 +950,7 @@ pub fn process_msg<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: Message,
+    trace_opt: TraceOption,
 ) -> EventResult<Event>
 where
     VM: Vm + Clone + 'static,
@@ -922,7 +958,7 @@ where
 {
     match msg {
         Message::Configure(msg) => {
-            let res = do_configure(&mut storage, block, sender, msg);
+            let res = do_configure(&mut storage, block, sender, msg, trace_opt);
             res.map(Event::Configure)
         },
         Message::Transfer(msg) => {
@@ -935,23 +971,51 @@ where
                 sender,
                 msg,
                 true,
+                trace_opt,
             );
             res.map(Event::Transfer)
         },
         Message::Upload(msg) => {
-            let res = do_upload(&mut storage, gas_tracker, block, sender, msg);
+            let res = do_upload(&mut storage, gas_tracker, block, sender, msg, trace_opt);
             res.map(Event::Upload)
         },
         Message::Instantiate(msg) => {
-            let res = do_instantiate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            let res = do_instantiate(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Instantiate)
         },
         Message::Execute(msg) => {
-            let res = do_execute(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            let res = do_execute(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Execute)
         },
         Message::Migrate(msg) => {
-            let res = do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            let res = do_migrate(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Migrate)
         },
     }

@@ -1,6 +1,7 @@
 use {
     crate::{
-        APP_CONFIG, AppError, AppResult, CONFIG, EventResult, NEXT_CRONJOBS, schedule_cronjob,
+        APP_CONFIG, AppError, AppResult, CONFIG, EventResult, NEXT_CRONJOBS, TraceOption,
+        dyn_event, schedule_cronjob,
     },
     grug_types::{Addr, BlockInfo, EvtConfigure, MsgConfigure, Storage},
 };
@@ -10,19 +11,24 @@ pub fn do_configure(
     block: BlockInfo,
     sender: Addr,
     msg: MsgConfigure,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtConfigure> {
     let evt = EvtConfigure { sender };
 
     match _do_configure(storage, block, sender, msg) {
         Ok(_) => {
             #[cfg(feature = "tracing")]
-            tracing::info!("Config updated");
+            dyn_event!(trace_opt.ok_level, "Config updated");
 
             EventResult::Ok(evt)
         },
         Err(err) => {
             #[cfg(feature = "tracing")]
-            tracing::warn!(err = err.to_string(), "Failed to updated config");
+            dyn_event!(
+                trace_opt.error_level,
+                err = err.to_string(),
+                "Failed to updated config"
+            );
 
             EventResult::err(evt, err)
         },

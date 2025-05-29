@@ -1,7 +1,7 @@
 use {
     crate::{
-        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, Vm,
-        call_in_2_out_1_handle_response, catch_and_update_event, catch_event,
+        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        call_in_2_out_1_handle_response, catch_and_update_event, catch_event, dyn_event,
     },
     grug_types::{AuthMode, BlockInfo, Context, EvtFinalize, Storage, Tx, TxOutcome},
 };
@@ -14,19 +14,34 @@ pub fn do_finalize_fee<VM>(
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtFinalize>
 where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_finalize_fee(vm, storage, gas_tracker, block, tx, outcome, mode);
+    let evt = _do_finalize_fee(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        tx,
+        outcome,
+        mode,
+        trace_opt,
+    );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            tracing::info!(sender = tx.sender.to_string(), "Finalized fee");
+            dyn_event!(
+                trace_opt.ok_level,
+                sender = tx.sender.to_string(),
+                "Finalized fee"
+            );
         },
         "Failed to finalize fee",
+        trace_opt.error_level
         // `finalize_fee` is supposed to always succeed, so if it doesn't,
         // we print a tracing log at ERROR level to highlight the seriousness.
         // #[cfg(feature = "tracing")]
@@ -44,6 +59,7 @@ pub fn _do_finalize_fee<VM>(
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtFinalize>
 where
     VM: Vm + Clone + 'static,
@@ -86,6 +102,7 @@ where
             &ctx,
             tx,
             outcome,
+            trace_opt,
         ),
         evt => guest_event
     }

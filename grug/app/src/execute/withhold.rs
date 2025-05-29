@@ -1,7 +1,7 @@
 use {
     crate::{
-        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, Vm,
-        call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
+        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, dyn_event,
     },
     grug_types::{AuthMode, BlockInfo, Context, EvtWithhold, Storage, Tx},
 };
@@ -13,19 +13,25 @@ pub fn do_withhold_fee<VM>(
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtWithhold>
 where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_withhold_fee(vm, storage, gas_tracker, block, tx, mode);
+    let evt = _do_withhold_fee(vm, storage, gas_tracker, block, tx, mode, trace_opt);
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            tracing::info!(sender = tx.sender.to_string(), "Withheld fee");
+            dyn_event!(
+                trace_opt.ok_level,
+                sender = tx.sender.to_string(),
+                "Withheld fee"
+            );
         },
         "Failed to withhold fee",
+        trace_opt.error_level,
     );
 
     evt
@@ -38,6 +44,7 @@ pub fn _do_withhold_fee<VM>(
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtWithhold>
 where
     VM: Vm + Clone + 'static,
@@ -79,6 +86,7 @@ where
             taxman.code_hash,
             &ctx,
             tx,
+            trace_opt,
         ),
         evt => guest_event
     }
