@@ -13,6 +13,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=grug_dev
+      - POSTGRES_INITDB_ARGS="-c max_connections=200"
     tty: true
 
   dango:

@@ -383,7 +383,9 @@ where
     }
 }
 
-const REINDEXING_MAX_TASKS: usize = 10;
+// NOTE: this could be set to the current cpu cores, and taking into account the
+// max connections to the database.
+const REINDEXING_MAX_TASKS: usize = 1;
 
 impl<H> NonBlockingIndexer<H>
 where
@@ -401,12 +403,20 @@ where
         };
 
         let next_block_height = last_indexed_block_height + 1;
-        if latest_block_height > next_block_height {
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            next_block_height = next_block_height,
+            latest_block_height = latest_block_height,
+            "index_previous_unindexed_blocks called"
+        );
+
+        if latest_block_height <= next_block_height {
             return Ok(());
         }
 
         self.handle.block_on(async {
-            let mut set = JoinSet::new();
+            let mut set: JoinSet<Result<(), IndexerError>> = JoinSet::new();
             let semaphore = Arc::new(Semaphore::new(REINDEXING_MAX_TASKS));
 
             let keep_blocks = self.keep_blocks;
@@ -418,7 +428,23 @@ where
                 // Avoid spawning too many tasks at once, to avoid memory issues
                 while set.len() > REINDEXING_MAX_TASKS * 2 {
                     while let Some(result) = set.join_next().await {
-                        result.map_err(error::IndexerError::from)??;
+                        match result {
+                            Ok(result) => {
+                                match result {
+                                    Ok(_) => {},
+                                    Err(err) => {
+                                        #[cfg(feature = "tracing")]
+                                        tracing::error!(error = %err, block_height, "Error indexing block");
+                                        return Err(err);
+                                    },
+                                }
+                            },
+                            Err(err) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(error = %err, block_height, "Error indexing block");
+                                return Err(err.into());
+                            },
+                        }
                     }
                 }
 
@@ -438,11 +464,11 @@ where
                         })
                     }).await?;
 
-                    #[cfg(feature = "tracing")]
-                    tracing::info!(
-                        block_height = block_height,
-                        "index_previous_unindexed_blocks started"
-                    );
+                    // #[cfg(feature = "tracing")]
+                    // tracing::info!(
+                    //     block_height = block_height,
+                    //     "index_previous_unindexed_blocks started"
+                    // );
 
                     block_to_index.save(&db).await?;
                     txn.commit().await?;
@@ -458,11 +484,11 @@ where
                     Ok::<(), error::IndexerError>(())
                 });
 
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height = block_height,
-                    "index_previous_unindexed_blocks ended"
-                );
+                // #[cfg(feature = "tracing")]
+                // tracing::info!(
+                //     block_height = block_height,
+                //     "index_previous_unindexed_blocks ended"
+                // );
             }
 
             // Wait for all tasks to finish

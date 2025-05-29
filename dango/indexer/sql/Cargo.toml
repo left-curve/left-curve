@@ -12,7 +12,7 @@ version       = { workspace = true }
 [features]
 async-graphql = ["dep:actix-web", "dep:async-graphql", "grug-types/async-graphql"]
 testing       = []
-tracing       = ["dep:tracing"]
+tracing       = ["dep:tracing", "indexer-disk-saver/tracing", "indexer-sql/tracing"]
 
 [dependencies]
 actix-web                   = { workspace = true, optional = true }

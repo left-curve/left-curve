@@ -26,6 +26,7 @@ impl Context {
         database_url: &str,
     ) -> Result<DatabaseConnection, sea_orm::DbErr> {
         let mut opt = ConnectOptions::new(database_url.to_owned());
+        // TODO: use settings from config
         opt.max_connections(10)
         // .min_connections(5)
         //.connect_timeout(Duration::from_secs(settings.timeout))
