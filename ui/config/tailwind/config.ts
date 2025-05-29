@@ -409,6 +409,12 @@ export const tailwindConfig: Partial<Config> = {
           lineHeight: "16.8px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
+        ".diatype-xs-regular": {
+          fontWeight: "400",
+          fontSize: "12px",
+          lineHeight: "16.8px",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
         ".diatype-xs-bold": {
           fontWeight: "700",
           fontSize: "12px",
