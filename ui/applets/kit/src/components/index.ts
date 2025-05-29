@@ -74,3 +74,4 @@ export { IconUserCircle } from "./icons/IconUserCircle";
 export { IconTimer } from "./icons/IconTimer";
 export { IconLink } from "./icons/IconLink";
 export { IconNetwork } from "./icons/IconNetwork";
+export { IconChevronDownFill } from "./icons/IconChevronDownFill";
