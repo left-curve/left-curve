@@ -49,6 +49,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    Acquire(#[from] tokio::sync::AcquireError),
 }
 
 impl From<IndexerError> for AppError {

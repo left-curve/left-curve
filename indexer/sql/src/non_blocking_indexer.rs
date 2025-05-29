@@ -1,6 +1,6 @@
 use {
     crate::{
-        Context, bail,
+        Context, bail, block,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
@@ -23,7 +23,11 @@ use {
         thread::sleep,
         time::Duration,
     },
-    tokio::runtime::{Builder, Handle, Runtime},
+    tokio::{
+        runtime::{Builder, Handle, Runtime},
+        sync::Semaphore,
+        task::JoinSet,
+    },
 };
 
 // ------------------------------- IndexerBuilder ------------------------------
@@ -379,11 +383,13 @@ where
     }
 }
 
+const REINDEXING_MAX_TASKS: usize = 10;
+
 impl<H> NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
 {
-    /// Index all previous blocks not yet indexed.
+    /// Index all previous blocks not yet indexed, doing it in parallel.
     fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
             entity::blocks::Entity::find_last_block_height(&self.context.db).await
@@ -399,43 +405,71 @@ where
             return Ok(());
         }
 
-        for block_height in next_block_height..=latest_block_height {
-            let block_filename = self.indexer_path.block_path(block_height);
+        self.handle.block_on(async {
+            let mut set = JoinSet::new();
+            let semaphore = Arc::new(Semaphore::new(REINDEXING_MAX_TASKS));
 
-            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, "can't load block from disk");
-                    panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
-            });
+            let keep_blocks = self.keep_blocks;
 
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks started"
-            );
+            for block_height in next_block_height..=latest_block_height {
+                let db = self.context.db.clone();
+                let block_filename = self.indexer_path.block_path(block_height);
 
-            self.handle.block_on(async {
-                let db = self.context.db.begin().await?;
-                block_to_index.save(&db).await?;
-                db.commit().await?;
-                Ok::<(), error::IndexerError>(())
-            })?;
-
-            if !self.keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+                // Avoid spawning too many tasks at once, to avoid memory issues
+                while set.len() > REINDEXING_MAX_TASKS * 2 {
+                    while let Some(result) = set.join_next().await {
+                        result.map_err(error::IndexerError::from)??;
+                    }
                 }
+
+                let permit = semaphore.clone().acquire_owned().await?;
+
+                set.spawn(async move {
+                    let txn = db.begin().await?;
+                    let _permit = permit;
+
+                    let block_filename_clone = block_filename.clone();
+
+                    let block_to_index = tokio::task::spawn_blocking(move || {
+                        BlockToIndex::load_from_disk(block_filename_clone).unwrap_or_else(|_err| {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %_err, block_height, "can't load block from disk");
+                            panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
+                        })
+                    }).await?;
+
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(
+                        block_height = block_height,
+                        "index_previous_unindexed_blocks started"
+                    );
+
+                    block_to_index.save(&db).await?;
+                    txn.commit().await?;
+
+                    if !keep_blocks {
+                        if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
+                        #[cfg(feature = "tracing")]
+                            tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+
+                        }
+                    }
+
+                    Ok::<(), error::IndexerError>(())
+                });
+
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height = block_height,
+                    "index_previous_unindexed_blocks ended"
+                );
             }
 
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks ended"
-            );
-        }
+            // Wait for all tasks to finish
+            while (set.join_next().await).is_some() {}
 
-        Ok(())
+            Ok::<(), error::IndexerError>(())
+        })
     }
 }
 
@@ -516,6 +550,41 @@ where
                 );
             }
         }
+
+        Ok(())
+    }
+
+    fn reindex_blocks<S>(&mut self, storage: &S) -> Result<(), Self::Error>
+    where
+        S: Storage,
+    {
+        self.handle.block_on(async {
+            self.context.migrate_db().await?;
+            self.hooks
+                .start(self.context.clone())
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+
+            Ok::<(), error::IndexerError>(())
+        })?;
+
+        match LAST_FINALIZED_BLOCK.load(storage) {
+            Err(_err) => {
+                // This happens when the chain starts at genesis
+                #[cfg(feature = "tracing")]
+                tracing::warn!(error = %_err, "No LAST_FINALIZED_BLOCK found");
+            },
+            Ok(block) => {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    block_height = block.height,
+                    "start called, found a previous block"
+                );
+                self.index_previous_unindexed_blocks(block.height)?;
+            },
+        }
+
+        self.indexing = true;
 
         Ok(())
     }

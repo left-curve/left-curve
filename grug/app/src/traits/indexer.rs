@@ -23,4 +23,9 @@ pub trait Indexer {
 
     /// Called after indexing the block, allowing for DB transactions to be committed
     fn post_indexing(&self, block_height: u64) -> Result<(), Self::Error>;
+
+    /// Called when needing reindexing the blocks
+    fn reindex_blocks<S>(&mut self, storage: &S) -> Result<(), Self::Error>
+    where
+        S: Storage;
 }

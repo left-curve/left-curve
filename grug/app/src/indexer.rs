@@ -37,6 +37,13 @@ impl Indexer for NullIndexer {
     fn post_indexing(&self, _block_height: u64) -> Result<(), Self::Error> {
         Ok(())
     }
+
+    fn reindex_blocks<S>(&mut self, _storage: &S) -> Result<(), Self::Error>
+    where
+        S: grug_types::Storage,
+    {
+        Ok(())
+    }
 }
 
 /// An error type that is never encountered.
