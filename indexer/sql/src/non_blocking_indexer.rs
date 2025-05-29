@@ -685,7 +685,7 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("can't start Indexer");
+        indexer.start(&storage).expect("can't start indexer");
         assert!(indexer.indexing);
 
         indexer.shutdown().expect("can't shutdown Indexer");
