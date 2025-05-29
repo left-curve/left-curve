@@ -292,21 +292,14 @@ fn modify_position(
     ensure!(sent_fee.amount == &fee_in_vault_denom, "fee is not sent");
 
     // Validate position size against OI limits
-    // TODO: Should we instead store OI limits as market denom units instead of USD?
-    if notional_diff.is_positive() {
+    if amount.is_positive() {
         ensure!(
-            market_state
-                .long_oi
-                .checked_add(notional_diff.unsigned_abs())?
-                <= params.max_long_oi,
+            market_state.long_oi.checked_add(amount.unsigned_abs())? <= params.max_long_oi,
             "long position size is too large"
         );
     } else {
         ensure!(
-            market_state
-                .short_oi
-                .checked_add(notional_diff.unsigned_abs())?
-                <= params.max_short_oi,
+            market_state.short_oi.checked_add(amount.unsigned_abs())? <= params.max_short_oi,
             "short position size is too large"
         );
     }
@@ -326,9 +319,8 @@ fn modify_position(
         proportional_skew.checked_mul(params.max_funding_velocity.checked_into_signed()?)?;
     let funding_rate = market_state
         .last_funding_rate
-        .checked_add(current_funding_velocity)?
-        .checked_mul(time_elapsed_days)?;
-    let funding_rate = funding_rate.clamp(funding_rate, MAX_FUNDING_RATE);
+        .checked_add(current_funding_velocity.checked_mul(time_elapsed_days)?)?;
+    let funding_rate = funding_rate.clamp(-MAX_FUNDING_RATE, MAX_FUNDING_RATE);
 
     // Update current funding index
     let average_funding_rate = market_state
@@ -359,21 +351,24 @@ fn modify_position(
 
     // Update the market accumulators
     let mut accumulators = market_state.accumulators;
-    accumulators.decrease(&current_pos)?;
+    if current_pos.size.is_non_zero() {
+        accumulators.decrease(&current_pos)?;
+    }
     accumulators.increase(&new_pos)?;
 
     // Update the market state
-    let (long_oi, short_oi) = if amount.is_positive() {
-        (
-            market_state.long_oi.checked_add(amount.unsigned_abs())?,
-            market_state.short_oi,
-        )
+    let mut long_oi = market_state.long_oi;
+    let mut short_oi = market_state.short_oi;
+    if current_pos.size.is_positive() {
+        long_oi = long_oi.checked_sub(current_pos.size.unsigned_abs())?;
     } else {
-        (
-            market_state.long_oi,
-            market_state.short_oi.checked_add(amount.unsigned_abs())?,
-        )
-    };
+        short_oi = short_oi.checked_sub(current_pos.size.unsigned_abs())?;
+    }
+    if new_pos.size.is_positive() {
+        long_oi = long_oi.checked_add(new_pos.size.unsigned_abs())?;
+    } else {
+        short_oi = short_oi.checked_add(new_pos.size.unsigned_abs())?;
+    }
     let new_market_state = PerpsMarketState {
         long_oi,
         short_oi,
@@ -411,7 +406,9 @@ fn modify_position(
     };
     if !q_closed.is_zero() {
         let realised_price_pnl = q_closed.checked_mul_dec(
-            fill_price.checked_sub(current_pos.entry_execution_price.checked_into_signed()?)?,
+            fill_price
+                .checked_sub(current_pos.entry_execution_price.checked_into_signed()?)?
+                .checked_div(vault_denom_price.unit_price()?.checked_into_signed()?)?,
         )?;
         let realised_funding_pnl =
             q_closed.checked_mul_dec(funding_index - current_pos.entry_funding_index)?;
@@ -423,10 +420,9 @@ fn modify_position(
             .checked_add_assign(realised_funding_pnl)?;
 
         // realised ΔPnL for the trader
-        let trader_fee = -fee_usd.checked_into_signed()?.into_int();
         let pnl_delta = realised_price_pnl
             .checked_add(realised_funding_pnl)?
-            .checked_add(trader_fee)?;
+            .checked_sub(fee_in_vault_denom.checked_into_signed()?)?;
         new_pos.realized_pnl = new_pos.realized_pnl.checked_add(pnl_delta)?;
     }
 
