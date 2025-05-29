@@ -1,7 +1,7 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    grug::Inner,
+    grug_math::Inner,
     grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
     indexer_sql::entity,
     indexer_testing::{
