@@ -10,9 +10,9 @@ use super::PerpsPosition;
 pub struct PerpsMarketState {
     /// The denom of the market.
     pub denom: Denom,
-    /// The long open interest of the market.
+    /// The long open interest of the market, in market denom units.
     pub long_oi: Uint128,
-    /// The short open interest of the market.
+    /// The short open interest of the market, in market denom units.
     pub short_oi: Uint128,
     /// The last time the market was updated.
     pub last_updated: Timestamp,
