@@ -3802,6 +3802,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
 
 [[package]]
+name = "dyn-event"
+version = "0.0.0"
+
+[[package]]
 name = "dynasm"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4557,6 +4561,7 @@ version = "0.0.0"
 dependencies = [
  "borsh 1.5.7",
  "data-encoding",
+ "dyn-event",
  "grug-math",
  "grug-storage",
  "grug-types",

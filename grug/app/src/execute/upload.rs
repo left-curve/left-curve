@@ -1,7 +1,9 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
         AppError, AppResult, CODES, CONFIG, EventResult, GasTracker, MeteredItem, MeteredMap,
-        TraceOption, dyn_event, has_permission,
+        TraceOption, has_permission,
     },
     grug_types::{
         Addr, BlockInfo, Code, CodeStatus, EvtUpload, Hash256, HashExt, MsgUpload, Storage,
