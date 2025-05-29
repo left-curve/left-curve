@@ -201,17 +201,14 @@ export const OrderBook: React.FC = () => {
         </div>
       )}
       <div className="bid-container flex flex-col w-full">
-        {groupedBids
-          .slice()
-          .sort((a, b) => b.price - a.price)
-          .map((bid) => (
-            <OrderRow
-              key={`bid-${bid.price}`}
-              {...bid}
-              type="bid"
-              maxCumulativeTotal={maxCumulativeBid}
-            />
-          ))}
+        {groupedBids.slice().map((bid) => (
+          <OrderRow
+            key={`bid-${bid.price}`}
+            {...bid}
+            type="bid"
+            maxCumulativeTotal={maxCumulativeBid}
+          />
+        ))}
       </div>
     </div>
   );

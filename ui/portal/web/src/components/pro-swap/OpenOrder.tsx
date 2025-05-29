@@ -99,7 +99,9 @@ export const OpenOrder: React.FC = () => {
     },
     {
       header: "Cancel All",
-      cell: ({ row }) => <Cell.Action action={row.original.onCancel} label="Cancel" className="" />,
+      cell: ({ row }) => (
+        <Cell.Action action={row.original.onCancel} label="Cancel" className="items-end" />
+      ),
     },
   ];
   return (
