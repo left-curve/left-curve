@@ -1,7 +1,8 @@
 use {
     crate::{
-        _do_transfer, AppError, CHAIN_ID, CODES, CONFIG, CONTRACTS, EventResult, GasTracker, Vm,
-        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, has_permission,
+        _do_transfer, AppError, CHAIN_ID, CODES, CONFIG, CONTRACTS, EventResult, GasTracker,
+        TraceOption, Vm, call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
+        dyn_event, has_permission,
     },
     grug_types::{
         Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate, MsgInstantiate,
@@ -17,6 +18,7 @@ pub fn do_instantiate<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: MsgInstantiate,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtInstantiate>
 where
     VM: Vm + Clone + 'static,
@@ -29,15 +31,21 @@ where
         block,
         msg_depth,
         sender,
-        msg.clone(),
+        msg,
+        trace_opt,
     );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            tracing::info!(address = evt.contract.to_string(), "Instantiated contract");
+            dyn_event!(
+                trace_opt.ok_level,
+                address = evt.contract.to_string(),
+                "Instantiated contract"
+            );
         },
         "Failed to instantiate contract",
+        trace_opt.error_level,
     );
 
     evt
@@ -51,6 +59,7 @@ pub fn _do_instantiate<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: MsgInstantiate,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtInstantiate>
 where
     VM: Vm + Clone + 'static,
@@ -114,6 +123,7 @@ where
                 sender,
                 btree_map! { address => msg.funds.clone() },
                 false,
+                trace_opt,
             ),
             evt => transfer_event
         }
@@ -141,6 +151,7 @@ where
             msg.code_hash,
             &ctx,
             &msg.msg,
+            trace_opt,
         ),
         evt => guest_event
     }

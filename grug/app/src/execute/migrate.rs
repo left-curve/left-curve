@@ -1,7 +1,7 @@
 use {
     crate::{
-        AppError, CHAIN_ID, CODES, CONTRACTS, EventResult, GasTracker, Vm,
-        call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
+        AppError, CHAIN_ID, CODES, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, dyn_event,
     },
     grug_types::{
         Addr, BlockInfo, CodeStatus, Context, EvtMigrate, MsgMigrate, StdResult, Storage,
@@ -16,19 +16,34 @@ pub fn do_migrate<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: MsgMigrate,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtMigrate>
 where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+    let evt = _do_migrate(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        msg_depth,
+        sender,
+        msg,
+        trace_opt,
+    );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            tracing::info!(contract = evt.contract.to_string(), "Migrated contract");
+            dyn_event!(
+                trace_opt.ok_level,
+                contract = evt.contract.to_string(),
+                "Migrated contract"
+            );
         },
         "Failed to migrate contract",
+        trace_opt.error_level,
     );
 
     evt
@@ -42,6 +57,7 @@ fn _do_migrate<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: MsgMigrate,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtMigrate>
 where
     VM: Vm + Clone + 'static,
@@ -131,6 +147,7 @@ where
             msg.new_code_hash,
             &ctx,
             &msg.msg,
+            trace_opt,
         ),
         evt => guest_event
     }
