@@ -20,9 +20,6 @@ pub enum AppError {
     #[error("indexer error: {0}")]
     Indexer(String),
 
-    #[error("indexer error: {0}")]
-    IndexerHttpd(String),
-
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {
         address: Addr,

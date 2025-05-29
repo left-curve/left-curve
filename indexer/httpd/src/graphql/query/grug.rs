@@ -1,6 +1,10 @@
 use {
-    super::super::types::status::Status, crate::graphql::types::store::Store, async_graphql::*,
-    grug_math::Inner, grug_types::Binary, std::str::FromStr,
+    super::super::types::status::Status,
+    crate::graphql::types::store::Store,
+    async_graphql::*,
+    grug_math::Inner,
+    grug_types::{Binary, JsonSerExt},
+    std::str::FromStr,
 };
 
 #[derive(Default, Debug)]
@@ -16,9 +20,12 @@ impl GrugQuery {
     ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(serde_json::to_value(
-            app_ctx.grug_app.query_app(request, height).await?,
-        )?)
+        Ok(app_ctx
+            .grug_app
+            .query_app(request, height)
+            .await?
+            .to_json_value()?
+            .into_inner())
     }
 
     async fn query_store(
@@ -66,6 +73,11 @@ impl GrugQuery {
     ) -> Result<serde_json::Value, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(serde_json::to_value(app_ctx.grug_app.simulate(tx).await?)?)
+        Ok(app_ctx
+            .grug_app
+            .simulate(tx)
+            .await?
+            .to_json_value()?
+            .into_inner())
     }
 }

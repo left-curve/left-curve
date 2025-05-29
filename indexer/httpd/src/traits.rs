@@ -5,7 +5,9 @@ use {
     grug_app::{
         App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
-    grug_types::{BlockInfo, BroadcastClient, Query, QueryResponse, SearchTxClient, TxOutcome},
+    grug_types::{
+        BlockInfo, BroadcastClient, JsonDeExt, Query, QueryResponse, SearchTxClient, TxOutcome,
+    },
 };
 
 #[async_trait]
@@ -49,8 +51,7 @@ where
         raw_req: serde_json::Value,
         height: Option<u64>,
     ) -> AppResult<QueryResponse> {
-        let req: Query =
-            serde_json::from_value(raw_req).map_err(|e| AppError::IndexerHttpd(e.to_string()))?;
+        let req: Query = raw_req.to_string().deserialize_json()?;
 
         Ok(self.do_query_app(req, height.unwrap_or(0), false)?)
     }
@@ -65,8 +66,7 @@ where
     }
 
     async fn simulate(&self, raw_unsigned_tx: serde_json::Value) -> AppResult<TxOutcome> {
-        let tx = serde_json::from_value(raw_unsigned_tx)
-            .map_err(|e| AppError::IndexerHttpd(e.to_string()))?;
+        let tx = raw_unsigned_tx.to_string().deserialize_json()?;
 
         Ok(self.do_simulate(tx, 0, false)?)
     }

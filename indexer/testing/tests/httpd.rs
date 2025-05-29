@@ -777,8 +777,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
 
                 let response = call_graphql::<serde_json::Value>(app, request_body).await?;
 
-                assert_that!(response.data)
-                    .is_equal_to(json!({"app_config": serde_json::Value::Null}));
+                assert_that!(response.data).is_equal_to(json!({"app_config": null}));
 
                 Ok::<(), anyhow::Error>(())
             })
