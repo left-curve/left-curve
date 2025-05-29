@@ -473,6 +473,12 @@ where
     }
 
     pub fn find_highest_saved_block_height(&self) -> u64 {
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            blocks_path = self.indexer_path.blocks_path().to_str(),
+            "looking for highest saved block height"
+        );
+
         let mut upper = 1;
         let mut block_filename = self.indexer_path.block_path(upper);
 
@@ -601,6 +607,9 @@ where
             );
 
             self.index_previous_unindexed_blocks(highest_saved_block_height)?;
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::info!("No blocks to reindex");
         }
 
         Ok(())
