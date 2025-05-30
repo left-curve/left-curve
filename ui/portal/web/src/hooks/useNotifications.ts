@@ -1,10 +1,10 @@
 import { useAccount, useConfig, useStorage } from "@left-curve/store";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { uid } from "@left-curve/dango/utils";
 import { format, isToday } from "date-fns";
 
-import type { Address, IndexedBlock, UID, Username } from "@left-curve/dango/types";
+import type { Address, UID, Username } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 
 export type Notifications = {
@@ -16,7 +16,6 @@ export type Notifications = {
     toAddress: Address;
     type: "received" | "sent";
   };
-  block: IndexedBlock;
 };
 
 export type Notification<key extends keyof Notifications = keyof Notifications> = {
