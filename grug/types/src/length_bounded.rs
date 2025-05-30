@@ -1,7 +1,6 @@
 use {
-    crate::{Lengthy, StdError, StdResult},
+    crate::{Inner, Lengthy, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Inner,
     serde::{Deserialize, Deserializer, Serialize, Serializer},
     std::{io, ops::Deref},
 };

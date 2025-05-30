@@ -1,10 +1,9 @@
 use {
     crate::{
         Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
-        Hash256, Json, JsonSerExt, StdResult, extend_one_byte,
+        Hash256, Inner, Json, JsonSerExt, StdResult, extend_one_byte,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Inner,
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,

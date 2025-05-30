@@ -1,4 +1,4 @@
-use crate::{Dec, Int};
+use grug_math::{Dec, Int};
 
 /// Describes a type that wraps another type.
 ///
@@ -31,11 +31,11 @@ impl<U, const S: u32> Inner for Dec<U, S> {
     type U = U;
 
     fn inner(&self) -> &Self::U {
-        self.0.inner()
+        &self.0.0
     }
 
     fn into_inner(self) -> Self::U {
-        self.0.into_inner()
+        self.0.0
     }
 }
 

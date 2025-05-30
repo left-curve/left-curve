@@ -1,8 +1,7 @@
 use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
-    grug_math::Inner,
     grug_types::{
-        BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256,
+        BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256, Inner,
         JsonSerExt, TxOutcome,
     },
     prost::bytes::Bytes,

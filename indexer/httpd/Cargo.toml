@@ -29,7 +29,6 @@ base64                  = { workspace = true }
 chrono                  = { workspace = true }
 clap                    = { workspace = true }
 grug-app                = { workspace = true }
-grug-math               = { workspace = true }
 grug-testing            = { workspace = true, optional = true }
 grug-types              = { workspace = true, features = ["chrono"] }
 indexer-sql             = { workspace = true }

@@ -1,7 +1,6 @@
 use {
     async_graphql::*,
-    grug_math::Inner,
-    grug_types::{JsonDeExt, JsonSerExt, Tx},
+    grug_types::{Inner, JsonDeExt, JsonSerExt, Tx},
     sentry::configure_scope,
 };
 

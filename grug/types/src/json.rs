@@ -1,3 +1,13 @@
+use {
+    crate::{Inner, InnerMut},
+    borsh::{BorshDeserialize, BorshSerialize},
+    serde::{Deserialize, Serialize},
+    serde_json::{Map, Number, Value as JsonValue},
+    std::{
+        io,
+        ops::{Deref, DerefMut},
+    },
+};
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{
@@ -5,16 +15,6 @@ use {
         context::ContextSelectionSet, parser::types::Field, registry::Registry,
     },
     std::borrow::Cow,
-};
-use {
-    borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Inner, InnerMut},
-    serde::{Deserialize, Serialize},
-    serde_json::{Map, Number, Value as JsonValue},
-    std::{
-        io,
-        ops::{Deref, DerefMut},
-    },
 };
 
 const TAG_NULL: u8 = 0;
