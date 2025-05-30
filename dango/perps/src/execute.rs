@@ -10,15 +10,15 @@ use {
         DangoQuerier,
         perps::{
             ExecuteMsg, InstantiateMsg, PerpsMarketAccumulators, PerpsMarketParams,
-            PerpsMarketState, PerpsPosition, PerpsVaultState,
+            PerpsMarketState, PerpsPosition, PerpsVaultState, RealisedCashFlow,
         },
     },
     grug::{
         Coins, Dec128, Denom, Inner, Int128, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        NumberConst, QuerierExt, Response, Sign, Signed, StorageQuerier, Udec128, Uint128,
-        Unsigned,
+        NumberConst, Order, QuerierExt, Response, Sign, Signed, StdError, StorageQuerier, Udec128,
+        Uint128, Unsigned,
     },
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, HashMap},
 };
 
 pub const NANOSECONDS_PER_DAY: u128 = 86_400_000_000_000;
@@ -45,6 +45,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             last_funding_rate: Dec128::ZERO,
             last_funding_index: Dec128::ZERO,
             accumulators: PerpsMarketAccumulators::new(),
+            realised_cash_flow: Default::default(),
         })?;
     }
 
@@ -79,12 +80,38 @@ fn update_perps_market_params(
 }
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
+    // Load the vault state and params
     let vault_state = PERPS_VAULT.load(ctx.storage)?;
+    let params = PERPS_MARKET_PARAMS.load(ctx.storage, &vault_state.denom)?;
 
     // Ensure only the vault denom is sent
     let deposited = ctx.funds.as_one_coin_of_denom(&vault_state.denom)?;
 
-    let shares = core::token_to_shares(&vault_state, *deposited.amount)?;
+    // Load the markets
+    let markets = PERPS_MARKETS
+        .range(ctx.storage, None, None, Order::Ascending)
+        .map(|x| x.map(|(_, v)| v))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Query the oracle for the price of each market denom
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let oracle_prices = markets
+        .iter()
+        .flat_map(|m| {
+            oracle_querier
+                .query_price(&m.denom, None)
+                .map(|p| Ok((m.denom.clone(), p.unit_price()?)))
+        })
+        .collect::<Result<HashMap<Denom, Udec128>, StdError>>()?;
+
+    // Calculate the number of shares to mint
+    let shares = core::token_to_shares(
+        &markets,
+        &oracle_prices,
+        &params,
+        &vault_state,
+        *deposited.amount,
+    )?;
 
     // Update the vault state
     PERPS_VAULT.save(ctx.storage, &PerpsVaultState {
@@ -101,15 +128,16 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Response> {
-    // Ensure no funds are sent
-    ensure!(ctx.funds.is_empty(), "no funds should be sent");
-
-    let vault_state = PERPS_VAULT.load(ctx.storage)?;
-
     // Load the user's deposit
     let user_deposit = PERPS_VAULT_DEPOSITS
         .may_load(ctx.storage, &ctx.sender)?
         .unwrap_or(Uint128::ZERO);
+
+    // Ensure no funds are sent
+    ensure!(ctx.funds.is_empty(), "no funds should be sent");
+
+    // Ensure withdrawn shares is not zero
+    ensure!(!withdrawn_shares.is_zero(), "withdrawn shares is zero");
 
     // Ensure the user has enough shares
     ensure!(
@@ -117,8 +145,35 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
         "user does not have enough shares"
     );
 
+    // Load the vault state and params
+    let vault_state = PERPS_VAULT.load(ctx.storage)?;
+    let params = PERPS_MARKET_PARAMS.load(ctx.storage, &vault_state.denom)?;
+
+    // Load the markets
+    let markets = PERPS_MARKETS
+        .range(ctx.storage, None, None, Order::Ascending)
+        .map(|x| x.map(|(_, v)| v))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Query the oracle for the price of each market denom
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let oracle_prices = markets
+        .iter()
+        .flat_map(|m| {
+            oracle_querier
+                .query_price(&m.denom, None)
+                .map(|p| Ok((m.denom.clone(), p.unit_price()?)))
+        })
+        .collect::<Result<HashMap<Denom, Udec128>, StdError>>()?;
+
     // Calculate the amount of tokens to send
-    let withdrawn_amount = core::shares_to_token(&vault_state, withdrawn_shares)?;
+    let withdrawn_amount = core::shares_to_token(
+        &markets,
+        &oracle_prices,
+        &params,
+        &vault_state,
+        withdrawn_shares,
+    )?;
 
     if withdrawn_amount.is_zero() {
         bail!("withdrawn amount is zero");
@@ -332,32 +387,8 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     }
     accumulators.increase(&new_pos)?;
 
-    // Update the market state
-    let mut long_oi = market_state.long_oi;
-    let mut short_oi = market_state.short_oi;
-    if current_pos.size.is_positive() {
-        long_oi = long_oi.checked_sub(current_pos.size.unsigned_abs())?;
-    } else {
-        short_oi = short_oi.checked_sub(current_pos.size.unsigned_abs())?;
-    }
-    if new_pos.size.is_positive() {
-        long_oi = long_oi.checked_add(new_pos.size.unsigned_abs())?;
-    } else {
-        short_oi = short_oi.checked_add(new_pos.size.unsigned_abs())?;
-    }
-    let new_market_state = PerpsMarketState {
-        long_oi,
-        short_oi,
-        last_updated: ctx.block.timestamp,
-        last_funding_rate: funding_rate,
-        last_funding_index: funding_index,
-        accumulators,
-        denom: denom.clone(),
-    };
-    PERPS_MARKETS.save(ctx.storage, &denom, &new_market_state)?;
-
     // Update the cash flow
-    let mut realised_cash_flow = vault_state.realised_cash_flow;
+    let mut realised_cash_flow = RealisedCashFlow::default();
     if amount.unsigned_abs() > current_pos.size.unsigned_abs() {
         // position notional ↑
         realised_cash_flow
@@ -402,9 +433,34 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
         new_pos.realized_pnl = new_pos.realized_pnl.checked_add(pnl_delta)?;
     }
 
+    // Update the market state
+    let mut long_oi = market_state.long_oi;
+    let mut short_oi = market_state.short_oi;
+    if current_pos.size.is_positive() {
+        long_oi = long_oi.checked_sub(current_pos.size.unsigned_abs())?;
+    } else {
+        short_oi = short_oi.checked_sub(current_pos.size.unsigned_abs())?;
+    }
+    if new_pos.size.is_positive() {
+        long_oi = long_oi.checked_add(new_pos.size.unsigned_abs())?;
+    } else {
+        short_oi = short_oi.checked_add(new_pos.size.unsigned_abs())?;
+    }
+    let new_market_state = PerpsMarketState {
+        long_oi,
+        short_oi,
+        last_updated: ctx.block.timestamp,
+        last_funding_rate: funding_rate,
+        last_funding_index: funding_index,
+        accumulators,
+        denom: denom.clone(),
+        realised_cash_flow: market_state.realised_cash_flow.add(&realised_cash_flow)?,
+    };
+    PERPS_MARKETS.save(ctx.storage, &denom, &new_market_state)?;
+
     // Update the vault state
     PERPS_VAULT.save(ctx.storage, &PerpsVaultState {
-        realised_cash_flow,
+        realised_cash_flow: vault_state.realised_cash_flow.add(&realised_cash_flow)?,
         ..vault_state
     })?;
 

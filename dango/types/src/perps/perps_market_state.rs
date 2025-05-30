@@ -1,9 +1,9 @@
 use grug::{
-    Dec128, Denom, Inner, Int128, MathError, Number, NumberConst, Sign, Timestamp, Uint128,
-    Unsigned,
+    Dec128, Denom, Inner, Int128, MathError, Number, NumberConst, Sign, Timestamp, Udec128,
+    Uint128, Unsigned,
 };
 
-use super::PerpsPosition;
+use super::{PerpsPosition, RealisedCashFlow};
 
 /// Current state of a perps market.
 #[grug::derive(Serde, Borsh)]
@@ -25,6 +25,8 @@ pub struct PerpsMarketState {
     pub last_funding_index: Dec128,
     /// The perps market accumulators. Used to calculate the NAV of the vault.
     pub accumulators: PerpsMarketAccumulators,
+    /// The realised cash flow of the market.
+    pub realised_cash_flow: RealisedCashFlow,
 }
 
 /// Global, per-market accumulators — enable O(1) NAV calculation.
@@ -112,5 +114,92 @@ impl PerpsMarketState {
             skew_scale.checked_into_signed()?.into_inner(),
         )?
         .clamp(-Dec128::ONE, Dec128::ONE))
+    }
+
+    /// Returns the unrealized price PnL of the market.
+    ///
+    /// $$
+    /// \text{pricePnL}(p)=
+    /// K\,p
+    /// - C
+    /// +\frac{p}{2\,\text{skewScale}}
+    ///   \Bigl(K^{2}-\tfrac12 S^{2}\Bigr)
+    /// \tag{1}
+    /// $$
+    ///
+    /// pricePnL(p) = Kp - C + p / (2 * skewScale) * (K^2 - S^2 / 2)
+    pub fn unrealized_price_pnl(
+        &self,
+        oracle_price: Udec128,
+        skew_scale: Uint128,
+    ) -> Result<Int128, MathError> {
+        let oracle_price = oracle_price.checked_into_signed()?;
+        let K = self.accumulators.net_position_q.checked_into_dec()?;
+        let C = self.accumulators.cost_basis_sum; // already Dec128
+        let S2 = self.accumulators.quadratic_fee_basis; // Int128  (we still call it A here)
+        let price_pnl = K * oracle_price               // K·p
+    - C                               // −Σ q·p_entry
+    + oracle_price
+        * (K*K - S2.checked_into_dec()? / Dec128::new(2)) // correction term
+        / (skew_scale.checked_into_dec()?.checked_into_signed()? * Dec128::new(2));
+        Ok(price_pnl.into_int())
+    }
+
+    /// Returns the unrealized funding PnL of the market.
+    /// $$
+    /// \text{fundingPnL}(F_{\text{now}})=
+    /// K\,F_{\text{now}} - F_\Sigma
+    /// \tag{2}
+    /// $$
+    /// fundingPnL(F_now) = K * F_now - F_Sigma
+    pub fn unrealized_funding_pnl(&self) -> Result<Int128, MathError> {
+        let F_now = self.last_funding_index;
+        let K = self.accumulators.net_position_q.checked_into_dec()?;
+        let funding_pnl = K * F_now - self.accumulators.funding_basis_sum;
+        Ok(funding_pnl.into_int())
+    }
+
+    /// Returns the unrealized fees of the market.
+    /// $$
+    /// \text{unrealisedFee}(p)=
+    /// p\;\bigl(\varphi_m\,M + \varphi_t\,T\bigr)
+    /// $$
+    /// unrealisedFee(p) = p * (φ_m * M + φ_t * T)
+    ///
+    /// with $M,T$ from (★).
+    pub fn unrealized_fees(
+        &self,
+        oracle_price: Udec128,
+        maker_rate: Udec128,
+        taker_rate: Udec128,
+    ) -> Result<Int128, MathError> {
+        let oracle_price = oracle_price.checked_into_signed()?;
+        let K = self.accumulators.net_position_q.checked_into_dec()?;
+        let S2 = self.accumulators.quadratic_fee_basis.checked_into_dec()?;
+        let abs_K = K.checked_abs()?;
+        let m_usd = (S2 - K * abs_K) / Dec128::new(2);
+        let t_usd = (S2 + K * abs_K) / Dec128::new(2) - abs_K;
+        let unreal_fee = oracle_price
+            * (m_usd * maker_rate.checked_into_signed()?
+                + t_usd * taker_rate.checked_into_signed()?);
+        Ok(unreal_fee.into_int())
+    }
+
+    pub fn net_asset_value(
+        &self,
+        oracle_price: Udec128,
+        skew_scale: Uint128,
+        maker_rate: Udec128,
+        taker_rate: Udec128,
+    ) -> anyhow::Result<Int128> {
+        let price_pnl = self.unrealized_price_pnl(oracle_price, skew_scale)?;
+        let funding_pnl = self.unrealized_funding_pnl()?;
+        let unrealized_fees = self.unrealized_fees(oracle_price, maker_rate, taker_rate)?;
+        Ok(self
+            .realised_cash_flow
+            .total()?
+            .checked_add(price_pnl)?
+            .checked_add(funding_pnl)?
+            .checked_add(unrealized_fees)?)
     }
 }
