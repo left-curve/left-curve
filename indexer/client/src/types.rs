@@ -1,4 +1,7 @@
 #[cfg(test)]
+use serde_json::json;
+
+#[cfg(test)]
 const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";
 
 pub trait Variables {
@@ -73,7 +76,7 @@ generate_types! {
         name: QueryApp,
         path: "src/schemas/queries/queryApp.graphql",
         test_with: crate::types::query_app::Variables {
-            request: r#"{"config":{}}"#.to_string(),
+            request: json!({"config":{}}),
             height: None
         }
     },
@@ -90,7 +93,7 @@ generate_types! {
         name: Simulate,
         path: "src/schemas/queries/Simulate.graphql",
         test_with: crate::types::simulate::Variables {
-            tx: r#"{
+            tx: json!({
               "data": {
                 "chain_id": "dev-6",
                 "nonce": 1,
@@ -106,8 +109,7 @@ generate_types! {
                 }
               ],
               "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9"
-            }"#
-            .to_string(),
+            }),
         }
     },
     {
