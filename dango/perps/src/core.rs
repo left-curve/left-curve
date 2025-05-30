@@ -1,24 +1,62 @@
 use {
-    dango_types::perps::{INITIAL_SHARES_PER_TOKEN, PerpsVaultState},
-    grug::{IsZero, MultiplyRatio, Number, Uint128},
+    anyhow::ensure,
+    dango_types::perps::{
+        INITIAL_SHARES_PER_TOKEN, PerpsMarketParams, PerpsMarketState, PerpsVaultState,
+    },
+    grug::{Denom, Inner, MultiplyRatio, Number, Sign, Signed, Udec128, Uint128, Unsigned},
+    std::collections::HashMap,
 };
 
-pub fn token_to_shares(vault_state: &PerpsVaultState, amount: Uint128) -> anyhow::Result<Uint128> {
+pub fn token_to_shares(
+    markets: &[PerpsMarketState],
+    oracle_prices: &HashMap<Denom, Udec128>,
+    params: &PerpsMarketParams,
+    vault_state: &PerpsVaultState,
+    amount: Uint128,
+) -> anyhow::Result<Uint128> {
+    let nav = vault_state.net_asset_value(
+        markets,
+        oracle_prices,
+        params.skew_scale,
+        params.maker_fee.into_inner(),
+        params.taker_fee.into_inner(),
+    )?;
+    let withdrawable_value = nav.checked_add(vault_state.deposits.checked_into_signed()?)?;
     // Calculate the amount of shares to mint
-    let shares = if vault_state.deposits.is_zero() {
+    let shares = if !withdrawable_value.is_positive() {
         amount.checked_mul(INITIAL_SHARES_PER_TOKEN)?
     } else {
         vault_state
             .shares
-            .checked_multiply_ratio(amount, vault_state.deposits)?
+            .checked_multiply_ratio(amount, withdrawable_value.checked_into_unsigned()?)?
     };
 
     Ok(shares)
 }
 
-pub fn shares_to_token(vault_state: &PerpsVaultState, shares: Uint128) -> anyhow::Result<Uint128> {
-    let amount = vault_state
-        .deposits
+pub fn shares_to_token(
+    markets: &[PerpsMarketState],
+    oracle_prices: &HashMap<Denom, Udec128>,
+    params: &PerpsMarketParams,
+    vault_state: &PerpsVaultState,
+    shares: Uint128,
+) -> anyhow::Result<Uint128> {
+    let nav = vault_state.net_asset_value(
+        markets,
+        oracle_prices,
+        params.skew_scale,
+        params.maker_fee.into_inner(),
+        params.taker_fee.into_inner(),
+    )?;
+    let withdrawable_value = nav.checked_add(vault_state.deposits.checked_into_signed()?)?;
+
+    ensure!(
+        withdrawable_value.is_positive(),
+        "vault is undercollateralized"
+    );
+
+    let amount = withdrawable_value
+        .checked_into_unsigned()?
         .checked_multiply_ratio(shares, vault_state.shares)?;
 
     Ok(amount)
