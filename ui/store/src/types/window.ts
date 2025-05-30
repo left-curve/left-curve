@@ -3,6 +3,7 @@ import type { EIP6963AnnounceProviderEvent, EIP6963RequestProviderEvent } from "
 
 declare global {
   interface Window {
+    TradingView: any;
     ethereum?: EIP1193Provider;
     keplr?: {
       ethereum: EIP1193Provider;
