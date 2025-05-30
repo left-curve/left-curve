@@ -30,13 +30,16 @@ export async function queryApp<
     }
   `;
 
-  const { queryApp: response } = await queryIndexer<{ queryApp: string }, chain, signer>(client, {
-    document,
-    variables: {
-      request: snakeCaseJsonSerialization(query),
-      height,
+  const { queryApp: response } = await queryIndexer<{ queryApp: QueryResponse }, chain, signer>(
+    client,
+    {
+      document,
+      variables: {
+        request: snakeCaseJsonSerialization(query),
+        height,
+      },
     },
-  });
+  );
 
   return camelCaseJsonDeserialization<QueryResponse>(response);
 }

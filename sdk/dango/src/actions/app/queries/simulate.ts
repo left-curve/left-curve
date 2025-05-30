@@ -47,7 +47,11 @@ export async function simulate<chain extends Chain | undefined, signer extends S
       }
     `;
 
-    const { simulate: response } = await queryIndexer<{ simulate: string }, chain, signer>(client, {
+    const { simulate: response } = await queryIndexer<
+      { simulate: SimulateResponse },
+      chain,
+      signer
+    >(client, {
       document,
       variables: {
         tx: snakeCaseJsonSerialization(simulate),
