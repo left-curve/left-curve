@@ -62,6 +62,8 @@ pub struct CreateMarketOrderRequest {
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
     /// base asset.
     pub amount: Uint128,
+    /// The maximum slippage percentage.
+    pub max_slippage: Udec128,
 }
 
 #[grug::derive(Serde)]
