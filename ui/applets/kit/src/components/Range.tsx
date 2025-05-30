@@ -1,7 +1,10 @@
-import type React from "react";
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+
 import { Input } from "./Input";
+
 import { twMerge } from "#utils/twMerge.js";
+
+import type React from "react";
 
 const clampValueToStep = (value: number, min: number, max: number, step: number): number => {
   const valueRelativeToMin = value - min;
