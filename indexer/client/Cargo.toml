@@ -10,6 +10,9 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+tracing = ["dep:tracing"]
+
 [dependencies]
 anyhow         = { workspace = true }
 async-trait    = { workspace = true }
@@ -19,6 +22,7 @@ paste          = { workspace = true }
 reqwest        = { workspace = true, features = ["json"] }
 serde          = { workspace = true }
 tendermint-rpc = { workspace = true }
+tracing        = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

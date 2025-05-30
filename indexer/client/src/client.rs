@@ -51,6 +51,12 @@ impl HttpClient {
             .send()
             .await?;
 
+        #[cfg(feature = "tracing")]
+        {
+            // tracing::debug!("GraphQL request: {:?}", query);
+            // tracing::debug!("GraphQL response: {:?}", response);
+        }
+
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
 
         match body.data {

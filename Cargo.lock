@@ -5542,6 +5542,7 @@ dependencies = [
  "serde",
  "tendermint-rpc",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

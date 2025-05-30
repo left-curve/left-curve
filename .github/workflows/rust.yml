@@ -121,6 +121,9 @@ jobs:
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
+      - name: Build GraphQL schema
+        run: cargo run -p indexer-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+
       - name: Run tests
         run: cargo test --all-features
         env:
