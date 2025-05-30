@@ -1,5 +1,5 @@
 import superjson from "superjson";
-import type { JsonValue } from "../types/encoding.js";
+import type { Json, JsonValue } from "../types/encoding.js";
 import { recursiveTransform } from "../utils/mappers.js";
 import { camelToSnake, snakeToCamel } from "../utils/strings.js";
 import { decodeBase64, encodeBase64 } from "./base64.js";
@@ -40,10 +40,10 @@ export function sortedJsonStringify(obj: JsonValue): string {
   return JSON.stringify(sortedObject(obj));
 }
 
-export function snakeCaseJsonSerialization(obj: JsonValue): string {
-  return JSON.stringify(recursiveTransform(obj, camelToSnake));
+export function snakeCaseJsonSerialization(obj: Json): Json {
+  return recursiveTransform(obj, camelToSnake);
 }
 
-export function camelCaseJsonDeserialization<T = JsonValue>(s: string): T {
-  return recursiveTransform(JSON.parse(s), snakeToCamel);
+export function camelCaseJsonDeserialization<T = Json>(s: Json): T {
+  return recursiveTransform(s, snakeToCamel) as T;
 }
