@@ -65,6 +65,15 @@ impl PrecisionedPrice {
         self.precision.into_inner()
     }
 
+    /// Returns the unit price of the token. E.g. if this Price represents
+    /// the price in USD of one ATOM, then this function will return the price
+    /// in USD of one uatom.
+    pub fn unit_price(&self) -> StdResult<Udec128> {
+        Ok(self
+            .humanized_price
+            .checked_div(Udec128::new(10u128.pow(self.precision.into_inner() as u32)))?)
+    }
+
     /// Returns the value of a given unit amount. E.g. if this Price represents
     /// the price in USD of one ATOM, then this function will return the value
     /// in USD of the given number of uatom.

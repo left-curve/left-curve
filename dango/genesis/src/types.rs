@@ -8,7 +8,7 @@ use {
         gateway::{RateLimit, Remote, WithdrawalFee},
         lending::InterestRateModel,
         oracle::PriceSource,
-        taxman,
+        perps, taxman,
     },
     grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
@@ -29,6 +29,7 @@ pub struct Contracts {
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
+    pub perps: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
@@ -46,6 +47,7 @@ pub struct Codes<T> {
     pub hyperlane: Hyperlane<T>,
     pub lending: T,
     pub oracle: T,
+    pub perps: T,
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
@@ -65,6 +67,7 @@ pub struct GenesisOption {
     pub hyperlane: HyperlaneOption,
     pub lending: LendingOption,
     pub oracle: OracleOption,
+    pub perps: PerpsOption,
     pub vesting: VestingOption,
 }
 
@@ -127,6 +130,8 @@ pub struct OracleOption {
     /// Wormhole guardian sets that will sign Pyth VAA messages.
     pub wormhole_guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
 }
+
+pub type PerpsOption = perps::InstantiateMsg;
 
 pub struct VestingOption {
     /// Cliff for Dango token unlocking.
