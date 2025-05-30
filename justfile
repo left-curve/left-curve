@@ -14,9 +14,21 @@ clean-branches:
 install:
   cargo install --path dango/cli --locked
 
-# Run tests
+# Run all tests
 test:
   RUST_BACKTRACE=1 cargo test --all-features
+
+# Run grug tests
+test-grug:
+  RUST_BACKTRACE=1 cargo test --all-features --package grug-testing
+
+# Run dango tests
+test-dango:
+  RUST_BACKTRACE=1 cargo test --all-features --package dango-testing
+
+# Run indexer tests
+test-indexer:
+  RUST_BACKTRACE=1 cargo test --all-features --package indexer-testing
 
 # Perform linting
 lint:

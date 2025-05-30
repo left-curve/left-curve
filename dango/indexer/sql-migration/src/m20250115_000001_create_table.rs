@@ -52,16 +52,12 @@ impl MigrationTrait for Migration {
                     .col(Transfer::BlockHeight)
                     .to_owned(),
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(Transfer::Table).to_owned())
-            .await?;
-
-        Ok(())
+            .await
     }
 }

@@ -137,22 +137,20 @@ impl MigrationTrait for Migration {
                     .col(PublicKey::Username)
                     .to_owned(),
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(PublicKey::Table).to_owned())
             .await?;
+
         manager
             .drop_table(Table::drop().table(Account::Table).to_owned())
             .await?;
+
         manager
             .drop_table(Table::drop().table(User::Table).to_owned())
-            .await?;
-
-        Ok(())
+            .await
     }
 }

@@ -15,8 +15,7 @@ impl MigrationTrait for Migration {
                     .col(Transaction::Sender)
                     .to_owned(),
             )
-            .await?;
-        Ok(())
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -27,7 +26,6 @@ impl MigrationTrait for Migration {
                     .table(Transaction::Table)
                     .to_owned(),
             )
-            .await?;
-        Ok(())
+            .await
     }
 }
