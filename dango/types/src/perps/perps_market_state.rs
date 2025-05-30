@@ -3,7 +3,7 @@ use grug::{
     Uint128, Unsigned,
 };
 
-use super::{PerpsPosition, RealisedCashFlow};
+use super::{PerpsMarketParams, PerpsPosition, RealisedCashFlow};
 
 /// Current state of a perps market.
 #[grug::derive(Serde, Borsh)]
@@ -187,14 +187,16 @@ impl PerpsMarketState {
 
     pub fn net_asset_value(
         &self,
+        params: &PerpsMarketParams,
         oracle_price: Udec128,
-        skew_scale: Uint128,
-        maker_rate: Udec128,
-        taker_rate: Udec128,
     ) -> anyhow::Result<Int128> {
-        let price_pnl = self.unrealized_price_pnl(oracle_price, skew_scale)?;
+        let price_pnl = self.unrealized_price_pnl(oracle_price, params.skew_scale)?;
         let funding_pnl = self.unrealized_funding_pnl()?;
-        let unrealized_fees = self.unrealized_fees(oracle_price, maker_rate, taker_rate)?;
+        let unrealized_fees = self.unrealized_fees(
+            oracle_price,
+            params.maker_fee.into_inner(),
+            params.taker_fee.into_inner(),
+        )?;
         Ok(self
             .realised_cash_flow
             .total()?
