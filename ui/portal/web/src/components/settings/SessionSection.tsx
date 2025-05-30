@@ -1,7 +1,6 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
-import { useNotifications } from "~/hooks/useNotifications";
 
 import {
   IconMobile,
@@ -75,15 +74,17 @@ const RemainingTimeSection: React.FC = () => {
 const NetworkSection: React.FC = () => {
   const [currentBlock, setCurrentBlock] = useState<BlockInfo>();
   const { chain } = useConfig();
-  const { notifier } = useNotifications();
+  const { subscriptions } = useApp();
 
   useEffect(() => {
-    const unsubscribe = notifier.subscribe("block", ({ blockHeight, hash, createdAt }) => {
-      setCurrentBlock({
-        height: blockHeight.toString(),
-        hash,
-        timestamp: new Date(createdAt).toJSON(),
-      });
+    const unsubscribe = subscriptions.subscribe("block", {
+      listener: ({ blockHeight, hash, createdAt }) => {
+        setCurrentBlock({
+          height: blockHeight.toString(),
+          hash,
+          timestamp: new Date(createdAt).toJSON(),
+        });
+      },
     });
     return () => unsubscribe();
   }, []);

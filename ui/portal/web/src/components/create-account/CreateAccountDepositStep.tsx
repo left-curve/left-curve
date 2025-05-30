@@ -1,5 +1,5 @@
 import { Button, Input, ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
-import { capitalize, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -20,7 +20,7 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { showModal, notifier } = useApp();
+  const { showModal, subscriptions } = useApp();
   const { coins } = useConfig();
   const { account, refreshAccounts } = useAccount();
   const { settings } = useApp();
@@ -38,7 +38,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
       if (!signingClient) throw new Error("error: no signing client");
-      notifier.publish("submit_tx", { isSubmitting: true });
+      subscriptions.emit("submitTx", { isSubmitting: true });
       try {
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
@@ -53,7 +53,7 @@ export const CreateAccountDepositStep: React.FC = () => {
           }),
         ]);
 
-        notifier.publish("submit_tx", {
+        subscriptions.emit("submitTx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["accountCreation.accountCreated"]() },
         });
@@ -71,7 +71,7 @@ export const CreateAccountDepositStep: React.FC = () => {
       } catch (e) {
         console.error(e);
         const error = ensureErrorMessage(e);
-        notifier.publish("submit_tx", {
+        subscriptions.emit("submitTx", {
           isSubmitting: false,
           txResult: { hasSucceeded: false, message: m["signup.errors.couldntCompleteRequest"]() },
         });
