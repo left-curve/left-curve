@@ -20,6 +20,18 @@ macro_rules! generate_types {
                 impl Variables for [<$name:snake>]::Variables {
                     type Query = $name;
                 }
+
+                impl std::fmt::Debug for [<$name:snake>]::Variables {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+
+                        let data = serde_json::to_string(self)
+                            .map_err(|_| std::fmt::Error)?;
+
+                        f.debug_struct(stringify!([<$name:snake>]::Variables))
+                            .field("data", &data)
+                            .finish()
+                    }
+                }
             }
         )*
 
@@ -52,6 +64,9 @@ macro_rules! generate_types {
         }
     };
 }
+
+#[allow(clippy::upper_case_acronyms)]
+type JSON = serde_json::Value;
 
 generate_types! {
     {

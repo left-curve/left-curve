@@ -5540,6 +5540,7 @@ dependencies = [
  "paste",
  "reqwest 0.12.15",
  "serde",
+ "serde_json",
  "tendermint-rpc",
  "tokio",
  "tracing",

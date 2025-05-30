@@ -13,16 +13,18 @@ impl GrugQuery {
     async fn query_app(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Request as JSON")] request: grug_types::Json,
+        #[graphql(desc = "Request as JSON")] request: async_graphql::types::Json<grug_types::Json>,
         height: Option<u64>,
-    ) -> Result<grug_types::Json, Error> {
+    ) -> Result<async_graphql::types::Json<grug_types::Json>, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx
-            .grug_app
-            .query_app(grug_types::Json::from_inner(request.into_inner()), height)
-            .await?
-            .to_json_value()?)
+        Ok(async_graphql::types::Json(
+            app_ctx
+                .grug_app
+                .query_app(grug_types::Json::from_inner(request.0.into_inner()), height)
+                .await?
+                .to_json_value()?,
+        ))
     }
 
     async fn query_store(

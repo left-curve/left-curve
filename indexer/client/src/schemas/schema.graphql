@@ -235,7 +235,7 @@ type Query {
 		"""
 		Request as JSON
 		"""
-		request: JSON,		height: Int
+		request: JSON!,		height: Int
 	): JSON!
 	queryStore(
 		"""

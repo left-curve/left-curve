@@ -1,3 +1,3 @@
-query Simulate($tx: String!) {
+query Simulate($tx: JSON!) {
   simulate(tx: $tx)
 }
