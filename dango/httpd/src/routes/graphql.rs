@@ -2,7 +2,7 @@ use {
     crate::graphql::AppSchema,
     actix_web::{HttpRequest, HttpResponse, Resource, web},
     async_graphql::Schema,
-    async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
+    async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
     indexer_httpd::routes::graphql::graphiql_playgound,
 };
 
@@ -21,11 +21,11 @@ pub fn graphql_route() -> Resource {
 pub(crate) async fn graphql_index(
     schema: web::Data<AppSchema>,
     _req: HttpRequest,
-    gql_request: GraphQLRequest,
+    gql_request: GraphQLBatchRequest,
 ) -> GraphQLResponse {
     let request = gql_request.into_inner();
 
-    schema.execute(request).await.into()
+    schema.execute_batch(request).await.into()
 }
 
 #[tracing::instrument(name = "graphql::graphql_ws", skip_all)]
