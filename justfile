@@ -16,19 +16,19 @@ install:
 
 # Run all tests
 test:
-  RUST_BACKTRACE=1 cargo test --all-features
+  RUST_BACKTRACE=1 cargo test --all-features -- --nocapture
 
 # Run grug tests
 test-grug:
-  RUST_BACKTRACE=1 cargo test --all-features --package grug-testing
+  RUST_BACKTRACE=1 cargo test --all-features -p grug-testing -- --nocapture
 
 # Run dango tests
 test-dango:
-  RUST_BACKTRACE=1 cargo test --all-features --package dango-testing
+  RUST_BACKTRACE=1 cargo test --all-features -p dango-testing -- --nocapture
 
 # Run indexer tests
 test-indexer:
-  RUST_BACKTRACE=1 cargo test --all-features --package indexer-testing
+  RUST_BACKTRACE=1 cargo test --all-features -p indexer-testing -- --nocapture
 
 # Perform linting
 lint:
