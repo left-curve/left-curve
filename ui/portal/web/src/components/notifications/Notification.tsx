@@ -65,8 +65,8 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
 
   const formattedAmount = formatNumber(formatUnits(amount, coin.decimals), formatNumberOptions);
 
-  const originAddress = isSent ? toAddress : fromAddress;
-  const targetAddress = isSent ? fromAddress : toAddress;
+  const originAddress = isSent ? fromAddress : toAddress;
+  const targetAddress = isSent ? toAddress : fromAddress;
 
   const onNavigate = (url: string) => {
     setNotificationMenuVisibility(false);
