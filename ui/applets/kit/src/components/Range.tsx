@@ -162,6 +162,12 @@ export const Range: React.FC<RangeProps> = ({
       case "PageUp":
         newValue = actualValue + step * 10;
         break;
+      case "Home":
+        newValue = minValue;
+        break;
+      case "End":
+        newValue = maxValue;
+        break;
       default:
         valueChanged = false;
         break;
