@@ -81,7 +81,7 @@ export const Range: React.FC<RangeProps> = ({
       const clamped = clampValueToStep(newValue, minValue, maxValue, step);
       setValue(clamped);
     },
-    [minValue, maxValue, setValue],
+    [minValue, maxValue, step, setValue],
   );
 
   const handleSliderMouseDown = useCallback(
@@ -122,7 +122,6 @@ export const Range: React.FC<RangeProps> = ({
   }, [isDragging, isDisabled, handleInteraction]);
 
   const handleThumbKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    console.log("Key down event:", event.key);
     if (isDisabled) return;
     let newValue = value;
     let valueChanged = true;
