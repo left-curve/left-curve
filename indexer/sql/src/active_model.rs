@@ -3,10 +3,9 @@ use {
         entity::{self},
         error::Result,
     },
-    grug_math::Inner,
     grug_types::{
         Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
-        JsonSerExt, flatten_commitment_status,
+        Inner, JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
     std::collections::HashMap,

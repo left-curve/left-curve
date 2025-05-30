@@ -16,7 +16,6 @@ ibc = ["ics23"]
 
 [dependencies]
 borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
-grug-math    = { workspace = true }
 grug-storage = { workspace = true }
 grug-types   = { workspace = true }
 ics23        = { workspace = true, optional = true }

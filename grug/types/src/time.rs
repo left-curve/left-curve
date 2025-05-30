@@ -1,6 +1,7 @@
 use {
+    crate::Inner,
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Dec, Inner, Int, IsZero, NumberConst, Udec128_9, Uint128},
+    grug_math::{Dec, Int, IsZero, NumberConst, Udec128_9, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Mul, Sub},
 };

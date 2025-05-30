@@ -18,7 +18,6 @@ tracing = ["dep:tracing", "grug-types/chrono"]
 borsh         = { workspace = true }
 data-encoding = { workspace = true, optional = true }
 dyn-event     = { workspace = true }
-grug-math     = { workspace = true }
 grug-storage  = { workspace = true }
 grug-types    = { workspace = true }
 ics23         = { workspace = true, optional = true }

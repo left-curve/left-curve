@@ -1,9 +1,8 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    grug_math::Inner,
     grug_types::{
-        Block, BlockOutcome, BroadcastClientExt, Coins, Denom, GasOption, Json, JsonSerExt,
+        Block, BlockOutcome, BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt,
         Message, Query, QueryAppConfigRequest, ResultExt,
     },
     indexer_sql::entity,

@@ -2,10 +2,9 @@ use {
     crate::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
-    grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        Hash256, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
+        Hash256, Inner, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
         SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,

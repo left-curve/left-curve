@@ -2,15 +2,15 @@ use {
     grug_app::AppError,
     grug_crypto::{Identity256, Identity512, sha2_256, sha2_512},
     grug_db_memory::MemDb,
-    grug_math::{InnerMut, Udec128},
+    grug_math::Udec128,
     grug_tester::{
         QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, Denom, GenericResult, Message, QuerierExt, QueryRequest, ResultExt,
-        VerificationError,
+        Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, QuerierExt, QueryRequest,
+        ResultExt, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,
