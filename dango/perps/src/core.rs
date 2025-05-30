@@ -10,17 +10,11 @@ use {
 pub fn token_to_shares(
     markets: &[PerpsMarketState],
     oracle_prices: &HashMap<Denom, Udec128>,
-    params: &PerpsMarketParams,
+    params: &HashMap<Denom, PerpsMarketParams>,
     vault_state: &PerpsVaultState,
     amount: Uint128,
 ) -> anyhow::Result<Uint128> {
-    let nav = vault_state.net_asset_value(
-        markets,
-        oracle_prices,
-        params.skew_scale,
-        params.maker_fee.into_inner(),
-        params.taker_fee.into_inner(),
-    )?;
+    let nav = vault_state.net_asset_value(markets, params, oracle_prices)?;
     let withdrawable_value = nav.checked_add(vault_state.deposits.checked_into_signed()?)?;
     // Calculate the amount of shares to mint
     let shares = if !withdrawable_value.is_positive() {
@@ -37,17 +31,11 @@ pub fn token_to_shares(
 pub fn shares_to_token(
     markets: &[PerpsMarketState],
     oracle_prices: &HashMap<Denom, Udec128>,
-    params: &PerpsMarketParams,
+    params: &HashMap<Denom, PerpsMarketParams>,
     vault_state: &PerpsVaultState,
     shares: Uint128,
 ) -> anyhow::Result<Uint128> {
-    let nav = vault_state.net_asset_value(
-        markets,
-        oracle_prices,
-        params.skew_scale,
-        params.maker_fee.into_inner(),
-        params.taker_fee.into_inner(),
-    )?;
+    let nav = vault_state.net_asset_value(markets, params, oracle_prices)?;
     let withdrawable_value = nav.checked_add(vault_state.deposits.checked_into_signed()?)?;
 
     ensure!(

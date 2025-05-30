@@ -80,18 +80,20 @@ fn update_perps_market_params(
 }
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Load the vault state and params
+    // Load the vault state
     let vault_state = PERPS_VAULT.load(ctx.storage)?;
-    let params = PERPS_MARKET_PARAMS.load(ctx.storage, &vault_state.denom)?;
 
     // Ensure only the vault denom is sent
     let deposited = ctx.funds.as_one_coin_of_denom(&vault_state.denom)?;
 
-    // Load the markets
+    // Load the market states and params
     let markets = PERPS_MARKETS
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|x| x.map(|(_, v)| v))
         .collect::<Result<Vec<_>, _>>()?;
+    let params = PERPS_MARKET_PARAMS
+        .range(ctx.storage, None, None, Order::Ascending)
+        .collect::<Result<HashMap<Denom, PerpsMarketParams>, _>>()?;
 
     // Query the oracle for the price of each market denom
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
@@ -145,15 +147,17 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
         "user does not have enough shares"
     );
 
-    // Load the vault state and params
+    // Load the vault state
     let vault_state = PERPS_VAULT.load(ctx.storage)?;
-    let params = PERPS_MARKET_PARAMS.load(ctx.storage, &vault_state.denom)?;
 
-    // Load the markets
+    // Load the markets states and params
     let markets = PERPS_MARKETS
         .range(ctx.storage, None, None, Order::Ascending)
         .map(|x| x.map(|(_, v)| v))
         .collect::<Result<Vec<_>, _>>()?;
+    let params = PERPS_MARKET_PARAMS
+        .range(ctx.storage, None, None, Order::Ascending)
+        .collect::<Result<HashMap<Denom, PerpsMarketParams>, _>>()?;
 
     // Query the oracle for the price of each market denom
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
