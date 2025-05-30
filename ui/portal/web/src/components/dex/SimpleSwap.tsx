@@ -47,7 +47,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
 }) => {
   const simpleSwapState = state(parameters);
   const controllers = useInputs();
-  const { notifier, settings, showModal } = useApp();
+  const { subscriptions, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
@@ -59,7 +59,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
       if (!signingClient) throw new Error("error: no signing client");
       if (!pair) throw new Error("error: no pair");
       if (!simulation.data) throw new Error("error: no simulation data");
-      notifier.publish("submit_tx", { isSubmitting: true });
+      subscriptions.emit("submitTx", { isSubmitting: true });
 
       const { input, output } = simulation.data;
 
@@ -83,7 +83,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
         const response = await promise
           .then(() => true)
           .catch(() => {
-            notifier.publish("submit_tx", {
+            subscriptions.emit("submitTx", {
               isSubmitting: false,
               txResult: { hasSucceeded: false, message: m["dex.convert.errors.failure"]() },
             });
@@ -104,14 +104,14 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
         controllers.reset();
         simulation.reset();
         toast.success({ title: m["dex.convert.convertSuccessfully"]() });
-        notifier.publish("submit_tx", {
+        subscriptions.emit("submitTx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["dex.convert.convertSuccessfully"]() },
         });
         refreshBalances();
       } catch (e) {
         console.error(e);
-        notifier.publish("submit_tx", {
+        subscriptions.emit("submitTx", {
           isSubmitting: false,
           txResult: { hasSucceeded: false, message: m["dex.convert.errors.failure"]() },
         });

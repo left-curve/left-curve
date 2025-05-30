@@ -25,6 +25,7 @@ import type {
 
 import { invertObject } from "@left-curve/dango/utils";
 
+import { subscriptionsStore } from "./subscriptions.js";
 import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
@@ -228,6 +229,8 @@ export function createConfig<
     });
   }
 
+  const sbStore = subscriptionsStore(getClient() as PublicClient);
+
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
   //////////////////////////////////////////////////////////////////////////////
@@ -324,6 +327,9 @@ export function createConfig<
   return {
     get coins() {
       return coins.getState() ?? {};
+    },
+    get subscriptions() {
+      return sbStore;
     },
     get chain() {
       return rest.chain;

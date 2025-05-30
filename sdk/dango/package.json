@@ -97,6 +97,9 @@
     "graphql-request": "^7.1.2",
     "ox": "^0.6.10"
   },
+  "peerDependencies": {
+    "graphql-ws": ">=6.0.0"
+  },
   "license": "TBD",
   "homepage": "https://grug.build",
   "repository": "left-curve/left-curve",

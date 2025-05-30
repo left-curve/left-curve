@@ -56,6 +56,17 @@ export type RequestFn<transportSchema extends TransportSchema | undefined = unde
   options?: RequestOptions,
 ) => Promise<_returnType>;
 
+export type SubscribeFn = <T>(
+  { query, variables }: { query: string; variables?: Record<string, unknown> },
+  callback: SubscriptionCallbacks<T>,
+) => () => void;
+
+export type SubscriptionCallbacks<T = unknown> = {
+  next: (data: T) => void;
+  error?: (error: Error) => void;
+  complete?: () => void;
+};
+
 export type RequestOptions = {
   // Deduplicate in-flight requests.
   dedupe?: boolean | undefined;
@@ -80,6 +91,7 @@ export type TransportConfig<
   /** Indicates if the transport supports batch queries. */
   batch?: boolean;
   request: RequestFn<transportSchema>;
+  subscribe?: SubscribeFn;
 };
 
 export type Transport<
@@ -90,4 +102,5 @@ export type Transport<
 ) => {
   config: TransportConfig<type, transportSchema>;
   request: RequestFn<transportSchema>;
+  subscribe?: SubscribeFn;
 };

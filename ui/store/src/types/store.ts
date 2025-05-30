@@ -16,6 +16,7 @@ import type { AnyCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
+import type { SubscriptionStore } from "./subscriptions.js";
 
 export const ConnectionStatus = {
   Connected: "connected",
@@ -41,6 +42,7 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
   readonly state: State;
+  readonly subscriptions: SubscriptionStore;
   setState(value: State | ((state: State) => State)): void;
   subscribe<state>(
     selector: (state: State) => state,
