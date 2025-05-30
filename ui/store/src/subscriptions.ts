@@ -27,13 +27,13 @@ export function subscriptionsStore(client: PublicClient) {
 
     const executor = SubscriptionExecutors[key as keyof typeof SubscriptionExecutors];
 
-    const executorUnscribeFn = executor({
+    const executorUnsubscribeFn = executor({
       client,
       params,
       getListeners: () => listeners.get(key),
     } as never);
 
-    activeExecutors.set(key, executorUnscribeFn);
+    activeExecutors.set(key, executorUnsubscribeFn);
     return () => unsubscribe(key, listener);
   };
 
