@@ -15,25 +15,14 @@ macro_rules! generate_types {
             #[graphql(
                 schema_path = "src/schemas/schema.graphql",
                 query_path = $path,
-                response_derives = "Debug"
+                response_derives = "Debug",
+                variables_derives = "Debug"
             )]
             pub struct $name;
 
             paste::paste! {
                 impl Variables for [<$name:snake>]::Variables {
                     type Query = $name;
-                }
-
-                impl std::fmt::Debug for [<$name:snake>]::Variables {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-
-                        let data = serde_json::to_string(self)
-                            .map_err(|_| std::fmt::Error)?;
-
-                        f.debug_struct(stringify!([<$name:snake>]::Variables))
-                            .field("data", &data)
-                            .finish()
-                    }
                 }
             }
         )*

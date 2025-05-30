@@ -43,8 +43,6 @@ impl HttpClient {
     where
         V: Variables + Serialize + std::fmt::Debug,
     {
-        println!("Variables request: {:?}", &variables);
-
         let query = V::Query::build_query(variables);
         let response = self
             .inner
@@ -53,13 +51,10 @@ impl HttpClient {
             .send()
             .await?;
 
-        println!("GraphQL request: {:?}", query);
-        println!("GraphQL response: {:?}", response);
-
         #[cfg(feature = "tracing")]
         {
-            println!("GraphQL request: {:?}", query);
-            println!("GraphQL response: {:?}", response);
+            tracing::debug!("GraphQL request: {:?}", query);
+            tracing::debug!("GraphQL response: {:?}", response);
         }
 
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
