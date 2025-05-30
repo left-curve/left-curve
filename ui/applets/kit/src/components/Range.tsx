@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { useControlledState } from "#hooks/useControlledState.js";
 
 import { Input } from "./Input";
 
@@ -52,15 +53,10 @@ export const Range: React.FC<RangeProps> = ({
   withInput = false,
   inputEndContent,
 }) => {
-  const [internalValue, setInternalValue] = useState<number>(() => {
+  const [value, setValue] = useControlledState(controlledValue, onChange, () => {
     const initial = defaultValue !== undefined ? defaultValue : minValue;
     return clampValueToStep(initial, minValue, maxValue, step);
   });
-
-  const actualValue =
-    controlledValue !== undefined
-      ? clampValueToStep(controlledValue, minValue, maxValue, step)
-      : internalValue;
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -73,29 +69,7 @@ export const Range: React.FC<RangeProps> = ({
     [minValue, maxValue],
   );
 
-  const currentPercentage = getPercentage(actualValue);
-
-  const handleValueChange = useCallback(
-    (newValue: number) => {
-      const clamped = clampValueToStep(newValue, minValue, maxValue, step);
-      if (controlledValue === undefined) {
-        setInternalValue(clamped);
-      }
-      if (onChange) {
-        onChange(clamped);
-      }
-    },
-    [minValue, maxValue, step, controlledValue, onChange],
-  );
-
-  useEffect(() => {
-    if (controlledValue !== undefined) {
-      const clampedControlled = clampValueToStep(controlledValue, minValue, maxValue, step);
-      if (clampedControlled !== internalValue) {
-        setInternalValue(clampedControlled);
-      }
-    }
-  }, [controlledValue, minValue, maxValue, step, internalValue]);
+  const currentPercentage = getPercentage(value);
 
   const handleInteraction = useCallback(
     (clientX: number) => {
@@ -104,9 +78,10 @@ export const Range: React.FC<RangeProps> = ({
       const clickPos = clientX - trackRect.left;
       const newValueRatio = Math.max(0, Math.min(1, clickPos / trackRect.width));
       const newValue = minValue + newValueRatio * (maxValue - minValue);
-      handleValueChange(newValue);
+      const clamped = clampValueToStep(newValue, minValue, maxValue, step);
+      setValue(clamped);
     },
-    [minValue, maxValue, handleValueChange],
+    [minValue, maxValue, setValue],
   );
 
   const handleSliderMouseDown = useCallback(
@@ -147,23 +122,24 @@ export const Range: React.FC<RangeProps> = ({
   }, [isDragging, isDisabled, handleInteraction]);
 
   const handleThumbKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    console.log("Key down event:", event.key);
     if (isDisabled) return;
-    let newValue = actualValue;
+    let newValue = value;
     let valueChanged = true;
     switch (event.key) {
       case "ArrowLeft":
       case "ArrowDown":
-        newValue = actualValue - step;
+        newValue = value - step;
         break;
       case "ArrowRight":
       case "ArrowUp":
-        newValue = actualValue + step;
+        newValue = value + step;
         break;
       case "PageDown":
-        newValue = actualValue - step * 10;
+        newValue = value - step * 10;
         break;
       case "PageUp":
-        newValue = actualValue + step * 10;
+        newValue = value + step * 10;
         break;
       case "Home":
         newValue = minValue;
@@ -178,7 +154,8 @@ export const Range: React.FC<RangeProps> = ({
 
     if (valueChanged) {
       event.preventDefault();
-      handleValueChange(newValue);
+      const clampedNewValue = clampValueToStep(newValue, minValue, maxValue, step);
+      setValue(clampedNewValue);
     }
   };
 
@@ -249,7 +226,7 @@ export const Range: React.FC<RangeProps> = ({
               role="slider"
               aria-valuemin={minValue}
               aria-valuemax={maxValue}
-              aria-valuenow={actualValue}
+              aria-valuenow={value}
               aria-disabled={isDisabled}
               aria-label={typeof label === "string" ? label : "Slider value"}
               onMouseDown={(e) => {
@@ -278,7 +255,7 @@ export const Range: React.FC<RangeProps> = ({
 
         {withInput && (
           <Input
-            value={formatInputValue(actualValue, inputPrecision)}
+            value={formatInputValue(value, inputPrecision)}
             min={minValue}
             max={maxValue}
             step={step}
@@ -292,7 +269,7 @@ export const Range: React.FC<RangeProps> = ({
               if (rawValue !== "") {
                 const numValue = Number.parseFloat(rawValue);
                 if (!Number.isNaN(numValue)) {
-                  handleValueChange(numValue);
+                  setValue(numValue);
                 }
               }
             }}
