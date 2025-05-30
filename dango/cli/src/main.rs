@@ -23,7 +23,7 @@ use {
     config_parser::parse_config,
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
-    tracing_subscriber::{prelude::*, registry},
+    tracing_subscriber::prelude::*,
 };
 
 #[derive(Parser)]
@@ -92,14 +92,14 @@ async fn main() -> anyhow::Result<()> {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
         });
 
-        registry()
+        tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer().with_filter(filter))
             .with(sentry_layer())
             .init();
 
         tracing::info!("Sentry initialized");
     } else {
-        registry()
+        tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer().with_filter(filter))
             .init();
     }
