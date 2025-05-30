@@ -32,4 +32,13 @@ export type IndexedMessage = {
   createdAt: string;
 };
 
+export type IndexedTransferEvent = {
+  fromAddress: Address;
+  toAddress: Address;
+  createdAt: string;
+  blockHeight: number;
+  amount: string;
+  denom: string;
+};
+
 export type IndexedTransactionType = "CRON" | "TX";

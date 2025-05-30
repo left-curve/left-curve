@@ -103,6 +103,7 @@ export type {
   IndexedTransaction,
   IndexedMessage,
   IndexedTransactionType,
+  IndexedTransferEvent,
 } from "./indexer.js";
 
 export type {

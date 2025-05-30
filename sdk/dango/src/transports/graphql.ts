@@ -1,11 +1,13 @@
 import { createTransport } from "@left-curve/sdk";
 import { UrlRequiredError } from "@left-curve/sdk/utils";
+import { createClient } from "graphql-ws";
 import { graphqlClient } from "../http/graphqlClient.js";
 
 import type {
   CometBftRpcSchema,
   HttpRpcClientOptions,
   RequestFn,
+  SubscribeFn,
   Transport,
 } from "@left-curve/sdk/types";
 
@@ -60,6 +62,8 @@ export function graphql(
     const batch = _batch_ ? batchOptions : undefined;
     const timeout = _timeout_ ?? 10_000;
 
+    const wsClient = createClient({ url });
+
     const client = graphqlClient(url, {
       fetchOptions,
       onRequest: onFetchRequest,
@@ -71,11 +75,25 @@ export function graphql(
       return client.request(method, params);
     };
 
+    const noOp = () => {};
+
+    const subscribe: SubscribeFn = ({ query, variables }, { next, error, complete }) => {
+      return wsClient.subscribe(
+        { query, variables },
+        {
+          next: ({ data }) => data && next(data as any),
+          error: error || noOp,
+          complete: complete || noOp,
+        },
+      );
+    };
+
     return createTransport<"http-graphql">({
       type: "http-graphql",
       name,
       key,
       request,
+      subscribe,
     });
   };
 }

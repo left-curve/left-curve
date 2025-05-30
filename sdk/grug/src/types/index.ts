@@ -58,6 +58,8 @@ export type {
   DerivedTransportSchema,
   RequestFn,
   RequestFnParameters,
+  SubscribeFn,
+  SubscriptionCallbacks,
   RequestOptions,
   TransportSchema,
   TransportSchemaOverride,
