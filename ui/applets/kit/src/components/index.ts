@@ -31,6 +31,7 @@ export { Popover } from "./Popover";
 export { Pagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
+export { Range } from "./Range";
 
 /* ---------------------------------- Icons --------------------------------- */
 
