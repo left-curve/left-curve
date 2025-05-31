@@ -8,6 +8,11 @@ use {
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
 };
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{InputType, InputValueResult, registry::Registry},
+    std::borrow::Cow,
+};
 
 /// An arbitrary binary data used for deriving address when instantiating a
 /// contract.
@@ -45,6 +50,39 @@ pub struct UnsignedTx {
     pub sender: Addr,
     pub msgs: NonEmpty<Vec<Message>>,
     pub data: Json,
+}
+
+#[cfg(feature = "async-graphql")]
+impl InputType for UnsignedTx {
+    type RawValueType = Self;
+
+    fn type_name() -> Cow<'static, str> {
+        "UnsignedTx".into()
+    }
+
+    fn create_type_info(_registry: &mut Registry) -> String {
+        "UnsignedTx".to_string()
+    }
+
+    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
+        let value = value.ok_or_else(|| {
+            async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
+        })?;
+
+        let json_str =
+            serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
+
+        serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        let json_str = serde_json::to_string(self).unwrap();
+        serde_json::from_str(&json_str).unwrap()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
 }
 
 /// A message.

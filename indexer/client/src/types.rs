@@ -59,6 +59,8 @@ macro_rules! generate_types {
 
 #[allow(clippy::upper_case_acronyms)]
 type JSON = serde_json::Value;
+type Query = serde_json::Value;
+type Foo = serde_json::Value;
 
 generate_types! {
     {
@@ -80,7 +82,7 @@ generate_types! {
     },
     {
         name: Simulate,
-        path: "src/schemas/queries/Simulate.graphql",
+        path: "src/schemas/queries/simulate.graphql",
         test_with: crate::types::simulate::Variables {
             tx: json!({
               "data": {

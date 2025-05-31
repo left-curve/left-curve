@@ -235,7 +235,7 @@ type Query {
 		"""
 		Request as JSON
 		"""
-		request: JSON!,		height: Int
+		request: Query,		height: Int
 	): JSON!
 	queryStore(
 		"""
@@ -248,7 +248,7 @@ type Query {
 		"""
 		Transaction as Json
 		"""
-		tx: JSON
+		tx: UnsignedTx
 	): JSON!
 }
 

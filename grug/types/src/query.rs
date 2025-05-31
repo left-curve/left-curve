@@ -9,6 +9,11 @@ use {
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
 };
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{InputType, InputValueResult, registry::Registry},
+    std::borrow::Cow,
+};
 
 /// The default number of items to be returned in enumerative queries, if user
 /// doesn't specify a limit.
@@ -65,6 +70,39 @@ pub enum Query {
     WasmSmart(QueryWasmSmartRequest),
     /// Perform multiple queries at once.
     Multi(Vec<Query>),
+}
+
+#[cfg(feature = "async-graphql")]
+impl InputType for Query {
+    type RawValueType = Self;
+
+    fn type_name() -> Cow<'static, str> {
+        "Query".into()
+    }
+
+    fn create_type_info(_registry: &mut Registry) -> String {
+        "Query".to_string()
+    }
+
+    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
+        let value = value.ok_or_else(|| {
+            async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
+        })?;
+
+        let json_str =
+            serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
+
+        serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        let json_str = serde_json::to_string(self).unwrap();
+        serde_json::from_str(&json_str).unwrap()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
 }
 
 impl Query {
