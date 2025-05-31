@@ -125,8 +125,6 @@ enum FlatCommitmentStatus {
 A scalar that can represent any JSON value.
 """
 scalar JSON
-scalar UnsignedTx
-scalar Tx
 
 type Message {
 	orderIdx: Int!
@@ -177,7 +175,7 @@ type Mutation {
 		"""
 		Transaction as JSON
 		"""
-		tx: Tx
+		tx: Tx!
 	): JSON!
 }
 
@@ -250,7 +248,7 @@ type Query {
 		"""
 		Transaction as Json
 		"""
-		tx: UnsignedTx
+		tx: UnsignedTx!
 	): JSON!
 }
 
@@ -335,6 +333,10 @@ enum TransactionSortBy {
 	BLOCK_HEIGHT_ASC
 	BLOCK_HEIGHT_DESC
 }
+
+scalar Tx
+
+scalar UnsignedTx
 
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
 directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT

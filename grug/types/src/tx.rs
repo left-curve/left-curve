@@ -1,3 +1,9 @@
+#[cfg(feature = "async-graphql")]
+use {
+    crate::inner::Inner,
+    crate::serializers::JsonDeExt,
+    async_graphql::{InputValueResult, Scalar, ScalarType},
+};
 use {
     crate::{
         Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
@@ -7,11 +13,6 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
-};
-#[cfg(feature = "async-graphql")]
-use {
-    async_graphql::{InputType, InputValueResult, registry::Registry},
-    std::borrow::Cow,
 };
 
 /// An arbitrary binary data used for deriving address when instantiating a
@@ -43,35 +44,29 @@ impl Tx {
 }
 
 #[cfg(feature = "async-graphql")]
-impl InputType for Tx {
-    type RawValueType = Self;
-
-    fn type_name() -> Cow<'static, str> {
-        "Tx".into()
-    }
-
-    fn create_type_info(_registry: &mut Registry) -> String {
-        "Tx".to_string()
-    }
-
-    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
-        let value = value.ok_or_else(|| {
-            async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
-        })?;
-
-        let json_str =
-            serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
-
-        serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+#[Scalar]
+impl ScalarType for Tx {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match value.into_json() {
+            Ok(json_value) => Json::from_inner(json_value)
+                .deserialize_json()
+                .map_err(|err| {
+                    async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
+                }),
+            Err(_) => Err(async_graphql::InputValueError::expected_type(
+                async_graphql::Value::Null,
+            )),
+        }
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        let json_str = serde_json::to_string(self).unwrap();
-        serde_json::from_str(&json_str).unwrap()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
+        match self.to_json_value() {
+            Ok(json_value) => async_graphql::Value::Object(
+                serde_json::from_value(json_value.into_inner())
+                    .expect("Failed to convert Json to Value"),
+            ),
+            Err(_) => async_graphql::Value::Null,
+        }
     }
 }
 
@@ -86,35 +81,32 @@ pub struct UnsignedTx {
 }
 
 #[cfg(feature = "async-graphql")]
-impl InputType for UnsignedTx {
-    type RawValueType = Self;
-
-    fn type_name() -> Cow<'static, str> {
-        "UnsignedTx".into()
-    }
-
-    fn create_type_info(_registry: &mut Registry) -> String {
-        "UnsignedTx".to_string()
-    }
-
-    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
-        let value = value.ok_or_else(|| {
-            async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
-        })?;
-
-        let json_str =
-            serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
-
-        serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+#[Scalar]
+impl ScalarType for UnsignedTx {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match value.into_json() {
+            Ok(json_value) => Json::from_inner(json_value)
+                .deserialize_json()
+                .map_err(|err| {
+                    async_graphql::InputValueError::custom(format!(
+                        "Failed to parse UnsignedTx: {}",
+                        err
+                    ))
+                }),
+            Err(_) => Err(async_graphql::InputValueError::expected_type(
+                async_graphql::Value::Null,
+            )),
+        }
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        let json_str = serde_json::to_string(self).unwrap();
-        serde_json::from_str(&json_str).unwrap()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
+        match self.to_json_value() {
+            Ok(json_value) => async_graphql::Value::Object(
+                serde_json::from_value(json_value.into_inner())
+                    .expect("Failed to convert Json to Value"),
+            ),
+            Err(_) => async_graphql::Value::Null,
+        }
     }
 }
 

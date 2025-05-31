@@ -1,17 +1,3 @@
-use {
-    crate::{
-        CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
-    },
-    borsh::{BorshDeserialize, BorshSerialize},
-    serde::{Deserialize, Serialize},
-    std::fmt::{self, Display},
-};
-#[cfg(feature = "tendermint")]
-use {
-    crate::{JsonDeExt, StdResult},
-    data_encoding::BASE64,
-};
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{
@@ -19,6 +5,25 @@ use {
         registry::Registry,
     },
     std::borrow::Cow,
+};
+// #[cfg(feature = "async-graphql")]
+// use {
+//     crate::Json,
+//     crate::inner::Inner,
+//     crate::serializers::JsonSerExt,
+//     async_graphql::{ InputType, InputValueResult, Scalar, ScalarType},
+//     std::borrow::Cow,
+// };
+#[cfg(feature = "tendermint")]
+use {crate::StdResult, data_encoding::BASE64};
+use {
+    crate::{
+        CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
+        EvtWithhold, GenericResult, Hash256, ResultExt, Tx, serializers::JsonDeExt,
+    },
+    borsh::{BorshDeserialize, BorshSerialize},
+    serde::{Deserialize, Serialize},
+    std::fmt::{self, Display},
 };
 
 /// Outcome of performing an operation that is not a full tx. These include:
@@ -136,6 +141,33 @@ impl TxOutcome {
         })
     }
 }
+
+// #[cfg(feature = "async-graphql")]
+// #[Scalar]
+// impl ScalarType for TxOutcome {
+//     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+//         match value.into_json() {
+//             Ok(json_value) => Json::from_inner(json_value)
+//                 .deserialize_json()
+//                 .map_err(|err| {
+//                     async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
+//                 }),
+//             Err(_) => Err(async_graphql::InputValueError::expected_type(
+//                 async_graphql::Value::Null,
+//             )),
+//         }
+//     }
+
+//     fn to_value(&self) -> async_graphql::Value {
+//         match self.to_json_value() {
+//             Ok(json_value) => async_graphql::Value::Object(
+//                 serde_json::from_value(json_value.into_inner())
+//                     .expect("Failed to convert Json to Value"),
+//             ),
+//             Err(_) => async_graphql::Value::Null,
+//         }
+//     }
+// }
 
 #[cfg(feature = "async-graphql")]
 impl OutputType for TxOutcome {
@@ -298,6 +330,33 @@ impl BroadcastTxOutcome {
         }
     }
 }
+
+// #[cfg(feature = "async-graphql")]
+// #[Scalar]
+// impl ScalarType for BroadcastTxOutcome {
+//     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+//         match value.into_json() {
+//             Ok(json_value) => Json::from_inner(json_value)
+//                 .deserialize_json()
+//                 .map_err(|err| {
+//                     async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
+//                 }),
+//             Err(_) => Err(async_graphql::InputValueError::expected_type(
+//                 async_graphql::Value::Null,
+//             )),
+//         }
+//     }
+
+//     fn to_value(&self) -> async_graphql::Value {
+//         match self.to_json_value() {
+//             Ok(json_value) => async_graphql::Value::Object(
+//                 serde_json::from_value(json_value.into_inner())
+//                     .expect("Failed to convert Json to Value"),
+//             ),
+//             Err(_) => async_graphql::Value::Null,
+//         }
+//     }
+// }
 
 #[cfg(feature = "async-graphql")]
 impl OutputType for BroadcastTxOutcome {

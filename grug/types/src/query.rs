@@ -1,3 +1,17 @@
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{
+        InputType, InputValueResult, OutputType, Positioned, ServerResult,
+        context::ContextSelectionSet, parser::types::Field, registry::Registry,
+    },
+    std::borrow::Cow,
+};
+// #[cfg(feature = "async-graphql")]
+// use {
+//     crate::serializers::JsonDeExt,
+//     async_graphql::{Scalar, ScalarType},
+//     std::borrow::Cow,
+// };
 use {
     crate::{
         Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
@@ -8,14 +22,6 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
-};
-#[cfg(feature = "async-graphql")]
-use {
-    async_graphql::{
-        InputType, InputValueResult, OutputType, Positioned, ServerResult,
-        context::ContextSelectionSet, parser::types::Field, registry::Registry,
-    },
-    std::borrow::Cow,
 };
 
 /// The default number of items to be returned in enumerative queries, if user
@@ -345,6 +351,33 @@ pub enum QueryResponse {
     WasmSmart(Json),
     Multi(Vec<GenericResult<QueryResponse>>),
 }
+
+// #[cfg(feature = "async-graphql")]
+// #[Scalar]
+// impl ScalarType for QueryResponse {
+//     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+//         match value.into_json() {
+//             Ok(json_value) => Json::from_inner(json_value)
+//                 .deserialize_json()
+//                 .map_err(|err| {
+//                     async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
+//                 }),
+//             Err(_) => Err(async_graphql::InputValueError::expected_type(
+//                 async_graphql::Value::Null,
+//             )),
+//         }
+//     }
+
+//     fn to_value(&self) -> async_graphql::Value {
+//         match self.to_json_value() {
+//             Ok(json_value) => async_graphql::Value::Object(
+//                 serde_json::from_value(json_value.into_inner())
+//                     .expect("Failed to convert Json to Value"),
+//             ),
+//             Err(_) => async_graphql::Value::Null,
+//         }
+//     }
+// }
 
 #[cfg(feature = "async-graphql")]
 impl OutputType for QueryResponse {

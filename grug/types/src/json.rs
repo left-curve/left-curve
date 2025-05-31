@@ -8,13 +8,20 @@ use {
         ops::{Deref, DerefMut},
     },
 };
+// #[cfg(feature = "async-graphql")]
+// use {
+//     async_graphql::{
+//         InputType, InputValueResult, OutputType, Positioned, ServerResult,
+//         context::ContextSelectionSet, parser::types::Field, registry::Registry,
+//     },
+//     std::borrow::Cow,
+// };
+
 #[cfg(feature = "async-graphql")]
 use {
-    async_graphql::{
-        InputType, InputValueResult, OutputType, Positioned, ServerResult,
-        context::ContextSelectionSet, parser::types::Field, registry::Registry,
-    },
-    std::borrow::Cow,
+    crate::serializers::JsonDeExt,
+    crate::serializers::JsonSerExt,
+    async_graphql::{InputValueResult, Scalar, ScalarType},
 };
 
 const TAG_NULL: u8 = 0;
@@ -297,52 +304,79 @@ where
 }
 
 #[cfg(feature = "async-graphql")]
-impl InputType for Json {
-    type RawValueType = Self;
-
-    fn type_name() -> Cow<'static, str> {
-        "JSON".into()
-    }
-
-    fn create_type_info(_registry: &mut Registry) -> String {
-        "JSON".to_string()
-    }
-
-    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
-        async_graphql::types::Json::<JsonValue>::parse(value)
-            .map(|json| Json(json.0))
-            .map_err(|e| e.propagate())
+#[Scalar]
+impl ScalarType for Json {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match value.into_json() {
+            Ok(json_value) => Json::from_inner(json_value)
+                .deserialize_json()
+                .map_err(|err| {
+                    async_graphql::InputValueError::custom(format!("Failed to parse Json: {}", err))
+                }),
+            Err(_) => Err(async_graphql::InputValueError::expected_type(
+                async_graphql::Value::Null,
+            )),
+        }
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        async_graphql::types::Json(&self.0).to_value()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
-    }
-}
-
-#[cfg(feature = "async-graphql")]
-impl OutputType for Json {
-    fn type_name() -> Cow<'static, str> {
-        "JSON".into()
-    }
-
-    fn create_type_info(registry: &mut Registry) -> String {
-        <async_graphql::types::Json<JsonValue> as OutputType>::create_type_info(registry)
-    }
-
-    async fn resolve(
-        &self,
-        ctx: &ContextSelectionSet<'_>,
-        field: &Positioned<Field>,
-    ) -> ServerResult<async_graphql::Value> {
-        async_graphql::types::Json(self.0.clone())
-            .resolve(ctx, field)
-            .await
+        match self.to_json_value() {
+            Ok(json_value) => async_graphql::Value::Object(
+                serde_json::from_value(json_value.into_inner())
+                    .expect("Failed to convert Json to Value"),
+            ),
+            Err(_) => async_graphql::Value::Null,
+        }
     }
 }
+
+// #[cfg(feature = "async-graphql")]
+// impl InputType for Json {
+//     type RawValueType = Self;
+
+//     fn type_name() -> Cow<'static, str> {
+//         "JSON".into()
+//     }
+
+//     fn create_type_info(_registry: &mut Registry) -> String {
+//         "JSON".to_string()
+//     }
+
+//     fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
+//         async_graphql::types::Json::<JsonValue>::parse(value)
+//             .map(|json| Json(json.0))
+//             .map_err(|e| e.propagate())
+//     }
+
+//     fn to_value(&self) -> async_graphql::Value {
+//         async_graphql::types::Json(&self.0).to_value()
+//     }
+
+//     fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+//         Some(self)
+//     }
+// }
+
+// #[cfg(feature = "async-graphql")]
+// impl OutputType for Json {
+//     fn type_name() -> Cow<'static, str> {
+//         "JSON".into()
+//     }
+
+//     fn create_type_info(registry: &mut Registry) -> String {
+//         <async_graphql::types::Json<JsonValue> as OutputType>::create_type_info(registry)
+//     }
+
+//     async fn resolve(
+//         &self,
+//         ctx: &ContextSelectionSet<'_>,
+//         field: &Positioned<Field>,
+//     ) -> ServerResult<async_graphql::Value> {
+//         async_graphql::types::Json(self.0.clone())
+//             .resolve(ctx, field)
+//             .await
+//     }
+// }
 
 // ----------------------------------- tests -----------------------------------
 
