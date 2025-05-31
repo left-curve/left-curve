@@ -12,7 +12,8 @@ macro_rules! generate_types {
             #[graphql(
                 schema_path = "src/schemas/schema.graphql",
                 query_path = $path,
-                response_derives = "Debug"
+                response_derives = "Debug",
+                variables_derives = "Debug"
             )]
             pub struct $name;
 
@@ -28,6 +29,7 @@ macro_rules! generate_types {
             use {
                 super::*,
                 graphql_client::{GraphQLQuery, Response},
+                serde_json::json,
             };
 
             $($(
@@ -53,12 +55,18 @@ macro_rules! generate_types {
     };
 }
 
+#[allow(clippy::upper_case_acronyms)]
+type JSON = serde_json::Value;
+type Query = serde_json::Value;
+type UnsignedTx = serde_json::Value;
+type Tx = serde_json::Value;
+
 generate_types! {
     {
         name: QueryApp,
         path: "src/schemas/queries/queryApp.graphql",
         test_with: crate::types::query_app::Variables {
-            request: r#"{"config":{}}"#.to_string(),
+            request: json!({"config":{}}),
             height: None
         }
     },
@@ -73,9 +81,9 @@ generate_types! {
     },
     {
         name: Simulate,
-        path: "src/schemas/queries/Simulate.graphql",
+        path: "src/schemas/queries/simulate.graphql",
         test_with: crate::types::simulate::Variables {
-            tx: r#"{
+            tx: json!({
               "data": {
                 "chain_id": "dev-6",
                 "nonce": 1,
@@ -91,8 +99,7 @@ generate_types! {
                 }
               ],
               "sender": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9"
-            }"#
-            .to_string(),
+            }),
         }
     },
     {

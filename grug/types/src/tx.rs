@@ -1,3 +1,9 @@
+#[cfg(feature = "async-graphql")]
+use {
+    crate::inner::Inner,
+    crate::serializers::JsonDeExt,
+    async_graphql::{InputValueResult, Scalar, ScalarType},
+};
 use {
     crate::{
         Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
@@ -37,6 +43,33 @@ impl Tx {
     }
 }
 
+#[cfg(feature = "async-graphql")]
+#[Scalar]
+impl ScalarType for Tx {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match value.into_json() {
+            Ok(json_value) => Json::from_inner(json_value)
+                .deserialize_json()
+                .map_err(|err| {
+                    async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
+                }),
+            Err(_) => Err(async_graphql::InputValueError::expected_type(
+                async_graphql::Value::Null,
+            )),
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        match self.to_json_value() {
+            Ok(json_value) => async_graphql::Value::Object(
+                serde_json::from_value(json_value.into_inner())
+                    .expect("Failed to convert Json to Value"),
+            ),
+            Err(_) => async_graphql::Value::Null,
+        }
+    }
+}
+
 /// A transaction but without a gas limit or credential.
 ///
 /// This is for using in gas simulation.
@@ -45,6 +78,36 @@ pub struct UnsignedTx {
     pub sender: Addr,
     pub msgs: NonEmpty<Vec<Message>>,
     pub data: Json,
+}
+
+#[cfg(feature = "async-graphql")]
+#[Scalar]
+impl ScalarType for UnsignedTx {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match value.into_json() {
+            Ok(json_value) => Json::from_inner(json_value)
+                .deserialize_json()
+                .map_err(|err| {
+                    async_graphql::InputValueError::custom(format!(
+                        "Failed to parse UnsignedTx: {}",
+                        err
+                    ))
+                }),
+            Err(_) => Err(async_graphql::InputValueError::expected_type(
+                async_graphql::Value::Null,
+            )),
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        match self.to_json_value() {
+            Ok(json_value) => async_graphql::Value::Object(
+                serde_json::from_value(json_value.into_inner())
+                    .expect("Failed to convert Json to Value"),
+            ),
+            Err(_) => async_graphql::Value::Null,
+        }
+    }
 }
 
 /// A message.

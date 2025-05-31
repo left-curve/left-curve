@@ -4,7 +4,7 @@ use {
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
         Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        Hash256, Inner, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
+        Hash256, Inner, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
         SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
@@ -41,7 +41,7 @@ impl HttpClient {
         variables: V,
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
     where
-        V: Variables + Serialize,
+        V: Variables + Serialize + std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);
         let response = self
@@ -50,6 +50,12 @@ impl HttpClient {
             .json(&query)
             .send()
             .await?;
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!("GraphQL request: {:?}", query);
+            tracing::debug!("GraphQL response: {:?}", response);
+        }
 
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
 
@@ -75,12 +81,12 @@ impl QueryClient for HttpClient {
     ) -> Result<QueryResponse, Self::Error> {
         let response = self
             .post_graphql(query_app::Variables {
-                request: query.to_json_string()?,
+                request: query.to_json_value()?.into_inner(),
                 height: height.map(|h| h as i64),
             })
             .await?;
 
-        Ok(response.query_app.deserialize_json()?)
+        Ok(serde_json::from_value(response.query_app)?)
     }
 
     async fn query_store(
@@ -108,11 +114,11 @@ impl QueryClient for HttpClient {
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
         let response = self
             .post_graphql(simulate::Variables {
-                tx: tx.to_json_string()?,
+                tx: tx.to_json_value()?.into_inner(),
             })
             .await?;
 
-        Ok(response.simulate.deserialize_json()?)
+        Ok(serde_json::from_value(response.simulate)?)
     }
 }
 
@@ -146,13 +152,12 @@ impl BroadcastClient for HttpClient {
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
         let response = self
             .post_graphql(broadcast_tx_sync::Variables {
-                tx: tx.to_json_string()?,
+                tx: tx.to_json_value()?.into_inner(),
             })
             .await?
-            .broadcast_tx_sync
-            .deserialize_json()?;
+            .broadcast_tx_sync;
 
-        Ok(response)
+        Ok(serde_json::from_value(response)?)
     }
 }
 
