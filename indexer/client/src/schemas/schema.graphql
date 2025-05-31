@@ -125,6 +125,8 @@ enum FlatCommitmentStatus {
 A scalar that can represent any JSON value.
 """
 scalar JSON
+scalar UnsignedTx
+scalar Tx
 
 type Message {
 	orderIdx: Int!
@@ -175,7 +177,7 @@ type Mutation {
 		"""
 		Transaction as JSON
 		"""
-		tx: JSON
+		tx: Tx
 	): JSON!
 }
 

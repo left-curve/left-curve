@@ -1,7 +1,4 @@
 #[cfg(test)]
-use serde_json::json;
-
-#[cfg(test)]
 const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";
 
 pub trait Variables {
@@ -32,6 +29,7 @@ macro_rules! generate_types {
             use {
                 super::*,
                 graphql_client::{GraphQLQuery, Response},
+                serde_json::json,
             };
 
             $($(
@@ -60,7 +58,8 @@ macro_rules! generate_types {
 #[allow(clippy::upper_case_acronyms)]
 type JSON = serde_json::Value;
 type Query = serde_json::Value;
-type Foo = serde_json::Value;
+type UnsignedTx = serde_json::Value;
+type Tx = serde_json::Value;
 
 generate_types! {
     {

@@ -11,7 +11,10 @@ use {
 };
 #[cfg(feature = "async-graphql")]
 use {
-    async_graphql::{InputType, InputValueResult, registry::Registry},
+    async_graphql::{
+        InputType, InputValueResult, OutputType, Positioned, ServerResult,
+        context::ContextSelectionSet, parser::types::Field, registry::Registry,
+    },
     std::borrow::Cow,
 };
 
@@ -341,6 +344,27 @@ pub enum QueryResponse {
     WasmScan(BTreeMap<Binary, Binary>),
     WasmSmart(Json),
     Multi(Vec<GenericResult<QueryResponse>>),
+}
+
+#[cfg(feature = "async-graphql")]
+impl OutputType for QueryResponse {
+    fn type_name() -> Cow<'static, str> {
+        "QueryResponse".into()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<serde_json::Value> as OutputType>::create_type_info(registry)
+    }
+
+    async fn resolve(
+        &self,
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.clone())
+            .resolve(ctx, field)
+            .await
+    }
 }
 
 macro_rules! generate_downcast {

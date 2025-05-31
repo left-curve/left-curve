@@ -42,6 +42,39 @@ impl Tx {
     }
 }
 
+#[cfg(feature = "async-graphql")]
+impl InputType for Tx {
+    type RawValueType = Self;
+
+    fn type_name() -> Cow<'static, str> {
+        "Tx".into()
+    }
+
+    fn create_type_info(_registry: &mut Registry) -> String {
+        "Tx".to_string()
+    }
+
+    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
+        let value = value.ok_or_else(|| {
+            async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
+        })?;
+
+        let json_str =
+            serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
+
+        serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        let json_str = serde_json::to_string(self).unwrap();
+        serde_json::from_str(&json_str).unwrap()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+}
+
 /// A transaction but without a gas limit or credential.
 ///
 /// This is for using in gas simulation.
