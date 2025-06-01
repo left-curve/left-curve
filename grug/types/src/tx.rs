@@ -43,8 +43,8 @@ impl Tx {
     }
 }
 
-#[cfg(feature = "async-graphql")]
-#[Scalar]
+// NOTE: implementing `InputType` doesn't work for complex enums, `Message` in this case
+#[Scalar(name = "Tx")]
 impl ScalarType for Tx {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match value.into_json() {
@@ -80,18 +80,15 @@ pub struct UnsignedTx {
     pub data: Json,
 }
 
-#[cfg(feature = "async-graphql")]
-#[Scalar]
+// NOTE: implementing `InputType` doesn't work for complex enums, `Message` in this case
+#[Scalar(name = "UnsignedTx")]
 impl ScalarType for UnsignedTx {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match value.into_json() {
             Ok(json_value) => Json::from_inner(json_value)
                 .deserialize_json()
                 .map_err(|err| {
-                    async_graphql::InputValueError::custom(format!(
-                        "Failed to parse UnsignedTx: {}",
-                        err
-                    ))
+                    async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
                 }),
             Err(_) => Err(async_graphql::InputValueError::expected_type(
                 async_graphql::Value::Null,

@@ -94,6 +94,7 @@ impl QueryClient for HttpClient {
             })
             .await?;
 
+        // TODO
         Ok(serde_json::from_value(response.query_app)?)
     }
 
@@ -126,6 +127,7 @@ impl QueryClient for HttpClient {
             })
             .await?;
 
+        // TODO
         Ok(serde_json::from_value(response.simulate)?)
     }
 }
@@ -165,6 +167,7 @@ impl BroadcastClient for HttpClient {
             .await?
             .broadcast_tx_sync;
 
+        // TODO
         Ok(serde_json::from_value(response)?)
     }
 }

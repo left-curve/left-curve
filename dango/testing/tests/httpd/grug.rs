@@ -35,7 +35,6 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
         });
     });
 
-    // Wait for server to be ready
     wait_for_server_ready(port).await?;
 
     let client = HttpClient::new(&format!("http://localhost:{port}"));
