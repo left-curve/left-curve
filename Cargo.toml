@@ -175,7 +175,7 @@ dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
-dango-mock-httpd            = { path = "dango/mock/httpd" }
+dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }

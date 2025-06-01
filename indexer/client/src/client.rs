@@ -42,6 +42,8 @@ impl HttpClient {
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
     where
         V: Variables + Serialize + std::fmt::Debug,
+        <<V as crate::types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
+            std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);
         let response = self
@@ -53,14 +55,20 @@ impl HttpClient {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!("GraphQL request: {:?}", query);
-            tracing::debug!("GraphQL response: {:?}", response);
+            tracing::debug!("GraphQL request: {:#?}", query);
+            tracing::debug!("GraphQL response: {:#?}", response);
         }
 
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
 
         match body.data {
-            Some(data) => Ok(data),
+            Some(data) => {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!("GraphQL body response: {:#?}", data);
+                }
+                Ok(data)
+            },
             None => Err(anyhow::anyhow!(
                 "No data returned from query: errors: {:?}",
                 body.errors

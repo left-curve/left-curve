@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod grug;
 pub mod transfers;
 pub mod users;
 

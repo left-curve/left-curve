@@ -3456,6 +3456,7 @@ dependencies = [
 name = "dango-mock-httpd"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
@@ -3527,6 +3528,7 @@ dependencies = [
  "dango-httpd",
  "dango-indexer-sql",
  "dango-lending",
+ "dango-mock-httpd",
  "dango-oracle",
  "dango-proposal-preparer",
  "dango-types",
@@ -3536,6 +3538,7 @@ dependencies = [
  "grug-crypto",
  "grug-db-disk",
  "grug-db-memory",
+ "grug-testing",
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
@@ -3544,6 +3547,7 @@ dependencies = [
  "home",
  "hyperlane-testing",
  "hyperlane-types",
+ "indexer-client",
  "indexer-disk-saver",
  "indexer-httpd",
  "indexer-sql",
@@ -5534,9 +5538,12 @@ name = "indexer-client"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
+ "assertor",
  "async-trait",
  "graphql_client",
  "grug-types",
+ "indexer-testing",
  "paste",
  "reqwest 0.12.15",
  "serde",

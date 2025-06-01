@@ -1,17 +1,14 @@
 #[cfg(feature = "async-graphql")]
+use async_graphql::{
+    InputValueResult, OutputType, Positioned, ServerResult, context::ContextSelectionSet,
+    parser::types::Field, registry::Registry,
+};
+#[cfg(feature = "async-graphql")]
 use {
-    async_graphql::{
-        InputType, InputValueResult, OutputType, Positioned, ServerResult,
-        context::ContextSelectionSet, parser::types::Field, registry::Registry,
-    },
+    crate::serializers::JsonDeExt,
+    async_graphql::{Scalar, ScalarType},
     std::borrow::Cow,
 };
-// #[cfg(feature = "async-graphql")]
-// use {
-//     crate::serializers::JsonDeExt,
-//     async_graphql::{Scalar, ScalarType},
-//     std::borrow::Cow,
-// };
 use {
     crate::{
         Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
@@ -81,38 +78,64 @@ pub enum Query {
     Multi(Vec<Query>),
 }
 
-#[cfg(feature = "async-graphql")]
-impl InputType for Query {
-    type RawValueType = Self;
-
-    fn type_name() -> Cow<'static, str> {
-        "Query".into()
-    }
-
-    fn create_type_info(_registry: &mut Registry) -> String {
-        "Query".to_string()
-    }
-
-    fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
-        let value = value.ok_or_else(|| {
-            async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
-        })?;
-
-        let json_str =
-            serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
-
-        serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+#[Scalar(name = "GrugQuery2")]
+impl ScalarType for Query {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match value.into_json() {
+            Ok(json_value) => Json::from_inner(json_value)
+                .deserialize_json()
+                .map_err(|err| {
+                    async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
+                }),
+            Err(_) => Err(async_graphql::InputValueError::expected_type(
+                async_graphql::Value::Null,
+            )),
+        }
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        let json_str = serde_json::to_string(self).unwrap();
-        serde_json::from_str(&json_str).unwrap()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
+        match self.to_json_value() {
+            Ok(json_value) => async_graphql::Value::Object(
+                serde_json::from_value(json_value.into_inner())
+                    .expect("Failed to convert Json to Value"),
+            ),
+            Err(_) => async_graphql::Value::Null,
+        }
     }
 }
+
+// #[cfg(feature = "async-graphql")]
+// impl InputType for Query {
+//     type RawValueType = Self;
+
+//     fn type_name() -> Cow<'static, str> {
+//         "GrugQuery".into()
+//     }
+
+//     fn create_type_info(_registry: &mut Registry) -> String {
+//         "GrugQuery".to_string()
+//     }
+
+//     fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
+//         let value = value.ok_or_else(|| {
+//             async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
+//         })?;
+
+//         let json_str =
+//             serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
+
+//         serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
+//     }
+
+//     fn to_value(&self) -> async_graphql::Value {
+//         let json_str = serde_json::to_string(self).unwrap();
+//         serde_json::from_str(&json_str).unwrap()
+//     }
+
+//     fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+//         Some(self)
+//     }
+// }
 
 impl Query {
     pub fn config() -> Self {

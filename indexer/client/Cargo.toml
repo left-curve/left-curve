@@ -26,4 +26,7 @@ tendermint-rpc = { workspace = true }
 tracing        = { workspace = true, optional = true }
 
 [dev-dependencies]
-tokio = { workspace = true }
+assert-json-diff = { workspace = true }
+assertor         = { workspace = true }
+indexer-testing  = { workspace = true }
+tokio            = { workspace = true }

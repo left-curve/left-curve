@@ -7,7 +7,7 @@ use {
     grug_testing::MockClient,
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
-    std::sync::Arc,
+    std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::sync::Mutex,
 };
 
@@ -70,4 +70,32 @@ pub async fn run(
         build_schema,
     )
     .await
+}
+
+pub fn get_random_socket_addr() -> u16 {
+    TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to bind to random port")
+        .local_addr()
+        .expect("Failed to get local address")
+        .port()
+}
+
+pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
+    use tokio::net::TcpStream;
+
+    for attempt in 1..=30 {
+        // Try for 30 seconds
+        match TcpStream::connect(format!("127.0.0.1:{port}")).await {
+            Ok(_) => {
+                tracing::info!("Server ready on port {port} after {attempt} attempts");
+                return Ok(());
+            },
+            Err(_) => {
+                tracing::debug!("Attempt {attempt}: Server not ready yet...");
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            },
+        }
+    }
+
+    anyhow::bail!("Server failed to start on port {port} after 30 attempts")
 }
