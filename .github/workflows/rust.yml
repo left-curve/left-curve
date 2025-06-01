@@ -124,6 +124,13 @@ jobs:
       - name: Build GraphQL schema
         run: cargo run -p indexer-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
 
+      - name: Check if schema is up-to-date
+        run: |
+          if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
+            echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
+            exit 1
+          fi
+
       - name: Run tests
         run: cargo test --all-features
         env:
@@ -135,7 +142,8 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-        runner: [self-hosted]
+        runner:
+          [self-hosted]
           # when needing to try on all runner types
           # - [self-hosted, Linux]
           # - [self-hosted, macOS]
