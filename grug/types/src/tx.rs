@@ -69,13 +69,11 @@ impl ScalarType for Tx {
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        match self.to_json_value() {
-            Ok(json_value) => async_graphql::Value::Object(
-                serde_json::from_value(json_value.into_inner())
-                    .expect("Failed to convert Json to Value"),
-            ),
-            Err(_) => async_graphql::Value::Null,
-        }
+        self.to_json_value()
+            .ok()
+            .and_then(|json_value| serde_json::from_value(json_value.into_inner()).ok())
+            .map(async_graphql::Value::Object)
+            .unwrap_or(async_graphql::Value::Null)
     }
 }
 
@@ -113,13 +111,11 @@ impl ScalarType for UnsignedTx {
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        match self.to_json_value() {
-            Ok(json_value) => async_graphql::Value::Object(
-                serde_json::from_value(json_value.into_inner())
-                    .expect("Failed to convert Json to Value"),
-            ),
-            Err(_) => async_graphql::Value::Null,
-        }
+        self.to_json_value()
+            .ok()
+            .and_then(|json_value| serde_json::from_value(json_value.into_inner()).ok())
+            .map(async_graphql::Value::Object)
+            .unwrap_or(async_graphql::Value::Null)
     }
 }
 

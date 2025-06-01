@@ -85,7 +85,6 @@ pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
     use tokio::net::TcpStream;
 
     for attempt in 1..=30 {
-        // Try for 30 seconds
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {
                 tracing::info!("Server ready on port {port} after {attempt} attempts");
