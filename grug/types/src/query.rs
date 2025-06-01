@@ -78,7 +78,8 @@ pub enum Query {
     Multi(Vec<Query>),
 }
 
-#[Scalar(name = "GrugQuery2")]
+// NOTE: implementing `InputType` doesn't work for complex enums.
+#[Scalar(name = "GrugQueryInput")]
 impl ScalarType for Query {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match value.into_json() {
@@ -103,39 +104,6 @@ impl ScalarType for Query {
         }
     }
 }
-
-// #[cfg(feature = "async-graphql")]
-// impl InputType for Query {
-//     type RawValueType = Self;
-
-//     fn type_name() -> Cow<'static, str> {
-//         "GrugQuery".into()
-//     }
-
-//     fn create_type_info(_registry: &mut Registry) -> String {
-//         "GrugQuery".to_string()
-//     }
-
-//     fn parse(value: Option<async_graphql::Value>) -> InputValueResult<Self> {
-//         let value = value.ok_or_else(|| {
-//             async_graphql::InputValueError::expected_type(async_graphql::Value::Null)
-//         })?;
-
-//         let json_str =
-//             serde_json::to_string(&value).map_err(async_graphql::InputValueError::custom)?;
-
-//         serde_json::from_str(&json_str).map_err(async_graphql::InputValueError::custom)
-//     }
-
-//     fn to_value(&self) -> async_graphql::Value {
-//         let json_str = serde_json::to_string(self).unwrap();
-//         serde_json::from_str(&json_str).unwrap()
-//     }
-
-//     fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-//         Some(self)
-//     }
-// }
 
 impl Query {
     pub fn config() -> Self {

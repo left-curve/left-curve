@@ -1,6 +1,5 @@
 use {
     async_graphql::Schema,
-    grug_types::Query as GrugQuery,
     indexer_httpd::graphql::{mutation, query, subscription},
 };
 
@@ -10,8 +9,6 @@ fn main() {
         mutation::Mutation::default(),
         subscription::Subscription::default(),
     )
-    .register_output_type::<GrugQuery>()  // For output types
-    .register_input_type::<GrugQuery>()
     .finish();
 
     let filename = std::env::args()

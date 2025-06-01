@@ -30,7 +30,7 @@ chrono                  = { workspace = true }
 clap                    = { workspace = true }
 grug-app                = { workspace = true, features = ["tracing"] }
 grug-testing            = { workspace = true, optional = true }
-grug-types              = { workspace = true, features = ["chrono"] }
+grug-types              = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 indexer-sql             = { workspace = true, features = ["async-graphql", "tracing"] }
 itertools               = { workspace = true }
 num_cpus                = { workspace = true }

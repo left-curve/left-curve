@@ -1,3 +1,3 @@
-query QueryApp($request: GrugQuery2!, $height: Int) {
+query QueryApp($request: GrugQueryInput!, $height: Int) {
   queryApp(request: $request, height: $height)
 }

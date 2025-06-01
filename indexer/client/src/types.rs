@@ -57,7 +57,7 @@ macro_rules! generate_types {
 
 #[allow(clippy::upper_case_acronyms)]
 type JSON = serde_json::Value;
-type GrugQuery2 = serde_json::Value;
+type GrugQueryInput = serde_json::Value;
 type UnsignedTx = serde_json::Value;
 type Tx = serde_json::Value;
 

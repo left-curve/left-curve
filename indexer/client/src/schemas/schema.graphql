@@ -119,7 +119,7 @@ enum FlatCommitmentStatus {
 }
 
 
-scalar GrugQuery2
+scalar GrugQueryInput
 
 
 
@@ -237,7 +237,7 @@ type Query {
 		"""
 		Request as JSON
 		"""
-		request: GrugQuery2!,		height: Int
+		request: GrugQueryInput!,		height: Int
 	): JSON!
 	queryStore(
 		"""
