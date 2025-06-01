@@ -8,7 +8,7 @@ use {
     indexer_client::HttpClient,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test]
 async fn graphql_returns_config() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 

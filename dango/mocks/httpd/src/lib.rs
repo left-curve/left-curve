@@ -1,4 +1,5 @@
 use {
+    anyhow::anyhow,
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
@@ -97,5 +98,7 @@ pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
         }
     }
 
-    anyhow::bail!("Server failed to start on port {port} after 30 attempts")
+    Err(anyhow!(
+        "Server failed to start on port {port} after 30 attempts"
+    ))
 }

@@ -9,13 +9,6 @@ use {
     },
 };
 
-#[cfg(feature = "async-graphql")]
-use {
-    crate::serializers::JsonDeExt,
-    crate::serializers::JsonSerExt,
-    async_graphql::{InputValueResult, Scalar, ScalarType},
-};
-
 const TAG_NULL: u8 = 0;
 const TAG_BOOL: u8 = 1;
 const TAG_NUMBER: u8 = 2;
@@ -293,33 +286,6 @@ where
     }
 
     Ok(object)
-}
-
-#[cfg(feature = "async-graphql")]
-#[Scalar]
-impl ScalarType for Json {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        match value.into_json() {
-            Ok(json_value) => Json::from_inner(json_value)
-                .deserialize_json()
-                .map_err(|err| {
-                    async_graphql::InputValueError::custom(format!("Failed to parse Json: {}", err))
-                }),
-            Err(_) => Err(async_graphql::InputValueError::expected_type(
-                async_graphql::Value::Null,
-            )),
-        }
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        match self.to_json_value() {
-            Ok(json_value) => async_graphql::Value::Object(
-                serde_json::from_value(json_value.into_inner())
-                    .expect("Failed to convert Json to Value"),
-            ),
-            Err(_) => async_graphql::Value::Null,
-        }
-    }
 }
 
 // ----------------------------------- tests -----------------------------------

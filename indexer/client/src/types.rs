@@ -1,6 +1,3 @@
-#[cfg(test)]
-const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";
-
 pub trait Variables {
     type Query: graphql_client::GraphQLQuery<Variables = Self>;
 }
@@ -28,26 +25,63 @@ macro_rules! generate_types {
         mod tests {
             use {
                 super::*,
+                assertor::*,
+                dango_genesis::GenesisOption,
+                dango_mock_httpd::{BlockCreation, TestOption, get_random_socket_addr, wait_for_server_ready},
+                dango_testing::Preset,
                 graphql_client::{GraphQLQuery, Response},
+                grug::setup_tracing_subscriber,
                 serde_json::json,
             };
 
             $($(
                 paste::paste! {
                     #[tokio::test]
-                    #[ignore = "this test requires interactions with an external server"]
-                    async fn [<test_ $name:snake>]() {
+                    async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
+                        setup_tracing_subscriber(tracing::Level::WARN);
+
+                        let port = get_random_socket_addr();
+
+                        // Spawn server in separate thread with its own runtime
+                        let _server_handle = std::thread::spawn(move || {
+                            let rt = tokio::runtime::Runtime::new().unwrap();
+                            rt.block_on(async {
+                                tracing::info!("Starting mock HTTP server on port {port}");
+                                if let Err(error) = dango_mock_httpd::run(
+                                    port,
+                                    BlockCreation::OnBroadcast,
+                                    None,
+                                    TestOption::default(),
+                                    GenesisOption::preset_test(),
+                                    true,
+                                    None,
+                                )
+                                .await
+                                {
+                                    tracing::error!("Error running mock HTTP server: {}", error);
+                                }
+                            });
+                        });
+
+                        wait_for_server_ready(port).await?;
+
+                        let url = format!("http://localhost:{port}/graphql");
+
                         let result = reqwest::Client::builder()
                             .build()
                             .unwrap()
-                            .post(GRAPHQL_URL)
+                            .post(url)
                             .json(&$name::build_query($var))
                             .send()
                             .await
                             .unwrap()
                             .json::<Response<[<$name:snake>]::ResponseData>>()
                             .await;
-                        assert!(result.is_ok());
+
+                        tracing::info!("GraphQL response: {:#?}", result);
+                        assert_that!(result).is_ok();
+
+                        Ok(())
                     }
                 }
             )*)?
@@ -85,7 +119,7 @@ generate_types! {
         test_with: crate::types::simulate::Variables {
             tx: json!({
               "data": {
-                "chain_id": "dev-6",
+                "chain_id": "dev-1",
                 "nonce": 1,
                 "username": "owner"
               },
