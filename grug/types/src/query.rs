@@ -85,7 +85,10 @@ impl ScalarType for Query {
             Ok(json_value) => Json::from_inner(json_value)
                 .deserialize_json()
                 .map_err(|err| {
-                    async_graphql::InputValueError::custom(format!("Failed to parse Query: {}", err))
+                    async_graphql::InputValueError::custom(format!(
+                        "Failed to parse Query: {}",
+                        err
+                    ))
                 }),
             Err(_) => Err(async_graphql::InputValueError::expected_type(
                 async_graphql::Value::Null,
