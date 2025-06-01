@@ -44,6 +44,15 @@ impl Tx {
 }
 
 // NOTE: implementing `InputType` doesn't work for complex enums, `Message` in this case
+/// A transaction that can be sent to the chain.
+///
+/// Contains:
+/// - Sender address
+/// - List of messages to execute
+/// - Gas limit
+/// - Cryptographic signature
+///
+/// See [Tx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
 #[Scalar(name = "Tx")]
 impl ScalarType for Tx {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -81,6 +90,13 @@ pub struct UnsignedTx {
 }
 
 // NOTE: implementing `InputType` doesn't work for complex enums, `Message` in this case
+/// A transaction to simulate.
+///
+/// Contains:
+/// - Sender address
+/// - List of messages to execute
+///
+/// See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
 #[Scalar(name = "UnsignedTx")]
 impl ScalarType for UnsignedTx {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
