@@ -587,7 +587,7 @@ where
                     }
                 }).await {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %err, "can't spawn blocking task to compress block in post_indexing");
+                    tracing::error!(error = %err, "spawn_blocking error compressing block file");
                 }
             }
 
