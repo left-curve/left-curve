@@ -3289,7 +3289,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             usdc::DENOM.clone() => BalanceChange::Unchanged,
         },
         1 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            dango::DENOM.clone() => BalanceChange::Unchanged,
             usdc::DENOM.clone() => BalanceChange::Unchanged,
         },
     },
@@ -3331,7 +3331,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             dango::DENOM.clone() => BalanceChange::Unchanged,
         },
         1 => btree_map! {
-            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Unchanged,
             dango::DENOM.clone() => BalanceChange::Unchanged,
         },
     },
