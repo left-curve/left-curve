@@ -7,7 +7,6 @@ use {
         ResultExt,
     },
     grug_vm_rust::ContractBuilder,
-    indexer_httpd::graphql::query::block,
     indexer_sql::{block_to_index::BlockToIndex, entity},
     replier::{ExecuteMsg, ReplyMsg},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},

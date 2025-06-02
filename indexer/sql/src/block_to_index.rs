@@ -81,7 +81,7 @@ impl BlockToIndex {
 
     pub fn compress_file(file_path: PathBuf) -> error::Result<()> {
         #[cfg(feature = "tracing")]
-        tracing::info!(?file_path, "Compressing block file");
+        tracing::debug!(?file_path, "Compressing block file");
 
         let mut file = DiskPersistence::new(file_path.clone(), false);
 
