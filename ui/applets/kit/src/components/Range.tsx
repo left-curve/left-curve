@@ -6,6 +6,7 @@ import { Input } from "./Input";
 import { twMerge } from "#utils/twMerge.js";
 
 import type React from "react";
+import { set } from "date-fns";
 
 const clampValueToStep = (value: number, min: number, max: number, step: number): number => {
   const valueRelativeToMin = value - min;
@@ -189,7 +190,7 @@ export const Range: React.FC<RangeProps> = ({
   );
 
   return (
-    <div className={twMerge("w-full flex flex-col", className)}>
+    <div className={twMerge("w-full flex flex-col", { "gap-3": !withInput }, className)}>
       {label && <div className="text-gray-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
@@ -243,7 +244,11 @@ export const Range: React.FC<RangeProps> = ({
             <div className="flex justify-between mt-2 px-1">
               {stepsToDisplay.map((s) => {
                 return (
-                  <span key={`stepper-${s.value}`} className="text-gray-500 diatype-xs-regular">
+                  <span
+                    key={`stepper-${s.value}`}
+                    className="text-gray-500 diatype-xs-regular cursor-pointer"
+                    onClick={() => setValue(s.value)}
+                  >
                     {s.label}
                   </span>
                 );
