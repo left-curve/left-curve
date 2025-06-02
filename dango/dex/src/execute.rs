@@ -635,7 +635,9 @@ fn clear_orders_of_pair(
     }
 
     // Clear the market orders from the storage.
-    MARKET_ORDERS.clear(storage, None, None);
+    MARKET_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .clear(storage, None, None);
 
     println!("post clear market orders");
 
