@@ -1,4 +1,5 @@
 use {
+    account::AccountSubscription,
     async_graphql::*,
     indexer_httpd::graphql::subscription::{
         block::BlockSubscription, event::EventSubscription, message::MessageSubscription,
@@ -12,6 +13,7 @@ pub mod transfer;
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(
+    AccountSubscription,
     TransferSubscription,
     BlockSubscription,
     TransactionSubscription,
