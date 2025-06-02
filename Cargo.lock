@@ -5552,6 +5552,7 @@ dependencies = [
  "assertor",
  "borsh 1.5.7",
  "glob",
+ "grug",
  "grug-app",
  "grug-math",
  "grug-types",

@@ -179,6 +179,12 @@ where
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
         indexer_path.create_dirs_if_needed()?;
 
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            indexer_path = %indexer_path.blocks_path().display(),
+            "Created indexer path"
+        );
+
         let mut context = Context {
             db: db.clone(),
             // This gets overwritten in the next match
@@ -574,12 +580,15 @@ where
                 }
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
-                tokio::task::spawn_blocking(|| async move {
+                if let Err(err) = tokio::task::spawn_blocking(move || {
                     if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
                         tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
                     }
-                });
+                }).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %err, "can't spawn blocking task to compress block in post_indexing");
+                }
             }
 
             Self::remove_or_fail(blocks, &block_height)?;
