@@ -62,7 +62,7 @@ const Details: React.FC = () => {
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
   return (
-    <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-card-shadow text-gray-700 diatype-sm-medium relative overflow-hidden">
+    <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card text-gray-700 diatype-sm-medium relative overflow-hidden">
       <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
@@ -154,15 +154,15 @@ const Messages: React.FC = () => {
 
   const { nestedEvents } = tx;
   return (
-    <div className="w-full shadow-card-shadow bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
+    <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold">{m["explorer.txs.events"]()}</p>
-      <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md">
+      <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
         <JsonVisualizer json={nestedEvents} collapsed={1} />
       </div>
       {/* {events.length ? <p className="h4-bold">Events</p> : null}
           {events.map((event) => (
             <AccordionItem key={crypto.randomUUID()} text={event.type}>
-              <div className="p-4 bg-gray-700 shadow-card-shadow  rounded-md text-white-100">
+              <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
                 {JSON.stringify(event.details)}
               </div>
             </AccordionItem>

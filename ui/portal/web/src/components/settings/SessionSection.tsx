@@ -21,7 +21,7 @@ import type { PropsWithChildren } from "react";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4 gap-4">
+    <div className="rounded-xl bg-rice-25 shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
       <h3 className="h4-bold text-gray-900 px-2">{m["settings.session.title"]()}</h3>
       {children}
     </div>
@@ -41,7 +41,7 @@ const UsernameSection: React.FC = () => {
           <p className="diatype-m-bold text-gray-700">{m["common.username"]()}</p>
         </div>
       </div>
-      <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+      <div className="text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
         {username}
       </div>
     </div>
@@ -101,7 +101,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.title"]()}
             </span>
           </div>
-          <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+          <div className="text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
             {chain.name}
           </div>
         </div>

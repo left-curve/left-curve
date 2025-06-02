@@ -125,7 +125,7 @@ export const tailwindConfig: Partial<Config> = {
         "account-card":
           "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5)",
         "btn-shadow-gradient":
-          "0px 4px 6px rgba(0, 0, 0, 0.04), 0px 4px 6px rgba(0, 0, 0, 0.04), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
+          "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
         "btn-shadow-disabled":
           "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
         "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",
