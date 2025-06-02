@@ -35,7 +35,7 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
   return (
     <div
       className={twMerge(
-        "bg-rice-25 shadow-card-shadow grid rounded-xl w-full px-4 pt-4 gap-4 overflow-hidden",
+        "bg-rice-25 shadow-account-card grid rounded-xl w-full px-4 pt-4 gap-4 overflow-hidden",
         rows.length ? "pb-2" : "pb-4",
       )}
     >

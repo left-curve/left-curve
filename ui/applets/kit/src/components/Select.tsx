@@ -195,9 +195,9 @@ const selectVariants = tv({
   slots: {
     base: "group inline-flex flex-col relative w-fit min-w-[9rem] transition-all  duration-500 leading-none",
     listboxWrapper:
-      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-card-shadow top-[3.375rem] bg-rice-25 absolute",
+      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-rice-25 absolute",
     trigger:
-      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-card-shadow diatype-m-regular h-[46px] rounded-md bg-rice-25",
+      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-rice-25",
     icon: "top-[10px] right-4 absolute pointer-events-none min-w-[20px] min-h-[20px] transition-all duration-300",
   },
   variants: {

@@ -139,7 +139,7 @@ const SimpleSwapHeader: React.FC = () => {
   const { quote, statistics } = state;
   const { tvl, apy, volume } = statistics.data;
   return (
-    <div className="flex flex-col gap-3 rounded-3xl bg-rice-50 shadow-card-shadow p-4 relative overflow-hidden mb-4">
+    <div className="flex flex-col gap-3 rounded-3xl bg-rice-50 shadow-account-card p-4 relative overflow-hidden mb-4">
       <div className="flex gap-2 items-center relative z-10">
         <img src={quote.logoURI} alt="token" className="h-6 w-6" />
         <p className="text-gray-700 h4-bold">{quote.symbol}</p>

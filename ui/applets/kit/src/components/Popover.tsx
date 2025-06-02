@@ -36,7 +36,7 @@ export const Popover: React.FC<Props> = ({ menu, trigger, classNames, showArrow 
           >
             <motion.div
               layout="size"
-              className="bg-rice-25 rounded-lg h-fit p-4 shadow-card-shadow"
+              className="bg-rice-25 rounded-lg h-fit p-4 shadow-account-card"
             >
               <AnimatePresence>
                 {open && (

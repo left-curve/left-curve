@@ -13,7 +13,7 @@ export const AccordionItem: React.FC<
 > = ({ children, text, icon }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   return (
-    <div className="flex w-full flex-col bg-rice-50 rounded-md p-4 shadow-card-shadow overflow-hidden">
+    <div className="flex w-full flex-col bg-rice-50 rounded-md p-4 shadow-account-card overflow-hidden">
       <div
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
