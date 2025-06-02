@@ -114,7 +114,7 @@ impl DiskPersistence {
 
         // Define the path for the compressed file
         let mut compressed_path = self.file_path.clone();
-        compressed_path.as_mut_os_string().push(".xz");
+        compressed_path.set_extension("borsh.xz");
 
         // This shouldn't happen since if compressed file already exists,
         // we should have `self.compressed` to true.
