@@ -21,7 +21,7 @@ impl AccountSubscription {
             .all(&app_ctx.db)
             .await?;
 
-        Ok(once(async { Some(last_accounts) })
+        Ok(once(async { last_accounts })
             .chain(
                 app_ctx
                     .pubsub
@@ -36,10 +36,17 @@ impl AccountSubscription {
                                 )
                                 .all(&db)
                                 .await
-                                .ok()
+                                .inspect_err(|e| tracing::error!(%e, "`AccountSubscription` error"))
+                                .unwrap_or_default()
                         }
                     }),
             )
-            .filter_map(|maybe_accounts| async move { maybe_accounts }))
+            .filter_map(|maybe_accounts| async move {
+                if maybe_accounts.is_empty() {
+                    None
+                } else {
+                    Some(maybe_accounts)
+                }
+            }))
     }
 }

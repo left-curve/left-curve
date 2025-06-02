@@ -25,6 +25,7 @@ pub struct Account {
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
 #[cfg_attr(
     feature = "sea-orm",
     derive(sea_orm::EnumIter, sea_orm::DeriveActiveEnum)
