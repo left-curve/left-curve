@@ -74,7 +74,9 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
     },
   ];
 
-  return transactions?.length ? (
+  if (!transactions?.length) return null;
+
+  return (
     <Table
       data={transactions}
       columns={columns}
@@ -105,5 +107,5 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
         ) : null
       }
     />
-  ) : null;
+  );
 };

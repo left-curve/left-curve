@@ -1,13 +1,8 @@
 import { AddressVisualizer } from "@left-curve/applets-kit";
-import {
-  useInfinityGraphqlQuery,
-  usePrices,
-  usePublicClient,
-  withPagination,
-} from "@left-curve/store";
-import { type UseQueryResult, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteGraphqlQuery, usePrices, usePublicClient } from "@left-curve/store";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
@@ -169,7 +164,7 @@ const Transactions: React.FC = () => {
   const { isLoading, data: account } = useAccountExplorer();
   const client = usePublicClient();
 
-  const { data, pagination, ...transactions } = useInfinityGraphqlQuery<IndexedTransaction>({
+  const { data, pagination, ...transactions } = useInfiniteGraphqlQuery<IndexedTransaction>({
     limit: 10,
     query: {
       enabled: !!account,

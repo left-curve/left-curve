@@ -115,7 +115,7 @@ export {
 
 export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
 
-export { useInfinityGraphqlQuery } from "./hooks/useInfinityGraphqlQuery.js";
+export { useInfiniteGraphqlQuery } from "./hooks/useInfiniteGraphqlQuery.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
