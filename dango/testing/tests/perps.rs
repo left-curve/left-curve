@@ -325,7 +325,7 @@ fn cant_open_position_without_correct_fee() {
             },
             coins! { usdc::DENOM.clone() => 99 },
         )
-        .should_fail_with_error("incorrect fee amount sent. sent: 99, expected: 200000");
+        .should_fail_with_error("incorrect fee amount sent. sent: 99, expected: 202000");
 }
 
 #[test]
@@ -367,7 +367,7 @@ fn cant_open_position_if_trading_disabled() {
         .transfer(
             &mut accounts.user1,
             margin_account.address.into_inner(),
-            coins! { usdc::DENOM.clone() => 200_000 },
+            coins! { usdc::DENOM.clone() => 202_000 },
         )
         .should_succeed();
 
@@ -379,9 +379,62 @@ fn cant_open_position_if_trading_disabled() {
             &perps::ExecuteMsg::BatchUpdateOrders {
                 orders: btree_map! { dango::DENOM.clone() => Int128::new(100_000_000) },
             },
-            coins! { usdc::DENOM.clone() => 200_000},
+            coins! { usdc::DENOM.clone() => 202_000},
         )
         .should_fail_with_error(
             "trading is not enabled for this market. you can only decrease your position size",
         );
+}
+
+#[test]
+fn cant_open_position_that_would_exceed_max_oi() {
+    let (mut suite, mut accounts, _codes, contracts, _) = setup_test_naive(Default::default());
+
+    // Register prices
+    register_fixed_prices(&mut suite, &mut accounts, &contracts);
+
+    // Create a margin account.
+    let username = accounts.user1.username.clone();
+    let mut margin_account = accounts
+        .user1
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            AccountParams::Margin(single::Params::new(username)),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Send some USDC and DANGO to the margin account
+    suite
+        .transfer(
+            &mut accounts.user1,
+            margin_account.address.into_inner(),
+            coins! { usdc::DENOM.clone() => 1_000_000_000, dango::DENOM.clone() => 1_000_000_000 },
+        )
+        .should_succeed();
+
+    // Try to open too big long position, should fail
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(1_000_000_001) },
+            },
+            coins! { usdc::DENOM.clone() => 2_200_000 },
+        )
+        .should_fail_with_error("position size would exceed max long oi");
+
+    // Try to open too big short position, should fail
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.perps,
+            &perps::ExecuteMsg::BatchUpdateOrders {
+                orders: btree_map! { dango::DENOM.clone() => Int128::new(-1_000_000_001) },
+            },
+            coins! { usdc::DENOM.clone() => 1_800_000 },
+        )
+        .should_fail_with_error("position size would exceed max short oi");
 }

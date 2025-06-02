@@ -10,7 +10,7 @@ pub struct PerpsPosition {
     /// The entry price of the position.
     pub entry_price: Udec128,
     /// The entry execution price of the position.
-    pub entry_execution_price: Udec128,
+    pub entry_execution_price: Dec128,
     /// The skew at the time of entry.
     pub entry_skew: Int128,
     /// The funding index at the time of entry.

@@ -250,7 +250,7 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
             denom: denom.clone(),
             size: Int128::ZERO,
             entry_price: Udec128::ZERO,
-            entry_execution_price: Udec128::ZERO,
+            entry_execution_price: Dec128::ZERO,
             entry_skew: skew,
             realized_pnl: Int128::ZERO,
             entry_funding_index: market_state.last_funding_index,
@@ -276,20 +276,14 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     let price_after = oracle_unit_price.checked_add(oracle_unit_price.checked_mul(pd_after)?)?;
     let fill_price = price_before
         .checked_add(price_after)?
-        .checked_div(Dec128::new(2))?
-        .checked_into_unsigned()?;
-    let fill_price = PrecisionedPrice::new(
-        fill_price,
-        fill_price,
-        ctx.block.timestamp.into_seconds().try_into()?,
-        price.precision(),
-    );
+        .checked_div(Dec128::new(2))?;
 
 
     // TODO: assert slippage based on fill price
 
     // Calculate order fee
-    let notional_diff = fill_price.signed_value_of_unit_amount(amount)?.into_int();
+    let notional_diff = amount.checked_mul_dec(fill_price)?;
+
 
 
     // Check if trade keeps skew on one side
@@ -339,12 +333,12 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     if amount.is_positive() {
         ensure!(
             market_state.long_oi.checked_add(amount.unsigned_abs())? <= params.max_long_oi,
-            "long position size is too large"
+            "position size would exceed max long oi"
         );
     } else {
         ensure!(
             market_state.short_oi.checked_add(amount.unsigned_abs())? <= params.max_short_oi,
-            "short position size is too large"
+            "position size would exceed max short oi"
         );
     }
 
@@ -385,7 +379,7 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     let mut new_pos = PerpsPosition {
         size: new_size,
         entry_price: price.unit_price()?,
-        entry_execution_price: fill_price.unit_price()?,
+        entry_execution_price: fill_price,
         entry_skew: skew, // skew BEFORE trade
         entry_funding_index: funding_index,
         realized_pnl: current_pos.realized_pnl, // Will be updated later
@@ -437,9 +431,7 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     if !q_closed.is_zero() {
         let realised_price_pnl = q_closed.checked_mul_dec(
             fill_price
-                .unit_price()?
-                .checked_into_signed()?
-                .checked_sub(current_pos.entry_execution_price.checked_into_signed()?)?
+                .checked_sub(current_pos.entry_execution_price)?
                 .checked_div(vault_denom_price.unit_price()?.checked_into_signed()?)?,
         )?;
         let realised_funding_pnl =

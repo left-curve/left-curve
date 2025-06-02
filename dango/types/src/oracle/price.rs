@@ -95,18 +95,6 @@ impl PrecisionedPrice {
             )?)?)
     }
 
-    /// Returns the signed value of a given unit amount in signed form. See
-    /// `value_of_unit_amount` for more details.
-    pub fn signed_value_of_unit_amount(&self, unit_amount: Int128) -> StdResult<Dec128> {
-        Ok(self
-            .humanized_price
-            .checked_into_signed()?
-            .checked_mul(Dec128::checked_from_ratio(
-                unit_amount,
-                10i128.pow(self.precision.into_inner() as u32),
-            )?)?)
-    }
-
     /// Returns the unit amount of a given value. E.g. if this Price represents
     /// the price in USD of one ATOM, then this function will return the amount
     /// in uatom of the given USD value.
