@@ -350,7 +350,9 @@
   },
   "pagination": {
     "page": "Page",
-    "of": "of"
+    "of": "of",
+    "next": "Next",
+    "previous": "Previous"
   },
   "notFound": {
     "title": "Page not found!",

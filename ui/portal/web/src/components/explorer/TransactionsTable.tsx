@@ -2,16 +2,26 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "~/paraglide/messages";
 
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Button, Cell, IconChevronLeft, IconChevronRight, Table } from "@left-curve/applets-kit";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { IndexedTransaction } from "@left-curve/dango/types";
 
 type TransactionsTableProps = {
-  transactions: IndexedTransaction[];
+  transactions?: IndexedTransaction[];
+  pagination?: {
+    isLoading: boolean;
+    goNext: () => void;
+    goPrev: () => void;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 };
 
-export const TransactionsTable: React.FC<TransactionsTableProps> = ({ transactions }) => {
+export const TransactionsTable: React.FC<TransactionsTableProps> = ({
+  transactions,
+  pagination,
+}) => {
   const navigate = useNavigate();
 
   const columns: TableColumn<IndexedTransaction> = [
@@ -64,5 +74,36 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({ transactio
     },
   ];
 
-  return transactions.length ? <Table data={transactions} columns={columns} /> : null;
+  return transactions?.length ? (
+    <Table
+      data={transactions}
+      columns={columns}
+      bottomContent={
+        pagination ? (
+          <div className="flex w-full justify-end gap-2">
+            {pagination.hasPreviousPage ? (
+              <Button
+                variant="link"
+                onClick={pagination?.goPrev}
+                isDisabled={!pagination?.hasPreviousPage || pagination.isLoading}
+              >
+                <IconChevronLeft className="w-5 h-5" />
+                <span>{m["pagination.previous"]()}</span>
+              </Button>
+            ) : null}
+            {pagination.hasNextPage ? (
+              <Button
+                variant="link"
+                onClick={pagination?.goNext}
+                isDisabled={!pagination?.hasNextPage || pagination.isLoading}
+              >
+                <span>{m["pagination.next"]()}</span>
+                <IconChevronRight className="w-5 h-5" />
+              </Button>
+            ) : null}
+          </div>
+        ) : null
+      }
+    />
+  ) : null;
 };
