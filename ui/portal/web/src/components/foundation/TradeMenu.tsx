@@ -8,6 +8,7 @@ import {
   IconChevronDown,
   IconUser,
   Input,
+  Range,
   Tabs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -113,6 +114,19 @@ export const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction }) => {
           }
         />
         <Input placeholder="0" label="Price" endContent={<p>USDC</p>} />
+        <Range
+          minValue={1.1}
+          maxValue={100}
+          defaultValue={20}
+          label="Leverage"
+          inputEndContent="x"
+          withInput
+          showSteps={[
+            { value: 1.1, label: "1.1x" },
+            { value: 50, label: "50x" },
+            { value: 100, label: "100x" },
+          ]}
+        />
         <Checkbox radius="md" size="sm" label="Take Profit/Stop Loss" />
         <div className="grid grid-cols-2 gap-2">
           <Input placeholder="0" label="TP Price" />
