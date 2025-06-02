@@ -8,6 +8,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
+        oracle::PrecisionedPrice,
         perps::{
             ExecuteMsg, InstantiateMsg, PerpsMarketAccumulators, PerpsMarketParams,
             PerpsMarketState, PerpsPosition, PerpsVaultState, RealisedCashFlow,
@@ -255,6 +256,18 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
             entry_funding_index: market_state.last_funding_index,
         });
 
+    // Calculate the new position size
+    let new_size = current_pos.size.checked_add(amount)?;
+
+    // Ensure the position is not too small
+    if new_size.is_non_zero() {
+        ensure!(
+            price.value_of_unit_amount(new_size.unsigned_abs())?
+                >= params.min_position_size.checked_into_dec()?,
+            "position size is too small"
+        );
+    }
+
     // Calculate fill price
     let skew_scale = params.skew_scale.checked_into_signed()?;
     let pd_before = Dec128::checked_from_ratio(skew, skew_scale)?;
@@ -263,12 +276,21 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     let price_after = oracle_unit_price.checked_add(oracle_unit_price.checked_mul(pd_after)?)?;
     let fill_price = price_before
         .checked_add(price_after)?
-        .checked_div(Dec128::new(2))?;
+        .checked_div(Dec128::new(2))?
+        .checked_into_unsigned()?;
+    let fill_price = PrecisionedPrice::new(
+        fill_price,
+        fill_price,
+        ctx.block.timestamp.into_seconds().try_into()?,
+        price.precision(),
+    );
+
 
     // TODO: assert slippage based on fill price
 
     // Calculate order fee
-    let notional_diff = amount.checked_mul_dec(fill_price)?;
+    let notional_diff = fill_price.signed_value_of_unit_amount(amount)?.into_int();
+
 
     // Check if trade keeps skew on one side
     let new_skew = skew.checked_add(amount)?;
@@ -306,7 +328,12 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
 
     // Ensure the fee is sent
     let sent_fee = ctx.funds.as_one_coin_of_denom(&vault_state.denom)?;
-    ensure!(sent_fee.amount == &fee_in_vault_denom, "fee is not sent");
+    ensure!(
+        sent_fee.amount == &fee_in_vault_denom,
+        "incorrect fee amount sent. sent: {}, expected: {}",
+        sent_fee.amount,
+        fee_in_vault_denom
+    );
 
     // Validate position size against OI limits
     if amount.is_positive() {
@@ -355,23 +382,15 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
         .checked_sub(unrecorded_funding)?;
 
     // Create the new position
-    let new_size = current_pos.size.checked_add(amount)?;
     let mut new_pos = PerpsPosition {
         size: new_size,
         entry_price: price.unit_price()?,
-        entry_execution_price: fill_price.checked_into_unsigned()?,
+        entry_execution_price: fill_price.unit_price()?,
         entry_skew: skew, // skew BEFORE trade
         entry_funding_index: funding_index,
         realized_pnl: current_pos.realized_pnl, // Will be updated later
         denom: denom.clone(),
     };
-
-    // Ensure the position is not too small
-    ensure!(
-        price.value_of_unit_amount(new_pos.size.unsigned_abs())?
-            >= params.min_position_size.checked_into_dec()?,
-        "position size is too small"
-    );
 
     // If increasing the position, ensure trading is enabled
     let changing_side = !same_side(current_pos.size, new_size);
@@ -418,6 +437,8 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     if !q_closed.is_zero() {
         let realised_price_pnl = q_closed.checked_mul_dec(
             fill_price
+                .unit_price()?
+                .checked_into_signed()?
                 .checked_sub(current_pos.entry_execution_price.checked_into_signed()?)?
                 .checked_div(vault_denom_price.unit_price()?.checked_into_signed()?)?,
         )?;

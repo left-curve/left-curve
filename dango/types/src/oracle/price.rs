@@ -1,5 +1,8 @@
 use {
-    grug::{Defined, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined},
+    grug::{
+        Dec128, Defined, Int128, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined,
+        Unsigned,
+    },
     pyth_types::PriceFeed,
 };
 
@@ -89,6 +92,18 @@ impl PrecisionedPrice {
             .checked_mul(Udec128::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
+            )?)?)
+    }
+
+    /// Returns the signed value of a given unit amount in signed form. See
+    /// `value_of_unit_amount` for more details.
+    pub fn signed_value_of_unit_amount(&self, unit_amount: Int128) -> StdResult<Dec128> {
+        Ok(self
+            .humanized_price
+            .checked_into_signed()?
+            .checked_mul(Dec128::checked_from_ratio(
+                unit_amount,
+                10i128.pow(self.precision.into_inner() as u32),
             )?)?)
     }
 
