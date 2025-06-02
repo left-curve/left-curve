@@ -107,11 +107,11 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
           </div>
         </div>
       </div>
-      <div
-        className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative"
-        onClick={() => deleteNotification(notification.id)}
-      >
-        <IconClose className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px]" />
+      <div className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative">
+        <IconClose
+          className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px]"
+          onClick={() => deleteNotification(notification.id)}
+        />
         <p>{formatNotificationTimestamp(new Date(notification.createdAt))}</p>
       </div>
     </div>

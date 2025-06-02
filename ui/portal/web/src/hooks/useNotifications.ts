@@ -61,7 +61,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         };
       });
     },
-    [userNotification],
+    [username],
   );
 
   const totalNotifications = userNotification.length;
