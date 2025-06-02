@@ -51,6 +51,19 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
 
   const userNotification = allNotifications[username] || [];
 
+  const deleteNotification = useCallback(
+    (id: UID) => {
+      setAllNotifications((notifications) => {
+        const previousUserNotification = notifications[username] || [];
+        return {
+          ...notifications,
+          [username]: previousUserNotification.filter((n) => n.id !== id),
+        };
+      });
+    },
+    [userNotification],
+  );
+
   const totalNotifications = userNotification.length;
   const hasNotifications = totalNotifications > 0;
 
@@ -110,6 +123,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
 
   return {
     startNotifications,
+    deleteNotification,
     notifications,
     hasNotifications,
     totalNotifications,
