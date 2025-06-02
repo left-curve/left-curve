@@ -220,7 +220,9 @@ where
                 // The market order amount is equal to the limit order remaining amount, so we can
                 // match both in full, and advance both iterators.
                 Ordering::Equal => {
+                    println!("orders are equal");
                     maybe_market_order = market_orders.next().transpose()?;
+                    limit_order.remaining = Uint128::ZERO;
 
                     // Clone values so we can next the limit order iterator
                     let return_tuple = (
@@ -232,6 +234,8 @@ where
                         market_order.clone(),
                     );
 
+                    println!("limit order remaining: {:?}", limit_order);
+
                     // Pop the limit order iterator
                     limit_orders.next();
 
@@ -241,14 +245,15 @@ where
                 // so we advance fully match the limit, decrement the market order amount and
                 // advance the limit orders iterator
                 Ordering::Greater => {
+                    let limit_remaining_amount = limit_order.remaining;
                     market_order
                         .amount
-                        .checked_sub_assign(limit_order.remaining)?;
+                        .checked_sub_assign(limit_remaining_amount)?;
                     limit_order.remaining = Uint128::ZERO;
 
                     // Clone values so we can next the limit order iterator
                     let return_tuple = (
-                        market_order_amount_in_base,
+                        limit_remaining_amount,
                         price.clone(),
                         limit_order_id.clone(),
                         market_order_id,
