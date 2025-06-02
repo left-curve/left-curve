@@ -3292,6 +3292,9 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
             usdc::DENOM.clone() => BalanceChange::Unchanged,
         },
+    },
+    btree_map! {
+        1 => (Direction::Ask, Udec128::new(1), Uint128::new(100_000_000), Uint128::new(100_000_000), 0),
     };
     "One limit ask, one market ask, no match"
 )]
@@ -3331,6 +3334,9 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
             dango::DENOM.clone() => BalanceChange::Unchanged,
         },
+    },
+    btree_map! {
+        !1 => (Direction::Bid, Udec128::new(1), Uint128::new(100_000_000), Uint128::new(100_000_000), 0),
     };
     "One limit bid, one market bid, no match"
 )]
@@ -3370,7 +3376,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
             usdc::DENOM.clone() => BalanceChange::Increased(100_000_000),
         },
-    };
+    },
+    BTreeMap::new();
     "One limit bid, one market ask, same size, no fees, no slippage"
 )]
 #[test_case(
@@ -3409,8 +3416,91 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             dango::DENOM.clone() => BalanceChange::Increased(100_000_000),
             usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
         },
-    };
+    },
+    BTreeMap::new();
     "One limit ask, one market bid, same size, no fees, no slippage"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(150_000_000),
+            price: Udec128::new(1),
+        },
+    ],
+    coins! {
+        dango::DENOM.clone() => 150_000_000,
+    },
+    vec![
+        CreateMarketOrderRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100_000_000),
+            max_slippage: Udec128::ZERO,
+        },
+    ],
+    coins! {
+        usdc::DENOM.clone() => 100_000_000,
+    },
+    Udec128::ZERO,
+    Udec128::ZERO,
+    btree_map! {
+        0 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(150_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(100_000_000),
+        },
+        1 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+        },
+    },
+    btree_map! {
+        1 => (Direction::Ask, Udec128::new(1), Uint128::new(150_000_000), Uint128::new(50_000_000), 0),
+    };
+    "One limit ask, one market bid, limit order larget size, no fees, no slippage"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(100_000_000),
+            price: Udec128::new(1),
+        },
+    ],
+    coins! {
+        dango::DENOM.clone() => 100_000_000,
+    },
+    vec![
+        CreateMarketOrderRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(150_000_000),
+            max_slippage: Udec128::ZERO,
+        },
+    ],
+    coins! {
+        usdc::DENOM.clone() => 150_000_000,
+    },
+    Udec128::ZERO,
+    Udec128::ZERO,
+    btree_map! {
+        0 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(100_000_000),
+        },
+        1 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+        },
+    },
+    BTreeMap::new();
+    "One limit ask, one market bid, limit order smaller size, no fees, no slippage"
 )]
 // TODO:
 // - Limit order gets taker fee, market order gets taker fee
@@ -3427,6 +3517,7 @@ fn market_order_clearing(
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     expected_balance_changes: BTreeMap<usize, BTreeMap<Denom, BalanceChange>>,
+    expected_limit_orders_after: BTreeMap<OrderId, (Direction, Udec128, Uint128, Uint128, usize)>,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
@@ -3501,10 +3592,40 @@ fn market_order_clearing(
         .should_succeed();
 
     // Assert that the balance changes are as expected
+    let users = accounts.users().collect::<Vec<_>>();
     for (index, expected_change) in expected_balance_changes {
-        let user = accounts.users().collect::<Vec<_>>()[index];
+        let user = users[index];
         println!("user: {:?}", user.address());
         println!("balance changes: {:?}", suite.balances().changes(user));
         suite.balances().should_change(user, expected_change);
     }
+
+    // Assert that the limit orders are as expected
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            println!("orders: {:?}", orders);
+            assert_eq!(orders.len(), expected_limit_orders_after.len());
+            expected_limit_orders_after.iter().all(
+                |(order_id, (direction, price, amount, remaining, user_index))| {
+                    let queried_order = orders.get(order_id).unwrap();
+                    println!("order user: {:?}", queried_order.user);
+                    println!("expected user: {:?}", users[*user_index].address());
+                    println!("expected direction: {:?}", direction);
+                    println!("expected price: {:?}", price);
+                    println!("expected amount: {:?}", amount);
+                    println!("expected remaining: {:?}", amount);
+                    queried_order.direction == *direction
+                        && queried_order.price == *price
+                        && queried_order.amount == *amount
+                        && queried_order.remaining == *remaining
+                        && queried_order.user == users[*user_index].address()
+                },
+            )
+        });
 }
