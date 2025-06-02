@@ -621,6 +621,19 @@ fn clear_orders_of_pair(
     drop(market_bids);
     drop(market_asks);
 
+    // Loop over all unmatched market orders and refund the users
+    for res in MARKET_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .range(storage, None, None, IterationOrder::Ascending)
+    {
+        let ((direction, _), market_order) = res?;
+
+        refunds.insert(market_order.user, match direction {
+            Direction::Bid => coins! { quote_denom.clone() => market_order.amount },
+            Direction::Ask => coins! { base_denom.clone() => market_order.amount },
+        });
+    }
+
     // Clear the market orders from the storage.
     MARKET_ORDERS.clear(storage, None, None);
 
