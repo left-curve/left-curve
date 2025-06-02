@@ -313,8 +313,20 @@ fn _update_filling_outcome(
         order: order.clone(),
         filled: Uint128::ZERO,
         cleared: false,
-        refund_base: Uint128::ZERO,
-        refund_quote: Uint128::ZERO,
+        refund_base: match order {
+            Order::Limit(_) => Uint128::ZERO,
+            Order::Market(market_order) => match order_direction {
+                Direction::Bid => Uint128::ZERO,
+                Direction::Ask => market_order.amount,
+            },
+        },
+        refund_quote: match order {
+            Order::Limit(_) => Uint128::ZERO,
+            Order::Market(market_order) => match order_direction {
+                Direction::Bid => market_order.amount.checked_div_dec_floor(price)?,
+                Direction::Ask => Uint128::ZERO,
+            },
+        },
         fee_base: Uint128::ZERO,
         fee_quote: Uint128::ZERO,
     });
@@ -330,6 +342,27 @@ fn _update_filling_outcome(
                     .checked_add(filled_amount.checked_mul_dec(price)?)?,
                 filling_outcome.filled.checked_add(filled_amount)?,
             )?;
+            match order_direction {
+                Direction::Bid => {
+                    println!("in bid arm");
+                    println!("refund quote: {:?}", filling_outcome.refund_quote);
+                    println!(
+                        "filled amount * price: {:?}",
+                        filled_amount.checked_mul_dec_ceil(price)?
+                    );
+
+                    filling_outcome
+                        .refund_quote
+                        .checked_sub_assign(filled_amount.checked_mul_dec_ceil(price)?)?;
+                },
+                Direction::Ask => {
+                    println!("in ask arm");
+                    println!("refund base: {:?}", filling_outcome.refund_base);
+                    filling_outcome
+                        .refund_base
+                        .checked_sub_assign(filled_amount)?;
+                },
+            }
         },
     }
 
