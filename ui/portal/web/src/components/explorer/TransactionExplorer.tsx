@@ -39,7 +39,11 @@ const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
   const client = usePublicClient();
   const value = useQuery({
     queryKey: ["tx", txHash],
-    queryFn: () => client.searchTx({ hash: txHash }),
+    queryFn: async () => {
+      const txs = await client.searchTxs({ hash: txHash });
+      if (!txs.nodes.length) return null;
+      return txs.nodes[0];
+    },
   });
 
   return (
