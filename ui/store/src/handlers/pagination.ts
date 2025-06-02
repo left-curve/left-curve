@@ -20,7 +20,7 @@ export function withPagination<T = unknown>(parameters: WithPaginationParameters
     if (!pageInfo.hasPreviousPage) return undefined;
 
     return {
-      first: limit,
+      last: limit,
       before: pageInfo.startCursor as string,
     };
   }
