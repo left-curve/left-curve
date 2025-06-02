@@ -1,9 +1,9 @@
 use {
     bnum::types::U256,
     grug::{
-        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction,
-        NextNumber, Number, NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256,
-        Undefined,
+        Dec, Dec128, Defined, Exponentiate, FixedPoint, Int128, MathResult, MaybeDefined,
+        MultiplyFraction, NextNumber, Number, NumberConst, PrevNumber, Timestamp, Udec128, Uint128,
+        Uint256, Undefined, Unsigned,
     },
     pyth_types::{PayloadFeedData, PayloadPropertyValue},
     std::cmp::Ordering,
@@ -138,6 +138,17 @@ impl PrecisionedPrice {
                 .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
         )
         .checked_into_prev()
+    }
+
+    /// Returns the signed value of a given unit amount in signed form. See
+    /// `value_of_unit_amount` for more details.
+    pub fn signed_value_of_unit_amount(&self, unit_amount: Int128) -> MathResult<Dec128> {
+        self.humanized_price
+            .checked_into_signed()?
+            .checked_mul(Dec128::checked_from_ratio(
+                unit_amount,
+                10i128.pow(self.precision.into_inner() as u32),
+            )?)
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents

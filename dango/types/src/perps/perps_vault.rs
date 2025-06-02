@@ -27,12 +27,16 @@ impl PerpsVaultState {
         Ok(markets
             .iter()
             .map(|market| {
-                let params = params
-                    .get(&market.denom)
-                    .ok_or(anyhow::anyhow!("params not found"))?;
+                let params = params.get(&market.denom).ok_or(anyhow::anyhow!(
+                    "params not found for denom: {}",
+                    market.denom
+                ))?;
                 let oracle_price = oracle_prices
                     .get(&market.denom)
-                    .ok_or(anyhow::anyhow!("oracle price not found"))?
+                    .ok_or(anyhow::anyhow!(
+                        "oracle price not found for denom: {}",
+                        market.denom
+                    ))?
                     .clone();
                 market.net_asset_value(params, oracle_price)
             })

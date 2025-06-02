@@ -3,7 +3,7 @@ use {
     dango_types::perps::{
         INITIAL_SHARES_PER_TOKEN, PerpsMarketParams, PerpsMarketState, PerpsVaultState,
     },
-    grug::{Denom, Inner, MultiplyRatio, Number, Sign, Signed, Udec128, Uint128, Unsigned},
+    grug::{Denom, MultiplyRatio, Number, Sign, Signed, Udec128, Uint128, Unsigned},
     std::collections::HashMap,
 };
 
