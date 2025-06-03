@@ -31,7 +31,7 @@ export const PairHeader: React.FC = () => {
             />
             <p className="diatype-lg-heavy text-gray-700 min-w-fit">ETH-USDC</p>
           </div>
-          <Badge text="Perp" color="green" />
+          <Badge text="Spot" color="blue" />
           <div
             className="cursor-pointer flex items-center justify-center lg:hidden"
             onClick={() => setExpanded(!expanded)}
