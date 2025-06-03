@@ -23,6 +23,7 @@ export type Notification<key extends keyof Notifications = keyof Notifications> 
   type: string;
   data: Notifications[key];
   blockHeight: number;
+  isHidden?: boolean;
   createdAt: string;
 };
 
@@ -49,15 +50,21 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     },
   );
 
-  const userNotification = allNotifications[username] || [];
+  const userNotification = useMemo(
+    () => (allNotifications[username] || []).filter((n) => !n.isHidden),
+    [allNotifications, username],
+  );
 
   const deleteNotification = useCallback(
     (id: UID) => {
       setAllNotifications((notifications) => {
         const previousUserNotification = notifications[username] || [];
+        const notificationIndex = previousUserNotification.findIndex((n) => n.id === id);
+        if (notificationIndex === -1) return notifications;
+        previousUserNotification[notificationIndex].isHidden = true;
         return {
           ...notifications,
-          [username]: previousUserNotification.filter((n) => n.id !== id),
+          [username]: previousUserNotification,
         };
       });
     },
@@ -88,6 +95,11 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
 
   const startNotifications = useCallback(() => {
     if (!account) return;
+
+    const _lastKnownBlockHeight = userNotification.reduce(
+      (max, notification) => Math.max(max, notification.blockHeight),
+      0,
+    );
 
     const unsubscribe = subscriptions.subscribe("transfer", {
       params: { address: account.address },
