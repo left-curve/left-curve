@@ -18,14 +18,6 @@ const meta: Meta<typeof Tooltip> = {
       control: { type: "number" },
       description: "Delay before the tooltip disappears in milliseconds.",
     },
-    isOpen: {
-      control: { type: "boolean" },
-      description: "Controls whether the tooltip is open.",
-    },
-    onOpenChange: {
-      action: "onOpenChange",
-      description: "Callback when the tooltip open state changes.",
-    },
     className: {
       control: { type: "text" },
       description: "Custom class name for the tooltip.",
@@ -53,10 +45,10 @@ export const Default: Store = {
 
 const Template: React.FC<TooltipProps> = (args) => {
   return (
-    <>
+    <div className="flex items-center justify-center relative py-10">
       <Tooltip {...args}>
-        <p className="mt-10">Hover me!</p>
+        <p>Hover me!</p>
       </Tooltip>
-    </>
+    </div>
   );
 };
