@@ -33,6 +33,9 @@ const meta: Meta<typeof Tooltip> = {
   },
   args: {
     content: "This is a tooltip example.",
+    placement: "top",
+    delay: 0,
+    closeDelay: 50,
   },
   parameters: {
     layout: "centered",
@@ -51,7 +54,9 @@ export const Default: Store = {
 const Template: React.FC<TooltipProps> = (args) => {
   return (
     <>
-      <Tooltip {...args} />
+      <Tooltip {...args}>
+        <p className="mt-10">Hover me!</p>
+      </Tooltip>
     </>
   );
 };
