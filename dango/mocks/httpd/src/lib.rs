@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow,
+    anyhow::bail,
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
@@ -9,9 +9,8 @@ use {
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
     std::{net::TcpListener, sync::Arc, time::Duration},
-    tokio::sync::Mutex,
+    tokio::{net::TcpStream, sync::Mutex},
 };
-
 pub use {
     dango_genesis::GenesisOption,
     dango_testing::{BridgeOp, Preset, TestOption},
@@ -73,17 +72,15 @@ pub async fn run(
     .await
 }
 
-pub fn get_random_socket_addr() -> u16 {
+pub fn get_mock_socket_addr() -> u16 {
     TcpListener::bind("127.0.0.1:0")
-        .expect("Failed to bind to random port")
+        .expect("failed to bind to random port")
         .local_addr()
-        .expect("Failed to get local address")
+        .expect("failed to get local address")
         .port()
 }
 
 pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
-    use tokio::net::TcpStream;
-
     for attempt in 1..=30 {
         match TcpStream::connect(format!("127.0.0.1:{port}")).await {
             Ok(_) => {
@@ -91,13 +88,11 @@ pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
                 return Ok(());
             },
             Err(_) => {
-                tracing::debug!("Attempt {attempt}: Server not ready yet...");
+                tracing::debug!("Attempt {attempt}: server not ready yet...");
                 tokio::time::sleep(Duration::from_millis(50)).await;
             },
         }
     }
 
-    Err(anyhow!(
-        "Server failed to start on port {port} after 30 attempts"
-    ))
+    bail!("server failed to start on port {port} after 30 attempts")
 }

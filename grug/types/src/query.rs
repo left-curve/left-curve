@@ -1,13 +1,3 @@
-#[cfg(feature = "async-graphql")]
-use {
-    crate::serializers::JsonDeExt,
-    async_graphql::{
-        InputValueResult, OutputType, Positioned, Scalar, ScalarType, ServerResult,
-        context::ContextSelectionSet, parser::types::Field, registry::Registry,
-    },
-    std::borrow::Cow,
-};
-
 use {
     crate::{
         Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
@@ -18,6 +8,15 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
+};
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{
+        InputValueError, InputValueResult, OutputType, Positioned, Scalar, ScalarType,
+        ServerResult, Value, context::ContextSelectionSet, parser::types::Field,
+        registry::Registry,
+    },
+    std::borrow::Cow,
 };
 
 /// The default number of items to be returned in enumerative queries, if user
@@ -78,30 +77,25 @@ pub enum Query {
 }
 
 // NOTE: implementing `InputType` doesn't work for complex enums.
+#[cfg(feature = "async-graphql")]
 #[Scalar(name = "GrugQueryInput")]
 impl ScalarType for Query {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        match value.into_json() {
-            Ok(json_value) => Json::from_inner(json_value)
-                .deserialize_json()
-                .map_err(|err| {
-                    async_graphql::InputValueError::custom(format!(
-                        "Failed to parse Query: {}",
-                        err
-                    ))
-                }),
-            Err(_) => Err(async_graphql::InputValueError::expected_type(
-                async_graphql::Value::Null,
-            )),
-        }
+    fn parse(value: Value) -> InputValueResult<Self> {
+        value
+            .into_json()
+            .and_then(serde_json::from_value)
+            .map_err(|err| {
+                InputValueError::custom(format!(
+                    "failed to parse `Query` from GraphQL value: {err}"
+                ))
+            })
     }
 
-    fn to_value(&self) -> async_graphql::Value {
-        self.to_json_value()
-            .ok()
-            .and_then(|json_value| serde_json::from_value(json_value.into_inner()).ok())
-            .map(async_graphql::Value::Object)
-            .unwrap_or(async_graphql::Value::Null)
+    fn to_value(&self) -> Value {
+        serde_json::to_value(self)
+            .and_then(serde_json::from_value)
+            .map(Value::Object)
+            .unwrap_or(Value::Null)
     }
 }
 

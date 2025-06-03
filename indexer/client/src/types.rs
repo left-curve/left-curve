@@ -27,27 +27,31 @@ macro_rules! generate_types {
                 super::*,
                 assertor::*,
                 dango_genesis::GenesisOption,
-                dango_mock_httpd::{BlockCreation, TestOption, get_random_socket_addr, wait_for_server_ready},
+                dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
                 dango_testing::Preset,
                 graphql_client::{GraphQLQuery, Response},
-                grug::setup_tracing_subscriber,
                 serde_json::json,
             };
+            #[cfg(feature = "tracing")]
+            use grug::setup_tracing_subscriber;
 
             $($(
                 paste::paste! {
                     #[tokio::test]
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
+                        #[cfg(feature = "tracing")]
                         setup_tracing_subscriber(tracing::Level::WARN);
 
-                        let port = get_random_socket_addr();
+                        let port = get_mock_socket_addr();
 
                         // Spawn server in separate thread with its own runtime
                         let _server_handle = std::thread::spawn(move || {
                             let rt = tokio::runtime::Runtime::new().unwrap();
                             rt.block_on(async {
+                                #[cfg(feature = "tracing")]
                                 tracing::info!("Starting mock HTTP server on port {port}");
-                                if let Err(error) = dango_mock_httpd::run(
+
+                                if let Err(_error) = dango_mock_httpd::run(
                                     port,
                                     BlockCreation::OnBroadcast,
                                     None,
@@ -58,7 +62,8 @@ macro_rules! generate_types {
                                 )
                                 .await
                                 {
-                                    tracing::error!("Error running mock HTTP server: {}", error);
+                                    #[cfg(feature = "tracing")]
+                                    tracing::error!("Error running mock HTTP server: {_error}");
                                 }
                             });
                         });
@@ -78,7 +83,9 @@ macro_rules! generate_types {
                             .json::<Response<[<$name:snake>]::ResponseData>>()
                             .await;
 
+                        #[cfg(feature = "tracing")]
                         tracing::info!("GraphQL response: {:#?}", result);
+
                         assert_that!(result).is_ok();
 
                         Ok(())

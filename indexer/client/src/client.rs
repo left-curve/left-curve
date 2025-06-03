@@ -1,5 +1,6 @@
 use {
     crate::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
+    anyhow::bail,
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
@@ -55,8 +56,8 @@ impl HttpClient {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!("GraphQL request: {:#?}", query);
-            tracing::debug!("GraphQL response: {:#?}", response);
+            tracing::debug!("GraphQL request: {query:#?}");
+            tracing::debug!("GraphQL response: {response:#?}");
         }
 
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
@@ -64,15 +65,11 @@ impl HttpClient {
         match body.data {
             Some(data) => {
                 #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!("GraphQL body response: {:#?}", data);
-                }
+                tracing::debug!("GraphQL body response: {data:#?}");
+
                 Ok(data)
             },
-            None => Err(anyhow::anyhow!(
-                "No data returned from query: errors: {:?}",
-                body.errors
-            )),
+            None => bail!("no data returned from query: errors: {:?}", body.errors),
         }
     }
 }

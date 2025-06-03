@@ -1,9 +1,5 @@
 #[cfg(feature = "async-graphql")]
-use {
-    crate::inner::Inner,
-    crate::serializers::JsonDeExt,
-    async_graphql::{InputValueResult, Scalar, ScalarType},
-};
+use async_graphql::{InputValueError, InputValueResult, Scalar, ScalarType, Value};
 use {
     crate::{
         Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
@@ -53,27 +49,23 @@ impl Tx {
 /// - Cryptographic signature
 ///
 /// See [Tx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+#[cfg(feature = "async-graphql")]
 #[Scalar(name = "Tx")]
 impl ScalarType for Tx {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        match value.into_json() {
-            Ok(json_value) => Json::from_inner(json_value)
-                .deserialize_json()
-                .map_err(|err| {
-                    async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
-                }),
-            Err(_) => Err(async_graphql::InputValueError::expected_type(
-                async_graphql::Value::Null,
-            )),
-        }
+    fn parse(value: Value) -> InputValueResult<Self> {
+        value
+            .into_json()
+            .and_then(serde_json::from_value)
+            .map_err(|err| {
+                InputValueError::custom(format!("failed to parse `Tx` from GraphQL value: {err}"))
+            })
     }
 
-    fn to_value(&self) -> async_graphql::Value {
-        self.to_json_value()
-            .ok()
-            .and_then(|json_value| serde_json::from_value(json_value.into_inner()).ok())
-            .map(async_graphql::Value::Object)
-            .unwrap_or(async_graphql::Value::Null)
+    fn to_value(&self) -> Value {
+        serde_json::to_value(self)
+            .and_then(serde_json::from_value)
+            .map(Value::Object)
+            .unwrap_or(Value::Null)
     }
 }
 
@@ -97,25 +89,22 @@ pub struct UnsignedTx {
 /// See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
 #[Scalar(name = "UnsignedTx")]
 impl ScalarType for UnsignedTx {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        match value.into_json() {
-            Ok(json_value) => Json::from_inner(json_value)
-                .deserialize_json()
-                .map_err(|err| {
-                    async_graphql::InputValueError::custom(format!("Failed to parse Tx: {}", err))
-                }),
-            Err(_) => Err(async_graphql::InputValueError::expected_type(
-                async_graphql::Value::Null,
-            )),
-        }
+    fn parse(value: Value) -> InputValueResult<Self> {
+        value
+            .into_json()
+            .and_then(serde_json::from_value)
+            .map_err(|err| {
+                InputValueError::custom(format!(
+                    "failed to parse `UnsignedTx` from GraphQL value: {err}"
+                ))
+            })
     }
 
-    fn to_value(&self) -> async_graphql::Value {
-        self.to_json_value()
-            .ok()
-            .and_then(|json_value| serde_json::from_value(json_value.into_inner()).ok())
-            .map(async_graphql::Value::Object)
-            .unwrap_or(async_graphql::Value::Null)
+    fn to_value(&self) -> Value {
+        serde_json::to_value(self)
+            .and_then(serde_json::from_value)
+            .map(Value::Object)
+            .unwrap_or(Value::Null)
     }
 }
 
