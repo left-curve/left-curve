@@ -8,7 +8,7 @@ import { twMerge } from "#utils/twMerge.js";
 
 type TooltipPlacement = "top" | "bottom" | "left" | "right" | "auto";
 
-interface TooltipProps extends Omit<VariantProps<typeof tooltipVariants>, "placement"> {
+export interface TooltipProps extends Omit<VariantProps<typeof tooltipVariants>, "placement"> {
   content: ReactNode | string;
   placement?: TooltipPlacement;
   delay?: number;
@@ -88,7 +88,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
 };
 
 export const tooltipVariants = tv({
-  base: "bg-rice-25 text-gray-700 p-2 rounded-xl shadow-account-card break-words max-w-lg text-center min-w-fit",
+  base: "bg-rice-25 text-gray-700 p-2 rounded-xl shadow-account-card max-w-lg text-center min-w-[8rem]",
   variants: {
     placement: {
       top: "absolute bottom-full left-1/2 !-translate-x-1/2 mb-2 z-50",
