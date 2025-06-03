@@ -13,12 +13,7 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-metrics = [
-    "dep:actix-web-prometheus",
-    "dep:metrics",
-    "dep:metrics-exporter-prometheus",
-    "dep:prometheus",
-]
+metrics = ["dep:metrics", "dep:metrics-exporter-prometheus", "dep:prometheus"]
 testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
 
@@ -27,7 +22,6 @@ actix                       = { workspace = true }
 actix-cors                  = { workspace = true }
 actix-files                 = { workspace = true }
 actix-web                   = { workspace = true }
-actix-web-prometheus        = { workspace = true, optional = true, features = ["process"] }
 anyhow                      = { workspace = true }
 async-graphql               = { workspace = true }
 async-graphql-actix-web     = { workspace = true }

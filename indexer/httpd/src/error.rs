@@ -13,7 +13,4 @@ pub enum Error {
 
     #[error(transparent)]
     Indexer(#[from] IndexerError),
-
-    #[error(transparent)]
-    Prometheus(#[from] actix_web_prometheus::Error),
 }

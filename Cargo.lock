@@ -345,21 +345,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-web-prometheus"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5228fd1a6b5d0f60d636776c2a70acc9fc667034bb4ac02ec4259f0eeeab6c"
-dependencies = [
- "actix-service",
- "actix-web",
- "futures-lite 1.13.0",
- "pin-project 1.1.10",
- "prometheus",
- "quanta 0.10.1",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "actix_derive"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1429,8 +1414,8 @@ checksum = "bb812ffb58524bdd10860d7d974e2f01cc0950c2438a74ee5ec2e2280c6c4ffa"
 dependencies = [
  "async-task",
  "concurrent-queue",
- "fastrand 2.3.0",
- "futures-lite 2.6.0",
+ "fastrand",
+ "futures-lite",
  "pin-project-lite",
  "slab",
 ]
@@ -1446,7 +1431,7 @@ dependencies = [
  "async-io",
  "async-lock",
  "blocking",
- "futures-lite 2.6.0",
+ "futures-lite",
  "once_cell",
  "tokio",
 ]
@@ -1566,7 +1551,7 @@ dependencies = [
  "cfg-if",
  "concurrent-queue",
  "futures-io",
- "futures-lite 2.6.0",
+ "futures-lite",
  "parking",
  "polling",
  "rustix 0.38.44",
@@ -1601,7 +1586,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-io",
- "futures-lite 2.6.0",
+ "futures-lite",
  "gloo-timers",
  "kv-log-macro",
  "log",
@@ -1767,7 +1752,7 @@ dependencies = [
  "aws-smithy-types",
  "aws-types",
  "bytes",
- "fastrand 2.3.0",
+ "fastrand",
  "http 0.2.12",
  "http-body 0.4.6",
  "percent-encoding",
@@ -1792,7 +1777,7 @@ dependencies = [
  "aws-smithy-types",
  "aws-types",
  "bytes",
- "fastrand 2.3.0",
+ "fastrand",
  "http 0.2.12",
  "regex-lite",
  "tracing",
@@ -1881,7 +1866,7 @@ dependencies = [
  "aws-smithy-runtime-api",
  "aws-smithy-types",
  "bytes",
- "fastrand 2.3.0",
+ "fastrand",
  "http 0.2.12",
  "http 1.3.1",
  "http-body 0.4.6",
@@ -2259,7 +2244,7 @@ dependencies = [
  "async-channel 2.3.1",
  "async-task",
  "futures-io",
- "futures-lite 2.6.0",
+ "futures-lite",
  "piper",
 ]
 
@@ -4120,15 +4105,6 @@ dependencies = [
 
 [[package]]
 name = "fastrand"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e51093e27b0797c359783294ca4f0a911c270184cb10f85783b118614a1501be"
-dependencies = [
- "instant",
-]
-
-[[package]]
-name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
@@ -4347,26 +4323,11 @@ checksum = "9e5c1b78ca4aae1ac06c48a526a655760685149f0d465d21f37abfe57ce075c6"
 
 [[package]]
 name = "futures-lite"
-version = "1.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49a9d51ce47660b1e808d3c990b4709f2f415d928835a17dfd16991515c46bce"
-dependencies = [
- "fastrand 1.9.0",
- "futures-core",
- "futures-io",
- "memchr",
- "parking",
- "pin-project-lite",
- "waker-fn",
-]
-
-[[package]]
-name = "futures-lite"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5edaec856126859abb19ed65f39e90fea3a9574b9707f13539acf4abf7eb532"
 dependencies = [
- "fastrand 2.3.0",
+ "fastrand",
  "futures-core",
  "futures-io",
  "parking",
@@ -5647,7 +5608,6 @@ dependencies = [
  "actix-cors",
  "actix-files",
  "actix-web",
- "actix-web-prometheus",
  "anyhow",
  "assertor",
  "async-graphql",
@@ -5801,15 +5761,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"
 dependencies = [
  "generic-array",
-]
-
-[[package]]
-name = "instant"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -6169,15 +6120,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mach"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b823e83b2affd8f40a9ee8c29dbc56404c1e34cd2710921f2801e2cf29527afa"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "mach2"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6301,7 +6243,7 @@ dependencies = [
  "ipnet",
  "metrics",
  "metrics-util",
- "quanta 0.12.5",
+ "quanta",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
@@ -6317,7 +6259,7 @@ dependencies = [
  "crossbeam-utils",
  "hashbrown 0.15.3",
  "metrics",
- "quanta 0.12.5",
+ "quanta",
  "rand 0.9.1",
  "rand_xoshiro",
  "sketches-ddsketch",
@@ -7025,7 +6967,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96c8c490f422ef9a4efd2cb5b42b76c8613d7e7dfc1caf667b8a3350a5acc066"
 dependencies = [
  "atomic-waker",
- "fastrand 2.3.0",
+ "fastrand",
  "futures-io",
 ]
 
@@ -7258,29 +7200,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "procfs"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "731e0d9356b0c25f16f33b5be79b1c57b562f141ebfcdb0ad8ac2c13a24293b4"
-dependencies = [
- "bitflags 2.9.1",
- "hex",
- "lazy_static",
- "procfs-core",
- "rustix 0.38.44",
-]
-
-[[package]]
-name = "procfs-core"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d3554923a69f4ce04c4a754260c338f505ce22642d3830e049a399fc2059a29"
-dependencies = [
- "bitflags 2.9.1",
- "hex",
-]
-
-[[package]]
 name = "prometheus"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7289,10 +7208,8 @@ dependencies = [
  "cfg-if",
  "fnv",
  "lazy_static",
- "libc",
  "memchr",
  "parking_lot",
- "procfs",
  "protobuf",
  "thiserror 1.0.69",
 ]
@@ -7479,22 +7396,6 @@ dependencies = [
 
 [[package]]
 name = "quanta"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7e31331286705f455e56cca62e0e717158474ff02b7936c1fa596d983f4ae27"
-dependencies = [
- "crossbeam-utils",
- "libc",
- "mach",
- "once_cell",
- "raw-cpuid 10.7.0",
- "wasi 0.10.2+wasi-snapshot-preview1",
- "web-sys",
- "winapi",
-]
-
-[[package]]
-name = "quanta"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bd1fe6824cea6538803de3ff1bc0cf3949024db3d43c9643024bfb33a807c0e"
@@ -7502,7 +7403,7 @@ dependencies = [
  "crossbeam-utils",
  "libc",
  "once_cell",
- "raw-cpuid 11.5.0",
+ "raw-cpuid",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "web-sys",
  "winapi",
@@ -7677,15 +7578,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f703f4665700daf5512dcca5f43afa6af89f09db47fb56be587f80636bda2d41"
 dependencies = [
  "rand_core 0.9.3",
-]
-
-[[package]]
-name = "raw-cpuid"
-version = "10.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c297679cb867470fa8c9f67dbba74a78d78e3e98d7cf2b08d6d71540f797332"
-dependencies = [
- "bitflags 1.3.2",
 ]
 
 [[package]]
@@ -9612,7 +9504,7 @@ version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8a64e3985349f2441a1a9ef0b853f869006c3855f2cda6862a94d26ebb9d6a1"
 dependencies = [
- "fastrand 2.3.0",
+ "fastrand",
  "getrandom 0.3.3",
  "once_cell",
  "rustix 1.0.7",
@@ -10426,12 +10318,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "waker-fn"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "317211a0dc0ceedd78fb2ca9a44aed3d7b9b26f81870d485c07122b4350673b7"
-
-[[package]]
 name = "walkdir"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10449,12 +10335,6 @@ checksum = "bfa7760aed19e106de2c7c0b581b509f2f25d3dacaf737cb82ac61bc6d760b0e"
 dependencies = [
  "try-lock",
 ]
-
-[[package]]
-name = "wasi"
-version = "0.10.2+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 
 [[package]]
 name = "wasi"

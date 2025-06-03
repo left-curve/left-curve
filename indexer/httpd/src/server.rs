@@ -7,7 +7,6 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    actix_web_prometheus::{PrometheusMetrics, PrometheusMetricsBuilder},
     metrics::{counter, describe_counter},
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     sentry_actix::Sentry,
@@ -80,14 +79,14 @@ where
 
     counter!("graphql.block.block.calls").increment(1);
 
-    let prometheus = PrometheusMetricsBuilder::new("actix")
-        .endpoint("/metrics")
-        .build()?;
+    // let prometheus = PrometheusMetricsBuilder::new("actix")
+    //     .endpoint("/metrics")
+    //     .build()?;
 
     HttpServer::new(move || {
         let metrics_handler = metrics_handler.clone();
         App::new()
-            .wrap(prometheus.clone())
+            // .wrap(prometheus.clone())
             .wrap(super::middlewares::metrics::HttpMetrics)
             .wrap(Logger::default())
             .wrap(Compress::default())
@@ -98,31 +97,31 @@ where
                     HttpResponse::Ok().body("Metrics server is running")
                 }),
             )
-        // .route(
-        //     "/metrics",
-        //     web::get().to(move |prom_metrics: web::Data<PrometheusMetrics>| {
-        //         let metrics_handler = metrics_handler.clone();
-        //         counter!("metrics.metrics.calls").increment(1);
+            .route(
+                "/metrics",
+                web::get().to(move || {
+                    let metrics_handler = metrics_handler.clone();
+                    counter!("metrics.metrics.calls").increment(1);
 
-        //         async move {
-        //             // Get metrics from both sources
-        //             let custom_metrics = metrics_handler.render();
-        //             // let http_metrics = prom_metrics.render();
+                    async move {
+                        // Get metrics from both sources
+                        // let custom_metrics = metrics_handler.render();
+                        // let http_metrics = prom_metrics.into_inner().render();
 
-        //             // Combine them
-        //             // let combined = format!("{}\n{}", http_metrics, custom_metrics);
+                        // Combine them
+                        // let combined = format!("{}\n{}", http_metrics, custom_metrics);
 
-        //             HttpResponse::Ok()
-        //                 .content_type("text/plain; version=0.0.4")
-        //                 .body("")
-        //             // .body(combined)
-        //             // let metrics = metrics_handler.render();
-        //             // HttpResponse::Ok()
-        //             //     .content_type("text/plain; version=0.0.4")
-        //             //     .body(metrics)
-        //         }
-        //     }),
-        // )
+                        // HttpResponse::Ok()
+                        //     .content_type("text/plain; version=0.0.4")
+                        // .body(combined)
+
+                        let metrics = metrics_handler.render();
+                        HttpResponse::Ok()
+                            .content_type("text/plain; version=0.0.4")
+                            .body(metrics)
+                    }
+                }),
+            )
     })
     .bind((ip.to_string(), port))?
     .run()
