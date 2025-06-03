@@ -3689,10 +3689,9 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
 // TODO:
 // - Limit order gets taker fee, market order gets taker fee
 // - Limit order gets maker fee, market order gets taker fee
-// - With slippage control exceeded
-// - With slippage control not exceeded
+// - Market Ask With slippage control exceeded
+// - Market Ask With slippage control not exceeded
 // - One limit order matching multiple market orders
-// - One market order matching multiple limit orders
 fn market_order_clearing(
     limit_orders_and_funds: Vec<(Vec<CreateLimitOrderRequest>, Coins)>,
     market_orders_and_funds: Vec<(Vec<CreateMarketOrderRequest>, Coins)>,
