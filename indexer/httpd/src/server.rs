@@ -7,6 +7,9 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    actix_web_prometheus::{PrometheusMetrics, PrometheusMetricsBuilder},
+    metrics::{counter, describe_counter},
+    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     sentry_actix::Sentry,
     std::fmt::Display,
 };
@@ -55,6 +58,71 @@ where
             .wrap(cors);
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
+    })
+    .bind((ip.to_string(), port))?
+    .run()
+    .await?;
+
+    Ok(())
+}
+
+/// Run the metrics HTTP server
+pub async fn run_metrics_server<I>(
+    ip: I,
+    port: u16,
+    metrics_handler: PrometheusHandle,
+) -> Result<(), Error>
+where
+    I: ToString + Display,
+{
+    #[cfg(feature = "tracing")]
+    tracing::info!("Starting metrics httpd server at {ip}:{port}");
+
+    counter!("graphql.block.block.calls").increment(1);
+
+    let prometheus = PrometheusMetricsBuilder::new("actix")
+        .endpoint("/metrics")
+        .build()?;
+
+    HttpServer::new(move || {
+        let metrics_handler = metrics_handler.clone();
+        App::new()
+            .wrap(prometheus.clone())
+            .wrap(super::middlewares::metrics::HttpMetrics)
+            .wrap(Logger::default())
+            .wrap(Compress::default())
+            .route(
+                "/",
+                web::get().to(|| async {
+                    counter!("metrics.root.calls").increment(1);
+                    HttpResponse::Ok().body("Metrics server is running")
+                }),
+            )
+        // .route(
+        //     "/metrics",
+        //     web::get().to(move |prom_metrics: web::Data<PrometheusMetrics>| {
+        //         let metrics_handler = metrics_handler.clone();
+        //         counter!("metrics.metrics.calls").increment(1);
+
+        //         async move {
+        //             // Get metrics from both sources
+        //             let custom_metrics = metrics_handler.render();
+        //             // let http_metrics = prom_metrics.render();
+
+        //             // Combine them
+        //             // let combined = format!("{}\n{}", http_metrics, custom_metrics);
+
+        //             HttpResponse::Ok()
+        //                 .content_type("text/plain; version=0.0.4")
+        //                 .body("")
+        //             // .body(combined)
+        //             // let metrics = metrics_handler.render();
+        //             // HttpResponse::Ok()
+        //             //     .content_type("text/plain; version=0.0.4")
+        //             //     .body(metrics)
+        //         }
+        //     }),
+        // )
     })
     .bind((ip.to_string(), port))?
     .run()

@@ -1,7 +1,10 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
+    config_parser::parse_config,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
+    metrics_exporter_prometheus::PrometheusHandle,
+    std::ops::Sub,
     tokio::task::JoinSet,
 };
 
@@ -14,7 +17,9 @@ pub struct IndexerCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// View a block and results
-    Block { height: u64 },
+    Block {
+        height: u64,
+    },
     /// View a range of blocks and results
     Blocks {
         /// Start height (inclusive)
@@ -31,10 +36,15 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+    MetricsHttpd,
 }
 
 impl IndexerCmd {
-    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+    pub async fn run(
+        self,
+        app_dir: HomeDirectory,
+        metrics_handler: PrometheusHandle,
+    ) -> anyhow::Result<()> {
         match self.subcmd {
             SubCmd::Block { height } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
@@ -114,6 +124,24 @@ impl IndexerCmd {
                         eprintln!("Task panicked: {e}");
                     }
                 }
+            },
+
+            SubCmd::MetricsHttpd => {
+                let cfg: Config = parse_config(app_dir.config_file())?;
+
+                tracing::info!(
+                    "Starting metrics HTTP server at {}:{}",
+                    &cfg.indexer.httpd.ip,
+                    cfg.indexer.httpd.metrics_port
+                );
+
+                // Run the metrics HTTP server
+                indexer_httpd::server::run_metrics_server(
+                    &cfg.indexer.httpd.ip,
+                    cfg.indexer.httpd.metrics_port,
+                    metrics_handler,
+                )
+                .await?;
             },
         }
 

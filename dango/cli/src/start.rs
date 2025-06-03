@@ -16,6 +16,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
+    metrics_exporter_prometheus::PrometheusHandle,
     std::{fmt::Debug, sync::Arc, time},
     tokio::signal::unix::{SignalKind, signal},
     tower::ServiceBuilder,
@@ -26,7 +27,11 @@ use {
 pub struct StartCmd;
 
 impl StartCmd {
-    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+    pub async fn run(
+        self,
+        app_dir: HomeDirectory,
+        metrics_handler: PrometheusHandle,
+    ) -> anyhow::Result<()> {
         tracing::info!("Using git commit: {GIT_COMMIT}");
 
         // Parse the config file.
@@ -92,7 +97,8 @@ impl StartCmd {
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(cfg.indexer.httpd, httpd_context),
+                    Self::run_httpd_server(&cfg.indexer.httpd, httpd_context),
+                    Self::run_metrics_httpd_server(&cfg.indexer.httpd, metrics_handler),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
                 )?;
 
@@ -107,12 +113,12 @@ impl StartCmd {
         }
     }
 
-    /// Run the HTTP server
-    async fn run_httpd_server(cfg: IndexerHttpdConfig, context: Context) -> anyhow::Result<()> {
+    /// Run the indexer HTTP server
+    async fn run_httpd_server(cfg: &IndexerHttpdConfig, context: Context) -> anyhow::Result<()> {
         indexer_httpd::server::run_server(
             &cfg.ip,
             cfg.port,
-            cfg.cors_allowed_origin,
+            cfg.cors_allowed_origin.clone(),
             context,
             config_app,
             build_schema,
@@ -122,6 +128,19 @@ impl StartCmd {
             tracing::error!("Failed to run HTTP server: {err:?}");
             err.into()
         })
+    }
+
+    /// Run the metrics HTTP server
+    async fn run_metrics_httpd_server(
+        cfg: &IndexerHttpdConfig,
+        metrics_handler: PrometheusHandle,
+    ) -> anyhow::Result<()> {
+        indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.metrics_port, metrics_handler)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run HTTP server: {err:?}");
+                err.into()
+            })
     }
 
     async fn run_with_indexer<ID>(

@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use metrics::counter;
 use {
     crate::context::Context,
     async_graphql::{types::connection::*, *},
@@ -45,6 +47,9 @@ impl BlockQuery {
     ) -> Result<Option<entity::blocks::Model>> {
         let app_ctx = ctx.data::<Context>()?;
 
+        #[cfg(feature = "metrics")]
+        counter!("graphql.block.block.calls").increment(1);
+
         let mut query = entity::blocks::Entity::find();
 
         match height {
@@ -70,6 +75,9 @@ impl BlockQuery {
         sort_by: Option<SortBy>,
     ) -> Result<Connection<BlockCursorType, Blocks, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
+
+        #[cfg(feature = "metrics")]
+        counter!("graphql.block.blocks.calls").increment(1);
 
         query_with::<BlockCursorType, _, _, _, _>(
             after,

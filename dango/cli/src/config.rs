@@ -58,6 +58,7 @@ pub struct IndexerHttpdConfig {
     pub enabled: bool,
     pub ip: String,
     pub port: u16,
+    pub metrics_port: u16,
     pub cors_allowed_origin: Option<String>,
 }
 
@@ -67,6 +68,7 @@ impl Default for IndexerHttpdConfig {
             enabled: false,
             ip: "127.0.0.1".to_string(),
             port: 8080,
+            metrics_port: 9191,
             cors_allowed_origin: None,
         }
     }

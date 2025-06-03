@@ -20,6 +20,7 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
+    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
@@ -102,14 +103,23 @@ async fn main() -> anyhow::Result<()> {
         tracing_subscriber::fmt().with_max_level(max_level).init();
     }
 
+    // Metrics should be initialized as soon as possible to capture all events.
+    let metrics_handle = init_metrics()?;
+
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
-        Command::Indexer(cmd) => cmd.run(app_dir).await,
+        Command::Indexer(cmd) => cmd.run(app_dir, metrics_handle).await,
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
-        Command::Start(cmd) => cmd.run(app_dir).await,
+        Command::Start(cmd) => cmd.run(app_dir, metrics_handle).await,
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
     }
+}
+
+pub fn init_metrics() -> anyhow::Result<PrometheusHandle> {
+    let handle = PrometheusBuilder::new().install_recorder()?;
+
+    Ok(handle)
 }
