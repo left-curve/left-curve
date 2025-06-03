@@ -473,6 +473,7 @@ fn clear_orders_of_pair(
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
     println!("clear_orders_of_pair");
+    println!("refunds woopie: {:?}", refunds);
     // Create iterators over user orders.
     //
     // Iterate BUY orders from the highest price to the lowest.
@@ -535,18 +536,20 @@ fn clear_orders_of_pair(
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending);
 
-    println!("market_bids: {:?}", market_bids.collect::<Vec<_>>());
-    println!("market_asks: {:?}", market_asks.collect::<Vec<_>>());
+    println!("market_bids woopie: {:?}", market_bids.collect::<Vec<_>>());
+    println!("market_asks woopie: {:?}", market_asks.collect::<Vec<_>>());
 
     let mut market_bids = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Ascending);
+        .range(storage, None, None, IterationOrder::Ascending)
+        .peekable();
 
     let mut market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending);
+        .range(storage, None, None, IterationOrder::Ascending)
+        .peekable();
 
     let market_order_filling_outcomes = match_market_orders(
         &mut market_bids,
@@ -617,24 +620,28 @@ fn clear_orders_of_pair(
         vec![]
     };
 
-    // Drop market bids and asks so we can access the storage.
-    drop(market_bids);
-    drop(market_asks);
+    println!("second refunds: {:?}", refunds);
 
     // Loop over all unmatched market orders and refund the users
-    for res in MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .range(storage, None, None, IterationOrder::Ascending)
-    {
-        let ((direction, _), market_order) = res?;
+    for res in market_bids {
+        let (_, market_order) = res?;
 
-        refunds.insert(market_order.user, match direction {
-            Direction::Bid => coins! { quote_denom.clone() => market_order.amount },
-            Direction::Ask => coins! { base_denom.clone() => market_order.amount },
-        });
+        refunds.insert(
+            market_order.user,
+            coins! { quote_denom.clone() => market_order.amount },
+        );
+    }
+    for res in market_asks {
+        let (_, market_order) = res?;
+        refunds.insert(
+            market_order.user,
+            coins! { base_denom.clone() => market_order.amount },
+        );
     }
 
-    // Clear the market orders from the storage.
+    println!("third refunds: {:?}", refunds);
+
+    // Clear the market orders from the storage since they should not be persist to the next block
     MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .clear(storage, None, None);
@@ -667,6 +674,7 @@ fn clear_orders_of_pair(
         })
         .chain(limit_order_matching_filling_outcomes)
     {
+        println!("filling outcome:");
         println!("order: {:?}", order);
         println!("base_denom: {:?}", base_denom);
         println!("quote_denom: {:?}", quote_denom);
@@ -784,6 +792,10 @@ fn clear_orders_of_pair(
                 direction: order_direction,
             })?;
 
+            println!("order: {:?}", order);
+            println!("cleared: {:?}", cleared);
+            println!("filled: {:?}", filled);
+
             match order {
                 Order::Limit(limit_order) => {
                     if cleared {
@@ -832,6 +844,7 @@ fn clear_orders_of_pair(
         })?;
     }
 
+    println!("final refunds: {:?}", refunds);
     println!("finished clear_orders_of_pair");
     Ok(())
 }

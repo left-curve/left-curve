@@ -96,7 +96,7 @@ where
 }
 
 pub fn match_market_orders<M, L>(
-    market_orders: &mut M,
+    market_orders: &mut Peekable<M>,
     limit_orders: &mut Peekable<L>,
     market_order_direction: Direction,
     maker_fee_rate: Udec128,
@@ -107,7 +107,14 @@ where
     M: Iterator<Item = StdResult<(OrderId, MarketOrder)>>,
     L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
-    let mut maybe_market_order = market_orders.next().transpose()?;
+    println!(
+        "match market orders direction: {:?}",
+        market_order_direction
+    );
+    if market_orders.peek().is_none() || limit_orders.peek().is_none() {
+        return Ok(Vec::new());
+    }
+
     let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
 
     // Limit order direction is assumed to be opposite to the market order direction
@@ -140,8 +147,10 @@ where
             None => break,
         };
 
-        let Some((market_order_id, mut market_order)) = maybe_market_order else {
-            break;
+        let (market_order_id, market_order) = match market_orders.peek_mut() {
+            Some(Ok((market_order_id, ref mut market_order))) => (market_order_id, market_order),
+            Some(Err(e)) => return Err(e.clone().into()),
+            None => break,
         };
 
         // Calculate the cutoff price for the current market order
@@ -204,40 +213,48 @@ where
                 // The market ask order is smaller than the limit order so we advance the market
                 // orders iterator and decrement the limit order remaining amount
                 Ordering::Less => {
-                    maybe_market_order = market_orders.next().transpose()?;
                     limit_order
                         .remaining
                         .checked_sub_assign(market_order_amount_in_base)?;
-                    (
+                    market_order.amount = Uint128::ZERO;
+
+                    // Clone values so we can next the market order iterator
+                    let return_tuple = (
                         market_order_amount_in_base,
                         price.clone(),
                         limit_order_id.clone(),
-                        market_order_id,
+                        market_order_id.clone(),
                         limit_order.clone(),
                         market_order.clone(),
-                    )
+                    );
+
+                    // Advance the market orders iterator
+                    market_orders.next();
+
+                    return_tuple
                 },
                 // The market order amount is equal to the limit order remaining amount, so we can
                 // match both in full, and advance both iterators.
                 Ordering::Equal => {
                     println!("orders are equal");
-                    maybe_market_order = market_orders.next().transpose()?;
                     limit_order.remaining = Uint128::ZERO;
+                    market_order.amount = Uint128::ZERO;
 
                     // Clone values so we can next the limit order iterator
                     let return_tuple = (
                         market_order_amount_in_base,
                         price.clone(),
                         limit_order_id.clone(),
-                        market_order_id,
+                        market_order_id.clone(),
                         limit_order.clone(),
                         market_order.clone(),
                     );
 
                     println!("limit order remaining: {:?}", limit_order);
 
-                    // Pop the limit order iterator
+                    // Advance the both order iterators
                     limit_orders.next();
+                    market_orders.next();
 
                     return_tuple
                 },
@@ -256,7 +273,7 @@ where
                         limit_remaining_amount,
                         price.clone(),
                         limit_order_id.clone(),
-                        market_order_id,
+                        market_order_id.clone(),
                         limit_order.clone(),
                         market_order.clone(),
                     );
@@ -268,12 +285,15 @@ where
                 },
             };
 
+        println!("limit order in match market orders: {:?}", limit_order);
+
         // Update the filling outcomes
         let limit_order_fee_rate = if limit_order.created_at_block_height < current_block_height {
             maker_fee_rate
         } else {
             taker_fee_rate
         };
+        println!("one!");
         _update_filling_outcome(
             &mut filling_outcomes,
             Order::Limit(limit_order),
@@ -283,6 +303,7 @@ where
             price,
             limit_order_fee_rate,
         )?;
+        println!("two!");
         _update_filling_outcome(
             &mut filling_outcomes,
             Order::Market(market_order),
@@ -292,7 +313,10 @@ where
             price,
             taker_fee_rate,
         )?;
+        println!("three!");
     }
+
+    println!("filling outcomes prior to return: {:?}", filling_outcomes);
 
     Ok(filling_outcomes.into_values().collect())
 }
@@ -306,6 +330,7 @@ fn _update_filling_outcome(
     price: Udec128,
     fee_rate: Udec128,
 ) -> StdResult<()> {
+    println!("update filling outcome");
     let filling_outcome = filling_outcomes.entry(order_id).or_insert(FillingOutcome {
         order_direction,
         order_price: price,
@@ -313,28 +338,18 @@ fn _update_filling_outcome(
         order: order.clone(),
         filled: Uint128::ZERO,
         cleared: false,
-        refund_base: match order {
-            Order::Limit(_) => Uint128::ZERO,
-            Order::Market(market_order) => match order_direction {
-                Direction::Bid => Uint128::ZERO,
-                Direction::Ask => market_order.amount,
-            },
-        },
-        refund_quote: match order {
-            Order::Limit(_) => Uint128::ZERO,
-            Order::Market(market_order) => match order_direction {
-                Direction::Bid => market_order.amount.checked_div_dec_floor(price)?,
-                Direction::Ask => Uint128::ZERO,
-            },
-        },
+        refund_base: Uint128::ZERO,
+        refund_quote: Uint128::ZERO,
         fee_base: Uint128::ZERO,
         fee_quote: Uint128::ZERO,
     });
+    println!("order in filling outcome: {:?}", order);
     match order {
         Order::Limit(limit_order) => {
             filling_outcome.cleared = limit_order.remaining.is_zero();
         },
         Order::Market(_) => {
+            println!("in marker arm");
             filling_outcome.order_price = Udec128::checked_from_ratio(
                 filling_outcome
                     .filled
@@ -342,32 +357,19 @@ fn _update_filling_outcome(
                     .checked_add(filled_amount.checked_mul_dec(price)?)?,
                 filling_outcome.filled.checked_add(filled_amount)?,
             )?;
-            match order_direction {
-                Direction::Bid => {
-                    println!("in bid arm");
-                    println!("refund quote: {:?}", filling_outcome.refund_quote);
-                    println!(
-                        "filled amount * price: {:?}",
-                        filled_amount.checked_mul_dec_ceil(price)?
-                    );
-
-                    filling_outcome
-                        .refund_quote
-                        .checked_sub_assign(filled_amount.checked_mul_dec_ceil(price)?)?;
-                },
-                Direction::Ask => {
-                    println!("in ask arm");
-                    println!("refund base: {:?}", filling_outcome.refund_base);
-                    filling_outcome
-                        .refund_base
-                        .checked_sub_assign(filled_amount)?;
-                },
-            }
+            println!("filled amount: {:?}", filled_amount);
+            println!("price: {:?}", price);
+            println!("filled: {:?}", filling_outcome.filled);
+            println!("order price: {:?}", filling_outcome.order_price);
         },
     }
 
+    println!("five!");
+
     filling_outcome.filled.checked_add_assign(filled_amount)?;
     filling_outcome.order = order;
+
+    println!("four!");
 
     match order_direction {
         Direction::Bid => {
@@ -390,6 +392,9 @@ fn _update_filling_outcome(
                 .checked_add_assign(filled_amount_in_quote.checked_sub(fee_amount_in_quote)?)?;
         },
     }
+
+    println!("filling outcome after update: {:?}", filling_outcome);
+    println!("filling outcomes after update: {:?}", filling_outcomes);
 
     Ok(())
 }
