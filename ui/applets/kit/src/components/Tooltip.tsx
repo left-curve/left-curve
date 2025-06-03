@@ -3,7 +3,7 @@ import type React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { tv, type VariantProps } from "tailwind-variants";
 import { useControlledState } from "#hooks/useControlledState.js";
-import { type ReactNode, useRef, useState, type PropsWithChildren } from "react";
+import { type ReactNode, useRef, useState, type PropsWithChildren, useEffect } from "react";
 import { twMerge } from "#utils/twMerge.js";
 
 type TooltipPlacement = "top" | "bottom" | "left" | "right" | "auto";
@@ -50,6 +50,13 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
     }
   };
 
+  useEffect(() => {
+    return () => {
+      clearTimeout(openTimeout.current);
+      clearTimeout(closeTimeout.current);
+    };
+  }, []);
+
   return (
     <div
       ref={triggerRef}
@@ -63,6 +70,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            role="tooltip"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
