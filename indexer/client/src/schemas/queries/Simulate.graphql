@@ -1,3 +1,0 @@
-query Simulate($tx: String!) {
-  simulate(tx: $tx)
-}
