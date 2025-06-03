@@ -352,7 +352,6 @@ fn swap_exact_amount_out(
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    println!("cron_execute");
     let app_cfg = ctx.querier.query_dango_config()?;
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
@@ -366,8 +365,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
-
-    println!("post drain");
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
@@ -393,8 +390,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .map(|res| res.map(|(pair, ..)| pair))
         .collect::<StdResult<BTreeSet<_>>>()?;
 
-    println!("post pairs");
-
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
@@ -417,10 +412,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             &mut volumes_by_username,
         )?;
     }
-
-    println!("post clear_orders_of_pair");
-
-    println!("refunds: {:?}", refunds);
 
     // Save the updated volumes.
     for (address, volume) in volumes {
@@ -472,8 +463,6 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
-    println!("clear_orders_of_pair");
-    println!("refunds woopie: {:?}", refunds);
     // Create iterators over user orders.
     //
     // Iterate BUY orders from the highest price to the lowest.
@@ -486,8 +475,6 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending);
-
-    println!("post limit");
 
     // Create iterators over passive orders.
     //
@@ -502,8 +489,6 @@ fn clear_orders_of_pair(
         },
         None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
     };
-
-    println!("post passive");
 
     // Merge the orders from users and from the passive pool.
     let mut merged_bid_iter = MergedOrders::new(
@@ -521,24 +506,9 @@ fn clear_orders_of_pair(
     )
     .peekable();
 
-    println!("post merged");
-
     // Match bid market orders against resting ask limit orders and vice versa.
     // We match market orders in a first in, first out manner based on the order
     // id.
-    let market_bids = MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Ascending);
-
-    let market_asks = MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending);
-
-    println!("market_bids woopie: {:?}", market_bids.collect::<Vec<_>>());
-    println!("market_asks woopie: {:?}", market_asks.collect::<Vec<_>>());
-
     let mut market_bids = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
@@ -569,11 +539,6 @@ fn clear_orders_of_pair(
         current_block_height,
     )?);
 
-    println!(
-        "market_order_filling_outcomes: {:?}",
-        market_order_filling_outcomes
-    );
-
     // Run the order matching algorithm.
     let MatchingOutcome {
         range,
@@ -581,8 +546,6 @@ fn clear_orders_of_pair(
         bids,
         asks,
     } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
-
-    println!("post match_limit_orders");
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filles at the clearing price.
@@ -620,8 +583,6 @@ fn clear_orders_of_pair(
         vec![]
     };
 
-    println!("second refunds: {:?}", refunds);
-
     // Loop over all unmatched market orders and refund the users
     for res in market_bids {
         let (_, market_order) = res?;
@@ -639,14 +600,10 @@ fn clear_orders_of_pair(
         );
     }
 
-    println!("third refunds: {:?}", refunds);
-
     // Clear the market orders from the storage since they should not be persist to the next block
     MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .clear(storage, None, None);
-
-    println!("post clear market orders");
 
     // Track the inflows and outflows of the dex.
     let mut inflows = Coins::new();
@@ -674,15 +631,6 @@ fn clear_orders_of_pair(
         })
         .chain(limit_order_matching_filling_outcomes)
     {
-        println!("filling outcome:");
-        println!("order: {:?}", order);
-        println!("base_denom: {:?}", base_denom);
-        println!("quote_denom: {:?}", quote_denom);
-        println!("refund_base: {:?}", refund_base);
-        println!("refund_quote: {:?}", refund_quote);
-        println!("fee_base: {:?}", fee_base);
-        println!("fee_quote: {:?}", fee_quote);
-
         update_trading_volumes(
             storage,
             oracle_querier,
@@ -694,10 +642,7 @@ fn clear_orders_of_pair(
             volumes_by_username,
         )?;
 
-        println!("post update_trading_volumes");
-
         if order.user() == dex_addr {
-            println!("order.user() == dex_addr");
             // The order only exists in the storage if it's not owned by the dex, since
             // the passive orders are "virtual". If it is virtual, we need to update the
             // reserve.
@@ -725,7 +670,6 @@ fn clear_orders_of_pair(
                 },
             }
         } else {
-            println!("order.user() != dex_addr");
             let refund = Coins::try_from([
                 Coin {
                     denom: base_denom.clone(),
@@ -736,8 +680,6 @@ fn clear_orders_of_pair(
                     amount: refund_quote,
                 },
             ])?;
-
-            println!("refund: {:?}", refund);
 
             refunds
                 .entry(order.user())
@@ -776,8 +718,6 @@ fn clear_orders_of_pair(
                 None
             };
 
-            println!("fee: {:?}", fee);
-
             // Emit event for filled user orders to be used by the frontend
             events.push(OrderFilled {
                 user: order.user(),
@@ -791,10 +731,6 @@ fn clear_orders_of_pair(
                 quote_denom: quote_denom.clone(),
                 direction: order_direction,
             })?;
-
-            println!("order: {:?}", order);
-            println!("cleared: {:?}", cleared);
-            println!("filled: {:?}", filled);
 
             match order {
                 Order::Limit(limit_order) => {
@@ -828,8 +764,6 @@ fn clear_orders_of_pair(
     }
 
     // Update the pool reserve.
-    println!("inflows: {:?}", inflows);
-    println!("outflows: {:?}", outflows);
     if inflows.is_non_empty() || outflows.is_non_empty() {
         RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
             for inflow in inflows {
@@ -844,8 +778,6 @@ fn clear_orders_of_pair(
         })?;
     }
 
-    println!("final refunds: {:?}", refunds);
-    println!("finished clear_orders_of_pair");
     Ok(())
 }
 
@@ -860,8 +792,6 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
-    println!("update_trading_volumes");
-
     // Calculate the vo lume in USD for the filled order
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
         Ok(price) => Ok(price),
@@ -870,10 +800,7 @@ fn update_trading_volumes(
             Err(e)
         },
     }?;
-    println!("base_asset_price: {:?}", base_asset_price);
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
-
-    println!("new_volume: {:?}", new_volume);
 
     // Record trading volume for the user's address
     {
@@ -894,7 +821,6 @@ fn update_trading_volumes(
             },
         }
     }
-    println!("cat");
 
     // Record trading volume for the user's username, if the trader is a
     // single-signature account (skip for multisig accounts).
