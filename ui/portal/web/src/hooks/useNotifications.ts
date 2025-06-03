@@ -59,12 +59,13 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     (id: UID) => {
       setAllNotifications((notifications) => {
         const previousUserNotification = notifications[username] || [];
-        const notificationIndex = previousUserNotification.findIndex((n) => n.id === id);
+        const newNotifications = [...previousUserNotification];
+        const notificationIndex = newNotifications.findIndex((n) => n.id === id);
         if (notificationIndex === -1) return notifications;
-        previousUserNotification[notificationIndex].isHidden = true;
+        newNotifications[notificationIndex].isHidden = true;
         return {
           ...notifications,
-          [username]: previousUserNotification,
+          [username]: newNotifications,
         };
       });
     },
