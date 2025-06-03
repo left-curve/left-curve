@@ -93,6 +93,7 @@ impl BlockToIndex {
             ?compressed,
             "Compressed block file"
         );
+
         Ok(())
     }
 
