@@ -166,6 +166,7 @@ const Transactions: React.FC = () => {
 
   const { data, pagination, ...transactions } = useInfiniteGraphqlQuery<IndexedTransaction>({
     limit: 10,
+    sortBy: "BLOCK_HEIGHT_DESC",
     query: {
       enabled: !!account,
       queryKey: ["account_transactions", account?.address],
@@ -178,7 +179,7 @@ const Transactions: React.FC = () => {
 
   return (
     <TransactionsTable
-      transactions={data?.pages[pagination?.currentPage - 1].nodes || []}
+      transactions={data?.pages[pagination?.currentPage - 1]?.nodes || []}
       pagination={{ ...pagination, isLoading: transactions.isLoading }}
     />
   );

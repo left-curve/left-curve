@@ -8,6 +8,7 @@ import type { DefinedInitialDataInfiniteOptions, InfiniteData } from "@tanstack/
 
 type UseInfiniteGraphqlQueryParameters<T> = {
   limit?: number;
+  sortBy?: string;
   initialPage?: number;
   query: Omit<
     DefinedInitialDataInfiniteOptions<
@@ -24,7 +25,7 @@ type UseInfiniteGraphqlQueryParameters<T> = {
 export function useInfiniteGraphqlQuery<T = unknown>(
   parameters: UseInfiniteGraphqlQueryParameters<T>,
 ) {
-  const { limit = 10, initialPage = 1, query: queryOptions } = parameters;
+  const { limit = 10, initialPage = 1, sortBy, query: queryOptions } = parameters;
   const [currentPage, setCurrentPage] = useState(initialPage);
 
   const query = useInfiniteQuery<
@@ -34,7 +35,7 @@ export function useInfiniteGraphqlQuery<T = unknown>(
     unknown[],
     GraphqlPagination
   >({
-    ...withPagination<T>({ limit }),
+    ...withPagination<T>({ limit, sortBy }),
     ...queryOptions,
   });
 

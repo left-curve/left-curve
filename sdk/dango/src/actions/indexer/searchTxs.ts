@@ -18,8 +18,8 @@ export async function searchTxs<transport extends Transport>(
   parameters: SearchTxsParameters,
 ): SearchTxsReturnType {
   const document = `
-    query tx($hash: String, $senderAddress: String) {
-      transactions(hash: $hash, senderAddress: $senderAddress) {
+    query tx($hash: String, $senderAddress: String, $after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
+      transactions(hash: $hash, senderAddress: $senderAddress, after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
         pageInfo {
           hasNextPage
           hasPreviousPage

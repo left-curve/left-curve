@@ -48,6 +48,7 @@ export type GraphqlPagination = {
   last?: number;
   after?: string;
   before?: string;
+  sortBy?: string;
 };
 
 export type GraphqlQueryResult<T> = {
