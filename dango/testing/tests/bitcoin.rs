@@ -12,7 +12,7 @@ use {
     dango_types::{
         bitcoin::{
             BitcoinSignature, Config, ExecuteMsg, InboundConfirmed, InstantiateMsg,
-            MultisigSettings, QueryConfigRequest, QueryOutboundQueueRequest,
+            MultisigSettings, OutboundConfirmed, QueryConfigRequest, QueryOutboundQueueRequest,
             QueryOutboundTransactionRequest, QueryUtxosRequest,
         },
         constants::btc,
@@ -23,11 +23,11 @@ use {
     },
     grug::{
         Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, HexBinary, HexByteArray,
-        Inner, JsonDeExt, Message, NonEmpty, Order, QuerierExt, ResultExt, SearchEvent, Uint128,
-        btree_map, btree_set, coins,
+        Inner, JsonDeExt, Message, NonEmpty, Order, PrimaryKey, QuerierExt, ResultExt, SearchEvent,
+        Uint128, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
-    std::str::FromStr,
+    std::{str::FromStr, vec},
 };
 
 // Create and confirm a deposit to bitcoin bridge contract.
@@ -629,8 +629,11 @@ fn authorize_outbound() {
 
     let user1_address = accounts.user1.address.inner().clone();
 
-    let val_sk = SecretKey::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].0).unwrap();
-    let val_pk = HexByteArray::<33>::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap();
+    let val_sk1 = SecretKey::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].0).unwrap();
+    let val_pk1 = HexByteArray::<33>::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap();
+
+    let val_sk2 = SecretKey::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].0).unwrap();
+    let val_pk2 = HexByteArray::<33>::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].1).unwrap();
 
     let config = suite
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
@@ -638,86 +641,169 @@ fn authorize_outbound() {
 
     let redeem_script = config.multisig.script().unwrap();
 
-    // Deposit 100k sats do user1
-    let deposit_amount = Uint128::new(100_000);
-    deposit(
-        &mut suite,
-        contracts.bitcoin,
-        &mut accounts,
-        deposit_amount,
-        Some(user1_address),
-        0,
-    );
+    // Make 2 deposits and create a withdrawal.
+    let deposit_amount1 = Uint128::new(7_000);
+    let deposit_amount2 = Uint128::new(8_000);
+    {
+        deposit(
+            &mut suite,
+            contracts.bitcoin,
+            &mut accounts,
+            deposit_amount1,
+            Some(user1_address),
+            0,
+        );
 
-    // Create a withdrawal.
-    withdraw(
-        &mut suite,
-        &mut accounts.user1,
-        contracts.gateway,
-        Uint128::new(10_000),
-        "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9",
-    );
+        deposit(
+            &mut suite,
+            contracts.bitcoin,
+            &mut accounts,
+            deposit_amount2,
+            Some(user1_address),
+            1,
+        );
 
-    advance_ten_minutes(&mut suite);
+        // Create 2 withdrawal.
+        withdraw(
+            &mut suite,
+            &mut accounts.user1,
+            contracts.gateway,
+            Uint128::new(10_000),
+            "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9",
+        );
 
-    // Retrieve the withdrawal transaction.
+        advance_ten_minutes(&mut suite);
+    }
+
+    // Retrieve the transaction.
     let tx = suite
         .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 0 })
         .should_succeed();
 
     let btc_transaction = tx.to_btc_transaction(config.network).unwrap();
 
-    let signatures = sing_inputs(&btc_transaction, &val_sk, &redeem_script, vec![
-        deposit_amount.into_inner() as u64,
+    let signatures1 = sing_inputs(&btc_transaction, &val_sk1, &redeem_script, vec![
+        deposit_amount1.into_inner() as u64,
+        deposit_amount2.into_inner() as u64,
     ]);
 
-    // Ensure that only validator can call `authorize_outbound`.
+    let signatures2 = sing_inputs(&btc_transaction, &val_sk2, &redeem_script, vec![
+        deposit_amount1.into_inner() as u64,
+        deposit_amount2.into_inner() as u64,
+    ]);
+
+    // Ensure it fails with a invalid pubkey.
     {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: vec![],
-            pub_key: val_pk,
+            pub_key: HexByteArray::<33>::from_slice(&[0; 33]).unwrap(),
         };
 
         suite
             .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
-            .should_fail_with_error("you don't have the right, O you don't have the right");
+            .should_fail_with_error("is not a valid multisig public key");
     }
 
-    // Ensure the number of signatures matches the number of input.
+    // Ensure if fails with a wrong number of signatures.
     {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: vec![],
-            pub_key: val_pk,
+            pub_key: val_pk1,
         };
 
         suite
             .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
-            .should_fail_with_error("transaction `0` has 1 inputs, but 0 signatures were provided");
+            .should_fail_with_error("transaction `0` has 2 inputs, but 0 signatures were provided");
     }
 
-    // Ensure the signatures are valid.
+    // Ensure it fails with a wrong combination pk and signature.
     {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
-            signatures,
-            pub_key: val_pk,
+            signatures: signatures1.clone(),
+            pub_key: val_pk2, // Using val_pk2 instead of val_pk1
         };
-        // vec![HexBinary::from_str("304402206fa2db9a90d1d926d783ec849ce9bf80b6969e2a02c45fbc9a2365cf82256afb02202517f2323247b7765ddfa4da30cc4915da86b5841b5ad4b55598feb3ef8d8e0901").unwrap()]
+
+        suite
+            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("signature failed verification");
+    }
+
+    // Ensure it fails with 1 signature correct and 1 not.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: vec![signatures1[0].clone(), signatures2[1].clone()],
+            pub_key: val_pk1,
+        };
+
+        suite
+            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("signature failed verification");
+    }
+
+    // Ensure it works with a correct signature and pk.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: signatures1.clone(),
+            pub_key: val_pk1,
+        };
 
         suite
             .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
             .should_succeed();
     }
 
-    // TODO:
-    // - check the signer does not sign 2 times
-    // - check the signatures are valid
+    // Ensure it fails when trying to submit the same signature again.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: signatures1.clone(),
+            pub_key: val_pk1,
+        };
+
+        suite
+            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("you've already signed transaction `0`");
+    }
+
+    // Upload the second signatures and check for the event emitted.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: signatures2.clone(),
+            pub_key: val_pk2,
+        };
+
+        let event = suite
+            .execute(&mut accounts.val2, contracts.bitcoin, &msg, Coins::new())
+            .should_succeed()
+            .events
+            .search_event::<CheckedContractEvent>()
+            .with_predicate(|e| e.ty == "outbound_confirmed")
+            .take()
+            .one()
+            .event
+            .data
+            .deserialize_json::<OutboundConfirmed>()
+            .unwrap();
+
+        assert_eq!(event, OutboundConfirmed {
+            id: 0,
+            transaction: tx,
+            signatures: btree_map!(
+                val_pk1 => signatures1,
+                val_pk2 => signatures2,
+            ),
+        });
+    }
 }
 
 #[test]
-fn test_multisig() {
+fn multisig_address() {
     let pk1 = HexByteArray::<33>::from_str(
         "029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6",
     )
