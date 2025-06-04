@@ -1,6 +1,6 @@
 use {
+    crate::{Inner, InnerMut},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Inner, InnerMut},
     serde::{Deserialize, Serialize},
     serde_json::{Map, Number, Value as JsonValue},
     std::{

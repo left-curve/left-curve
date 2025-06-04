@@ -25,6 +25,7 @@ mod git_info;
 mod hash;
 mod hashers;
 mod imports;
+mod inner;
 mod jellyfish_merkle;
 mod json;
 mod length_bounded;
@@ -48,7 +49,7 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*,
     encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
-    imports::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*,
+    imports::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*,
     outcome::*, query::*, response::*, result::*, serializers::*, shared::*, signer::*, status::*,
     time::*, tx::*, unique_vec::*, utils::*,
 };

@@ -21,7 +21,9 @@ use {
     std::collections::HashMap,
 };
 
-#[derive(Serialize, Debug)]
+pub mod block;
+
+#[derive(Clone, Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
     pub name: &'a str,
     pub query: &'a str,
@@ -62,7 +64,7 @@ pub fn build_app_service(
     build_actix_app(app_ctx, graphql_schema)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedResponse<X> {
@@ -71,14 +73,14 @@ pub struct PaginatedResponse<X> {
     pub page_info: PageInfo,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 pub struct Edge<X> {
     pub node: X,
     pub cursor: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
@@ -86,6 +88,57 @@ pub struct PageInfo {
     pub end_cursor: String,
     pub has_next_page: bool,
     pub has_previous_page: bool,
+}
+
+pub async fn call_batch_graphql<R>(
+    app: App<
+        impl ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<impl MessageBody>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
+    >,
+    requests_body: Vec<GraphQLCustomRequest<'_>>,
+) -> anyhow::Result<Vec<GraphQLCustomResponse<R>>>
+where
+    R: DeserializeOwned,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let request = actix_web::test::TestRequest::post()
+        .uri("/graphql")
+        .set_json(&requests_body)
+        .to_request();
+
+    let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
+
+    // When I need to debug the response
+    // println!("text response: \n{:#?}", graphql_response);
+
+    let graphql_responses: Vec<GraphQLResponse> = serde_json::from_slice(&graphql_response)?;
+
+    // When I need to debug the response
+    // println!("GraphQLResponses: {:#?}", graphql_responses);
+
+    graphql_responses
+        .into_iter()
+        .enumerate()
+        .map(|(index, mut graphql_response)| {
+            if let Some(data) = graphql_response.data.remove(requests_body[index].name) {
+                Ok(GraphQLCustomResponse {
+                    data: serde_json::from_value(data)?,
+                    errors: graphql_response.errors,
+                })
+            } else {
+                Err(anyhow!(
+                    "can't find {} in response",
+                    requests_body[index].name
+                ))
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()
 }
 
 pub async fn call_graphql<R>(
@@ -103,31 +156,9 @@ pub async fn call_graphql<R>(
 where
     R: DeserializeOwned,
 {
-    let app = actix_web::test::init_service(app).await;
-
-    let request = actix_web::test::TestRequest::post()
-        .uri("/graphql")
-        .set_json(&request_body)
-        .to_request();
-
-    let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
-
-    // When I need to debug the response
-    // println!("text response: \n{:#?}", graphql_response);
-
-    let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
-
-    // When I need to debug the response
-    // println!("GraphQLResponse: {:#?}", graphql_response);
-
-    if let Some(data) = graphql_response.data.remove(request_body.name) {
-        Ok(GraphQLCustomResponse {
-            data: serde_json::from_value(data)?,
-            errors: graphql_response.errors,
-        })
-    } else {
-        Err(anyhow!("can't find {} in response", request_body.name))
-    }
+    call_batch_graphql::<R>(app, vec![request_body])
+        .await
+        .and_then(|mut responses| responses.pop().ok_or_else(|| anyhow!("no response found")))
 }
 
 pub async fn call_api<R>(
@@ -154,6 +185,9 @@ where
         .map_err(|err| anyhow!("failed to call service: {err:?}"))?;
 
     let text_response = read_body(res).await;
+
+    // When I need to debug the response
+    // println!("text response: \n{:#?}", str::from_utf8(&text_response)?);
 
     Ok(serde_json::from_slice(&text_response)?)
 }

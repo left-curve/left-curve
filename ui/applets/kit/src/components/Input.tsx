@@ -1,6 +1,7 @@
 import * as React from "react";
 import { type VariantProps, tv } from "tailwind-variants";
 import { twMerge } from "#utils/twMerge.js";
+import { Skeleton } from "./Skeleton";
 
 export interface InputProps
   extends Omit<
@@ -15,6 +16,7 @@ export interface InputProps
   insideBottomComponent?: React.ReactNode;
   errorMessage?: string;
   hintMessage?: string;
+  isLoading?: boolean;
   classNames?: {
     base?: string;
     inputParent?: string;
@@ -34,6 +36,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       bottomComponent,
       type,
       isInvalid: invalid,
+      isLoading,
       isDisabled,
       fullWidth,
       startText,
@@ -71,7 +74,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <div className={inputParent({ className: classNames?.inputParent })}>
             {startContent ? startContent : null}
             <div className="relative flex-1 flex items-center">
-              {!props.value && placeholder ? (
+              {!props.value && !isLoading && placeholder ? (
                 <div
                   className={twMerge("w-full absolute z-0 text-gray-500 text-left ", {
                     "text-right": startText === "right",
@@ -80,17 +83,21 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                   {placeholder}
                 </div>
               ) : null}
-              <input
-                type={type}
-                onFocus={() => setIsFocus(true)}
-                onBlur={() => setIsFocus(false)}
-                disabled={isDisabled}
-                className={input({ startText, className: classNames?.input })}
-                ref={ref}
-                name={name}
-                size={1}
-                {...props}
-              />
+              {isLoading ? (
+                <Skeleton className="h-8 w-full" />
+              ) : (
+                <input
+                  type={type}
+                  onFocus={() => setIsFocus(true)}
+                  onBlur={() => setIsFocus(false)}
+                  disabled={isDisabled}
+                  className={input({ startText, className: classNames?.input })}
+                  ref={ref}
+                  name={name}
+                  size={1}
+                  {...props}
+                />
+              )}
             </div>
             {endContent ? endContent : null}
           </div>
@@ -130,7 +137,7 @@ const inputVariants = tv(
     slots: {
       base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
       inputWrapper: [
-        "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-2 z-10",
+        "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-account-card  gap-2 z-10",
         "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],

@@ -1,21 +1,39 @@
+# Git
+.gitattributes
+
 # Editors
 .idea/
 .vscode/
+
+# macOS
+**/.DS_Store
+
+# Envs
+**/.env
+**/*.vars
+.envrc
+
+# Workers
+**/.wrangler
 
 # Rust
 artifacts/
 target/
 
-# Data used in testing
-**/testdata/
-**/proptest-regressions/
-**/*.proptest-regressions
+# Python
+**/.ipynb_checkpoints/
+**/.venv/
 
-# Upload the testdata for the pyth
-!pyth/client/testdata/
-
-# macOS
-**/.DS_Store
+# LaTeX
+**/*.aux
+**/*.bbl
+**/*.bcf
+**/*.blg
+**/*.log
+**/*.out
+**/*.pdf
+**/*.run.xml
+**/*.synctex.gz
 
 # Node.js
 **/node_modules
@@ -30,37 +48,21 @@ sdk/docs
 # UI
 **/.next
 **/.vercel
-next-env.d.ts
-*storybook.log
 **/storybook-static
 **/.expo
 **/.paraglide
+*storybook.log
 app.pages.ts
+next-env.d.ts
 ui/config/project.inlang/*
 !ui/config/project.inlang/settings.json
 !ui/config/project.inlang/project_id
 
-# Envs
-**/.env
-**/*.vars
-.envrc
-
-# Workers
-**/.wrangler
-
-# Python
-**/.ipynb_checkpoints/
-
-# LaTeX
-**/*.log
-book/papers/**/*.aux
-book/papers/**/*.bbl
-book/papers/**/*.bcf
-book/papers/**/*.blg
-book/papers/**/*.out
-book/papers/**/*.pdf
-book/papers/**/*.run.xml
-book/papers/**/*.synctex.gz
+# Data used in testing
+**/testdata/
+**/proptest-regressions/
+**/*.proptest-regressions
+!pyth/client/testdata/
 
 # Network data
 networks/**/configs/cometbft/config/addrbook.json

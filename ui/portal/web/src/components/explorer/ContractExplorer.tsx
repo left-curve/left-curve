@@ -1,13 +1,11 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
 import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { camelToTitleCase } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
-import { Badge, TextCopy, TruncateText } from "@left-curve/applets-kit";
+import { Badge, TextCopy } from "@left-curve/applets-kit";
 import { ContractCard } from "../foundation/ContractCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
@@ -18,8 +16,8 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 
 const ContractExplorerContext = createContext<
-  | (UseQueryResult<(ContractInfo & { name: string; balances: Coins }) | null, Error> & {
-      address: string;
+  | (UseQueryResult<(ContractInfo & { balances: Coins }) | null, Error> & {
+      address: Address;
     })
   | null
 >(null);
@@ -55,16 +53,8 @@ const Root: React.FC<PropsWithChildren<ContractExplorerProps>> = ({ address, chi
 
       if (isAccount) return null;
 
-      const appContract = Object.entries(appConfig.addresses).find(
-        ([_, cAddress]) => cAddress === address,
-      );
-      const name = appContract
-        ? `Dango ${camelToTitleCase(appContract[0])}`
-        : (contractInfo.label ?? "Contract");
-
       return {
         ...contractInfo,
-        name,
         address,
         balances,
       };
@@ -81,13 +71,12 @@ const Root: React.FC<PropsWithChildren<ContractExplorerProps>> = ({ address, chi
 const Details: React.FC = () => {
   const { isLoading, data: contract, address } = useContractExplorer();
   const { calculateBalance } = usePrices();
-  const { isMd } = useMediaQuery();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
   if (!contract || isLoading) return null;
 
-  const { name, codeHash, admin, balances } = contract;
+  const { codeHash, admin, balances } = contract;
   const totalCoins = Object.values(balances).length;
   const totalBalance = calculateBalance(balances, {
     format: true,
@@ -95,30 +84,28 @@ const Details: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <ContractCard name={name} address={address} balance={totalBalance} />
-      <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow relative overflow-hidden w-full">
-        <h4 className="h4-heavy">{m["explorer.contracts.details.contractDetails"]()}</h4>
+    <div className="flex flex-col gap-4 lg:flex-row">
+      <ContractCard address={address} balance={totalBalance} />
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
+        <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
-          <div className="flex gap-1 items-center">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
-            {isMd ? (
-              <p className="diatype-m-bold">{codeHash}</p>
-            ) : (
-              <TruncateText text={codeHash} className="diatype-m-bold" />
-            )}
-            <TextCopy className="w-4 h-4 text-gray-500" copyText={""} />
+            <p className="diatype-sm-medium break-all whitespace-normal">
+              {codeHash}
+              <TextCopy className="w-4 h-4 text-gray-500 ml-1" copyText={codeHash} />
+            </p>
           </div>
-          <div className="flex gap-1 items-center">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
-            <p className="diatype-m-bold">{admin ? admin : "None"}</p>
+            <p className="diatype-sm-medium">{admin ? admin : "None"}</p>
           </div>
-          <div className="flex gap-1 items-center">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />

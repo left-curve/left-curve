@@ -1,7 +1,4 @@
-use {
-    crate::{AddrEncoder, EncodedBytes, Hash256, HashExt},
-    grug_math::Inner,
-};
+use crate::{AddrEncoder, EncodedBytes, Hash256, HashExt, Inner};
 
 /// A shorthand for constructing a constant address from a hex string (without
 /// the `0x`-prefix).

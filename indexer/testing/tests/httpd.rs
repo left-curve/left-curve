@@ -1,77 +1,19 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    grug_app::NaiveProposalPreparer,
-    grug_db_memory::MemDb,
-    grug_testing::{MockClient, TestAccounts, TestBuilder, setup_tracing_subscriber},
-    grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
-    grug_vm_rust::RustVm,
-    indexer_httpd::{
-        context::Context,
-        graphql::types::{block::Block, event::Event, message::Message, transaction::Transaction},
-        traits::QueryApp,
+    grug_types::{
+        Block, BlockOutcome, BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt,
+        Message, Query, QueryAppConfigRequest, ResultExt,
     },
-    indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
+    indexer_sql::entity,
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, build_app_service, call_api, call_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginatedResponse, block::create_block, build_app_service, call_api,
+        call_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     serde_json::json,
-    std::{str::FromStr, sync::Arc},
-    tokio::sync::{Mutex, mpsc},
+    std::str::FromStr,
+    tokio::sync::mpsc,
 };
-
-async fn create_block() -> anyhow::Result<(
-    Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
-    TestAccounts,
-)> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
-    let denom = Denom::from_str("ugrug")?;
-
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
-        .with_memory_database()
-        .with_keep_blocks(true)
-        .build()?;
-
-    let context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
-
-    let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
-        .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(denom.clone(), 30_000)?)
-        .set_owner("owner")
-        .build();
-
-    let chain_id = suite.chain_id().await?;
-
-    let suite = Arc::new(Mutex::new(suite));
-
-    let mock_client =
-        MockClient::new_shared(suite.clone(), grug_testing::BlockCreation::OnBroadcast);
-
-    let sender = accounts["sender"].address;
-
-    mock_client
-        .send_message(
-            &mut accounts["sender"],
-            grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?,
-            grug_types::GasOption::Predefined { gas_limit: 2000 },
-            &chain_id,
-        )
-        .await?;
-
-    suite.lock().await.app.indexer.wait_for_finish();
-
-    assert_that!(suite.lock().await.app.indexer.indexing).is_true();
-
-    let client = Arc::new(mock_client);
-
-    let httpd_context = Context::new(context, suite, client.clone(), indexer_path);
-
-    Ok((httpd_context, client, accounts))
-}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn graphql_returns_block() -> anyhow::Result<()> {
@@ -84,10 +26,12 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
     let graphql_query = r#"
       query Block($height: Int) {
         block(height: $height) {
+          id
           blockHeight
           appHash
           hash
           createdAt
+          transactionsCount
         }
       }
     "#;
@@ -112,7 +56,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<Block>(app, request_body).await?;
+                let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
@@ -134,37 +78,29 @@ async fn api_returns_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context.clone());
 
-                let block: grug_types::Block = call_api(app, "/api/block/info/1").await?;
-
+                let block = call_api::<Block>(app, "/api/block/info/1").await?;
                 assert_that!(block.info.height).is_equal_to(1);
 
                 let app = build_app_service(httpd_context.clone());
 
-                let block: grug_types::Block = call_api(app, "/api/block/info").await?;
-
+                let block = call_api::<Block>(app, "/api/block/info").await?;
                 assert_that!(block.info.height).is_equal_to(1);
 
                 let app = build_app_service(httpd_context.clone());
 
-                let block_outcome: grug_types::BlockOutcome =
-                    call_api(app, "/api/block/result/1").await?;
-
+                let block_outcome = call_api::<BlockOutcome>(app, "/api/block/result/1").await?;
                 assert_that!(block_outcome.cron_outcomes).is_empty();
                 assert_that!(block_outcome.tx_outcomes).has_length(1);
 
                 let app = build_app_service(httpd_context.clone());
 
-                let block_outcome: grug_types::BlockOutcome =
-                    call_api(app, "/api/block/result").await?;
-
+                let block_outcome = call_api::<BlockOutcome>(app, "/api/block/result").await?;
                 assert_that!(block_outcome.cron_outcomes).is_empty();
                 assert_that!(block_outcome.tx_outcomes).has_length(1);
 
                 let app = build_app_service(httpd_context);
 
-                let block_outcome: Result<grug_types::BlockOutcome, _> =
-                    call_api(app, "/api/block/result/2").await;
-
+                let block_outcome = call_api::<BlockOutcome>(app, "/api/block/result/2").await;
                 assert_that!(block_outcome).is_err();
 
                 Ok::<(), anyhow::Error>(())
@@ -181,10 +117,12 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
     let graphql_query = r#"
       query Block {
         block {
+          id
           blockHeight
           appHash
           hash
           createdAt
+          transactionsCount
         }
       }
     "#;
@@ -202,8 +140,7 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<Block>(app, request_body).await?;
-
+                let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
                 assert_that!(response.data.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
@@ -269,12 +206,14 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
       query Blocks {
         blocks {
           nodes {
+            id
             blockHeight
             appHash
             hash
             createdAt
+            transactionsCount
           }
-          edges { node { blockHeight appHash hash createdAt } cursor }
+          edges { node { id blockHeight appHash hash createdAt transactionsCount } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -293,7 +232,9 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<PaginatedResponse<Block>>(app, request_body).await?;
+                let response =
+                    call_graphql::<PaginatedResponse<entity::blocks::Model>>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).has_length(1);
                 assert_that!(response.data.edges[0].node.block_height).is_equal_to(1);
@@ -313,12 +254,21 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
       query Transactions {
         transactions {
           nodes {
+            id
             blockHeight
             sender
             hash
             hasSucceeded
+            createdAt
+            transactionType
+            transactionIdx
+            data
+            credential
+            gasWanted
+            gasUsed
+            errorMessage
           }
-          edges { node { blockHeight sender hash hasSucceeded } cursor }
+          edges { node { id createdAt blockHeight sender hash hasSucceeded transactionType transactionIdx data credential gasWanted gasUsed errorMessage } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -337,8 +287,11 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<Transaction>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 assert_that!(response.data.edges).has_length(1);
 
@@ -411,12 +364,30 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
       query Messages {
         messages {
           nodes {
+            id
+            transactionId
+            orderIdx
+            createdAt
+            data
             blockHeight
             methodName
             contractAddr
             senderAddr
           }
-          edges { node { blockHeight methodName contractAddr senderAddr } cursor }
+          edges {
+            node {
+              id
+              transactionId
+              orderIdx
+              createdAt
+              data
+              blockHeight
+              methodName
+              contractAddr
+              senderAddr
+            }
+            cursor
+          }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -436,59 +407,13 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
                 let app = build_app_service(httpd_context);
 
                 let response =
-                    call_graphql::<PaginatedResponse<Message>>(app, request_body).await?;
+                    call_graphql::<PaginatedResponse<entity::messages::Model>>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).has_length(1);
 
                 assert_that!(response.data.edges[0].node.sender_addr)
                     .is_equal_to(accounts["sender"].address.to_string());
-
-                Ok::<(), anyhow::Error>(())
-            })
-            .await
-        })
-        .await?
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_returns_events() -> anyhow::Result<()> {
-    let (httpd_context, _client, ..) = create_block().await?;
-
-    let graphql_query = r#"
-      query Events {
-        events {
-          nodes {
-            blockHeight
-            createdAt
-            eventIdx
-            type
-            method
-            eventStatus
-            commitmentStatus
-            data
-          }
-          edges { node { blockHeight createdAt eventIdx type method eventStatus commitmentStatus data } cursor }
-          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "events",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
-    let local_set = tokio::task::LocalSet::new();
-
-    local_set
-        .run_until(async {
-            tokio::task::spawn_local(async move {
-                let app = build_app_service(httpd_context);
-
-                let response = call_graphql::<PaginatedResponse<Event>>(app, request_body).await?;
-
-                assert_that!(response.data.edges).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -504,10 +429,12 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
     let graphql_query = r#"
       subscription Block {
         block {
+          id
           blockHeight
           createdAt
           hash
           appHash
+          transactionsCount
         }
       }
     "#;
@@ -529,11 +456,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )
                 .await
@@ -557,7 +481,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 // 1st response is always the existing last block
                 let (framed, response) =
-                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
@@ -565,7 +490,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 // 2st response
                 let (framed, response) =
-                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(2);
 
@@ -573,7 +499,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 // 3rd response
                 let (_, response) =
-                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                        .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(3);
 
@@ -591,6 +518,9 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
     let graphql_query = r#"
       subscription Transactions {
         transactions {
+          id
+          data
+          credential
           blockHeight
           createdAt
           transactionType
@@ -622,11 +552,8 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )
                 .await
@@ -649,8 +576,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transaction>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transactions::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data).has_length(1);
@@ -658,8 +587,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Transaction>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transactions::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data).has_length(1);
@@ -667,8 +598,10 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Transaction>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::transactions::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data).has_length(1);
@@ -687,6 +620,9 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
     let graphql_query = r#"
       subscription Messages {
         messages {
+          id
+          transactionId
+          data
           blockHeight
           createdAt
           orderIdx
@@ -717,11 +653,8 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )
                 .await
@@ -744,8 +677,10 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -757,8 +692,10 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -770,8 +707,10 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::messages::Model>,
+                >(framed, name)
+                .await?;
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data.first().unwrap().method_name.as_str())
@@ -779,101 +718,6 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
                 assert_that!(response.data.first().unwrap().sender_addr.as_str())
                     .is_equal_to(owner_addr.as_str());
                 assert_that!(response.data).has_length(1);
-
-                Ok::<(), anyhow::Error>(())
-            })
-            .await
-        })
-        .await?
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
-    let (httpd_context, client, mut accounts) = create_block().await?;
-
-    let graphql_query = r#"
-      subscription Events {
-        events {
-          blockHeight
-          createdAt
-          eventIdx
-          type
-          method
-          eventStatus
-          commitmentStatus
-          data
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "events",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
-    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
-
-    // Can't call this from LocalSet so using channels instead.
-    tokio::spawn(async move {
-        while rx.recv().await.is_some() {
-            let to = accounts["owner"].address;
-
-            let chain_id = client.chain_id().await;
-
-            client
-                .send_message(
-                    &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
-                    &chain_id,
-                )
-                .await
-                .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
-        }
-
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let local_set = tokio::task::LocalSet::new();
-
-    local_set
-        .run_until(async {
-            tokio::task::spawn_local(async move {
-                let name = request_body.name;
-                let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
-
-                // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Event>>(framed, name).await?;
-
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(1);
-                assert_that!(response.data).is_not_empty();
-
-                crate_block_tx.send(2).await?;
-
-                // 2st response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
-
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(2);
-                assert_that!(response.data).is_not_empty();
-
-                crate_block_tx.send(3).await?;
-
-                // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<Message>>(framed, name).await?;
-
-                assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
-                assert_that!(response.data).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -892,8 +736,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
       }
     "#;
 
-    let body_request =
-        grug_types::Query::AppConfig(grug_types::QueryAppConfigRequest {}).to_json_string()?;
+    let body_request = Query::AppConfig(QueryAppConfigRequest {}).to_json_value()?;
 
     let variables = json!({
         "request": body_request,
@@ -916,9 +759,9 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<String>(app, request_body).await?;
+                let response = call_graphql::<Json>(app, request_body).await?;
 
-                assert_that!(response.data.as_str()).is_equal_to("{\"app_config\":null}");
+                assert_that!(response.data.into_inner()).is_equal_to(json!({"app_config": null}));
 
                 Ok::<(), anyhow::Error>(())
             })

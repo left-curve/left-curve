@@ -1,8 +1,7 @@
 use {
     crate::TestSuite,
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
-    grug_math::Inner,
-    grug_types::{Addressable, Denom},
+    grug_types::{Addressable, Denom, Inner},
     std::{
         cmp::Ordering,
         collections::{BTreeMap, BTreeSet},

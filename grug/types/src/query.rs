@@ -1,14 +1,22 @@
 use {
     crate::{
         Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
-        Hash256, Json, JsonSerExt, StdResult, extend_one_byte,
+        Hash256, Inner, Json, JsonSerExt, StdResult, extend_one_byte,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Inner,
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
     std::collections::BTreeMap,
+};
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{
+        InputValueError, InputValueResult, OutputType, Positioned, Scalar, ScalarType,
+        ServerResult, Value, context::ContextSelectionSet, parser::types::Field,
+        registry::Registry,
+    },
+    std::borrow::Cow,
 };
 
 /// The default number of items to be returned in enumerative queries, if user
@@ -66,6 +74,29 @@ pub enum Query {
     WasmSmart(QueryWasmSmartRequest),
     /// Perform multiple queries at once.
     Multi(Vec<Query>),
+}
+
+// NOTE: implementing `InputType` doesn't work for complex enums.
+#[cfg(feature = "async-graphql")]
+#[Scalar(name = "GrugQueryInput")]
+impl ScalarType for Query {
+    fn parse(value: Value) -> InputValueResult<Self> {
+        value
+            .into_json()
+            .and_then(serde_json::from_value)
+            .map_err(|err| {
+                InputValueError::custom(format!(
+                    "failed to parse `Query` from GraphQL value: {err}"
+                ))
+            })
+    }
+
+    fn to_value(&self) -> Value {
+        serde_json::to_value(self)
+            .and_then(serde_json::from_value)
+            .map(Value::Object)
+            .unwrap_or(Value::Null)
+    }
 }
 
 impl Query {
@@ -304,6 +335,27 @@ pub enum QueryResponse {
     WasmScan(BTreeMap<Binary, Binary>),
     WasmSmart(Json),
     Multi(Vec<GenericResult<QueryResponse>>),
+}
+
+#[cfg(feature = "async-graphql")]
+impl OutputType for QueryResponse {
+    fn type_name() -> Cow<'static, str> {
+        "QueryResponse".into()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<serde_json::Value> as OutputType>::create_type_info(registry)
+    }
+
+    async fn resolve(
+        &self,
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.clone())
+            .resolve(ctx, field)
+            .await
+    }
 }
 
 macro_rules! generate_downcast {

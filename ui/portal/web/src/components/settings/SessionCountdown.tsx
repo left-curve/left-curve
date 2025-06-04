@@ -1,8 +1,11 @@
-import type React from "react";
-import { useSessionKey } from "@left-curve/store";
-import { m } from "~/paraglide/messages";
 import { useCountdown } from "@left-curve/applets-kit";
+import { useSessionKey } from "@left-curve/store";
+
 import { AnimatePresence, motion } from "framer-motion";
+
+import { m } from "~/paraglide/messages";
+
+import type React from "react";
 
 const hoursLabel = m["settings.session.time.hours"]();
 const minutesLabel = m["settings.session.time.minutes"]();
@@ -17,7 +20,7 @@ export const SessionCountdown: React.FC = () => {
   });
 
   return (
-    <div className="flex gap-1 text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] items-center justify-center">
+    <div className="flex gap-1 text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] items-center justify-center">
       {[
         { value: hours, label: hoursLabel },
         { value: minutes, label: minutesLabel },

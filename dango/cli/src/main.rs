@@ -1,28 +1,29 @@
 mod config;
 mod db;
 mod home_directory;
+mod indexer;
 mod keys;
 mod prompt;
 mod query;
 mod start;
 #[cfg(feature = "testing")]
 mod test;
+mod tracing_filter;
 mod tx;
 
 #[cfg(feature = "testing")]
 use crate::test::TestCmd;
 use {
     crate::{
-        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
-        tx::TxCmd,
+        db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
+        query::QueryCmd, start::StartCmd, tracing_filter::SuppressingLevelFilter, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
     config_parser::parse_config,
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
-    tracing::metadata::LevelFilter,
-    tracing_subscriber::{prelude::*, registry},
+    tracing_subscriber::prelude::*,
 };
 
 #[derive(Parser)]
@@ -41,6 +42,9 @@ enum Command {
     /// Manage the database
     #[command(subcommand, next_display_order = None)]
     Db(DbCmd),
+
+    /// Indexer related commands
+    Indexer(IndexerCmd),
 
     /// Manage keys
     #[command(subcommand, next_display_order = None)]
@@ -74,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
     let cfg: Config = parse_config(app_dir.config_file())?;
 
     // Set up tracing, depending on whether Sentry is enabled or not.
-    let max_level: LevelFilter = cfg.log_level.parse()?;
+    let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
             environment: Some(cfg.sentry.environment.into()),
@@ -88,18 +92,21 @@ async fn main() -> anyhow::Result<()> {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
         });
 
-        registry()
-            .with(tracing_subscriber::fmt::layer().with_filter(max_level))
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::fmt::layer().with_filter(filter))
             .with(sentry_layer())
             .init();
 
         tracing::info!("Sentry initialized");
     } else {
-        tracing_subscriber::fmt().with_max_level(max_level).init();
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::fmt::layer().with_filter(filter))
+            .init();
     }
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
+        Command::Indexer(cmd) => cmd.run(app_dir).await,
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,

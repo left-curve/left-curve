@@ -12,7 +12,7 @@ use {
 };
 
 /// Cancel all orders that belong to the given user.
-pub fn cancel_all_orders_from_user(
+pub(super) fn cancel_all_orders_from_user(
     storage: &mut dyn Storage,
     user: Addr,
     events: &mut EventBuilder,
@@ -61,7 +61,7 @@ pub fn cancel_all_orders_from_user(
 /// Cancel a single order by order ID, from the given user.
 ///
 /// Error if the order doesn't belong to the user, or if the order doesn't exist.
-pub fn cancel_order_from_user(
+pub(super) fn cancel_order_from_user(
     storage: &mut dyn Storage,
     user: Addr,
     order_id: OrderId,
@@ -116,7 +116,7 @@ pub fn cancel_order_from_user(
     bail!("order not found with ID `{order_id}`");
 }
 
-pub fn cancel_limit_order(
+fn cancel_limit_order(
     order_key: LimitOrderKey,
     order: LimitOrder,
     events: &mut EventBuilder,
@@ -147,7 +147,7 @@ pub fn cancel_limit_order(
     Ok(())
 }
 
-pub fn cancel_market_order(
+fn cancel_market_order(
     order_key: MarketOrderKey,
     order: MarketOrder,
     _events: &mut EventBuilder,

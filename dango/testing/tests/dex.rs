@@ -2543,7 +2543,7 @@ fn curve_on_orderbook(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
+                    creates_market: Vec::new(),
                     creates_limit: orders,
                     cancels: None,
                 },

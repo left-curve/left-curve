@@ -5,6 +5,14 @@ import type { Config } from "@left-curve/store/types";
 const chain = local;
 
 export const coins = {
+  dango: {
+    type: "native",
+    name: "Dango",
+    logoURI: "/DGX.svg",
+    symbol: "DGX",
+    denom: "dango",
+    decimals: 6,
+  },
   "bridge/btc": {
     type: "native",
     name: "Bitcoin",

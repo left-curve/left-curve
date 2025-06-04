@@ -76,7 +76,7 @@ pub fn create_limit_order(
     Ok(())
 }
 
-pub fn create_market_order(
+pub(super) fn create_market_order(
     storage: &mut dyn Storage,
     user: Addr,
     order: CreateMarketOrderRequest,

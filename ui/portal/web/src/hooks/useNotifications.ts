@@ -1,38 +1,30 @@
-import { createEventBus, useConfig, useStorage } from "@left-curve/store";
-import { format, isToday } from "date-fns";
-import { type Client as GraphqlSubscriptionClient, createClient } from "graphql-ws";
+import { useAccount, useConfig, useStorage } from "@left-curve/store";
 import { useCallback, useMemo } from "react";
 
-import type { Account } from "@left-curve/dango/types";
+import { uid } from "@left-curve/dango/utils";
+import { format, isToday } from "date-fns";
+
+import type { Address, UID, Username } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 
-export type NotificationsMap = {
-  submit_tx:
-    | { isSubmitting: true; txResult?: never }
-    | { isSubmitting: false; txResult: { hasSucceeded: boolean; message: string } };
+export type Notifications = {
   transfer: {
-    amount: number;
+    createdAt: string;
+    amount: string;
     coin: AnyCoin;
-    fromAddress: string;
-    toAddress: string;
+    fromAddress: Address;
+    toAddress: Address;
     type: "received" | "sent";
   };
 };
 
-export type Notifications<key extends keyof NotificationsMap = keyof NotificationsMap> = {
-  createdAt: number;
+export type Notification<key extends keyof Notifications = keyof Notifications> = {
+  id: UID;
   type: string;
-  data: NotificationsMap[key];
-};
-
-export type Subscription = {
-  transfers: {
-    amount: number;
-    denom: string;
-    fromAddress: string;
-    toAddress: string;
-    blockHeight: number;
-  };
+  data: Notifications[key];
+  blockHeight: number;
+  isHidden?: boolean;
+  createdAt: string;
 };
 
 type UseNotificationsParameters = {
@@ -40,26 +32,57 @@ type UseNotificationsParameters = {
   page?: number;
 };
 
-export const notifier = createEventBus<NotificationsMap>();
-
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
 
-  const { coins, chain } = useConfig();
+  const { username = "", accounts, account } = useAccount();
+  const { coins, subscriptions } = useConfig();
 
-  const [__notifications__, setNotifications] = useStorage<
-    { type: string; data: unknown; createdAt: number }[]
-  >("app.notifications", { initialValue: [], version: 0.1 });
+  const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notification[]>>(
+    "app.notifications",
+    {
+      enabled: Boolean(username),
+      initialValue: {},
+      version: 0.2,
+      migrations: {
+        0.1: (notifications: Notification[]) => ({ [username]: notifications }),
+      },
+    },
+  );
 
-  const totalNotifications = __notifications__.length;
+  const userNotification = useMemo(
+    () => (allNotifications[username] || []).filter((n) => !n.isHidden),
+    [allNotifications, username],
+  );
+
+  const deleteNotification = useCallback(
+    (id: UID) => {
+      setAllNotifications((notifications) => {
+        const previousUserNotification = notifications[username] || [];
+        const notificationIndex = previousUserNotification.findIndex((n) => n.id === id);
+        if (notificationIndex === -1) return notifications;
+        previousUserNotification[notificationIndex] = {
+          ...previousUserNotification[notificationIndex],
+          isHidden: true,
+        };
+        return {
+          ...notifications,
+          [username]: previousUserNotification,
+        };
+      });
+    },
+    [username],
+  );
+
+  const totalNotifications = userNotification.length;
   const hasNotifications = totalNotifications > 0;
 
-  const notifications: Record<string, Notifications[]> = useMemo(() => {
+  const notifications: Record<string, Notification[]> = useMemo(() => {
     const current = (page - 1) * limit;
-    return [...__notifications__]
+    return [...userNotification]
       .reverse()
       .slice(current, current + limit)
-      .sort((a, b) => b.createdAt - a.createdAt)
+      .sort((a, b) => +b.createdAt - +a.createdAt)
       .reduce((acc, notification) => {
         const dateKey = isToday(notification.createdAt)
           ? "Today"
@@ -71,67 +94,51 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         acc[dateKey].push(notification);
         return acc;
       }, Object.create({}));
-  }, [__notifications__, limit, page]);
+  }, [userNotification, limit, page]);
 
-  const subscribe = useCallback((account: Account) => {
-    let client: GraphqlSubscriptionClient | undefined;
-    (async () => {
-      client = createClient({ url: chain.urls.indexer });
-      const subscription = client.iterate({
-        query: `subscription($address: String) {
-              sentTransfers: transfers(fromAddress: $address) {
-                fromAddress
-                toAddress
-                blockHeight
-                amount
-                denom
-              }
-              receivedTransfers: transfers(toAddress: $address) {
-                fromAddress
-                toAddress
-                blockHeight
-                amount
-                denom
-              }
-            }`,
-        variables: { address: account?.address },
-      });
-      for await (const { data } of subscription) {
-        if (!data) continue;
-        if ("receivedTransfers" in data || "sentTransfers" in data) {
-          const isSent = "sentTransfers" in data;
+  const startNotifications = useCallback(() => {
+    if (!account) return;
 
-          const [transfer] = data[
-            isSent ? "sentTransfers" : "receivedTransfers"
-          ] as Subscription["transfers"][];
-          if (!transfer) continue;
-          const coin = coins[transfer.denom];
-          const notification = {
-            ...transfer,
-            type: isSent ? "sent" : "received",
-            coin,
-          } as NotificationsMap["transfer"];
+    const _lastKnownBlockHeight = userNotification.reduce(
+      (max, notification) => Math.max(max, notification.blockHeight),
+      0,
+    );
 
-          notifier.publish("transfer", notification);
-          setNotifications((prev) => [
+    const unsubscribe = subscriptions.subscribe("transfer", {
+      params: { address: account.address },
+      listener: (transfer) => {
+        const { fromAddress, toAddress, amount, createdAt, blockHeight } = transfer;
+        const coin = coins[transfer.denom];
+        const isSent = accounts?.some((a) => a.address === fromAddress);
+
+        const notification = {
+          amount,
+          createdAt,
+          fromAddress,
+          toAddress,
+          type: isSent ? "sent" : "received",
+          coin,
+        } as const;
+
+        setAllNotifications((prev) => {
+          const previousUserNotification = prev[username] || [];
+          return {
             ...prev,
-            {
-              type: "transfer",
-              data: notification,
-              createdAt: Date.now(),
-            },
-          ]);
-        }
-      }
-    })();
-    return () => {
-      if (client) client.dispose();
-    };
-  }, []);
+            [username]: [
+              ...previousUserNotification,
+              { id: uid(), type: "transfer", data: notification, blockHeight, createdAt },
+            ],
+          };
+        });
+      },
+    });
+
+    return unsubscribe;
+  }, [username, accounts, account]);
 
   return {
-    notifier,
-    subscribe,
+    startNotifications,
+    deleteNotification,
     notifications,
     hasNotifications,
     totalNotifications,

@@ -1,6 +1,8 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
-        _do_transfer, AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        _do_transfer, AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
     grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, Storage, btree_map},
@@ -14,6 +16,7 @@ pub fn do_execute<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: MsgExecute,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtExecute>
 where
     VM: Vm + Clone + 'static,
@@ -26,15 +29,21 @@ where
         block,
         msg_depth,
         sender,
-        msg.clone(),
+        msg,
+        trace_opt,
     );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            tracing::info!(contract = evt.contract.to_string(), "Executed contract");
+            dyn_event!(
+                trace_opt.ok_level,
+                contract = evt.contract.to_string(),
+                "Executed contract"
+            );
         },
         "Failed to execute contract",
+        trace_opt.error_level,
     );
 
     evt
@@ -48,6 +57,7 @@ fn _do_execute<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: MsgExecute,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtExecute>
 where
     VM: Vm + Clone + 'static,
@@ -76,6 +86,7 @@ where
                 sender,
                 btree_map! { msg.contract => msg.funds.clone() },
                 false,
+                trace_opt,
             ),
             evt => transfer_event
         }
@@ -103,6 +114,7 @@ where
             code_hash,
             &ctx,
             &msg.msg,
+            trace_opt,
         ),
         evt => guest_event
     }

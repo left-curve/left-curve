@@ -1,6 +1,7 @@
 use {
+    crate::Inner,
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Dec, Inner, Int, IsZero, NumberConst, Udec128_9, Uint128},
+    grug_math::{Dec, Int, IsZero, NumberConst, Udec128_9, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Mul, Sub},
 };
@@ -115,13 +116,20 @@ impl Duration {
     }
 }
 
-#[cfg(feature = "rfc3339")]
+#[cfg(feature = "chrono")]
 impl Timestamp {
-    pub fn to_rfc3339_string(&self) -> String {
+    pub fn to_utc_date_time(&self) -> chrono::DateTime<chrono::Utc> {
         // This panics if the timestamp (as nanoseconds) overflows `i64` range.
         // But that'd be 500 years or so from now...
         chrono::DateTime::from_timestamp_nanos(self.into_nanos() as i64)
-            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
+    }
+
+    pub fn to_naive_date_time(&self) -> chrono::NaiveDateTime {
+        self.to_utc_date_time().naive_utc()
+    }
+
+    pub fn to_rfc3339_string(&self) -> String {
+        self.to_utc_date_time().to_rfc3339()
     }
 }
 

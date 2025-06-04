@@ -1,3 +1,7 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::Enum;
+#[cfg(feature = "sea-orm")]
+use sea_orm::entity::prelude::*;
 use {
     super::FlattenStatus,
     crate::{
@@ -57,12 +61,29 @@ impl FlatEventStatus {
 }
 
 #[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Copy,
+    Display,
+    Hash,
 )]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "sea-orm", derive(EnumIter, DeriveActiveEnum))]
+#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i32", db_type = "Integer"))]
+#[cfg_attr(feature = "async-graphql", derive(Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
 pub enum FlatCommitmentStatus {
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
     Committed,
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
     Failed,
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
     Reverted,
 }
 
@@ -93,13 +114,20 @@ impl FlatCommitmentStatus {
     Eq,
     Copy,
     Display,
+    Hash,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
+#[cfg_attr(feature = "sea-orm", derive(EnumIter, DeriveActiveEnum))]
+#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i32", db_type = "Integer"))]
+#[cfg_attr(feature = "async-graphql", derive(Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
 pub enum FlatCategory {
     #[strum(serialize = "0")]
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
     Cron,
     #[strum(serialize = "1")]
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
     Tx,
 }
 

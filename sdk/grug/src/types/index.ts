@@ -58,6 +58,8 @@ export type {
   DerivedTransportSchema,
   RequestFn,
   RequestFnParameters,
+  SubscribeFn,
+  SubscriptionCallbacks,
   RequestOptions,
   TransportSchema,
   TransportSchemaOverride,
@@ -111,6 +113,7 @@ export type {
   Success,
   Result,
   Option,
+  AllLeafKeys,
 } from "./utils.js";
 
 export type {

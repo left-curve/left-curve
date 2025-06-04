@@ -1,7 +1,7 @@
 use {
-    crate::{Coin, CoinPair, CoinRef, Denom, NonZero, StdError, StdResult, btree_map},
+    crate::{Coin, CoinPair, CoinRef, Denom, Inner, NonZero, StdError, StdResult, btree_map},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Inner, IsZero, Number, NumberConst, Uint128},
+    grug_math::{IsZero, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, btree_map},

@@ -10,12 +10,9 @@ export type ChainId = string;
  */
 export type Chain<custom extends Json | undefined = Json | undefined> = {
   /**
-   * Block explorers for the chain.
+   * Block explorer for the chain.
    */
-  blockExplorers?: {
-    [key: string]: BlockExplorer;
-    default: BlockExplorer;
-  };
+  blockExplorer: BlockExplorer;
 
   /**
    * Contracts for the chain.
@@ -82,5 +79,6 @@ type ChainUrls = {
 type BlockExplorer = {
   name: string;
   txPage: string;
+  contractPage: string;
   accountPage: string;
 };

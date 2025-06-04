@@ -104,6 +104,19 @@ pub fn setup_test_naive(
     Contracts,
     MockValidatorSets,
 ) {
+    setup_test_naive_with_custom_genesis(test_opt, GenesisOption::preset_test())
+}
+
+pub fn setup_test_naive_with_custom_genesis(
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+) -> (
+    TestSuite<NaiveProposalPreparer>,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+) {
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
@@ -111,7 +124,7 @@ pub fn setup_test_naive(
         NullIndexer,
         RustVm::genesis_codes(),
         test_opt,
-        GenesisOption::preset_test(),
+        genesis_opt,
     )
 }
 

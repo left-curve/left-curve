@@ -1,7 +1,6 @@
 use {
-    crate::{Bytes, Encoder, StdError, StdResult},
+    crate::{Bytes, Encoder, Inner, InnerMut, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Inner, InnerMut},
     serde::{de, ser},
     std::{
         fmt::{self, Debug, Display},

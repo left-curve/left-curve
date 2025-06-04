@@ -1,6 +1,8 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_0_out_1_handle_response, catch_and_update_event, catch_event,
     },
     grug_types::{Addr, BlockInfo, Context, EvtCron, Storage, Timestamp},
@@ -14,19 +16,34 @@ pub fn do_cron_execute<VM>(
     contract: Addr,
     time: Timestamp,
     next: Timestamp,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtCron>
 where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_cron_execute(vm, storage, gas_tracker, block, contract, time, next);
+    let evt = _do_cron_execute(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        contract,
+        time,
+        next,
+        trace_opt,
+    );
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            tracing::info!(contract = contract.to_string(), "Performed cronjob");
+            dyn_event!(
+                trace_opt.ok_level,
+                contract = contract.to_string(),
+                "Performed cronjob"
+            );
         },
         "Failed to perform cronjob",
+        trace_opt.error_level,
     );
 
     evt
@@ -40,6 +57,7 @@ fn _do_cron_execute<VM>(
     contract: Addr,
     time: Timestamp,
     next: Timestamp,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtCron>
 where
     VM: Vm + Clone + 'static,
@@ -77,6 +95,7 @@ where
             "cron_execute",
             code_hash,
             &ctx,
+            trace_opt,
         ),
         evt => guest_event
     }

@@ -1,8 +1,5 @@
 use {
-    crate::{
-        context::Context,
-        graphql::types::{self, transaction::Transaction},
-    },
+    crate::context::Context,
     async_graphql::{connection::*, *},
     indexer_sql::entity::{self, prelude::Transactions},
     sea_orm::{
@@ -25,18 +22,18 @@ pub struct TransactionCursor {
     transaction_idx: u32,
 }
 
-impl From<types::transaction::Transaction> for TransactionCursor {
-    fn from(transaction: types::transaction::Transaction) -> Self {
+impl From<entity::transactions::Model> for TransactionCursor {
+    fn from(transaction: entity::transactions::Model) -> Self {
         Self {
-            block_height: transaction.block_height,
-            transaction_idx: transaction.transaction_idx,
+            block_height: transaction.block_height as u64,
+            transaction_idx: transaction.transaction_idx as u32,
         }
     }
 }
 
 pub type TransactionCursorType = OpaqueCursor<TransactionCursor>;
 
-static MAX_TRANSACTIONS: u64 = 100;
+const MAX_TRANSACTIONS: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct TransactionQuery {}
@@ -54,7 +51,10 @@ impl TransactionQuery {
         first: Option<i32>,
         last: Option<i32>,
         sort_by: Option<SortBy>,
-    ) -> Result<Connection<TransactionCursorType, Transaction, EmptyFields, EmptyFields>> {
+        sender_address: Option<String>,
+    ) -> Result<
+        Connection<TransactionCursorType, entity::transactions::Model, EmptyFields, EmptyFields>,
+    > {
         let app_ctx = ctx.data::<Context>()?;
 
         query_with::<TransactionCursorType, _, _, _, _>(
@@ -96,7 +96,11 @@ impl TransactionQuery {
                 }
 
                 if let Some(hash) = hash {
-                    query = query.filter(entity::transactions::Column::Hash.eq(hash));
+                    query = query.filter(entity::transactions::Column::Hash.eq(&hash));
+                }
+
+                if let Some(sender_address) = sender_address {
+                    query = query.filter(entity::transactions::Column::Sender.eq(&sender_address));
                 }
 
                 match sort_by {
@@ -112,12 +116,7 @@ impl TransactionQuery {
                     },
                 }
 
-                let mut transactions: Vec<types::transaction::Transaction> = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|transaction| transaction.into())
-                    .collect::<Vec<_>>();
+                let mut transactions = query.all(&app_ctx.db).await?;
 
                 if has_before {
                     transactions.reverse();

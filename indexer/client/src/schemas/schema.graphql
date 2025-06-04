@@ -1,9 +1,8 @@
 type Block {
+	createdAt: NaiveDateTime!
 	blockHeight: Int!
-	createdAt: DateTime!
 	hash: String!
 	appHash: String!
-	transactionsCount: Int!
 	"""
 	Transactions order isn't guaranteed, check `transactionIdx`
 	"""
@@ -42,7 +41,7 @@ type BlockEdge {
 
 type BlockInfo {
 	blockHeight: Int!
-	timestamp: DateTime!
+	timestamp: NaiveDateTime!
 	hash: String!
 }
 
@@ -52,33 +51,19 @@ enum BlockSortBy {
 }
 
 
-enum Category {
-	CRON
-	TX
-}
-
-enum CommitmentStatus {
-	COMMITTED
-	FAILED
-	REVERTED
-}
-
-"""
-Implement the DateTime<Utc> scalar
-
-The input/output is a string in RFC3339 format.
-"""
-scalar DateTime
-
 type Event {
-	blockHeight: Int!
-	createdAt: DateTime!
-	eventIdx: Int!
+	createdAt: NaiveDateTime!
 	type: String!
 	method: String
 	eventStatus: EventStatus!
-	commitmentStatus: CommitmentStatus!
+	commitmentStatus: FlatCommitmentStatus!
+	transactionType: Int!
+	transactionIdx: Int!
+	messageIdx: Int
+	eventIdx: Int!
 	data: JSON!
+	blockHeight: Int!
+	transaction: Transaction
 }
 
 type EventConnection {
@@ -116,12 +101,25 @@ enum EventSortBy {
 }
 
 enum EventStatus {
-	OK
-	FAILED
-	NESTED_FAILED
-	HANDLED
+	ok
+	failed
+	nested_failed
+	handled
 }
 
+enum FlatCategory {
+	cron
+	tx
+}
+
+enum FlatCommitmentStatus {
+	committed
+	failed
+	reverted
+}
+
+
+scalar GrugQueryInput
 
 
 
@@ -131,10 +129,11 @@ A scalar that can represent any JSON value.
 scalar JSON
 
 type Message {
-	blockHeight: Int!
-	createdAt: DateTime!
 	orderIdx: Int!
+	createdAt: NaiveDateTime!
+	data: JSON!
 	methodName: String!
+	blockHeight: Int!
 	contractAddr: String
 	senderAddr: String!
 }
@@ -176,11 +175,20 @@ enum MessageSortBy {
 type Mutation {
 	broadcastTxSync(
 		"""
-		The base64 encoded transaction to broadcast
+		Transaction as JSON
 		"""
-		tx: String!
-	): String!
+		tx: Tx!
+	): JSON!
 }
+
+"""
+ISO 8601 combined date and time without timezone.
+
+# Examples
+
+* `2015-07-01T08:59:60.123`,
+"""
+scalar NaiveDateTime
 
 """
 Information about pagination in a connection
@@ -216,7 +224,7 @@ type Query {
 	"""
 	Get transactions
 	"""
-	transactions(hash: String, blockHeight: Int, after: String, before: String, first: Int, last: Int, sortBy: TransactionSortBy): TransactionConnection!
+	transactions(hash: String, blockHeight: Int, after: String, before: String, first: Int, last: Int, sortBy: TransactionSortBy, senderAddress: String): TransactionConnection!
 	"""
 	Get messages
 	"""
@@ -227,10 +235,10 @@ type Query {
 	events(after: String, before: String, first: Int, last: Int, sortBy: EventSortBy): EventConnection!
 	queryApp(
 		"""
-		Request as JSON string
+		Request as JSON
 		"""
-		request: String!,		height: Int
-	): String!
+		request: GrugQueryInput!,		height: Int
+	): JSON!
 	queryStore(
 		"""
 		Key as B64 string
@@ -240,10 +248,10 @@ type Query {
 	queryStatus: Status!
 	simulate(
 		"""
-		Transaction as Json string
+		Transaction as Json
 		"""
-		tx: String!
-	): String!
+		tx: UnsignedTx!
+	): JSON!
 }
 
 type Status {
@@ -265,17 +273,19 @@ type Store {
 
 type Subscription {
 	block: Block!
-	transactions: [Transaction!]!
-	messages: [Message!]!
-	events: [Event!]!
+	transactions(sinceBlockHeight: Int): [Transaction!]!
+	messages(sinceBlockHeight: Int): [Message!]!
+	events(sinceBlockHeight: Int): [Event!]!
 }
 
 type Transaction {
+	createdAt: NaiveDateTime!
 	blockHeight: Int!
-	createdAt: DateTime!
-	transactionType: Category!
+	transactionType: FlatCategory!
 	transactionIdx: Int!
 	sender: String!
+	data: JSON!
+	credential: JSON!
 	hash: String!
 	hasSucceeded: Boolean!
 	errorMessage: String
@@ -326,9 +336,32 @@ enum TransactionSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
+"""
+A transaction that can be sent to the chain.
+
+Contains:
+- Sender address
+- List of messages to execute
+- Gas limit
+- Cryptographic signature
+
+See [Tx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+"""
+scalar Tx
+
+"""
+A transaction to simulate.
+
+Contains:
+- Sender address
+- List of messages to execute
+
+See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+"""
+scalar UnsignedTx
+
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
 directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
-directive @specifiedBy(url: String!) on SCALAR
 schema {
 	query: Query
 	mutation: Mutation

@@ -1,17 +1,16 @@
 use {
+    anyhow::bail,
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::setup_suite_with_db_and_vm,
     grug_db_memory::MemDb,
-    grug_testing::{MockClient, setup_tracing_subscriber},
+    grug_testing::MockClient,
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
-    std::sync::Arc,
-    tokio::sync::Mutex,
-    tracing::Level,
+    std::{net::TcpListener, sync::Arc, time::Duration},
+    tokio::{net::TcpStream, sync::Mutex},
 };
-
 pub use {
     dango_genesis::GenesisOption,
     dango_testing::{BridgeOp, Preset, TestOption},
@@ -28,8 +27,6 @@ pub async fn run(
     keep_blocks: bool,
     database_url: Option<String>,
 ) -> Result<(), Error> {
-    setup_tracing_subscriber(Level::INFO);
-
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
 
     let indexer = if let Some(url) = database_url {
@@ -73,4 +70,29 @@ pub async fn run(
         build_schema,
     )
     .await
+}
+
+pub fn get_mock_socket_addr() -> u16 {
+    TcpListener::bind("127.0.0.1:0")
+        .expect("failed to bind to random port")
+        .local_addr()
+        .expect("failed to get local address")
+        .port()
+}
+
+pub async fn wait_for_server_ready(port: u16) -> anyhow::Result<()> {
+    for attempt in 1..=30 {
+        match TcpStream::connect(format!("127.0.0.1:{port}")).await {
+            Ok(_) => {
+                tracing::info!("Server ready on port {port} after {attempt} attempts");
+                return Ok(());
+            },
+            Err(_) => {
+                tracing::debug!("Attempt {attempt}: server not ready yet...");
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            },
+        }
+    }
+
+    bail!("server failed to start on port {port} after 30 attempts")
 }

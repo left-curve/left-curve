@@ -8,6 +8,8 @@ pub mod event;
 pub mod message;
 pub mod transaction;
 
+pub const MAX_PAST_BLOCKS: usize = 100;
+
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(
     BlockSubscription,

@@ -203,7 +203,11 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
         "only the sender or the recipient can recover an orphaned transfer"
     );
 
-    let coins = ORPHANED_TRANSFERS.take(ctx.storage, (sender, recipient))?;
+    let Some(coins) = ORPHANED_TRANSFERS.may_take(ctx.storage, (sender, recipient))? else {
+        // Orphaned transfer not found.
+        // Do nothing (return with no-op; do not throw error).
+        return Ok(Response::new());
+    };
 
     for coin in &coins {
         decrease_balance(ctx.storage, &ctx.contract, coin.denom, *coin.amount)?;

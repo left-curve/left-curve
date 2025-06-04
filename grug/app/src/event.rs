@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::AppError,
     grug_types::{CommitmentStatus, Event, EventStatus, SubEventStatus},
@@ -85,7 +87,7 @@ impl<T> EventResult<T> {
     }
 
     #[cfg(feature = "tracing")]
-    pub fn debug<O>(&self, ok_closure: O, error_msg: &str)
+    pub fn debug<O>(&self, ok_closure: O, error_msg: &str, error_level: tracing::Level)
     where
         O: Fn(&T),
     {
@@ -93,11 +95,8 @@ impl<T> EventResult<T> {
             EventResult::Ok(val) => {
                 ok_closure(val);
             },
-            EventResult::Err { error, .. } => {
-                tracing::warn!(err = error.to_string(), error_msg);
-            },
-            EventResult::NestedErr { error, .. } => {
-                tracing::warn!(err = error.to_string(), "Sub error encountered");
+            EventResult::Err { error, .. } | EventResult::NestedErr { error, .. } => {
+                dyn_event!(error_level, err = error.to_string(), error_msg);
             },
         }
     }

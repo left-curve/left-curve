@@ -1,6 +1,5 @@
 use {
-    super::FillingOutcome,
-    crate::{LimitOrder, MarketOrder, Order},
+    crate::{FillingOutcome, LimitOrder, MarketOrder, Order},
     dango_types::dex::{Direction, OrderId},
     grug::{
         Inner, IsZero, MultiplyFraction, Number, NumberConst, Signed, StdResult, Udec128, Uint128,

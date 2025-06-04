@@ -20,7 +20,7 @@
 - name: Deploy bots container
   docker_container:
     name: "{{ dango_network }}_bots"
-    image: "ghcr.io/left-curve/bots/bots:{{ git_version }}"
+    image: "ghcr.io/left-curve/bots/bots:{{ bot_version }}"
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always
     recreate: true

@@ -13,6 +13,7 @@ import { ConnectionStatus } from "./types/store.js";
 
 import type {
   AccountTypes,
+  Address,
   AppConfig,
   Client,
   Denom,
@@ -22,6 +23,9 @@ import type {
   Transport,
 } from "@left-curve/dango/types";
 
+import { invertObject } from "@left-curve/dango/utils";
+
+import { subscriptionsStore } from "./subscriptions.js";
 import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
@@ -107,10 +111,11 @@ export function createConfig<
   }
 
   let _appConfig:
-    | (AppConfig & {
+    | {
+        addresses: AppConfig["addresses"] & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
         pairs: Record<Denom, PairUpdate>;
-      })
+      }
     | undefined;
 
   async function getAppConfig() {
@@ -123,7 +128,10 @@ export function createConfig<
     ]);
 
     _appConfig = {
-      ...appConfig,
+      addresses: {
+        ...appConfig.addresses,
+        ...invertObject(appConfig.addresses),
+      },
       accountFactory: { codeHashes },
       pairs: pairs.reduce((acc, pair) => {
         acc[pair.baseDenom] = pair;
@@ -221,6 +229,8 @@ export function createConfig<
     });
   }
 
+  const sbStore = subscriptionsStore(getClient() as PublicClient);
+
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
   //////////////////////////////////////////////////////////////////////////////
@@ -317,6 +327,9 @@ export function createConfig<
   return {
     get coins() {
       return coins.getState() ?? {};
+    },
+    get subscriptions() {
+      return sbStore;
     },
     get chain() {
       return rest.chain;

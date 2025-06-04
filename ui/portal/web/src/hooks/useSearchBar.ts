@@ -25,7 +25,7 @@ export type SearchBarResult = {
   block?: IndexedBlock;
   txs: IndexedTransaction[];
   applets: AppletMetadata[];
-  contract?: ContractInfo & { name: string; address: Address };
+  contract?: ContractInfo & { address: Address };
   account?: Account;
 };
 
@@ -76,7 +76,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
       if (signal.aborted) return;
 
       const promises: Promise<unknown>[] = [];
-      const { accountFactory, addresses } = await getAppConfig();
+      const { accountFactory } = await getAppConfig();
 
       if (isValidAddress(searchText)) {
         // search for contract
@@ -91,14 +91,8 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
               const account = await client.getAccountInfo({ address: searchText as Address });
               setSearchResult({ account: account ? account : undefined });
             } else {
-              const appContract = Object.entries(addresses).find(
-                ([_, address]) => address === searchText,
-              );
-              const name = appContract
-                ? `Dango ${camelToTitleCase(appContract[0])}`
-                : (contractInfo.label ?? "Contract");
               setSearchResult({
-                contract: { ...contractInfo, name, address: searchText as Address },
+                contract: { ...contractInfo, address: searchText as Address },
               });
             }
           })(),

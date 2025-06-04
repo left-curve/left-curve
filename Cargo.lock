@@ -3391,8 +3391,10 @@ dependencies = [
  "chrono",
  "clap",
  "dango-indexer-sql",
+ "dango-types",
  "indexer-httpd",
  "indexer-sql",
+ "itertools 0.14.0",
  "sea-orm",
  "serde",
  "thiserror 2.0.12",
@@ -3405,16 +3407,21 @@ dependencies = [
 name = "dango-indexer-sql"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
  "anyhow",
  "assertor",
+ "async-graphql",
  "async-trait",
  "borsh 1.5.7",
  "dango-indexer-sql-migration",
+ "dango-types",
+ "grug",
  "grug-app",
  "grug-math",
  "grug-types",
  "indexer-disk-saver",
  "indexer-sql",
+ "itertools 0.14.0",
  "sea-orm",
  "serde",
  "serde_json",
@@ -3449,6 +3456,7 @@ dependencies = [
 name = "dango-mock-httpd"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
@@ -3456,6 +3464,7 @@ dependencies = [
  "dango-testing",
  "grug-db-memory",
  "grug-testing",
+ "grug-types",
  "grug-vm-rust",
  "indexer-httpd",
  "indexer-sql",
@@ -3506,6 +3515,7 @@ version = "0.0.0"
 dependencies = [
  "actix-web",
  "anyhow",
+ "assert-json-diff",
  "assertor",
  "async-graphql",
  "bip32",
@@ -3513,12 +3523,12 @@ dependencies = [
  "criterion",
  "dango-account-factory",
  "dango-auth",
- "dango-bank",
  "dango-gateway",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
  "dango-lending",
+ "dango-mock-httpd",
  "dango-oracle",
  "dango-proposal-preparer",
  "dango-types",
@@ -3528,6 +3538,7 @@ dependencies = [
  "grug-crypto",
  "grug-db-disk",
  "grug-db-memory",
+ "grug-testing",
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
@@ -3536,10 +3547,12 @@ dependencies = [
  "home",
  "hyperlane-testing",
  "hyperlane-types",
+ "indexer-client",
  "indexer-disk-saver",
  "indexer-httpd",
  "indexer-sql",
  "indexer-testing",
+ "itertools 0.14.0",
  "k256",
  "proptest",
  "pyth-client",
@@ -3560,10 +3573,12 @@ name = "dango-types"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "grug",
  "hyperlane-types",
  "paste",
  "pyth-types",
+ "sea-orm",
  "serde",
  "sha2 0.10.9",
 ]
@@ -3789,6 +3804,10 @@ name = "dyn-clone"
 version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
+
+[[package]]
+name = "dyn-event"
+version = "0.0.0"
 
 [[package]]
 name = "dynasm"
@@ -4546,7 +4565,7 @@ version = "0.0.0"
 dependencies = [
  "borsh 1.5.7",
  "data-encoding",
- "grug-math",
+ "dyn-event",
  "grug-storage",
  "grug-types",
  "ics23",
@@ -4564,7 +4583,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "grug-math",
  "grug-types",
  "serde",
  "tendermint",
@@ -4632,7 +4650,6 @@ name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
  "borsh 1.5.7",
- "grug-math",
  "grug-storage",
  "grug-types",
  "hex-literal",
@@ -4757,6 +4774,7 @@ dependencies = [
 name = "grug-types"
 version = "0.0.0"
 dependencies = [
+ "async-graphql",
  "async-trait",
  "bnum",
  "borsh 1.5.7",
@@ -4770,6 +4788,7 @@ dependencies = [
  "paste",
  "prost",
  "ripemd",
+ "sea-orm",
  "serde",
  "serde_json",
  "serde_with",
@@ -5519,15 +5538,24 @@ name = "indexer-client"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
+ "assertor",
  "async-trait",
+ "dango-genesis",
+ "dango-mock-httpd",
+ "dango-testing",
  "graphql_client",
- "grug-math",
+ "grug",
+ "grug-testing",
  "grug-types",
+ "indexer-testing",
  "paste",
  "reqwest 0.12.15",
  "serde",
+ "serde_json",
  "tendermint-rpc",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5538,6 +5566,7 @@ dependencies = [
  "assertor",
  "borsh 1.5.7",
  "glob",
+ "grug",
  "grug-app",
  "grug-math",
  "grug-types",
@@ -5571,7 +5600,6 @@ dependencies = [
  "chrono",
  "clap",
  "grug-app",
- "grug-math",
  "grug-testing",
  "grug-types",
  "indexer-sql",
@@ -5599,15 +5627,16 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "async-graphql",
  "async-stream",
  "async-trait",
  "borsh 1.5.7",
  "futures",
  "grug-app",
- "grug-math",
  "grug-types",
  "indexer-disk-saver",
  "indexer-sql-migration",
+ "itertools 0.14.0",
  "sea-orm",
  "serde",
  "serde_json",

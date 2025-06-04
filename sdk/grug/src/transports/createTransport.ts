@@ -16,6 +16,7 @@ export function createTransport<
   name,
   type,
   request,
+  subscribe,
 }: TransportConfig<type, schema>): ReturnType<Transport<type, schema>> {
   return {
     config: {
@@ -24,6 +25,7 @@ export function createTransport<
       type,
       request,
     },
+    subscribe,
     request,
   };
 }

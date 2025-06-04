@@ -170,7 +170,7 @@ const paginationVariants = tv(
   {
     slots: {
       base: " text-blue-600  exposure-sm-italic",
-      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-blue-50 transition-all",
+      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-blue-50 transition-all exposure-sm-italic",
     },
     variants: {
       variant: {

@@ -22,7 +22,7 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   children,
   ...props
 }: IndicatorProps<C>) => {
-  const { notifier } = useApp();
+  const { subscriptions } = useApp();
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [indicator, setIndicator] = useState<keyof typeof Indicators>("spinner");
 
@@ -30,16 +30,18 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   const WrapperComponent = as ?? "button";
 
   useEffect(() => {
-    const unsubscribe = notifier.subscribe("submit_tx", ({ isSubmitting, txResult }) => {
-      if (isSubmitting) {
-        setIndicator("spinner");
-        setIsSubmittingTx(isSubmitting);
-      } else {
-        setIndicator(txResult.hasSucceeded ? "success" : "error");
-        setTimeout(() => {
-          setIsSubmittingTx(false);
-        }, 1500);
-      }
+    const unsubscribe = subscriptions.subscribe("submitTx", {
+      listener: ({ isSubmitting, txResult }) => {
+        if (isSubmitting) {
+          setIndicator("spinner");
+          setIsSubmittingTx(isSubmitting);
+        } else {
+          setIndicator(txResult?.hasSucceeded ? "success" : "error");
+          setTimeout(() => {
+            setIsSubmittingTx(false);
+          }, 1500);
+        }
+      },
     });
     return () => unsubscribe();
   }, []);
@@ -47,7 +49,7 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   return isSubmittingTx ? (
     <WrapperComponent {...props}>
       <IndicatorComponent
-        size="sm"
+        size="md"
         color="current"
         className={twMerge({
           "text-green-bean-300 w-6 h-6": indicator === "success",

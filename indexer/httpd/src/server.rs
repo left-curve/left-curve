@@ -28,7 +28,7 @@ where
     let graphql_schema = build_schema(context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!("Starting indexer httpd server at {ip}:{port}");
+    tracing::info!(%ip, port, "Starting indexer httpd server");
 
     HttpServer::new(move || {
         let mut cors = Cors::default()

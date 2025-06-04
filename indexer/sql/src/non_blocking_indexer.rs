@@ -105,9 +105,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
             pubsub: self.pubsub,
         }
     }
-}
 
-impl<DB, P, H> IndexerBuilder<DB, P, H> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,
@@ -180,6 +178,12 @@ where
 
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
         indexer_path.create_dirs_if_needed()?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            indexer_path = %indexer_path.blocks_path().display(),
+            "Created indexer path"
+        );
 
         let mut context = Context {
             db: db.clone(),
@@ -255,7 +259,7 @@ where
     where
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
-        let mut blocks = self.blocks.lock().expect("Can't lock blocks");
+        let mut blocks = self.blocks.lock().expect("can't lock blocks");
         let block_to_index = blocks.entry(block.info.height).or_insert(BlockToIndex::new(
             block_filename,
             block.clone(),
@@ -269,7 +273,7 @@ where
 
     /// Look in memory for a block to be indexed, or fail if not found
     fn find_or_fail(&self, block_height: u64) -> error::Result<BlockToIndex> {
-        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        let blocks = self.blocks.lock().expect("can't lock blocks");
 
         let block_to_index = match blocks.get(&block_height) {
             Some(block_to_index) => block_to_index,
@@ -286,11 +290,11 @@ where
         blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
         block_height: &u64,
     ) -> error::Result<BlockToIndex> {
-        let mut blocks = blocks.lock().expect("Can't lock blocks");
+        let mut blocks = blocks.lock().expect("can't lock blocks");
         let block_to_index = match blocks.remove_entry(block_height) {
             Some(block) => block,
             None => {
-                bail!("Block {} not found", block_height);
+                bail!("block {block_height} not found");
             },
         };
 
@@ -298,7 +302,7 @@ where
         tracing::debug!(
             block_height = block_height,
             blocks_len = blocks.len(),
-            "remove_or_fail called"
+            "`remove_or_fail` called"
         );
 
         Ok(block_to_index.1)
@@ -307,18 +311,18 @@ where
     /// Wait for all blocks to be indexed
     pub fn wait_for_finish(&self) {
         for _ in 0..100 {
-            if self.blocks.lock().expect("Can't lock blocks").is_empty() {
+            if self.blocks.lock().expect("can't lock blocks").is_empty() {
                 break;
             }
 
             sleep(Duration::from_millis(100));
         }
 
-        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        let blocks = self.blocks.lock().expect("can't lock blocks");
         if !blocks.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::warn!(
-                "indexer wait_for_finish ended, still has {} blocks: {:?}",
+                "Indexer `wait_for_finish` ended, still has {} blocks: {:?}",
                 blocks.len(),
                 blocks.keys()
             );
@@ -370,35 +374,31 @@ where
 
             let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, "can't load block from disk");
+                    tracing::error!(error = %_err, block_height, "Can't load block from disk");
+
                     panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
             });
 
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks started"
-            );
+            tracing::info!(block_height, "`index_previous_unindexed_blocks` started");
 
             self.handle.block_on(async {
                 let db = self.context.db.begin().await?;
                 block_to_index.save(&db).await?;
                 db.commit().await?;
+
                 Ok::<(), error::IndexerError>(())
             })?;
 
             if !self.keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "Can't delete block from disk");
                 }
             }
 
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks ended"
-            );
+            tracing::info!(block_height, "`index_previous_unindexed_blocks` ended");
         }
 
         Ok(())
@@ -429,14 +429,15 @@ where
             Err(_err) => {
                 // This happens when the chain starts at genesis
                 #[cfg(feature = "tracing")]
-                tracing::warn!(error = %_err, "No LAST_FINALIZED_BLOCK found");
+                tracing::warn!(error = %_err, "No `LAST_FINALIZED_BLOCK` found");
             },
             Ok(block) => {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(
                     block_height = block.height,
-                    "start called, found a previous block"
+                    "Start called, found a previous block"
                 );
+
                 self.index_previous_unindexed_blocks(block.height)?;
             },
         }
@@ -457,7 +458,7 @@ where
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
         // async. It just loops quickly making sure no indexing blocks are remaining.
         for _ in 0..10 {
-            if self.blocks.lock().expect("Can't lock blocks").is_empty() {
+            if self.blocks.lock().expect("can't lock blocks").is_empty() {
                 break;
             }
 
@@ -475,7 +476,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            let blocks = self.blocks.lock().expect("Can't lock blocks");
+            let blocks = self.blocks.lock().expect("can't lock blocks");
             if !blocks.is_empty() {
                 tracing::warn!(
                     "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
@@ -488,7 +489,7 @@ where
 
     fn pre_indexing(&self, _block_height: u64) -> error::Result<()> {
         if !self.indexing {
-            bail!("Can't index after shutdown");
+            bail!("can't index after shutdown");
         }
 
         Ok(())
@@ -496,33 +497,34 @@ where
 
     fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> error::Result<()> {
         if !self.indexing {
-            bail!("Can't index after shutdown");
+            bail!("can't index after shutdown");
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.info.height, "index_block called");
+        tracing::debug!(block_height = block.info.height, "`index_block` called");
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
         self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block.info.height, "index_block started");
+            tracing::debug!(block_height = block.info.height, "`index_block` started");
 
             block_to_index.save_to_disk()?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.info.height, "index_block finished");
+            tracing::info!(block_height = block.info.height, "`index_block` finished");
+
             Ok(())
         })
     }
 
     fn post_indexing(&self, block_height: u64) -> error::Result<()> {
         if !self.indexing {
-            bail!("Can't index after shutdown");
+            bail!("can't index after shutdown");
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block_height, "post_indexing called");
+        tracing::debug!(block_height, "`post_indexing` called");
 
         let context = self.context.clone();
         let block_to_index = self.find_or_fail(block_height)?;
@@ -540,7 +542,7 @@ where
 
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block_height, "post_indexing started");
+            tracing::debug!(block_height, "`post_indexing` started");
 
             let block_height = block_to_index.block.info.height;
 
@@ -553,7 +555,7 @@ where
 
                 if let Err(_err) = block_to_index.save(&db).await {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "can't save to db in post_indexing");
+                    tracing::error!(error = %_err, "Can't save to db in `post_indexing`");
 
                     continue;
                 }
@@ -565,7 +567,7 @@ where
 
             hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
+                tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
 
                 // NOTE: any way to get a from Hooks::Error to IndexerError without using IndexerError<X>?
                 error::IndexerError::Hooks(e.to_string())
@@ -578,12 +580,15 @@ where
                 }
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
-                tokio::task::spawn_blocking(|| async move {
+                if let Err(err) = tokio::task::spawn_blocking(move || {
                     if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
                         tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
                     }
-                });
+                }).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %err, "spawn_blocking error compressing block file");
+                }
             }
 
             Self::remove_or_fail(blocks, &block_height)?;
@@ -591,7 +596,7 @@ where
             context.pubsub.publish_block_minted(block_height).await?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block_height, "post_indexing finished");
+            tracing::info!(block_height, "`post_indexing` finished");
 
             Ok::<_, error::IndexerError>(())
         });
@@ -608,7 +613,7 @@ where
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
         // context.
-        self.shutdown().expect("Can't shutdown indexer");
+        self.shutdown().expect("can't shutdown indexer");
     }
 }
 
@@ -689,10 +694,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("Can't start Indexer");
+        indexer.start(&storage).expect("can't start indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("Can't shutdown Indexer");
+        indexer.shutdown().expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
@@ -707,10 +712,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("Can't start Indexer");
+        indexer.start(&storage).expect("can't start Indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("Can't shutdown Indexer");
+        indexer.shutdown().expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
@@ -743,10 +748,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("Can't start Indexer");
+        indexer.start(&storage).expect("can't start Indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("Can't shutdown Indexer");
+        indexer.shutdown().expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())

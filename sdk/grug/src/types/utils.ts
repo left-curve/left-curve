@@ -89,3 +89,13 @@ export type Failure<E> = {
 export type Result<T, E = Error> = Success<T> | Failure<E>;
 
 export type Option<T> = T | undefined;
+
+export type AllLeafKeys<T> = {
+  [K in keyof T]: T[K] extends object
+    ? T[K] extends Array<infer U>
+      ? U extends object
+        ? AllLeafKeys<U>
+        : K
+      : AllLeafKeys<T[K]>
+    : K;
+}[keyof T];
