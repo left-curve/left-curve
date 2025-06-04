@@ -146,11 +146,15 @@ where
             None => break,
         };
 
+        println!("woop5");
+
         let (market_order_id, market_order) = match market_orders.peek_mut() {
             Some(Ok((market_order_id, ref mut market_order))) => (market_order_id, market_order),
             Some(Err(e)) => return Err(e.clone().into()),
             None => break,
         };
+
+        println!("woop6");
 
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
@@ -162,12 +166,16 @@ where
                 .checked_mul(best_price)?,
         };
 
+        println!("woop7");
+
         // The direction of the comparison depends on whether the market order
         // is a BUY or a SELL.
         let price_is_worse_than_cutoff = match market_order_direction {
             Direction::Bid => *price > cutoff_price,
             Direction::Ask => *price < cutoff_price,
         };
+
+        println!("woop8");
         let market_order_amount_in_base = match market_order_direction {
             Direction::Bid => market_order.amount.checked_div_dec_floor(*price)?,
             Direction::Ask => market_order.amount,
@@ -190,9 +198,14 @@ where
         let market_order_amount_to_match_in_base = if !price_is_worse_than_cutoff {
             market_order_amount_in_base
         } else {
+            println!("woop8.1");
             let filling_outcome = filling_outcomes.get_mut(&market_order_id).unwrap();
             let current_avg_price = filling_outcome.order_price;
             let filled = filling_outcome.filled;
+            println!("current_avg_price: {:?}", current_avg_price);
+            println!("filled: {:?}", filled);
+            println!("cutoff_price: {:?}", cutoff_price);
+            println!("price: {:?}", price);
             let price_ratio = current_avg_price
                 .checked_into_signed()?
                 .checked_sub(cutoff_price.checked_into_signed()?)?
@@ -201,17 +214,28 @@ where
                         .checked_into_signed()?
                         .checked_sub(price.checked_into_signed()?)?,
                 )?;
-
+            println!("price_ratio: {:?}", price_ratio);
             // Calculate how much of the market order can be filled without the average
             // price of the market order exceeding the cutoff price.
             let market_order_amount_to_match_in_base = filled
                 .checked_mul_dec_floor(price_ratio.checked_into_unsigned()?)?
                 .min(market_order_amount_in_base);
 
+            println!(
+                "market_order_amount_to_match_in_base: {:?}",
+                market_order_amount_to_match_in_base
+            );
+            println!(
+                "market_order_amount_to_match_in_quote: {:?}",
+                market_order_amount_to_match_in_base.checked_mul_dec_ceil(*price)?
+            );
+            println!("market_order.amount: {:?}", market_order.amount);
+
             // Since the order is only partially filled we update the filling outcome
             // to refund the amount that was not filled.
             match market_order_direction {
                 Direction::Bid => {
+                    println!("bid");
                     filling_outcome.refund_quote.checked_add_assign(
                         market_order.amount.checked_sub(
                             market_order_amount_to_match_in_base.checked_mul_dec_ceil(*price)?,
@@ -219,6 +243,7 @@ where
                     )?;
                 },
                 Direction::Ask => {
+                    println!("ask");
                     filling_outcome.refund_base.checked_add_assign(
                         market_order
                             .amount
@@ -230,6 +255,12 @@ where
             market_order_amount_to_match_in_base
         };
 
+        println!("woop9");
+
+        println!(
+            "market_order_amount_in_base: {}",
+            market_order_amount_to_match_in_base
+        );
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
         let (filled_amount, price, limit_order_id, market_order_id, limit_order, market_order) =
@@ -305,6 +336,8 @@ where
                 },
             };
 
+        println!("woop");
+
         // Update the filling outcomes
         let limit_order_fee_rate = if limit_order.created_at_block_height < current_block_height {
             maker_fee_rate
@@ -320,6 +353,7 @@ where
             price,
             limit_order_fee_rate,
         )?;
+        println!("woop2");
         _update_filling_outcome(
             &mut filling_outcomes,
             Order::Market(market_order),
@@ -331,6 +365,7 @@ where
         )?;
     }
 
+    println!("filling_outcomes before returning: {:?}", filling_outcomes);
     Ok(filling_outcomes.into_values().collect())
 }
 
@@ -367,6 +402,7 @@ fn _update_filling_outcome(
                     .checked_add(filled_amount.checked_mul_dec(price)?)?,
                 filling_outcome.filled.checked_add(filled_amount)?,
             )?;
+            println!("woop3");
         },
     }
 
@@ -376,6 +412,8 @@ fn _update_filling_outcome(
     match order_direction {
         Direction::Bid => {
             let fee_amount = filled_amount.checked_mul_dec_ceil(fee_rate)?;
+            println!("fee amount: {:?}", fee_amount);
+            println!("filled amount: {:?}", filled_amount);
 
             filling_outcome.fee_base.checked_add_assign(fee_amount)?;
             filling_outcome
@@ -394,6 +432,7 @@ fn _update_filling_outcome(
                 .checked_add_assign(filled_amount_in_quote.checked_sub(fee_amount_in_quote)?)?;
         },
     }
+    println!("woop4");
 
     Ok(())
 }
