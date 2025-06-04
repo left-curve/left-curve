@@ -3902,12 +3902,12 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
-                    amount: Uint128::new(150_000_000),
+                    amount: Uint128::new(200_000_000),
                     max_slippage: Udec128::new_percent(20),
                 },
             ],
             coins! {
-                usdc::DENOM.clone() => 150_000_000,
+                usdc::DENOM.clone() => 200_000_000,
             },
         )
     ],
@@ -3920,15 +3920,15 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         },
         1 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(25_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(50_000_000),
         },
         2 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(112_500_000),
-            usdc::DENOM.clone() => BalanceChange::Decreased(125_000_000),
+            dango::DENOM.clone() => BalanceChange::Increased(125_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(150_000_000),
         },
     },
     btree_map! {
-        2 => (Direction::Ask, Udec128::new_percent(200), Uint128::new(100_000_000), Uint128::new(87_500_000), 1),
+        2 => (Direction::Ask, Udec128::new_percent(200), Uint128::new(100_000_000), Uint128::new(75_000_000), 1),
     };
     "Two limit asks different prices, one market bid, second limit partially filled, no fees, slippage exceeded"
 )]
