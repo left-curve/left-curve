@@ -124,7 +124,7 @@ where
 
     // The best possible price is the price of the first limit order in the book
     let best_price = match limit_orders.peek_mut() {
-        Some(Ok(((price, _), _))) => price.clone(),
+        Some(Ok(((price, _), _))) => *price,
         Some(Err(e)) => return Err(e.clone().into()),
         None => return Ok(Vec::new()), // Return early if there are no limit orders
     };
@@ -191,7 +191,7 @@ where
         let market_order_amount_to_match_in_base = if !price_is_worse_than_cutoff {
             market_order_amount_in_base
         } else {
-            let filling_outcome = filling_outcomes.get_mut(&market_order_id).unwrap();
+            let filling_outcome = filling_outcomes.get_mut(market_order_id).unwrap();
             let current_avg_price = filling_outcome.order_price;
             let filled = filling_outcome.filled;
             let price_ratio = current_avg_price
@@ -246,11 +246,11 @@ where
                     // Clone values so we can next the market order iterator
                     let return_tuple = (
                         market_order_amount_to_match_in_base,
-                        price.clone(),
-                        limit_order_id.clone(),
-                        market_order_id.clone(),
-                        limit_order.clone(),
-                        market_order.clone(),
+                        *price,
+                        *limit_order_id,
+                        *market_order_id,
+                        *limit_order,
+                        *market_order,
                     );
 
                     // Advance the market orders iterator
@@ -267,11 +267,11 @@ where
                     // Clone values so we can next the limit order iterator
                     let return_tuple = (
                         market_order_amount_to_match_in_base,
-                        price.clone(),
-                        limit_order_id.clone(),
-                        market_order_id.clone(),
-                        limit_order.clone(),
-                        market_order.clone(),
+                        *price,
+                        *limit_order_id,
+                        *market_order_id,
+                        *limit_order,
+                        *market_order,
                     );
 
                     // Advance the both order iterators
@@ -310,11 +310,11 @@ where
                     // Clone values so we can next the limit order iterator
                     let return_tuple = (
                         limit_remaining_amount,
-                        price.clone(),
-                        limit_order_id.clone(),
-                        market_order_id.clone(),
-                        limit_order.clone(),
-                        market_order.clone(),
+                        *price,
+                        *limit_order_id,
+                        *market_order_id,
+                        *limit_order,
+                        *market_order,
                     );
 
                     // Pop the limits iterator

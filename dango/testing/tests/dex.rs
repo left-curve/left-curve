@@ -4621,7 +4621,7 @@ fn market_order_clearing(
             .make_block(
                 submit_limit_order_txs
                     .into_iter()
-                    .chain(create_market_order_txs.into_iter())
+                    .chain(create_market_order_txs)
                     .collect(),
             )
             .block_outcome
