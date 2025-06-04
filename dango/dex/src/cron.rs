@@ -472,13 +472,7 @@ fn update_trading_volumes(
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
     // Calculate the vo lume in USD for the filled order
-    let base_asset_price = match oracle_querier.query_price(base_denom, None) {
-        Ok(price) => Ok(price),
-        Err(e) => {
-            println!("error: {:?}", e);
-            Err(e)
-        },
-    }?;
+    let base_asset_price = oracle_querier.query_price(base_denom, None)?;
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
 
     // Record trading volume for the user's address
