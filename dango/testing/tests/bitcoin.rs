@@ -7,7 +7,8 @@ use {
         sighash::SighashCache,
     },
     dango_testing::{
-        MOCK_BRIDGE_GUARDIANS_KEYS, TestAccount, TestAccounts, TestSuite, setup_test_naive,
+        MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestAccount, TestAccounts,
+        TestSuite, setup_test_naive,
     },
     dango_types::{
         bitcoin::{
@@ -207,8 +208,8 @@ fn instantiate() {
     // Try to instantiate the contract with right combination.
     {
         let config = Config {
-            network: Network::Bitcoin,
-            vault: "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4".to_string(),
+            network: Network::Regtest,
+            vault: MOCK_BITCOIN_REGTEST_VAULT.to_string(),
             guardians: NonEmpty::new_unchecked(btree_set!(
                 accounts.user1.address.inner().clone(),
                 accounts.user2.address.inner().clone(),
@@ -639,7 +640,7 @@ fn authorize_outbound() {
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
         .should_succeed();
 
-    let redeem_script = config.multisig.script().unwrap();
+    let redeem_script = config.multisig.script();
 
     // Make 2 deposits and create a withdrawal.
     let deposit_amount1 = Uint128::new(7_000);
@@ -682,12 +683,12 @@ fn authorize_outbound() {
 
     let btc_transaction = tx.to_btc_transaction(config.network).unwrap();
 
-    let signatures1 = sing_inputs(&btc_transaction, &val_sk1, &redeem_script, vec![
+    let signatures1 = sing_inputs(&btc_transaction, &val_sk1, redeem_script, vec![
         deposit_amount1.into_inner() as u64,
         deposit_amount2.into_inner() as u64,
     ]);
 
-    let signatures2 = sing_inputs(&btc_transaction, &val_sk2, &redeem_script, vec![
+    let signatures2 = sing_inputs(&btc_transaction, &val_sk2, redeem_script, vec![
         deposit_amount1.into_inner() as u64,
         deposit_amount2.into_inner() as u64,
     ]);
@@ -821,7 +822,7 @@ fn multisig_address() {
         MultisigSettings::new(2, NonEmpty::new(btree_set!(pk1, pk2, pk3,)).unwrap()).unwrap();
 
     assert_eq!(
-        multisig.address(Network::Regtest).unwrap().to_string(),
+        multisig.address(Network::Regtest).to_string(),
         "bcrt1q4ga0r07vte2p638c8vh4fvpwjaln0qmxalffdkgeztl8l0act0xsvm7j9k"
     );
 }

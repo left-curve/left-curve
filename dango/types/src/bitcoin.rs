@@ -43,51 +43,60 @@ pub type Vout = u32;
 pub struct MultisigSettings {
     threshold: u8,
     pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
+    script: ScriptBuf,
 }
 
 impl MultisigSettings {
-    pub fn new(k: u8, pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>) -> anyhow::Result<Self> {
-        if k < 1 || k > pub_keys.len() as u8 {
+    pub fn new(
+        threshold: u8,
+        pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
+    ) -> anyhow::Result<Self> {
+        if threshold < 1 || threshold > pub_keys.len() as u8 {
             bail!(
-                "Invalid multisig parameters: k = {}, n = {}",
-                k,
+                "Invalid multisig parameters: threshold = {}, pub_keys = {}",
+                threshold,
                 pub_keys.len()
             );
         }
 
-        Ok(Self {
-            threshold: k,
-            pub_keys,
-        })
-    }
+        // Create the script for the multisig.
+        // The redeem script is a P2WSH script is created as:
+        // threshold pubkeys num_pub_keys OP_CHECKMULTISIG
+        let mut builder = Builder::new().push_int(threshold as i64);
 
-    /// Create the script for the multisig transaction.
-    /// The redeem script is a P2WSH script is created as:
-    /// k pubkeys n OP_CHECKMULTISIG
-    pub fn script(&self) -> anyhow::Result<ScriptBuf> {
-        let mut builder = Builder::new().push_int(self.threshold as i64);
-
-        for pubkey in self.pub_keys.iter() {
+        for pubkey in pub_keys.iter() {
             builder = builder.push_key(&PublicKey::from_slice(pubkey)?);
         }
 
         builder = builder
-            .push_int(self.pub_keys.len() as i64)
+            .push_int(pub_keys.len() as i64)
             .push_opcode(OP_CHECKMULTISIG);
 
-        Ok(builder.into_script())
+        Ok(Self {
+            threshold,
+            pub_keys,
+            script: builder.into_script(),
+        })
     }
 
-    pub fn address(&self, network: Network) -> anyhow::Result<Address> {
-        Ok(Address::p2wsh(&self.script()?, network))
+    /// Returns the Bitcoin address of the multisig wallet.
+    pub fn address(&self, network: Network) -> Address {
+        Address::p2wsh(&self.script, network)
     }
 
+    /// Returns the threshold number of signatures required to authorize a transaction.
     pub fn threshold(&self) -> u8 {
         self.threshold
     }
 
+    /// Returns the public keys of the guardians in the multisig wallet.
     pub fn pub_keys(&self) -> &NonEmpty<BTreeSet<HexByteArray<33>>> {
         &self.pub_keys
+    }
+
+    /// Returns the script of the multisig wallet.
+    pub fn script(&self) -> &ScriptBuf {
+        &self.script
     }
 }
 

@@ -33,6 +33,15 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     // Ensure the vault address is valid.
     check_bitcoin_address(&msg.config.vault, msg.config.network)?;
 
+    // Ensure the vault address matches the one derived from the pub keys.
+    ensure!(
+        msg.config.vault == msg.config.multisig.address(msg.config.network).to_string(),
+        "vault address must match the one derived from the multisig public keys;
+         vault {}, derived {}",
+        msg.config.vault,
+        msg.config.multisig.address(msg.config.network),
+    );
+
     CONFIG.save(ctx.storage, &msg.config)?;
 
     Ok(Response::new())
@@ -289,7 +298,7 @@ fn authorize_outbound(
         signatures.len()
     );
 
-    let redeem_script = cfg.multisig.script()?;
+    let redeem_script = cfg.multisig.script();
 
     // Validate the signatures.
     let btc_transaction = transaction.to_btc_transaction(cfg.network)?;
@@ -304,7 +313,7 @@ fn authorize_outbound(
 
         let sighash = cache.p2wsh_signature_hash(
             i,
-            &redeem_script,
+            redeem_script,
             Amount::from_sat(amount.into_inner() as u64),
             EcdsaSighashType::All,
         )?;
