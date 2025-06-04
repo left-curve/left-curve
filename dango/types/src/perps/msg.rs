@@ -97,7 +97,7 @@ pub enum QueryMsg {
     },
 
     /// Get the perps positions for all users.
-    #[returns(BTreeMap<(Addr, Denom), PerpsPosition>)]
+    #[returns(BTreeMap<Addr, BTreeMap<Denom, PerpsPosition>>)]
     PerpsPositions {
         /// The maximum number of results to return.
         limit: Option<u32>,

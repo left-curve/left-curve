@@ -7,7 +7,8 @@ use {
         PerpsMarketParams, PerpsMarketState, PerpsPosition, PerpsVaultState, QueryMsg,
     },
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, Uint128,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdError,
+        Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -150,18 +151,27 @@ fn query_perps_positions(
     ctx: ImmutableCtx,
     limit: Option<u32>,
     start_after: Option<(Addr, Denom)>,
-) -> anyhow::Result<BTreeMap<(Addr, Denom), PerpsPosition>> {
+) -> anyhow::Result<BTreeMap<Addr, BTreeMap<Denom, PerpsPosition>>> {
     let start = start_after
         .as_ref()
         .map(|(address, denom)| Bound::Exclusive((address, denom)));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    PERPS_POSITIONS
+    let positions: BTreeMap<(Addr, Denom), PerpsPosition> = PERPS_POSITIONS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit as usize)
         .map(|res| {
-            let (address, perps_positions) = res?;
-            Ok((address, perps_positions))
+            let ((address, denom), perps_positions) = res?;
+            Ok::<_, StdError>(((address, denom), perps_positions))
         })
-        .collect()
+        .collect::<Result<_, _>>()?;
+
+    let mut result = BTreeMap::new();
+    for ((address, denom), perps_positions) in positions {
+        result
+            .entry(address)
+            .or_insert_with(BTreeMap::new)
+            .insert(denom, perps_positions);
+    }
+    Ok(result)
 }
