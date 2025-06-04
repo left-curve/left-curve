@@ -3,8 +3,13 @@ use {
         CONFIG, INBOUNDS, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
         UTXOS,
     },
-    anyhow::{bail, ensure},
-    corepc_client::bitcoin::Address,
+    anyhow::{anyhow, bail, ensure},
+    corepc_client::bitcoin::{
+        Address, Amount, EcdsaSighashType,
+        key::Secp256k1,
+        secp256k1::{Message as BtcMessage, PublicKey, ecdsa::Signature},
+        sighash::SighashCache,
+    },
     dango_types::{
         DangoQuerier,
         bitcoin::{
@@ -17,21 +22,14 @@ use {
         },
     },
     grug::{
-        Addr, Coins, Empty, Hash256, Message, MutableCtx, Number, NumberConst, Order,
-        QuerierExt as _, Response, StdResult, SudoCtx, Uint128,
+        Addr, Coins, Empty, Hash256, HexByteArray, Inner, Message, MutableCtx, Number, NumberConst,
+        Order, QuerierExt as _, Response, StdResult, SudoCtx, Uint128,
     },
     std::{collections::BTreeMap, str::FromStr},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    ensure!(
-        msg.config.threshold as usize <= msg.config.guardians.len(),
-        "threshold ({}) cannot be greater than guardian set size ({})",
-        msg.config.threshold,
-        msg.config.guardians.len()
-    );
-
     // Ensure the vault address is valid.
     check_bitcoin_address(&msg.config.vault, msg.config.network)?;
 
@@ -56,7 +54,11 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Bridge(BridgeMsg::TransferRemote { req, amount }) => {
             transfer_remote(ctx, req, amount)
         },
-        ExecuteMsg::AuthorizeOutbound { id, signatures } => authorize_outbound(ctx, id, signatures),
+        ExecuteMsg::AuthorizeOutbound {
+            id,
+            signatures,
+            pub_key,
+        } => authorize_outbound(ctx, id, signatures, pub_key),
     }
 }
 
@@ -125,7 +127,7 @@ fn observe_inbound(
     // 2. Add the transaction to the UTXO set.
     //
     // Otherwise, simply save the voters set, then we're done.
-    let (maybe_msg, maybe_event) = if voters.len() >= cfg.threshold as usize {
+    let (maybe_msg, maybe_event) = if voters.len() >= cfg.multisig.threshold() as usize {
         PROCESSED_UTXOS.insert(ctx.storage, (hash, vout))?;
         UTXOS.save(ctx.storage, (amount, hash, vout), &Empty {})?;
         INBOUNDS.remove(ctx.storage, inbound);
@@ -269,12 +271,13 @@ fn authorize_outbound(
     ctx: MutableCtx,
     id: u32,
     signatures: Vec<BitcoinSignature>,
+    pub_key: HexByteArray<33>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
     ensure!(
-        cfg.guardians.contains(&ctx.sender),
-        "you don't have the right, O you don't have the right"
+        cfg.multisig.pub_keys().contains(&pub_key),
+        "public key `{pub_key}` is not a valid multisig public key"
     );
 
     let transaction = OUTBOUNDS.load(ctx.storage, id)?;
@@ -286,35 +289,59 @@ fn authorize_outbound(
         signatures.len()
     );
 
-    // TODO: validate the signatures.
+    let redeem_script = cfg.multisig.script()?;
+
+    // Validate the signatures.
+    let btc_transaction = transaction.to_btc_transaction(cfg.network)?;
+    for (i, ((hash, vout), amount)) in transaction.inputs.iter().enumerate() {
+        let signature = signatures.get(i).ok_or(anyhow!(
+            "missing signature for input `{hash}:{vout}` of transaction `{id}`"
+        ))?;
+
+        let signature = Signature::from_der(&signature[..signature.len() - 1])?;
+
+        let mut cache = SighashCache::new(&btc_transaction);
+
+        let sighash = cache.p2wsh_signature_hash(
+            i,
+            &redeem_script,
+            Amount::from_sat(amount.into_inner() as u64),
+            EcdsaSighashType::All,
+        )?;
+
+        let msg = BtcMessage::from_digest_slice(&sighash[..]).unwrap();
+
+        let secp = Secp256k1::verification_only();
+        secp.verify_ecdsa(
+            &msg,
+            &signature,
+            &PublicKey::from_slice(pub_key.inner()).unwrap(),
+        )?
+    }
 
     let cumulative_signatures =
         SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
             let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
 
             ensure!(
-                cumulative_signatures
-                    .insert(ctx.sender, signatures)
-                    .is_none(),
+                cumulative_signatures.insert(pub_key, signatures).is_none(),
                 "you've already signed transaction `{id}`"
             );
 
             Ok(cumulative_signatures)
         })?;
 
-    Ok(
-        Response::new().may_add_event(
-            if cumulative_signatures.len() >= cfg.threshold as usize {
-                Some(OutboundConfirmed {
-                    id,
-                    transaction: OUTBOUNDS.load(ctx.storage, id)?,
-                    signatures: cumulative_signatures,
-                })
-            } else {
-                None
-            },
-        )?,
-    )
+    Ok(Response::new().may_add_event(
+        if cumulative_signatures.len() >= cfg.multisig.threshold() as usize {
+            Some(OutboundConfirmed {
+                id,
+                transaction: OUTBOUNDS.load(ctx.storage, id)?,
+                signatures: cumulative_signatures,
+            })
+        } else {
+            None
+        },
+    )?)
 }
 
 /// Ensure the given Bitcoin address is valid for the specified network.

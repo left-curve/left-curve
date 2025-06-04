@@ -1,10 +1,19 @@
 use {
-    corepc_client::bitcoin::Network,
-    dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
+    corepc_client::bitcoin::{
+        Amount, EcdsaSighashType, Network, Script, Transaction as BtcTransaction,
+        hashes::Hash,
+        key::Secp256k1,
+        secp256k1::{Message as BtcMessage, SecretKey},
+        sighash::SighashCache,
+    },
+    dango_testing::{
+        MOCK_BRIDGE_GUARDIANS_KEYS, TestAccount, TestAccounts, TestSuite, setup_test_naive,
+    },
     dango_types::{
         bitcoin::{
-            Config, ExecuteMsg, InboundConfirmed, InstantiateMsg, QueryConfigRequest,
-            QueryOutboundQueueRequest, QueryOutboundTransactionRequest, QueryUtxosRequest,
+            BitcoinSignature, Config, ExecuteMsg, InboundConfirmed, InstantiateMsg,
+            MultisigSettings, QueryConfigRequest, QueryOutboundQueueRequest,
+            QueryOutboundTransactionRequest, QueryUtxosRequest,
         },
         constants::btc,
         gateway::{
@@ -13,8 +22,9 @@ use {
         },
     },
     grug::{
-        Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, JsonDeExt, Message,
-        NonEmpty, Order, QuerierExt, ResultExt, SearchEvent, Uint128, btree_map, btree_set, coins,
+        Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, HexBinary, HexByteArray,
+        Inner, JsonDeExt, Message, NonEmpty, Order, QuerierExt, ResultExt, SearchEvent, Uint128,
+        btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     std::str::FromStr,
@@ -84,6 +94,37 @@ fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) {
     suite.block_time = Duration::ZERO;
 }
 
+pub fn sing_inputs(
+    tx: &BtcTransaction,
+    sk: &SecretKey,
+    redeem_script: &Script,
+    amounts: Vec<u64>,
+) -> Vec<HexBinary> {
+    let mut cache = SighashCache::new(tx);
+    amounts
+        .into_iter()
+        .enumerate()
+        .map(|(i, amount)| {
+            let sighash = cache
+                .p2wsh_signature_hash(
+                    i,
+                    redeem_script,
+                    Amount::from_sat(amount),
+                    EcdsaSighashType::All, // To sign all inputs and outputs
+                )
+                .unwrap();
+
+            let secp = Secp256k1::new();
+            let msg = BtcMessage::from_digest(sighash.to_byte_array());
+            let sig = secp.sign_ecdsa(&msg, sk);
+            let mut der_sig = sig.serialize_der().to_vec();
+            der_sig.push(EcdsaSighashType::All.to_u32() as u8);
+
+            BitcoinSignature::from_inner(der_sig)
+        })
+        .collect::<Vec<_>>()
+}
+
 #[test]
 fn instantiate() {
     let (mut suite, accounts, codes, ..) = setup_test_naive(Default::default());
@@ -91,6 +132,17 @@ fn instantiate() {
     let mut owner = accounts.owner;
     let owner_address = owner.address.inner().clone();
     let bitcoin_hash = codes.bitcoin.to_bytes().hash256();
+
+    let multisig_settings = MultisigSettings::new(
+        2,
+        NonEmpty::new(btree_set!(
+            HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap(),
+            HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].1).unwrap(),
+            HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[2].1).unwrap(),
+        ))
+        .unwrap(),
+    )
+    .unwrap();
 
     // Try to instantiate the contract with wrong address.
     {
@@ -102,7 +154,7 @@ fn instantiate() {
                 accounts.user2.address.inner().clone(),
                 accounts.user3.address.inner().clone(),
             )),
-            threshold: 2,
+            multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
             minimum_deposit: Uint128::new(1000),
@@ -133,7 +185,7 @@ fn instantiate() {
                 accounts.user2.address.inner().clone(),
                 accounts.user3.address.inner().clone(),
             )),
-            threshold: 2,
+            multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
             minimum_deposit: Uint128::new(1000),
@@ -162,7 +214,7 @@ fn instantiate() {
                 accounts.user2.address.inner().clone(),
                 accounts.user3.address.inner().clone(),
             )),
-            threshold: 2,
+            multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
             minimum_deposit: Uint128::new(1000),
@@ -317,7 +369,7 @@ fn transfer_remote() {
         0,
     );
 
-    // Interact directly to the bride (only gateway can).
+    // Interact directly to the bridge (only gateway can).
     {
         let msg = ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
             req: TransferRemoteRequest::Bitcoin {
@@ -577,12 +629,22 @@ fn authorize_outbound() {
 
     let user1_address = accounts.user1.address.inner().clone();
 
+    let val_sk = SecretKey::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].0).unwrap();
+    let val_pk = HexByteArray::<33>::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap();
+
+    let config = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .should_succeed();
+
+    let redeem_script = config.multisig.script().unwrap();
+
     // Deposit 100k sats do user1
+    let deposit_amount = Uint128::new(100_000);
     deposit(
         &mut suite,
         contracts.bitcoin,
         &mut accounts,
-        Uint128::new(100_000),
+        deposit_amount,
         Some(user1_address),
         0,
     );
@@ -598,11 +660,23 @@ fn authorize_outbound() {
 
     advance_ten_minutes(&mut suite);
 
+    // Retrieve the withdrawal transaction.
+    let tx = suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 0 })
+        .should_succeed();
+
+    let btc_transaction = tx.to_btc_transaction(config.network).unwrap();
+
+    let signatures = sing_inputs(&btc_transaction, &val_sk, &redeem_script, vec![
+        deposit_amount.into_inner() as u64,
+    ]);
+
     // Ensure that only validator can call `authorize_outbound`.
     {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: vec![],
+            pub_key: val_pk,
         };
 
         suite
@@ -610,11 +684,12 @@ fn authorize_outbound() {
             .should_fail_with_error("you don't have the right, O you don't have the right");
     }
 
-    // Ensure there is 1 signature per input.
+    // Ensure the number of signatures matches the number of input.
     {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: vec![],
+            pub_key: val_pk,
         };
 
         suite
@@ -622,7 +697,45 @@ fn authorize_outbound() {
             .should_fail_with_error("transaction `0` has 1 inputs, but 0 signatures were provided");
     }
 
+    // Ensure the signatures are valid.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures,
+            pub_key: val_pk,
+        };
+        // vec![HexBinary::from_str("304402206fa2db9a90d1d926d783ec849ce9bf80b6969e2a02c45fbc9a2365cf82256afb02202517f2323247b7765ddfa4da30cc4915da86b5841b5ad4b55598feb3ef8d8e0901").unwrap()]
+
+        suite
+            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .should_succeed();
+    }
+
     // TODO:
     // - check the signer does not sign 2 times
     // - check the signatures are valid
+}
+
+#[test]
+fn test_multisig() {
+    let pk1 = HexByteArray::<33>::from_str(
+        "029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6",
+    )
+    .unwrap();
+    let pk2 = HexByteArray::<33>::from_str(
+        "03053780b7d8b3e7eb2771d7b9d43a946412e53fac90eadd46e214ccbea21eada6",
+    )
+    .unwrap();
+    let pk3 = HexByteArray::<33>::from_str(
+        "02f0bbe8928ab8d703e2e85093ee84ddfa9a0fdf48c443333098bd6188386bdb35",
+    )
+    .unwrap();
+
+    let multisig =
+        MultisigSettings::new(2, NonEmpty::new(btree_set!(pk1, pk2, pk3,)).unwrap()).unwrap();
+
+    assert_eq!(
+        multisig.address(Network::Regtest).unwrap().to_string(),
+        "bcrt1q4ga0r07vte2p638c8vh4fvpwjaln0qmxalffdkgeztl8l0act0xsvm7j9k"
+    );
 }

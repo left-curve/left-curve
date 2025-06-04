@@ -2,8 +2,8 @@ use {
     crate::{CONFIG, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, QueryMsg, Transaction, Utxo},
     grug::{
-        Addr, Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
-        Uint128,
+        Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+        Storage, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -121,7 +121,7 @@ fn query_outbound_transactions(
 fn query_outbound_singnature(
     storage: &dyn Storage,
     id: u32,
-) -> StdResult<BTreeMap<Addr, Vec<BitcoinSignature>>> {
+) -> StdResult<BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>> {
     SIGNATURES.load(storage, id)
 }
 
@@ -129,7 +129,7 @@ fn query_outbound_singnatures(
     storage: &dyn Storage,
     start_after: Option<u32>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<u32, BTreeMap<Addr, Vec<BitcoinSignature>>>> {
+) -> StdResult<BTreeMap<u32, BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 

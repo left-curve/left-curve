@@ -186,7 +186,7 @@ where
                 network: opt.bitcoin.network,
                 vault: opt.bitcoin.vault,
                 guardians: NonEmpty::new(btc_guardians_addresses)?,
-                threshold: opt.bitcoin.threshold,
+                multisig: opt.bitcoin.multisig,
                 sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
                 outbound_strategy: opt.bitcoin.outbound_strategy,
                 minimum_deposit: opt.bitcoin.minimum_deposit,

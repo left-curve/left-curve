@@ -1,7 +1,8 @@
 use {
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction, Vout},
     grug::{
-        Addr, Counter, Empty, Hash256, IndexedMap, Item, Map, Serde, Set, Uint128, UniqueIndex,
+        Addr, Counter, Empty, Hash256, HexByteArray, IndexedMap, Item, Map, Serde, Set, Uint128,
+        UniqueIndex,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -43,7 +44,8 @@ pub const NEXT_OUTBOUND_ID: Counter<u32> = Counter::new("next_outbound_id", 0, 1
 
 pub const OUTBOUNDS: Map<u32, Transaction> = Map::new("outbound");
 
-pub const SIGNATURES: Map<u32, BTreeMap<Addr, Vec<BitcoinSignature>>> = Map::new("signature");
+pub const SIGNATURES: Map<u32, BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>> =
+    Map::new("signature");
 
 #[grug::index_list((Uint128, Hash256, Vout), Empty)]
 pub struct UtxoIndexes<'a> {

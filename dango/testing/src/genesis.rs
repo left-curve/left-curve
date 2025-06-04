@@ -1,6 +1,6 @@
 use {
     crate::{
-        BridgeOp, MOCK_BITCOIN_REGTEST_VAULT, TestOption,
+        BridgeOp, MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestOption,
         constants::{
             DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner,
             user1, user2, user3, user4, user5, user6, user7, user8, user9, val1, val2, val3,
@@ -13,7 +13,7 @@ use {
     dango_types::{
         auth::Key,
         bank::Metadata,
-        bitcoin::Network,
+        bitcoin::{MultisigSettings, Network},
         constants::{PYTH_PRICE_SOURCES, btc, dango, eth, sol, usdc},
         dex::{CurveInvariant, PairParams, PairUpdate},
         gateway::{Remote, WarpRemote, WithdrawalFee},
@@ -22,8 +22,8 @@ use {
     },
     grug::{
         Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonEmpty, NumberConst, Order, Udec128,
-        Uint128, btree_map, btree_set, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, HexByteArray, LengthBounded, NonEmpty, NumberConst, Order,
+        Udec128, Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -590,7 +590,16 @@ impl Preset for BitcoinOption {
                 val2::USERNAME.clone(),
                 val3::USERNAME.clone(),
             }),
-            threshold: 2,
+            multisig: MultisigSettings::new(
+                2,
+                NonEmpty::new_unchecked(btree_set! {
+                    HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap(),
+                    HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].1).unwrap(),
+                    HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[2].1).unwrap(),
+
+                }),
+            )
+            .unwrap(),
             sats_per_vbyte: Uint128::new(10),
             outbound_fee: Uint128::new(1000),
             outbound_strategy: Order::Ascending,

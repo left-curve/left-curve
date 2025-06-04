@@ -7,7 +7,7 @@ pub const MOCK_BRIDGE_GUARDIANS_KEYS: [(&str, &str); 3] = [
     // priv cPxc81L2iGb9ujrYdvNakUgCvFLQH3j4r9oo4soEK6FkNGVC6hZk
     // pub  029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6
     (
-        "cPxc81L2iGb9ujrYdvNakUgCvFLQH3j4r9oo4soEK6FkNGVC6hZk",
+        "46f182ee40948a74d05d6ca0585440dd43e90eeee3ef944b1ee34a1831753251",
         "029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6",
     ),
     // help speed west above camp hockey ketchup public message liquid shield jealous sphere tell steak ripple pretty verify hedgehog initial solve foster mail anger

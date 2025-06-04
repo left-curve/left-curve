@@ -1,6 +1,12 @@
 use {
     crate::gateway::bridge::BridgeMsg,
-    grug::{Addr, Denom, Hash256, HexBinary, NonEmpty, Order, Uint128},
+    anyhow::bail,
+    corepc_client::bitcoin::{
+        Address, Amount, OutPoint, PublicKey, ScriptBuf, Sequence, Transaction as BtcTransaction,
+        TxIn, TxOut, Txid, Witness, absolute::LockTime, hashes::Hash,
+        opcodes::all::OP_CHECKMULTISIG, script::Builder, transaction::Version,
+    },
+    grug::{Addr, Denom, Hash256, HexBinary, HexByteArray, Inner, NonEmpty, Order, Uint128},
     serde::{Deserialize, Serialize, Serializer},
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -32,12 +38,65 @@ pub type BitcoinSignature = HexBinary;
 /// The index of the output in a Bitcoin transaction.
 pub type Vout = u32;
 
+/// Multisig settings for the Bitcoin multisig wallet.
+#[grug::derive(Serde)]
+pub struct MultisigSettings {
+    threshold: u8,
+    pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
+}
+
+impl MultisigSettings {
+    pub fn new(k: u8, pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>) -> anyhow::Result<Self> {
+        if k < 1 || k > pub_keys.len() as u8 {
+            bail!(
+                "Invalid multisig parameters: k = {}, n = {}",
+                k,
+                pub_keys.len()
+            );
+        }
+
+        Ok(Self {
+            threshold: k,
+            pub_keys,
+        })
+    }
+
+    /// Create the script for the multisig transaction.
+    /// The redeem script is a P2WSH script is created as:
+    /// k pubkeys n OP_CHECKMULTISIG
+    pub fn script(&self) -> anyhow::Result<ScriptBuf> {
+        let mut builder = Builder::new().push_int(self.threshold as i64);
+
+        for pubkey in self.pub_keys.iter() {
+            builder = builder.push_key(&PublicKey::from_slice(pubkey)?);
+        }
+
+        builder = builder
+            .push_int(self.pub_keys.len() as i64)
+            .push_opcode(OP_CHECKMULTISIG);
+
+        Ok(builder.into_script())
+    }
+
+    pub fn address(&self, network: Network) -> anyhow::Result<Address> {
+        Ok(Address::p2wsh(&self.script()?, network))
+    }
+
+    pub fn threshold(&self) -> u8 {
+        self.threshold
+    }
+
+    pub fn pub_keys(&self) -> &NonEmpty<BTreeSet<HexByteArray<33>>> {
+        &self.pub_keys
+    }
+}
+
 #[grug::derive(Serde)]
 pub struct Config {
     pub network: Network,
     pub vault: BitcoinAddress,
     pub guardians: NonEmpty<BTreeSet<Addr>>,
-    pub threshold: u8,
+    pub multisig: MultisigSettings,
     /// The amount of Sats for each vByte to calculate the fee.
     pub sats_per_vbyte: Uint128,
     /// Strategy for choosing the UTXOs as inputs for outbound transactions.
@@ -98,6 +157,50 @@ where
             Ok(((hash, vout), amount))
         })
         .collect()
+}
+
+impl Transaction {
+    /// Converts the object into a Bitcoin transaction.
+    pub fn to_btc_transaction(&self, network: Network) -> anyhow::Result<BtcTransaction> {
+        let inputs = self
+            .inputs
+            .iter()
+            .map(|((hash, vout), _)| {
+                let outpoint = OutPoint {
+                    txid: Txid::from_byte_array(hash.into_inner()),
+                    vout: *vout,
+                };
+
+                TxIn {
+                    previous_output: outpoint,
+                    script_sig: ScriptBuf::new(),
+                    sequence: Sequence::MAX,
+                    witness: Witness::default(),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let outputs = self
+            .outputs
+            .iter()
+            .map(|(address, amount)| {
+                let script = Address::from_str(&address)?
+                    .require_network(network)?
+                    .script_pubkey();
+                Ok(TxOut {
+                    value: Amount::from_sat(amount.into_inner() as u64),
+                    script_pubkey: script,
+                })
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        Ok(BtcTransaction {
+            version: Version::TWO,
+            lock_time: LockTime::ZERO,
+            input: inputs,
+            output: outputs,
+        })
+    }
 }
 
 #[grug::derive(Serde)]
@@ -174,6 +277,8 @@ pub enum ExecuteMsg {
         /// Once a threshold number of signatures has been received, a worker
         /// will pick it up and broadcast the transaction on the Bitcoin network.
         signatures: Vec<BitcoinSignature>,
+        /// The public key of the guardian signing the transaction.
+        pub_key: HexByteArray<33>,
     },
 }
 
@@ -248,5 +353,5 @@ pub struct OutboundRequested {
 pub struct OutboundConfirmed {
     pub id: u32,
     pub transaction: Transaction,
-    pub signatures: BTreeMap<Addr, Vec<BitcoinSignature>>,
+    pub signatures: BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>,
 }
