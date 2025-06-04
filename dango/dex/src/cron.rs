@@ -142,6 +142,8 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
+    // --------------------------- 1. Prepare orders ---------------------------
+
     // Load the market orders for this pair.
     let mut market_bids = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
@@ -199,6 +201,8 @@ fn clear_orders_of_pair(
     )
     .peekable();
 
+    // -------------------- 2. Match and fill market orders --------------------
+
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
@@ -219,6 +223,8 @@ fn clear_orders_of_pair(
         current_block_height,
     )?;
 
+    // ------------------------- 3. Match limit orders -------------------------
+
     // Run the limit order matching algorithm.
     let MatchingOutcome {
         range,
@@ -226,6 +232,8 @@ fn clear_orders_of_pair(
         bids,
         asks,
     } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
+
+    // ------------------------- 4. Fill limit orders --------------------------
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filled at the clearing price.
@@ -259,6 +267,8 @@ fn clear_orders_of_pair(
     } else {
         vec![]
     };
+
+    // ----------------------- 5. Update contract state ------------------------
 
     // Loop over all unmatched market orders and refund the users
     for (_, market_order) in market_bids {
