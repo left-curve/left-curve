@@ -314,9 +314,27 @@ where
                 // advance the limit orders iterator
                 Ordering::Greater => {
                     let limit_remaining_amount = limit_order.remaining;
-                    market_order
-                        .amount
-                        .checked_sub_assign(limit_remaining_amount)?;
+
+                    // Decrement the market order amount by the limit order remaining amount.
+                    // This is done differently for BUY and SELL market orders because the amount
+                    // is in terms of the quote asset for BUY orders and in terms of the base asset
+                    // for SELL orders.
+                    // If this is the last market order to be matched, i.e. the limit order iterator
+                    // is exhausted, the market order will remain in the market orders iterator and
+                    // the amount left in the market order will be refunded in `cron_execute`.
+                    match market_order_direction {
+                        Direction::Bid => {
+                            market_order.amount.checked_sub_assign(
+                                limit_remaining_amount.checked_mul_dec_ceil(*price)?,
+                            )?;
+                        },
+                        Direction::Ask => {
+                            market_order
+                                .amount
+                                .checked_sub_assign(limit_remaining_amount)?;
+                        },
+                    }
+
                     limit_order.remaining = Uint128::ZERO;
 
                     // Clone values so we can next the limit order iterator
