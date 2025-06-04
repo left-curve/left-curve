@@ -3289,6 +3289,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         ),
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3339,6 +3340,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         ),
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3389,6 +3391,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3437,6 +3440,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3485,6 +3489,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3533,6 +3538,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3581,6 +3587,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3631,6 +3638,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3681,6 +3689,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3731,6 +3740,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3781,6 +3791,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3843,6 +3854,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3911,6 +3923,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -3979,6 +3992,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -4047,6 +4061,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             },
         )
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -4116,6 +4131,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
 
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -4185,6 +4201,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
 
     ],
+    false,
     Udec128::ZERO,
     Udec128::ZERO,
     btree_map! {
@@ -4206,12 +4223,208 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     };
     "One limit bid, two market bids, no fees, slippage not exceeded"
 )]
+#[test_case(
+    vec![
+        (
+            vec![
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(1),
+                },
+            ],
+            coins! {
+                dango::DENOM.clone() => 100_000_000,
+            },
+        )
+    ],
+    vec![
+        (
+            vec![
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(150_000_000),
+                    max_slippage: Udec128::ZERO,
+                },
+            ],
+            coins! {
+                usdc::DENOM.clone() => 150_000_000,
+            },
+        )
+    ],
+    false,
+    Udec128::new_percent(1),
+    Udec128::new_percent(5),
+    btree_map! {
+        0 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(99_000_000),
+        },
+        1 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(95_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+        },
+    },
+    BTreeMap::new();
+    "One limit ask price 1.0, one market bid, limit order smaller size, 1% maker fee, 5% taker fee, no slippage"
+)]
+#[test_case(
+    vec![
+        (
+            vec![
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: Uint128::new(50_000_000),
+                    price: Udec128::new(2),
+                },
+            ],
+            coins! {
+                dango::DENOM.clone() => 50_000_000,
+            },
+        )
+    ],
+    vec![
+        (
+            vec![
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(150_000_000),
+                    max_slippage: Udec128::ZERO,
+                },
+            ],
+            coins! {
+                usdc::DENOM.clone() => 150_000_000,
+            },
+        )
+    ],
+    false,
+    Udec128::new_percent(1),
+    Udec128::new_percent(5),
+    btree_map! {
+        0 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(50_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(99_000_000),
+        },
+        1 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(47_500_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+        },
+    },
+    BTreeMap::new();
+    "One limit ask price 2.0, one market bid, limit order smaller size, 1% maker fee, 5% taker fee, no slippage"
+)]
+#[test_case(
+    vec![
+        (
+            vec![
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(1),
+                },
+            ],
+            coins! {
+                usdc::DENOM.clone() => 100_000_000,
+            },
+        )
+    ],
+    vec![
+        (
+            vec![
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: Uint128::new(150_000_000),
+                    max_slippage: Udec128::ZERO,
+                },
+            ],
+            coins! {
+                dango::DENOM.clone() => 150_000_000,
+            },
+        )
+    ],
+    false,
+    Udec128::new_percent(1),
+    Udec128::new_percent(5),
+    btree_map! {
+        0 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(99_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+        },
+        1 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(95_000_000),
+        },
+    },
+    BTreeMap::new();
+    "One limit bid price 1.0, one market ask, limit order smaller size, 1% maker fee, 5% taker fee, no slippage"
+)]
+#[test_case(
+    vec![
+        (
+            vec![
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(2),
+                },
+            ],
+            coins! {
+                usdc::DENOM.clone() => 200_000_000,
+            },
+        )
+    ],
+    vec![
+        (
+            vec![
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: Uint128::new(150_000_000),
+                    max_slippage: Udec128::ZERO,
+                },
+            ],
+            coins! {
+                dango::DENOM.clone() => 150_000_000,
+            },
+        )
+    ],
+    false,
+    Udec128::new_percent(1),
+    Udec128::new_percent(5),
+    btree_map! {
+        0 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Increased(99_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(200_000_000),
+        },
+        1 => btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(190_000_000),
+        },
+    },
+    BTreeMap::new();
+    "One limit bid price 2.0, one market ask, limit order smaller size, 1% maker fee, 5% taker fee, no slippage"
+)]
 // TODO:
 // - Limit order gets taker fee, market order gets taker fee
-// - Limit order gets maker fee, market order gets taker fee
 fn market_order_clearing(
     limit_orders_and_funds: Vec<(Vec<CreateLimitOrderRequest>, Coins)>,
     market_orders_and_funds: Vec<(Vec<CreateMarketOrderRequest>, Coins)>,
+    limits_and_markets_in_same_block: bool,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     expected_balance_changes: BTreeMap<usize, BTreeMap<Denom, BalanceChange>>,
