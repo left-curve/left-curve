@@ -32,6 +32,7 @@ export { Pagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
+export { Tooltip } from "./Tooltip";
 
 /* ---------------------------------- Icons --------------------------------- */
 
