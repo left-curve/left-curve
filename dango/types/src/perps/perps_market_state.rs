@@ -129,8 +129,7 @@ impl PerpsMarketState {
 
         let last_term = oracle_price.checked_div(skew_scale)?.checked_mul(
             skew.checked_pow(2)?
-                .checked_sub(quadratic_fee_basis)?
-                .checked_div(Dec128::new(2))?,
+                .checked_sub(quadratic_fee_basis.checked_div(Dec128::new(2))?)?,
         )?;
         let trader_price_pnl = skew
             .checked_mul(oracle_price)?
