@@ -193,32 +193,33 @@ fn clear_orders_of_pair(
         .append(Direction::Bid)
         .range(storage, None, None, IterationOrder::Ascending)
         .peekable();
-
     let mut market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending)
         .peekable();
 
-    let market_order_filling_outcomes = match_market_orders(
+    // Run the market order matching algorithm.
+    // 1. Match market BUY orders against resting SELL limit orders.
+    // 2. Match market SELL orders against resting BUY limit orders.
+    let market_bid_filling_outcomes = match_market_orders(
         &mut market_bids,
         &mut merged_ask_iter,
         Direction::Bid,
         maker_fee_rate,
         taker_fee_rate,
         current_block_height,
-    )?
-    .into_iter()
-    .chain(match_market_orders(
+    )?;
+    let market_ask_filling_outcomes = match_market_orders(
         &mut market_asks,
         &mut merged_bid_iter,
         Direction::Ask,
         maker_fee_rate,
         taker_fee_rate,
         current_block_height,
-    )?);
+    )?;
 
-    // Run the order matching algorithm.
+    // Run the limit order matching algorithm.
     let MatchingOutcome {
         range,
         volume,
@@ -227,7 +228,7 @@ fn clear_orders_of_pair(
     } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
 
     // If matching orders were found, then we need to fill the orders. All orders
-    // are filles at the clearing price.
+    // are filled at the clearing price.
     let limit_order_filling_outcomes = if let Some((lower_price, higher_price)) = range {
         // Choose the clearing price. Any price within `range` gives the same
         // volume (measured in the base asset). We can either take
@@ -255,9 +256,6 @@ fn clear_orders_of_pair(
             maker_fee_rate,
             taker_fee_rate,
         )?
-        .into_iter()
-        .map(|outcome| (outcome, clearing_price))
-        .collect::<Vec<_>>()
     } else {
         vec![]
     };
@@ -288,27 +286,25 @@ fn clear_orders_of_pair(
     let mut inflows = Coins::new();
     let mut outflows = Coins::new();
 
+    let filling_outcomes = market_bid_filling_outcomes
+        .into_iter()
+        .chain(market_ask_filling_outcomes)
+        .chain(limit_order_filling_outcomes);
+
     // Handle order filling outcomes for the user placed orders.
-    for (
-        FillingOutcome {
-            order_direction,
-            order_price,
-            order_id,
-            order,
-            filled,
-            cleared,
-            refund_base,
-            refund_quote,
-            fee_base,
-            fee_quote,
-        },
+    for FillingOutcome {
+        order_direction,
+        order_price,
+        order_id,
+        order,
+        filled,
         clearing_price,
-    ) in market_order_filling_outcomes
-        .map(|outcome| {
-            let price = outcome.order_price;
-            (outcome, price)
-        })
-        .chain(limit_order_filling_outcomes)
+        cleared,
+        refund_base,
+        refund_quote,
+        fee_base,
+        fee_quote,
+    } in filling_outcomes
     {
         update_trading_volumes(
             storage,

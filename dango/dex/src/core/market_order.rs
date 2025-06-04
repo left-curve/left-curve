@@ -278,12 +278,14 @@ fn _update_filling_outcome(
         order_id,
         order: order.clone(),
         filled: Uint128::ZERO,
+        clearing_price: price,
         cleared: false,
         refund_base: Uint128::ZERO,
         refund_quote: Uint128::ZERO,
         fee_base: Uint128::ZERO,
         fee_quote: Uint128::ZERO,
     });
+
     match order {
         Order::Limit(limit_order) => {
             filling_outcome.cleared = limit_order.remaining.is_zero();
