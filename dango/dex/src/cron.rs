@@ -411,33 +411,30 @@ fn clear_orders_of_pair(
                 direction: order_direction,
             })?;
 
-            match order {
-                Order::Limit(limit_order) => {
-                    if cleared {
-                        // Remove the order from the storage if it was fully filled
-                        LIMIT_ORDERS.remove(
-                            storage,
-                            (
-                                (base_denom.clone(), quote_denom.clone()),
-                                order_direction,
-                                order_price,
-                                order_id,
-                            ),
-                        )?;
-                    } else {
-                        LIMIT_ORDERS.save(
-                            storage,
-                            (
-                                (base_denom.clone(), quote_denom.clone()),
-                                order_direction,
-                                order_price,
-                                order_id,
-                            ),
-                            &limit_order,
-                        )?;
-                    }
-                },
-                Order::Market(_) => {},
+            if let Order::Limit(limit_order) = order {
+                if cleared {
+                    // Remove the order from the storage if it was fully filled
+                    LIMIT_ORDERS.remove(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order_direction,
+                            order_price,
+                            order_id,
+                        ),
+                    )?;
+                } else {
+                    LIMIT_ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order_direction,
+                            order_price,
+                            order_id,
+                        ),
+                        &limit_order,
+                    )?;
+                }
             }
         }
     }
