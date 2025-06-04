@@ -228,7 +228,7 @@ fn clear_orders_of_pair(
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filles at the clearing price.
-    let limit_order_matching_filling_outcomes = if let Some((lower_price, higher_price)) = range {
+    let limit_order_filling_outcomes = if let Some((lower_price, higher_price)) = range {
         // Choose the clearing price. Any price within `range` gives the same
         // volume (measured in the base asset). We can either take
         //
@@ -308,7 +308,7 @@ fn clear_orders_of_pair(
             let price = outcome.order_price;
             (outcome, price)
         })
-        .chain(limit_order_matching_filling_outcomes)
+        .chain(limit_order_filling_outcomes)
     {
         update_trading_volumes(
             storage,
