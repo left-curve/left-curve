@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use grug::{
     Dec128, Denom, Inner, Int128, MathError, Number, NumberConst, Sign, Timestamp, Udec128,
     Uint128, Unsigned,
@@ -32,9 +34,6 @@ pub struct PerpsMarketState {
 /// Global, per-market accumulators — enable O(1) NAV calculation.
 #[grug::derive(Serde, Borsh)]
 pub struct PerpsMarketAccumulators {
-    /// Σ q_k  (signed)
-    pub net_position_q: Int128,
-
     /// Σ q_k * entry_execution_price_k  (signed, vault-denom units)
     pub cost_basis_sum: Dec128,
 
@@ -48,7 +47,6 @@ pub struct PerpsMarketAccumulators {
 impl PerpsMarketAccumulators {
     pub fn new() -> Self {
         Self {
-            net_position_q: Int128::ZERO,
             cost_basis_sum: Dec128::ZERO,
             funding_basis_sum: Dec128::ZERO,
             quadratic_fee_basis: Int128::ZERO,
@@ -57,7 +55,6 @@ impl PerpsMarketAccumulators {
 
     /// Decrease the accumulators by the given position.
     pub fn decrease(&mut self, position: &PerpsPosition) -> Result<(), MathError> {
-        self.net_position_q = self.net_position_q.checked_sub(position.size)?;
         self.cost_basis_sum = self.cost_basis_sum.checked_sub(
             position
                 .size
@@ -79,7 +76,6 @@ impl PerpsMarketAccumulators {
 
     /// Increase the accumulators by the given position.
     pub fn increase(&mut self, position: &PerpsPosition) -> Result<(), MathError> {
-        self.net_position_q = self.net_position_q.checked_add(position.size)?;
         self.cost_basis_sum = self.cost_basis_sum.checked_add(
             position
                 .size
@@ -118,90 +114,69 @@ impl PerpsMarketState {
 
     /// Returns the unrealized price PnL of the market.
     ///
-    /// $$
-    /// \text{pricePnL}(p)=
-    /// K\,p
-    /// - C
-    /// +\frac{p}{2\,\text{skewScale}}
-    ///   \Bigl(K^{2}-\tfrac12 S^{2}\Bigr)
-    /// \tag{1}
-    /// $$
-    ///
-    /// pricePnL(p) = Kp - C + p / (2 * skewScale) * (K^2 - S^2 / 2)
+    /// sum_of_traders_price_pnl = skew * oracle_price - cost_basis_sum + oracle_price / skew_scale * (skew^2 - quadratic_fee_basis / 2)
+    /// market_pnl = -sum_of_traders_price_pnl
     pub fn unrealized_price_pnl(
         &self,
         oracle_price: Udec128,
         skew_scale: Uint128,
     ) -> Result<Int128, MathError> {
         let oracle_price = oracle_price.checked_into_signed()?;
-        let K = self.accumulators.net_position_q.checked_into_dec()?;
-        let C = self.accumulators.cost_basis_sum; // already Dec128
-        let S2 = self.accumulators.quadratic_fee_basis; // Int128  (we still call it A here)
-        let price_pnl = K * oracle_price               // K·p
-    - C                               // −Σ q·p_entry
-    + oracle_price
-        * (K*K - S2.checked_into_dec()? / Dec128::new(2)) // correction term
-        / (skew_scale.checked_into_dec()?.checked_into_signed()? * Dec128::new(2));
-        Ok(price_pnl.into_int())
+        let skew = self.skew()?.checked_into_dec()?;
+        let skew_scale = skew_scale.checked_into_dec()?.checked_into_signed()?;
+        let cost_basis_sum = self.accumulators.cost_basis_sum;
+        let quadratic_fee_basis = self.accumulators.quadratic_fee_basis.checked_into_dec()?;
+
+        let last_term = oracle_price.checked_div(skew_scale)?.checked_mul(
+            skew.checked_pow(2)?
+                .checked_sub(quadratic_fee_basis)?
+                .checked_div(Dec128::new(2))?,
+        )?;
+        let trader_price_pnl = skew
+            .checked_mul(oracle_price)?
+            .checked_sub(cost_basis_sum)?
+            .checked_add(last_term)?;
+
+        Ok(trader_price_pnl.into_int().checked_neg()?)
     }
 
     /// Returns the unrealized funding PnL of the market.
-    /// $$
-    /// \text{fundingPnL}(F_{\text{now}})=
-    /// K\,F_{\text{now}} - F_\Sigma
-    /// \tag{2}
-    /// $$
-    /// fundingPnL(F_now) = K * F_now - F_Sigma
-    pub fn unrealized_funding_pnl(&self) -> Result<Int128, MathError> {
-        let F_now = self.last_funding_index;
-        let K = self.accumulators.net_position_q.checked_into_dec()?;
-        let funding_pnl = K * F_now - self.accumulators.funding_basis_sum;
-        Ok(funding_pnl.into_int())
-    }
-
-    /// Returns the unrealized fees of the market.
-    /// $$
-    /// \text{unrealisedFee}(p)=
-    /// p\;\bigl(\varphi_m\,M + \varphi_t\,T\bigr)
-    /// $$
-    /// unrealisedFee(p) = p * (φ_m * M + φ_t * T)
     ///
-    /// with $M,T$ from (★).
-    pub fn unrealized_fees(
-        &self,
-        oracle_price: Udec128,
-        maker_rate: Udec128,
-        taker_rate: Udec128,
-    ) -> Result<Int128, MathError> {
-        let oracle_price = oracle_price.checked_into_signed()?;
-        let K = self.accumulators.net_position_q.checked_into_dec()?;
-        let S2 = self.accumulators.quadratic_fee_basis.checked_into_dec()?;
-        let abs_K = K.checked_abs()?;
-        let m_usd = (S2 - K * abs_K) / Dec128::new(2);
-        let t_usd = (S2 + K * abs_K) / Dec128::new(2) - abs_K;
-        let unreal_fee = oracle_price
-            * (m_usd * maker_rate.checked_into_signed()?
-                + t_usd * taker_rate.checked_into_signed()?);
-        Ok(unreal_fee.into_int())
+    /// sum_of_traders_funding_pnl = skew * funding_index - funding_basis_sum
+    /// market_pnl = -sum_of_traders_funding_pnl
+    pub fn unrealized_funding_pnl(&self) -> Result<Int128, MathError> {
+        let funding_index = self.last_funding_index;
+        let skew = self.skew()?.checked_into_dec()?;
+
+        let traders_funding_pnl = skew
+            .checked_mul(funding_index)?
+            .checked_sub(self.accumulators.funding_basis_sum)?;
+
+        Ok(traders_funding_pnl.into_int().checked_neg()?)
     }
 
+    /// Returns the net asset value of the vault for this market.
     pub fn net_asset_value(
         &self,
         params: &PerpsMarketParams,
         oracle_price: Udec128,
     ) -> anyhow::Result<Int128> {
-        let price_pnl = self.unrealized_price_pnl(oracle_price, params.skew_scale)?;
-        let funding_pnl = self.unrealized_funding_pnl()?;
-        let unrealized_fees = self.unrealized_fees(
-            oracle_price,
-            params.maker_fee.into_inner(),
-            params.taker_fee.into_inner(),
-        )?;
+        // For the purpose of calculating the withdrawable vault value, we cap
+        // the vault's unrealized PnL at 0, so that only losses for the vault
+        // are considered. This way, future unrealized gains for the vault are
+        // not counted so that we don't pay out gains that might not realize.
+        // We also don't consider unrealized closing fees as these are always
+        // gains for the vault.
+        let price_pnl = max(
+            Int128::ZERO,
+            self.unrealized_price_pnl(oracle_price, params.skew_scale)?,
+        );
+        let funding_pnl = max(Int128::ZERO, self.unrealized_funding_pnl()?);
+
         Ok(self
             .realised_cash_flow
             .total()?
             .checked_add(price_pnl)?
-            .checked_add(funding_pnl)?
-            .checked_add(unrealized_fees)?)
+            .checked_add(funding_pnl)?)
     }
 }
