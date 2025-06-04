@@ -78,6 +78,12 @@ pub enum MathError {
 
     #[error("logarithm of zero")]
     ZeroLog,
+
+    #[error("invalid negation. Can only negate signed types or unsigned types with a zero value")]
+    InvalidNegation,
+
+    #[error("overflow when negating {ty}({value})")]
+    OverflowNegation { ty: &'static str, value: String },
 }
 
 impl MathError {
