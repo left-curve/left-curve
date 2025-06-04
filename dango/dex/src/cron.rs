@@ -289,11 +289,6 @@ fn clear_orders_of_pair(
     let mut inflows = Coins::new();
     let mut outflows = Coins::new();
 
-    let filling_outcomes = market_bid_filling_outcomes
-        .into_iter()
-        .chain(market_ask_filling_outcomes)
-        .chain(limit_order_filling_outcomes);
-
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
@@ -307,7 +302,10 @@ fn clear_orders_of_pair(
         refund_quote,
         fee_base,
         fee_quote,
-    } in filling_outcomes
+    } in market_bid_filling_outcomes
+        .into_iter()
+        .chain(market_ask_filling_outcomes)
+        .chain(limit_order_filling_outcomes)
     {
         update_trading_volumes(
             storage,
