@@ -19,7 +19,6 @@ export type RadioGroupProps = {
   defaultValue?: string;
   onChange?: (value: string) => void;
   isDisabled?: boolean;
-  validate?: (value: string) => string | true | null | undefined;
   error?: string;
 };
 
