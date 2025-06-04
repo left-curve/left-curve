@@ -5,7 +5,6 @@ use {
 };
 
 #[derive(Debug)]
-
 pub struct FillingOutcome {
     pub order_direction: Direction,
     pub order_price: Udec128,
