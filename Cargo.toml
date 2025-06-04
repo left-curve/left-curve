@@ -28,6 +28,7 @@ members = [
   "grug/ffi",
   "grug/jellyfish-merkle",
   "grug/macros",
+  "grug/malachite",
   "grug/math",
   "grug/mocks/*",
   "grug/std",
@@ -111,6 +112,7 @@ home                    = "0.5"
 ics23                   = "0.12"
 itertools               = "0.14"
 k256                    = "0.13"
+libp2p-identity         = "0.2"
 lzma-rs                 = "0.3"
 num_cpus                = "1"
 p256                    = "0.13"
@@ -122,6 +124,7 @@ prost                   = "0.13"
 pyth-sdk                = "0.8"
 pythnet-sdk             = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                   = "1"
+ractor                  = { version = "0.14", default-features = false, features = ["async-trait", "tokio_runtime"] }
 rand                    = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                 = { version = "0.12", features = ["stream"] }
 reqwest-eventsource     = "0.6.0"
@@ -157,6 +160,11 @@ url                     = "2.5.4"
 uuid                    = { version = "1", features = ["serde", "v4"] }
 wasmer                  = "5" # keep at v5 because there's license change for v6
 wasmer-middlewares      = "5" # keep at v5 because there's license change for v6
+
+# Malachite
+malachitebft-engine       = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-engine" }
+malachitebft-metrics      = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-metrics" }
+malachitebft-test-mempool = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-test-mempool" }
 
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
@@ -194,6 +202,7 @@ grug-db-memory              = { path = "grug/db/memory" }
 grug-ffi                    = { path = "grug/ffi" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
 grug-macros                 = { path = "grug/macros" }
+grug-malachite              = { path = "grug/malachite" }
 grug-math                   = { path = "grug/math" }
 grug-mock-account           = { path = "grug/mocks/account" }
 grug-mock-bank              = { path = "grug/mocks/bank" }

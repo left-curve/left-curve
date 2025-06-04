@@ -1,0 +1,22 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-malachite"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+grug-app        = { workspace = true }
+grug-types      = { workspace = true }
+libp2p-identity = { workspace = true }
+ractor          = { workspace = true }
+tokio           = { workspace = true }
+tracing         = { workspace = true }
+
+malachitebft-engine       = { workspace = true }
+malachitebft-metrics      = { workspace = true }
+malachitebft-test-mempool = { workspace = true }
