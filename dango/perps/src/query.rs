@@ -1,6 +1,11 @@
 use {
-    crate::{PERPS_MARKET_PARAMS, PERPS_VAULT_DEPOSITS, state::PERPS_VAULT},
-    dango_types::perps::{PerpsMarketParams, PerpsVaultState, QueryMsg},
+    crate::{
+        PERPS_MARKET_PARAMS, PERPS_MARKETS, PERPS_POSITIONS, PERPS_VAULT_DEPOSITS,
+        state::PERPS_VAULT,
+    },
+    dango_types::perps::{
+        PerpsMarketParams, PerpsMarketState, PerpsPosition, PerpsVaultState, QueryMsg,
+    },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, Uint128,
     },
@@ -28,6 +33,22 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::VaultShares { limit, start_after } => {
             let res = query_vault_shares(ctx, limit, start_after)?;
+            res.to_json_value()
+        },
+        QueryMsg::PerpsMarketStateForDenom { denom } => {
+            let res = query_perps_market_state_for_denom(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::PerpsMarketStates { limit, start_after } => {
+            let res = query_perps_market_states(ctx, limit, start_after)?;
+            res.to_json_value()
+        },
+        QueryMsg::PerpsPositionsForUser { address } => {
+            let res = query_perps_positions_for_user(ctx, address)?;
+            res.to_json_value()
+        },
+        QueryMsg::PerpsPositions { limit, start_after } => {
+            let res = query_perps_positions(ctx, limit, start_after)?;
             res.to_json_value()
         },
     }
@@ -84,6 +105,63 @@ fn query_vault_shares(
         .map(|res| {
             let (address, vault_shares) = res?;
             Ok((address, vault_shares))
+        })
+        .collect()
+}
+
+fn query_perps_market_state_for_denom(
+    ctx: ImmutableCtx,
+    denom: Denom,
+) -> anyhow::Result<PerpsMarketState> {
+    let perps_market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
+    Ok(perps_market_state)
+}
+
+fn query_perps_market_states(
+    ctx: ImmutableCtx,
+    limit: Option<u32>,
+    start_after: Option<Denom>,
+) -> anyhow::Result<BTreeMap<Denom, PerpsMarketState>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    PERPS_MARKETS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| {
+            let (denom, perps_market_state) = res?;
+            Ok((denom, perps_market_state))
+        })
+        .collect()
+}
+
+fn query_perps_positions_for_user(
+    ctx: ImmutableCtx,
+    address: Addr,
+) -> anyhow::Result<BTreeMap<Denom, PerpsPosition>> {
+    let perps_positions = PERPS_POSITIONS
+        .prefix(&address)
+        .range(ctx.storage, None, None, Order::Ascending)
+        .collect::<Result<_, _>>()?;
+    Ok(perps_positions)
+}
+
+fn query_perps_positions(
+    ctx: ImmutableCtx,
+    limit: Option<u32>,
+    start_after: Option<(Addr, Denom)>,
+) -> anyhow::Result<BTreeMap<(Addr, Denom), PerpsPosition>> {
+    let start = start_after
+        .as_ref()
+        .map(|(address, denom)| Bound::Exclusive((address, denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    PERPS_POSITIONS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| {
+            let (address, perps_positions) = res?;
+            Ok((address, perps_positions))
         })
         .collect()
 }
