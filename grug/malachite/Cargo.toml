@@ -17,6 +17,7 @@ ractor          = { workspace = true }
 tokio           = { workspace = true }
 tracing         = { workspace = true }
 
+malachitebft-core-types   = { workspace = true }
 malachitebft-engine       = { workspace = true }
 malachitebft-metrics      = { workspace = true }
 malachitebft-test-mempool = { workspace = true }

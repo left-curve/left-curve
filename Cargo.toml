@@ -162,6 +162,7 @@ wasmer                  = "5" # keep at v5 because there's license change for v6
 wasmer-middlewares      = "5" # keep at v5 because there's license change for v6
 
 # Malachite
+malachitebft-core-types   = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-core-types" }
 malachitebft-engine       = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-engine" }
 malachitebft-metrics      = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-metrics" }
 malachitebft-test-mempool = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-test-mempool" }

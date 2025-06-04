@@ -15,25 +15,6 @@ pub use malachitebft_test_mempool::NetworkMsg as GossipNetworkMsg;
 pub type NetworkMsg = Msg;
 pub type NetworkActorRef = ActorRef<Msg>;
 
-pub struct MempoolNetwork;
-
-impl MempoolNetwork {
-    pub async fn spawn(
-        keypair: Keypair,
-        config: Config,
-        metrics: SharedRegistry,
-    ) -> Result<ActorRef<Msg>, ractor::SpawnErr> {
-        let args = Args {
-            keypair,
-            config,
-            metrics,
-        };
-
-        let (actor_ref, _) = Actor::spawn(None, Self, args).await?;
-        Ok(actor_ref)
-    }
-}
-
 pub struct Args {
     pub keypair: Keypair,
     pub config: Config,
@@ -63,6 +44,25 @@ pub enum Msg {
     // Internal message
     #[doc(hidden)]
     NewEvent(Event),
+}
+
+pub struct MempoolNetwork;
+
+impl MempoolNetwork {
+    pub async fn spawn(
+        keypair: Keypair,
+        config: Config,
+        metrics: SharedRegistry,
+    ) -> Result<ActorRef<Msg>, ractor::SpawnErr> {
+        let args = Args {
+            keypair,
+            config,
+            metrics,
+        };
+
+        let (actor_ref, _) = Actor::spawn(None, Self, args).await?;
+        Ok(actor_ref)
+    }
 }
 
 #[async_trait]

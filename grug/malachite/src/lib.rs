@@ -2,6 +2,7 @@ mod actors;
 mod app;
 mod context;
 mod start;
+mod types;
 
 pub use start::start;
 
