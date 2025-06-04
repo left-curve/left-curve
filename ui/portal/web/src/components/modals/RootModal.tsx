@@ -18,6 +18,7 @@ export const Modals = {
   SignWithDesktop: "sign-with-desktop",
   ConfirmSwap: "confirm-swap",
   RenewSession: "renew-session",
+  ProSwapCloseAll: "pro-swap-close-all",
 };
 
 export type ModalRef = {
@@ -75,6 +76,11 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     options: {
       disableClosing: true,
     },
+  },
+  [Modals.ProSwapCloseAll]: {
+    component: lazy(() =>
+      import("./ProSwapCloseAll").then(({ ProSwapCloseAll }) => ({ default: ProSwapCloseAll })),
+    ),
   },
 };
 

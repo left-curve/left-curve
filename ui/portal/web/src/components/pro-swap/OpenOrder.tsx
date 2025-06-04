@@ -2,9 +2,12 @@ import { Cell, Table, type TableColumn, Tabs } from "@left-curve/applets-kit";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
+import { Modals } from "../modals/RootModal";
 
 export const OpenOrder: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
+  const { showModal } = useApp();
 
   const data = [
     {
@@ -25,7 +28,7 @@ export const OpenOrder: React.FC = () => {
       price: 1.889,
       reduceOnly: false,
       triggerConditions: "N/A",
-      onCancel: () => console.log("cancel"),
+      onCancel: () => showModal(Modals.ProSwapCloseAll),
     },
     {
       time: new Date(),
@@ -45,7 +48,7 @@ export const OpenOrder: React.FC = () => {
       price: 1.889,
       reduceOnly: false,
       triggerConditions: "N/A",
-      onCancel: () => console.log("cancel"),
+      onCancel: () => showModal(Modals.ProSwapCloseAll),
     },
   ];
 
