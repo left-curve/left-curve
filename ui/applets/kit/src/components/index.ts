@@ -33,6 +33,7 @@ export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
 export { Tooltip } from "./Tooltip";
+export { RadioGroup, Radio } from "./RadioGroup";
 
 /* ---------------------------------- Icons --------------------------------- */
 
