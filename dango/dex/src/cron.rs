@@ -142,6 +142,20 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
+    // Load the market orders for this pair.
+    let mut market_bids = MARKET_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
+        .drain(storage, None, None)?
+        .into_iter()
+        .peekable();
+    let mut market_asks = MARKET_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
+        .drain(storage, None, None)?
+        .into_iter()
+        .peekable();
+
     // Create iterators over user orders.
     //
     // Iterate BUY orders from the highest price to the lowest.
@@ -184,20 +198,6 @@ fn clear_orders_of_pair(
         dex_addr,
     )
     .peekable();
-
-    // Match bid market orders against resting ask limit orders and vice versa.
-    // We match market orders in a first in, first out manner based on the order
-    // id.
-    let mut market_bids = MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .peekable();
-    let mut market_asks = MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .peekable();
 
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
@@ -261,26 +261,19 @@ fn clear_orders_of_pair(
     };
 
     // Loop over all unmatched market orders and refund the users
-    for res in market_bids {
-        let (_, market_order) = res?;
+    for (_, market_order) in market_bids {
         refunds.insert(
             market_order.user,
             coins! { quote_denom.clone() => market_order.amount },
         );
     }
 
-    for res in market_asks {
-        let (_, market_order) = res?;
+    for (_, market_order) in market_asks {
         refunds.insert(
             market_order.user,
             coins! { base_denom.clone() => market_order.amount },
         );
     }
-
-    // Clear the market orders from the storage since they should not be persist to the next block
-    MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .clear(storage, None, None);
 
     // Track the inflows and outflows of the dex.
     let mut inflows = Coins::new();

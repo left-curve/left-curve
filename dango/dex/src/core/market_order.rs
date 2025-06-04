@@ -17,7 +17,7 @@ pub fn match_market_orders<M, L>(
     current_block_height: u64,
 ) -> anyhow::Result<Vec<FillingOutcome>>
 where
-    M: Iterator<Item = StdResult<(OrderId, MarketOrder)>>,
+    M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
     if market_orders.peek().is_none() || limit_orders.peek().is_none() {
@@ -56,10 +56,8 @@ where
             None => break,
         };
 
-        let (market_order_id, market_order) = match market_orders.peek_mut() {
-            Some(Ok((market_order_id, ref mut market_order))) => (market_order_id, market_order),
-            Some(Err(e)) => return Err(e.clone().into()),
-            None => break,
+        let Some((market_order_id, market_order)) = market_orders.peek_mut() else {
+            break;
         };
 
         // Calculate the cutoff price for the current market order
