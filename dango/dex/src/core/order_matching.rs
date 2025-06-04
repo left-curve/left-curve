@@ -168,6 +168,11 @@ where
             Direction::Bid => *price > cutoff_price,
             Direction::Ask => *price < cutoff_price,
         };
+        let market_order_amount_in_base = match market_order_direction {
+            Direction::Bid => market_order.amount.checked_div_dec_floor(*price)?,
+            Direction::Ask => market_order.amount,
+        };
+
         // If the price is not worse than the cutoff price, we can match the market order
         // against the limit order in full. Otherwise, we need to calculate the amount of the
         // market order that can be matched against the limit order, before the average
@@ -182,8 +187,8 @@ where
         //
         // We round down the result to ensure that the average price of the market order
         // does not exceed the cutoff price.
-        let market_order_amount = if !price_is_worse_than_cutoff {
-            market_order.amount
+        let market_order_amount_to_match_in_base = if !price_is_worse_than_cutoff {
+            market_order_amount_in_base
         } else {
             let filling_outcome = filling_outcomes.get_mut(&market_order_id).unwrap();
             let current_avg_price = filling_outcome.order_price;
@@ -199,46 +204,47 @@ where
 
             // Calculate how much of the market order can be filled without the average
             // price of the market order exceeding the cutoff price.
-            let market_order_amount =
-                filled.checked_mul_dec_floor(price_ratio.checked_into_unsigned()?)?;
+            let market_order_amount_to_match_in_base = filled
+                .checked_mul_dec_floor(price_ratio.checked_into_unsigned()?)?
+                .min(market_order_amount_in_base);
 
             // Since the order is only partially filled we update the filling outcome
             // to refund the amount that was not filled.
             match market_order_direction {
                 Direction::Bid => {
                     filling_outcome.refund_quote.checked_add_assign(
-                        market_order.amount.checked_sub(market_order_amount)?,
+                        market_order.amount.checked_sub(
+                            market_order_amount_to_match_in_base.checked_mul_dec_ceil(*price)?,
+                        )?,
                     )?;
                 },
                 Direction::Ask => {
                     filling_outcome.refund_base.checked_add_assign(
-                        market_order.amount.checked_sub(market_order_amount)?,
+                        market_order
+                            .amount
+                            .checked_sub(market_order_amount_to_match_in_base)?,
                     )?;
                 },
             }
 
-            market_order_amount
+            market_order_amount_to_match_in_base
         };
-        // Convert the market order amount to the base asset for BUY orders
-        let market_order_amount_in_base = match market_order_direction {
-            Direction::Bid => market_order_amount.checked_div_dec_floor(*price)?,
-            Direction::Ask => market_order_amount,
-        };
+
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
         let (filled_amount, price, limit_order_id, market_order_id, limit_order, market_order) =
-            match market_order_amount_in_base.cmp(&limit_order.remaining) {
+            match market_order_amount_to_match_in_base.cmp(&limit_order.remaining) {
                 // The market ask order is smaller than the limit order so we advance the market
                 // orders iterator and decrement the limit order remaining amount
                 Ordering::Less => {
                     limit_order
                         .remaining
-                        .checked_sub_assign(market_order_amount_in_base)?;
+                        .checked_sub_assign(market_order_amount_to_match_in_base)?;
                     market_order.amount = Uint128::ZERO;
 
                     // Clone values so we can next the market order iterator
                     let return_tuple = (
-                        market_order_amount_in_base,
+                        market_order_amount_to_match_in_base,
                         price.clone(),
                         limit_order_id.clone(),
                         market_order_id.clone(),
@@ -259,7 +265,7 @@ where
 
                     // Clone values so we can next the limit order iterator
                     let return_tuple = (
-                        market_order_amount_in_base,
+                        market_order_amount_to_match_in_base,
                         price.clone(),
                         limit_order_id.clone(),
                         market_order_id.clone(),
