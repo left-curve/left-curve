@@ -1,6 +1,7 @@
 use {
     crate::{Dec, Int, MathError, MathResult, NumberConst},
     bnum::types::{I256, I512, U256, U512},
+    std::any::type_name,
 };
 
 /// Describes a number that can take on negative values.
@@ -38,6 +39,9 @@ pub trait Sign: Sized + Copy {
     fn is_non_positive(&self) -> bool {
         !self.is_positive()
     }
+
+    /// Return the number's negative value.
+    fn checked_neg(self) -> MathResult<Self>;
 }
 
 // ------------------------------------ int ------------------------------------
@@ -56,6 +60,10 @@ where
 
     fn is_positive(&self) -> bool {
         self.0.is_positive()
+    }
+
+    fn checked_neg(self) -> MathResult<Self> {
+        self.0.checked_neg().map(Self)
     }
 }
 
@@ -76,6 +84,10 @@ where
     fn is_positive(&self) -> bool {
         self.0.is_positive()
     }
+
+    fn checked_neg(self) -> MathResult<Self> {
+        self.0.checked_neg().map(Self)
+    }
 }
 
 // --------------------------------- unsigned ----------------------------------
@@ -93,6 +105,10 @@ macro_rules! impl_sign_unsigned {
 
             fn is_positive(&self) -> bool {
                 *self > Self::ZERO
+            }
+
+            fn checked_neg(self) -> MathResult<Self> {
+                self.checked_neg().ok_or(MathError::InvalidNegation)
             }
         }
     };
@@ -124,6 +140,13 @@ macro_rules! impl_sign_signed {
 
             fn is_positive(&self) -> bool {
                 *self > Self::ZERO
+            }
+
+            fn checked_neg(self) -> MathResult<Self> {
+                self.checked_neg().ok_or(MathError::OverflowNegation {
+                    ty: type_name::<Self>(),
+                    value: self.to_string(),
+                })
             }
         }
     };
@@ -197,6 +220,86 @@ mod int_tests {
             }
         }
     );
+
+    int_test!( checked_neg_unsigned
+        inputs = {
+            u128 = {
+                passing: [
+                    (u128::ZERO, u128::ZERO),
+                    (u128::MIN, u128::MIN),
+                ],
+                failing: [
+                    u128::MAX,
+                    u128::ONE,
+                ]
+            }
+            u256 = {
+                passing: [
+                    (U256::ZERO, U256::ZERO),
+                    (U256::MIN, U256::MIN),
+                ],
+                failing: [
+                    U256::MAX,
+                    U256::ONE,
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
+            for (base, neg) in passing {
+                let base = bt(_0, Int::new(base));
+                println!("base: {}", base);
+                println!("base.checked_neg(): {:?}", base.checked_neg());
+                assert_eq!(base.checked_neg().unwrap(), Int::new(neg));
+            }
+
+            for failing in failing {
+                let base = bt(_0, Int::new(failing));
+                println!("failing: {}", base);
+                println!("failing.checked_neg(): {:?}", base.checked_neg());
+                assert!(matches!(base.checked_neg(), Err(MathError::InvalidNegation { .. })));
+            }
+        }
+    );
+
+    int_test!( checked_neg_signed
+        inputs = {
+            i128 = {
+                passing: [
+                    (i128::ZERO, i128::ZERO),
+                    (i128::MAX, -i128::MAX),
+                    (i128::ONE, -i128::ONE),
+                    (-i128::ONE, i128::ONE),
+                    (-i128::MAX, i128::MAX),
+                ],
+                failing: [
+                    i128::MIN,
+                ]
+            }
+            i256 = {
+                passing: [
+                    (I256::ZERO, I256::ZERO),
+                    (I256::MAX, -I256::MAX),
+                    (I256::ONE, -I256::ONE),
+                    (-I256::ONE, I256::ONE),
+                    (-I256::MAX, I256::MAX),
+                ],
+                failing: [
+                    I256::MIN,
+                ]
+            }
+        }
+        method = |_0, passing, failing| {
+            for (base, neg) in passing {
+                let base = bt(_0, Int::new(base));
+                assert_eq!(base.checked_neg().unwrap(), Int::new(neg));
+            }
+
+            for failing in failing {
+                let base = bt(_0, Int::new(failing));
+                assert!(matches!(base.checked_neg(), Err(MathError::OverflowNegation { .. })));
+            }
+        }
+    );
 }
 
 #[cfg(test)]
@@ -252,6 +355,82 @@ mod dec_tests {
             for failing in failing {
                 dt(_0d, failing);
                 assert!(matches!(failing.checked_abs(), Err(MathError::OverflowConversion { .. })));
+            }
+        }
+    );
+
+    dec_test!( checked_neg_unsigned
+        inputs = {
+            udec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (Dec::MIN, Dec::MIN),
+                ],
+                failing: [
+                    Dec::MAX,
+                    Dec::ONE,
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (Dec::MIN, Dec::MIN),
+                ],
+                failing: [
+                    Dec::MAX,
+                    Dec::ONE,
+                ]
+            }
+        }
+        method = |_0d: Dec<_, 18>, passing, failing| {
+            for (base, neg) in passing {
+                dt(_0d, base);
+                assert_eq!(base.checked_neg().unwrap(), neg);
+            }
+
+            for failing in failing {
+                dt(_0d, failing);
+                assert!(matches!(failing.checked_neg(), Err(MathError::InvalidNegation { .. })));
+            }
+        }
+    );
+
+    dec_test!( checked_neg_signed
+        inputs = {
+            dec128 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (Dec::MAX, -Dec::MAX),
+                    (Dec::ONE, -Dec::ONE),
+                    (-Dec::ONE, Dec::ONE),
+                    (-Dec::MAX, Dec::MAX),
+                ],
+                failing: [
+                    Dec::MIN,
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (Dec::ZERO, Dec::ZERO),
+                    (Dec::MAX, -Dec::MAX),
+                    (Dec::ONE, -Dec::ONE),
+                    (-Dec::ONE, Dec::ONE),
+                    (-Dec::MAX, Dec::MAX),
+                ],
+                failing: [
+                    Dec::MIN,
+                ]
+            }
+        }
+        method = |_0d: Dec<_, 18>, passing, failing| {
+            for (base, neg) in passing {
+                dt(_0d, base);
+                assert_eq!(base.checked_neg().unwrap(), neg);
+            }
+
+            for failing in failing {
+                dt(_0d, failing);
+                assert!(matches!(failing.checked_neg(), Err(MathError::OverflowNegation { .. })));
             }
         }
     );
