@@ -41,6 +41,7 @@ mod shared;
 mod signer;
 mod status;
 mod time;
+mod transfer;
 mod tx;
 mod unique_vec;
 mod utils;
@@ -51,7 +52,7 @@ pub use {
     encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*, hash::*, hashers::*,
     imports::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*, lengthy::*, non_zero::*,
     outcome::*, query::*, response::*, result::*, serializers::*, shared::*, signer::*, status::*,
-    time::*, tx::*, unique_vec::*, utils::*,
+    time::*, transfer::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

@@ -13,11 +13,11 @@ use {
     },
     grug::{
         Addr, Coin, Coins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction, Number,
-        NumberConst, Order as IterationOrder, Response, StdError, Storage, SudoCtx, Udec128,
-        Uint128,
+        NumberConst, Order as IterationOrder, Response, StdError, Storage, SudoCtx,
+        TransferBuilder, Udec128, Uint128,
     },
     std::{
-        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
+        collections::{BTreeSet, HashMap, hash_map::Entry},
         iter,
     },
 };
@@ -35,11 +35,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
-    let mut refunds = BTreeMap::new();
+    let mut refunds = TransferBuilder::new();
     let mut volumes = HashMap::new();
     let mut volumes_by_username = HashMap::new();
     let mut fees = Coins::new();
-    let mut fee_payments = BTreeMap::new();
+    let mut fee_payments = TransferBuilder::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
@@ -97,17 +97,17 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     }
 
     Ok(Response::new()
-        .may_add_message(if !refunds.is_empty() {
-            Some(Message::batch_transfer(refunds)?)
+        .may_add_message(if refunds.is_non_empty() {
+            Some(refunds.into_message())
         } else {
             None
         })
-        .may_add_message(if !fee_payments.is_empty() {
+        .may_add_message(if fee_payments.is_non_empty() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
-                    payments: fee_payments,
+                    payments: fee_payments.into_batch(),
                 },
                 fees,
             )?)
@@ -129,9 +129,9 @@ fn clear_orders_of_pair(
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
-    refunds: &mut BTreeMap<Addr, Coins>,
+    refunds: &mut TransferBuilder,
     fees: &mut Coins,
-    fee_payments: &mut BTreeMap<Addr, Coins>,
+    fee_payments: &mut TransferBuilder,
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
@@ -281,26 +281,17 @@ fn clear_orders_of_pair(
                 },
             ])?;
 
-            refunds
-                .entry(order.user)
-                .or_default()
-                .insert_many(refund.clone())?;
+            refunds.insert_many(order.user, refund.clone())?;
 
             // Handle fees.
             if fee_base.is_non_zero() {
                 fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
-                fee_payments
-                    .entry(order.user)
-                    .or_default()
-                    .insert(Coin::new(base_denom.clone(), fee_base)?)?;
+                fee_payments.insert(order.user, base_denom.clone(), fee_base)?;
             }
 
             if fee_quote.is_non_zero() {
                 fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
-                fee_payments
-                    .entry(order.user)
-                    .or_default()
-                    .insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+                fee_payments.insert(order.user, quote_denom.clone(), fee_quote)?;
             }
 
             // Include fee information in the event
