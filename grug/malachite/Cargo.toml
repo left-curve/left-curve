@@ -10,6 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+anyhow          = { workspace = true }
 borsh           = { workspace = true }
 grug            = { workspace = true }
 grug-app        = { workspace = true }

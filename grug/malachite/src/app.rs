@@ -4,7 +4,7 @@ use {
     std::sync::Arc,
 };
 
-pub type AppRef = Arc<dyn MempoolApp>;
+pub type MempoolAppRef = Arc<dyn MempoolApp>;
 
 pub trait MempoolApp: Send + Sync + 'static {
     fn check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome>;
@@ -21,4 +21,17 @@ where
     fn check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
         self.do_check_tx(tx)
     }
+}
+
+pub type HostAppRef = Arc<dyn HostApp>;
+pub trait HostApp: Send + Sync + 'static {}
+
+impl<DB, VM, PP, ID> HostApp for grug_app::App<DB, VM, PP, ID>
+where
+    DB: Db + Send + Sync + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
+    PP: ProposalPreparer + Send + Sync + 'static,
+    ID: Indexer + Send + Sync + 'static,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
 }

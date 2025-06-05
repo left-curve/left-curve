@@ -4983,6 +4983,7 @@ dependencies = [
 name = "grug-malachite"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "borsh 1.5.7",
  "grug",
  "grug-app",

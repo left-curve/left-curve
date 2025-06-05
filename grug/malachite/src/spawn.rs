@@ -1,13 +1,13 @@
 use {
     crate::{
         actors::{Host, HostRef, Mempool, MempoolActorRef, MempoolNetwork, MempoolNetworkActorRef},
-        app::MempoolApp,
+        app::{HostApp, MempoolApp},
         codec,
         config::Config,
         context::Context,
         ctx,
     },
-    grug_app::App,
+    grug_app::{App, Db},
     malachitebft_app::events::TxEvent,
     malachitebft_config::{
         BootstrapProtocol, PubSubProtocol, Selector, ValuePayload, ValueSyncConfig,
@@ -35,7 +35,7 @@ pub struct Actors {
 pub async fn spawn_actors<DB, VM, PP, ID>(
     home_dir: Option<PathBuf>,
     cfg: Config,
-    initial_validator_set: ctx!(ValidatorSet),
+    validator_set: ctx!(ValidatorSet),
     start_height: Option<ctx!(Height)>,
     tx_event: TxEvent<Context>,
     private_key: ctx!(SigningScheme::PrivateKey),
@@ -43,7 +43,9 @@ pub async fn spawn_actors<DB, VM, PP, ID>(
     span: Span,
 ) -> Actors
 where
+    DB: Db,
     App<DB, VM, PP, ID>: MempoolApp,
+    App<DB, VM, PP, ID>: HostApp,
 {
     let start_height = start_height.unwrap_or(<ctx!(Height)>::new(1));
 
@@ -53,11 +55,11 @@ where
     let sync_metrics: SyncMetrics = SyncMetrics::register(&registry);
 
     let mempool_network = spawn_mempool_network_actor(&cfg, &private_key, &registry).await;
-    let mempool = spawn_mempool_actor(mempool_network, app).await;
+    let mempool = spawn_mempool_actor(mempool_network, app.clone()).await;
 
     let network = spawn_network_actor(&cfg, &private_key, &registry, &span).await;
 
-    let host = spawn_host_actor().await;
+    let host = spawn_host_actor(app, mempool.clone(), validator_set.clone()).await;
 
     let sync = spawn_sync_actor(
         network.clone(),
@@ -72,7 +74,7 @@ where
 
     let consensus = spawn_consensus_actor(
         start_height,
-        initial_validator_set,
+        validator_set,
         cfg,
         private_key,
         network.clone(),
@@ -186,8 +188,16 @@ async fn spawn_network_actor(
     .unwrap()
 }
 
-async fn spawn_host_actor() -> HostRef {
-    let host = Host::spawn().await;
+async fn spawn_host_actor<DB, VM, PP, ID>(
+    app: Arc<App<DB, VM, PP, ID>>,
+    mempool: MempoolActorRef,
+    validator_set: ctx!(ValidatorSet),
+) -> HostRef
+where
+    DB: Db,
+    App<DB, VM, PP, ID>: HostApp,
+{
+    let host = Host::spawn(app, mempool, validator_set).await;
     host
 }
 

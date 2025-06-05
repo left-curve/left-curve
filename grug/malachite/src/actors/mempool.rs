@@ -2,7 +2,7 @@ use {
     crate::{
         ActorResult,
         actors::network::{GossipNetworkMsg, MempoolNetworkActorRef, MempoolNetworkMsg},
-        app::AppRef,
+        app::MempoolAppRef,
     },
     grug::{CheckTxOutcome, Hash256, Tx},
     grug_app::AppError,
@@ -41,17 +41,17 @@ impl From<Arc<NetworkEvent>> for Msg {
 
 pub struct Mempool {
     network: MempoolNetworkActorRef,
-    app: AppRef,
+    app: MempoolAppRef,
 }
 
 impl Mempool {
-    pub fn new(network: MempoolNetworkActorRef, app: AppRef) -> Self {
+    pub fn new(network: MempoolNetworkActorRef, app: MempoolAppRef) -> Self {
         Self { network, app }
     }
 
     pub async fn spawn(
         mempool_network: MempoolNetworkActorRef,
-        app: AppRef,
+        app: MempoolAppRef,
     ) -> Result<MempoolActorRef, ractor::SpawnErr> {
         let node = Self::new(mempool_network, app);
         let (actor_ref, _) = Actor::spawn(None, node, ()).await?;

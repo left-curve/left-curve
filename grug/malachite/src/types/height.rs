@@ -1,4 +1,7 @@
-use std::fmt::{self, Display};
+use std::{
+    fmt::{self, Display},
+    ops::Deref,
+};
 
 // #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
 #[grug::derive(Borsh)]
@@ -8,6 +11,14 @@ pub struct Height(u64);
 impl Height {
     pub fn new(height: u64) -> Self {
         Self(height)
+    }
+}
+
+impl Deref for Height {
+    type Target = u64;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
