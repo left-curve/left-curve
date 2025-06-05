@@ -16,7 +16,7 @@ pub fn do_upload(
     block: BlockInfo,
     uploader: Addr,
     msg: MsgUpload,
-    trace_opt: TraceOption,
+    #[allow(unused_variables)] trace_opt: TraceOption,
 ) -> EventResult<EvtUpload> {
     let code_hash = msg.code.hash256();
 

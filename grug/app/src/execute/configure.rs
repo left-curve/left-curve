@@ -13,7 +13,7 @@ pub fn do_configure(
     block: BlockInfo,
     sender: Addr,
     msg: MsgConfigure,
-    trace_opt: TraceOption,
+    #[allow(unused_variables)] trace_opt: TraceOption,
 ) -> EventResult<EvtConfigure> {
     let evt = EvtConfigure { sender };
 
