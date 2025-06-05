@@ -84,6 +84,7 @@ jobs:
           toolchain: stable
       - name: Check without features
         run: |
+          set -euo pipefail
           for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
             echo "Checking $crate..."
             cargo check -p "$crate" --all-targets --no-default-features
