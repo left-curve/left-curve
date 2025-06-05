@@ -29,7 +29,7 @@ pub fn do_upload(
         Ok(_) => {
             #[cfg(feature = "tracing")]
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 code_hash = code_hash.to_string(),
                 "Uploaded code"
             );
@@ -39,7 +39,7 @@ pub fn do_upload(
         Err(err) => {
             #[cfg(feature = "tracing")]
             dyn_event!(
-                trace_opt.error_level,
+                trace_opt.error_level.into(),
                 err = err.to_string(),
                 "Failed to upload code"
             );

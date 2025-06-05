@@ -37,13 +37,13 @@ where
     evt.debug(
         |_| {
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 contract = contract.to_string(),
                 "Performed cronjob"
             );
         },
         "Failed to perform cronjob",
-        trace_opt.error_level,
+        trace_opt.error_level.into(),
     );
 
     evt

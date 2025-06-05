@@ -37,13 +37,13 @@ where
     evt.debug(
         |_| {
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 sender = tx.sender.to_string(),
                 "Finalized fee"
             );
         },
         "Failed to finalize fee",
-        trace_opt.error_level
+        trace_opt.error_level.into()
         // `finalize_fee` is supposed to always succeed, so if it doesn't,
         // we print a tracing log at ERROR level to highlight the seriousness.
         // #[cfg(feature = "tracing")]

@@ -43,14 +43,14 @@ where
     evt.debug(
         |_| {
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 from = sender.to_string(),
                 transfers = ?msg,
                 "Transferred coins"
             );
         },
         "Failed to transfer coins",
-        trace_opt.error_level,
+        trace_opt.error_level.into(),
     );
 
     evt

@@ -1,4 +1,24 @@
-use tracing::Level;
+#[derive(Clone, Copy)]
+pub enum Level {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+}
+
+#[cfg(feature = "tracing")]
+impl From<Level> for tracing::Level {
+    fn from(level: Level) -> Self {
+        match level {
+            Level::TRACE => tracing::Level::TRACE,
+            Level::DEBUG => tracing::Level::DEBUG,
+            Level::INFO => tracing::Level::INFO,
+            Level::WARN => tracing::Level::WARN,
+            Level::ERROR => tracing::Level::ERROR,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct TraceOption {
