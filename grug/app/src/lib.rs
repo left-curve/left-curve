@@ -17,7 +17,9 @@ mod tracing;
 mod traits;
 mod vm;
 
+#[cfg(feature = "tracing")]
+pub use crate::tracing::*;
 pub use crate::{
     app::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*, providers::*,
-    query::*, state::*, submessage::*, tracing::*, traits::*, vm::*,
+    query::*, state::*, submessage::*, traits::*, vm::*,
 };
