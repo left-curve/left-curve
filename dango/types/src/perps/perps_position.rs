@@ -35,12 +35,12 @@ impl PerpsPosition {
         let order_size = order_size.unwrap_or(self.size.checked_neg()?);
 
         // TODO: should round away from zero?
-        let realised_price_pnl = self.size.checked_mul_dec(
+        let price_pnl = self.size.checked_mul_dec(
             fill_price
                 .checked_sub(self.entry_execution_price)?
                 .checked_div(vault_denom_price.unit_price()?.checked_into_signed()?)?,
         )?;
-        let realised_funding_pnl = self.size.checked_mul_dec(
+        let funding_pnl = self.size.checked_mul_dec(
             market_state
                 .last_funding_index
                 .checked_sub(self.entry_funding_index)?,
@@ -55,8 +55,8 @@ impl PerpsPosition {
         let fee_in_vault_denom = vault_denom_price.unit_amount_from_value(fee_usd)?;
 
         Ok(Pnl {
-            price_pnl: realised_price_pnl,
-            funding_pnl: realised_funding_pnl,
+            price_pnl,
+            funding_pnl,
             fees: fee_in_vault_denom.checked_into_signed()?.checked_neg()?,
         })
     }
