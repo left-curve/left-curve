@@ -194,7 +194,13 @@ impl Coins {
     }
 
     /// Insert a new coin to the `Coins`.
-    pub fn insert(&mut self, coin: Coin) -> StdResult<&mut Self> {
+    pub fn insert<T>(&mut self, coin: T) -> StdResult<&mut Self>
+    where
+        T: TryInto<Coin>,
+        StdError: From<T::Error>,
+    {
+        let coin = coin.try_into()?;
+
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             // If the denom doesn't exist, and we are increasing by a non-zero
             // amount: just create a new record, and we are done.
@@ -211,8 +217,11 @@ impl Coins {
     }
 
     /// Insert all coins from another `Coins`.
-    pub fn insert_many(&mut self, coins: Self) -> StdResult<&mut Self> {
-        for coin in coins.into_iter() {
+    pub fn insert_many<T>(&mut self, coins: T) -> StdResult<&mut Self>
+    where
+        T: IntoIterator<Item = Coin>,
+    {
+        for coin in coins {
             self.insert(coin)?;
         }
 
@@ -220,7 +229,13 @@ impl Coins {
     }
 
     /// Deduct a coin from the `Coins`.
-    pub fn deduct(&mut self, coin: Coin) -> StdResult<&mut Self> {
+    pub fn deduct<T>(&mut self, coin: T) -> StdResult<&mut Self>
+    where
+        T: TryInto<Coin>,
+        StdError: From<T::Error>,
+    {
+        let coin = coin.try_into()?;
+
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             return Err(StdError::DenomNotFound { denom: coin.denom });
         };
@@ -235,8 +250,11 @@ impl Coins {
     }
 
     /// Deduct all coins from another `Coins`.
-    pub fn deduct_many(&mut self, coins: Self) -> StdResult<&mut Self> {
-        for coin in coins.into_iter() {
+    pub fn deduct_many<T>(&mut self, coins: T) -> StdResult<&mut Self>
+    where
+        T: IntoIterator<Item = Coin>,
+    {
+        for coin in coins {
             self.deduct(coin)?;
         }
 
@@ -245,24 +263,41 @@ impl Coins {
 
     /// Deduct a coin from the `Coins`, saturating at zero. Returns a coin of
     /// the remainder if the coin's amount is greater than the available amount.
-    pub fn saturating_deduct(&mut self, coin: Coin) -> StdResult<Coin> {
+    pub fn saturating_deduct<T>(&mut self, coin: T) -> StdResult<Coin>
+    where
+        T: TryInto<Coin>,
+        StdError: From<T::Error>,
+    {
+        let coin = coin.try_into()?;
+
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             return Ok(coin);
         };
 
         if &coin.amount >= amount {
             let remainder = coin.amount - *amount;
+
             self.0.remove(&coin.denom);
-            return Coin::new(coin.denom.clone(), remainder);
+
+            Ok(Coin {
+                denom: coin.denom,
+                amount: remainder,
+            })
+        } else {
+            amount.checked_sub_assign(coin.amount)?;
+
+            Ok(Coin {
+                denom: coin.denom,
+                amount: Uint128::ZERO,
+            })
         }
-
-        self.deduct(coin.clone())?;
-
-        Coin::new(coin.denom, 0)
     }
 
     /// Deduct all coins from another `Coins`, saturating at zero. Returns a
-    pub fn saturating_deduct_many(&mut self, coins: Self) -> StdResult<Self> {
+    pub fn saturating_deduct_many<T>(&mut self, coins: T) -> StdResult<Self>
+    where
+        T: IntoIterator<Item = Coin>,
+    {
         let mut remainders = Self::new();
 
         for coin in coins {

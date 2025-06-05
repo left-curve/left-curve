@@ -2,7 +2,7 @@ use {
     crate::{MARKETS, core},
     anyhow::bail,
     dango_types::lending::{Market, NAMESPACE, SUBNAMESPACE},
-    grug::{Coin, Coins, Denom, QuerierWrapper, Storage, Timestamp},
+    grug::{Coins, Denom, QuerierWrapper, Storage, Timestamp},
     std::collections::BTreeMap,
 };
 
@@ -28,7 +28,7 @@ pub fn withdraw(
 
         // Compute the amount of underlying coins to withdraw
         let underlying_amount = core::into_underlying_collateral(coin.amount, &market)?;
-        withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
+        withdrawn.insert((underlying_denom.clone(), underlying_amount))?;
 
         // Save the updated market state
         markets.insert(underlying_denom, market);

@@ -156,7 +156,7 @@ pub fn compute_health(
 
         // Calculate the real debt.
         let debt = dango_lending::into_underlying_debt(*scaled_debt, market)?;
-        debts.insert(Coin::new(denom.clone(), debt)?)?;
+        debts.insert((denom.clone(), debt))?;
 
         // Calculate the value of the debt.
         let price = prices
@@ -192,7 +192,7 @@ pub fn compute_health(
         let value = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(**power)?;
 
-        collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
+        collaterals.insert((denom.clone(), collateral_balance))?;
         total_collateral_value.checked_add_assign(value)?;
         total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
     }
