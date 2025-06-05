@@ -1,7 +1,6 @@
 use {
     crate::{Dec, Int, MathError, MathResult, NumberConst},
     bnum::types::{I256, I512, U256, U512},
-    std::any::type_name,
 };
 
 /// Describes a number that can take on negative values.
@@ -108,7 +107,7 @@ macro_rules! impl_sign_unsigned {
             }
 
             fn checked_neg(self) -> MathResult<Self> {
-                self.checked_neg().ok_or(MathError::InvalidNegation)
+                self.checked_neg().ok_or(MathError::invalid_negation::<Self>())
             }
         }
     };
@@ -143,10 +142,7 @@ macro_rules! impl_sign_signed {
             }
 
             fn checked_neg(self) -> MathResult<Self> {
-                self.checked_neg().ok_or(MathError::OverflowNegation {
-                    ty: type_name::<Self>(),
-                    value: self.to_string(),
-                })
+                self.checked_neg().ok_or(MathError::overflow_negation::<Self>(self))
             }
         }
     };

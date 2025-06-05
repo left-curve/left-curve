@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use grug::{Addr, Denom, Int128, Uint128};
 
-use super::{PerpsMarketParams, PerpsMarketState, PerpsPosition, PerpsVaultState};
+use super::{PerpsMarketParams, PerpsMarketState, PerpsPositionResponse, PerpsVaultState};
 
 pub const INITIAL_SHARES_PER_TOKEN: Uint128 = Uint128::new(1_000_000);
 
@@ -90,14 +90,14 @@ pub enum QueryMsg {
     },
 
     /// Get the perps positions for a user.
-    #[returns(BTreeMap<Denom, PerpsPosition>)]
+    #[returns(BTreeMap<Denom, PerpsPositionResponse>)]
     PerpsPositionsForUser {
         /// The address of the user.
         address: Addr,
     },
 
     /// Get the perps positions for all users.
-    #[returns(BTreeMap<Addr, BTreeMap<Denom, PerpsPosition>>)]
+    #[returns(BTreeMap<Addr, BTreeMap<Denom, PerpsPositionResponse>>)]
     PerpsPositions {
         /// The maximum number of results to return.
         limit: Option<u32>,

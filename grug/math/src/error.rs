@@ -95,9 +95,11 @@ pub enum MathError {
     ZeroLog,
 
     #[error("invalid negation. Can only negate signed types or unsigned types with a zero value")]
+    #[backtrace(private_constructor)]
     InvalidNegation,
 
     #[error("overflow when negating {ty}({value})")]
+    #[backtrace(private_constructor)]
     OverflowNegation { ty: &'static str, value: String },
 }
 
@@ -205,6 +207,20 @@ impl MathError {
         T: ToString,
     {
         Self::_negative_sqrt(a.to_string())
+    }
+
+    pub fn overflow_negation<T>(value: T) -> Self
+    where
+        T: ToString,
+    {
+        Self::_overflow_negation(type_name::<T>(), value.to_string())
+    }
+
+    pub fn invalid_negation<T>() -> Self
+    where
+        T: ToString,
+    {
+        Self::_invalid_negation()
     }
 }
 
