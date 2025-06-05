@@ -255,15 +255,9 @@ fn cronjob_works() {
     ] {
         // The balances Jake is expected to have at time point
         let mut expect = Coins::new();
-        expect
-            .insert(Coin::new("uatom", balances.uatom).unwrap())
-            .unwrap();
-        expect
-            .insert(Coin::new("uosmo", balances.uosmo).unwrap())
-            .unwrap();
-        expect
-            .insert(Coin::new("umars", balances.umars).unwrap())
-            .unwrap();
+        expect.insert(("uatom", balances.uatom)).unwrap();
+        expect.insert(("uosmo", balances.uosmo)).unwrap();
+        expect.insert(("umars", balances.umars)).unwrap();
 
         // Check the balances are correct
         suite

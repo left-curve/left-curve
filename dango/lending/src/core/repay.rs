@@ -1,7 +1,7 @@
 use {
     crate::{DEBTS, MARKETS, core},
     dango_types::lending::Market,
-    grug::{Addr, Coin, Coins, Denom, Number, QuerierWrapper, Storage, Timestamp, Udec256},
+    grug::{Addr, Coins, Denom, Number, QuerierWrapper, Storage, Timestamp, Udec256},
     std::collections::BTreeMap,
 };
 
@@ -34,7 +34,7 @@ pub fn repay(
         // if any.
         let repaid = if coin.amount > &debt {
             let refund_amount = coin.amount.checked_sub(debt)?;
-            refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
+            refunds.insert((coin.denom.clone(), refund_amount))?;
             debt
         } else {
             *coin.amount

@@ -248,24 +248,24 @@ fn clear_orders_of_pair(
             // reserve.
             match order_direction {
                 Direction::Bid => {
-                    inflows.insert(Coin {
-                        denom: base_denom.clone(),
-                        amount: filled,
-                    })?;
-                    outflows.insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: filled.checked_mul_dec_floor(clearing_price)?,
-                    })?;
+                    inflows.insert((base_denom.clone(), filled))?;
+                    // Why isn't this simply `refund_quote`?
+                    //
+                    // Because a trader who places a BUY order must make a
+                    // deposit of the amount `amount * limit_price`.
+                    // Then, when the order is filled, the trader gets refunded
+                    // `amount * (limit_price - clearing_price)`.
+                    // The _net_ outflow is the difference between the two values,
+                    // which is `amount * clearing_price`.
+                    //
+                    // In comparison, the passive liquidity pool doesn't need to
+                    // make a deposit, so the outflow is simply the _net_ outflow.
+                    let net_outflow = filled.checked_mul_dec_floor(clearing_price)?;
+                    outflows.insert((quote_denom.clone(), net_outflow))?;
                 },
                 Direction::Ask => {
-                    inflows.insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: refund_quote,
-                    })?;
-                    outflows.insert(Coin {
-                        denom: base_denom.clone(),
-                        amount: filled,
-                    })?;
+                    inflows.insert((quote_denom.clone(), refund_quote))?;
+                    outflows.insert((base_denom.clone(), filled))?;
                 },
             }
         } else {
@@ -285,12 +285,12 @@ fn clear_orders_of_pair(
 
             // Handle fees.
             if fee_base.is_non_zero() {
-                fees.insert(Coin::new(base_denom.clone(), fee_base)?)?;
+                fees.insert((base_denom.clone(), fee_base))?;
                 fee_payments.insert(order.user, base_denom.clone(), fee_base)?;
             }
 
             if fee_quote.is_non_zero() {
-                fees.insert(Coin::new(quote_denom.clone(), fee_quote)?)?;
+                fees.insert((quote_denom.clone(), fee_quote))?;
                 fee_payments.insert(order.user, quote_denom.clone(), fee_quote)?;
             }
 
