@@ -3,7 +3,6 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { TradingViewChart } from "./TradingViewChart";
 import { OrderBook } from "./OrderBook";
-import { set } from "date-fns";
 
 export const OrderBookSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
