@@ -1,17 +1,22 @@
 use {
-    crate::{context::Context, ctx},
+    crate::{
+        context::Context,
+        ctx,
+        types::wrapper::{BNilOrVal, BRound, BSignedExtension, BVoteType},
+    },
     grug::Hash256,
     malachitebft_core_types::{NilOrVal, Round, SignedExtension, VoteType},
 };
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[grug::derive(Borsh)]
+#[derive(PartialOrd, Ord)]
 pub struct Vote {
     height: ctx!(Height),
-    round: Round,
-    value: NilOrVal<Hash256>,
-    vote_type: VoteType,
+    round: BRound,
+    value: BNilOrVal<Hash256>,
+    vote_type: BVoteType,
     validator_address: ctx!(Address),
-    extension: Option<SignedExtension<Context>>,
+    extension: Option<BSignedExtension>,
 }
 
 impl Vote {
@@ -24,9 +29,9 @@ impl Vote {
     ) -> Self {
         Self {
             height,
-            round,
-            value,
-            vote_type,
+            round: BRound(round),
+            value: BNilOrVal(value),
+            vote_type: BVoteType(vote_type),
             validator_address,
             extension: None,
         }
@@ -39,15 +44,15 @@ impl malachitebft_core_types::Vote<Context> for Vote {
     }
 
     fn round(&self) -> malachitebft_core_types::Round {
-        self.round
+        self.round.0
     }
 
     fn take_value(self) -> NilOrVal<ctx!(Value::Id)> {
-        self.value
+        self.value.0
     }
 
     fn vote_type(&self) -> VoteType {
-        self.vote_type
+        self.vote_type.0
     }
 
     fn validator_address(&self) -> &ctx!(Address) {
@@ -55,19 +60,19 @@ impl malachitebft_core_types::Vote<Context> for Vote {
     }
 
     fn extension(&self) -> Option<&SignedExtension<Context>> {
-        self.extension.as_ref()
+        self.extension.as_ref().map(|extension| &extension.0)
     }
 
     fn take_extension(&mut self) -> Option<SignedExtension<Context>> {
-        self.extension.take()
+        self.extension.take().map(|extension| extension.0)
     }
 
     fn extend(mut self, extension: SignedExtension<Context>) -> Self {
-        self.extension = Some(extension);
+        self.extension = Some(BSignedExtension(extension));
         self
     }
 
     fn value(&self) -> &NilOrVal<ctx!(Value::Id)> {
-        &self.value
+        &self.value.0
     }
 }

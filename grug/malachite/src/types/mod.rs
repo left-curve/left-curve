@@ -7,6 +7,7 @@ mod validator;
 mod validator_set;
 mod value;
 mod vote;
+mod wrapper;
 
 pub use {
     address::*, height::*, proposal::*, proposal_part::*, signing::*, validator::*,
