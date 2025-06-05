@@ -87,6 +87,7 @@ pub struct UnsignedTx {
 /// - List of messages to execute
 ///
 /// See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+#[cfg(feature = "async-graphql")]
 #[Scalar(name = "UnsignedTx")]
 impl ScalarType for UnsignedTx {
     fn parse(value: Value) -> InputValueResult<Self> {
