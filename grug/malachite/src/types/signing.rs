@@ -1,6 +1,13 @@
 use {
     crate::{context::Context, ctx},
+    grug::{SignData, StdError},
+    grug_crypto::Identity256,
+    k256::{
+        ecdsa::signature::{DigestSigner, DigestVerifier},
+        sha2::Sha256,
+    },
     malachitebft_core_types::{SignedMessage, SigningProvider},
+    std::fmt::Debug,
 };
 
 pub type Signature = [u8; 64];
@@ -27,11 +34,44 @@ impl malachitebft_core_types::SigningScheme for SigningScheme {
 }
 
 #[derive(Clone)]
-pub struct PrivateKey([u8; 32]);
+pub struct PrivateKey(k256::ecdsa::SigningKey);
+
+impl PrivateKey {
+    pub fn sign<T>(&self, data: T) -> SignedMessage<Context, T>
+    where
+        T: SignData<Hasher = Sha256>,
+        T::Error: Debug,
+    {
+        let sign_data = data.to_sign_data().unwrap();
+        let sign_data = Identity256::from_inner(sign_data);
+        let signature: k256::ecdsa::Signature = self.0.sign_digest(sign_data);
+        SignedMessage::new(data, signature.to_bytes().into())
+    }
+
+    pub fn verify<T>(
+        &self,
+        data: &T,
+        signature: &ctx!(SigningScheme::Signature),
+        public_key: &ctx!(SigningScheme::PublicKey),
+    ) -> bool
+    where
+        T: SignData<Hasher = Sha256, Error = StdError>,
+        T::Error: Debug,
+    {
+        (|| {
+            let sign_data = data.to_sign_data().unwrap();
+            let sign_data = Identity256::from_inner(sign_data);
+            let signature = k256::ecdsa::Signature::from_bytes(signature.into())?;
+            let public_key = k256::ecdsa::VerifyingKey::from_sec1_bytes(public_key)?;
+            public_key.verify_digest(sign_data, &signature)
+        })()
+        .is_ok()
+    }
+}
 
 impl SigningProvider<Context> for PrivateKey {
     fn sign_vote(&self, vote: ctx!(Vote)) -> SignedMessage<Context, ctx!(Vote)> {
-        todo!()
+        self.sign(vote)
     }
 
     fn verify_signed_vote(
@@ -40,11 +80,11 @@ impl SigningProvider<Context> for PrivateKey {
         signature: &ctx!(SigningScheme::Signature),
         public_key: &ctx!(SigningScheme::PublicKey),
     ) -> bool {
-        todo!()
+        self.verify(vote, signature, public_key)
     }
 
     fn sign_proposal(&self, proposal: ctx!(Proposal)) -> SignedMessage<Context, ctx!(Proposal)> {
-        todo!()
+        self.sign(proposal)
     }
 
     fn verify_signed_proposal(
@@ -53,14 +93,14 @@ impl SigningProvider<Context> for PrivateKey {
         signature: &ctx!(SigningScheme::Signature),
         public_key: &ctx!(SigningScheme::PublicKey),
     ) -> bool {
-        todo!()
+        self.verify(proposal, signature, public_key)
     }
 
     fn sign_proposal_part(
         &self,
         proposal_part: ctx!(ProposalPart),
     ) -> SignedMessage<Context, ctx!(ProposalPart)> {
-        todo!()
+        self.sign(proposal_part)
     }
 
     fn verify_signed_proposal_part(
@@ -69,14 +109,14 @@ impl SigningProvider<Context> for PrivateKey {
         signature: &ctx!(SigningScheme::Signature),
         public_key: &ctx!(SigningScheme::PublicKey),
     ) -> bool {
-        todo!()
+        self.verify(proposal_part, signature, public_key)
     }
 
     fn sign_vote_extension(
         &self,
         extension: ctx!(Extension),
     ) -> SignedMessage<Context, ctx!(Extension)> {
-        todo!()
+        self.sign(extension)
     }
 
     fn verify_signed_vote_extension(
@@ -85,6 +125,6 @@ impl SigningProvider<Context> for PrivateKey {
         signature: &ctx!(SigningScheme::Signature),
         public_key: &ctx!(SigningScheme::PublicKey),
     ) -> bool {
-        todo!()
+        self.verify(extension, signature, public_key)
     }
 }

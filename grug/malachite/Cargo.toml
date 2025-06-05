@@ -14,6 +14,7 @@ borsh           = { workspace = true }
 grug            = { workspace = true }
 grug-app        = { workspace = true }
 grug-crypto     = { workspace = true }
+k256            = { workspace = true }
 libp2p-identity = { workspace = true }
 ractor          = { workspace = true }
 serde           = { workspace = true }

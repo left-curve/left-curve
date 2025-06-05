@@ -1,6 +1,5 @@
 use {
     crate::{ctx, types},
-    // grug_types::Hash256,
     malachitebft_core_types::{Height, NilOrVal, Round, ValidatorSet, VoteType},
 };
 
@@ -9,7 +8,7 @@ pub struct Context;
 
 impl malachitebft_core_types::Context for Context {
     type Address = types::Address;
-    type Extension = ();
+    type Extension = types::Extension;
     type Height = types::Height;
     type Proposal = types::Proposal;
     type ProposalPart = types::ProposalPart;
@@ -48,13 +47,7 @@ impl malachitebft_core_types::Context for Context {
         pol_round: Round,
         address: Self::Address,
     ) -> Self::Proposal {
-        types::Proposal {
-            height,
-            round,
-            value,
-            pol_round,
-            validator_address: address,
-        }
+        types::Proposal::new(height, round, value, pol_round, address)
     }
 
     fn new_prevote(

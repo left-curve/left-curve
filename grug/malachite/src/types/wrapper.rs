@@ -1,7 +1,7 @@
 use {
     crate::{context::Context, ctx},
     borsh::{BorshDeserialize, BorshSerialize},
-    malachitebft_core_types::{NilOrVal, Round, SignedExtension, SigningScheme, VoteType},
+    malachitebft_core_types::{NilOrVal, Round, SignedExtension, VoteType},
     std::io::{Read, Write},
 };
 
@@ -112,6 +112,8 @@ impl BorshDeserialize for BRound {
         }
     }
 }
+
+#[cfg(test)]
 mod tests {
     use {
         super::*,

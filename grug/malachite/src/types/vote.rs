@@ -4,7 +4,8 @@ use {
         ctx,
         types::wrapper::{BNilOrVal, BRound, BSignedExtension, BVoteType},
     },
-    grug::Hash256,
+    grug::{BorshSerExt, Hash256, SignData, StdError},
+    k256::sha2::Sha256,
     malachitebft_core_types::{NilOrVal, Round, SignedExtension, VoteType},
 };
 
@@ -74,5 +75,14 @@ impl malachitebft_core_types::Vote<Context> for Vote {
 
     fn value(&self) -> &NilOrVal<ctx!(Value::Id)> {
         &self.value.0
+    }
+}
+
+impl SignData for Vote {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        self.to_borsh_vec()
     }
 }

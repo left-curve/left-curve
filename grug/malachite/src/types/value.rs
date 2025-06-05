@@ -1,6 +1,7 @@
 use grug::Hash256;
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[grug::derive(Borsh)]
+#[derive(Ord, PartialOrd)]
 pub struct Value(Hash256);
 
 impl malachitebft_core_types::Value for Value {

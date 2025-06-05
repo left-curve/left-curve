@@ -1,15 +1,35 @@
 use {
-    crate::{context::Context, ctx},
+    crate::{context::Context, ctx, types::wrapper::BRound},
+    grug::{BorshSerExt, SignData, StdError},
+    k256::sha2::Sha256,
     malachitebft_core_types::Round,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[grug::derive(Borsh)]
 pub struct Proposal {
     pub height: ctx!(Height),
-    pub round: Round,
+    pub round: BRound,
     pub value: ctx!(Value),
-    pub pol_round: Round,
+    pub pol_round: BRound,
     pub validator_address: ctx!(Address),
+}
+
+impl Proposal {
+    pub fn new(
+        height: ctx!(Height),
+        round: Round,
+        value: ctx!(Value),
+        pol_round: Round,
+        validator_address: ctx!(Address),
+    ) -> Self {
+        Self {
+            height,
+            round: BRound(round),
+            value,
+            pol_round: BRound(pol_round),
+            validator_address,
+        }
+    }
 }
 
 impl malachitebft_core_types::Proposal<Context> for Proposal {
@@ -18,7 +38,7 @@ impl malachitebft_core_types::Proposal<Context> for Proposal {
     }
 
     fn round(&self) -> Round {
-        self.round
+        self.round.0
     }
 
     fn value(&self) -> &ctx!(Value) {
@@ -30,10 +50,19 @@ impl malachitebft_core_types::Proposal<Context> for Proposal {
     }
 
     fn pol_round(&self) -> Round {
-        self.pol_round
+        self.pol_round.0
     }
 
     fn validator_address(&self) -> &ctx!(Address) {
         &self.validator_address
+    }
+}
+
+impl SignData for Proposal {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        self.to_borsh_vec()
     }
 }

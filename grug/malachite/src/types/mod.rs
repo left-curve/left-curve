@@ -1,4 +1,5 @@
 mod address;
+mod extension;
 mod height;
 mod proposal;
 mod proposal_part;
@@ -10,6 +11,6 @@ mod vote;
 mod wrapper;
 
 pub use {
-    address::*, height::*, proposal::*, proposal_part::*, signing::*, validator::*,
+    address::*, extension::*, height::*, proposal::*, proposal_part::*, signing::*, validator::*,
     validator_set::*, value::*, vote::*,
 };
