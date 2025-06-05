@@ -88,6 +88,7 @@ jobs:
           for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
             echo "Checking $crate..."
             cargo check -p "$crate" --all-targets --no-default-features
+            cargo clippy --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
           done
 
   test:
