@@ -20,6 +20,7 @@ export const Modals = {
   RenewSession: "renew-session",
   ProSwapCloseAll: "pro-swap-close-all",
   ProSwapLimitClose: "pro-swap-limit-close",
+  ProSwapMarketClose: "pro-swap-market-close",
 };
 
 export type ModalRef = {
@@ -87,6 +88,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("./ProSwapLimitClose").then(({ ProSwapLimitClose }) => ({
         default: ProSwapLimitClose,
+      })),
+    ),
+  },
+  [Modals.ProSwapMarketClose]: {
+    component: lazy(() =>
+      import("./ProSwapMarketClose").then(({ ProSwapMarketClose }) => ({
+        default: ProSwapMarketClose,
       })),
     ),
   },
