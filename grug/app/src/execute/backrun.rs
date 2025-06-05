@@ -27,13 +27,13 @@ where
     evt.debug(
         |_| {
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 sender = tx.sender.to_string(),
                 "Backran transaction"
             );
         },
         "Failed to backrun transaction",
-        trace_opt.error_level,
+        trace_opt.error_level.into(),
     );
 
     evt

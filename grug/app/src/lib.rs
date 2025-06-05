@@ -12,7 +12,6 @@ mod providers;
 mod query;
 mod state;
 mod submessage;
-#[cfg(feature = "tracing")]
 mod tracing;
 mod traits;
 mod vm;

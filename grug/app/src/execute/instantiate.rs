@@ -41,13 +41,13 @@ where
     evt.debug(
         |evt| {
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 address = evt.contract.to_string(),
                 "Instantiated contract"
             );
         },
         "Failed to instantiate contract",
-        trace_opt.error_level,
+        trace_opt.error_level.into(),
     );
 
     evt

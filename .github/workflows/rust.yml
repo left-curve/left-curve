@@ -72,6 +72,24 @@ jobs:
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
 
+
+  check-no-features:
+    needs: [format]
+    name: Check compiling without features
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Check without features
+        run: |
+          set -euo pipefail
+          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
+            echo "Checking $crate..."
+            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
+          done
+
   test:
     needs: [format]
     name: Lint + Test
