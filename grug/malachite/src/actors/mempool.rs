@@ -4,7 +4,8 @@ use {
         actors::network::{GossipNetworkMsg, NetworkActorRef, NetworkMsg},
         app::AppRef,
     },
-    grug::{Hash256, Tx},
+    grug::{CheckTxOutcome, Hash256, Tx},
+    grug_app::AppError,
     malachitebft_test_mempool::Event as NetworkEvent,
     ractor::{Actor, ActorRef, RpcReplyPort, async_trait},
     std::{cmp::min, collections::VecDeque, sync::Arc},
@@ -21,7 +22,10 @@ pub struct State {
 
 pub enum Msg {
     NetworkEvent(Arc<NetworkEvent>),
-    Add(Tx),
+    Add {
+        tx: Tx,
+        reply: RpcReplyPort<Result<CheckTxOutcome, AppError>>,
+    },
     Take {
         amount: usize,
         reply: RpcReplyPort<Vec<Tx>>,
@@ -48,10 +52,7 @@ impl Mempool {
     fn handle_msg(&self, msg: Msg, state: &mut State) -> ActorResult<()> {
         match msg {
             Msg::NetworkEvent(event) => self.handle_network_event(&event, state)?,
-            Msg::Add(tx) => {
-                self.gossip_tx(tx.clone())?;
-                self.add_txs(vec![tx], state);
-            },
+            Msg::Add { tx, reply } => self.add_tx(tx, reply, state)?,
             Msg::Take { amount, reply } => self.take(state, amount, reply)?,
             Msg::Remove(tx_hashes) => self.remove(tx_hashes, state)?,
         }
@@ -76,12 +77,30 @@ impl Mempool {
                 // TODO: Actually MempoolTransactionBatch is in prost format
                 let txs = todo!();
 
-                self.add_txs(txs, state);
+                self.add_batch(txs, state);
             },
         }
     }
 
-    fn add_txs(&self, batch: Vec<Tx>, state: &mut State) {
+    fn add_tx(
+        &self,
+        tx: Tx,
+        reply: RpcReplyPort<Result<CheckTxOutcome, AppError>>,
+        state: &mut State,
+    ) -> ActorResult<()> {
+        let check_tx_outcome = self.app.check_tx(tx.clone());
+
+        if let Ok(CheckTxOutcome { result: Ok(_), .. }) = check_tx_outcome {
+            self.gossip_tx(tx.clone())?;
+            state.txs.push_back(tx);
+        }
+
+        reply.send(check_tx_outcome)?;
+
+        Ok(())
+    }
+
+    fn add_batch(&self, batch: Vec<Tx>, state: &mut State) {
         // TODO: The check can be done in parallel
         let checked_txs = batch.into_iter().filter_map(|tx| {
             self.app
