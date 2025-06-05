@@ -1,9 +1,7 @@
-#[cfg(feature = "tracing")]
-use crate::TraceOption;
 use {
     crate::{
         AppError, AppResult, CODES, CONTRACT_NAMESPACE, EventResult, GasTracker, Instance,
-        QuerierProviderImpl, StorageProvider, Vm, catch_event, handle_submessages,
+        QuerierProviderImpl, StorageProvider, TraceOption, Vm, catch_event, handle_submessages,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{

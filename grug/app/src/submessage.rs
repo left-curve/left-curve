@@ -1,7 +1,5 @@
-#[cfg(feature = "tracing")]
-use crate::TraceOption;
 use {
-    crate::{AppError, EventResult, GasTracker, Vm, do_reply, process_msg},
+    crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
     grug_types::{
         Addr, BlockInfo, Buffer, EventStatus, GenericResult, ReplyOn, Shared, Storage, SubEvent,
         SubEventStatus, SubMessage,
