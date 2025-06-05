@@ -1,17 +1,14 @@
 #[cfg(feature = "async-graphql")]
 use {
     crate::dataloaders::transaction_grug::FileTransactionDataLoader,
-    async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
-};
-use {
     crate::dataloaders::{
         transaction_events::TransactionEventsDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
     },
-    grug_types::{FlatCategory, JsonSerExt, Tx, TxOutcome},
-    sea_orm::entity::prelude::*,
-    serde::Deserialize,
+    async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::{JsonSerExt, Tx, TxOutcome},
 };
+use {grug_types::FlatCategory, sea_orm::entity::prelude::*, serde::Deserialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
 #[sea_orm(table_name = "transactions")]

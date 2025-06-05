@@ -85,6 +85,7 @@ impl BlockToIndex {
 
         let mut file = DiskPersistence::new(file_path.clone(), false);
 
+        #[allow(unused_variables)]
         let compressed = file.compress()?;
 
         #[cfg(feature = "tracing")]

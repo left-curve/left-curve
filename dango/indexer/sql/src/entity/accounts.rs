@@ -1,6 +1,6 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Result, SimpleObject};
-use {async_graphql::Context, dango_types::account_factory, sea_orm::entity::prelude::*};
+use async_graphql::{ComplexObject, Context, Result, SimpleObject};
+use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
     Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, serde::Serialize, serde::Deserialize,

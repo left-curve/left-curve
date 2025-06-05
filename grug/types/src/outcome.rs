@@ -1,9 +1,11 @@
+#[cfg(any(feature = "tendermint", feature = "async-graphql"))]
+use crate::serializers::JsonDeExt;
 #[cfg(feature = "tendermint")]
 use {crate::StdResult, data_encoding::BASE64};
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256, ResultExt, Tx, serializers::JsonDeExt,
+        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},

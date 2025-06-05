@@ -16,7 +16,7 @@ pub fn do_upload(
     block: BlockInfo,
     uploader: Addr,
     msg: MsgUpload,
-    trace_opt: TraceOption,
+    #[allow(unused_variables)] trace_opt: TraceOption,
 ) -> EventResult<EvtUpload> {
     let code_hash = msg.code.hash256();
 
@@ -29,7 +29,7 @@ pub fn do_upload(
         Ok(_) => {
             #[cfg(feature = "tracing")]
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 code_hash = code_hash.to_string(),
                 "Uploaded code"
             );
@@ -39,7 +39,7 @@ pub fn do_upload(
         Err(err) => {
             #[cfg(feature = "tracing")]
             dyn_event!(
-                trace_opt.error_level,
+                trace_opt.error_level.into(),
                 err = err.to_string(),
                 "Failed to upload code"
             );

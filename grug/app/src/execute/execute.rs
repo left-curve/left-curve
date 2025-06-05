@@ -37,13 +37,13 @@ where
     evt.debug(
         |evt| {
             dyn_event!(
-                trace_opt.ok_level,
+                trace_opt.ok_level.into(),
                 contract = evt.contract.to_string(),
                 "Executed contract"
             );
         },
         "Failed to execute contract",
-        trace_opt.error_level,
+        trace_opt.error_level.into(),
     );
 
     evt
