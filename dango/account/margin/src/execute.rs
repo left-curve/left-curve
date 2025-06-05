@@ -12,8 +12,8 @@ use {
         dex, lending,
     },
     grug::{
-        AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
-        Number, NumberConst, Response, StdResult, Tx, Udec128,
+        AuthCtx, AuthResponse, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx, Number,
+        NumberConst, Response, StdResult, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -186,16 +186,13 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         };
 
         let repay_amount = if coin.amount > max_repay_for_denom {
-            refunds.insert(Coin::new(
-                coin.denom.clone(),
-                coin.amount - max_repay_for_denom,
-            )?)?;
+            refunds.insert((coin.denom.clone(), coin.amount - max_repay_for_denom))?;
             max_repay_for_denom
         } else {
             coin.amount
         };
 
-        repay_coins.insert(Coin::new(coin.denom.clone(), repay_amount)?)?;
+        repay_coins.insert((coin.denom.clone(), repay_amount))?;
         repaid_debt_value.checked_add_assign(price.value_of_unit_amount(repay_amount)?)?;
     }
 
@@ -215,10 +212,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     // Send the claimed collateral and any debt refunds to the liquidator.
     let mut send_coins = refunds.clone();
-    send_coins.insert(Coin::new(
-        collateral_denom.clone(),
-        claimed_collateral_amount,
-    )?)?;
+    send_coins.insert((collateral_denom.clone(), claimed_collateral_amount))?;
     let send_msg = Message::transfer(ctx.sender, send_coins)?;
 
     // Create message to repay debt
