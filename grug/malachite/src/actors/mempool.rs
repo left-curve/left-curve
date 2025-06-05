@@ -1,7 +1,7 @@
 use {
     crate::{
         ActorResult,
-        actors::network::{GossipNetworkMsg, NetworkActorRef, NetworkMsg},
+        actors::network::{GossipNetworkMsg, MempoolNetworkActorRef, MempoolNetworkMsg},
         app::AppRef,
     },
     grug::{CheckTxOutcome, Hash256, Tx},
@@ -40,13 +40,22 @@ impl From<Arc<NetworkEvent>> for Msg {
 }
 
 pub struct Mempool {
-    network: NetworkActorRef,
+    network: MempoolNetworkActorRef,
     app: AppRef,
 }
 
 impl Mempool {
-    pub fn new(network: NetworkActorRef, app: AppRef) -> Self {
+    pub fn new(network: MempoolNetworkActorRef, app: AppRef) -> Self {
         Self { network, app }
+    }
+
+    pub async fn spawn(
+        mempool_network: MempoolNetworkActorRef,
+        app: AppRef,
+    ) -> Result<MempoolActorRef, ractor::SpawnErr> {
+        let node = Self::new(mempool_network, app);
+        let (actor_ref, _) = Actor::spawn(None, node, ()).await?;
+        Ok(actor_ref)
     }
 
     fn handle_msg(&self, msg: Msg, state: &mut State) -> ActorResult<()> {
@@ -146,7 +155,7 @@ impl Mempool {
         // TODO: Actually MempoolTransactionBatch is in prost format
         let msg = todo!();
 
-        self.network.cast(NetworkMsg::BroadcastMsg(msg))?;
+        self.network.cast(MempoolNetworkMsg::BroadcastMsg(msg))?;
 
         Ok(())
     }
@@ -166,7 +175,7 @@ impl Actor for Mempool {
         self.network.link(myself.get_cell());
 
         self.network
-            .cast(NetworkMsg::Subscribe(Box::new(myself.clone())))?;
+            .cast(MempoolNetworkMsg::Subscribe(Box::new(myself.clone())))?;
 
         Ok(State::default())
     }

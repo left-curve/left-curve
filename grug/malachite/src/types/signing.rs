@@ -1,11 +1,12 @@
 use {
     crate::{context::Context, ctx},
-    grug::{SignData, StdError},
+    grug::{HashExt, SignData, StdError},
     grug_crypto::Identity256,
     k256::{
         ecdsa::signature::{DigestSigner, DigestVerifier},
         sha2::Sha256,
     },
+    libp2p_identity::secp256k1::Keypair,
     malachitebft_core_types::{SignedMessage, SigningProvider},
     std::fmt::Debug,
 };
@@ -66,6 +67,19 @@ impl PrivateKey {
             public_key.verify_digest(sign_data, &signature)
         })()
         .is_ok()
+    }
+
+    pub fn to_keypair(&self) -> Keypair {
+        libp2p_identity::secp256k1::SecretKey::try_from_bytes(self.0.to_bytes())
+            .unwrap()
+            .into()
+    }
+
+    pub fn derive_address(&self) -> ctx!(Address) {
+        let vk_raw = self.0.verifying_key().to_encoded_point(false);
+        let vk_hash = (&vk_raw.as_bytes()[1..]).keccak256();
+        let address = &vk_hash[12..];
+        <ctx!(Address)>::new(address.try_into().unwrap())
     }
 }
 

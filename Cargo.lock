@@ -884,7 +884,7 @@ dependencies = [
  "alloy-rlp",
  "alloy-serde",
  "alloy-sol-types",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -1390,6 +1390,12 @@ dependencies = [
  "quote",
  "syn 2.0.101",
 ]
+
+[[package]]
+name = "asn1_der"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "155a5a185e42c6b77ac7b88a15143d930a9e9727a5b7b77eed417404ab15c247"
 
 [[package]]
 name = "assert-json-diff"
@@ -3858,7 +3864,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d162beedaa69905488a8da94f5ac3edb4dd4788b732fadb7bd120b2625c1976"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 2.0.101",
 ]
 
 [[package]]
@@ -4982,9 +4988,11 @@ dependencies = [
  "grug-app",
  "grug-crypto",
  "informalsystems-malachitebft-app",
+ "informalsystems-malachitebft-config",
  "informalsystems-malachitebft-core-types",
  "informalsystems-malachitebft-engine",
  "informalsystems-malachitebft-metrics",
+ "informalsystems-malachitebft-network",
  "informalsystems-malachitebft-sync",
  "informalsystems-malachitebft-test-mempool",
  "k256",
@@ -6170,7 +6178,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-app"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "async-trait",
  "derive-where",
@@ -6196,7 +6204,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-codec"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "bytes",
 ]
@@ -6204,7 +6212,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-config"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "bytesize",
  "config 0.14.1",
@@ -6217,9 +6225,10 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-core-consensus"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "async-recursion",
+ "borsh 1.5.7",
  "derive-where",
  "genawaiter",
  "informalsystems-malachitebft-core-driver",
@@ -6234,7 +6243,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-core-driver"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "derive-where",
  "informalsystems-malachitebft-core-state-machine",
@@ -6246,7 +6255,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-core-state-machine"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "derive-where",
  "displaydoc",
@@ -6256,8 +6265,9 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-core-types"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
+ "borsh 1.5.7",
  "bytes",
  "derive-where",
  "thiserror 2.0.12",
@@ -6266,7 +6276,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-core-votekeeper"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "derive-where",
  "informalsystems-malachitebft-core-types",
@@ -6276,7 +6286,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-discovery"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "either",
  "informalsystems-malachitebft-metrics",
@@ -6290,10 +6300,11 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-engine"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "async-recursion",
  "async-trait",
+ "borsh 1.5.7",
  "byteorder",
  "bytes",
  "derive-where",
@@ -6316,7 +6327,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-metrics"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "informalsystems-malachitebft-core-state-machine",
  "prometheus-client",
@@ -6325,7 +6336,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-network"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "bytes",
  "either",
@@ -6346,8 +6357,9 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-peer"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
+ "borsh 1.5.7",
  "bs58",
  "multihash",
  "thiserror 2.0.12",
@@ -6356,7 +6368,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-proto"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "prost",
  "prost-types",
@@ -6366,9 +6378,10 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-sync"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "async-trait",
+ "borsh 1.5.7",
  "bytes",
  "dashmap",
  "derive-where",
@@ -6387,7 +6400,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-test-mempool"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "eyre",
  "futures",
@@ -6406,7 +6419,7 @@ dependencies = [
 [[package]]
 name = "informalsystems-malachitebft-wal"
 version = "0.3.0-pre"
-source = "git+https://github.com/informalsystems/malachite?rev=2ddbbd8#2ddbbd8c3a52f69b0b5479ff69f7b6043f9b4913"
+source = "git+https://github.com/left-curve/malachite?branch=rhaki/borsh#9269013320e52b3c379d900bfae54da67ba49a66"
 dependencies = [
  "advisory-lock",
  "bytes",
@@ -6812,9 +6825,11 @@ version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbb68ea10844211a59ce46230909fd0ea040e8a192454d4cc2ee0d53e12280eb"
 dependencies = [
+ "asn1_der",
  "bs58",
  "ed25519-dalek",
  "hkdf",
+ "k256",
  "multihash",
  "p256",
  "quick-protobuf",
@@ -8589,7 +8604,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
  "heck 0.5.0",
- "itertools 0.12.1",
+ "itertools 0.14.0",
  "log",
  "multimap",
  "once_cell",
@@ -8609,7 +8624,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.101",

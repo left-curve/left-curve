@@ -1,9 +1,10 @@
 use {
     crate::{ctx, types},
+    borsh::{BorshDeserialize, BorshSerialize},
     malachitebft_core_types::{Height, NilOrVal, Round, ValidatorSet, VoteType},
 };
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, BorshDeserialize, BorshSerialize)]
 pub struct Context;
 
 impl malachitebft_core_types::Context for Context {

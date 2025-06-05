@@ -15,15 +15,17 @@ grug            = { workspace = true }
 grug-app        = { workspace = true }
 grug-crypto     = { workspace = true }
 k256            = { workspace = true }
-libp2p-identity = { workspace = true }
+libp2p-identity = { workspace = true, features = ["secp256k1"] }
 ractor          = { workspace = true }
 serde           = { workspace = true }
 tokio           = { workspace = true }
 tracing         = { workspace = true }
 
-malachitebft-app          = { workspace = true }
-malachitebft-core-types   = { workspace = true }
-malachitebft-engine       = { workspace = true }
+malachitebft-app          = { workspace = true, features = ["borsh"] }
+malachitebft-config       = { workspace = true }
+malachitebft-core-types   = { workspace = true, features = ["borsh"] }
+malachitebft-engine       = { workspace = true, features = ["borsh"] }
 malachitebft-metrics      = { workspace = true }
-malachitebft-sync         = { workspace = true }
+malachitebft-network      = { workspace = true }
+malachitebft-sync         = { workspace = true, features = ["borsh"] }
 malachitebft-test-mempool = { workspace = true }

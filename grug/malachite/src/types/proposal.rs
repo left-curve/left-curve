@@ -1,5 +1,5 @@
 use {
-    crate::{context::Context, ctx, types::wrapper::BRound},
+    crate::{context::Context, ctx},
     grug::{BorshSerExt, SignData, StdError},
     k256::sha2::Sha256,
     malachitebft_core_types::Round,
@@ -8,9 +8,9 @@ use {
 #[grug::derive(Borsh)]
 pub struct Proposal {
     pub height: ctx!(Height),
-    pub round: BRound,
+    pub round: Round,
     pub value: ctx!(Value),
-    pub pol_round: BRound,
+    pub pol_round: Round,
     pub validator_address: ctx!(Address),
 }
 
@@ -24,9 +24,9 @@ impl Proposal {
     ) -> Self {
         Self {
             height,
-            round: BRound(round),
+            round,
             value,
-            pol_round: BRound(pol_round),
+            pol_round,
             validator_address,
         }
     }
@@ -38,7 +38,7 @@ impl malachitebft_core_types::Proposal<Context> for Proposal {
     }
 
     fn round(&self) -> Round {
-        self.round.0
+        self.round
     }
 
     fn value(&self) -> &ctx!(Value) {
@@ -50,7 +50,7 @@ impl malachitebft_core_types::Proposal<Context> for Proposal {
     }
 
     fn pol_round(&self) -> Round {
-        self.pol_round.0
+        self.pol_round
     }
 
     fn validator_address(&self) -> &ctx!(Address) {

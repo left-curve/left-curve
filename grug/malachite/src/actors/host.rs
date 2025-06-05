@@ -8,6 +8,13 @@ pub type HostMsg = malachitebft_engine::host::HostMsg<Context>;
 
 pub struct Host;
 
+impl Host {
+    pub async fn spawn() -> HostRef {
+        let (host, _) = Actor::spawn(None, Host, ()).await.unwrap();
+        host
+    }
+}
+
 #[async_trait]
 impl Actor for Host {
     type Arguments = ();

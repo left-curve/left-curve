@@ -3,7 +3,7 @@ use {
     malachitebft_engine::util::output_port::{OutputPort, OutputPortSubscriber},
     malachitebft_metrics::SharedRegistry,
     malachitebft_test_mempool::{
-        Channel::Mempool, Config, Event, PeerId, handle::CtrlHandle, types::MempoolTransactionBatch,
+        Channel::Mempool, Event, PeerId, handle::CtrlHandle, types::MempoolTransactionBatch,
     },
     ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, async_trait},
     std::{collections::BTreeSet, sync::Arc},
@@ -11,13 +11,13 @@ use {
     tracing::error,
 };
 
-pub use malachitebft_test_mempool::NetworkMsg as GossipNetworkMsg;
-pub type NetworkMsg = Msg;
-pub type NetworkActorRef = ActorRef<Msg>;
+pub use malachitebft_test_mempool::{Config as MempoolConfig, NetworkMsg as GossipNetworkMsg};
+pub type MempoolNetworkMsg = Msg;
+pub type MempoolNetworkActorRef = ActorRef<Msg>;
 
 pub struct Args {
     pub keypair: Keypair,
-    pub config: Config,
+    pub config: MempoolConfig,
     pub metrics: SharedRegistry,
 }
 
@@ -51,7 +51,7 @@ pub struct MempoolNetwork;
 impl MempoolNetwork {
     pub async fn spawn(
         keypair: Keypair,
-        config: Config,
+        config: MempoolConfig,
         metrics: SharedRegistry,
     ) -> Result<ActorRef<Msg>, ractor::SpawnErr> {
         let args = Args {

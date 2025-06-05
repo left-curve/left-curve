@@ -5,6 +5,12 @@ use std::fmt::{self, Display};
 #[derive(Copy, Default, Ord, PartialOrd)]
 pub struct Height(u64);
 
+impl Height {
+    pub fn new(height: u64) -> Self {
+        Self(height)
+    }
+}
+
 impl Display for Height {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
