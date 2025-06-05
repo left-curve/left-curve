@@ -3,7 +3,7 @@ use {
     dango_types::perps::{
         INITIAL_SHARES_PER_TOKEN, PerpsMarketParams, PerpsMarketState, PerpsVaultState,
     },
-    grug::{Denom, Inner, MultiplyRatio, Number, Sign, Signed, Udec128, Uint128, Unsigned},
+    grug::{Denom, MultiplyRatio, Number, Sign, Signed, Udec128, Uint128},
     std::collections::HashMap,
 };
 
@@ -14,8 +14,8 @@ pub fn token_to_shares(
     vault_state: &PerpsVaultState,
     amount: Uint128,
 ) -> anyhow::Result<Uint128> {
-    let nav = vault_state.net_asset_value(markets, params, oracle_prices)?;
-    let withdrawable_value = nav.checked_add(vault_state.deposits.checked_into_signed()?)?;
+    let withdrawable_value = vault_state.withdrawable_value(markets, params, oracle_prices)?;
+
     // Calculate the amount of shares to mint
     let shares = if !withdrawable_value.is_positive() {
         amount.checked_mul(INITIAL_SHARES_PER_TOKEN)?
@@ -35,8 +35,7 @@ pub fn shares_to_token(
     vault_state: &PerpsVaultState,
     shares: Uint128,
 ) -> anyhow::Result<Uint128> {
-    let nav = vault_state.net_asset_value(markets, params, oracle_prices)?;
-    let withdrawable_value = nav.checked_add(vault_state.deposits.checked_into_signed()?)?;
+    let withdrawable_value = vault_state.withdrawable_value(markets, params, oracle_prices)?;
 
     ensure!(
         withdrawable_value.is_positive(),

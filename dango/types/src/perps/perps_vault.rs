@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use grug::{Denom, Int128, Number, NumberConst, Udec128, Uint128};
+use grug::{Denom, Int128, Number, NumberConst, Udec128, Uint128, Unsigned};
 
-use super::{PerpsMarketParams, PerpsMarketState, RealisedCashFlow};
+use super::{PerpsMarketParams, PerpsMarketState, Pnl};
 
 /// The state of the perps vault
 #[grug::derive(Serde, Borsh)]
@@ -14,11 +14,15 @@ pub struct PerpsVaultState {
     /// The amount of shares that that have been minted.
     pub shares: Uint128,
     /// The realised cash flow of the vault.
-    pub realised_cash_flow: RealisedCashFlow,
+    pub realised_cash_flow: Pnl,
 }
 
 impl PerpsVaultState {
-    pub fn net_asset_value(
+    /// Returns the vault's PnL.
+    ///
+    /// This is the sum of the realised cash flow and the unrealized PnL capped
+    /// at 0 for each market.
+    pub fn vault_pnl(
         &self,
         markets: &[PerpsMarketState],
         params: &HashMap<Denom, PerpsMarketParams>,
@@ -38,10 +42,23 @@ impl PerpsVaultState {
                         market.denom
                     ))?
                     .clone();
-                market.net_asset_value(params, oracle_price)
+                market.market_pnl(params, oracle_price)
             })
             .try_fold(Int128::ZERO, |acc, x| {
                 Ok::<_, anyhow::Error>(acc.checked_add(x?)?)
             })?)
+    }
+
+    /// Returns the vault's withdrawable value.
+    ///
+    /// This is the sum of the deposits and the vault's PnL.
+    pub fn withdrawable_value(
+        &self,
+        markets: &[PerpsMarketState],
+        params: &HashMap<Denom, PerpsMarketParams>,
+        oracle_prices: &HashMap<Denom, Udec128>,
+    ) -> anyhow::Result<Int128> {
+        let pnl = self.vault_pnl(markets, params, oracle_prices)?;
+        Ok(pnl.checked_add(self.deposits.checked_into_signed()?)?)
     }
 }

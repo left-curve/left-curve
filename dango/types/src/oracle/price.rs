@@ -1,8 +1,5 @@
 use {
-    grug::{
-        Dec128, Defined, Int128, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined,
-        Unsigned,
-    },
+    grug::{Defined, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined},
     pyth_types::PriceFeed,
 };
 

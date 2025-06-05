@@ -511,7 +511,7 @@ impl Preset for PerpsOption {
                     taker_fee: Bounded::new(Udec128::new_bps(20)).unwrap(),
                     min_position_size: Uint128::new(100),
                     skew_scale: Uint128::new(5_000_000_000),
-                    max_funding_velocity: Udec128::new_bps(10),
+                    max_funding_velocity: Udec128::new_percent(3),
                 },
             },
         }
