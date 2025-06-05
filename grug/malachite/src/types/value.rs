@@ -1,4 +1,4 @@
-use grug_types::Hash256;
+use grug::Hash256;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Value(Hash256);

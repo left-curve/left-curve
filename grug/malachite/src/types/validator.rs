@@ -1,21 +1,18 @@
-use crate::{
-    context::Context,
-    types::{Address, PublicKey},
-};
+use crate::{context::Context, ctx};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Validator {
-    address: Address,
-    public_key: PublicKey,
+    address: ctx!(Address),
+    public_key: ctx!(SigningScheme::PublicKey),
     voting_power: u64,
 }
 
 impl malachitebft_core_types::Validator<Context> for Validator {
-    fn address(&self) -> &<Context as malachitebft_core_types::Context>::Address {
+    fn address(&self) -> &ctx!(Address) {
         &self.address
     }
 
-    fn public_key(&self) -> &malachitebft_core_types::PublicKey<Context> {
+    fn public_key(&self) -> &ctx!(SigningScheme::PublicKey) {
         &self.public_key
     }
 

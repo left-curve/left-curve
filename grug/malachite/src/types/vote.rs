@@ -1,29 +1,26 @@
 use {
-    crate::{
-        context::Context,
-        types::{Address, Height},
-    },
-    grug_types::Hash256,
+    crate::{context::Context, ctx},
+    grug::Hash256,
     malachitebft_core_types::{NilOrVal, Round, SignedExtension, VoteType},
 };
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Vote {
-    height: Height,
+    height: ctx!(Height),
     round: Round,
     value: NilOrVal<Hash256>,
     vote_type: VoteType,
-    validator_address: Address,
+    validator_address: ctx!(Address),
     extension: Option<SignedExtension<Context>>,
 }
 
 impl Vote {
     pub fn new(
-        height: Height,
+        height: ctx!(Height),
         round: Round,
-        value: NilOrVal<Hash256>,
+        value: NilOrVal<ctx!(Value::Id)>,
         vote_type: VoteType,
-        validator_address: Address,
+        validator_address: ctx!(Address),
     ) -> Self {
         Self {
             height,
@@ -37,7 +34,7 @@ impl Vote {
 }
 
 impl malachitebft_core_types::Vote<Context> for Vote {
-    fn height(&self) -> <Context as malachitebft_core_types::Context>::Height {
+    fn height(&self) -> ctx!(Height) {
         self.height
     }
 
@@ -45,7 +42,7 @@ impl malachitebft_core_types::Vote<Context> for Vote {
         self.round
     }
 
-    fn take_value(self) -> NilOrVal<Hash256> {
+    fn take_value(self) -> NilOrVal<ctx!(Value::Id)> {
         self.value
     }
 
@@ -53,7 +50,7 @@ impl malachitebft_core_types::Vote<Context> for Vote {
         self.vote_type
     }
 
-    fn validator_address(&self) -> &Address {
+    fn validator_address(&self) -> &ctx!(Address) {
         &self.validator_address
     }
 
@@ -70,7 +67,7 @@ impl malachitebft_core_types::Vote<Context> for Vote {
         self
     }
 
-    fn value(&self) -> &NilOrVal<Hash256> {
+    fn value(&self) -> &NilOrVal<ctx!(Value::Id)> {
         &self.value
     }
 }

@@ -1,6 +1,6 @@
 use {
+    grug::{CheckTxOutcome, Tx},
     grug_app::{AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
-    grug_types::{CheckTxOutcome, Tx},
     std::sync::Arc,
 };
 

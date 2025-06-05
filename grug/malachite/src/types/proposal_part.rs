@@ -1,12 +1,12 @@
-use {crate::context::Context, grug_types::Tx};
+use {crate::context::Context, grug::Tx};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[grug::derive(Borsh)]
 pub struct ProposalInit;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[grug::derive(Borsh)]
 pub struct ProposalFin;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[grug::derive(Borsh)]
 pub enum ProposalPart {
     Init(ProposalInit),
     Data(Vec<Tx>),

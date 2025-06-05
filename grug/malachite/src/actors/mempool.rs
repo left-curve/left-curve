@@ -4,7 +4,7 @@ use {
         actors::network::{GossipNetworkMsg, NetworkActorRef, NetworkMsg},
         app::AppRef,
     },
-    grug_types::{Hash256, Tx},
+    grug::{Hash256, Tx},
     malachitebft_test_mempool::Event as NetworkEvent,
     ractor::{Actor, ActorRef, RpcReplyPort, async_trait},
     std::{cmp::min, collections::VecDeque, sync::Arc},

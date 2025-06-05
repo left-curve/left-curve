@@ -1,22 +1,19 @@
 use {
-    crate::{
-        context::Context,
-        types::{Address, Height, Value},
-    },
+    crate::{context::Context, ctx},
     malachitebft_core_types::Round,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proposal {
-    pub height: Height,
+    pub height: ctx!(Height),
     pub round: Round,
-    pub value: Value,
+    pub value: ctx!(Value),
     pub pol_round: Round,
-    pub validator_address: Address,
+    pub validator_address: ctx!(Address),
 }
 
 impl malachitebft_core_types::Proposal<Context> for Proposal {
-    fn height(&self) -> Height {
+    fn height(&self) -> ctx!(Height) {
         self.height
     }
 
@@ -24,11 +21,11 @@ impl malachitebft_core_types::Proposal<Context> for Proposal {
         self.round
     }
 
-    fn value(&self) -> &Value {
+    fn value(&self) -> &ctx!(Value) {
         &self.value
     }
 
-    fn take_value(self) -> Value {
+    fn take_value(self) -> ctx!(Value) {
         self.value
     }
 
@@ -36,7 +33,7 @@ impl malachitebft_core_types::Proposal<Context> for Proposal {
         self.pol_round
     }
 
-    fn validator_address(&self) -> &Address {
+    fn validator_address(&self) -> &ctx!(Address) {
         &self.validator_address
     }
 }

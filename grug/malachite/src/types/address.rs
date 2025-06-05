@@ -1,8 +1,10 @@
-use std::fmt::{self, Display};
+use {
+    grug::Addr,
+    std::fmt::{self, Display},
+};
 
-use grug_types::Addr;
-
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[grug::derive(Borsh)]
+#[derive(Ord, PartialOrd)]
 pub struct Address(Addr);
 
 impl Display for Address {

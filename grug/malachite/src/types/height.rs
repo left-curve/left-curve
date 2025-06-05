@@ -1,7 +1,8 @@
 use std::fmt::{self, Display};
 
-#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
-
+// #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
+#[grug::derive(Borsh)]
+#[derive(Copy, Default, Ord, PartialOrd)]
 pub struct Height(u64);
 
 impl Display for Height {

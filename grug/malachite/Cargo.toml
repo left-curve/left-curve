@@ -10,14 +10,18 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+grug            = { workspace = true }
 grug-app        = { workspace = true }
-grug-types      = { workspace = true }
+grug-crypto     = { workspace = true }
 libp2p-identity = { workspace = true }
 ractor          = { workspace = true }
+serde           = { workspace = true }
 tokio           = { workspace = true }
 tracing         = { workspace = true }
 
+malachitebft-app          = { workspace = true }
 malachitebft-core-types   = { workspace = true }
 malachitebft-engine       = { workspace = true }
 malachitebft-metrics      = { workspace = true }
+malachitebft-sync         = { workspace = true }
 malachitebft-test-mempool = { workspace = true }

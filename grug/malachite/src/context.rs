@@ -1,6 +1,6 @@
 use {
-    crate::types,
-    grug_types::Hash256,
+    crate::{ctx, types},
+    // grug_types::Hash256,
     malachitebft_core_types::{Height, NilOrVal, Round, ValidatorSet, VoteType},
 };
 
@@ -61,7 +61,7 @@ impl malachitebft_core_types::Context for Context {
         &self,
         height: Self::Height,
         round: Round,
-        value_id: NilOrVal<Hash256>,
+        value_id: NilOrVal<ctx!(Value::Id)>,
         address: Self::Address,
     ) -> Self::Vote {
         types::Vote::new(height, round, value_id, VoteType::Prevote, address)
@@ -71,7 +71,7 @@ impl malachitebft_core_types::Context for Context {
         &self,
         height: Self::Height,
         round: Round,
-        value_id: NilOrVal<Hash256>,
+        value_id: NilOrVal<ctx!(Value::Id)>,
         address: Self::Address,
     ) -> Self::Vote {
         types::Vote::new(height, round, value_id, VoteType::Precommit, address)
