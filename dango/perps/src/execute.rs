@@ -27,7 +27,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         denom: msg.perps_vault_denom,
         deposits: Uint128::ZERO,
         shares: Uint128::ZERO,
-        realised_cash_flow: Default::default(),
+        realised_pnl: Default::default(),
     })?;
 
     // Store the perps market params and initialize perps market states.
@@ -116,7 +116,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
         denom: vault_state.denom,
         deposits: vault_state.deposits.checked_add(*deposited.amount)?,
         shares: vault_state.shares.checked_add(shares)?,
-        realised_cash_flow: vault_state.realised_cash_flow,
+        realised_pnl: vault_state.realised_pnl,
     })?;
 
     // Store the deposit
@@ -184,7 +184,7 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
         denom: vault_state.denom.clone(),
         deposits: vault_state.deposits.checked_sub(withdrawn_amount)?,
         shares: vault_state.shares.checked_sub(withdrawn_shares)?,
-        realised_cash_flow: vault_state.realised_cash_flow,
+        realised_pnl: vault_state.realised_pnl,
     })?;
 
     // Update the user's deposit
@@ -346,7 +346,7 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
 
     // Update the vault state
     PERPS_VAULT.save(ctx.storage, &PerpsVaultState {
-        realised_cash_flow: vault_state.realised_cash_flow.add(&realised_cash_flow)?,
+        realised_pnl: vault_state.realised_pnl.add(&realised_cash_flow)?,
         ..vault_state
     })?;
 
@@ -356,6 +356,8 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     } else {
         PERPS_POSITIONS.save(ctx.storage, (&ctx.sender, &denom), &new_pos)?;
     }
+
+    // TODO: Ensure any negative trader PnL is sent to the vault and send any positive trader PnL to the user
 
     // TODO: Emit events
     Ok(())

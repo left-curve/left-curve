@@ -13,8 +13,8 @@ pub struct PerpsVaultState {
     pub deposits: Uint128,
     /// The amount of shares that that have been minted.
     pub shares: Uint128,
-    /// The realised cash flow of the vault.
-    pub realised_cash_flow: Pnl,
+    /// The realised pnl of the vault.
+    pub realised_pnl: Pnl,
 }
 
 impl PerpsVaultState {
