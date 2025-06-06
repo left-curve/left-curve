@@ -6,7 +6,7 @@ import { createBatchScheduler } from "../utils/scheduler.js";
 
 import type {
   CometBftRpcSchema,
-  HttpRpcClientOptions,
+  HttpClientOptions,
   JsonRpcBatchOptions,
   JsonRpcRequest,
   Transport,
@@ -21,11 +21,11 @@ export type HttpTransportConfig = {
    * Request configuration to pass to `fetch`.
    * @link https://developer.mozilla.org/en-US/docs/Web/API/fetch
    */
-  fetchOptions?: HttpRpcClientOptions["fetchOptions"];
+  fetchOptions?: HttpClientOptions["fetchOptions"];
   /** A callback to handle the response from `fetch`. */
-  onFetchRequest?: HttpRpcClientOptions["onRequest"];
+  onFetchRequest?: HttpClientOptions["onRequest"];
   /** A callback to handle the response from `fetch`. */
-  onFetchResponse?: HttpRpcClientOptions["onResponse"];
+  onFetchResponse?: HttpClientOptions["onResponse"];
   /** The batch configuration. */
   batch?: boolean | JsonRpcBatchOptions;
   /** The name of the transport. */
