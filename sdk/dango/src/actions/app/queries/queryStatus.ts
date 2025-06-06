@@ -1,7 +1,8 @@
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
+
 import type { BlockInfo, Client, Transport } from "@left-curve/sdk/types";
-import type { Chain } from "../../../types/chain.js";
-import type { Signer } from "../../../types/signer.js";
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import type { Chain } from "#types/chain.js";
+import type { Signer } from "#types/signer.js";
 
 export type QueryStatusReturnType = Promise<{
   chainId: string;

@@ -1,6 +1,7 @@
-import type { Client, Transport } from "@left-curve/sdk/types";
-import type { IndexedBlock } from "../../types/indexer.js";
 import { queryIndexer } from "./queryIndexer.js";
+
+import type { Client, Transport } from "@left-curve/sdk/types";
+import type { IndexedBlock } from "#types/indexer.js";
 
 export type QueryBlockParameters = {
   height?: number;
