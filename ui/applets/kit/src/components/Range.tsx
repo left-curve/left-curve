@@ -35,7 +35,10 @@ export type RangeProps = {
   label?: string | ReactNode;
   isDisabled?: boolean;
   showSteps?: boolean | StepObject[];
-  className?: string;
+  classNames?: {
+    base?: string;
+    input?: string;
+  };
   withInput?: boolean;
   inputEndContent?: ReactNode;
 };
@@ -50,7 +53,7 @@ export const Range: React.FC<RangeProps> = ({
   label,
   isDisabled = false,
   showSteps = false,
-  className,
+  classNames,
   withInput = false,
   inputEndContent,
 }) => {
@@ -190,7 +193,9 @@ export const Range: React.FC<RangeProps> = ({
   );
 
   return (
-    <div className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, className)}>
+    <div
+      className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, classNames?.base)}
+    >
       {label && <div className="text-gray-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
@@ -277,7 +282,7 @@ export const Range: React.FC<RangeProps> = ({
                 }
               }
             }}
-            classNames={{ base: "max-w-[5rem]" }}
+            classNames={{ base: twMerge("max-w-[5rem]", classNames?.input) }}
           />
         )}
       </div>
