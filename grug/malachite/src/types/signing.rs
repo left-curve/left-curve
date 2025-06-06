@@ -4,6 +4,10 @@ use {
     grug_crypto::Identity256,
     k256::{
         ecdsa::signature::{DigestSigner, DigestVerifier},
+        elliptic_curve::{
+            consts::{U32, U64},
+            generic_array::GenericArray,
+        },
         sha2::Sha256,
     },
     libp2p_identity::secp256k1::Keypair,
@@ -38,15 +42,23 @@ impl malachitebft_core_types::SigningScheme for SigningScheme {
 pub struct PrivateKey(k256::ecdsa::SigningKey);
 
 impl PrivateKey {
+    pub fn sign_digest<T>(&self, data: T) -> GenericArray<u8, U64>
+    where
+        T: Into<GenericArray<u8, U32>>,
+    {
+        let sign_data = Identity256::from_inner(data.into());
+        let signature: k256::ecdsa::Signature = self.0.sign_digest(sign_data);
+        signature.to_bytes()
+    }
+
     pub fn sign<T>(&self, data: T) -> SignedMessage<Context, T>
     where
         T: SignData<Hasher = Sha256>,
         T::Error: Debug,
     {
         let sign_data = data.to_sign_data().unwrap();
-        let sign_data = Identity256::from_inner(sign_data);
-        let signature: k256::ecdsa::Signature = self.0.sign_digest(sign_data);
-        SignedMessage::new(data, signature.to_bytes().into())
+        let signature = self.sign_digest(sign_data);
+        SignedMessage::new(data, signature.into())
     }
 
     pub fn verify<T>(

@@ -2,7 +2,7 @@ use {
     proc_macro::TokenStream,
     quote::quote,
     syn::{
-        Expr, ItemStruct,
+        Expr, ItemStruct, Type,
         parse::{Parse, ParseStream},
         parse_macro_input,
         token::Comma,
@@ -11,9 +11,9 @@ use {
 
 struct Args {
     /// Type of the `IndexedMap`'s primary key.
-    pk: Expr,
+    pk: Type,
     /// Type of the `IndexedMap`'s value.
-    ty: Expr,
+    ty: Type,
 }
 
 impl Parse for Args {

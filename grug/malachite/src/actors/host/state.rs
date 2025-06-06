@@ -1,13 +1,40 @@
 use {
-    crate::{ActorResult, context::Context, ctx},
-    grug::{Hash256, Map, Storage},
-    malachitebft_app::{consensus::Role, types::ProposedValue},
+    crate::{ActorResult, context::Context, ctx, types::ProposalPart},
+    grug::{Hash256, IndexedMap, Map, Storage, UniqueIndex},
+    malachitebft_app::{consensus::Role, streaming::StreamId, types::ProposedValue},
     malachitebft_core_types::Round,
     malachitebft_engine::consensus::ConsensusRef,
 };
 
 pub type HeightKey = u64;
 pub type RoundKey = i64;
+pub type StreamIdKey<'a> = &'a [u8];
+
+pub const BLOCKS: Map<HeightKey, ()> = Map::new("block");
+
+pub const PARTS: Map<StreamIdKey, Vec<ProposalPart>> = Map::new("parts");
+
+pub const ROUNDS: IndexedMap<
+    (HeightKey, RoundKey, Hash256),
+    ProposedValue<Context>,
+    RoundsIndexes,
+> = IndexedMap::new("round", RoundsIndexes {
+    proposer: UniqueIndex::new(
+        |(height, round, ..), value| (*height, *round, value.proposer),
+        "round",
+        "round_proposer",
+    ),
+});
+
+#[grug::index_list((HeightKey, RoundKey, Hash256), ProposedValue<Context>)]
+pub struct RoundsIndexes<'a> {
+    pub proposer: UniqueIndex<
+        'a,
+        (HeightKey, RoundKey, Hash256),
+        (HeightKey, RoundKey, ctx!(Address)),
+        ProposedValue<Context>,
+    >,
+}
 
 #[derive(Clone)]
 pub struct State {
@@ -39,6 +66,14 @@ impl State {
         self.consensus
             .clone()
             .ok_or(anyhow::anyhow!("Consensus not set").into())
+    }
+
+    pub fn stream_id(&self) -> StreamId {
+        let mut bytes = Vec::with_capacity(size_of::<u64>() + size_of::<u32>());
+        bytes.extend_from_slice(&self.height.to_be_bytes());
+        // TODO: can this panic?
+        bytes.extend_from_slice(&self.round.as_u32().unwrap().to_be_bytes());
+        StreamId::new(bytes.into())
     }
 }
 
@@ -86,7 +121,3 @@ impl Storage for State {
         self.storage.remove_range(min, max)
     }
 }
-
-pub const BLOCKS: Map<HeightKey, ()> = Map::new("block");
-
-pub const ROUNDS: Map<(HeightKey, RoundKey, Hash256), ProposedValue<Context>> = Map::new("round");

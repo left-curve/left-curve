@@ -4998,6 +4998,7 @@ dependencies = [
  "informalsystems-malachitebft-test-mempool",
  "k256",
  "libp2p-identity",
+ "prost",
  "ractor",
  "serde",
  "tokio",

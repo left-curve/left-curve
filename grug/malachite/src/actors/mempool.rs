@@ -3,6 +3,7 @@ use {
         ActorResult,
         actors::network::{GossipNetworkMsg, MempoolNetworkActorRef, MempoolNetworkMsg},
         app::MempoolAppRef,
+        types::RawTx,
     },
     grug::{CheckTxOutcome, Hash256, Tx},
     grug_app::AppError,
@@ -17,20 +18,20 @@ pub type MempoolActorRef = ActorRef<Msg>;
 
 #[derive(Default)]
 pub struct State {
-    txs: VecDeque<Tx>,
+    txs: VecDeque<RawTx>,
 }
 
 pub enum Msg {
     NetworkEvent(Arc<NetworkEvent>),
     Add {
-        tx: Tx,
+        tx: RawTx,
         reply: RpcReplyPort<Result<CheckTxOutcome, AppError>>,
     },
     Take {
         amount: usize,
-        reply: RpcReplyPort<Vec<Tx>>,
+        reply: RpcReplyPort<Vec<RawTx>>,
     },
-    Remove(Vec<Hash256>),
+    Remove(Vec<RawTx>),
 }
 
 impl From<Arc<NetworkEvent>> for Msg {
@@ -93,11 +94,11 @@ impl Mempool {
 
     fn add_tx(
         &self,
-        tx: Tx,
+        tx: RawTx,
         reply: RpcReplyPort<Result<CheckTxOutcome, AppError>>,
         state: &mut State,
     ) -> ActorResult<()> {
-        let check_tx_outcome = self.app.check_tx(tx.clone());
+        let check_tx_outcome = self.app.check_tx(&tx);
 
         if let Ok(CheckTxOutcome { result: Ok(_), .. }) = check_tx_outcome {
             self.gossip_tx(tx.clone())?;
@@ -109,11 +110,11 @@ impl Mempool {
         Ok(())
     }
 
-    fn add_batch(&self, batch: Vec<Tx>, state: &mut State) {
+    fn add_batch(&self, batch: Vec<RawTx>, state: &mut State) {
         // TODO: The check can be done in parallel
         let checked_txs = batch.into_iter().filter_map(|tx| {
             self.app
-                .check_tx(tx.clone())
+                .check_tx(&tx)
                 .ok()
                 .and_then(|check| check.result.ok().map(|_| tx))
         });
@@ -125,7 +126,7 @@ impl Mempool {
         &self,
         state: &mut State,
         mut amount: usize,
-        reply: RpcReplyPort<Vec<Tx>>,
+        reply: RpcReplyPort<Vec<RawTx>>,
     ) -> ActorResult<()> {
         let mut txes = Vec::with_capacity(min(amount, state.txs.len()));
 
@@ -143,15 +144,13 @@ impl Mempool {
         Ok(())
     }
 
-    fn remove(&self, tx_hashes: Vec<Hash256>, state: &mut State) -> ActorResult<()> {
-        state
-            .txs
-            .retain(|tx| !tx_hashes.contains(&tx.tx_hash().unwrap()));
+    fn remove(&self, txs: Vec<RawTx>, state: &mut State) -> ActorResult<()> {
+        state.txs.retain(|tx| !txs.contains(tx));
 
         Ok(())
     }
 
-    fn gossip_tx(&self, tx: Tx) -> ActorResult<()> {
+    fn gossip_tx(&self, tx: RawTx) -> ActorResult<()> {
         // TODO: Actually MempoolTransactionBatch is in prost format
         let msg = todo!();
 

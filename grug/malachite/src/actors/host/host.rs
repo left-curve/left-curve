@@ -2,20 +2,29 @@ use {
     crate::{
         ActorResult,
         actors::{
-            MempoolActorRef,
-            host::state::{BLOCKS, ROUNDS, State},
+            MempoolActorRef, MempoolMsg,
+            host::state::{BLOCKS, PARTS, ROUNDS, State},
         },
         app::{HostApp, HostAppRef},
         context::Context,
         ctx,
+        types::{ProposalFin, ProposalInit, ProposalPart},
     },
-    grug::Storage,
+    grug::{Hash256, Inner, Storage},
     grug_app::{App, Db},
-    malachitebft_app::consensus::Role,
+    k256::sha2::{Digest, Sha256},
+    malachitebft_app::{
+        consensus::Role,
+        streaming::{StreamContent, StreamMessage},
+        types::LocallyProposedValue,
+    },
     malachitebft_core_types::{Round, ValueOrigin},
-    malachitebft_engine::consensus::{ConsensusMsg, ConsensusRef},
-    ractor::{Actor, async_trait},
-    std::sync::Arc,
+    malachitebft_engine::{
+        consensus::{ConsensusMsg, ConsensusRef},
+        network::{NetworkMsg, NetworkRef},
+    },
+    ractor::{Actor, RpcReplyPort, async_trait},
+    std::{sync::Arc, time::Duration},
     tracing::info,
 };
 
@@ -25,7 +34,10 @@ pub type HostMsg = malachitebft_engine::host::HostMsg<Context>;
 pub struct Host {
     app: HostAppRef,
     mempool: MempoolActorRef,
+    network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
+    private_key: ctx!(SigningScheme::PrivateKey),
+    address: ctx!(Address),
 }
 
 #[async_trait]
@@ -42,7 +54,7 @@ impl Actor for Host {
 
     async fn handle(
         &self,
-        myself: HostRef,
+        _: HostRef,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> ActorResult<()> {
@@ -59,7 +71,10 @@ impl Actor for Host {
                 round,
                 timeout,
                 reply_to,
-            } => todo!(),
+            } => {
+                self.get_value(state, height, round, timeout, reply_to)
+                    .await
+            },
             HostMsg::ExtendVote {
                 height,
                 round,
@@ -108,7 +123,9 @@ impl Host {
     pub async fn spawn<DB, VM, PP, ID>(
         app: Arc<App<DB, VM, PP, ID>>,
         mempool: MempoolActorRef,
+        network: NetworkRef<Context>,
         validator_set: ctx!(ValidatorSet),
+        private_key: ctx!(SigningScheme::PrivateKey),
     ) -> HostRef
     where
         DB: Db,
@@ -119,7 +136,10 @@ impl Host {
         let host = Host {
             app,
             mempool,
+            network,
             validator_set,
+            address: private_key.derive_address(),
+            private_key,
         };
 
         let (actor_ref, _) = Actor::spawn(None, host, args).await.unwrap();
@@ -162,7 +182,6 @@ impl Host {
 
         // If we have already built or seen one or more values for this height and round,
         // feed them back to consensus. This may happen when we are restarting after a crash.
-
         let consensus = state.consensus()?;
 
         for value in ROUNDS.prefix(*height).append(round.as_i64()).values(
@@ -178,6 +197,101 @@ impl Host {
                 value,
                 ValueOrigin::Consensus,
             ))?;
+        }
+
+        Ok(())
+    }
+
+    /// Equivalent of prepare_proposal
+    async fn get_value(
+        &self,
+        state: &mut State,
+        height: ctx!(Height),
+        round: Round,
+        _timeout: Duration,
+        reply_to: RpcReplyPort<LocallyProposedValue<Context>>,
+    ) -> ActorResult<()> {
+        // If we have already built a block for this height and round, return it to consensus
+        // This may happen when we are restarting after a crash and replaying the WAL.
+        if let Some(value) = ROUNDS
+            .idx
+            .proposer
+            .may_load_value(state, (*height, round.as_i64(), self.address))?
+        {
+            info!(%height, %round, hash = ?value.value, "Returning previously built value");
+
+            reply_to.send(LocallyProposedValue::new(
+                value.height,
+                value.round,
+                value.value,
+            ))?;
+
+            return Ok(());
+        }
+
+        // Crate proposal parts
+        let (parts, hash) = {
+            let mut parts = vec![];
+
+            let part = ProposalPart::Init(ProposalInit::new(height, round, self.address));
+            parts.push(part);
+
+            // Take txs from mempool
+            let txs = self
+                .mempool
+                .call(
+                    |reply| MempoolMsg::Take {
+                        // TODO: set a limit
+                        amount: usize::MAX,
+                        reply,
+                    },
+                    None,
+                )
+                .await?
+                .success_or(anyhow::anyhow!("Failed to take txs from mempool"))?;
+
+            let mut hasher = Sha256::new();
+
+            // Call prepare_proposal
+            let txs = self.app.prepare_proposal(txs);
+
+            for tx in &txs {
+                hasher.update(tx.as_ref());
+            }
+
+            parts.push(ProposalPart::Data(txs));
+
+            let hash = hasher.finalize();
+            let sig = self.private_key.sign_digest(hash);
+
+            parts.push(ProposalPart::Fin(ProposalFin::new(hash, sig)));
+
+            (parts, hash)
+        };
+
+        // Store parts
+        let stream_id = state.stream_id();
+        PARTS.save(state, &stream_id.to_bytes(), &parts)?;
+
+        // Stream parts to consensus
+        {
+            let mut sequence = 0;
+
+            for part in parts {
+                let msg =
+                    StreamMessage::new(stream_id.clone(), sequence, StreamContent::Data(part));
+                self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
+                sequence += 1;
+            }
+
+            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Fin);
+            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
+        }
+
+        // Return the proposed value
+        {
+            let value = LocallyProposedValue::new(height, round, hash.into());
+            reply_to.send(value)?;
         }
 
         Ok(())

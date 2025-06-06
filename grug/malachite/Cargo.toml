@@ -17,6 +17,7 @@ grug-app        = { workspace = true }
 grug-crypto     = { workspace = true }
 k256            = { workspace = true }
 libp2p-identity = { workspace = true, features = ["secp256k1"] }
+prost           = { workspace = true }
 ractor          = { workspace = true }
 serde           = { workspace = true }
 tokio           = { workspace = true }
