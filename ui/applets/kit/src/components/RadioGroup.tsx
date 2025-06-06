@@ -3,7 +3,7 @@ import { createContext } from "#utils/context.js";
 import { twMerge } from "#utils/twMerge.js";
 import { motion } from "framer-motion";
 import type React from "react";
-import { useContext, useId, type PropsWithChildren, type ReactNode } from "react";
+import { useId, type PropsWithChildren, type ReactNode } from "react";
 
 type RadioGroupContextType = {
   name: string;
