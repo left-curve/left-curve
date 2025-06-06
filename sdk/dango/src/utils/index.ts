@@ -11,7 +11,6 @@ export {
   getMembersTypedData,
   composeTxTypedData,
   composeArbitraryTypedData,
-  hashTypedData,
 } from "./typedData.js";
 
 export {
