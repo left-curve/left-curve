@@ -1,7 +1,7 @@
 use {
     crate::{
         ActorResult,
-        actors::host::streaming_buffer::{PartStreamsMap, ProposalParts},
+        actors::host::streaming_buffer::PartStreamsMap,
         context::Context,
         ctx,
         types::{ProposalFin, ProposalInit, ProposalPart, RawTx},
@@ -20,40 +20,6 @@ use {
 pub type HeightKey = u64;
 pub type RoundKey = i64;
 pub type StreamIdKey = Vec<u8>;
-
-const BLOCKS: Map<HeightKey, ()> = Map::new("block");
-
-const PARTS: IndexedMap<StreamIdKey, StoreParts, PartsIndexes> =
-    IndexedMap::new("parts", PartsIndexes {
-        value_id: UniqueIndex::new(|_, parts| parts.fin.hash, "parts", "parts_value_id"),
-    });
-
-#[grug::index_list(StreamIdKey, StoreParts)]
-pub struct PartsIndexes<'a> {
-    pub value_id: UniqueIndex<'a, StreamIdKey, ctx!(Value::Id), StoreParts>,
-}
-
-const UNDECIDED_PROPOSALS: IndexedMap<
-    (HeightKey, RoundKey, Hash256),
-    ProposedValue<Context>,
-    RoundsIndexes,
-> = IndexedMap::new("undecided_proposal", RoundsIndexes {
-    proposer: UniqueIndex::new(
-        |(height, round, ..), value| (*height, *round, value.proposer),
-        "undecided_proposal",
-        "undecided_proposal__proposer",
-    ),
-});
-
-#[grug::index_list((HeightKey, RoundKey, Hash256), ProposedValue<Context>)]
-pub struct RoundsIndexes<'a> {
-    pub proposer: UniqueIndex<
-        'a,
-        (HeightKey, RoundKey, Hash256),
-        (HeightKey, RoundKey, ctx!(Address)),
-        ProposedValue<Context>,
-    >,
-}
 
 #[grug::derive(Borsh)]
 pub struct StoreParts {
@@ -133,7 +99,7 @@ impl State {
         &mut self,
         peer_id: PeerId,
         part: StreamMessage<ctx!(ProposalPart)>,
-    ) -> Option<ProposalParts> {
+    ) -> Option<StoreParts> {
         self.streams.insert(peer_id, part)
     }
 
@@ -166,15 +132,28 @@ impl State {
     }
 }
 
+// -------------------------------- Memory state -------------------------------
+
 pub struct MemoryState {
     pub parts: IndexedMap<'static, StreamIdKey, StoreParts, PartsIndexes<'static>>,
 }
 
 impl Default for MemoryState {
     fn default() -> Self {
-        Self { parts: PARTS }
+        Self {
+            parts: IndexedMap::new("parts", PartsIndexes {
+                value_id: UniqueIndex::new(|_, parts| parts.fin.hash, "parts", "parts_value_id"),
+            }),
+        }
     }
 }
+
+#[grug::index_list(StreamIdKey, StoreParts)]
+pub struct PartsIndexes<'a> {
+    pub value_id: UniqueIndex<'a, StreamIdKey, ctx!(Value::Id), StoreParts>,
+}
+
+// ---------------------------------- Db state ---------------------------------
 
 pub struct DbState {
     pub blocks: Map<'static, HeightKey, ()>,
@@ -182,15 +161,31 @@ pub struct DbState {
         'static,
         (HeightKey, RoundKey, Hash256),
         ProposedValue<Context>,
-        RoundsIndexes<'static>,
+        UndecidedProposalIndexes<'static>,
     >,
 }
 
 impl Default for DbState {
     fn default() -> Self {
         Self {
-            blocks: BLOCKS,
-            undecided_proposals: UNDECIDED_PROPOSALS,
+            blocks: Map::new("block"),
+            undecided_proposals: IndexedMap::new("undecided_proposal", UndecidedProposalIndexes {
+                proposer: UniqueIndex::new(
+                    |(height, round, ..), value| (*height, *round, value.proposer),
+                    "undecided_proposal",
+                    "undecided_proposal__proposer",
+                ),
+            }),
         }
     }
+}
+
+#[grug::index_list((HeightKey, RoundKey, Hash256), ProposedValue<Context>)]
+pub struct UndecidedProposalIndexes<'a> {
+    pub proposer: UniqueIndex<
+        'a,
+        (HeightKey, RoundKey, Hash256),
+        (HeightKey, RoundKey, ctx!(Address)),
+        ProposedValue<Context>,
+    >,
 }

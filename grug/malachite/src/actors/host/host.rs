@@ -8,9 +8,9 @@ use {
         app::{HostApp, HostAppRef},
         context::Context,
         ctx,
-        types::{ProposalFin, ProposalInit},
+        types::{ProposalFin, ProposalInit, ProposalPart},
     },
-    grug::Inner,
+    grug::{Hash256, Inner},
     grug_app::{App, Db},
     k256::sha2::{Digest, Sha256},
     malachitebft_app::{
@@ -18,7 +18,7 @@ use {
         streaming::{StreamContent, StreamId, StreamMessage},
         types::{LocallyProposedValue, ProposedValue},
     },
-    malachitebft_core_types::{Round, ValueOrigin},
+    malachitebft_core_types::{Round, Validity, ValueOrigin},
     malachitebft_engine::{
         consensus::{ConsensusMsg, ConsensusRef},
         network::{NetworkMsg, NetworkRef},
@@ -322,9 +322,38 @@ impl Host {
             (parts, hash)
         };
 
-        // Store parts
         let stream_id = state.stream_id();
-        // PARTS.save(state, stream_id.to_bytes().to_vec(), &parts)?;
+
+        // Store parts
+        {
+            state.with_memory_storage_mut(|storage, memory| {
+                memory
+                    .parts
+                    .save(storage, stream_id.to_bytes().to_vec(), &parts)
+            })?;
+        }
+
+        // Store undecided proposal
+        {
+            let proposed_value = ProposedValue {
+                height,
+                round,
+                valid_round: Round::Nil,
+                proposer: self.address,
+                value: hash.into(),
+                validity: Validity::Valid,
+            };
+
+            state.with_db_storage_mut(|storage, db| {
+                db.undecided_proposals.save(
+                    storage,
+                    (*height, round.as_i64(), Hash256::from_inner(hash.into())),
+                    &proposed_value,
+                )
+            })?;
+        }
+
+        // TODO: Store undecided block
 
         // Stream parts to consensus
         self.stream_parts(stream_id, parts, true).await?;
@@ -368,10 +397,58 @@ impl Host {
         part: StreamMessage<ctx!(ProposalPart)>,
         reply_to: RpcReplyPort<ProposedValue<Context>>,
     ) -> ActorResult<()> {
+        let stream_id = part.stream_id.clone();
+
         let Some(parts) = state.add_part(from, part) else {
             return Ok(());
         };
 
+        let value = ProposedValue {
+            height: parts.init.height,
+            round: parts.init.round,
+            valid_round: parts.init.valid_round,
+            proposer: parts.init.proposer,
+            value: <ctx!(Value)>::new(parts.fin.hash),
+            validity: Validity::from_bool(self.verify_proposal_validity(&parts)),
+        };
+
+        // Store undecided proposal
+        state.with_db_storage_mut(|storage, db| {
+            db.undecided_proposals.save(
+                storage,
+                (
+                    *parts.init.height,
+                    parts.init.round.as_i64(),
+                    parts.fin.hash,
+                ),
+                &value,
+            )
+        })?;
+
+        // TODO: Store undecided block
+
+        // Store parts
+        state.with_memory_storage_mut(|storage, memory| {
+            memory
+                .parts
+                .save(storage, stream_id.to_bytes().to_vec(), &parts)
+        })?;
+
+        // Send to consensus
+        reply_to.send(value)?;
+
         Ok(())
+    }
+
+    pub fn verify_proposal_validity(&self, parts: &StoreParts) -> bool {
+        let mut hasher = Sha256::new();
+
+        for tx in &parts.data {
+            hasher.update(tx.as_ref());
+        }
+
+        let hash = hasher.finalize();
+
+        Hash256::from_inner(hash.into()) == parts.fin.hash
     }
 }
