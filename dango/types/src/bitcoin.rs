@@ -322,7 +322,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Query the signatures for a single outbound transactions by ID.
-    #[returns(BTreeMap<Addr, BitcoinSignature>)]
+    #[returns(BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>)]
     OutboundSignature { id: u32 },
     /// Enumerate all signatures for all outbound transactions.
     #[returns(BTreeMap<u32, BTreeMap<Addr, BitcoinSignature>>)]
