@@ -3,26 +3,27 @@ use {
         ActorResult,
         actors::{
             MempoolActorRef, MempoolMsg,
-            host::state::{BLOCKS, PARTS, ROUNDS, State},
+            host::state::{State, StoreParts},
         },
         app::{HostApp, HostAppRef},
         context::Context,
         ctx,
-        types::{ProposalFin, ProposalInit, ProposalPart},
+        types::{ProposalFin, ProposalInit},
     },
-    grug::{Hash256, Inner, Storage},
+    grug::Inner,
     grug_app::{App, Db},
     k256::sha2::{Digest, Sha256},
     malachitebft_app::{
         consensus::Role,
-        streaming::{StreamContent, StreamMessage},
-        types::LocallyProposedValue,
+        streaming::{StreamContent, StreamId, StreamMessage},
+        types::{LocallyProposedValue, ProposedValue},
     },
     malachitebft_core_types::{Round, ValueOrigin},
     malachitebft_engine::{
         consensus::{ConsensusMsg, ConsensusRef},
         network::{NetworkMsg, NetworkRef},
     },
+    malachitebft_sync::PeerId,
     ractor::{Actor, RpcReplyPort, async_trait},
     std::{sync::Arc, time::Duration},
     tracing::info,
@@ -60,6 +61,9 @@ impl Actor for Host {
     ) -> ActorResult<()> {
         match message {
             HostMsg::ConsensusReady(actor_ref) => self.consensus_ready(state, actor_ref),
+            HostMsg::GetHistoryMinHeight { reply_to } => {
+                self.get_history_min_height(state, reply_to)
+            },
             HostMsg::StartedRound {
                 height,
                 round,
@@ -75,32 +79,24 @@ impl Actor for Host {
                 self.get_value(state, height, round, timeout, reply_to)
                     .await
             },
-            HostMsg::ExtendVote {
-                height,
-                round,
-                value_id,
-                reply_to,
-            } => todo!(),
-            HostMsg::VerifyVoteExtension {
-                height,
-                round,
-                value_id,
-                extension,
-                reply_to,
-            } => todo!(),
             HostMsg::RestreamValue {
                 height,
                 round,
                 valid_round,
                 address,
                 value_id,
-            } => todo!(),
-            HostMsg::GetHistoryMinHeight { reply_to } => todo!(),
+            } => {
+                self.restream_value(state, height, round, valid_round, address, value_id)
+                    .await
+            },
             HostMsg::ReceivedProposalPart {
                 from,
                 part,
                 reply_to,
-            } => todo!(),
+            } => {
+                self.received_proposal_part(state, from, part, reply_to)
+                    .await
+            },
             HostMsg::GetValidatorSet { height, reply_to } => todo!(),
             HostMsg::Decided {
                 certificate,
@@ -115,9 +111,19 @@ impl Actor for Host {
                 value_bytes,
                 reply_to,
             } => todo!(),
+            HostMsg::ExtendVote { reply_to, .. } => {
+                reply_to.send(None)?;
+                Ok(())
+            },
+            HostMsg::VerifyVoteExtension { reply_to, .. } => {
+                reply_to.send(Ok(()))?;
+                Ok(())
+            },
         }
     }
 }
+
+//  ----------------------------- Generic methods ------------------------------
 
 impl Host {
     pub async fn spawn<DB, VM, PP, ID>(
@@ -146,16 +152,47 @@ impl Host {
         actor_ref
     }
 
+    pub async fn stream_parts(
+        &self,
+        stream_id: StreamId,
+        parts: StoreParts,
+        with_fin: bool,
+    ) -> ActorResult<()> {
+        let mut sequence = 0;
+
+        for part in parts {
+            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Data(part));
+            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
+            sequence += 1;
+        }
+
+        if with_fin {
+            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Fin);
+            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
+        }
+
+        Ok(())
+    }
+}
+
+// ------------------------------- Msgs handlers -------------------------------
+
+impl Host {
     fn consensus_ready(
         &self,
-        storage: &mut dyn Storage,
+        state: &mut State,
         consensus: ConsensusRef<Context>,
     ) -> ActorResult<()> {
-        let height = BLOCKS
-            .keys(storage, None, None, grug::Order::Descending)
-            .next()
-            .transpose()?
+        let height = state
+            .with_db_storage(|storage, db| {
+                db.blocks
+                    .keys(storage, None, None, grug::Order::Descending)
+                    .next()
+                    .transpose()
+            })?
             .unwrap_or_default();
+
+        state.set_consensus(consensus.clone());
 
         // TODO: is a sleep necessary here? It's present in the example implementation
 
@@ -163,6 +200,25 @@ impl Host {
             <ctx!(Height)>::new(height + 1),
             self.validator_set.clone(),
         ))?;
+
+        Ok(())
+    }
+
+    fn get_history_min_height(
+        &self,
+        state: &State,
+        reply_to: RpcReplyPort<ctx!(Height)>,
+    ) -> ActorResult<()> {
+        let height = state
+            .with_db_storage(|storage, db| {
+                db.blocks
+                    .keys(storage, None, None, grug::Order::Ascending)
+                    .next()
+                    .transpose()
+            })?
+            .unwrap_or_default();
+
+        reply_to.send(<ctx!(Height)>::new(height))?;
 
         Ok(())
     }
@@ -184,22 +240,21 @@ impl Host {
         // feed them back to consensus. This may happen when we are restarting after a crash.
         let consensus = state.consensus()?;
 
-        for value in ROUNDS.prefix(*height).append(round.as_i64()).values(
-            state,
-            None,
-            None,
-            grug::Order::Ascending,
-        ) {
-            let value = value?;
-            info!(%height, %round, hash = ?value.value, "Replaying already known proposed value");
+        state.with_db_storage(|storage, db| {
+            for value in db.undecided_proposals
+                .prefix(*height)
+                .append(round.as_i64())
+                .values(storage, None, None, grug::Order::Ascending) {
+                    let value = value?;
+                    info!(%height, %round, hash = ?value.value, "Replaying already known proposed value");
 
-            consensus.cast(ConsensusMsg::ReceivedProposedValue(
-                value,
-                ValueOrigin::Consensus,
-            ))?;
-        }
-
-        Ok(())
+                    consensus.cast(ConsensusMsg::ReceivedProposedValue(
+                        value,
+                        ValueOrigin::Consensus,
+                    ))?;
+                }
+                Ok(())
+        })
     }
 
     /// Equivalent of prepare_proposal
@@ -213,11 +268,12 @@ impl Host {
     ) -> ActorResult<()> {
         // If we have already built a block for this height and round, return it to consensus
         // This may happen when we are restarting after a crash and replaying the WAL.
-        if let Some(value) = ROUNDS
-            .idx
-            .proposer
-            .may_load_value(state, (*height, round.as_i64(), self.address))?
-        {
+        if let Some(value) = state.with_db_storage(|storage, db| {
+            db.undecided_proposals
+                .idx
+                .proposer
+                .may_load_value(storage, (*height, round.as_i64(), self.address))
+        })? {
             info!(%height, %round, hash = ?value.value, "Returning previously built value");
 
             reply_to.send(LocallyProposedValue::new(
@@ -231,11 +287,6 @@ impl Host {
 
         // Crate proposal parts
         let (parts, hash) = {
-            let mut parts = vec![];
-
-            let part = ProposalPart::Init(ProposalInit::new(height, round, self.address));
-            parts.push(part);
-
             // Take txs from mempool
             let txs = self
                 .mempool
@@ -259,40 +310,67 @@ impl Host {
                 hasher.update(tx.as_ref());
             }
 
-            parts.push(ProposalPart::Data(txs));
-
             let hash = hasher.finalize();
             let sig = self.private_key.sign_digest(hash);
 
-            parts.push(ProposalPart::Fin(ProposalFin::new(hash, sig)));
+            let parts = StoreParts::new(
+                ProposalInit::new(height, round, self.address),
+                txs,
+                ProposalFin::new(hash, sig),
+            );
 
             (parts, hash)
         };
 
         // Store parts
         let stream_id = state.stream_id();
-        PARTS.save(state, &stream_id.to_bytes(), &parts)?;
+        // PARTS.save(state, stream_id.to_bytes().to_vec(), &parts)?;
 
         // Stream parts to consensus
-        {
-            let mut sequence = 0;
-
-            for part in parts {
-                let msg =
-                    StreamMessage::new(stream_id.clone(), sequence, StreamContent::Data(part));
-                self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
-                sequence += 1;
-            }
-
-            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Fin);
-            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
-        }
+        self.stream_parts(stream_id, parts, true).await?;
 
         // Return the proposed value
         {
             let value = LocallyProposedValue::new(height, round, hash.into());
             reply_to.send(value)?;
         }
+
+        Ok(())
+    }
+
+    async fn restream_value(
+        &self,
+        state: &mut State,
+        height: ctx!(Height),
+        round: Round,
+        valid_round: Round,
+        address: ctx!(Address),
+        value_id: ctx!(Value::Id),
+    ) -> ActorResult<()> {
+        if let Some(mut parts) = state.with_memory_storage(|storage, db| {
+            db.parts.idx.value_id.may_load_value(storage, value_id)
+        })? {
+            // recreate fin and init parts
+            parts.init = ProposalInit::new_with_valid_round(height, round, address, valid_round);
+            let sig = self.private_key.sign_digest(value_id.into_inner());
+            parts.fin = ProposalFin::new(value_id.into_inner(), sig);
+
+            self.stream_parts(state.stream_id(), parts, false).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn received_proposal_part(
+        &self,
+        state: &mut State,
+        from: PeerId,
+        part: StreamMessage<ctx!(ProposalPart)>,
+        reply_to: RpcReplyPort<ProposedValue<Context>>,
+    ) -> ActorResult<()> {
+        let Some(parts) = state.add_part(from, part) else {
+            return Ok(());
+        };
 
         Ok(())
     }

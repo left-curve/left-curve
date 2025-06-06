@@ -1,28 +1,47 @@
 use {
-    crate::{ActorResult, context::Context, ctx, types::ProposalPart},
-    grug::{Hash256, IndexedMap, Map, Storage, UniqueIndex},
-    malachitebft_app::{consensus::Role, streaming::StreamId, types::ProposedValue},
+    crate::{
+        ActorResult,
+        actors::host::streaming_buffer::{PartStreamsMap, ProposalParts},
+        context::Context,
+        ctx,
+        types::{ProposalFin, ProposalInit, ProposalPart, RawTx},
+    },
+    grug::{Hash256, IndexedMap, Map, MockStorage, Storage, UniqueIndex},
+    malachitebft_app::{
+        consensus::Role,
+        streaming::{StreamId, StreamMessage},
+        types::ProposedValue,
+    },
     malachitebft_core_types::Round,
     malachitebft_engine::consensus::ConsensusRef,
+    malachitebft_sync::PeerId,
 };
 
 pub type HeightKey = u64;
 pub type RoundKey = i64;
-pub type StreamIdKey<'a> = &'a [u8];
+pub type StreamIdKey = Vec<u8>;
 
-pub const BLOCKS: Map<HeightKey, ()> = Map::new("block");
+const BLOCKS: Map<HeightKey, ()> = Map::new("block");
 
-pub const PARTS: Map<StreamIdKey, Vec<ProposalPart>> = Map::new("parts");
+const PARTS: IndexedMap<StreamIdKey, StoreParts, PartsIndexes> =
+    IndexedMap::new("parts", PartsIndexes {
+        value_id: UniqueIndex::new(|_, parts| parts.fin.hash, "parts", "parts_value_id"),
+    });
 
-pub const ROUNDS: IndexedMap<
+#[grug::index_list(StreamIdKey, StoreParts)]
+pub struct PartsIndexes<'a> {
+    pub value_id: UniqueIndex<'a, StreamIdKey, ctx!(Value::Id), StoreParts>,
+}
+
+const UNDECIDED_PROPOSALS: IndexedMap<
     (HeightKey, RoundKey, Hash256),
     ProposedValue<Context>,
     RoundsIndexes,
-> = IndexedMap::new("round", RoundsIndexes {
+> = IndexedMap::new("undecided_proposal", RoundsIndexes {
     proposer: UniqueIndex::new(
         |(height, round, ..), value| (*height, *round, value.proposer),
-        "round",
-        "round_proposer",
+        "undecided_proposal",
+        "undecided_proposal__proposer",
     ),
 });
 
@@ -36,25 +55,59 @@ pub struct RoundsIndexes<'a> {
     >,
 }
 
-#[derive(Clone)]
+#[grug::derive(Borsh)]
+pub struct StoreParts {
+    pub init: ProposalInit,
+    pub data: Vec<RawTx>,
+    pub fin: ProposalFin,
+}
+
+impl StoreParts {
+    pub fn new(init: ProposalInit, data: Vec<RawTx>, fin: ProposalFin) -> Self {
+        Self { init, data, fin }
+    }
+}
+
+impl IntoIterator for StoreParts {
+    type IntoIter = <Vec<ProposalPart> as IntoIterator>::IntoIter;
+    type Item = ProposalPart;
+
+    fn into_iter(self) -> Self::IntoIter {
+        vec![
+            ProposalPart::Init(self.init),
+            ProposalPart::Data(self.data),
+            ProposalPart::Fin(self.fin),
+        ]
+        .into_iter()
+    }
+}
+
 pub struct State {
-    storage: Box<dyn Storage>,
+    db_storage: Box<dyn Storage>,
+    memory_storage: MockStorage,
     consensus: Option<ConsensusRef<Context>>,
     pub height: ctx!(Height),
     pub proposer: Option<ctx!(Address)>,
     pub role: Role,
     pub round: Round,
+    streams: PartStreamsMap,
+    memory_state: MemoryState,
+    db_state: DbState,
 }
 
 impl State {
     pub fn new<S: Storage + 'static>(storage: S) -> Self {
         Self {
-            storage: Box::new(storage),
+            db_storage: Box::new(storage),
             consensus: None,
             height: <ctx!(Height)>::new(1),
             round: Round::Nil,
             proposer: None,
             role: Role::None,
+            streams: PartStreamsMap::default(),
+            memory_state: MemoryState::default(),
+            db_state: DbState::default(),
+            memory_storage: MockStorage::default(),
         }
     }
 
@@ -75,49 +128,69 @@ impl State {
         bytes.extend_from_slice(&self.round.as_u32().unwrap().to_be_bytes());
         StreamId::new(bytes.into())
     }
+
+    pub fn add_part(
+        &mut self,
+        peer_id: PeerId,
+        part: StreamMessage<ctx!(ProposalPart)>,
+    ) -> Option<ProposalParts> {
+        self.streams.insert(peer_id, part)
+    }
+
+    pub fn with_memory_storage<C, R>(&self, callback: C) -> R
+    where
+        C: Fn(&dyn Storage, &MemoryState) -> R,
+    {
+        callback(&self.memory_storage, &self.memory_state)
+    }
+
+    pub fn with_memory_storage_mut<C, R>(&mut self, callback: C) -> R
+    where
+        C: Fn(&mut dyn Storage, &MemoryState) -> R,
+    {
+        callback(&mut self.memory_storage, &self.memory_state)
+    }
+
+    pub fn with_db_storage<C, R>(&self, callback: C) -> R
+    where
+        C: Fn(&dyn Storage, &DbState) -> R,
+    {
+        callback(&self.db_storage, &self.db_state)
+    }
+
+    pub fn with_db_storage_mut<C, R>(&mut self, callback: C) -> R
+    where
+        C: Fn(&mut dyn Storage, &DbState) -> R,
+    {
+        callback(&mut self.db_storage, &self.db_state)
+    }
 }
 
-impl Storage for State {
-    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.storage.read(key)
-    }
+pub struct MemoryState {
+    pub parts: IndexedMap<'static, StreamIdKey, StoreParts, PartsIndexes<'static>>,
+}
 
-    fn scan<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: grug::Order,
-    ) -> Box<dyn Iterator<Item = grug::Record> + 'a> {
-        self.storage.scan(min, max, order)
+impl Default for MemoryState {
+    fn default() -> Self {
+        Self { parts: PARTS }
     }
+}
 
-    fn scan_keys<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: grug::Order,
-    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        self.storage.scan_keys(min, max, order)
-    }
+pub struct DbState {
+    pub blocks: Map<'static, HeightKey, ()>,
+    pub undecided_proposals: IndexedMap<
+        'static,
+        (HeightKey, RoundKey, Hash256),
+        ProposedValue<Context>,
+        RoundsIndexes<'static>,
+    >,
+}
 
-    fn scan_values<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: grug::Order,
-    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        self.storage.scan_values(min, max, order)
-    }
-
-    fn write(&mut self, key: &[u8], value: &[u8]) {
-        self.storage.write(key, value)
-    }
-
-    fn remove(&mut self, key: &[u8]) {
-        self.storage.remove(key)
-    }
-
-    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
-        self.storage.remove_range(min, max)
+impl Default for DbState {
+    fn default() -> Self {
+        Self {
+            blocks: BLOCKS,
+            undecided_proposals: UNDECIDED_PROPOSALS,
+        }
     }
 }

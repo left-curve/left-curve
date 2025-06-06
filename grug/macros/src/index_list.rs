@@ -2,7 +2,7 @@ use {
     proc_macro::TokenStream,
     quote::quote,
     syn::{
-        Expr, ItemStruct, Type,
+        ItemStruct, Type,
         parse::{Parse, ParseStream},
         parse_macro_input,
         token::Comma,

@@ -22,6 +22,20 @@ impl ProposalInit {
             valid_round: Round::Nil,
         }
     }
+
+    pub fn new_with_valid_round(
+        height: ctx!(Height),
+        round: Round,
+        proposer: ctx!(Address),
+        valid_round: Round,
+    ) -> Self {
+        Self {
+            height,
+            round,
+            proposer,
+            valid_round,
+        }
+    }
 }
 
 #[grug::derive(Borsh)]
@@ -50,6 +64,21 @@ pub enum ProposalPart {
     Fin(ProposalFin),
 }
 
+impl ProposalPart {
+    pub fn as_init(&self) -> Option<&ProposalInit> {
+        match self {
+            Self::Init(init) => Some(init),
+            _ => None,
+        }
+    }
+
+    pub fn as_fin(&self) -> Option<&ProposalFin> {
+        match self {
+            Self::Fin(fin) => Some(fin),
+            _ => None,
+        }
+    }
+}
 impl malachitebft_core_types::ProposalPart<Context> for ProposalPart {
     fn is_first(&self) -> bool {
         matches!(self, ProposalPart::Init(_))
