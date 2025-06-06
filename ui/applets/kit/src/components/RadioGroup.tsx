@@ -1,9 +1,13 @@
 import { useControlledState } from "#hooks/useControlledState.js";
+import { useId } from "react";
+
 import { createContext } from "#utils/context.js";
 import { twMerge } from "#utils/twMerge.js";
+
 import { motion } from "framer-motion";
+
 import type React from "react";
-import { useId, type PropsWithChildren, type ReactNode } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 
 type RadioGroupContextType = {
   name: string;
@@ -27,7 +31,11 @@ export type RadioGroupProps = {
   error?: string;
 };
 
-export const RadioGroup: React.FC<PropsWithChildren<RadioGroupProps>> = ({
+export const Container: React.FC<PropsWithChildren<RadioGroupProps>> = ({ children }) => {
+  return <>{children}</>;
+};
+
+export const Group: React.FC<PropsWithChildren<RadioGroupProps>> = ({
   children,
   label,
   name,
@@ -69,18 +77,13 @@ export type RadioProps = {
   className?: string;
 };
 
-export const Radio: React.FC<RadioProps> = ({
+export const Item: React.FC<RadioProps> = ({
   value,
   label,
   isDisabled: isDisabledProp = false,
   className,
 }) => {
   const ctx = useRadioGroup();
-
-  if (!ctx) {
-    throw new Error("Radio must be used within a RadioGroup");
-  }
-
   const isSelected = ctx.value === value;
   const isDisabled = ctx.isDisabled || isDisabledProp;
 
@@ -119,3 +122,8 @@ export const Radio: React.FC<RadioProps> = ({
     </label>
   );
 };
+
+export const Radio = Object.assign(Container, {
+  Group,
+  Item,
+});
