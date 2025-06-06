@@ -155,13 +155,23 @@ export const CursorPagination: React.FC<CursorPaginationProps> = ({
   return (
     <div className={twMerge(className)}>
       {hasPreviousPage ? (
-        <Button variant="link" onClick={goPrev} isDisabled={!hasPreviousPage || isLoading}>
+        <Button
+          variant="link"
+          onClick={goPrev}
+          isDisabled={!hasPreviousPage || isLoading}
+          aria-label={previousLabel}
+        >
           <IconChevronLeft className="w-5 h-5" />
           <span>{previousLabel}</span>
         </Button>
       ) : null}
       {hasNextPage ? (
-        <Button variant="link" onClick={goNext} isDisabled={!hasNextPage || isLoading}>
+        <Button
+          variant="link"
+          onClick={goNext}
+          isDisabled={!hasNextPage || isLoading}
+          aria-label={nextLabel}
+        >
           <span>{nextLabel}</span>
           <IconChevronRight className="w-5 h-5" />
         </Button>
