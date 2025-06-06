@@ -337,8 +337,8 @@ impl PassiveLiquidityPool for PairParams {
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
-        let base_reserve = reserve.amount_of(&base_denom)?;
-        let quote_reserve = reserve.amount_of(&quote_denom)?;
+        let mut base_reserve = reserve.amount_of(&base_denom)?;
+        let mut quote_reserve = reserve.amount_of(&quote_denom)?;
 
         // Compute the marginal price. We will place orders above and below this price.
         let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
@@ -438,52 +438,61 @@ impl PassiveLiquidityPool for PairParams {
                 ratio,
                 order_spacing,
             } => {
-                let geometric_progression = |a_0: Uint128, r: Udec128| {
-                    let mut current_ratio = Udec128::ONE;
-                    iter::from_fn(move || {
-                        let a = a_0.checked_mul_dec(current_ratio).ok()?;
-                        current_ratio.checked_mul_assign(r).ok()?;
-                        Some(a)
-                    })
-                };
+                // Construct bid price iterator with decreasing prices
+                let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
+                let mut maybe_price = Some(bid_starting_price);
+                let bid_prices = iter::from_fn(move || {
+                    let price = match maybe_price {
+                        Some(price) if price.is_non_zero() => price,
+                        _ => return None,
+                    };
+                    maybe_price = price.checked_sub(order_spacing).ok();
+                    Some(price)
+                });
 
-                fn price_iter<F>(
-                    starting_price: Udec128,
-                    update_fn: F,
-                ) -> impl Iterator<Item = Udec128>
-                where
-                    F: Fn(Udec128) -> Option<Udec128>,
-                {
-                    let mut maybe_price = Some(starting_price);
-                    iter::from_fn(move || {
-                        let price = match maybe_price {
-                            Some(price) if price.is_non_zero() => price,
-                            _ => return None,
-                        };
-                        maybe_price = update_fn(price);
-                        Some(price)
-                    })
-                }
+                // Iteratively assign `ratio` of the remaining liquidity to each
+                // consecutive order.
+                let bid_sizes_in_quote = std::iter::from_fn(move || {
+                    let size = match quote_reserve.checked_mul_dec(ratio.into_inner()) {
+                        Ok(size) => size,
+                        Err(_) => return None,
+                    };
+                    quote_reserve.checked_sub_assign(size).ok()?;
+                    Some(size)
+                });
 
-                let asks = price_iter(
-                    marginal_price.checked_mul(one_plus_fee_rate)?,
-                    move |price| price.checked_add(order_spacing).ok(),
-                )
-                .zip(geometric_progression(
-                    base_reserve.checked_mul_dec(Udec128::ONE.checked_sub(ratio.into_inner())?)?,
-                    ratio.into_inner(),
-                ));
+                // Zip sizes with prices and convert to each size to base asset size at
+                // the price.
+                let bids = bid_prices
+                    .zip(bid_sizes_in_quote)
+                    .map(|(price, size)| size.checked_div_dec_floor(price).ok().map(|s| (price, s)))
+                    .filter_map(|x| x);
 
-                let bids = price_iter(
-                    marginal_price.checked_mul(one_sub_fee_rate)?,
-                    move |price| price.checked_sub(order_spacing).ok(),
-                )
-                .zip(geometric_progression(
-                    quote_reserve.checked_mul_dec(Udec128::ONE.checked_sub(ratio.into_inner())?)?,
-                    ratio.into_inner(),
-                ))
-                .map(|(price, size)| size.checked_div_dec_floor(price).ok().map(|s| (price, s)))
-                .filter_map(|x| x);
+                // Construct ask price iterator with increasing prices
+                let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
+                let mut maybe_price = Some(ask_starting_price);
+                let ask_prices = iter::from_fn(move || {
+                    let price = match maybe_price {
+                        Some(price) if price.is_non_zero() => price,
+                        _ => return None,
+                    };
+                    maybe_price = price.checked_add(order_spacing).ok();
+                    Some(price)
+                });
+
+                // Construct ask size placing `ratio` of the remaining liquidity of
+                // base reserve into each order.
+                let ask_sizes = std::iter::from_fn(move || {
+                    let size = match base_reserve.checked_mul_dec(ratio.into_inner()) {
+                        Ok(size) => size,
+                        Err(_) => return None,
+                    };
+                    base_reserve.checked_sub_assign(size).ok()?;
+                    Some(size)
+                });
+
+                // Zip sizes with prices
+                let asks = ask_prices.zip(ask_sizes);
 
                 Ok((Box::new(bids), Box::new(asks)))
             },
@@ -656,7 +665,7 @@ mod tests {
     )]
     #[test_case(
         PassiveLiquidity::Geometric {
-            ratio: Bounded::new(Udec128::new_percent(30)).unwrap(),
+            ratio: Bounded::new(Udec128::new_percent(70)).unwrap(),
             order_spacing: Udec128::new_percent(1),
         },
         Udec128::new_percent(1),
@@ -711,10 +720,10 @@ mod tests {
             .unwrap();
 
         // Assert that at least 10 orders are returned.
-        let bids = bids.take(10).collect::<Vec<_>>();
-        let asks = asks.take(10).collect::<Vec<_>>();
-        assert_eq!(bids.len(), 10);
-        assert_eq!(asks.len(), 10);
+        let bids = bids.take(expected_bids.len()).collect::<Vec<_>>();
+        let asks = asks.take(expected_asks.len()).collect::<Vec<_>>();
+        assert_eq!(bids.len(), expected_bids.len());
+        assert_eq!(asks.len(), expected_asks.len());
 
         // Assert that the orders are correct.
         for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {

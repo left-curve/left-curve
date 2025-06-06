@@ -88,7 +88,8 @@ pub enum PassiveLiquidity {
         /// This is the price difference between two consecutive orders when
         /// the passive liquidity is reflected onto the orderbook.
         order_spacing: Udec128,
-        /// The ratio of the size of consecutive orders.
+        /// The amount of the remaining liquidity to be assigned to each
+        /// consecutive order.
         ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
     },
 }
