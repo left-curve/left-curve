@@ -190,7 +190,7 @@ export const Range: React.FC<RangeProps> = ({
   );
 
   return (
-    <div className={twMerge("w-full flex flex-col", { "gap-3": !withInput }, className)}>
+    <div className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, className)}>
       {label && <div className="text-gray-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">

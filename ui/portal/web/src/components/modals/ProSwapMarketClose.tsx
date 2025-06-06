@@ -7,12 +7,14 @@ export const ProSwapMarketClose = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
-    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-      <h2 className="text-gray-900 h4-bold w-full">Market Close</h2>
-      <p className="text-gray-500 diatype-sm-regular">
-        This will attempt to inmediately close the position.
-      </p>
+    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
       <div className="flex flex-col gap-2">
+        <h2 className="text-gray-900 h4-bold w-full">Market Close</h2>
+        <p className="text-gray-500 diatype-sm-regular">
+          This will attempt to inmediately close the position.
+        </p>
+      </div>
+      <div>
         <div className="flex flex-col  gap-1">
           <div className="w-full flex gap-2 items-center justify-between">
             <p className="diatype-sm-regular text-gray-500">Size</p>
@@ -23,6 +25,8 @@ export const ProSwapMarketClose = forwardRef(() => {
             <p className="diatype-sm-medium text-gray-700">Market</p>
           </div>
         </div>
+      </div>
+      <div className="flex flex-col gap-4">
         <Input
           placeholder="0"
           label="Size"
@@ -50,6 +54,7 @@ export const ProSwapMarketClose = forwardRef(() => {
           minValue={0}
           maxValue={100}
           defaultValue={25}
+          withInput
           inputEndContent="%"
           showSteps={[
             { label: "0", value: 0 },
