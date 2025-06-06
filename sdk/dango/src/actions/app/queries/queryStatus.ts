@@ -1,8 +1,8 @@
+import { queryIndexer } from "#actions/indexer/queryIndexer.js";
+
 import type { BlockInfo, Client, Transport } from "@left-curve/sdk/types";
-import { gql } from "graphql-request";
-import type { Chain } from "../../../types/chain.js";
-import type { Signer } from "../../../types/signer.js";
-import { queryIndexer } from "../../indexer/queryIndexer.js";
+import type { Chain } from "#types/chain.js";
+import type { Signer } from "#types/signer.js";
 
 export type QueryStatusReturnType = Promise<{
   chainId: string;
@@ -31,7 +31,7 @@ export async function queryStatus<
     };
   }
 
-  const document = gql`
+  const document = `
     query {
       queryStatus {
         chainId
