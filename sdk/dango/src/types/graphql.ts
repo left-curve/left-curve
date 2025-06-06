@@ -47,3 +47,27 @@ export type GraphqlClientOptions = {
   /** The timeout (in ms) for the request. */
   timeout?: number | undefined;
 };
+
+export type PageInfo = {
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  startCursor?: string | null;
+  endCursor?: string | null;
+};
+
+export type GraphqlPagination = {
+  first?: number;
+  last?: number;
+  after?: string;
+  before?: string;
+  sortBy?: string;
+};
+
+export type GraphqlQueryResult<T> = {
+  pageInfo: PageInfo;
+  edge: {
+    cursor: string;
+    node: T;
+  }[];
+  nodes: T[];
+};
