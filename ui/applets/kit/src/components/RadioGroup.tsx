@@ -113,7 +113,10 @@ export const Item: React.FC<RadioProps> = ({
       >
         {isSelected && (
           <motion.div
-            layoutId={`radio-indicator-${ctx.name}`}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3 }}
+            exit={{ scale: 0 }}
             className="w-[6px] h-[6px] rounded-full bg-white"
           />
         )}
