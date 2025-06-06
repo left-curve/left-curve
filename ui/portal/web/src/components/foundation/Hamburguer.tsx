@@ -12,12 +12,16 @@ import { TxIndicator } from "./TxIndicator";
 
 export const Hamburger: React.FC = () => {
   const { isConnected, account } = useAccount();
-  const { setSidebarVisibility } = useApp();
+  const { setSidebarVisibility, isSearchBarVisible } = useApp();
   const [showOptions, setShowOptions] = useState(false);
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useClickAway(menuRef, () => setShowOptions(false));
+
+  if (isSearchBarVisible) {
+    return null;
+  }
 
   return (
     <>

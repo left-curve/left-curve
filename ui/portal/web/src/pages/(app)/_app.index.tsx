@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
 import { AppletsSection } from "~/components/overview/AppletsSection";
@@ -98,6 +98,49 @@ function OverviewComponent() {
         </div>
       </div> */}
       {/*  <PoolTable data={mockDataTable} /> */}
+      <Tooltip content="This is a tooltip example">
+        <IconInfo className="w-6 h-6" />
+      </Tooltip>
+      <Tooltip content="This is a tooltip example">
+        <div className="flex items-center gap-2">
+          <p>Leverage</p>
+          <IconInfo className="w-6 h-6" />
+        </div>
+      </Tooltip>
+      <Tooltip placement="auto" content="This is a tooltip example">
+        <div className="flex items-center gap-2">
+          <p>Leverage</p>
+          <IconInfo className="w-6 h-6" />
+        </div>
+      </Tooltip>
+      <Tooltip placement="auto" content="This is a tooltip example" delay={2000}>
+        <div className="flex items-center gap-2">
+          <p>With delay 2s</p>
+        </div>
+      </Tooltip>
+      <Tooltip placement="auto" content="This is a tooltip example" closeDelay={2000}>
+        <div className="flex items-center gap-2">
+          <p>With close delay 2s</p>
+        </div>
+      </Tooltip>
+      <Tooltip placement="bottom" content="This is a tooltip example">
+        <div className="flex items-center gap-2">
+          <p>Leverage</p>
+          <IconInfo className="w-6 h-6" />
+        </div>
+      </Tooltip>
+      <Tooltip placement="left" content="This is a tooltip example">
+        <div className="flex items-center gap-2">
+          <p>Leverage</p>
+          <IconInfo className="w-6 h-6" />
+        </div>
+      </Tooltip>
+      <Tooltip placement="right" content="This is a tooltip example">
+        <div className="flex items-center gap-2">
+          <p>Leverage</p>
+          <IconInfo className="w-6 h-6" />
+        </div>
+      </Tooltip>
     </div>
   );
 }
