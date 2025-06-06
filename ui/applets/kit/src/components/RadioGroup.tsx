@@ -1,16 +1,21 @@
 import { useControlledState } from "#hooks/useControlledState.js";
+import { createContext } from "#utils/context.js";
 import { twMerge } from "#utils/twMerge.js";
 import { motion } from "framer-motion";
 import type React from "react";
-import { createContext, useContext, useId, type PropsWithChildren, type ReactNode } from "react";
+import { useContext, useId, type PropsWithChildren, type ReactNode } from "react";
 
 type RadioGroupContextType = {
   name: string;
   value: string | undefined;
   isDisabled?: boolean;
-  setValue: (val: string) => void;
+  setValue: (value: string) => void;
 };
-const RadioGroupContext = createContext<RadioGroupContextType | null>(null);
+
+const [RadioGroupProvider, useRadioGroup] = createContext<RadioGroupContextType>({
+  strict: true,
+  name: "RadioGroupContext",
+});
 
 export type RadioGroupProps = {
   label?: string | ReactNode;
@@ -43,7 +48,7 @@ export const RadioGroup: React.FC<PropsWithChildren<RadioGroupProps>> = ({
   };
 
   return (
-    <RadioGroupContext.Provider value={context}>
+    <RadioGroupProvider value={context}>
       <div role="radiogroup" aria-labelledby={`${groupName}-label`}>
         {label && (
           <span id={`${groupName}-label`} className="exposure-m-italic text-gray-700">
@@ -53,7 +58,7 @@ export const RadioGroup: React.FC<PropsWithChildren<RadioGroupProps>> = ({
         <div className="flex flex-col gap-1">{children}</div>
         {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
       </div>
-    </RadioGroupContext.Provider>
+    </RadioGroupProvider>
   );
 };
 
@@ -70,7 +75,7 @@ export const Radio: React.FC<RadioProps> = ({
   isDisabled: isDisabledProp = false,
   className,
 }) => {
-  const ctx = useContext(RadioGroupContext);
+  const ctx = useRadioGroup();
 
   if (!ctx) {
     throw new Error("Radio must be used within a RadioGroup");
