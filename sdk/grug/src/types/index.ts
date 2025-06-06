@@ -141,7 +141,7 @@ export type {
 
 export type {
   HttpRequestParameters,
-  HttpRpcClientOptions,
+  HttpClientOptions,
 } from "./http.js";
 
 export {
