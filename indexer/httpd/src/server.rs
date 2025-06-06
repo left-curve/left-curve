@@ -33,6 +33,8 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
+    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+
     HttpServer::new(move || {
         let mut cors = Cors::default()
             .allowed_methods(vec!["POST", "GET", "OPTIONS"])
@@ -52,6 +54,7 @@ where
         }
 
         let app = App::new()
+            .wrap(metrics.clone())
             .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
@@ -78,11 +81,14 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!("Starting metrics httpd server at {ip}:{port}");
 
-    counter!("graphql.block.block.calls").increment(1);
-
-    let recorder = PrometheusBuilder::new().build_recorder();
     let metrics = ActixWebMetricsBuilder::new().build().unwrap();
 
+    // or use:
+    // let metrics_handler2 = PrometheusBuilder::new()
+    //     .install_recorder()
+    //     .expect("failed to install recorder");
+    // This allows actix endpoits to use the same metrics as the main application.
+    let recorder = PrometheusBuilder::new().build_recorder();
     let metrics_handler2 = recorder.handle();
 
     HttpServer::new(move || {
@@ -90,6 +96,7 @@ where
         let metrics_handler2 = metrics_handler2.clone();
         App::new()
             .wrap(metrics.clone())
+            .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
             .route(
@@ -108,6 +115,7 @@ where
                 web::get().to(move || {
                     let metrics_handler = metrics_handler.clone();
                     let metrics_handler2 = metrics_handler2.clone();
+                    metrics_handler2.run_upkeep();
 
                     counter!("metrics.metrics.calls").increment(1);
 

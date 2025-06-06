@@ -4,7 +4,6 @@ use {
     config_parser::parse_config,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
     metrics_exporter_prometheus::PrometheusHandle,
-    std::ops::Sub,
     tokio::task::JoinSet,
 };
 

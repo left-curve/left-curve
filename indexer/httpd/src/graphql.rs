@@ -1,6 +1,9 @@
 use {
-    crate::context::Context,
-    async_graphql::{Schema, dataloader::DataLoader, extensions},
+    crate::{
+        context::Context,
+        graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics},
+    },
+    async_graphql::{Schema, dataloader::DataLoader, extensions as AsyncGraphqlExtensions},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
@@ -11,6 +14,7 @@ use {
     telemetry::SentryExtension,
 };
 
+pub mod extensions;
 pub mod mutation;
 pub mod query;
 pub mod subscription;
@@ -20,6 +24,8 @@ pub mod types;
 pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscription::Subscription>;
 
 pub fn build_schema(app_ctx: Context) -> AppSchema {
+    init_graphql_metrics();
+
     let block_transactions_loader = DataLoader::new(
         BlockTransactionsDataLoader {
             db: app_ctx.db.clone(),
@@ -67,8 +73,10 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         mutation::Mutation::default(),
         subscription::Subscription::default(),
     )
-    .extension(extensions::Logger)
+    .extension(AsyncGraphqlExtensions::Logger)
+    .extension(AsyncGraphqlExtensions::Tracing)
     .extension(SentryExtension)
+    .extension(MetricsExtension)
     .data(app_ctx.db.clone())
     .data(app_ctx)
     .data(block_transactions_loader)
@@ -77,5 +85,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     .data(transaction_events_loader)
     .data(file_transaction_loader)
     .data(event_transaction_loader)
+    .limit_complexity(200)
+    .limit_depth(10)
     .finish()
 }
