@@ -180,6 +180,7 @@ where
                     // Advance the both order iterators
                     limit_orders.next();
                     market_orders.next();
+
                     return_tuple
                 },
                 // The market order amount is greater than the limit order remaining amount,
