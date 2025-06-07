@@ -2,7 +2,7 @@ use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MatchingOutcome,
         MergedOrders, Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER,
-        fill_orders, match_limit_orders, match_market_orders,
+        fill_orders, match_and_fill_market_orders, match_limit_orders,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -206,7 +206,7 @@ fn clear_orders_of_pair(
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
-    let market_bid_filling_outcomes = match_market_orders(
+    let market_bid_filling_outcomes = match_and_fill_market_orders(
         &mut market_bids,
         &mut merged_ask_iter,
         Direction::Bid,
@@ -214,7 +214,7 @@ fn clear_orders_of_pair(
         taker_fee_rate,
         current_block_height,
     )?;
-    let market_ask_filling_outcomes = match_market_orders(
+    let market_ask_filling_outcomes = match_and_fill_market_orders(
         &mut market_asks,
         &mut merged_bid_iter,
         Direction::Ask,

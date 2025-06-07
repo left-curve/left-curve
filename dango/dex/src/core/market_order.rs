@@ -8,7 +8,7 @@ use {
     std::{cmp::Ordering, collections::BTreeMap, iter::Peekable},
 };
 
-pub fn match_market_orders<M, L>(
+pub fn match_and_fill_market_orders<M, L>(
     market_orders: &mut Peekable<M>,
     limit_orders: &mut Peekable<L>,
     market_order_direction: Direction,
