@@ -181,7 +181,7 @@ impl Actor for Mempool {
 
     async fn handle(
         &self,
-        myself: MempoolActorRef,
+        _myself: MempoolActorRef,
         msg: MempoolMsg,
         state: &mut State,
     ) -> ActorResult<()> {
