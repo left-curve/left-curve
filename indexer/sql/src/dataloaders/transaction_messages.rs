@@ -1,7 +1,6 @@
-#[cfg(feature = "async-graphql")]
-use async_graphql::{dataloader::*, *};
 use {
     crate::entity,
+    async_graphql::{dataloader::*, *},
     itertools::Itertools,
     sea_orm::{DatabaseConnection, Order, QueryOrder, entity::prelude::*},
     std::{collections::HashMap, sync::Arc},
@@ -11,7 +10,6 @@ pub struct TransactionMessagesDataLoader {
     pub db: DatabaseConnection,
 }
 
-#[cfg(feature = "async-graphql")]
 impl Loader<entity::transactions::Model> for TransactionMessagesDataLoader {
     type Error = Arc<sea_orm::DbErr>;
     type Value = Vec<entity::messages::Model>;

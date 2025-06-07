@@ -1,15 +1,16 @@
 import { createTransport } from "@left-curve/sdk";
-import { UrlRequiredError } from "@left-curve/sdk/utils";
+import { UrlRequiredError, createBatchScheduler } from "@left-curve/sdk/utils";
 import { createClient } from "graphql-ws";
 import { graphqlClient } from "../http/graphqlClient.js";
 
 import type {
   CometBftRpcSchema,
-  HttpRpcClientOptions,
+  HttpClientOptions,
   RequestFn,
   SubscribeFn,
   Transport,
 } from "@left-curve/sdk/types";
+import type { GraphQLClientResponse, GraphqlOperation } from "#types/graphql.js";
 
 export type GraphqlTransportConfig = {
   /**
@@ -20,11 +21,11 @@ export type GraphqlTransportConfig = {
    * Request configuration to pass to `fetch`.
    * @link https://developer.mozilla.org/en-US/docs/Web/API/fetch
    */
-  fetchOptions?: HttpRpcClientOptions["fetchOptions"];
+  fetchOptions?: HttpClientOptions["fetchOptions"];
   /** A callback to handle the response from `fetch`. */
-  onFetchRequest?: HttpRpcClientOptions["onRequest"];
+  onFetchRequest?: HttpClientOptions["onRequest"];
   /** A callback to handle the response from `fetch`. */
-  onFetchResponse?: HttpRpcClientOptions["onResponse"];
+  onFetchResponse?: HttpClientOptions["onResponse"];
   /** The batch configuration. */
   batch?: boolean;
   /** The name of the transport. */
@@ -71,9 +72,27 @@ export function graphql(
       timeout,
     });
 
-    const request: RequestFn<CometBftRpcSchema> = async ({ method, params }) => {
-      return client.request(method, params);
-    };
+    const request = (async ({ method, params }) => {
+      const body = { query: method, variables: params || {} };
+
+      const { schedule } = createBatchScheduler({
+        id: url,
+        wait: batchOptions.maxWait,
+        shouldSplitBatch(requests) {
+          return requests.length > batchOptions.maxSize;
+        },
+        fn: (body: GraphqlOperation[]) => client.request({ body }),
+      });
+
+      const fn = async (body: GraphqlOperation) =>
+        batch ? schedule(body) : [await client.request({ body })];
+
+      const [{ data }] = (await fn(body as any)) as GraphQLClientResponse<
+        CometBftRpcSchema[number]["ReturnType"]
+      >[];
+
+      return data;
+    }) as RequestFn<CometBftRpcSchema>;
 
     const noOp = () => {};
 

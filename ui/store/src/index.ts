@@ -115,6 +115,8 @@ export {
 
 export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
 
+export { useInfiniteGraphqlQuery } from "./hooks/useInfiniteGraphqlQuery.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
@@ -218,6 +220,8 @@ export {
 /* -------------------------------------------------------------------------- */
 /*                                  Handlers                                  */
 /* -------------------------------------------------------------------------- */
+
+export { withPagination } from "./handlers/pagination.js";
 
 export {
   type ConnectData,

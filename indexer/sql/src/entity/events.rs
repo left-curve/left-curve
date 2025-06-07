@@ -1,7 +1,9 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader};
 use {
     crate::dataloaders::event_transaction::EventTransactionDataLoader,
+    async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader},
+};
+use {
     grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
     sea_orm::entity::prelude::*,
     serde::Deserialize,

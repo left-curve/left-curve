@@ -19,6 +19,7 @@ function ContractExplorerApplet() {
       <ContractExplorer address={address as Address}>
         <ContractExplorer.NotFound />
         <ContractExplorer.Details />
+        <ContractExplorer.Transactions />
         <ContractExplorer.Assets />
       </ContractExplorer>
     </div>

@@ -62,5 +62,7 @@ export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
     },
   ];
 
+  if (!data.length) return null;
+
   return <Table data={data} columns={columns} />;
 };

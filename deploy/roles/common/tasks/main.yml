@@ -50,6 +50,7 @@
       - vim
       - btop
       - htop
+      - jq
     state: present
     update_cache: yes
 

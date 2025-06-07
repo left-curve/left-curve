@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { IconLink, twMerge } from "@left-curve/applets-kit";
 
 import {
   AddressVisualizer,
@@ -39,7 +39,11 @@ const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
   const client = usePublicClient();
   const value = useQuery({
     queryKey: ["tx", txHash],
-    queryFn: () => client.searchTx({ hash: txHash }),
+    queryFn: async () => {
+      const txs = await client.searchTxs({ hash: txHash });
+      if (!txs.nodes.length) return null;
+      return txs.nodes[0];
+    },
   });
 
   return (
@@ -99,13 +103,14 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
-          <Button
-            className="m-0 p-0 pr-1"
-            variant="link"
+          <button
+            type="button"
+            className="flex gap-1 diatype-m-bold items-center"
             onClick={() => navigate({ to: `/block/${blockHeight}` })}
           >
-            {blockHeight}
-          </Button>
+            <span>{blockHeight}</span>
+            <IconLink className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
@@ -117,13 +122,13 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
-          <p>{gasUsed} DGX</p>
+          <p>{gasUsed}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
-          <p>{gasWanted} DGX</p>
+          <p>{gasWanted}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">

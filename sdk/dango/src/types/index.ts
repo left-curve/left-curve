@@ -121,6 +121,8 @@ export type {
   PairUpdate,
 } from "./dex.js";
 
+export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
+
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 
 export type { Price } from "./oracle.js";

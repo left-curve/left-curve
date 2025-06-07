@@ -580,14 +580,14 @@ where
                 }
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
-                if let Err(err) = tokio::task::spawn_blocking(move || {
+                if let Err(_err) = tokio::task::spawn_blocking(move || {
                     if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
                         tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
                     }
                 }).await {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %err, "spawn_blocking error compressing block file");
+                    tracing::error!(error = %_err, "spawn_blocking error compressing block file");
                 }
             }
 
