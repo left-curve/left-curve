@@ -3,7 +3,11 @@ use {
         context::Context,
         graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics},
     },
-    async_graphql::{Schema, dataloader::DataLoader, extensions as AsyncGraphqlExtensions},
+    async_graphql::{
+        Schema,
+        dataloader::DataLoader,
+        extensions::{self as AsyncGraphqlExtensions, OpenTelemetry},
+    },
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,

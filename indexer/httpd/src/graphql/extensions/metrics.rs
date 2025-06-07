@@ -31,9 +31,22 @@ impl Extension for MetricsExtension {
         let start = Instant::now();
 
         // Execute the query
-        let res = next.run(ctx, operation_name).await;
+        let mut res = next.run(ctx, operation_name).await;
 
         let duration = start.elapsed().as_secs_f64();
+
+        let is_anonymous = operation_name.is_none();
+
+        if is_anonymous {
+            res.extensions.insert(
+                "warning".to_string(),
+                async_graphql::Value::String(
+                    "Consider using named operations for better observability and debugging"
+                        .to_string(),
+                ),
+            );
+        }
+
         let operation = operation_name.unwrap_or("anonymous");
 
         // Record metrics

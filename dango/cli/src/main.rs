@@ -93,14 +93,30 @@ async fn main() -> anyhow::Result<()> {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
         });
 
-        registry()
-            .with(tracing_subscriber::fmt::layer().with_filter(max_level))
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
+            )
+            .with(
+                tracing_subscriber::fmt::layer()
+                    // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
+            )
             .with(sentry_layer())
             .init();
 
         tracing::info!("Sentry initialized");
     } else {
-        tracing_subscriber::fmt().with_max_level(max_level).init();
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
+            )
+            .with(
+                tracing_subscriber::fmt::layer()
+                    // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
+            )
+            .init();
     }
 
     // Metrics should be initialized as soon as possible to capture all events.
