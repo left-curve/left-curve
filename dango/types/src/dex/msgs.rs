@@ -63,6 +63,29 @@ pub struct CreateMarketOrderRequest {
     /// base asset.
     pub amount: Uint128,
     /// The maximum slippage percentage.
+    ///
+    /// This parameter works as follow:
+    ///
+    /// - For a market BUY order, suppose the best (lowest) SELL price in the
+    ///   resting order book is `p_best`, then the market order's _average
+    ///   execution price_ can't be worse than:
+    ///
+    ///   ```math
+    ///   p_best * (1 + max_slippage)
+    ///   ```
+    ///
+    /// - For a market SELL order, suppose the best (highest) BUY price in the
+    ///   resting order book is `p_best`, then the market order's _average
+    ///   execution price_ can't be worse than:
+    ///
+    ///   ```math
+    ///   p_best * (1 - max_slippage)
+    ///   ```
+    ///
+    /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
+    /// enough liquidity in the resting order book to fully fill the market
+    /// order under its max slippage, it's filled as much as possible, with the
+    /// unfilled portion is canceled.
     pub max_slippage: Udec128,
 }
 
