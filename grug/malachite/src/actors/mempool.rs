@@ -5,7 +5,7 @@ use {
         app::MempoolAppRef,
         types::RawTx,
     },
-    grug::{CheckTxOutcome, Hash256, Tx},
+    grug::CheckTxOutcome,
     grug_app::AppError,
     malachitebft_test_mempool::Event as NetworkEvent,
     ractor::{Actor, ActorRef, RpcReplyPort, async_trait},

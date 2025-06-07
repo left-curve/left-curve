@@ -1,6 +1,6 @@
 use {
     crate::{context::Context, ctx},
-    grug::{BorshSerExt, Hash256, SignData, StdError},
+    grug::{BorshSerExt, SignData, StdError},
     k256::sha2::Sha256,
     malachitebft_core_types::{NilOrVal, Round, SignedExtension, VoteType},
 };
@@ -10,7 +10,7 @@ use {
 pub struct Vote {
     height: ctx!(Height),
     round: Round,
-    value: NilOrVal<Hash256>,
+    value: NilOrVal<ctx!(Value::Id)>,
     vote_type: VoteType,
     validator_address: ctx!(Address),
     extension: Option<SignedExtension<Context>>,

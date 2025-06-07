@@ -1,29 +1,26 @@
 use {
     crate::{
         ActorResult,
-        actors::{
-            MempoolActorRef, MempoolMsg,
-            host::state::{State, StoreParts},
-        },
+        actors::{MempoolActorRef, MempoolMsg, host::state::State},
         app::{HostApp, HostAppRef},
         context::Context,
         ctx,
-        types::{ProposalFin, ProposalInit, ProposalPart},
+        types::{Block, DecidedBlock, PreBlock, ProposalFin, ProposalInit, ProposalParts},
     },
-    grug::{Hash256, Inner},
+    grug::{BorshDeExt, BorshSerExt, Timestamp},
     grug_app::{App, Db},
-    k256::sha2::{Digest, Sha256},
     malachitebft_app::{
         consensus::Role,
         streaming::{StreamContent, StreamId, StreamMessage},
         types::{LocallyProposedValue, ProposedValue},
     },
-    malachitebft_core_types::{Round, Validity, ValueOrigin},
+    malachitebft_core_types::{CommitCertificate, Height, Round, Validity, ValueOrigin},
     malachitebft_engine::{
         consensus::{ConsensusMsg, ConsensusRef},
         network::{NetworkMsg, NetworkRef},
     },
-    malachitebft_sync::PeerId,
+    malachitebft_network::Bytes,
+    malachitebft_sync::{PeerId, RawDecidedValue},
     ractor::{Actor, RpcReplyPort, async_trait},
     std::{sync::Arc, time::Duration},
     tracing::info,
@@ -97,20 +94,36 @@ impl Actor for Host {
                 self.received_proposal_part(state, from, part, reply_to)
                     .await
             },
-            HostMsg::GetValidatorSet { height, reply_to } => todo!(),
+            HostMsg::GetValidatorSet { reply_to, .. } => {
+                reply_to.send(Some(self.validator_set.clone()))?;
+                Ok(())
+            },
             HostMsg::Decided {
                 certificate,
-                extensions,
                 consensus,
-            } => todo!(),
-            HostMsg::GetDecidedValue { height, reply_to } => todo!(),
+                ..
+            } => self.decided(state, certificate, consensus).await,
+            HostMsg::GetDecidedValue { height, reply_to } => {
+                self.get_decided_value(state, height, reply_to).await
+            },
             HostMsg::ProcessSyncedValue {
                 height,
                 round,
                 validator_address,
                 value_bytes,
                 reply_to,
-            } => todo!(),
+            } => {
+                self.process_synced_value(
+                    state,
+                    height,
+                    round,
+                    validator_address,
+                    value_bytes,
+                    reply_to,
+                )?;
+
+                Ok(())
+            },
             HostMsg::ExtendVote { reply_to, .. } => {
                 reply_to.send(None)?;
                 Ok(())
@@ -155,7 +168,7 @@ impl Host {
     pub async fn stream_parts(
         &self,
         stream_id: StreamId,
-        parts: StoreParts,
+        parts: ProposalParts,
         with_fin: bool,
     ) -> ActorResult<()> {
         let mut sequence = 0;
@@ -185,7 +198,7 @@ impl Host {
     ) -> ActorResult<()> {
         let height = state
             .with_db_storage(|storage, db| {
-                db.blocks
+                db.decided_block
                     .keys(storage, None, None, grug::Order::Descending)
                     .next()
                     .transpose()
@@ -211,7 +224,7 @@ impl Host {
     ) -> ActorResult<()> {
         let height = state
             .with_db_storage(|storage, db| {
-                db.blocks
+                db.decided_block
                     .keys(storage, None, None, grug::Order::Ascending)
                     .next()
                     .transpose()
@@ -286,7 +299,7 @@ impl Host {
         }
 
         // Crate proposal parts
-        let (parts, hash) = {
+        let block = {
             // Take txs from mempool
             let txs = self
                 .mempool
@@ -301,26 +314,30 @@ impl Host {
                 .await?
                 .success_or(anyhow::anyhow!("Failed to take txs from mempool"))?;
 
-            let mut hasher = Sha256::new();
-
             // Call prepare_proposal
             let txs = self.app.prepare_proposal(txs);
 
-            for tx in &txs {
-                hasher.update(tx.as_ref());
-            }
-
-            let hash = hasher.finalize();
-            let sig = self.private_key.sign_digest(hash);
-
-            let parts = StoreParts::new(
-                ProposalInit::new(height, round, self.address),
+            let pre_block = PreBlock::new(
+                height,
+                self.address,
+                round,
+                Timestamp::from_nanos(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_nanos(),
+                ),
                 txs,
-                ProposalFin::new(hash, sig),
             );
 
-            (parts, hash)
+            let app_hash = self
+                .app
+                .finalize_block(pre_block.as_block_info(), &pre_block.txs)?;
+
+            pre_block.with_app_hash(app_hash)
         };
+
+        let parts = block.as_parts(&self.private_key);
 
         let stream_id = state.stream_id();
 
@@ -340,29 +357,84 @@ impl Host {
                 round,
                 valid_round: Round::Nil,
                 proposer: self.address,
-                value: hash.into(),
+                value: <ctx!(Value)>::new(parts.fin.hash),
                 validity: Validity::Valid,
             };
 
             state.with_db_storage_mut(|storage, db| {
                 db.undecided_proposals.save(
                     storage,
-                    (*height, round.as_i64(), Hash256::from_inner(hash.into())),
+                    (*height, round.as_i64(), parts.fin.hash),
                     &proposed_value,
                 )
             })?;
         }
 
-        // TODO: Store undecided block
+        // Store undecided block
+        {
+            state.with_db_storage_mut(|storage, db| {
+                db.undecided_block
+                    .save(storage, (*height, round.as_i64(), parts.fin.hash), &block)
+            })?;
+        }
+
+        let value = LocallyProposedValue::new(height, round, <ctx!(Value)>::new(parts.fin.hash));
 
         // Stream parts to consensus
         self.stream_parts(stream_id, parts, true).await?;
 
         // Return the proposed value
-        {
-            let value = LocallyProposedValue::new(height, round, hash.into());
-            reply_to.send(value)?;
-        }
+        reply_to.send(value)?;
+
+        Ok(())
+    }
+
+    /// Equivalent of commit
+    async fn decided(
+        &self,
+        state: &mut State,
+        certificate: CommitCertificate<Context>,
+        consensus: ConsensusRef<Context>,
+    ) -> ActorResult<()> {
+        let Some(block) = state.with_db_storage(|storage, db| {
+            db.undecided_block.may_load(
+                storage,
+                (
+                    *certificate.height,
+                    certificate.round.as_i64(),
+                    certificate.value_id,
+                ),
+            )
+        })?
+        else {
+            return Err(anyhow::anyhow!("Proposed block not found").into());
+        };
+
+        // Call commit
+        self.app.commit()?;
+
+        let txs = block.txs.clone();
+
+        // Store decided block
+        state.with_db_storage_mut(|storage, db| {
+            db.decided_block
+                .save(storage, *certificate.height, &DecidedBlock {
+                    block,
+                    certificate,
+                })
+        })?;
+
+        // Notify the mempool to remove corresponding txs
+        self.mempool.cast(MempoolMsg::Remove(txs))?;
+
+        // TODO: Notify the Host of the decision.
+        // Is this the equivalent to call commit into the App?
+
+        // Start the next height
+        consensus.cast(ConsensusMsg::StartHeight(
+            state.height.increment(),
+            self.validator_set.clone(),
+        ))?;
 
         Ok(())
     }
@@ -374,15 +446,22 @@ impl Host {
         round: Round,
         valid_round: Round,
         address: ctx!(Address),
-        value_id: ctx!(Value::Id),
+        block_hash: ctx!(Value::Id),
     ) -> ActorResult<()> {
         if let Some(mut parts) = state.with_memory_storage(|storage, db| {
-            db.parts.idx.value_id.may_load_value(storage, value_id)
+            db.parts.idx.value_id.may_load_value(storage, block_hash)
         })? {
             // recreate fin and init parts
-            parts.init = ProposalInit::new_with_valid_round(height, round, address, valid_round);
-            let sig = self.private_key.sign_digest(value_id.into_inner());
-            parts.fin = ProposalFin::new(value_id.into_inner(), sig);
+            parts.init = ProposalInit::new_with_valid_round(
+                height,
+                address,
+                round,
+                parts.init.timestamp,
+                valid_round,
+            );
+            // TODO: Should we re-sign the block hash? Or just restream?
+            let sig = self.private_key.sign_digest(block_hash);
+            parts.fin = ProposalFin::new(block_hash, sig);
 
             self.stream_parts(state.stream_id(), parts, false).await?;
         }
@@ -399,9 +478,14 @@ impl Host {
     ) -> ActorResult<()> {
         let stream_id = part.stream_id.clone();
 
-        let Some(parts) = state.add_part(from, part) else {
+        let Some(parts) = state.buffer_part(from, part) else {
             return Ok(());
         };
+
+        // Run FinalizeBlock
+        let block = parts.clone().into_pre_block();
+        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
+        let block = block.with_app_hash(app_hash);
 
         let value = ProposedValue {
             height: parts.init.height,
@@ -409,8 +493,13 @@ impl Host {
             valid_round: parts.init.valid_round,
             proposer: parts.init.proposer,
             value: <ctx!(Value)>::new(parts.fin.hash),
-            validity: Validity::from_bool(self.verify_proposal_validity(&parts)),
+            validity: Validity::from_bool(parts.fin.hash == block.hash()),
         };
+
+        // TODO: Should we resign the block hash?
+
+        // TODO: If block_hash is different from the proposed value, what we should do?
+        // store the undecided block with the new block_hash?
 
         // Store undecided proposal
         state.with_db_storage_mut(|storage, db| {
@@ -425,7 +514,18 @@ impl Host {
             )
         })?;
 
-        // TODO: Store undecided block
+        // Store undecided block
+        state.with_db_storage_mut(|storage, db| {
+            db.undecided_block.save(
+                storage,
+                (
+                    *parts.init.height,
+                    parts.init.round.as_i64(),
+                    parts.fin.hash,
+                ),
+                &block,
+            )
+        })?;
 
         // Store parts
         state.with_memory_storage_mut(|storage, memory| {
@@ -440,15 +540,79 @@ impl Host {
         Ok(())
     }
 
-    pub fn verify_proposal_validity(&self, parts: &StoreParts) -> bool {
-        let mut hasher = Sha256::new();
+    async fn get_decided_value(
+        &self,
+        state: &mut State,
+        height: ctx!(Height),
+        reply_to: RpcReplyPort<Option<RawDecidedValue<Context>>>,
+    ) -> ActorResult<()> {
+        let Some(decided_block) =
+            state.with_db_storage(|storage, db| db.decided_block.may_load(storage, *height))?
+        else {
+            reply_to.send(None)?;
+            return Ok(());
+        };
 
-        for tx in &parts.data {
-            hasher.update(tx.as_ref());
-        }
+        let decided_value = RawDecidedValue::new(
+            decided_block.block.to_borsh_vec()?.into(),
+            decided_block.certificate.clone(),
+        );
 
-        let hash = hasher.finalize();
+        reply_to.send(Some(decided_value))?;
 
-        Hash256::from_inner(hash.into()) == parts.fin.hash
+        Ok(())
+    }
+
+    fn process_synced_value(
+        &self,
+        state: &mut State,
+        height: ctx!(Height),
+        round: Round,
+        validator_address: ctx!(Address),
+        value: Bytes,
+        reply_to: RpcReplyPort<ProposedValue<Context>>,
+    ) -> ActorResult<()> {
+        let Ok(mut block): Result<Block, _> = value.deserialize_borsh() else {
+            return Ok(());
+        };
+
+        let received_block_hash = block.hash();
+
+        // Check validity
+        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
+        block.override_app_hash(app_hash);
+
+        let validity = received_block_hash == block.hash();
+
+        // Store undecided block
+        state.with_db_storage_mut(|storage, db| {
+            db.undecided_block.save(
+                storage,
+                (*height, round.as_i64(), received_block_hash),
+                &block,
+            )
+        })?;
+
+        let proposed_value = ProposedValue {
+            height,
+            round,
+            valid_round: Round::Nil,
+            proposer: validator_address,
+            value: <ctx!(Value)>::new(received_block_hash),
+            validity: Validity::from_bool(validity),
+        };
+
+        // Store undecided proposal
+        state.with_db_storage_mut(|storage, db| {
+            db.undecided_proposals.save(
+                storage,
+                (*height, round.as_i64(), received_block_hash),
+                &proposed_value,
+            )
+        })?;
+
+        reply_to.send(proposed_value)?;
+
+        Ok(())
     }
 }

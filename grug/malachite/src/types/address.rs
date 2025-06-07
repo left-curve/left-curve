@@ -1,6 +1,9 @@
 use {
     grug::{Addr, PrimaryKey},
-    std::fmt::{self, Display},
+    std::{
+        fmt::{self, Display},
+        ops::Deref,
+    },
 };
 
 #[grug::derive(Borsh)]
@@ -10,6 +13,14 @@ pub struct Address(Addr);
 impl Address {
     pub fn new(addr: Addr) -> Self {
         Self(addr)
+    }
+}
+
+impl Deref for Address {
+    type Target = Addr;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

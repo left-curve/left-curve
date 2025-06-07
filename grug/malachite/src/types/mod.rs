@@ -1,4 +1,5 @@
 mod address;
+mod block;
 mod extension;
 mod height;
 mod proposal;
@@ -11,6 +12,6 @@ mod value;
 mod vote;
 
 pub use {
-    address::*, extension::*, height::*, proposal::*, proposal_part::*, signing::*, tx::*,
-    validator::*, validator_set::*, value::*, vote::*,
+    address::*, block::*, extension::*, height::*, proposal::*, proposal_part::*, signing::*,
+    tx::*, validator::*, validator_set::*, value::*, vote::*,
 };

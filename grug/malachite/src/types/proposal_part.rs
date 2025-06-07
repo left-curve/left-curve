@@ -1,6 +1,10 @@
 use {
-    crate::{context::Context, ctx, types::RawTx},
-    grug::{BorshSerExt, Hash256, SignData, StdError},
+    crate::{
+        context::Context,
+        ctx,
+        types::{BlockHash, PreBlock, RawTx},
+    },
+    grug::{BorshSerExt, SignData, StdError, Timestamp},
     k256::sha2::Sha256,
     malachitebft_core_types::Round,
 };
@@ -10,29 +14,38 @@ pub struct ProposalInit {
     pub height: ctx!(Height),
     pub round: Round,
     pub proposer: ctx!(Address),
+    pub timestamp: Timestamp,
     pub valid_round: Round,
 }
 
 impl ProposalInit {
-    pub fn new(height: ctx!(Height), round: Round, proposer: ctx!(Address)) -> Self {
+    pub fn new(
+        height: ctx!(Height),
+        proposer: ctx!(Address),
+        round: Round,
+        timestamp: Timestamp,
+    ) -> Self {
         Self {
             height,
             round,
             proposer,
+            timestamp,
             valid_round: Round::Nil,
         }
     }
 
     pub fn new_with_valid_round(
         height: ctx!(Height),
-        round: Round,
         proposer: ctx!(Address),
+        round: Round,
+        timestamp: Timestamp,
         valid_round: Round,
     ) -> Self {
         Self {
             height,
             round,
             proposer,
+            timestamp,
             valid_round,
         }
     }
@@ -40,18 +53,17 @@ impl ProposalInit {
 
 #[grug::derive(Borsh)]
 pub struct ProposalFin {
-    pub hash: Hash256,
+    pub hash: BlockHash,
     pub signature: ctx!(SigningScheme::Signature),
 }
 
 impl ProposalFin {
-    pub fn new<H, S>(hash: H, signature: S) -> Self
+    pub fn new<S>(hash: BlockHash, signature: S) -> Self
     where
-        H: Into<[u8; 32]>,
         S: Into<ctx!(SigningScheme::Signature)>,
     {
         Self {
-            hash: Hash256::from_inner(hash.into()),
+            hash,
             signature: signature.into(),
         }
     }
@@ -79,6 +91,7 @@ impl ProposalPart {
         }
     }
 }
+
 impl malachitebft_core_types::ProposalPart<Context> for ProposalPart {
     fn is_first(&self) -> bool {
         matches!(self, ProposalPart::Init(_))
@@ -95,5 +108,38 @@ impl SignData for ProposalPart {
 
     fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
         self.to_borsh_vec()
+    }
+}
+
+#[grug::derive(Borsh)]
+pub struct ProposalParts {
+    pub init: ProposalInit,
+    pub data: Vec<RawTx>,
+    pub fin: ProposalFin,
+}
+
+impl ProposalParts {
+    pub fn into_pre_block(self) -> PreBlock {
+        PreBlock::new(
+            self.init.height,
+            self.init.proposer,
+            self.init.round,
+            self.init.timestamp,
+            self.data,
+        )
+    }
+}
+
+impl IntoIterator for ProposalParts {
+    type IntoIter = <Vec<ProposalPart> as IntoIterator>::IntoIter;
+    type Item = ProposalPart;
+
+    fn into_iter(self) -> Self::IntoIter {
+        vec![
+            ProposalPart::Init(self.init),
+            ProposalPart::Data(self.data),
+            ProposalPart::Fin(self.fin),
+        ]
+        .into_iter()
     }
 }

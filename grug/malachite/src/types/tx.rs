@@ -15,6 +15,12 @@ impl Deref for RawTx {
     }
 }
 
+impl AsRef<[u8]> for RawTx {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl BorshSerialize for RawTx {
     fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.0.serialize(writer)

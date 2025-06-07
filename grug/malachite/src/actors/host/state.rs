@@ -4,9 +4,9 @@ use {
         actors::host::streaming_buffer::PartStreamsMap,
         context::Context,
         ctx,
-        types::{ProposalFin, ProposalInit, ProposalPart, RawTx},
+        types::{Block, BlockHash, DecidedBlock, ProposalParts},
     },
-    grug::{Hash256, IndexedMap, Map, MockStorage, Storage, UniqueIndex},
+    grug::{IndexedMap, Map, MockStorage, Storage, UniqueIndex},
     malachitebft_app::{
         consensus::Role,
         streaming::{StreamId, StreamMessage},
@@ -20,33 +20,6 @@ use {
 pub type HeightKey = u64;
 pub type RoundKey = i64;
 pub type StreamIdKey = Vec<u8>;
-
-#[grug::derive(Borsh)]
-pub struct StoreParts {
-    pub init: ProposalInit,
-    pub data: Vec<RawTx>,
-    pub fin: ProposalFin,
-}
-
-impl StoreParts {
-    pub fn new(init: ProposalInit, data: Vec<RawTx>, fin: ProposalFin) -> Self {
-        Self { init, data, fin }
-    }
-}
-
-impl IntoIterator for StoreParts {
-    type IntoIter = <Vec<ProposalPart> as IntoIterator>::IntoIter;
-    type Item = ProposalPart;
-
-    fn into_iter(self) -> Self::IntoIter {
-        vec![
-            ProposalPart::Init(self.init),
-            ProposalPart::Data(self.data),
-            ProposalPart::Fin(self.fin),
-        ]
-        .into_iter()
-    }
-}
 
 pub struct State {
     db_storage: Box<dyn Storage>,
@@ -95,38 +68,38 @@ impl State {
         StreamId::new(bytes.into())
     }
 
-    pub fn add_part(
+    pub fn buffer_part(
         &mut self,
         peer_id: PeerId,
         part: StreamMessage<ctx!(ProposalPart)>,
-    ) -> Option<StoreParts> {
+    ) -> Option<ProposalParts> {
         self.streams.insert(peer_id, part)
     }
 
     pub fn with_memory_storage<C, R>(&self, callback: C) -> R
     where
-        C: Fn(&dyn Storage, &MemoryState) -> R,
+        C: FnOnce(&dyn Storage, &MemoryState) -> R,
     {
         callback(&self.memory_storage, &self.memory_state)
     }
 
     pub fn with_memory_storage_mut<C, R>(&mut self, callback: C) -> R
     where
-        C: Fn(&mut dyn Storage, &MemoryState) -> R,
+        C: FnOnce(&mut dyn Storage, &MemoryState) -> R,
     {
         callback(&mut self.memory_storage, &self.memory_state)
     }
 
     pub fn with_db_storage<C, R>(&self, callback: C) -> R
     where
-        C: Fn(&dyn Storage, &DbState) -> R,
+        C: FnOnce(&dyn Storage, &DbState) -> R,
     {
         callback(&self.db_storage, &self.db_state)
     }
 
     pub fn with_db_storage_mut<C, R>(&mut self, callback: C) -> R
     where
-        C: Fn(&mut dyn Storage, &DbState) -> R,
+        C: FnOnce(&mut dyn Storage, &DbState) -> R,
     {
         callback(&mut self.db_storage, &self.db_state)
     }
@@ -135,7 +108,7 @@ impl State {
 // -------------------------------- Memory state -------------------------------
 
 pub struct MemoryState {
-    pub parts: IndexedMap<'static, StreamIdKey, StoreParts, PartsIndexes<'static>>,
+    pub parts: IndexedMap<'static, StreamIdKey, ProposalParts, PartsIndexes<'static>>,
 }
 
 impl Default for MemoryState {
@@ -148,18 +121,19 @@ impl Default for MemoryState {
     }
 }
 
-#[grug::index_list(StreamIdKey, StoreParts)]
+#[grug::index_list(StreamIdKey, ProposalParts)]
 pub struct PartsIndexes<'a> {
-    pub value_id: UniqueIndex<'a, StreamIdKey, ctx!(Value::Id), StoreParts>,
+    pub value_id: UniqueIndex<'a, StreamIdKey, ctx!(Value::Id), ProposalParts>,
 }
 
 // ---------------------------------- Db state ---------------------------------
 
 pub struct DbState {
-    pub blocks: Map<'static, HeightKey, ()>,
+    pub decided_block: Map<'static, HeightKey, DecidedBlock>,
+    pub undecided_block: Map<'static, (HeightKey, RoundKey, BlockHash), Block>,
     pub undecided_proposals: IndexedMap<
         'static,
-        (HeightKey, RoundKey, Hash256),
+        (HeightKey, RoundKey, BlockHash),
         ProposedValue<Context>,
         UndecidedProposalIndexes<'static>,
     >,
@@ -168,7 +142,8 @@ pub struct DbState {
 impl Default for DbState {
     fn default() -> Self {
         Self {
-            blocks: Map::new("block"),
+            decided_block: Map::new("decided_block"),
+            undecided_block: Map::new("undecided_block"),
             undecided_proposals: IndexedMap::new("undecided_proposal", UndecidedProposalIndexes {
                 proposer: UniqueIndex::new(
                     |(height, round, ..), value| (*height, *round, value.proposer),
@@ -180,11 +155,11 @@ impl Default for DbState {
     }
 }
 
-#[grug::index_list((HeightKey, RoundKey, Hash256), ProposedValue<Context>)]
+#[grug::index_list((HeightKey, RoundKey, BlockHash), ProposedValue<Context>)]
 pub struct UndecidedProposalIndexes<'a> {
     pub proposer: UniqueIndex<
         'a,
-        (HeightKey, RoundKey, Hash256),
+        (HeightKey, RoundKey, BlockHash),
         (HeightKey, RoundKey, ctx!(Address)),
         ProposedValue<Context>,
     >,
