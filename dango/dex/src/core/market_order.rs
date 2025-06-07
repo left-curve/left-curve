@@ -26,11 +26,8 @@ where
 
     let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
 
-    // Limit order direction is assumed to be opposite to the market order direction
-    let limit_order_direction = match market_order_direction {
-        Direction::Bid => Direction::Ask,
-        Direction::Ask => Direction::Bid,
-    };
+    // Match the market order to the opposite side of the resting limit order book.
+    let limit_order_direction = -market_order_direction;
 
     // The best possible price is the price of the first limit order in the book
     let best_price = match limit_orders.peek_mut() {
