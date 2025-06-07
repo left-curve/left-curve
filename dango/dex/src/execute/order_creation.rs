@@ -4,7 +4,7 @@ use {
     dango_types::dex::{
         CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderSubmitted,
     },
-    grug::{Addr, Bounded, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
+    grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
 };
 
 pub(super) fn create_limit_order(
@@ -117,7 +117,7 @@ pub(super) fn create_market_order(
         &MarketOrder {
             user,
             amount: order.amount,
-            max_slippage: Bounded::new(order.max_slippage)?,
+            max_slippage: order.max_slippage,
         },
     )?;
 

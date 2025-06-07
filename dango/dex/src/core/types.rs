@@ -1,4 +1,4 @@
-use grug::{Addr, Bounded, Udec128, Uint128, ZeroInclusiveOneExclusive};
+use grug::{Addr, Udec128, Uint128};
 
 #[grug::derive(Borsh, Serde)]
 pub enum Order {
@@ -23,7 +23,7 @@ pub struct MarketOrder {
     /// base asset.
     pub amount: Uint128,
     /// Max slippage percentage.
-    pub max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    pub max_slippage: Udec128,
 }
 
 #[grug::derive(Borsh, Serde)]

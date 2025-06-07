@@ -58,10 +58,10 @@ where
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
             Direction::Bid => Udec128::ONE
-                .checked_add(*market_order.max_slippage)?
+                .checked_add(market_order.max_slippage)?
                 .checked_mul(best_price)?,
             Direction::Ask => Udec128::ONE
-                .checked_sub(*market_order.max_slippage)?
+                .checked_sub(market_order.max_slippage)?
                 .checked_mul(best_price)?,
         };
 
