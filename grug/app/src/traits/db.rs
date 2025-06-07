@@ -39,6 +39,8 @@ pub trait Db {
     /// A _Merklized_ KV store that stores _hashed_ keys and _hashed_ values.
     type StateCommitment: Storage + Clone + 'static;
 
+    type Consensus: Storage;
+
     /// Type of the Merkle proof. The DB can choose any Merkle tree scheme.
     type Proof: BorshSerialize + BorshDeserialize;
 
@@ -49,6 +51,9 @@ pub trait Db {
     ///
     /// Error if the specified version has already been pruned.
     fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
+
+    /// Return the state consensus.
+    fn consensus(&self) -> Self::Consensus;
 
     /// Return the most recent version that has been committed.
     ///

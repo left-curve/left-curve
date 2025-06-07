@@ -4,7 +4,7 @@ use {
     grug_jmt::MerkleTree,
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
     std::{
-        collections::HashMap,
+        collections::{BTreeMap, HashMap},
         ops::Bound,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     },
@@ -32,6 +32,8 @@ struct MemDbInner {
     state_storage: VersionedMap<Vec<u8>, Vec<u8>>,
     /// Uncommitted changes
     changeset: Option<ChangeSet>,
+    /// A key-value store backing the consensus.
+    consensus: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 pub struct MemDb {
@@ -46,6 +48,7 @@ impl MemDb {
                 state_commitment: HashMap::new(),
                 state_storage: VersionedMap::new(),
                 changeset: None,
+                consensus: BTreeMap::new(),
             })),
         }
     }
@@ -86,6 +89,7 @@ impl Clone for MemDb {
 }
 
 impl Db for MemDb {
+    type Consensus = Consensus;
     type Error = DbError;
     type Proof = Proof;
     type StateCommitment = StateCommitment;
@@ -100,6 +104,10 @@ impl Db for MemDb {
             db: self.clone(),
             version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
         })
+    }
+
+    fn consensus(&self) -> Self::Consensus {
+        Consensus { db: self.clone() }
     }
 
     fn latest_version(&self) -> Option<u64> {
@@ -303,5 +311,138 @@ impl Storage for StateStorage {
 
     fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
+    }
+}
+
+// ------------------------------ consensus storage ----------------------------
+
+#[derive(Clone)]
+pub struct Consensus {
+    db: MemDb,
+}
+
+macro_rules! range_bounds {
+    ($min:ident, $max:ident) => {{
+        // `BTreeMap::range` panics if
+        // 1. start > end, or
+        // 2. start == end and both are exclusive
+        // For us, since we interpret min as inclusive and max as exclusive,
+        // only the 1st case apply. However, we don't want to panic, we just
+        // return an empty iterator.
+        if let (Some(min), Some(max)) = ($min, $max) {
+            if min > max {
+                return Box::new(std::iter::empty());
+            }
+        }
+
+        // Min is inclusive, max is exclusive.
+        let min = $min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = $max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+
+        (min, max)
+    }};
+}
+
+impl Storage for Consensus {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.db.with_read(|inner| inner.consensus.get(key).cloned())
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let bounds = range_bounds!(min, max);
+        let vec = self.db.with_read(|inner| {
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as longa as the read lock, which goes out of
+            // scope at the end of the function.
+            inner
+                .consensus
+                .range(bounds)
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let bounds = range_bounds!(min, max);
+        let vec = self.db.with_read(|inner| {
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as longa as the read lock, which goes out of
+            // scope at the end of the function.
+            inner
+                .consensus
+                .range(bounds)
+                .map(|(k, _)| k.clone())
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let bounds = range_bounds!(min, max);
+        let vec = self.db.with_read(|inner| {
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as longa as the read lock, which goes out of
+            // scope at the end of the function.
+            inner
+                .consensus
+                .range(bounds)
+                .map(|(_, v)| v.clone())
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.db
+            .with_write(|mut inner| inner.consensus.insert(key.to_vec(), value.to_vec()));
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.db.with_write(|mut inner| inner.consensus.remove(key));
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        self.db.with_write(|mut inner| {
+            inner.consensus.retain(|k, _| {
+                if let Some(min) = min {
+                    if k.as_slice() < min {
+                        return true;
+                    }
+                }
+
+                if let Some(max) = max {
+                    if max <= k.as_slice() {
+                        return true;
+                    }
+                }
+
+                false
+            })
+        });
     }
 }
