@@ -25,7 +25,9 @@ where
     // Match the market order to the opposite side of the resting limit order book.
     let limit_order_direction = -market_order_direction;
 
-    // The best possible price is the price of the first limit order in the book
+    // Find the best offer price in the resting limit order book.
+    // This will be used to compute the market order's worst average execution
+    // price, based on its max slippage.
     let best_price = match limit_orders.peek_mut() {
         Some(Ok(((price, _), _))) => *price,
         Some(Err(e)) => return Err(e.clone().into()),
