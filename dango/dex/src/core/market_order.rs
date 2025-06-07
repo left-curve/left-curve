@@ -233,6 +233,7 @@ where
         } else {
             taker_fee_rate
         };
+
         _update_filling_outcome(
             &mut filling_outcomes,
             Order::Limit(limit_order),
@@ -242,6 +243,7 @@ where
             price,
             limit_order_fee_rate,
         )?;
+
         _update_filling_outcome(
             &mut filling_outcomes,
             Order::Market(market_order),
