@@ -1,7 +1,8 @@
-use std::ops::Neg;
-
-use grug::{
-    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
+use {
+    grug::{
+        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
+    },
+    std::ops::Neg,
 };
 
 /// Numerical identifier of an order.
