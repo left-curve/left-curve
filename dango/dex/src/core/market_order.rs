@@ -20,10 +20,6 @@ where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
-    if market_orders.peek().is_none() || limit_orders.peek().is_none() {
-        return Ok(Vec::new());
-    }
-
     let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
 
     // Match the market order to the opposite side of the resting limit order book.
