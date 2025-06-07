@@ -7,7 +7,7 @@ use {
     grug::{Addr, Bounded, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
 };
 
-pub fn create_limit_order(
+pub(super) fn create_limit_order(
     storage: &mut dyn Storage,
     current_block_height: u64,
     user: Addr,
