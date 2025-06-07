@@ -234,7 +234,7 @@ where
             taker_fee_rate
         };
 
-        _update_filling_outcome(
+        update_filling_outcome(
             &mut filling_outcomes,
             Order::Limit(limit_order),
             limit_order_id,
@@ -244,7 +244,7 @@ where
             limit_order_fee_rate,
         )?;
 
-        _update_filling_outcome(
+        update_filling_outcome(
             &mut filling_outcomes,
             Order::Market(market_order),
             market_order_id,
@@ -258,7 +258,7 @@ where
     Ok(filling_outcomes.into_values().collect())
 }
 
-fn _update_filling_outcome(
+fn update_filling_outcome(
     filling_outcomes: &mut BTreeMap<OrderId, FillingOutcome>,
     order: Order,
     order_id: OrderId,
