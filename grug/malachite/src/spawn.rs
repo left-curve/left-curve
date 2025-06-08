@@ -206,8 +206,7 @@ where
     DB: Db,
     App<DB, VM, PP, ID>: HostApp,
 {
-    let host = Host::spawn(app, mempool, network, validator_set, private_key).await;
-    host
+    Host::spawn(app, mempool, network, validator_set, private_key).await
 }
 
 async fn spawn_sync_actor(

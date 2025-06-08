@@ -122,6 +122,7 @@ pbkdf2                  = "0.12"
 proc-macro2             = "1"
 proptest                = "1"
 prost                   = "0.13"
+prost-types             = "0.13"
 pyth-sdk                = "0.8"
 pythnet-sdk             = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                   = "1"
@@ -163,15 +164,6 @@ wasmer                  = "5" # keep at v5 because there's license change for v6
 wasmer-middlewares      = "5" # keep at v5 because there's license change for v6
 
 # Malachite
-# malachitebft-app          = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-app" }
-# malachitebft-config       = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-config" }
-# malachitebft-core-types   = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-core-types" }
-# malachitebft-engine       = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-engine" }
-# malachitebft-metrics      = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-metrics" }
-# malachitebft-network      = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-network" }
-# malachitebft-sync         = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-sync" }
-# malachitebft-test-mempool = { git = "https://github.com/informalsystems/malachite", rev = "2ddbbd8", package = "informalsystems-malachitebft-test-mempool" }
-
 malachitebft-app          = { git = "https://github.com/left-curve/malachite", branch = "rhaki/borsh", package = "informalsystems-malachitebft-app" }
 malachitebft-config       = { git = "https://github.com/left-curve/malachite", branch = "rhaki/borsh", package = "informalsystems-malachitebft-config" }
 malachitebft-core-types   = { git = "https://github.com/left-curve/malachite", branch = "rhaki/borsh", package = "informalsystems-malachitebft-core-types" }
@@ -180,15 +172,6 @@ malachitebft-metrics      = { git = "https://github.com/left-curve/malachite", b
 malachitebft-network      = { git = "https://github.com/left-curve/malachite", branch = "rhaki/borsh", package = "informalsystems-malachitebft-network" }
 malachitebft-sync         = { git = "https://github.com/left-curve/malachite", branch = "rhaki/borsh", package = "informalsystems-malachitebft-sync" }
 malachitebft-test-mempool = { git = "https://github.com/left-curve/malachite", branch = "rhaki/borsh", package = "informalsystems-malachitebft-test-mempool" }
-
-# malachitebft-app          = { path = "../lmalachite/code/crates/app", package = "informalsystems-malachitebft-app" }
-# malachitebft-config       = { path = "../lmalachite/code/crates/config", package = "informalsystems-malachitebft-config" }
-# malachitebft-core-types   = { path = "../lmalachite/code/crates/core-types", package = "informalsystems-malachitebft-core-types" }
-# malachitebft-engine       = { path = "../lmalachite/code/crates/engine", package = "informalsystems-malachitebft-engine" }
-# malachitebft-metrics      = { path = "../lmalachite/code/crates/metrics", package = "informalsystems-malachitebft-metrics" }
-# malachitebft-network      = { path = "../lmalachite/code/crates/network", package = "informalsystems-malachitebft-network" }
-# malachitebft-sync         = { path = "../lmalachite/code/crates/sync", package = "informalsystems-malachitebft-sync" }
-# malachitebft-test-mempool = { path = "../lmalachite/code/crates/test/mempool", package = "informalsystems-malachitebft-test-mempool" }
 
 # Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }

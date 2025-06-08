@@ -48,7 +48,7 @@ where
     }
 
     fn finalize_block(&self, block: BlockInfo, txs: &[RawTx]) -> AppResult<AppHash> {
-        self.do_finalize_block_raw(block, &txs)
+        self.do_finalize_block_raw(block, txs)
             .map(|outcome| AppHash::new(outcome.app_hash))
     }
 

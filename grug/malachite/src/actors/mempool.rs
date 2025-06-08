@@ -5,9 +5,10 @@ use {
         app::MempoolAppRef,
         types::RawTx,
     },
-    grug::CheckTxOutcome,
+    grug::{BorshDeExt, BorshSerExt, CheckTxOutcome},
     grug_app::AppError,
-    malachitebft_test_mempool::Event as NetworkEvent,
+    malachitebft_test_mempool::{Event as NetworkEvent, types::MempoolTransactionBatch},
+    prost_types::Any,
     ractor::{Actor, ActorRef, RpcReplyPort, async_trait},
     std::{cmp::min, collections::VecDeque, sync::Arc},
     tracing::{error, info},
@@ -73,7 +74,7 @@ impl Mempool {
     fn handle_network_event(&self, event: &NetworkEvent, state: &mut State) -> ActorResult<()> {
         match event {
             NetworkEvent::Message(.., network_msg) => {
-                self.handle_network_msg(network_msg, state);
+                self.handle_network_msg(network_msg, state)?;
             },
             e => info!("Network event: {:?}", e),
         }
@@ -81,13 +82,18 @@ impl Mempool {
         Ok(())
     }
 
-    fn handle_network_msg(&self, msg: &GossipNetworkMsg, state: &mut State) {
+    fn handle_network_msg(&self, msg: &GossipNetworkMsg, state: &mut State) -> ActorResult<()> {
         match msg {
             GossipNetworkMsg::TransactionBatch(batch) => {
                 // TODO: Actually MempoolTransactionBatch is in prost format
-                let txs = todo!();
+                let txs = batch
+                    .transaction_batch
+                    .value
+                    .deserialize_borsh::<Vec<RawTx>>()?;
 
                 self.add_batch(txs, state);
+
+                Ok(())
             },
         }
     }
@@ -152,9 +158,16 @@ impl Mempool {
 
     fn gossip_tx(&self, tx: RawTx) -> ActorResult<()> {
         // TODO: Actually MempoolTransactionBatch is in prost format
-        let msg = todo!();
+        let tx = tx.to_borsh_vec()?;
+        let msg = Any {
+            type_url: "type.googleapis.com/malachite.MempoolTransactionBatch".to_string(),
+            value: tx,
+        };
 
-        self.network.cast(MempoolNetworkMsg::BroadcastMsg(msg))?;
+        self.network
+            .cast(MempoolNetworkMsg::Broadcast(MempoolTransactionBatch::new(
+                msg,
+            )))?;
 
         Ok(())
     }

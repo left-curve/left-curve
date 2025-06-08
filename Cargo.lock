@@ -4999,6 +4999,7 @@ dependencies = [
  "k256",
  "libp2p-identity",
  "prost",
+ "prost-types",
  "ractor",
  "serde",
  "tokio",

@@ -5,7 +5,7 @@ use {
     malachitebft_test_mempool::{
         Channel::Mempool, Event, PeerId, handle::CtrlHandle, types::MempoolTransactionBatch,
     },
-    ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort, async_trait},
+    ractor::{Actor, ActorProcessingErr, ActorRef, async_trait},
     std::{collections::BTreeSet, sync::Arc},
     tokio::task::JoinHandle,
     tracing::error,
@@ -36,10 +36,7 @@ pub enum Msg {
     Subscribe(OutputPortSubscriber<Arc<Event>>),
 
     /// Broadcast a message to all peers
-    BroadcastMsg(MempoolTransactionBatch),
-
-    /// Request the number of connected peers
-    GetState { reply: RpcReplyPort<usize> },
+    Broadcast(MempoolTransactionBatch),
 
     // Internal message
     #[doc(hidden)]
@@ -125,7 +122,7 @@ impl Actor for MempoolNetwork {
         match msg {
             Msg::Subscribe(subscriber) => subscriber.subscribe_to_port(output_port),
 
-            Msg::BroadcastMsg(batch) => {
+            Msg::Broadcast(batch) => {
                 match GossipNetworkMsg::TransactionBatch(batch).to_network_bytes() {
                     Ok(bytes) => {
                         ctrl_handle.broadcast(Mempool, bytes).await?;
@@ -149,15 +146,6 @@ impl Actor for MempoolNetwork {
 
                 let event = Arc::new(event);
                 output_port.send(event);
-            },
-
-            Msg::GetState { reply } => {
-                let number_peers = match state {
-                    State::Stopped => 0,
-                    State::Running { peers, .. } => peers.len(),
-                };
-
-                reply.send(number_peers)?;
             },
         }
 
