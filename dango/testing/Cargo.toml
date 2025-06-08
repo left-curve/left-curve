@@ -16,7 +16,7 @@ async-graphql           = { workspace = true }
 dango-genesis           = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-proposal-preparer = { workspace = true }
-dango-types             = { workspace = true }
+dango-types             = { workspace = true, features = ["async-graphql"] }
 digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
