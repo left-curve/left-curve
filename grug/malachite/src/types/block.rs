@@ -127,6 +127,12 @@ pub struct DecidedBlock {
 #[grug::derive(Borsh)]
 pub struct PreHash(Hash256);
 
+impl Display for PreHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 //  ---------------------------------AppHash ---------------------------------
 
 #[grug::derive(Borsh)]
@@ -135,6 +141,12 @@ pub struct AppHash(Hash256);
 impl AppHash {
     pub fn new(hash: Hash256) -> Self {
         Self(hash)
+    }
+}
+
+impl Display for AppHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

@@ -41,6 +41,7 @@ where
 {
     fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx> {
         // TODO: This need to be optimized, probably the best solution is to change to perpare proposal function signature
+
         self.do_prepare_proposal(txs.into_iter().map(|tx| tx.0).collect(), usize::MAX)
             .into_iter()
             .map(RawTx)
@@ -48,6 +49,9 @@ where
     }
 
     fn finalize_block(&self, block: BlockInfo, txs: &[RawTx]) -> AppResult<AppHash> {
+        // TODO: This is a temporary solution to discard the changeset, we need to find a better solution to handle the changeset
+        self.db.discard_changeset();
+
         self.do_finalize_block_raw(block, txs)
             .map(|outcome| AppHash::new(outcome.app_hash))
     }

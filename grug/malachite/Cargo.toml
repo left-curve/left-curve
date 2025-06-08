@@ -32,3 +32,13 @@ malachitebft-metrics      = { workspace = true }
 malachitebft-network      = { workspace = true }
 malachitebft-sync         = { workspace = true, features = ["borsh"] }
 malachitebft-test-mempool = { workspace = true }
+
+[dev-dependencies]
+config                  = { workspace = true }
+dango-genesis           = { workspace = true }
+dango-proposal-preparer = { workspace = true }
+dango-testing           = { workspace = true }
+grug-db-memory          = { workspace = true }
+grug-vm-rust            = { workspace = true }
+rand                    = { workspace = true }
+tracing-subscriber      = { workspace = true }

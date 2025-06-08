@@ -6,6 +6,12 @@ use {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ValidatorSet(Vec<ctx!(Validator)>);
 
+impl ValidatorSet {
+    pub fn new(validators: Vec<ctx!(Validator)>) -> Self {
+        Self(validators)
+    }
+}
+
 impl malachitebft_core_types::ValidatorSet<Context> for ValidatorSet {
     fn count(&self) -> usize {
         self.0.len()

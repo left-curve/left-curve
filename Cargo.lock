@@ -4985,9 +4985,15 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh 1.5.7",
+ "config 0.15.11",
+ "dango-genesis",
+ "dango-proposal-preparer",
+ "dango-testing",
  "grug",
  "grug-app",
  "grug-crypto",
+ "grug-db-memory",
+ "grug-vm-rust",
  "informalsystems-malachitebft-app",
  "informalsystems-malachitebft-config",
  "informalsystems-malachitebft-core-types",
@@ -5001,9 +5007,11 @@ dependencies = [
  "prost",
  "prost-types",
  "ractor",
+ "rand 0.8.5",
  "serde",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

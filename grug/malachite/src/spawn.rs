@@ -55,7 +55,7 @@ where
     let sync_metrics: SyncMetrics = SyncMetrics::register(&registry);
 
     let mempool_network = spawn_mempool_network_actor(&cfg, &private_key, &registry).await;
-    let mempool = spawn_mempool_actor(mempool_network, app.clone()).await;
+    let mempool = spawn_mempool_actor(mempool_network, app.clone(), span.clone()).await;
 
     let network = spawn_network_actor(&cfg, &private_key, &registry, &span).await;
 
@@ -65,6 +65,7 @@ where
         network.clone(),
         validator_set.clone(),
         private_key.clone(),
+        span.clone(),
     )
     .await;
 
@@ -108,8 +109,9 @@ where
 async fn spawn_mempool_actor(
     mempool_network: MempoolNetworkActorRef,
     app: Arc<dyn MempoolApp>,
+    span: Span,
 ) -> MempoolActorRef {
-    Mempool::spawn(mempool_network, app).await.unwrap()
+    Mempool::spawn(mempool_network, app, span).await.unwrap()
 }
 
 async fn spawn_mempool_network_actor(
@@ -201,12 +203,13 @@ async fn spawn_host_actor<DB, VM, PP, ID>(
     network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
     private_key: ctx!(SigningScheme::PrivateKey),
+    span: Span,
 ) -> HostRef
 where
     DB: Db,
     App<DB, VM, PP, ID>: HostApp,
 {
-    Host::spawn(app, mempool, network, validator_set, private_key).await
+    Host::spawn(app, mempool, network, validator_set, private_key, span).await
 }
 
 async fn spawn_sync_actor(

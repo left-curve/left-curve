@@ -2,9 +2,9 @@ use crate::{context::Context, ctx};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Validator {
-    address: ctx!(Address),
-    public_key: ctx!(SigningScheme::PublicKey),
-    voting_power: u64,
+    pub address: ctx!(Address),
+    pub public_key: ctx!(SigningScheme::PublicKey),
+    pub voting_power: u64,
 }
 
 impl malachitebft_core_types::Validator<Context> for Validator {

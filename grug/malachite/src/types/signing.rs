@@ -16,7 +16,7 @@ use {
 };
 
 pub type Signature = [u8; 64];
-pub type PublicKey = [u8; 32];
+pub type PublicKey = [u8; 33];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SigningScheme;
@@ -42,6 +42,10 @@ impl malachitebft_core_types::SigningScheme for SigningScheme {
 pub struct PrivateKey(k256::ecdsa::SigningKey);
 
 impl PrivateKey {
+    pub fn from_inner(inner: k256::ecdsa::SigningKey) -> Self {
+        Self(inner)
+    }
+
     pub fn sign_digest<T>(&self, data: T) -> GenericArray<u8, U64>
     where
         T: Into<GenericArray<u8, U32>>,
@@ -92,6 +96,11 @@ impl PrivateKey {
         let vk_hash = (&vk_raw.as_bytes()[1..]).keccak256();
         let address = &vk_hash[12..];
         <ctx!(Address)>::new(address.try_into().unwrap())
+    }
+
+    pub fn public_key(&self) -> ctx!(SigningScheme::PublicKey) {
+        let vk_raw = self.0.verifying_key().to_encoded_point(true);
+        vk_raw.as_bytes().try_into().unwrap()
     }
 }
 

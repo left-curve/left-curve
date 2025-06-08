@@ -23,7 +23,7 @@ use {
     malachitebft_sync::{PeerId, RawDecidedValue},
     ractor::{Actor, RpcReplyPort, async_trait},
     std::{sync::Arc, time::Duration},
-    tracing::info,
+    tracing::{Span, error, info, warn},
 };
 
 pub type HostRef = malachitebft_engine::host::HostRef<Context>;
@@ -36,6 +36,7 @@ pub struct Host {
     validator_set: ctx!(ValidatorSet),
     private_key: ctx!(SigningScheme::PrivateKey),
     address: ctx!(Address),
+    span: Span,
 }
 
 #[async_trait]
@@ -50,12 +51,79 @@ impl Actor for Host {
         Ok(args)
     }
 
+    #[tracing::instrument("host", parent = &self.span, skip_all)]
     async fn handle(
         &self,
         _: HostRef,
         message: Self::Msg,
         state: &mut Self::State,
     ) -> ActorResult<()> {
+        if let Err(e) = self.handle_msg(message, state).await {
+            error!("Error handling message: {:?}", e);
+        }
+
+        Ok(())
+    }
+}
+
+//  ----------------------------- Generic methods ------------------------------
+
+impl Host {
+    pub async fn spawn<DB, VM, PP, ID>(
+        app: Arc<App<DB, VM, PP, ID>>,
+        mempool: MempoolActorRef,
+        network: NetworkRef<Context>,
+        validator_set: ctx!(ValidatorSet),
+        private_key: ctx!(SigningScheme::PrivateKey),
+        span: Span,
+    ) -> HostRef
+    where
+        DB: Db,
+        App<DB, VM, PP, ID>: HostApp,
+    {
+        let args = State::new(app.db.consensus());
+
+        let host = Host {
+            app,
+            mempool,
+            network,
+            validator_set,
+            address: private_key.derive_address(),
+            private_key,
+            span,
+        };
+
+        let (actor_ref, _) = Actor::spawn(None, host, args).await.unwrap();
+        actor_ref
+    }
+
+    pub async fn stream_parts(
+        &self,
+        stream_id: StreamId,
+        parts: ProposalParts,
+        with_fin: bool,
+    ) -> ActorResult<()> {
+        let mut sequence = 0;
+
+        for part in parts {
+            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Data(part));
+            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
+            sequence += 1;
+        }
+
+        if with_fin {
+            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Fin);
+            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
+        }
+
+        Ok(())
+    }
+}
+
+// ------------------------------- Msgs handlers -------------------------------
+
+impl Host {
+    async fn handle_msg(&self, message: HostMsg, state: &mut State) -> ActorResult<()> {
         match message {
             HostMsg::ConsensusReady(actor_ref) => self.consensus_ready(state, actor_ref),
             HostMsg::GetHistoryMinHeight { reply_to } => {
@@ -134,63 +202,7 @@ impl Actor for Host {
             },
         }
     }
-}
 
-//  ----------------------------- Generic methods ------------------------------
-
-impl Host {
-    pub async fn spawn<DB, VM, PP, ID>(
-        app: Arc<App<DB, VM, PP, ID>>,
-        mempool: MempoolActorRef,
-        network: NetworkRef<Context>,
-        validator_set: ctx!(ValidatorSet),
-        private_key: ctx!(SigningScheme::PrivateKey),
-    ) -> HostRef
-    where
-        DB: Db,
-        App<DB, VM, PP, ID>: HostApp,
-    {
-        let args = State::new(app.db.consensus());
-
-        let host = Host {
-            app,
-            mempool,
-            network,
-            validator_set,
-            address: private_key.derive_address(),
-            private_key,
-        };
-
-        let (actor_ref, _) = Actor::spawn(None, host, args).await.unwrap();
-        actor_ref
-    }
-
-    pub async fn stream_parts(
-        &self,
-        stream_id: StreamId,
-        parts: ProposalParts,
-        with_fin: bool,
-    ) -> ActorResult<()> {
-        let mut sequence = 0;
-
-        for part in parts {
-            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Data(part));
-            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
-            sequence += 1;
-        }
-
-        if with_fin {
-            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Fin);
-            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
-        }
-
-        Ok(())
-    }
-}
-
-// ------------------------------- Msgs handlers -------------------------------
-
-impl Host {
     fn consensus_ready(
         &self,
         state: &mut State,
@@ -271,6 +283,7 @@ impl Host {
     }
 
     /// Equivalent of prepare_proposal
+    #[tracing::instrument("get_value", skip_all, fields(height = %height, round = %round))]
     async fn get_value(
         &self,
         state: &mut State,
@@ -301,6 +314,7 @@ impl Host {
         // Crate proposal parts
         let block = {
             // Take txs from mempool
+            info!("Taking txs from mempool");
             let txs = self
                 .mempool
                 .call(
@@ -315,6 +329,7 @@ impl Host {
                 .success_or(anyhow::anyhow!("Failed to take txs from mempool"))?;
 
             // Call prepare_proposal
+            info!("Calling prepare_proposal");
             let txs = self.app.prepare_proposal(txs);
 
             let pre_block = PreBlock::new(
@@ -330,6 +345,7 @@ impl Host {
                 txs,
             );
 
+            info!("Calling finalize_block");
             let app_hash = self
                 .app
                 .finalize_block(pre_block.as_block_info(), &pre_block.txs)?;
@@ -389,7 +405,91 @@ impl Host {
         Ok(())
     }
 
+    #[tracing::instrument("received_proposal_part", skip_all)]
+    async fn received_proposal_part(
+        &self,
+        state: &mut State,
+        from: PeerId,
+        part: StreamMessage<ctx!(ProposalPart)>,
+        reply_to: RpcReplyPort<ProposedValue<Context>>,
+    ) -> ActorResult<()> {
+        let stream_id = part.stream_id.clone();
+
+        let Some(parts) = state.buffer_part(from, part) else {
+            return Ok(());
+        };
+
+        info!(height = %parts.init.height, round = %parts.init.round, "All parts received");
+
+        // Run FinalizeBlock
+        let block = parts.clone().into_pre_block();
+        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
+        let block = block.with_app_hash(app_hash);
+
+        let block_hash = block.hash();
+
+        let value = ProposedValue {
+            height: parts.init.height,
+            round: parts.init.round,
+            valid_round: parts.init.valid_round,
+            proposer: parts.init.proposer,
+            value: <ctx!(Value)>::new(parts.fin.hash),
+            validity: Validity::from_bool(parts.fin.hash == block_hash),
+        };
+
+        if value.validity == Validity::Invalid {
+            warn!(block_hash = %block_hash, proposal_block_hash = %parts.fin.hash, "Block hash mismatch");
+            return Ok(());
+        } else {
+            info!(block_hash = %block_hash, "Block hash matches");
+        }
+
+        // TODO: Should we resign the block hash?
+
+        // TODO: If block_hash is different from the proposed value, what we should do?
+        // store the undecided block with the new block_hash?
+
+        // Store undecided proposal
+        state.with_db_storage_mut(|storage, db| {
+            db.undecided_proposals.save(
+                storage,
+                (
+                    *parts.init.height,
+                    parts.init.round.as_i64(),
+                    parts.fin.hash,
+                ),
+                &value,
+            )
+        })?;
+
+        // Store undecided block
+        state.with_db_storage_mut(|storage, db| {
+            db.undecided_block.save(
+                storage,
+                (
+                    *parts.init.height,
+                    parts.init.round.as_i64(),
+                    parts.fin.hash,
+                ),
+                &block,
+            )
+        })?;
+
+        // Store parts
+        state.with_memory_storage_mut(|storage, memory| {
+            memory
+                .parts
+                .save(storage, stream_id.to_bytes().to_vec(), &parts)
+        })?;
+
+        // Send to consensus
+        reply_to.send(value)?;
+
+        Ok(())
+    }
+
     /// Equivalent of commit
+    #[tracing::instrument("decided", skip_all, fields(height = %certificate.height, round = %certificate.round))]
     async fn decided(
         &self,
         state: &mut State,
@@ -407,8 +507,11 @@ impl Host {
             )
         })?
         else {
+            warn!(value_id = %certificate.value_id, "Proposed block not found");
             return Err(anyhow::anyhow!("Proposed block not found").into());
         };
+
+        info!(value_id = %certificate.value_id, "Proposed block found");
 
         // Call commit
         self.app.commit()?;
@@ -465,77 +568,6 @@ impl Host {
 
             self.stream_parts(state.stream_id(), parts, false).await?;
         }
-
-        Ok(())
-    }
-
-    async fn received_proposal_part(
-        &self,
-        state: &mut State,
-        from: PeerId,
-        part: StreamMessage<ctx!(ProposalPart)>,
-        reply_to: RpcReplyPort<ProposedValue<Context>>,
-    ) -> ActorResult<()> {
-        let stream_id = part.stream_id.clone();
-
-        let Some(parts) = state.buffer_part(from, part) else {
-            return Ok(());
-        };
-
-        // Run FinalizeBlock
-        let block = parts.clone().into_pre_block();
-        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
-        let block = block.with_app_hash(app_hash);
-
-        let value = ProposedValue {
-            height: parts.init.height,
-            round: parts.init.round,
-            valid_round: parts.init.valid_round,
-            proposer: parts.init.proposer,
-            value: <ctx!(Value)>::new(parts.fin.hash),
-            validity: Validity::from_bool(parts.fin.hash == block.hash()),
-        };
-
-        // TODO: Should we resign the block hash?
-
-        // TODO: If block_hash is different from the proposed value, what we should do?
-        // store the undecided block with the new block_hash?
-
-        // Store undecided proposal
-        state.with_db_storage_mut(|storage, db| {
-            db.undecided_proposals.save(
-                storage,
-                (
-                    *parts.init.height,
-                    parts.init.round.as_i64(),
-                    parts.fin.hash,
-                ),
-                &value,
-            )
-        })?;
-
-        // Store undecided block
-        state.with_db_storage_mut(|storage, db| {
-            db.undecided_block.save(
-                storage,
-                (
-                    *parts.init.height,
-                    parts.init.round.as_i64(),
-                    parts.fin.hash,
-                ),
-                &block,
-            )
-        })?;
-
-        // Store parts
-        state.with_memory_storage_mut(|storage, memory| {
-            memory
-                .parts
-                .save(storage, stream_id.to_bytes().to_vec(), &parts)
-        })?;
-
-        // Send to consensus
-        reply_to.send(value)?;
 
         Ok(())
     }

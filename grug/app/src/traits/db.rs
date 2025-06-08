@@ -96,6 +96,9 @@ pub trait Db {
         self.commit()?;
         Ok((new_version, root_hash))
     }
+
+    /// Discard the current changeset.
+    fn discard_changeset(&self);
 }
 
 /// Represents a database that can be pruned.

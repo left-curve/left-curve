@@ -184,6 +184,12 @@ impl Db for MemDb {
             Ok(())
         })
     }
+
+    fn discard_changeset(&self) {
+        self.with_write(|mut inner| {
+            inner.changeset = None;
+        })
+    }
 }
 
 // ----------------------------- state commitment ------------------------------

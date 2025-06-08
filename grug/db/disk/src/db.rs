@@ -295,6 +295,10 @@ impl Db for DiskDb {
 
         Ok(self.inner.db.write(batch)?)
     }
+
+    fn discard_changeset(&self) {
+        *(self.inner.pending_data.write().unwrap()) = None;
+    }
 }
 
 impl PrunableDb for DiskDb {

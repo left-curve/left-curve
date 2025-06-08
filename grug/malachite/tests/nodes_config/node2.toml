@@ -1,0 +1,97 @@
+moniker = "actor-app-with-parts-1"
+
+[logging]
+log_level = "debug"
+log_format = "plaintext"
+
+[consensus]
+timeout_propose = "3s"
+timeout_propose_delta = "500ms"
+timeout_prevote = "1s"
+timeout_prevote_delta = "500ms"
+timeout_precommit = "1s"
+timeout_precommit_delta = "500ms"
+timeout_rebroadcast = "5s"
+value_payload = "proposal-and-parts"
+
+[consensus.p2p]
+listen_addr = "/ip4/127.0.0.1/tcp/27001"
+persistent_peers = [
+    "/ip4/127.0.0.1/tcp/27000",
+    "/ip4/127.0.0.1/tcp/27002",
+]
+pubsub_max_size = "4.2 MB"
+rpc_max_size = "10.5 MB"
+
+[consensus.p2p.discovery]
+enabled = false
+bootstrap_protocol = "full"
+selector = "random"
+num_outbound_peers = 20
+num_inbound_peers = 20
+ephemeral_connection_timeout = "5s"
+
+[consensus.p2p.protocol]
+type = "gossipsub"
+mesh_n = 6
+mesh_n_high = 12
+mesh_n_low = 4
+mesh_outbound_min = 2
+
+[mempool]
+max_tx_count = 10000
+gossip_batch_size = 0
+
+[mempool.p2p]
+listen_addr = "/ip4/127.0.0.1/tcp/28001"
+persistent_peers = [
+    "/ip4/127.0.0.1/tcp/28000",
+    "/ip4/127.0.0.1/tcp/28002",
+]
+pubsub_max_size = "4.2 MB"
+rpc_max_size = "10.5 MB"
+
+[mempool.p2p.discovery]
+enabled = false
+bootstrap_protocol = "full"
+selector = "random"
+num_outbound_peers = 20
+num_inbound_peers = 20
+ephemeral_connection_timeout = "5s"
+
+[mempool.p2p.protocol]
+type = "gossipsub"
+mesh_n = 6
+mesh_n_high = 12
+mesh_n_low = 4
+mesh_outbound_min = 2
+
+[mempool.load]
+load_type = "uniform_load"
+interval = "1s"
+count = 1000
+size = "256 B"
+
+[value_sync]
+enabled = true
+status_update_interval = "10s"
+request_timeout = "10s"
+
+[metrics]
+enabled = true
+listen_addr = "127.0.0.1:29001"
+
+[runtime]
+flavor = "single_threaded"
+
+[test]
+max_block_size = "1048.6 KB"
+txs_per_part = 256
+time_allowance_factor = 0.5
+exec_time_per_tx = "1ms"
+max_retain_blocks = 1000
+stable_block_times = false
+
+[test.vote_extensions]
+enabled = false
+size = "0 B"

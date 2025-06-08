@@ -1,8 +1,12 @@
-use malachitebft_app::config::{
-    ConsensusConfig, LoggingConfig, MempoolConfig, MetricsConfig, RuntimeConfig, ValueSyncConfig,
+use {
+    malachitebft_app::config::{
+        ConsensusConfig, LoggingConfig, MempoolConfig, MetricsConfig, RuntimeConfig,
+        ValueSyncConfig,
+    },
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     /// A custom human-readable name for this node
     pub moniker: String,

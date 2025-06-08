@@ -11,7 +11,7 @@ use {
     prost_types::Any,
     ractor::{Actor, ActorRef, RpcReplyPort, async_trait},
     std::{cmp::min, collections::VecDeque, sync::Arc},
-    tracing::{error, info},
+    tracing::{Span, error, info},
 };
 
 pub type MempoolMsg = Msg;
@@ -42,20 +42,23 @@ impl From<Arc<NetworkEvent>> for Msg {
 }
 
 pub struct Mempool {
-    network: MempoolNetworkActorRef,
+    mempool_network: MempoolNetworkActorRef,
     app: MempoolAppRef,
+    span: Span,
 }
 
 impl Mempool {
-    pub fn new(network: MempoolNetworkActorRef, app: MempoolAppRef) -> Self {
-        Self { network, app }
-    }
-
     pub async fn spawn(
         mempool_network: MempoolNetworkActorRef,
         app: MempoolAppRef,
+        span: Span,
     ) -> Result<MempoolActorRef, ractor::SpawnErr> {
-        let node = Self::new(mempool_network, app);
+        let node = Self {
+            mempool_network,
+            app,
+            span,
+        };
+
         let (actor_ref, _) = Actor::spawn(None, node, ()).await?;
         Ok(actor_ref)
     }
@@ -164,7 +167,7 @@ impl Mempool {
             value: tx,
         };
 
-        self.network
+        self.mempool_network
             .cast(MempoolNetworkMsg::Broadcast(MempoolTransactionBatch::new(
                 msg,
             )))?;
@@ -184,14 +187,15 @@ impl Actor for Mempool {
         myself: ActorRef<Self::Msg>,
         _args: Self::Arguments,
     ) -> ActorResult<Self::State> {
-        self.network.link(myself.get_cell());
+        self.mempool_network.link(myself.get_cell());
 
-        self.network
+        self.mempool_network
             .cast(MempoolNetworkMsg::Subscribe(Box::new(myself.clone())))?;
 
         Ok(State::default())
     }
 
+    #[tracing::instrument("mempool", parent = &self.span, skip_all)]
     async fn handle(
         &self,
         _myself: MempoolActorRef,
