@@ -39,6 +39,7 @@ export async function searchTxs<transport extends Transport>(
           gasUsed
           errorMessage
           messages {
+            data
             methodName
             contractAddr
           }

@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { IconLink, twMerge } from "@left-curve/applets-kit";
+import { AccordionItem, IconLink, twMerge } from "@left-curve/applets-kit";
 
 import {
   AddressVisualizer,
@@ -157,21 +157,33 @@ const Messages: React.FC = () => {
 
   if (!tx) return null;
 
-  const { nestedEvents } = tx;
+  const { nestedEvents, messages } = tx;
+
   return (
-    <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
-      <p className="h4-bold">{m["explorer.txs.events"]()}</p>
-      <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
-        <JsonVisualizer json={nestedEvents} collapsed={1} />
+    <div className="flex flex-col w-full gap-6">
+      <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold">{m["explorer.txs.events"]()}</p>
+        <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
+          <JsonVisualizer json={nestedEvents} collapsed={1} />
+        </div>
       </div>
-      {/* {events.length ? <p className="h4-bold">Events</p> : null}
-          {events.map((event) => (
-            <AccordionItem key={crypto.randomUUID()} text={event.type}>
+      <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold">{m["explorer.txs.messages"]()}</p>
+        {messages.map(({ data, methodName }) => {
+          const message = data[methodName];
+          return (
+            <AccordionItem
+              key={crypto.randomUUID()}
+              text={methodName}
+              classNames={{ text: "capitalize" }}
+            >
               <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
-                {JSON.stringify(event.details)}
+                <JsonVisualizer json={JSON.stringify(message)} collapsed={1} />
               </div>
             </AccordionItem>
-          ))} */}
+          );
+        })}
+      </div>
     </div>
   );
 };

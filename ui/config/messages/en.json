@@ -178,6 +178,7 @@
           }
         }
       ],
+      "messages": "Messages",
       "events": "Events",
       "txHash": "Tx hash",
       "sender": "Sender",
