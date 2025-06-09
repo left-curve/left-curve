@@ -56,7 +56,7 @@ impl Model {
     ) -> GraphQLResult<crate::entity::accounts::Model> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        self.find_account_by_address(db, &self.from_address)
+        crate::entity::accounts::Model::find_account_by_address(db, &self.from_address)
             .await?
             .ok_or_else(|| {
                 async_graphql::Error::new(format!(
@@ -73,7 +73,7 @@ impl Model {
     ) -> GraphQLResult<crate::entity::accounts::Model> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        self.find_account_by_address(db, &self.to_address)
+        crate::entity::accounts::Model::find_account_by_address(db, &self.to_address)
             .await?
             .ok_or_else(|| {
                 async_graphql::Error::new(format!(
@@ -82,20 +82,6 @@ impl Model {
                 ))
                 .extend_with(|_err, e| e.set("code", "NOT_FOUND"))
             })
-    }
-}
-
-#[cfg(feature = "async-graphql")]
-impl Model {
-    async fn find_account_by_address(
-        &self,
-        db: &DatabaseConnection,
-        address: &str,
-    ) -> Result<Option<crate::entity::accounts::Model>, sea_orm::DbErr> {
-        crate::entity::accounts::Entity::find()
-            .filter(crate::entity::accounts::Column::Address.eq(address))
-            .one(db)
-            .await
     }
 }
 
