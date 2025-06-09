@@ -1,10 +1,11 @@
 use {
     crate::{
         ActorResult, HostConfig,
-        actors::{MempoolActorRef, MempoolMsg, host::state::State},
         app::{HostApp, HostAppRef},
         context::Context,
         ctx,
+        host::state::State,
+        mempool::{MempoolActorRef, MempoolMsg},
         types::{Block, DecidedBlock, PreBlock, ProposalFin, ProposalInit, ProposalParts},
     },
     grug::{BorshDeExt, BorshSerExt, Timestamp},

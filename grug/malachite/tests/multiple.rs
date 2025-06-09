@@ -6,7 +6,9 @@ use {
     grug::{Coins, Message, NonEmpty, ResultExt, Signer},
     grug_app::{NaiveProposalPreparer, NullIndexer},
     grug_db_memory::MemDb,
-    grug_malachite::{MempoolMsg, PrivateKey, RawTx, Validator, ValidatorSet, spawn_actors},
+    grug_malachite::{
+        PrivateKey, RawTx, Validator, ValidatorSet, mempool::MempoolMsg, spawn_actors,
+    },
     grug_vm_rust::RustVm,
     malachitebft_app::events::TxEvent,
     std::{sync::Arc, time::Duration},

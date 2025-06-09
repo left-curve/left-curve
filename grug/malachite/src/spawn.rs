@@ -1,12 +1,14 @@
 use {
     crate::{
         HostConfig,
-        actors::{Host, HostRef, Mempool, MempoolActorRef, MempoolNetwork, MempoolNetworkActorRef},
         app::{HostApp, MempoolApp},
         codec,
         config::Config,
         context::Context,
         ctx,
+        host::{Host, HostRef},
+        mempool::{Mempool, MempoolActorRef},
+        network::{MempoolNetwork, MempoolNetworkActorRef},
     },
     grug_app::{App, Db},
     malachitebft_app::events::TxEvent,

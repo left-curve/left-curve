@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug::{JsonSerExt, Tx},
+    grug::{Hash256, HashExt, JsonSerExt, Tx},
     prost::bytes::Bytes,
     std::ops::Deref,
 };
@@ -18,6 +18,10 @@ impl RawTx {
         B: Into<Bytes>,
     {
         Self(bytes.into())
+    }
+
+    pub fn hash(&self) -> Hash256 {
+        self.0.hash256()
     }
 }
 

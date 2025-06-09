@@ -1,5 +1,3 @@
-mod host;
-mod mempool;
-mod network;
-
-pub use {host::*, mempool::*, network::*};
+pub mod host;
+pub mod mempool;
+pub mod network;

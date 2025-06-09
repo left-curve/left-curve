@@ -5,12 +5,16 @@ use {
         app::MempoolAppRef,
         types::RawTx,
     },
-    grug::{BorshDeExt, BorshSerExt, CheckTxOutcome},
+    grug::{BorshDeExt, BorshSerExt, CheckTxOutcome, Hash256},
     grug_app::AppError,
     malachitebft_test_mempool::{Event as NetworkEvent, types::MempoolTransactionBatch},
     prost_types::Any,
     ractor::{Actor, ActorRef, RpcReplyPort, async_trait},
-    std::{cmp::min, collections::VecDeque, sync::Arc},
+    std::{
+        cmp::min,
+        collections::{HashMap, HashSet, VecDeque},
+        sync::Arc,
+    },
     tracing::{Span, error, info, warn},
 };
 
@@ -20,6 +24,13 @@ pub type MempoolActorRef = ActorRef<Msg>;
 #[derive(Default)]
 pub struct State {
     txs: VecDeque<RawTx>,
+    tx_hashes: HashMap<Hash256, usize>,
+}
+
+impl State {
+    pub fn exists(&self, tx: Hash256) -> bool {
+        self.tx_hashes.get(&tx).is_some()
+    }
 }
 
 pub enum Msg {
@@ -66,7 +77,7 @@ impl Mempool {
     fn handle_msg(&self, msg: Msg, state: &mut State) -> ActorResult<()> {
         match msg {
             Msg::NetworkEvent(event) => self.handle_network_event(&event, state)?,
-            Msg::Add { tx, reply } => self.add_tx(tx, Some(reply), true, state)?,
+            Msg::Add { tx, reply } => self.add_tx(tx, Some(reply), state)?,
             Msg::Take { amount, reply } => self.take(state, amount, reply)?,
             Msg::Remove(tx_hashes) => self.remove(tx_hashes, state)?,
         }
@@ -92,7 +103,7 @@ impl Mempool {
                 // TODO: Actually MempoolTransactionBatch is in prost format
                 let txs = batch.transaction_batch.value.deserialize_borsh::<RawTx>()?;
 
-                self.add_tx(txs, None, false, state)
+                self.add_tx(txs, None, state)
             },
         }
     }
@@ -102,17 +113,22 @@ impl Mempool {
         &self,
         tx: RawTx,
         reply: Option<RpcReplyPort<Result<CheckTxOutcome, AppError>>>,
-        gossip: bool,
         state: &mut State,
     ) -> ActorResult<()> {
+        let tx_hash = tx.hash();
+
+        if state.exists(tx_hash) {
+            warn!("tx already exists in mempool");
+            return Ok(());
+        }
+
         let check_tx_outcome = self.app.check_tx(&tx);
 
         if let Ok(CheckTxOutcome { result: Ok(_), .. }) = check_tx_outcome {
             info!("tx added to mempool");
-            if gossip {
-                self.gossip_tx(tx.clone())?;
-            }
-            state.txs.push_back(tx);
+            state.tx_hashes.insert(tx_hash, state.txs.len());
+            state.txs.push_back(tx.clone());
+            self.gossip_tx(tx)?;
         } else {
             warn!(reason = ?check_tx_outcome, "check_tx failed!");
         }
@@ -130,24 +146,53 @@ impl Mempool {
         mut amount: usize,
         reply: RpcReplyPort<Vec<RawTx>>,
     ) -> ActorResult<()> {
-        let mut txes = Vec::with_capacity(min(amount, state.txs.len()));
+        let mut txs = Vec::with_capacity(min(amount, state.txs.len()));
 
-        while amount > 0 {
-            if let Some(tx) = state.txs.pop_front() {
-                txes.push(tx);
-                amount -= 1;
-            } else {
+        if amount == 0 {
+            reply.send(txs)?;
+            return Ok(());
+        }
+
+        for tx in state.txs.iter() {
+            // we are not removing the tx from the mempool, here because prepare proposal could not
+            // include some txs. Txs will be removed during decided.
+            txs.push(tx.clone());
+            amount -= 1;
+            if amount == 0 {
                 break;
             }
         }
 
-        reply.send(txes)?;
+        reply.send(txs)?;
 
         Ok(())
     }
 
+    #[tracing::instrument("remove", skip_all)]
     fn remove(&self, txs: Vec<RawTx>, state: &mut State) -> ActorResult<()> {
-        state.txs.retain(|tx| !txs.contains(tx));
+        let mut ignore = HashSet::new();
+        for tx in txs {
+            if let Some(index) = state.tx_hashes.remove(&tx.hash()) {
+                ignore.insert(index);
+            }
+        }
+
+        info!("removed {} txs from mempool", ignore.len());
+
+        let mut new_txs = VecDeque::with_capacity(state.txs.len() - ignore.len());
+        let mut new_hashes = HashMap::with_capacity(state.txs.len() - ignore.len());
+
+        let mut counter = 0;
+        for (index, tx) in state.txs.iter().enumerate() {
+            if !ignore.contains(&index) {
+                new_hashes.insert(tx.hash(), counter);
+                new_txs.push_back(tx.clone());
+                counter += 1;
+            }
+        }
+
+        state.txs = new_txs;
+        state.tx_hashes = new_hashes;
 
         Ok(())
     }
