@@ -150,8 +150,5 @@ generate_types! {
     {
         name: SearchTx,
         path: "src/schemas/queries/transaction.graphql",
-        // test_with: crate::types::search_tx::Variables {
-        //     hash: "0x1234567890".to_string(),
-        // }
     }
 }
