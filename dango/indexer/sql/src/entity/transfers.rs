@@ -1,5 +1,5 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Result, SimpleObject};
+use async_graphql::{ComplexObject, Context, ErrorExtensions, Result, SimpleObject};
 use {
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
@@ -52,7 +52,13 @@ impl Model {
             .filter(crate::entity::accounts::Column::Address.eq(&self.from_address))
             .one(db)
             .await?
-            .expect("account not found, this is not expected");
+            .ok_or_else(|| {
+                async_graphql::Error::new(format!(
+                    "account with address {} not found. This is not expected.",
+                    self.from_address
+                ))
+                .extend_with(|_err, e| e.set("code", "NOT_FOUND"))
+            })?;
 
         Ok(account)
     }
@@ -64,7 +70,13 @@ impl Model {
             .filter(crate::entity::accounts::Column::Address.eq(&self.to_address))
             .one(db)
             .await?
-            .expect("account not found, this is not expected");
+            .ok_or_else(|| {
+                async_graphql::Error::new(format!(
+                    "account with address {} not found. This is not expected.",
+                    self.from_address
+                ))
+                .extend_with(|_err, e| e.set("code", "NOT_FOUND"))
+            })?;
 
         Ok(account)
     }
