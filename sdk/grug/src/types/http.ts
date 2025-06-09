@@ -1,6 +1,6 @@
 import type { MaybePromise, Prettify } from "./utils.js";
 
-export type HttpRpcClientOptions = {
+export type HttpClientOptions = {
   /** Request configuration to pass to `fetch`. */
   fetchOptions?: Omit<RequestInit, "body">;
   /** A callback to handle the request. */
@@ -15,8 +15,7 @@ export type HttpRpcClientOptions = {
 };
 
 export type HttpRequestParameters<body = unknown> = Prettify<
-  HttpRpcClientOptions & {
-    /** The RPC request body. */
+  HttpClientOptions & {
     body: body;
   }
 >;
