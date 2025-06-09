@@ -105,9 +105,11 @@ impl Hooks {
                                     id: Set(Uuid::new_v4()),
                                     idx: Set(idx),
                                     block_height: Set(te.block_height),
-                                    tx_hash: Set(transactions_by_id
-                                        .get(&te.transaction_id.unwrap_or_default())
-                                        .map(|tx| tx.hash.clone())
+                                    tx_hash: Set(te
+                                        .transaction_id
+                                        .and_then(|tx_id| {
+                                            transactions_by_id.get(&tx_id).map(|tx| tx.hash.clone())
+                                        })
                                         .unwrap_or_default()),
                                     created_at: Set(te.created_at),
                                     from_address: Set(flat_transfer_event.sender.to_string()),
