@@ -1,6 +1,7 @@
-use sea_orm_migration::{prelude::*, schema::*};
-
-use crate::idens::Transfer;
+use {
+    crate::idens::Transfer,
+    sea_orm_migration::{prelude::*, schema::*},
+};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
