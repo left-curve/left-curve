@@ -47,6 +47,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             id
             idx
             blockHeight
+            txHash
             fromAddress
             toAddress
             amount
@@ -54,7 +55,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             createdAt
             accounts { address }
           }
-          edges { node { id idx blockHeight fromAddress toAddress amount denom createdAt accounts { address } } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address } } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -141,6 +142,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
           idx
           createdAt
           blockHeight
+          txHash
           fromAddress
           toAddress
           amount
@@ -271,6 +273,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
           idx
           createdAt
           blockHeight
+          txHash
           fromAddress
           toAddress
           amount

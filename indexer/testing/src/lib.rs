@@ -292,12 +292,12 @@ where
     match framed.next().await {
         Some(Ok(ws::Frame::Text(text))) => {
             // When I need to debug the response
-            // println!("text response: \n{}", str::from_utf8(&text)?);
+            println!("text response: \n{}", str::from_utf8(&text)?);
 
             let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
 
             // When I need to debug the response
-            // println!("response: \n{:#?}", graphql_response);
+            println!("response: \n{:#?}", graphql_response);
 
             if let Some(data) = graphql_response.payload.data.remove(name) {
                 Ok((framed, GraphQLCustomResponse {
