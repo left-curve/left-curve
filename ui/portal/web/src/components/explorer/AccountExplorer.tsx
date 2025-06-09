@@ -109,7 +109,7 @@ const Details: React.FC = () => {
             </p>
             {admin ? (
               <AddressVisualizer
-                className="diatype-sm-medium"
+                classNames={{ text: "diatype-sm-medium" }}
                 address={admin}
                 withIcon
                 onClick={(url) => navigate({ to: url })}

@@ -8,18 +8,42 @@ import { twMerge } from "#utils/twMerge.js";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
-export const AccordionItem: React.FC<
-  PropsWithChildren<{ text: string; icon?: React.ReactNode }>
-> = ({ children, text, icon }) => {
+type AccordionItemProps = {
+  text: string;
+  icon?: React.ReactNode;
+  classNames?: {
+    container?: string;
+    text?: string;
+    icon?: string;
+  };
+};
+
+export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
+  children,
+  classNames,
+  text,
+  icon,
+}) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   return (
-    <div className="flex w-full flex-col bg-rice-50 rounded-md p-4 shadow-account-card overflow-hidden">
+    <div
+      className={twMerge(
+        "flex w-full flex-col bg-rice-50 rounded-md p-4 shadow-account-card overflow-hidden",
+        classNames?.container,
+      )}
+    >
       <div
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <p className="diatype-m-bold">{text}</p>
-        <div className={twMerge("w-6 h-6 transition-all", isOpen ? "rotate-180" : "rotate-0")}>
+        <p className={twMerge("diatype-m-bold", classNames?.text)}>{text}</p>
+        <div
+          className={twMerge(
+            "w-6 h-6 transition-all",
+            isOpen ? "rotate-180" : "rotate-0",
+            classNames?.icon,
+          )}
+        >
           {icon ? icon : <IconChevronDown />}
         </div>
       </div>

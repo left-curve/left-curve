@@ -3,28 +3,17 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  Cell,
-  Skeleton,
-  Table,
-  type TableColumn,
-  TextCopy,
-  TruncateText,
-  twMerge,
-  useCountdown,
-  useWatchEffect,
-} from "@left-curve/applets-kit";
+import { Skeleton, TextCopy, twMerge, useCountdown, useWatchEffect } from "@left-curve/applets-kit";
+import { HeaderExplorer } from "./HeaderExplorer";
+import { TransactionsTable } from "./TransactionsTable";
 
 import { m } from "~/paraglide/messages";
 
-import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
+import type { IndexedBlock } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { HeaderExplorer } from "./HeaderExplorer";
-import { TransactionsTable } from "./TransactionsTable";
 
 type BlockExplorerProps = {
   height: string;
