@@ -88,7 +88,7 @@ const Details: React.FC = () => {
           </p>
           <AddressVisualizer
             address={sender}
-            className="break-all whitespace-normal diatype-sm-medium"
+            classNames={{ text: "break-all whitespace-normal diatype-sm-bold" }}
             withIcon
             onClick={(url) => navigate({ to: url })}
           />
@@ -105,7 +105,7 @@ const Details: React.FC = () => {
           </p>
           <button
             type="button"
-            className="flex gap-1 diatype-m-bold items-center"
+            className="flex gap-1 items-center"
             onClick={() => navigate({ to: `/block/${blockHeight}` })}
           >
             <span>{blockHeight}</span>
