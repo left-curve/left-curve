@@ -332,6 +332,8 @@ fn authorize_outbound(
         SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
             let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
 
+            // TODO: Ignore signatures when reach the threshold?
+
             ensure!(
                 cumulative_signatures.insert(pub_key, signatures).is_none(),
                 "you've already signed transaction `{id}`"

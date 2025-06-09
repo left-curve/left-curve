@@ -27,9 +27,8 @@ pub const SUBDENOM: &str = "satoshi";
 
 pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked([NAMESPACE, SUBDENOM]));
 
-/// Bitcoin address of the P2WPKH (pay to witness public key hash) type, which
-/// is 20-bytes long.
-// TODO: There are other types of Bitcoin addresses.
+/// A Bitcoin address. This is a string representation of the address, which can be in
+/// all kinds of formats. It's validated inside the contract since it depends on the network.
 pub type BitcoinAddress = String;
 
 /// An Bitcoin signature.

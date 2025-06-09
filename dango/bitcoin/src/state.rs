@@ -29,7 +29,7 @@ pub const UTXOS: IndexedMap<(Uint128, Hash256, Vout), Empty, UtxoIndexes> =
         transaction_hash: UniqueIndex::new(|(_, hash, _), _| *hash, "utxo", "utxo__hash"),
     });
 
-/// UTXOs that have been processed by the multisig.
+/// UTXOs that have been processed by the multisig and accredited to the user.
 /// This is used to prevent double spending.
 pub const PROCESSED_UTXOS: Set<(Hash256, Vout)> = Set::new("processed_utxo");
 
