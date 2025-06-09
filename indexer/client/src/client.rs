@@ -1,12 +1,13 @@
 use {
-    crate::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
+    crate::{Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
     anyhow::bail,
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
-        Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        Hash256, Inner, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
-        SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
+        Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
+        BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
+        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
+        UnsignedTx,
     },
     serde::Serialize,
     std::{fmt::Display, str::FromStr},
@@ -172,12 +173,49 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let response: SearchTxOutcome = self
-            .get(format!("api/tendermint/search_tx/{hash}"))
+        let response = self
+            .post_graphql(search_tx::Variables {
+                hash: hash.to_string(),
+            })
             .await?
-            .json()
-            .await?;
+            .transactions
+            .nodes;
 
-        Ok(response)
+        let res = response.first().ok_or(anyhow::anyhow!("no tx found"))?;
+
+        let msgs = res
+            .messages
+            .iter()
+            .map(|m| Json::from_inner(m.data.clone()).deserialize_json())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx = Tx {
+            sender: Addr::from_str(&res.sender)?,
+            gas_limit: res.gas_wanted as u64,
+            msgs: NonEmpty::new(msgs)?,
+            data: Json::from_inner(res.data.clone()),
+            credential: Json::from_inner(res.credential.clone()),
+        };
+
+        Ok(SearchTxOutcome {
+            hash,
+            height: res.block_height as u64,
+            index: res.transaction_idx as u32,
+            tx,
+            outcome: TxOutcome {
+                gas_limit: res.gas_wanted as u64,
+                gas_used: res.gas_used as u64,
+                result: if res.has_succeeded {
+                    GenericResult::Ok(())
+                } else {
+                    GenericResult::Err(res.error_message.clone().unwrap_or_default())
+                },
+                events: res
+                    .nested_events
+                    .clone()
+                    .ok_or(anyhow::anyhow!("no nested events"))?
+                    .deserialize_json()?,
+            },
+        })
     }
 }

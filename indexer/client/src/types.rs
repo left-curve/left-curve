@@ -146,5 +146,12 @@ generate_types! {
     {
         name: BroadcastTxSync,
         path: "src/schemas/mutations/broadcastTxSync.graphql",
+    },
+    {
+        name: SearchTx,
+        path: "src/schemas/queries/transaction.graphql",
+        // test_with: crate::types::search_tx::Variables {
+        //     hash: "0x1234567890".to_string(),
+        // }
     }
 }
