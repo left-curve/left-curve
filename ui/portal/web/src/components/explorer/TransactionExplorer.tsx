@@ -169,14 +169,10 @@ const Messages: React.FC = () => {
       </div>
       <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
         <p className="h4-bold">{m["explorer.txs.messages"]()}</p>
-        {messages.map(({ data, methodName }) => {
+        {messages.map(({ data, methodName, orderIdx }) => {
           const message = data[methodName];
           return (
-            <AccordionItem
-              key={crypto.randomUUID()}
-              text={methodName}
-              classNames={{ text: "capitalize" }}
-            >
+            <AccordionItem key={orderIdx} text={methodName} classNames={{ text: "capitalize" }}>
               <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
                 <JsonVisualizer json={JSON.stringify(message)} collapsed={1} />
               </div>

@@ -40,6 +40,7 @@ export async function searchTxs<transport extends Transport>(
           errorMessage
           messages {
             data
+            orderIdx
             methodName
             contractAddr
           }

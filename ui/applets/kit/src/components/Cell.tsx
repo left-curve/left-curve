@@ -2,7 +2,6 @@ import { usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
-import { formatToTimeZone } from "#utils/dates.js";
 import { twMerge } from "#utils/twMerge.js";
 
 import { AddressVisualizer } from "./AddressVisualizer";
@@ -93,9 +92,7 @@ type CellAgeProps = {
 
 const Age: React.FC<CellAgeProps> = ({ date, addSuffix }) => {
   return (
-    <p className="h-full flex items-center min-w-32">
-      {formatDistanceToNow(date, { addSuffix, in: formatToTimeZone })}
-    </p>
+    <p className="h-full flex items-center min-w-32">{formatDistanceToNow(date, { addSuffix })}</p>
   );
 };
 
