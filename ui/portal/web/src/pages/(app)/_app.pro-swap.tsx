@@ -28,7 +28,7 @@ function RouteComponent() {
         </div>
         <OpenOrder />
       </div>
-      <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow">
+      <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow relative z-20">
         <TradeMenu.Menu />
       </div>
     </div>
