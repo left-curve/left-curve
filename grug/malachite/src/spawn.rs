@@ -1,5 +1,6 @@
 use {
     crate::{
+        HostConfig,
         actors::{Host, HostRef, Mempool, MempoolActorRef, MempoolNetwork, MempoolNetworkActorRef},
         app::{HostApp, MempoolApp},
         codec,
@@ -10,7 +11,7 @@ use {
     grug_app::{App, Db},
     malachitebft_app::events::TxEvent,
     malachitebft_config::{
-        BootstrapProtocol, PubSubProtocol, Selector, ValuePayload, ValueSyncConfig,
+        BootstrapProtocol, ConsensusConfig, PubSubProtocol, Selector, ValuePayload, ValueSyncConfig,
     },
     malachitebft_engine::{
         consensus::{Consensus, ConsensusParams, ConsensusRef},
@@ -61,6 +62,7 @@ where
 
     let host = spawn_host_actor(
         app,
+        cfg.host,
         mempool.clone(),
         network.clone(),
         validator_set.clone(),
@@ -83,7 +85,7 @@ where
     let consensus = spawn_consensus_actor(
         start_height,
         validator_set,
-        cfg,
+        cfg.consensus,
         private_key,
         network.clone(),
         host.clone(),
@@ -199,6 +201,7 @@ async fn spawn_network_actor(
 
 async fn spawn_host_actor<DB, VM, PP, ID>(
     app: Arc<App<DB, VM, PP, ID>>,
+    config: HostConfig,
     mempool: MempoolActorRef,
     network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
@@ -209,7 +212,16 @@ where
     DB: Db,
     App<DB, VM, PP, ID>: HostApp,
 {
-    Host::spawn(app, mempool, network, validator_set, private_key, span).await
+    Host::spawn(
+        app,
+        mempool,
+        network,
+        validator_set,
+        private_key,
+        span,
+        config,
+    )
+    .await
 }
 
 async fn spawn_sync_actor(
@@ -258,7 +270,7 @@ async fn spawn_wal_actor(
 async fn spawn_consensus_actor(
     initial_height: ctx!(Height),
     initial_validator_set: ctx!(ValidatorSet),
-    cfg: Config,
+    cfg: ConsensusConfig,
     signing_provider: ctx!(SigningScheme::PrivateKey),
     network: NetworkRef<Context>,
     host: HostRef,
@@ -273,7 +285,7 @@ async fn spawn_consensus_actor(
         initial_validator_set,
         address: signing_provider.derive_address(),
         threshold_params: Default::default(),
-        value_payload: match cfg.consensus.value_payload {
+        value_payload: match cfg.value_payload {
             ValuePayload::PartsOnly => malachitebft_core_types::ValuePayload::PartsOnly,
             ValuePayload::ProposalAndParts => {
                 malachitebft_core_types::ValuePayload::ProposalAndParts
@@ -287,7 +299,7 @@ async fn spawn_consensus_actor(
     Consensus::spawn(
         Context,
         consensus_params,
-        cfg.consensus.timeouts,
+        cfg.timeouts,
         Box::new(signing_provider),
         network,
         host,

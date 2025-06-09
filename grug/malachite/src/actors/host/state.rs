@@ -1,6 +1,6 @@
 use {
     crate::{
-        ActorResult,
+        ActorResult, HostConfig,
         actors::host::streaming_buffer::PartStreamsMap,
         context::Context,
         ctx,
@@ -15,6 +15,7 @@ use {
     malachitebft_core_types::Round,
     malachitebft_engine::consensus::ConsensusRef,
     malachitebft_sync::PeerId,
+    std::time::{Duration, Instant},
 };
 
 pub type HeightKey = u64;
@@ -32,10 +33,12 @@ pub struct State {
     streams: PartStreamsMap,
     memory_state: MemoryState,
     db_state: DbState,
+    config: HostConfig,
+    started_round: Instant,
 }
 
 impl State {
-    pub fn new<S: Storage + 'static>(storage: S) -> Self {
+    pub fn new<S: Storage + 'static>(storage: S, config: HostConfig) -> Self {
         Self {
             db_storage: Box::new(storage),
             consensus: None,
@@ -47,6 +50,8 @@ impl State {
             memory_state: MemoryState::default(),
             db_state: DbState::default(),
             memory_storage: MockStorage::default(),
+            config,
+            started_round: Instant::now(),
         }
     }
 
@@ -102,6 +107,19 @@ impl State {
         C: FnOnce(&mut dyn Storage, &DbState) -> R,
     {
         callback(&mut self.db_storage, &self.db_state)
+    }
+
+    pub fn started_round(&mut self) {
+        self.started_round = Instant::now();
+    }
+
+    pub fn calculate_block_sleep(&self) -> Duration {
+        let diff = self.started_round.elapsed();
+        if diff < self.config.block_time {
+            self.config.block_time - diff
+        } else {
+            Duration::ZERO
+        }
     }
 }
 

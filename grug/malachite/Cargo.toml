@@ -15,6 +15,7 @@ borsh           = { workspace = true }
 grug            = { workspace = true }
 grug-app        = { workspace = true }
 grug-crypto     = { workspace = true }
+humantime-serde = { workspace = true }
 k256            = { workspace = true }
 libp2p-identity = { workspace = true, features = ["secp256k1"] }
 prost           = { workspace = true }
@@ -38,7 +39,9 @@ config                  = { workspace = true }
 dango-genesis           = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-testing           = { workspace = true }
+dango-types             = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 rand                    = { workspace = true }
+tempfile                = { workspace = true }
 tracing-subscriber      = { workspace = true }

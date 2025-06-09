@@ -4,6 +4,7 @@ use {
         ValueSyncConfig,
     },
     serde::{Deserialize, Serialize},
+    std::time::Duration,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -28,4 +29,12 @@ pub struct Config {
 
     /// Runtime configuration options
     pub runtime: RuntimeConfig,
+
+    pub host: HostConfig,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct HostConfig {
+    #[serde(with = "humantime_serde")]
+    pub block_time: Duration,
 }

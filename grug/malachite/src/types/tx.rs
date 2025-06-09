@@ -1,11 +1,25 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
+    grug::{JsonSerExt, Tx},
     prost::bytes::Bytes,
     std::ops::Deref,
 };
 
 #[grug::derive(Serde)]
 pub struct RawTx(pub Bytes);
+
+impl RawTx {
+    pub fn from_tx(tx: Tx) -> anyhow::Result<Self> {
+        Ok(Self(Bytes::from(tx.to_json_vec()?)))
+    }
+
+    pub fn from_bytes<B>(bytes: B) -> Self
+    where
+        B: Into<Bytes>,
+    {
+        Self(bytes.into())
+    }
+}
 
 impl Deref for RawTx {
     type Target = Bytes;

@@ -109,6 +109,7 @@ graphql_client          = "0.14"
 hex                     = "0.4"
 hex-literal             = "0.4" # requires rust edition 2024 in order to upgrade to v1
 home                    = "0.5"
+humantime-serde         = "1"
 ics23                   = "0.12"
 itertools               = "0.14"
 k256                    = "0.13"

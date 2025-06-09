@@ -1,6 +1,6 @@
 use {
     crate::{
-        ActorResult,
+        ActorResult, HostConfig,
         actors::{MempoolActorRef, MempoolMsg, host::state::State},
         app::{HostApp, HostAppRef},
         context::Context,
@@ -76,12 +76,13 @@ impl Host {
         validator_set: ctx!(ValidatorSet),
         private_key: ctx!(SigningScheme::PrivateKey),
         span: Span,
+        config: HostConfig,
     ) -> HostRef
     where
         DB: Db,
         App<DB, VM, PP, ID>: HostApp,
     {
-        let args = State::new(app.db.consensus());
+        let args = State::new(app.db.consensus(), config);
 
         let host = Host {
             app,
@@ -264,6 +265,8 @@ impl Host {
         // If we have already built or seen one or more values for this height and round,
         // feed them back to consensus. This may happen when we are restarting after a crash.
         let consensus = state.consensus()?;
+
+        state.started_round();
 
         state.with_db_storage(|storage, db| {
             for value in db.undecided_proposals
@@ -534,10 +537,18 @@ impl Host {
         // Is this the equivalent to call commit into the App?
 
         // Start the next height
-        consensus.cast(ConsensusMsg::StartHeight(
-            state.height.increment(),
-            self.validator_set.clone(),
-        ))?;
+
+        let sleep = state.calculate_block_sleep();
+        let validator_set = self.validator_set.clone();
+        let next_height = state.height.increment();
+        info!(diff = ?sleep, "sleeping until next round");
+
+        tokio::spawn(async move {
+            tokio::time::sleep(sleep).await;
+            if let Err(e) = consensus.cast(ConsensusMsg::StartHeight(next_height, validator_set)) {
+                error!("Error starting height: {:?}", e);
+            }
+        });
 
         Ok(())
     }
