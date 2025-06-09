@@ -24,9 +24,9 @@ services:
     ports:
       - 127.0.0.1:8080:8080
     volumes:
-      - ./configs/dango/config:/home/dango/.dango/config
-      - ./data/dango/data:/home/dango/.dango/data
-      - ./data/dango/indexer:/home/dango/.dango/indexer
+      - ./configs/dango/config:/root/.dango/config
+      - ./data/dango/data:/root/.dango/data
+      - ./data/dango/indexer:/root/.dango/indexer
     environment:
       - DB_HOST=db
       - DB_PORT=5432
@@ -49,7 +49,6 @@ services:
     tty: true
     networks:
       - dango
-      - monitoring
 
   prometheus:
     image: prom/prometheus:latest
@@ -91,7 +90,7 @@ services:
     ports:
       - "127.0.0.1:9093:9093"
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/alertmanager
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"

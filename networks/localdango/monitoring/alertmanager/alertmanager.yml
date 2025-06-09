@@ -1,12 +1,21 @@
+global:
+  resolve_timeout: 5m
+
 route:
-  receiver: gmail
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'null'
 
 receivers:
-- name: gmail
-  email_configs:
-  - to: recipient@gmail.com
-    from: email_id@gmail.com
-    smarthost: smtp.gmail.com:587
-    auth_username: email_id@gmail.com
-    auth_identity: email_id@gmail.com
-    auth_password: password
+  - name: 'null'
+    # This is a null receiver - alerts go nowhere
+    # Replace with slack, email, etc. when ready
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
