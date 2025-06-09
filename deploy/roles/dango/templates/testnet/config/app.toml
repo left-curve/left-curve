@@ -49,6 +49,17 @@ port = 8080
 # this line.
 #cors_allowed_origin = "*"
 
+[indexer.metrics_httpd]
+
+# Whether to enable the HTTP server.
+enabled = true
+
+# IP address to listen on. `0.0.0.0` means all interfaces.
+ip = "0.0.0.0"
+
+# Port to listen on.
+port = 9191
+
 ################################################################################
 ###                         Tendermint Configuration                         ###
 ################################################################################

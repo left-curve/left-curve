@@ -39,7 +39,8 @@ pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
     pub database_url: String,
-    pub httpd: IndexerHttpdConfig,
+    pub httpd: HttpdConfig,
+    pub metrics_httpd: HttpdConfig,
 }
 
 impl Default for IndexerConfig {
@@ -48,27 +49,26 @@ impl Default for IndexerConfig {
             enabled: false,
             keep_blocks: false,
             database_url: "postgres://localhost".to_string(),
-            httpd: IndexerHttpdConfig::default(),
+            httpd: HttpdConfig::default(),
+            metrics_httpd: HttpdConfig::default(),
         }
     }
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct IndexerHttpdConfig {
+pub struct HttpdConfig {
     pub enabled: bool,
     pub ip: String,
     pub port: u16,
-    pub metrics_port: u16,
     pub cors_allowed_origin: Option<String>,
 }
 
-impl Default for IndexerHttpdConfig {
+impl Default for HttpdConfig {
     fn default() -> Self {
-        IndexerHttpdConfig {
+        HttpdConfig {
             enabled: false,
             ip: "127.0.0.1".to_string(),
-            port: 8080,
-            metrics_port: 9191,
+            port: 0,
             cors_allowed_origin: None,
         }
     }

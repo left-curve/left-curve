@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{Config, GrugConfig, IndexerHttpdConfig, TendermintConfig},
+        config::{Config, GrugConfig, HttpdConfig, TendermintConfig},
         home_directory::HomeDirectory,
     },
     anyhow::anyhow,
@@ -114,7 +114,12 @@ impl StartCmd {
     }
 
     /// Run the indexer HTTP server
-    async fn run_httpd_server(cfg: &IndexerHttpdConfig, context: Context) -> anyhow::Result<()> {
+    async fn run_httpd_server(cfg: &HttpdConfig, context: Context) -> anyhow::Result<()> {
+        if !cfg.enabled {
+            tracing::info!("HTTP server is disabled in the configuration.");
+            return Ok(());
+        }
+
         indexer_httpd::server::run_server(
             &cfg.ip,
             cfg.port,
@@ -132,10 +137,15 @@ impl StartCmd {
 
     /// Run the metrics HTTP server
     async fn run_metrics_httpd_server(
-        cfg: &IndexerHttpdConfig,
+        cfg: &HttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
-        indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.metrics_port, metrics_handler)
+        if !cfg.enabled {
+            tracing::info!("Metrics HTTP server is disabled in the configuration.");
+            return Ok(());
+        }
+
+        indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run HTTP server: {err:?}");

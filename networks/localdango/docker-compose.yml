@@ -49,6 +49,7 @@ services:
     tty: true
     networks:
       - dango
+      - monitoring
 
   prometheus:
     image: prom/prometheus:latest
