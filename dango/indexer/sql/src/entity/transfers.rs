@@ -73,7 +73,7 @@ impl Model {
             .ok_or_else(|| {
                 async_graphql::Error::new(format!(
                     "account with address {} not found. This is not expected.",
-                    self.from_address
+                    self.to_address
                 ))
                 .extend_with(|_err, e| e.set("code", "NOT_FOUND"))
             })?;
