@@ -85,6 +85,7 @@ impl Model {
     }
 }
 
+#[cfg(feature = "async-graphql")]
 impl Model {
     async fn find_account_by_address(
         &self,
