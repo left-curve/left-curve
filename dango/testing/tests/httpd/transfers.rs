@@ -108,7 +108,10 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                 .is_equal_to(vec!["100000000", "100000000"]);
 
                 response.data.edges.iter().for_each(|edge| {
-                    assert!(!edge.node.tx_hash.is_empty(), "Transaction hash should not be empty.");
+                    assert!(
+                        !edge.node.tx_hash.is_empty(),
+                        "Transaction hash should not be empty."
+                    );
                 });
 
                 Ok::<(), anyhow::Error>(())
