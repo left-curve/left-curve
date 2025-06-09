@@ -1,19 +1,20 @@
 import { usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
+import { formatToTimeZone } from "#utils/dates.js";
 import { twMerge } from "#utils/twMerge.js";
 
 import { AddressVisualizer } from "./AddressVisualizer";
+import { Badge } from "./Badge";
+import { TextCopy } from "./TextCopy";
+import { IconLink } from "./icons/IconLink";
 
 import type { Address, IndexedMessage } from "@left-curve/dango/types";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { Badge } from "./Badge";
-import { TextCopy } from "./TextCopy";
-import { IconLink } from "./icons/IconLink";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -92,7 +93,9 @@ type CellAgeProps = {
 
 const Age: React.FC<CellAgeProps> = ({ date, addSuffix }) => {
   return (
-    <p className="h-full flex items-center min-w-32">{formatDistanceToNow(date, { addSuffix })}</p>
+    <p className="h-full flex items-center min-w-32">
+      {formatDistanceToNow(date, { addSuffix, in: formatToTimeZone })}
+    </p>
   );
 };
 
