@@ -45,32 +45,28 @@ impl Model {
         Ok(accounts)
     }
 
-    pub async fn from_accounts(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Vec<crate::entity::accounts::Model>> {
+    pub async fn from_account(&self, ctx: &Context<'_>) -> Result<crate::entity::accounts::Model> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        let accounts = crate::entity::accounts::Entity::find()
+        let account = crate::entity::accounts::Entity::find()
             .filter(crate::entity::accounts::Column::Address.eq(&self.from_address))
-            .all(db)
-            .await?;
+            .one(db)
+            .await?
+            .expect("account not found, this is not expected");
 
-        Ok(accounts)
+        Ok(account)
     }
 
-    pub async fn to_accounts(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Vec<crate::entity::accounts::Model>> {
+    pub async fn to_account(&self, ctx: &Context<'_>) -> Result<crate::entity::accounts::Model> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        let accounts = crate::entity::accounts::Entity::find()
+        let account = crate::entity::accounts::Entity::find()
             .filter(crate::entity::accounts::Column::Address.eq(&self.to_address))
-            .all(db)
-            .await?;
+            .one(db)
+            .await?
+            .expect("account not found, this is not expected");
 
-        Ok(accounts)
+        Ok(account)
     }
 }
 
