@@ -740,4 +740,43 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn geometric_pool_iterator_stops_at_zero_price() {
+        let pair = PairParams {
+            pool_type: PassiveLiquidity::Geometric {
+                ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                order_spacing: Udec128::new_percent(50),
+            },
+            swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        let reserve = coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        }
+        .try_into()
+        .unwrap();
+
+        let (bids, asks) = pair
+            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .unwrap();
+
+        let bids_collected = bids.collect::<Vec<_>>();
+
+        assert_eq!(bids_collected.len(), 2);
+
+        for (bid, expected_bid) in bids_collected.into_iter().zip(vec![
+            (Udec128::new_percent(99), Uint128::from(5050505)),
+            (Udec128::new_percent(49), Uint128::from(5102040)),
+        ]) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert_eq!(bid.1, expected_bid.1);
+        }
+
+        // Check that ask iterator keeps going after bid iterator is exhausted
+        let asks_collected = asks.take(10).collect::<Vec<_>>();
+        assert_eq!(asks_collected.len(), 10);
+    }
 }
