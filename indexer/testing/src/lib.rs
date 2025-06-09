@@ -289,32 +289,35 @@ pub async fn parse_graphql_subscription_response<R>(
 where
     R: DeserializeOwned,
 {
-    match framed.next().await {
-        Some(Ok(ws::Frame::Text(text))) => {
-            // When I need to debug the response
-            // println!("text response: \n{}", str::from_utf8(&text)?);
+    loop {
+        match framed.next().await {
+            Some(Ok(ws::Frame::Text(text))) => {
+                // When I need to debug the response
+                // println!("text response: \n{}", str::from_utf8(&text)?);
 
-            let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
+                let mut graphql_response: GraphQLSubscriptionResponse =
+                    serde_json::from_slice(&text)?;
 
-            // When I need to debug the response
-            // println!("response: \n{:#?}", graphql_response);
+                // When I need to debug the response
+                // println!("response: \n{:#?}", graphql_response);
 
-            if let Some(data) = graphql_response.payload.data.remove(name) {
-                Ok((framed, GraphQLCustomResponse {
-                    data: serde_json::from_value(data)?,
-                    errors: graphql_response.payload.errors,
-                }))
-            } else {
-                Err(anyhow!("can't find {name} in response"))
-            }
-        },
-        Some(Ok(ws::Frame::Ping(ping))) => {
-            framed.send(ws::Message::Pong(ping)).await?;
-            Err(anyhow!("received ping"))
-        },
-        Some(Err(e)) => Err(e.into()),
-        None => Err(anyhow!("connection closed unexpectedly")),
-        res => Err(anyhow!("unexpected message type: {res:?}")),
+                if let Some(data) = graphql_response.payload.data.remove(name) {
+                    return Ok((framed, GraphQLCustomResponse {
+                        data: serde_json::from_value(data)?,
+                        errors: graphql_response.payload.errors,
+                    }));
+                } else {
+                    return Err(anyhow!("can't find {name} in response"));
+                }
+            },
+            Some(Ok(ws::Frame::Ping(ping))) => {
+                framed.send(ws::Message::Pong(ping)).await?;
+                continue;
+            },
+            Some(Err(e)) => return Err(e.into()),
+            None => return Err(anyhow!("connection closed unexpectedly")),
+            res => return Err(anyhow!("unexpected message type: {res:?}")),
+        }
     }
 }
 

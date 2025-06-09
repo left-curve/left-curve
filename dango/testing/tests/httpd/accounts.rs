@@ -416,3 +416,112 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         })
         .await?
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let mut test_account1 =
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    suite.app.indexer.wait_for_finish();
+
+    let graphql_query = r#"
+      subscription Accounts($username: String) {
+      accounts(username: $username) {
+            id
+            address
+            accountIndex
+            accountType
+            createdAt
+            createdBlockHeight
+            users { username }
+        }
+      }
+    "#;
+
+    let variables = serde_json::json!({
+        "username": "user",
+    })
+    .as_object()
+    .unwrap()
+    .to_owned();
+
+    let request_body = GraphQLCustomRequest {
+        name: "accounts",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    // Can't call this from LocalSet so using channels instead.
+    let (create_account_tx, mut rx) = mpsc::channel::<u32>(1);
+    tokio::spawn(async move {
+        while let Some(idx) = rx.recv().await {
+            // Create a new account with a new username
+            let _test_account = create_user_and_account(
+                &mut suite,
+                &mut accounts,
+                &contracts,
+                &codes,
+                &format!("foo{idx}"),
+            );
+
+            // Create a new account with the same username
+            let _test_account2 =
+                add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
+
+            // Enabling this here will cause the test to hang
+            // suite.app.indexer.wait_for_finish();
+        }
+        Ok::<(), anyhow::Error>(())
+    });
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let name = request_body.name;
+                let (_srv, _ws, framed) =
+                    call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
+
+                // 1st response is always the existing last block
+                let (framed, response) = parse_graphql_subscription_response::<
+                    Vec<entity::accounts::Model>,
+                >(framed, name)
+                .await?;
+
+                assert_that!(
+                    response
+                        .data
+                        .into_iter()
+                        .map(|t| t.created_block_height)
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec![2]);
+
+                create_account_tx.send(2).await.unwrap();
+
+                // 2nd response
+                let (_, response) = parse_graphql_subscription_response::<
+                    Vec<entity::accounts::Model>,
+                >(framed, name)
+                .await?;
+
+                assert_that!(
+                    response
+                        .data
+                        .into_iter()
+                        .map(|t| t.created_block_height)
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec![5]);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
