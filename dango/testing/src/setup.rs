@@ -271,7 +271,7 @@ pub fn setup_suite_with_db_and_vm<DB, VM, PP, ID>(
 )
 where
     DB: Db,
-    VM: Vm + GenesisCodes + Clone + 'static,
+    VM: Vm + GenesisCodes + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,

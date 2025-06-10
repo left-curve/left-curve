@@ -83,7 +83,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -393,7 +393,18 @@ where
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
         if let Some(block_height) = self.db.latest_version() {
-            self.indexer.post_indexing(block_height)?;
+            let querier = {
+                let storage = self.db.state_storage(Some(block_height))?;
+                let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+                Box::new(QuerierProviderImpl::new(
+                    self.vm.clone(),
+                    Box::new(storage),
+                    GasTracker::new_limitless(),
+                    block,
+                ))
+            };
+
+            self.indexer.post_indexing(block_height, querier)?;
         }
 
         Ok(())
@@ -580,7 +591,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -676,7 +687,7 @@ fn process_tx<S, VM>(
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Create the gas tracker, with the limit being the gas limit requested by
@@ -848,7 +859,7 @@ fn process_msgs_then_backrun<S, VM>(
 ) -> EventResult<MsgsAndBackrunEvents>
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = MsgsAndBackrunEvents::base();
@@ -905,7 +916,7 @@ fn process_finalize_fee<S, VM>(
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
@@ -951,7 +962,7 @@ pub fn process_msg<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<Event>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     match msg {
@@ -1028,7 +1039,7 @@ pub fn process_query<VM>(
     req: Query,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     match req {

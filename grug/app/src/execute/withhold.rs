@@ -18,7 +18,7 @@ pub fn do_withhold_fee<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtWithhold>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_withhold_fee(vm, storage, gas_tracker, block, tx, mode, trace_opt);
@@ -49,7 +49,7 @@ pub fn _do_withhold_fee<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtWithhold>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtWithhold::base(tx.sender, tx.gas_limit);

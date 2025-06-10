@@ -1,5 +1,7 @@
 use grug_types::{Block, BlockOutcome, Storage};
 
+use crate::QuerierProvider;
+
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
 pub trait Indexer {
     type Error: ToString;
@@ -22,5 +24,9 @@ pub trait Indexer {
     fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> Result<(), Self::Error>;
 
     /// Called after indexing the block, allowing for DB transactions to be committed
-    fn post_indexing(&self, block_height: u64) -> Result<(), Self::Error>;
+    fn post_indexing(
+        &self,
+        block_height: u64,
+        querier: Box<dyn QuerierProvider>,
+    ) -> Result<(), Self::Error>;
 }

@@ -18,7 +18,7 @@ pub fn do_backrun<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtBackrun>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_backrun(vm, storage, gas_tracker, block, tx, mode, trace_opt);
@@ -49,7 +49,7 @@ pub fn _do_backrun<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtBackrun>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtBackrun::base(tx.sender);
