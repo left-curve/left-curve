@@ -21,6 +21,7 @@ use {
 };
 
 /// Accounts available for testing purposes.
+#[derive(Debug, Clone)]
 pub struct TestAccounts {
     pub owner: TestAccount,
     pub user1: TestAccount,
