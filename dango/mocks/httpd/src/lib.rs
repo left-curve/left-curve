@@ -1,12 +1,13 @@
 use {
     anyhow::bail,
-    dango_genesis::GenesisCodes,
+    dango_genesis::{Codes, Contracts, GenesisCodes},
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
-    dango_testing::setup_suite_with_db_and_vm,
+    dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
     grug_db_memory::MemDb,
     grug_testing::MockClient,
-    grug_vm_rust::RustVm,
+    grug_vm_rust::{ContractWrapper, RustVm},
+    hyperlane_testing::MockValidatorSets,
     indexer_httpd::context::Context,
     std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
@@ -27,6 +28,32 @@ pub async fn run(
     keep_blocks: bool,
     database_url: Option<String>,
 ) -> Result<(), Error> {
+    run_with_callback(
+        port,
+        block_creation,
+        cors_allowed_origin,
+        test_opt,
+        genesis_opt,
+        keep_blocks,
+        database_url,
+        |_, _, _, _| {},
+    )
+    .await
+}
+
+pub async fn run_with_callback<C>(
+    port: u16,
+    block_creation: BlockCreation,
+    cors_allowed_origin: Option<String>,
+    test_opt: TestOption,
+    genesis_opt: GenesisOption,
+    keep_blocks: bool,
+    database_url: Option<String>,
+    callback: C,
+) -> Result<(), Error>
+where
+    C: FnOnce(TestAccounts, Codes<ContractWrapper>, Contracts, MockValidatorSets) + Send + Sync,
+{
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
 
     let indexer = if let Some(url) = database_url {
@@ -45,7 +72,7 @@ pub async fn run(
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
-    let (suite, ..) = setup_suite_with_db_and_vm(
+    let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
         ProposalPreparer::new(),
@@ -54,6 +81,8 @@ pub async fn run(
         test_opt,
         genesis_opt,
     );
+
+    callback(test, codes, contracts, mock_validator_sets);
 
     let suite = Arc::new(Mutex::new(suite));
 
