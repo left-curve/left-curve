@@ -1,19 +1,19 @@
 import { usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { twMerge } from "#utils/twMerge.js";
 
 import { AddressVisualizer } from "./AddressVisualizer";
+import { Badge } from "./Badge";
+import { TextCopy } from "./TextCopy";
+import { IconLink } from "./icons/IconLink";
 
 import type { Address, IndexedMessage } from "@left-curve/dango/types";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { Badge } from "./Badge";
-import { TextCopy } from "./TextCopy";
-import { IconLink } from "./icons/IconLink";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;

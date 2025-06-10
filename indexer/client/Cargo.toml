@@ -31,7 +31,9 @@ assertor         = { workspace = true }
 dango-genesis    = { workspace = true }
 dango-mock-httpd = { workspace = true }
 dango-testing    = { workspace = true }
+dango-types      = { workspace = true }
 grug             = { workspace = true }
 grug-testing     = { workspace = true }
 indexer-testing  = { workspace = true }
 tokio            = { workspace = true }
+tracing          = { workspace = true }
