@@ -1,6 +1,6 @@
 import { HttpRequestError } from "../errors/request.js";
 import { TimeoutError } from "../errors/timeout.js";
-import type { HttpRpcClientOptions, RpcClient } from "../types/index.js";
+import type { HttpClientOptions, RpcClient } from "../types/index.js";
 import { withTimeout } from "../utils/promises.js";
 
 function createIdStore() {
@@ -17,7 +17,7 @@ function createIdStore() {
 
 export const idHandler = /*#__PURE__*/ createIdStore();
 
-export function rpcClient(url: string, options: HttpRpcClientOptions = {}): RpcClient {
+export function rpcClient(url: string, options: HttpClientOptions = {}): RpcClient {
   return {
     async request(params) {
       const {

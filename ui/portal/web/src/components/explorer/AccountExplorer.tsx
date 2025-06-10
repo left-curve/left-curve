@@ -1,5 +1,5 @@
-import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
-import { usePrices, usePublicClient } from "@left-curve/store";
+import { AddressVisualizer } from "@left-curve/applets-kit";
+import { useInfiniteGraphqlQuery, usePrices, usePublicClient } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
@@ -12,9 +12,16 @@ import { AccountCard } from "../foundation/AccountCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 
-import type { Account, Address, Coins, ContractInfo } from "@left-curve/dango/types";
+import type {
+  Account,
+  Address,
+  Coins,
+  ContractInfo,
+  IndexedTransaction,
+} from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { TransactionsTable } from "./TransactionsTable";
 
 const AccountExplorerContext = createContext<
   | (UseQueryResult<(Account & ContractInfo & { balances: Coins }) | null, Error> & {
@@ -102,7 +109,7 @@ const Details: React.FC = () => {
             </p>
             {admin ? (
               <AddressVisualizer
-                className="diatype-sm-medium"
+                classNames={{ text: "diatype-sm-medium" }}
                 address={admin}
                 withIcon
                 onClick={(url) => navigate({ to: url })}
@@ -153,8 +160,34 @@ const Assets: React.FC = () => {
   return <AssetsTable balances={account.balances} />;
 };
 
+const Transactions: React.FC = () => {
+  const { isLoading, data: account } = useAccountExplorer();
+  const client = usePublicClient();
+
+  const { data, pagination, ...transactions } = useInfiniteGraphqlQuery<IndexedTransaction>({
+    limit: 10,
+    sortBy: "BLOCK_HEIGHT_DESC",
+    query: {
+      enabled: !!account,
+      queryKey: ["account_transactions", account?.address],
+      queryFn: async ({ pageParam }) =>
+        client.searchTxs({ senderAddress: account?.address, ...pageParam }),
+    },
+  });
+
+  if (isLoading || !account) return null;
+
+  return (
+    <TransactionsTable
+      transactions={data?.pages[pagination?.currentPage - 1]?.nodes || []}
+      pagination={{ ...pagination, isLoading: transactions.isLoading }}
+    />
+  );
+};
+
 export const AccountExplorer = Object.assign(Root, {
   Details,
   NotFound,
   Assets,
+  Transactions,
 });

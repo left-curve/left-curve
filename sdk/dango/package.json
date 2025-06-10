@@ -93,9 +93,7 @@
   },
   "dependencies": {
     "@left-curve/sdk": "workspace:^",
-    "graphql": "^16.10.0",
-    "graphql-request": "^7.1.2",
-    "ox": "^0.6.10"
+    "graphql": "^16.10.0"
   },
   "peerDependencies": {
     "graphql-ws": ">=6.0.0"

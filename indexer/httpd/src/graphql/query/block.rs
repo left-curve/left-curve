@@ -1,7 +1,7 @@
 use {
     crate::context::Context,
     async_graphql::{types::connection::*, *},
-    indexer_sql::entity::{self},
+    indexer_sql::entity,
     sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select},
     serde::{Deserialize, Serialize},
 };

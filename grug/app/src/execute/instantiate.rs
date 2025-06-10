@@ -23,7 +23,7 @@ pub fn do_instantiate<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtInstantiate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_instantiate(
@@ -64,7 +64,7 @@ pub fn _do_instantiate<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtInstantiate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Compute the contract address, and make sure there isn't already a

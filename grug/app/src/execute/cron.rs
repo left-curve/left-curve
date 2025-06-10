@@ -19,7 +19,7 @@ pub fn do_cron_execute<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtCron>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_cron_execute(
@@ -60,7 +60,7 @@ fn _do_cron_execute<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtCron>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtCron::base(contract, time, next);

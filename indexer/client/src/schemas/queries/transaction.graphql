@@ -1,0 +1,23 @@
+query SearchTx($hash: String!) {
+      transactions(hash: $hash) {
+        nodes {
+          hash
+          blockHeight
+          hasSucceeded
+          sender
+          nestedEvents
+          gasWanted
+          gasUsed
+          errorMessage
+          transactionIdx
+          credential
+          data
+          messages {
+            data
+            orderIdx
+            methodName
+            contractAddr
+          }
+        }
+      }
+    }

@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { AccordionItem, IconLink, twMerge } from "@left-curve/applets-kit";
 
 import {
   AddressVisualizer,
@@ -39,7 +39,11 @@ const Container: React.FC<PropsWithChildren<TransactionProps>> = ({
   const client = usePublicClient();
   const value = useQuery({
     queryKey: ["tx", txHash],
-    queryFn: () => client.searchTx({ hash: txHash }),
+    queryFn: async () => {
+      const txs = await client.searchTxs({ hash: txHash });
+      if (!txs.nodes.length) return null;
+      return txs.nodes[0];
+    },
   });
 
   return (
@@ -84,7 +88,7 @@ const Details: React.FC = () => {
           </p>
           <AddressVisualizer
             address={sender}
-            className="break-all whitespace-normal diatype-sm-medium"
+            classNames={{ text: "break-all whitespace-normal diatype-sm-bold" }}
             withIcon
             onClick={(url) => navigate({ to: url })}
           />
@@ -99,13 +103,14 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
-          <Button
-            className="m-0 p-0 pr-1"
-            variant="link"
+          <button
+            type="button"
+            className="flex gap-1 items-center"
             onClick={() => navigate({ to: `/block/${blockHeight}` })}
           >
-            {blockHeight}
-          </Button>
+            <span>{blockHeight}</span>
+            <IconLink className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
@@ -117,13 +122,13 @@ const Details: React.FC = () => {
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
-          <p>{gasUsed} DGX</p>
+          <p>{gasUsed}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
-          <p>{gasWanted} DGX</p>
+          <p>{gasWanted}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
@@ -152,21 +157,34 @@ const Messages: React.FC = () => {
 
   if (!tx) return null;
 
-  const { nestedEvents } = tx;
+  const { nestedEvents, messages } = tx;
+
   return (
-    <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
-      <p className="h4-bold">{m["explorer.txs.events"]()}</p>
-      <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
-        <JsonVisualizer json={nestedEvents} collapsed={1} />
-      </div>
-      {/* {events.length ? <p className="h4-bold">Events</p> : null}
-          {events.map((event) => (
-            <AccordionItem key={crypto.randomUUID()} text={event.type}>
+    <div className="flex flex-col w-full gap-6">
+      <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold">{m["explorer.txs.messages"]()}</p>
+        {messages.map(({ data, methodName, orderIdx }) => {
+          const message = data[methodName];
+          return (
+            <AccordionItem
+              key={orderIdx}
+              text={methodName}
+              classNames={{ text: "capitalize" }}
+              defaultExpanded
+            >
               <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
-                {JSON.stringify(event.details)}
+                <JsonVisualizer json={JSON.stringify(message)} collapsed={1} />
               </div>
             </AccordionItem>
-          ))} */}
+          );
+        })}
+      </div>
+      <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold">{m["explorer.txs.events"]()}</p>
+        <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
+          <JsonVisualizer json={nestedEvents} collapsed={1} />
+        </div>
+      </div>
     </div>
   );
 };

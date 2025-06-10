@@ -13,7 +13,7 @@ function TransactionExplorerApplet() {
 
   return (
     <div className="w-full flex flex-col items-center">
-      <MobileTitle title={m["explorer.txs.title"]()} className="p-4 pb-0" />
+      <MobileTitle title={m["explorer.txs.title"]()} className="p-4 pb-0 w-full" />
       <TransactionExplorer txHash={txHash}>
         <TransactionExplorer.NotFound />
         <TransactionExplorer.Details />

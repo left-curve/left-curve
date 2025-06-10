@@ -5,9 +5,7 @@ use {
     grug_app::{
         App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
-    grug_types::{
-        BlockInfo, BroadcastClient, Query, QueryResponse, SearchTxClient, TxOutcome, UnsignedTx,
-    },
+    grug_types::{BlockInfo, BroadcastClient, Query, QueryResponse, TxOutcome, UnsignedTx},
 };
 
 #[async_trait]
@@ -141,12 +139,6 @@ where
     }
 }
 
-pub trait ConsensusClient:
-    SearchTxClient<Error = anyhow::Error> + BroadcastClient<Error = anyhow::Error>
-{
-}
+pub trait ConsensusClient: BroadcastClient<Error = anyhow::Error> {}
 
-impl<T> ConsensusClient for T where
-    T: SearchTxClient<Error = anyhow::Error> + BroadcastClient<Error = anyhow::Error>
-{
-}
+impl<T> ConsensusClient for T where T: BroadcastClient<Error = anyhow::Error> {}

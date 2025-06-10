@@ -150,7 +150,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
           <img src="/images/emojis/detailed/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
-          <AddressVisualizer address={address} withIcon className="diatype-m-medium" />
+          <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
           {isMd ? (
             <p className="diatype-sm-regular text-gray-500">{address}</p>
           ) : (

@@ -18,7 +18,10 @@ import type React from "react";
 
 type AddressVisualizerProps = {
   address: Address;
-  className?: string;
+  classNames?: {
+    container?: string;
+    text?: string;
+  };
   withIcon?: boolean;
   onClick?: (url: string) => void;
 };
@@ -43,7 +46,7 @@ const DANGO_CONTRACT_NAMES: Record<AllLeafKeys<AppConfig["addresses"]>, string> 
 
 export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
   address,
-  className,
+  classNames,
   withIcon,
   onClick,
 }) => {
@@ -122,14 +125,14 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
     return (
       <Component
         className={twMerge(
-          "flex items-center gap-1 p-0 pr-1 m-0",
+          "flex items-center gap-1",
           { "cursor-pointer": isClickable },
-          className,
+          classNames?.container,
         )}
         onClick={() => onClick?.(blockExplorer.contractPage.replace("${address}", address))}
       >
         {withIcon ? <img src="/DGX.svg" alt="dango logo" className="h-4 w-4" /> : null}
-        <span className="diatype-m-bold">{contract.name}</span>
+        <span className={twMerge("diatype-m-bold", classNames?.text)}>{contract.name}</span>
         {isClickable ? <IconLink className="w-4 h-4" /> : null}
       </Component>
     );
@@ -138,19 +141,19 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
     return (
       <Component
         className={twMerge(
-          "flex items-center gap-1 p-0 pr-1 m-0",
+          "flex items-center gap-1",
           { "cursor-pointer": isClickable },
-          className,
+          classNames?.container,
         )}
         onClick={() => onClick?.(blockExplorer.accountPage.replace("${address}", address))}
       >
         {withIcon ? (
           <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
         ) : null}
-        <span className="diatype-m-bold">{account.name}</span>
+        <span className={twMerge("diatype-m-bold", classNames?.text)}>{account.name}</span>
         {isClickable ? <IconLink className="w-4 h-4" /> : null}
       </Component>
     );
 
-  return <TruncateResponsive text={address} className={className} />;
+  return <TruncateResponsive text={address} className={classNames?.text} />;
 };

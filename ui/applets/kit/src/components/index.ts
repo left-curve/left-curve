@@ -28,11 +28,12 @@ export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
-export { Pagination } from "./Pagination";
+export { Pagination, CursorPagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
 export { Tooltip } from "./Tooltip";
+export { Radio } from "./RadioGroup";
 
 /* ---------------------------------- Icons --------------------------------- */
 

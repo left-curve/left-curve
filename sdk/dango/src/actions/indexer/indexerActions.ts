@@ -1,7 +1,7 @@
 import { type QueryBlockParameters, type QueryBlockReturnType, queryBlock } from "./queryBlock.js";
 
 import type { Client, Transport } from "@left-curve/sdk/types";
-import { type SearchTxParameters, type SearchTxReturnType, searchTx } from "./searchTx.js";
+import { type SearchTxsParameters, type SearchTxsReturnType, searchTxs } from "./searchTxs.js";
 
 import {
   type BlockSubscriptionParameters,
@@ -17,7 +17,7 @@ import {
 
 export type IndexerActions = {
   queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
-  searchTx: (args: SearchTxParameters) => SearchTxReturnType;
+  searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
 };
@@ -26,7 +26,7 @@ export function indexerActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): IndexerActions {
   return {
-    searchTx: (args) => searchTx(client, args),
+    searchTxs: (args) => searchTxs(client, args),
     queryBlock: (args) => queryBlock(client, args),
     blockSubscription: (args) => blockSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
