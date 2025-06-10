@@ -345,6 +345,7 @@ where
 
             Ok::<(), sea_orm::error::DbErr>(())
         })?;
+
         Ok(())
     }
 }
@@ -641,6 +642,7 @@ impl Default for RuntimeHandler {
                 (Some(runtime), handle)
             },
         };
+
         Self { runtime, handle }
     }
 }

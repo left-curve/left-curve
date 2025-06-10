@@ -84,7 +84,7 @@ macro_rules! generate_types {
                             .await;
 
                         #[cfg(feature = "tracing")]
-                        tracing::info!("GraphQL response: {:#?}", result);
+                        tracing::info!("GraphQL response: {result:#?}");
 
                         assert_that!(result).is_ok();
 

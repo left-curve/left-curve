@@ -1,9 +1,5 @@
 use {
-    crate::{
-        entity::{self},
-        error::Error,
-        hooks::Hooks,
-    },
+    crate::{entity, error::Error, hooks::Hooks},
     dango_types::{
         DangoQuerier,
         account_factory::{
@@ -35,7 +31,7 @@ impl Hooks {
         let mut account_key_removed_events = Vec::new();
 
         // NOTE:
-        // The kind of operations which needs to be executed after are :
+        // The kind of operations which needs to be executed after are:
         // - UserRegistered: a username, key and key hash. We should create a user entry.
         // - AccountRegistered: an address, username, We should create an account entry.
         // - KeyOwned: a username, key and key hash. We should update the users entry with the new key.
