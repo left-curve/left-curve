@@ -176,11 +176,11 @@ impl DiskPersistence {
         );
 
         // Delete the non-compressed file
-        if let Err(e_) = std::fs::remove_file(&self.file_path) {
+        if let Err(_e) = std::fs::remove_file(&self.file_path) {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 file = %self.file_path.display(),
-                error = %e,
+                error = %_e,
                 "Failed to remove original file after compression, but compressed file was created successfully"
             );
         }
@@ -242,7 +242,7 @@ impl DiskPersistence {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 file = %self.file_path.display(),
-                error = %e,
+                error = %_e,
                 "failed to remove compressed file after decompression, but decompressed file was created successfully"
             );
         }
@@ -261,7 +261,7 @@ impl DiskPersistence {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(
                     file_path = %self.file_path.display(),
-                    error = %e,
+                    error = %_e,
                     "Failed to read file, will try again"
                 );
 
