@@ -1,5 +1,5 @@
 import { Button, Input, ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
-import { formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -8,6 +8,7 @@ import { m } from "~/paraglide/messages";
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
 
+import { useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 import { toast } from "../foundation/Toast";
 import { Modals } from "../modals/RootModal";
@@ -22,7 +23,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const navigate = useNavigate();
   const { showModal, subscriptions } = useApp();
   const { coins } = useConfig();
-  const { account, refreshAccounts } = useAccount();
+  const { username, account, refreshAccounts, changeAccount } = useAccount();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
@@ -42,29 +43,21 @@ export const CreateAccountDepositStep: React.FC = () => {
       try {
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
-        const [nextIndex] = await Promise.all([
-          signingClient.getNextAccountIndex({ username: account!.username }),
-          signingClient.registerAccount({
-            sender: account!.address,
-            config: { [accountType as "spot"]: { owner: account!.username } },
-            funds: {
-              "bridge/usdc": parsedAmount,
-            },
-          }),
-        ]);
+        await signingClient.registerAccount({
+          sender: account!.address,
+          config: { [accountType as "spot"]: { owner: account!.username } },
+          funds: {
+            "bridge/usdc": parsedAmount,
+          },
+        });
+
+        await refreshAccounts?.();
 
         subscriptions.emit("submitTx", {
           isSubmitting: false,
           txResult: { hasSucceeded: true, message: m["accountCreation.accountCreated"]() },
         });
 
-        showModal(Modals.ConfirmAccount, {
-          amount: parsedAmount,
-          accountType,
-          accountName: `${account!.username} #${nextIndex}`,
-          denom: "bridge/usdc",
-        });
-        await refreshAccounts?.();
         await refreshBalances();
         queryClient.invalidateQueries({ queryKey: ["quests", account] });
         navigate({ to: "/" });
@@ -87,6 +80,28 @@ export const CreateAccountDepositStep: React.FC = () => {
       }
     },
   });
+
+  useEffect(() => {
+    if (!username) return;
+    return subscriptions.subscribe("account", {
+      params: { username },
+      listener: async ({ accounts }) => {
+        const account = accounts.at(0)!;
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
+
+        await wait(300);
+
+        showModal(Modals.ConfirmAccount, {
+          amount: parsedAmount,
+          accountType,
+          accountName: `${username} #${account.accountIndex}`,
+          denom: "bridge/usdc",
+        });
+
+        changeAccount?.(account.address);
+      },
+    });
+  }, [subscriptions, fundsAmount, coinInfo]);
 
   return (
     <form
