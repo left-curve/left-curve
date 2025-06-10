@@ -250,7 +250,7 @@ export const LiveTrades: React.FC = () => {
       <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">
         <p>Price</p>
         <p className="text-end">Size (ETH)</p>
-        <p className="text-end">Total (ETH)</p>
+        <p className="text-end">Time</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1">
         {mockTrades.slice(0, 20).map((trade) => {
