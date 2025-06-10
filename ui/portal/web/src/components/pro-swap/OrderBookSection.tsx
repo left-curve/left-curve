@@ -14,7 +14,7 @@ export const OrderBookSection: React.FC = () => {
   }, [isLg]);
 
   return (
-    <div className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 lg:min-w-[25rem] min-h-[35.25rem]">
+    <div className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 lg:min-w-[25rem] min-h-[42rem] lg:min-h-[35.25rem]">
       <Tabs
         color="line-red"
         layoutId="tabs-order-history"
