@@ -243,6 +243,7 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
         <div className="relative flex flex-col items-center w-full overflow-scroll gap-4 scrollbar-none pb-[7rem] pt-2 max-h-[52svh] md:max-h-[68vh]">
           {accounts
             ?.filter((acc) => acc.address !== account.address)
+            .sort((a, b) => a.index - b.index)
             .map((account) => (
               <AccountCard.Preview
                 key={account.address}
