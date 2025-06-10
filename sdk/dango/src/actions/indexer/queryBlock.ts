@@ -13,13 +13,13 @@ export async function queryBlock<transport extends Transport>(
   client: Client<transport>,
   parameters: QueryBlockParameters = {},
 ): QueryBlockReturnType {
-  const document = `
-    query block($height: Int){
+  const document = /* GraphQL */ `
+    query block($height: Int) {
       block(height: $height) {
-        createdAt,
-        hash,
-        blockHeight,
-        appHash,
+        createdAt
+        hash
+        blockHeight
+        appHash
         transactions {
           hash
           sender
