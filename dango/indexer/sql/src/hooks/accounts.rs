@@ -1,9 +1,5 @@
 use {
-    crate::{
-        entity::{self},
-        error::Error,
-        hooks::Hooks,
-    },
+    crate::{entity, error::Error, hooks::Hooks},
     dango_types::{
         DangoQuerier,
         account_factory::{
