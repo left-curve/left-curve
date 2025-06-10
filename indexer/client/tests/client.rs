@@ -4,6 +4,8 @@ use {
     grug::{
         BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
     },
+    std::time::Duration,
+    tokio::time::sleep,
 };
 
 mod utils;
@@ -22,6 +24,8 @@ async fn broadcast() -> anyhow::Result<()> {
     )?;
 
     let res = client.broadcast_tx(tx).await?;
+
+    sleep(Duration::from_millis(100)).await;
 
     let tx_hash = res.tx_hash;
 
