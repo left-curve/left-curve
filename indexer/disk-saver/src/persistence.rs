@@ -176,7 +176,7 @@ impl DiskPersistence {
         );
 
         // Delete the non-compressed file
-        if let Err(e) = std::fs::remove_file(&self.file_path) {
+        if let Err(e_) = std::fs::remove_file(&self.file_path) {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 file = %self.file_path.display(),
@@ -238,7 +238,7 @@ impl DiskPersistence {
         );
 
         // Delete the compressed file
-        if let Err(e) = std::fs::remove_file(&self.file_path) {
+        if let Err(_e) = std::fs::remove_file(&self.file_path) {
             #[cfg(feature = "tracing")]
             tracing::warn!(
                 file = %self.file_path.display(),
@@ -257,7 +257,7 @@ impl DiskPersistence {
     pub fn load<T: BorshDeserialize>(&mut self) -> Result<T, Error> {
         let disk_data = match fs::read(&self.file_path) {
             Ok(data) => data,
-            Err(e) => {
+            Err(_e) => {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(
                     file_path = %self.file_path.display(),
