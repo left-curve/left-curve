@@ -8,7 +8,7 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/httpd",
+  "dango/indexer/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
@@ -170,7 +170,7 @@ dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
-dango-httpd                 = { path = "dango/httpd" }
+dango-httpd                 = { path = "dango/indexer/httpd" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
