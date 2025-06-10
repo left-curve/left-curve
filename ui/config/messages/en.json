@@ -456,6 +456,9 @@
             }
           ]
         }
+      },
+      "account": {
+        "title": "{accountType} Account Created"
       }
     }
   },
