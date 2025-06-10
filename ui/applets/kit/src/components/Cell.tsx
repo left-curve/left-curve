@@ -16,6 +16,7 @@ import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { Button } from "./Button";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
