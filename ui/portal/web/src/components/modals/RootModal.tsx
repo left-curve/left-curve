@@ -21,7 +21,7 @@ export const Modals = {
   ProSwapCloseAll: "pro-swap-close-all",
   ProSwapLimitClose: "pro-swap-limit-close",
   ProSwapMarketClose: "pro-swap-market-close",
-  ProSwapPositionTP: "pro-swap-tp-position",
+  ProSwapEditSL: "pro-edit-sl",
 };
 
 export type ModalRef = {
@@ -99,10 +99,10 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
-  [Modals.ProSwapPositionTP]: {
+  [Modals.ProSwapEditSL]: {
     component: lazy(() =>
-      import("./ProSwapPositionTP").then(({ ProSwapPositionTP }) => ({
-        default: ProSwapPositionTP,
+      import("./ProSwapEditSL").then(({ ProSwapEditSL }) => ({
+        default: ProSwapEditSL,
       })),
     ),
   },
