@@ -12,7 +12,7 @@ export type IndexedTradeSideType = "BUY" | "SELL";
 export type IndexedTrade = {
   price: string;
   size: string;
-  createdAt: Date;
+  createdAt: string;
   hash: string;
   side: IndexedTradeSideType;
 };

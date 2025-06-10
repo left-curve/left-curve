@@ -1,5 +1,4 @@
 import { IconLink, twMerge } from "@left-curve/applets-kit";
-import { format } from "date-fns";
 import type React from "react";
 import { mockTrades } from "~/mock";
 
@@ -11,7 +10,7 @@ export const LiveTrades: React.FC = () => {
         <p className="text-end">Size (ETH)</p>
         <p className="text-end">Time</p>
       </div>
-      <div className="relative flex-1 w-full flex flex-col gap-1">
+      <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
         {mockTrades.slice(0, 20).map((trade) => {
           return (
             <div
@@ -31,7 +30,7 @@ export const LiveTrades: React.FC = () => {
               <p className="text-end z-10">{trade.size}</p>
 
               <div className="flex gap-1 items-center justify-end z-10">
-                <p>{format(trade.createdAt, "HH:mm:ss")}</p>
+                <p>{trade.createdAt}</p>
                 <IconLink className="w-3 h-3" />
               </div>
               <span className="group-hover:bg-rice-50 h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
