@@ -3,7 +3,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { TradingViewChart } from "./TradingViewChart";
 import { OrderBook } from "./OrderBook";
-import { LifeTrades } from "./LifeTrades";
+import { LiveTrades } from "./LiveTrades";
 
 export const OrderBookSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
@@ -26,7 +26,7 @@ export const OrderBookSection: React.FC = () => {
       />
       {activeTab === "graph" && <TradingViewChart />}
       {activeTab === "order book" && <OrderBook />}
-      {activeTab === "trades" && <LifeTrades />}
+      {activeTab === "trades" && <LiveTrades />}
     </div>
   );
 };

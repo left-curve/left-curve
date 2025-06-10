@@ -244,7 +244,7 @@ const mockTrades: Trade[] = [
   },
 ];
 
-export const LifeTrades: React.FC = () => {
+export const LiveTrades: React.FC = () => {
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
       <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">

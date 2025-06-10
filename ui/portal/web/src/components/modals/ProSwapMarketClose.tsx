@@ -11,7 +11,7 @@ export const ProSwapMarketClose = forwardRef(() => {
       <div className="flex flex-col gap-2">
         <h2 className="text-gray-900 h4-bold w-full">Market Close</h2>
         <p className="text-gray-500 diatype-sm-regular">
-          This will attempt to inmediately close the position.
+          This will attempt to immediately close the position.
         </p>
       </div>
       <div>

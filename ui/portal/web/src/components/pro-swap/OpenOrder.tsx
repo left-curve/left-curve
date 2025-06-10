@@ -86,7 +86,7 @@ export const OpenOrder: React.FC = () => {
     },
     {
       header: "Order Value",
-      cell: ({ row }) => <Cell.Text text={row.original.size} />,
+      cell: ({ row }) => <Cell.Text text={row.original.orderValue} />,
     },
     {
       header: "Price",
@@ -94,7 +94,7 @@ export const OpenOrder: React.FC = () => {
     },
     {
       header: "Reduce Only",
-      cell: ({ row }) => <Cell.Text text={row.original.price} />,
+      cell: ({ row }) => <Cell.Text text={row.original.reduceOnly ? "Yes" : "No"} />,
     },
     {
       header: "Trigger Conditions",

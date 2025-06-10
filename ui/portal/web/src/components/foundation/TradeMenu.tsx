@@ -102,7 +102,7 @@ export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
             <p className="diatype-xs-medium text-gray-700">$12.345</p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Splippage</p>
+            <p className="diatype-xs-regular text-gray-500">Slippage</p>
             <p className="diatype-xs-medium text-status-success">Est: 0% / Max: 8.00%</p>
           </div>
           <div className="flex items-center justify-between gap-2">
