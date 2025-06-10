@@ -22,6 +22,7 @@ export const Modals = {
   ProSwapLimitClose: "pro-swap-limit-close",
   ProSwapMarketClose: "pro-swap-market-close",
   ProSwapEditTPSL: "pro-edit-tpsl",
+  ProSwapEditedSL: "pro-edited-sl",
 };
 
 export type ModalRef = {
@@ -103,6 +104,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("./ProSwapEditTPSL").then(({ ProSwapEditTPSL }) => ({
         default: ProSwapEditTPSL,
+      })),
+    ),
+  },
+  [Modals.ProSwapEditedSL]: {
+    component: lazy(() =>
+      import("./ProSwapEditedSL").then(({ ProSwapEditedSL }) => ({
+        default: ProSwapEditedSL,
       })),
     ),
   },
