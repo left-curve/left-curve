@@ -4,7 +4,6 @@ use {
     grug::{
         BroadcastClient, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, SearchTxClient, Signer,
     },
-    std::time::Duration,
 };
 
 mod utils;
