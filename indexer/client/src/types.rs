@@ -146,5 +146,9 @@ generate_types! {
     {
         name: BroadcastTxSync,
         path: "src/schemas/mutations/broadcastTxSync.graphql",
+    },
+    {
+        name: SearchTx,
+        path: "src/schemas/queries/transaction.graphql",
     }
 }
