@@ -4,6 +4,8 @@ import type { Config } from "@left-curve/store/types";
 
 const chain = local;
 
+export const FAUCET_URI = "http://localhost:8082/mint";
+
 export const coins = {
   dango: {
     type: "native",
