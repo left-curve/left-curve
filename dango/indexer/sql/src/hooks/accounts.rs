@@ -60,29 +60,33 @@ impl Hooks {
                     continue;
                 };
 
+                if event.contract != account_factory {
+                    continue;
+                }
+
                 match event.ty.as_str() {
-                    UserRegistered::EVENT_NAME if event.contract == account_factory => {
+                    UserRegistered::EVENT_NAME => {
                         let Ok(event) = event.data.deserialize_json::<UserRegistered>() else {
                             continue;
                         };
 
                         user_registered_events.push(event.clone());
                     },
-                    AccountRegistered::EVENT_NAME if event.contract == account_factory => {
+                    AccountRegistered::EVENT_NAME => {
                         let Ok(event) = event.data.deserialize_json::<AccountRegistered>() else {
                             continue;
                         };
 
                         account_registered_events.push(event);
                     },
-                    KeyOwned::EVENT_NAME if event.contract == account_factory => {
+                    KeyOwned::EVENT_NAME => {
                         let Ok(event) = event.data.deserialize_json::<KeyOwned>() else {
                             continue;
                         };
 
                         account_key_added_events.push(event);
                     },
-                    KeyDisowned::EVENT_NAME if event.contract == account_factory => {
+                    KeyDisowned::EVENT_NAME => {
                         let Ok(event) = event.data.deserialize_json::<KeyDisowned>() else {
                             continue;
                         };
