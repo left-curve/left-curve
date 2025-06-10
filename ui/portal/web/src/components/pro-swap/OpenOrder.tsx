@@ -2,55 +2,10 @@ import { Cell, Table, type TableColumn, Tabs } from "@left-curve/applets-kit";
 import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import { useState } from "react";
-import { useApp } from "~/hooks/useApp";
-import { Modals } from "../modals/RootModal";
+import { mockOpenOrder } from "~/mock";
 
 export const OpenOrder: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
-  const { showModal } = useApp();
-
-  const data = [
-    {
-      time: new Date(),
-      type: "Limit",
-      coin: {
-        symbol: "USDC",
-        name: "USDC",
-        denom: "usdc",
-        decimals: 6,
-        type: "contract",
-        logoURI:
-          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-      } as AnyCoin,
-      direction: "Long",
-      size: 0.063,
-      orderValue: 11.98,
-      price: 1.889,
-      reduceOnly: false,
-      triggerConditions: "N/A",
-      onCancel: () => showModal(Modals.ProSwapCloseAll),
-    },
-    {
-      time: new Date(),
-      type: "Limit",
-      coin: {
-        symbol: "USDC",
-        name: "USDC",
-        denom: "usdc",
-        decimals: 6,
-        type: "contract",
-        logoURI:
-          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-      } as AnyCoin,
-      direction: "Long",
-      size: 0.063,
-      orderValue: 11.98,
-      price: 1.889,
-      reduceOnly: false,
-      triggerConditions: "N/A",
-      onCancel: () => showModal(Modals.ProSwapCloseAll),
-    },
-  ];
 
   const columns: TableColumn<{
     time: Date;
@@ -121,7 +76,7 @@ export const OpenOrder: React.FC = () => {
 
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
-      <Table data={data} columns={columns} style="simple" />
+      <Table data={mockOpenOrder} columns={columns} style="simple" />
     </div>
   );
 };

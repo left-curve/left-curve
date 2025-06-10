@@ -12,35 +12,7 @@ import {
 import type React from "react";
 import { useState } from "react";
 import { Sheet } from "react-modal-sheet";
-
-const data = [
-  {
-    name: "BTC-USD",
-    isFavorite: true,
-    lastPrice: 45000,
-    change: 2.5,
-    "8hourChange": "-0.0100%",
-    volume: "$2,227,275,754",
-    openInterest: "$2,227,275,754",
-  },
-  {
-    name: "ETH-USD",
-    isFavorite: false,
-    lastPrice: 45000,
-    change: -0.2,
-    "8hourChange": "-0.0100%",
-    volume: "$2,227,275,754",
-    openInterest: "$2,227,275,754",
-  },
-  {
-    name: "FARTCOIN-USD",
-    lastPrice: 45000,
-    change: 2.5,
-    "8hourChange": "-0.0100%",
-    volume: "$2,227,275,754",
-    openInterest: "$2,227,275,754",
-  },
-];
+import { type activeFilterType, mockSearchPair } from "~/mock";
 
 const columns: TableColumn<{
   name: string;
@@ -80,19 +52,6 @@ const columns: TableColumn<{
     cell: ({ row }) => <Cell.Text text={row.original.openInterest} />,
   },
 ];
-
-type activeFilterType =
-  | "All"
-  | "Spot"
-  | "Trending"
-  | "DEX only"
-  | "Pre-launch"
-  | "AI"
-  | "Defi"
-  | "Gaming"
-  | "Layer 1"
-  | "Layer 2"
-  | "Meme";
 
 const SearchTokenHeader: React.FC = () => {
   return (
@@ -145,7 +104,7 @@ const SearchTokenMenu: React.FC = () => {
 
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
-      <Table data={data} columns={columns} style="simple" classNames={{ cell: "py-2" }} />
+      <Table data={mockSearchPair} columns={columns} style="simple" classNames={{ cell: "py-2" }} />
     </div>
   );
 };

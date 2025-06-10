@@ -2,7 +2,6 @@ import {
   Badge,
   IconChevronDown,
   IconEmptyStar,
-  Popover,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
