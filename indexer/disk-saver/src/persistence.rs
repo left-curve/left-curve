@@ -67,7 +67,7 @@ impl DiskPersistence {
         }
     }
 
-    fn detect_file_existance(&mut self) {
+    fn detect_file_existence(&mut self) {
         let mut file_path = self.file_path.clone();
 
         while file_path.extension().is_some() {
@@ -265,7 +265,7 @@ impl DiskPersistence {
                     "Failed to read file, will try again"
                 );
 
-                self.detect_file_existance();
+                self.detect_file_existence();
                 fs::read(&self.file_path)?
             },
         };
