@@ -15,6 +15,10 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   keys?: string[];
   selectedTab?: string;
   layoutId: string;
+  classNames?: {
+    base?: string;
+    button?: string;
+  };
 }
 
 export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
@@ -26,6 +30,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   fullWidth,
   layoutId,
   color,
+  classNames,
 }) => {
   const hasMounted = useHasMounted();
   const tabs = keys ? keys : Children.toArray(children);
@@ -51,7 +56,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
       transition={{ duration: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className={twMerge(styles.base())}
+      className={twMerge(styles.base(), classNames?.base)}
     >
       {tabs.map((e, i) => {
         const isKey = typeof e === "string";
@@ -60,7 +65,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
         return (
           <motion.button
-            className={twMerge(styles.button(), { "flex-1": fullWidth })}
+            className={twMerge(styles.button(), { "flex-1": fullWidth }, classNames?.button)}
             key={`navLink-${e}`}
             onClick={() => setActiveTab(elemKey)}
           >

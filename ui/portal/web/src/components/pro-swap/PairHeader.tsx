@@ -1,8 +1,8 @@
 import {
   Badge,
   IconChevronDown,
-  IconChevronDownFill,
   IconEmptyStar,
+  Popover,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -10,6 +10,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { SearchToken } from "./SearchToken";
 
 export const PairHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
@@ -23,27 +24,20 @@ export const PairHeader: React.FC = () => {
     <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
-          <div className="flex gap-2 items-center">
-            <img
-              src="https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg"
-              alt=""
-              className="h-7 w-7 drag-none select-none"
-            />
-            <p className="diatype-lg-heavy text-gray-700 min-w-fit">ETH-USDC</p>
-          </div>
+          <SearchToken />
           <Badge text="Spot" color="blue" />
+        </div>
+        <div className="flex gap-2 items-center">
           <div
             className="cursor-pointer flex items-center justify-center lg:hidden"
             onClick={() => setExpanded(!expanded)}
           >
-            <IconChevronDownFill
-              className={twMerge("text-gray-500 w-4 h-4 transition-all", {
+            <IconChevronDown
+              className={twMerge("text-gray-500 w-5 h-5 transition-all", {
                 "rotate-180": expanded,
               })}
             />
           </div>
-        </div>
-        <div className="flex gap-2 items-center">
           <IconEmptyStar className="w-5 h-5 text-gray-500" />
         </div>
       </div>
