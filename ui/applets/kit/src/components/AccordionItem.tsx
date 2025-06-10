@@ -7,6 +7,7 @@ import { twMerge } from "#utils/twMerge.js";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { useControlledState } from "#hooks/useControlledState.js";
 
 type AccordionItemProps = {
   text: string;
@@ -16,6 +17,9 @@ type AccordionItemProps = {
     text?: string;
     icon?: string;
   };
+  defaultExpand?: boolean;
+  onChange?: (isOpen: boolean) => void;
+  expanded?: boolean;
 };
 
 export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
@@ -23,8 +27,12 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
   classNames,
   text,
   icon,
+  expanded,
+  defaultExpand,
+  onChange,
 }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useControlledState<boolean>(expanded, onChange, defaultExpand);
+
   return (
     <div
       className={twMerge(
