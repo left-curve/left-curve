@@ -17,6 +17,7 @@ impl HooksTrait for Hooks {
 
     async fn start(&self, context: Context) -> Result<(), Self::Error> {
         Migrator::up(&context.db, None).await?;
+
         Ok(())
     }
 
