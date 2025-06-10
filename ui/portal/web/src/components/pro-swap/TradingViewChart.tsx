@@ -37,25 +37,21 @@ export const TradingViewChart: React.FC = () => {
               "mainSeriesProperties.candleStyle.borderDownColor": "#EB5757",
               "mainSeriesProperties.candleStyle.wickUpColor": "#27AE60",
               "mainSeriesProperties.candleStyle.wickDownColor": "#EB5757",
-              "paneProperties.background": "#FFF9F0",
-              "paneProperties.vertGridProperties.color": "#e8e0d9",
-              "paneProperties.horzGridProperties.color": "#e8e0d9",
+
+              //Background
+              "paneProperties.backgroundType": "solid",
+              "paneProperties.background": "rgba(0, 0, 0, 0)",
+              "paneProperties.vertGridProperties.color": "rgba(0, 0, 0, 0)",
+              "paneProperties.horzGridProperties.color": "rgba(0, 0, 0, 0)",
+
               "scalesProperties.textColor": "#6E6865",
               "mainSeriesProperties.priceLine.color": "#6E6865",
-              "symbolWatermarkProperties.color": "rgba(110, 104, 101, 0.2)",
-              "paneProperties.legendProperties.showStudyArguments": true,
-              "paneProperties.legendProperties.showLegend": true,
-              "paneProperties.legendProperties.showStudyTitles": true,
-              "paneProperties.legendProperties.showStudyValues": true,
-              "paneProperties.legendProperties.showSeriesTitle": true,
-              "paneProperties.legendProperties.showSeriesOHLC": true,
             },
 
             studies_overrides: {
               "volume.volume.color.0": "#EB5757",
               "volume.volume.color.1": "#27AE60",
-              "volume.volume.transparency": 30,
-              "volume.volume ma.color": "#6E6865",
+              "volume.volume.transparency": 50,
             },
           });
         }
@@ -65,5 +61,11 @@ export const TradingViewChart: React.FC = () => {
     }
   }, []);
 
-  return <div id="tv_chart_container" ref={chartContainerRef} className="w-full h-[35.25rem]" />;
+  return (
+    <div
+      id="tv_chart_container"
+      ref={chartContainerRef}
+      className="w-full min-h-[40.5rem] h-full"
+    />
+  );
 };
