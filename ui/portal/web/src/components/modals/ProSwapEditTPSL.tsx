@@ -3,7 +3,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { forwardRef } from "react";
 
-export const ProSwapEditSL = forwardRef(() => {
+export const ProSwapEditTPSL = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
