@@ -72,7 +72,7 @@ impl PrimaryKey for Direction {
 pub struct PairParams {
     /// Liquidity token denom of the passive liquidity pool.
     pub lp_denom: Denom,
-    /// Curve invariant for the passive liquidity pool.
+    /// Specifies the pool type (e.g. Xyk or Geometric).
     pub pool_type: PassiveLiquidity,
     /// Fee rate for instant swaps in the passive liquidity pool.
     /// For the xyk pool, this also sets the spread of the orders when the
