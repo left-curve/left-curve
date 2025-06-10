@@ -463,10 +463,13 @@ impl PassiveLiquidityPool for PairParams {
 
                 // Zip sizes with prices and convert to each size to base asset size at
                 // the price.
-                let bids = bid_prices
-                    .zip(bid_sizes_in_quote)
-                    .map(|(price, size)| size.checked_div_dec_floor(price).ok().map(|s| (price, s)))
-                    .filter_map(|x| x);
+                let bids =
+                    bid_prices
+                        .zip(bid_sizes_in_quote)
+                        .filter_map(|(price, size_in_quote)| {
+                            let size = size_in_quote.checked_div_dec_floor(price).ok()?;
+                            Some((price, size))
+                        });
 
                 // Construct ask price iterator with increasing prices
                 let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
