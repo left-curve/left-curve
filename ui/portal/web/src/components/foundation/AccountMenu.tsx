@@ -235,7 +235,7 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
           <IconLeft className="w-[22px] h-[22px]" />
           <span>{m["common.back"]()}</span>
         </Button>
-        <Button onClick={() => [setSidebarVisibility(false), navigate({ to: "/create-account" })]}>
+        <Button onClick={() => [setSidebarVisibility(false), navigate({ to: "/account/create" })]}>
           <IconAddCross className="w-5 h-5" /> <span>{m["accountMenu.accounts.addAccount"]()}</span>
         </Button>
       </div>

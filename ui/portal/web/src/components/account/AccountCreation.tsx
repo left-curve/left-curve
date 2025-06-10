@@ -1,7 +1,7 @@
 import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -29,6 +29,7 @@ import type React from "react";
 export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep } = useWizard();
   const { isMd } = useMediaQuery();
+  const { history } = useRouter();
 
   return (
     <div className="flex items-center justify-start w-full h-full flex-col md:max-w-[360px] text-center gap-8">
