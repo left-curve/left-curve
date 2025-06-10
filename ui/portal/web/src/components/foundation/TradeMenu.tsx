@@ -11,6 +11,7 @@ import {
   Input,
   Range,
   Tabs,
+  twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
@@ -26,6 +27,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 type TradeMenuProps = {
   action?: "sell" | "buy";
   type?: "spot" | "perp";
+  className?: string;
 };
 
 type TradeMenu = {
@@ -236,13 +238,17 @@ export const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   );
 };
 
-export const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction, type = "spot" }) => {
+export const Menu: React.FC<TradeMenuProps> = ({
+  action: defaultAction,
+  type = "spot",
+  className,
+}) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
   const [action, setAction] = useState<"sell" | "buy">(defaultAction || "buy");
 
   return (
-    <div className="w-full flex items-center flex-col gap-4 relative">
+    <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <IconButton
           variant="utility"
@@ -284,7 +290,7 @@ export const Mobile: React.FC = () => {
       <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
-          <Menu />
+          <Menu className="overflow-y-auto" />
         </Sheet.Content>
       </Sheet.Container>
       <Sheet.Backdrop onTap={() => setTradeBarVisibility(false)} />
