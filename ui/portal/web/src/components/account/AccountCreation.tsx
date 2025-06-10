@@ -224,7 +224,7 @@ export const Deposit: React.FC = () => {
 
         showModal(Modals.ConfirmAccount, {
           amount: parsedAmount,
-          accountType,
+          accountType: account.accountType,
           accountName: `${username} #${account.accountIndex}`,
           denom: "bridge/usdc",
         });
@@ -232,7 +232,7 @@ export const Deposit: React.FC = () => {
         changeAccount?.(account.address);
       },
     });
-  }, [subscriptions, fundsAmount, coinInfo]);
+  }, [subscriptions, username, fundsAmount, coinInfo]);
 
   return (
     <form
