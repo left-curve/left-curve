@@ -170,7 +170,7 @@ const Messages: React.FC = () => {
               key={orderIdx}
               text={methodName}
               classNames={{ text: "capitalize" }}
-              defaultExpand
+              defaultExpanded
             >
               <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
                 <JsonVisualizer json={JSON.stringify(message)} collapsed={1} />

@@ -17,7 +17,7 @@ type AccordionItemProps = {
     text?: string;
     icon?: string;
   };
-  defaultExpand?: boolean;
+  defaultExpanded?: boolean;
   onChange?: (isOpen: boolean) => void;
   expanded?: boolean;
 };
@@ -28,10 +28,10 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
   text,
   icon,
   expanded,
-  defaultExpand,
+  defaultExpanded,
   onChange,
 }) => {
-  const [isOpen, setIsOpen] = useControlledState<boolean>(expanded, onChange, defaultExpand);
+  const [isOpen, setIsOpen] = useControlledState<boolean>(expanded, onChange, defaultExpanded);
 
   return (
     <div
