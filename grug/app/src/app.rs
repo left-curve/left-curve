@@ -83,7 +83,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -393,7 +393,18 @@ where
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
         if let Some(block_height) = self.db.latest_version() {
-            self.indexer.post_indexing(block_height)?;
+            let querier = {
+                let storage = self.db.state_storage(Some(block_height))?;
+                let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+                QuerierProviderImpl::new(
+                    self.vm.clone(),
+                    Box::new(storage),
+                    GasTracker::new_limitless(),
+                    block,
+                )
+            };
+
+            self.indexer.post_indexing(block_height, querier)?;
         }
 
         Ok(())
@@ -580,7 +591,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,

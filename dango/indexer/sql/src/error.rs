@@ -10,4 +10,7 @@ pub enum Error {
 
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
+
+    #[error("grug std error: {0}")]
+    Std(#[from] grug::StdError),
 }

@@ -1,6 +1,7 @@
 use {
     crate::{block_to_index::BlockToIndex, context::Context},
     async_trait::async_trait,
+    grug_app::{AppError, QuerierProviderImpl, Vm},
     std::convert::Infallible,
 };
 
@@ -12,11 +13,16 @@ pub trait Hooks {
         Ok(())
     }
 
-    async fn post_indexing(
+    async fn post_indexing<VM>(
         &self,
         _context: Context,
         _block: BlockToIndex,
-    ) -> Result<(), Self::Error> {
+        _querier: QuerierProviderImpl<VM>,
+    ) -> Result<(), Self::Error>
+    where
+        VM: Vm + Clone + Send + Sync + 'static,
+        AppError: From<VM::Error>,
+    {
         Ok(())
     }
 

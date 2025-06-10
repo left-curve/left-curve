@@ -69,6 +69,24 @@ where
     }
 }
 
+impl<VM> Querier for QuerierProviderImpl<VM>
+where
+    VM: Vm + Clone + 'static,
+    AppError: From<VM::Error>,
+{
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        process_query(
+            self.vm.clone(),
+            self.storage.clone(),
+            self.gas_tracker.clone(),
+            self.block,
+            0,
+            req,
+        )
+        .map_err(|err| StdError::host(err.to_string()))
+    }
+}
+
 impl<VM> QuerierProvider for QuerierProviderImpl<VM>
 where
     VM: Vm + Clone + 'static,

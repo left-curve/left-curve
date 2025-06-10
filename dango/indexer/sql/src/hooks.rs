@@ -5,6 +5,7 @@ use {
     },
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
+    grug_app::{AppError, QuerierProviderImpl, Vm},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{
         Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
@@ -27,13 +28,18 @@ impl HooksTrait for Hooks {
         Ok(())
     }
 
-    async fn post_indexing(
+    async fn post_indexing<VM>(
         &self,
         context: Context,
         block: BlockToIndex,
-    ) -> Result<(), Self::Error> {
+        querier: QuerierProviderImpl<VM>,
+    ) -> Result<(), Self::Error>
+    where
+        VM: Vm + Clone + Send + Sync + 'static,
+        AppError: From<VM::Error>,
+    {
         self.save_transfers(&context, &block).await?;
-        self.save_accounts(&context, &block).await?;
+        self.save_accounts(&context, &block, &querier).await?;
 
         Ok(())
     }
