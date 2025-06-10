@@ -8,7 +8,7 @@ use {
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_app::{Indexer, LAST_FINALIZED_BLOCK, QuerierProvider},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
     sea_orm::{DatabaseConnection, TransactionTrait},
     std::{
@@ -518,7 +518,11 @@ where
         })
     }
 
-    fn post_indexing(&self, block_height: u64) -> error::Result<()> {
+    fn post_indexing(
+        &self,
+        block_height: u64,
+        querier: Box<dyn QuerierProvider>,
+    ) -> error::Result<()> {
         if !self.indexing {
             bail!("can't index after shutdown");
         }
@@ -565,7 +569,7 @@ where
                 break;
             }
 
-            hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
+            hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
 
@@ -732,6 +736,7 @@ mod tests {
             &self,
             _context: Context,
             _block: BlockToIndex,
+            _querier: Box<dyn QuerierProvider>,
         ) -> Result<(), Self::Error> {
             Ok(())
         }

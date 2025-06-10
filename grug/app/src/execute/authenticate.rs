@@ -18,7 +18,7 @@ pub fn do_authenticate<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtAuthenticate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_authenticate(vm, storage, gas_tracker, block, tx, mode, trace_opt);
@@ -49,7 +49,7 @@ pub fn _do_authenticate<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtAuthenticate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtAuthenticate::base(tx.sender);

@@ -1,6 +1,6 @@
 use {
     crate::config::AppConfig,
-    grug::{Addr, QuerierExt, QuerierWrapper, StdResult},
+    grug::{Addr, Querier, QuerierExt, StdResult},
 };
 
 /// An extension trait that adds some useful, Dango-specific methods to
@@ -29,7 +29,10 @@ pub trait DangoQuerier {
     }
 }
 
-impl DangoQuerier for QuerierWrapper<'_> {
+impl<Q> DangoQuerier for Q
+where
+    Q: Querier,
+{
     fn query_dango_config(&self) -> StdResult<AppConfig> {
         self.query_app_config()
     }

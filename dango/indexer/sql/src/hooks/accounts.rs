@@ -4,8 +4,14 @@ use {
         error::Error,
         hooks::Hooks,
     },
-    dango_types::account_factory::{self, AccountParams},
+    dango_types::{
+        DangoQuerier,
+        account_factory::{
+            AccountParams, AccountRegistered, KeyDisowned, KeyOwned, UserRegistered,
+        },
+    },
     grug::{EventName, Inner, JsonDeExt},
+    grug_app::QuerierProvider,
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
     indexer_sql::{Context, block_to_index::BlockToIndex},
     sea_orm::{
@@ -19,7 +25,10 @@ impl Hooks {
         &self,
         context: &Context,
         block: &BlockToIndex,
+        querier: &dyn QuerierProvider,
     ) -> Result<(), Error> {
+        let account_factory = querier.query_account_factory()?;
+
         let mut user_registered_events = Vec::new();
         let mut account_registered_events = Vec::new();
         let mut account_key_added_events = Vec::new();
@@ -52,39 +61,29 @@ impl Hooks {
                 };
 
                 match event.ty.as_str() {
-                    account_factory::UserRegistered::EVENT_NAME => {
-                        let Ok(event) = event
-                            .data
-                            .deserialize_json::<account_factory::UserRegistered>()
-                        else {
+                    UserRegistered::EVENT_NAME if event.contract == account_factory => {
+                        let Ok(event) = event.data.deserialize_json::<UserRegistered>() else {
                             continue;
                         };
 
                         user_registered_events.push(event.clone());
                     },
-                    account_factory::AccountRegistered::EVENT_NAME => {
-                        let Ok(event) = event
-                            .data
-                            .deserialize_json::<account_factory::AccountRegistered>()
-                        else {
+                    AccountRegistered::EVENT_NAME if event.contract == account_factory => {
+                        let Ok(event) = event.data.deserialize_json::<AccountRegistered>() else {
                             continue;
                         };
 
                         account_registered_events.push(event);
                     },
-                    account_factory::KeyOwned::EVENT_NAME => {
-                        let Ok(event) = event.data.deserialize_json::<account_factory::KeyOwned>()
-                        else {
+                    KeyOwned::EVENT_NAME if event.contract == account_factory => {
+                        let Ok(event) = event.data.deserialize_json::<KeyOwned>() else {
                             continue;
                         };
 
                         account_key_added_events.push(event);
                     },
-                    account_factory::KeyDisowned::EVENT_NAME => {
-                        let Ok(event) = event
-                            .data
-                            .deserialize_json::<account_factory::KeyDisowned>()
-                        else {
+                    KeyDisowned::EVENT_NAME if event.contract == account_factory => {
+                        let Ok(event) = event.data.deserialize_json::<KeyDisowned>() else {
                             continue;
                         };
 

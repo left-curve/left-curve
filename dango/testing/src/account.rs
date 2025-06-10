@@ -246,7 +246,7 @@ where
     ) where
         PP: ProposalPreparer,
         DB: Db,
-        VM: Vm + Clone + 'static,
+        VM: Vm + Clone + Send + Sync + 'static,
         ID: Indexer,
         AppError: From<PP::Error> + From<DB::Error> + From<VM::Error> + From<ID::Error>,
     {
@@ -285,7 +285,7 @@ where
     where
         PP: ProposalPreparer,
         DB: Db,
-        VM: Vm + Clone + 'static,
+        VM: Vm + Clone + Send + Sync + 'static,
         ID: Indexer,
         AppError: From<PP::Error> + From<DB::Error> + From<VM::Error> + From<ID::Error>,
     {

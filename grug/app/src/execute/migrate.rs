@@ -21,7 +21,7 @@ pub fn do_migrate<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtMigrate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_migrate(
@@ -62,7 +62,7 @@ fn _do_migrate<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtMigrate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtMigrate::base(sender, msg.contract, msg.msg.clone(), msg.new_code_hash);
