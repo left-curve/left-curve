@@ -5,7 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMETBFT_GIT_TAG: v0.38.17.1
+  COMETBFT_GIT_TAG: v0.38.17
 
 on:
   push:
@@ -42,7 +42,7 @@ jobs:
 
   build-cometbft:
     needs: check-image
-    if: needs.check-image.outputs.skip_build == 'false'
+    # if: needs.check-image.outputs.skip_build == 'false'
     permissions:
       packages: write
     runs-on: self-hosted

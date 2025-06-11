@@ -307,7 +307,7 @@ jobs:
       - name: Ensure localdango works
         env:
           DANGO_TAG: ${{ env.GIT_COMMIT }}-${{ matrix.arch }}
-          COMETBFT_TAG: v0.38.17.1
+          COMETBFT_TAG: v0.38.17
         run: |
           cd networks/localdango
           timeout 30 just start
