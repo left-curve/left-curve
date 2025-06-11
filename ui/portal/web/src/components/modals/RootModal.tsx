@@ -18,6 +18,11 @@ export const Modals = {
   SignWithDesktop: "sign-with-desktop",
   ConfirmSwap: "confirm-swap",
   RenewSession: "renew-session",
+  ProSwapCloseAll: "pro-swap-close-all",
+  ProSwapLimitClose: "pro-swap-limit-close",
+  ProSwapMarketClose: "pro-swap-market-close",
+  ProSwapEditTPSL: "pro-edit-tpsl",
+  ProSwapEditedSL: "pro-edited-sl",
 };
 
 export type ModalRef = {
@@ -75,6 +80,39 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     options: {
       disableClosing: true,
     },
+  },
+  [Modals.ProSwapCloseAll]: {
+    component: lazy(() =>
+      import("./ProSwapCloseAll").then(({ ProSwapCloseAll }) => ({ default: ProSwapCloseAll })),
+    ),
+  },
+  [Modals.ProSwapLimitClose]: {
+    component: lazy(() =>
+      import("./ProSwapLimitClose").then(({ ProSwapLimitClose }) => ({
+        default: ProSwapLimitClose,
+      })),
+    ),
+  },
+  [Modals.ProSwapMarketClose]: {
+    component: lazy(() =>
+      import("./ProSwapMarketClose").then(({ ProSwapMarketClose }) => ({
+        default: ProSwapMarketClose,
+      })),
+    ),
+  },
+  [Modals.ProSwapEditTPSL]: {
+    component: lazy(() =>
+      import("./ProSwapEditTPSL").then(({ ProSwapEditTPSL }) => ({
+        default: ProSwapEditTPSL,
+      })),
+    ),
+  },
+  [Modals.ProSwapEditedSL]: {
+    component: lazy(() =>
+      import("./ProSwapEditedSL").then(({ ProSwapEditedSL }) => ({
+        default: ProSwapEditedSL,
+      })),
+    ),
   },
 };
 

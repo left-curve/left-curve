@@ -1,6 +1,8 @@
 import {
   Button,
   IconBell,
+  IconButton,
+  IconChevronRight,
   IconGear,
   IconUser,
   twMerge,
@@ -17,7 +19,8 @@ import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
-import { capitalize } from "@left-curve/dango/utils";
+import { TradeMenu } from "./TradeMenu";
+import { TradeButtons } from "../pro-swap/TradeButtons";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -28,9 +31,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
 
   const {
     setSidebarVisibility,
+    setTradeBarVisibility,
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
-    isSearchBarVisible,
     isSidebarVisible,
   } = useApp();
   const { location } = useRouterState();
@@ -39,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
+  const isProSwap = location.pathname.includes("pro-swap");
 
   return (
     <header
@@ -66,8 +70,8 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          <SearchMenu />
-          {!isSearchBarVisible ? <Hamburger /> : null}
+          {isProSwap && !isLg ? <TradeButtons /> : <SearchMenu />}
+          <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
           <Button
@@ -105,9 +109,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             {isConnected ? (
               <>
                 <IconUser className="w-6 h-6" />
-                <span className="italic font-exposure font-bold">
-                  {capitalize(account?.type as string)} #{account?.index}
-                </span>
+                <span className="italic font-exposure font-bold">{account?.username}</span>
               </>
             ) : (
               <span>{m["common.signin"]()}</span>
@@ -117,6 +119,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
       {isLg ? <AccountMenu.Desktop /> : <AccountMenu.Mobile />}
+      {isLg ? null : <TradeMenu.Mobile />}
     </header>
   );
 };

@@ -8,6 +8,15 @@ export type IndexedBlock = {
   transactions: IndexedTransaction[];
 };
 
+export type IndexedTradeSideType = "BUY" | "SELL";
+export type IndexedTrade = {
+  price: string;
+  size: string;
+  createdAt: string;
+  hash: string;
+  side: IndexedTradeSideType;
+};
+
 export type IndexedTransaction = {
   blockHeight: number;
   createdAt: string;
