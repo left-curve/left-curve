@@ -293,9 +293,6 @@ jobs:
     needs: [test]
     permissions:
       packages: read
-    env:
-      DANGO_TAG: ${{ env.GIT_COMMIT }}-${{ matrix.arch }}
-      COMETBFT_TAG: v0.38.17.1
     steps:
       - uses: actions/checkout@v4
 
@@ -308,6 +305,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Ensure localdango works
+        env:
+          DANGO_TAG: ${{ env.GIT_COMMIT }}-${{ matrix.arch }}
+          COMETBFT_TAG: v0.38.17.1
         run: |
           cd networks/localdango
           timeout 30 just start
