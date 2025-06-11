@@ -307,6 +307,9 @@ jobs:
       - name: Ensure localdango works
         env:
           DANGO_TAG: ${{ env.GIT_COMMIT }}-${{ matrix.arch }}
+          POSTGRES_PORT: ${{ matrix.arch == 'amd64' && '5432' || '6432' }}
+          DANGO_PORT: ${{ matrix.arch == 'amd64' && '8080' || '9080' }}
+          COMETBFT_PORT: ${{ matrix.arch == 'amd64' && '26657' || '36657' }}
           COMETBFT_TAG: v0.38.17
         run: |
           cd networks/localdango

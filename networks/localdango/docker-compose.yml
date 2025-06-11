@@ -4,7 +4,7 @@ services:
     shm_size: 1gb
     ports:
       # For security reasons, postgres should only accept connections from localhost.
-      - 127.0.0.1:5432:5432
+      - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
     volumes:
       - ./data/db:/var/lib/postgresql/data
       # For when we'll need an init script ran at initialization
@@ -19,6 +19,8 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+    networks:
+      - dango
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
@@ -26,7 +28,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - 127.0.0.1:8080:8080
+      - 127.0.0.1:${DANGO_PORT:-8080}:8080
     volumes:
       - ./configs/dango/config:/root/.dango/config
       - ./data/dango/data:/root/.dango/data
@@ -43,13 +45,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - dango
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     depends_on:
       - dango
     ports:
-      - 127.0.0.1:26657:26657
+      - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
       - ./configs/cometbft/config:/home/cometbft/.cometbft/config
       - ./data/cometbft/data:/home/cometbft/.cometbft/data
@@ -59,3 +63,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - dango
+
+networks:
+  dango:
+    driver: bridge
