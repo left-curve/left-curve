@@ -260,7 +260,7 @@
     "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
     "advancedOptions": "Advanced Options",
-    "continueWithoutSignin": "Continue without sign in",
+    "continueWithoutSignin": "Continue without signing in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don’t have an account?",
