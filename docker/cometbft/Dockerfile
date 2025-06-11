@@ -19,6 +19,9 @@ FROM debian:bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.description="CometBFT runtime for Dango"
 
+# Install dependencies.
+RUN apt update && apt install curl
+
 # I changed my mind, adding a user with a specific UID/GID (in this case
 # 1001/1001) is a pain because the files created from within that container
 # will belong to that UID/GID, which may be different from the host current

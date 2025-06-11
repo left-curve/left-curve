@@ -5,7 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMETBFT_GIT_TAG: v0.38.17
+  COMETBFT_GIT_TAG: v0.38.17.1
 
 on:
   push:
@@ -65,3 +65,4 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
           push: true
+          no-cache: true
