@@ -3,8 +3,9 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, Inner, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
-        NumberConst, StdResult, Udec128, Uint128,
+        Bounded, Coin, CoinPair, Denom, Inner, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
+        Number, NumberConst, StdResult, Udec128, Uint128, ZeroExclusiveOneExclusive,
+        ZeroExclusiveOneInclusive,
     },
     std::{cmp, iter},
 };
@@ -291,168 +292,26 @@ impl PassiveLiquidityPool for PairParams {
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
-        let mut base_reserve = reserve.amount_of(&base_denom)?;
-        let mut quote_reserve = reserve.amount_of(&quote_denom)?;
-
-        // Compute the marginal price. We will place orders above and below this price.
-        let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
-
-        let swap_fee_rate = self.swap_fee_rate.into_inner();
-        let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
-        let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
+        let base_reserve = reserve.amount_of(&base_denom)?;
+        let quote_reserve = reserve.amount_of(&quote_denom)?;
 
         match self.pool_type {
-            PassiveLiquidity::Xyk { order_spacing } => {
-                // Construct the bid order iterator.
-                // Start from the marginal price minus the swap fee rate.
-                let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
-                let mut prev_size = Uint128::ZERO;
-                let mut prev_size_quote = Uint128::ZERO;
-                let bids = iter::from_fn(move || {
-                    // Terminate if price is less or equal to zero.
-                    let price = match maybe_price {
-                        Some(price) if price.is_non_zero() => price,
-                        _ => return None,
-                    };
-
-                    // Compute the total order size (in base asset) at this price.
-                    let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
-                    let mut size = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
-
-                    // Compute the order size (in base asset) at this price.
-                    //
-                    // This is the difference between the total order size at
-                    // this price, and that at the previous price.
-                    let mut amount = size.checked_sub(prev_size).ok()?;
-
-                    // Compute the total order size (in quote asset) at this price.
-                    let mut amount_quote = amount.checked_mul_dec_ceil(price).ok()?;
-                    let mut size_quote = prev_size_quote.checked_add(amount_quote).ok()?;
-
-                    // If total order size (in quote asset) is greater than the
-                    // reserve, cap it to the reserve size.
-                    if size_quote > quote_reserve {
-                        size_quote = quote_reserve;
-                        amount_quote = size_quote.checked_sub(prev_size_quote).ok()?;
-                        amount = amount_quote.checked_div_dec_floor(price).ok()?;
-                        size = prev_size.checked_add(amount).ok()?;
-                    }
-
-                    // If order size is zero, we have ran out of liquidity.
-                    // Terminate the iterator.
-                    if amount.is_zero() {
-                        return None;
-                    }
-
-                    // Update the iterator state.
-                    prev_size = size;
-                    prev_size_quote = size_quote;
-                    maybe_price = price.checked_sub(order_spacing).ok();
-
-                    Some((price, amount))
-                });
-
-                // Construct the ask order iterator.
-                let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
-                let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
-                let mut prev_size = Uint128::ZERO;
-                let asks = iter::from_fn(move || {
-                    let price = maybe_price?;
-
-                    // Compute the total order size (in base asset) at this price.
-                    let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
-                    let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
-
-                    // If total order size (in base asset) exceeds the base asset
-                    // reserve, cap it to the reserve size.
-                    let size = cmp::min(size, base_reserve);
-
-                    // Compute the order size (in base asset) at this price.
-                    //
-                    // This is the difference between the total order size at
-                    // this price, and that at the previous price.
-                    let amount = size.checked_sub(prev_size).ok()?;
-
-                    // If order size is zero, we have ran out of liquidity.
-                    // Terminate the iterator.
-                    if amount.is_zero() {
-                        return None;
-                    }
-
-                    // Update the iterator state.
-                    prev_size = size;
-                    maybe_price = price.checked_add(order_spacing).ok();
-
-                    Some((price, amount))
-                });
-
-                Ok((Box::new(bids), Box::new(asks)))
-            },
+            PassiveLiquidity::Xyk { order_spacing } => xyk_reflect_curve(
+                base_reserve,
+                quote_reserve,
+                order_spacing,
+                self.swap_fee_rate,
+            ),
             PassiveLiquidity::Geometric {
                 ratio,
                 order_spacing,
-            } => {
-                // Construct bid price iterator with decreasing prices
-                let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
-                let mut maybe_price = Some(bid_starting_price);
-                let bid_prices = iter::from_fn(move || {
-                    let price = match maybe_price {
-                        Some(price) if price.is_non_zero() => price,
-                        _ => return None,
-                    };
-                    maybe_price = price.checked_sub(order_spacing).ok();
-                    Some(price)
-                });
-
-                // Iteratively assign `ratio` of the remaining liquidity to each
-                // consecutive order.
-                let bid_sizes_in_quote = std::iter::from_fn(move || {
-                    let size = match quote_reserve.checked_mul_dec(ratio.into_inner()) {
-                        Ok(size) => size,
-                        Err(_) => return None,
-                    };
-                    quote_reserve.checked_sub_assign(size).ok()?;
-                    Some(size)
-                });
-
-                // Zip sizes with prices and convert to each size to base asset size at
-                // the price.
-                let bids =
-                    bid_prices
-                        .zip(bid_sizes_in_quote)
-                        .filter_map(|(price, size_in_quote)| {
-                            let size = size_in_quote.checked_div_dec_floor(price).ok()?;
-                            Some((price, size))
-                        });
-
-                // Construct ask price iterator with increasing prices
-                let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
-                let mut maybe_price = Some(ask_starting_price);
-                let ask_prices = iter::from_fn(move || {
-                    let price = match maybe_price {
-                        Some(price) if price.is_non_zero() => price,
-                        _ => return None,
-                    };
-                    maybe_price = price.checked_add(order_spacing).ok();
-                    Some(price)
-                });
-
-                // Construct ask size placing `ratio` of the remaining liquidity of
-                // base reserve into each order.
-                let ask_sizes = std::iter::from_fn(move || {
-                    let size = match base_reserve.checked_mul_dec(ratio.into_inner()) {
-                        Ok(size) => size,
-                        Err(_) => return None,
-                    };
-                    base_reserve.checked_sub_assign(size).ok()?;
-                    Some(size)
-                });
-
-                // Zip sizes with prices
-                let asks = ask_prices.zip(ask_sizes);
-
-                Ok((Box::new(bids), Box::new(asks)))
-            },
+            } => geometric_reflect_curve(
+                base_reserve,
+                quote_reserve,
+                ratio,
+                order_spacing,
+                self.swap_fee_rate,
+            ),
         }
     }
 }
@@ -523,6 +382,186 @@ fn geometric_add_subsequent_liquidity(
     let reserve_value = oracle_value(oracle_querier, &reserve)?;
 
     Ok(deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?)
+}
+
+fn xyk_reflect_curve(
+    base_reserve: Uint128,
+    quote_reserve: Uint128,
+    order_spacing: Udec128,
+    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+) -> StdResult<(
+    Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+    Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+)> {
+    // Compute the marginal price. We will place orders above and below this price.
+    let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+
+    // Construct the bid order iterator.
+    // Start from the marginal price minus the swap fee rate.
+    let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
+    let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
+    let mut prev_size = Uint128::ZERO;
+    let mut prev_size_quote = Uint128::ZERO;
+    let bids = iter::from_fn(move || {
+        // Terminate if price is less or equal to zero.
+        let price = match maybe_price {
+            Some(price) if price.is_non_zero() => price,
+            _ => return None,
+        };
+
+        // Compute the total order size (in base asset) at this price.
+        let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+        let mut size = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
+
+        // Compute the order size (in base asset) at this price.
+        //
+        // This is the difference between the total order size at
+        // this price, and that at the previous price.
+        let mut amount = size.checked_sub(prev_size).ok()?;
+
+        // Compute the total order size (in quote asset) at this price.
+        let mut amount_quote = amount.checked_mul_dec_ceil(price).ok()?;
+        let mut size_quote = prev_size_quote.checked_add(amount_quote).ok()?;
+
+        // If total order size (in quote asset) is greater than the
+        // reserve, cap it to the reserve size.
+        if size_quote > quote_reserve {
+            size_quote = quote_reserve;
+            amount_quote = size_quote.checked_sub(prev_size_quote).ok()?;
+            amount = amount_quote.checked_div_dec_floor(price).ok()?;
+            size = prev_size.checked_add(amount).ok()?;
+        }
+
+        // If order size is zero, we have ran out of liquidity.
+        // Terminate the iterator.
+        if amount.is_zero() {
+            return None;
+        }
+
+        // Update the iterator state.
+        prev_size = size;
+        prev_size_quote = size_quote;
+        maybe_price = price.checked_sub(order_spacing).ok();
+
+        Some((price, amount))
+    });
+
+    // Construct the ask order iterator.
+    let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
+    let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
+    let mut prev_size = Uint128::ZERO;
+    let asks = iter::from_fn(move || {
+        let price = maybe_price?;
+
+        // Compute the total order size (in base asset) at this price.
+        let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+        let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
+
+        // If total order size (in base asset) exceeds the base asset
+        // reserve, cap it to the reserve size.
+        let size = cmp::min(size, base_reserve);
+
+        // Compute the order size (in base asset) at this price.
+        //
+        // This is the difference between the total order size at
+        // this price, and that at the previous price.
+        let amount = size.checked_sub(prev_size).ok()?;
+
+        // If order size is zero, we have ran out of liquidity.
+        // Terminate the iterator.
+        if amount.is_zero() {
+            return None;
+        }
+
+        // Update the iterator state.
+        prev_size = size;
+        maybe_price = price.checked_add(order_spacing).ok();
+
+        Some((price, amount))
+    });
+
+    Ok((Box::new(bids), Box::new(asks)))
+}
+
+fn geometric_reflect_curve(
+    mut base_reserve: Uint128,
+    mut quote_reserve: Uint128,
+    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
+    order_spacing: Udec128,
+    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+) -> StdResult<(
+    Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+    Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+)> {
+    // FIXME: use oracle price instead
+    let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+
+    // Construct bid price iterator with decreasing prices.
+    let bids = {
+        let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
+        let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
+        let mut maybe_price = Some(bid_starting_price);
+
+        let bid_prices = iter::from_fn(move || {
+            let price = match maybe_price {
+                Some(price) if price.is_non_zero() => price,
+                _ => return None,
+            };
+
+            maybe_price = price.checked_sub(order_spacing).ok();
+
+            Some(price)
+        });
+
+        let bid_sizes_in_quote = iter::from_fn(move || {
+            let size = match quote_reserve.checked_mul_dec(ratio.into_inner()) {
+                Ok(size_in_quote) => size_in_quote,
+                Err(_) => return None,
+            };
+
+            quote_reserve.checked_sub_assign(size).ok()?;
+
+            Some(size)
+        });
+
+        bid_prices
+            .zip(bid_sizes_in_quote)
+            .filter_map(|(price, size_in_quote)| {
+                let size = size_in_quote.checked_div_dec_floor(price).ok()?;
+                Some((price, size))
+            })
+    };
+
+    // Construct ask price iterator with increasing prices.
+    let asks = {
+        let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
+        let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
+        let mut maybe_price = Some(ask_starting_price);
+
+        let ask_prices = iter::from_fn(move || {
+            let price = match maybe_price {
+                Some(price) if price.is_non_zero() => price,
+                _ => return None,
+            };
+            maybe_price = price.checked_add(order_spacing).ok();
+            Some(price)
+        });
+
+        // Construct ask size placing `ratio` of the remaining liquidity of
+        // base reserve into each order.
+        let ask_sizes = iter::from_fn(move || {
+            let size = match base_reserve.checked_mul_dec(ratio.into_inner()) {
+                Ok(size) => size,
+                Err(_) => return None,
+            };
+            base_reserve.checked_sub_assign(size).ok()?;
+            Some(size)
+        });
+
+        ask_prices.zip(ask_sizes)
+    };
+
+    Ok((Box::new(bids), Box::new(asks)))
 }
 
 /// Compute `sqrt(A * B)`, where `A` and `B` are the reserve amount of the two
