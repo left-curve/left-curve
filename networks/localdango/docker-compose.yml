@@ -19,8 +19,6 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
-    # networks:
-    #   - dango
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
@@ -45,30 +43,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    # networks:
-    #   - dango
+
+  cometbft-init:
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    volumes:
+      - ./data/cometbft/data:/source:ro
+      - cometbft_data:/target
+    command: sh -c "cp -rn /source/* /target/ 2>/dev/null || true"
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     depends_on:
       - dango
+      - cometbft-init
     ports:
       - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
-      - ./configs/cometbft/config:/home/cometbft/.cometbft/config
-      - cometbft_data:/home/cometbft/.cometbft/data
+      - ./configs/cometbft/config:/root/.cometbft/config
+      - cometbft_data:/root/.cometbft/data
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657/up"]
       interval: 10s
       timeout: 5s
       retries: 3
-    # networks:
-    #   - dango
-
-networks:
-  dango:
-    driver: bridge
 
 volumes:
   db_data:
