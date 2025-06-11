@@ -50,10 +50,14 @@ pub trait PassiveLiquidityPool {
     /// - The funds withdrawn from the pool.
     fn remove_liquidity(
         &self,
-        reserve: CoinPair,
+        mut reserve: CoinPair,
         lp_token_supply: Uint128,
         lp_burn_amount: Uint128,
-    ) -> anyhow::Result<(CoinPair, CoinPair)>;
+    ) -> anyhow::Result<(CoinPair, CoinPair)> {
+        let refund = reserve.split(lp_burn_amount, lp_token_supply)?;
+
+        Ok((reserve, refund))
+    }
 
     /// Perform a swap with an exact amount of input and a variable output.
     ///
@@ -213,17 +217,6 @@ impl PassiveLiquidityPool for PairParams {
 
             Ok((reserve, mint_amount))
         }
-    }
-
-    fn remove_liquidity(
-        &self,
-        mut reserve: CoinPair,
-        lp_token_supply: Uint128,
-        lp_burn_amount: Uint128,
-    ) -> anyhow::Result<(CoinPair, CoinPair)> {
-        let refund = reserve.split(lp_burn_amount, lp_token_supply)?;
-
-        Ok((reserve, refund))
     }
 
     fn swap_exact_amount_in(
