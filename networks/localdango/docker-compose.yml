@@ -19,8 +19,8 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
-    networks:
-      - dango
+    # networks:
+    #   - dango
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
@@ -45,8 +45,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    networks:
-      - dango
+    # networks:
+    #   - dango
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
@@ -63,8 +63,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    networks:
-      - dango
+    # networks:
+    #   - dango
 
 networks:
   dango:

@@ -284,6 +284,7 @@ jobs:
     timeout-minutes: 5
     strategy:
       fail-fast: false
+      # max-parallel: 1
       matrix:
         arch: [amd64, arm64]
         runner:
@@ -311,6 +312,7 @@ jobs:
           DANGO_PORT: ${{ matrix.arch == 'amd64' && '8080' || '9080' }}
           COMETBFT_PORT: ${{ matrix.arch == 'amd64' && '26657' || '36657' }}
           COMETBFT_TAG: v0.38.17
+          COMPOSE_PROJECT_NAME: localdango-${{ matrix.arch }}
         run: |
           cd networks/localdango
           timeout 30 just start
