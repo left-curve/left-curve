@@ -4,7 +4,7 @@ LABEL org.opencontainers.image.description="CometBFT builder for Dango"
 LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 # Install dependencies.
-RUN apt update && apt install git make
+RUN apt update && apt install -y git make
 
 # Git tag of the cometbft repo.
 ARG COMETBFT_GIT_TAG="v0.38.17"
@@ -20,7 +20,7 @@ FROM debian:bookworm-slim AS runtime
 LABEL org.opencontainers.image.description="CometBFT runtime for Dango"
 
 # Install dependencies.
-RUN apt update && apt install curl
+RUN apt update && apt install -y curl
 
 # I changed my mind, adding a user with a specific UID/GID (in this case
 # 1001/1001) is a pain because the files created from within that container
