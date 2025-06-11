@@ -354,7 +354,6 @@ jobs:
         run: |
           cd networks/localdango
           docker compose down -v || true
-          sudo rm -rf data/ || true
 
   deploy-dango:
     if: github.ref == 'refs/heads/main'
