@@ -280,6 +280,23 @@ jobs:
         run: |
           docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
 
+      - name: Ensure localdango works
+        run: |
+          cd networks/localdango
+          export DANGO_TAG=${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }}
+          just start
+
+          # Wait for 3 services to be ready
+          timeout 30 bash -c 'until [ $(docker compose ps | grep -c "Up") -eq 3 ]; do sleep 5; done'
+
+          # Check if timeout failed
+          if [ $? -ne 0 ]; then
+            echo "Services failed to start within timeout"
+            docker compose ps
+            docker compose logs
+            exit 1
+          fi
+
   push-manifest:
     permissions:
       packages: write

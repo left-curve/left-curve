@@ -14,11 +14,19 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=grug_dev
     tty: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
 
   dango:
-    image: ghcr.io/left-curve/left-curve/dango:latest
+    image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      # cometbft:
+      #   condition: service_healthy
     ports:
       - 127.0.0.1:8080:8080
     volumes:
@@ -32,14 +40,25 @@ services:
       - DB_NAME=grug_dev
       - INDEXER__DATABASE_URL=postgres://postgres@db:5432/grug_dev
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
     depends_on:
-      - dango
+      dango:
+        condition: service_healthy
     ports:
       - 127.0.0.1:26657:26657
     volumes:
       - ./configs/cometbft/config:/home/cometbft/.cometbft/config
       - ./data/cometbft/data:/home/cometbft/.cometbft/data
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
