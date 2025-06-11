@@ -290,7 +290,7 @@ jobs:
           [self-hosted]
     name: Testing localdango with ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
-    needs: [test]
+    needs: [build]
     permissions:
       packages: read
     steps:
