@@ -28,6 +28,8 @@ pub fn add_subsequent_liquidity(
     let deposit_value = oracle_value(oracle_querier, &deposit)?;
     let reserve_value = oracle_value(oracle_querier, reserve)?;
 
+    reserve.merge(deposit)?;
+
     Ok(deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?)
 }
 
