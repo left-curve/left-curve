@@ -6,16 +6,8 @@ use {
     std::{cmp, iter},
 };
 
-pub fn add_initial_liquidity(
-    mut reserve: CoinPair,
-    deposit: CoinPair,
-) -> anyhow::Result<(CoinPair, Uint128)> {
-    reserve.merge(deposit)?;
-
-    // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
-    let mint_amount = normalized_invariant(&reserve)?;
-
-    Ok((reserve, mint_amount))
+pub fn add_initial_liquidity(deposit: &CoinPair) -> MathResult<Uint128> {
+    normalized_invariant(deposit)
 }
 
 pub fn add_subsequent_liquidity(

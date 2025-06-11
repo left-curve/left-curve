@@ -2,22 +2,15 @@ use {
     crate::core::xyk,
     dango_oracle::OracleQuerier,
     grug::{
-        Bounded, CoinPair, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
-        Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, Number, NumberConst, StdResult,
+        Udec128, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
     std::iter,
 };
 
-// FIXME: Use oracle price to compute amoutn of intial LP tokens.
-pub fn add_initial_liquidity(
-    mut reserve: CoinPair,
-    deposit: CoinPair,
-) -> anyhow::Result<(CoinPair, Uint128)> {
-    reserve.merge(deposit)?;
-
-    let mint_amount = xyk::normalized_invariant(&reserve)?;
-
-    Ok((reserve, mint_amount))
+pub fn add_initial_liquidity(deposit: &CoinPair) -> MathResult<Uint128> {
+    // FIXME: Use oracle price to compute amoutn of intial LP tokens.
+    xyk::normalized_invariant(deposit)
 }
 
 pub fn add_subsequent_liquidity(

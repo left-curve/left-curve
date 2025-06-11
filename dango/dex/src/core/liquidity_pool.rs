@@ -4,7 +4,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
+        Uint128,
     },
 };
 
@@ -139,17 +140,24 @@ impl PassiveLiquidityPool for PairParams {
         lp_token_supply: Uint128,
         deposit: CoinPair,
     ) -> anyhow::Result<(CoinPair, Uint128)> {
-        let mint_ratio = match (&self.pool_type, lp_token_supply) {
-            (PassiveLiquidity::Xyk { .. }, Uint128::ZERO) => {
-                return xyk::add_initial_liquidity(reserve, deposit.clone());
-            },
-            (PassiveLiquidity::Geometric { .. }, Uint128::ZERO) => {
-                return geometric::add_initial_liquidity(reserve, deposit.clone());
-            },
-            (PassiveLiquidity::Xyk { .. }, _) => {
+        // If there isn't any liquidity in the pool yet, run the special logic
+        // for adding initial liquidity, then early return.
+        if lp_token_supply.is_zero() {
+            let mint_amount = match &self.pool_type {
+                PassiveLiquidity::Xyk { .. } => xyk::add_initial_liquidity(&deposit)?,
+                PassiveLiquidity::Geometric { .. } => geometric::add_initial_liquidity(&deposit)?,
+            };
+
+            reserve.merge(deposit.clone())?;
+
+            return Ok((reserve, mint_amount));
+        }
+
+        let mint_ratio = match &self.pool_type {
+            PassiveLiquidity::Xyk { .. } => {
                 xyk::add_subsequent_liquidity(&mut reserve, deposit.clone())?
             },
-            (PassiveLiquidity::Geometric { .. }, _) => {
+            PassiveLiquidity::Geometric { .. } => {
                 geometric::add_subsequent_liquidity(oracle_querier, &mut reserve, deposit.clone())?
             },
         };
