@@ -1,7 +1,7 @@
 use {
-    crate::TradingFunction,
     anyhow::ensure,
-    dango_types::dex::{CurveInvariant, PairParams},
+    dango_oracle::OracleQuerier,
+    dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
         Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
         StdResult, Udec128, Uint128,
@@ -18,6 +18,7 @@ pub trait PassiveLiquidityPool {
     ///
     /// ## Inputs
     ///
+    /// - `oracle_querier`: The oracle querier.
     /// - `reserve`: The current pool reserves, before the deposit is added.
     /// - `lp_token_supply`: The current total supply of LP tokens.
     /// - `deposit`: The funds to add to the pool. Note, this may be asymmetrical,
@@ -29,6 +30,7 @@ pub trait PassiveLiquidityPool {
     /// - The amount of LP tokens to mint.
     fn add_liquidity(
         &self,
+        oracle_querier: &mut OracleQuerier,
         reserve: CoinPair,
         lp_token_supply: Uint128,
         deposit: CoinPair,
@@ -126,9 +128,18 @@ pub trait PassiveLiquidityPool {
     )>;
 }
 
+fn xyk_normalized_invariant(reserve: &CoinPair) -> StdResult<Uint128> {
+    Ok(reserve
+        .first()
+        .amount
+        .checked_mul(*reserve.second().amount)?
+        .checked_sqrt()?)
+}
+
 impl PassiveLiquidityPool for PairParams {
     fn add_liquidity(
         &self,
+        oracle_querier: &mut OracleQuerier,
         mut reserve: CoinPair,
         lp_token_supply: Uint128,
         deposit: CoinPair,
@@ -136,26 +147,49 @@ impl PassiveLiquidityPool for PairParams {
         if lp_token_supply.is_zero() {
             reserve.merge(deposit.clone())?;
 
-            let invariant = self.curve_invariant.normalized_invariant(&reserve)?;
-
             // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
-            let mint_amount = invariant;
+            let mint_amount = xyk_normalized_invariant(&reserve)?;
 
             Ok((reserve, mint_amount))
         } else {
-            let invariant_before = self.curve_invariant.normalized_invariant(&reserve)?;
+            let mint_ratio = match self.pool_type {
+                PassiveLiquidity::Xyk { .. } => {
+                    let invariant_before = xyk_normalized_invariant(&reserve)?;
 
-            // Add the used funds to the pool reserves.
-            reserve.merge(deposit.clone())?;
+                    // Add the used funds to the pool reserves.
+                    reserve.merge(deposit.clone())?;
 
-            // Compute the proportional increase in the invariant.
-            let invariant_after = self.curve_invariant.normalized_invariant(&reserve)?;
-            let invariant_ratio = Udec128::checked_from_ratio(invariant_after, invariant_before)?;
+                    // Compute the proportional increase in the invariant.
+                    let invariant_after = xyk_normalized_invariant(&reserve)?;
+                    let invariant_ratio =
+                        Udec128::checked_from_ratio(invariant_after, invariant_before)?;
 
-            // Compute the mint ratio from the invariant ratio based on the curve type.
-            // This ensures that an unbalances provision will be equivalent to a swap
-            // followed by a balancedliquidity provision.
-            let mint_ratio = invariant_ratio.checked_sub(Udec128::ONE)?;
+                    // Compute the mint ratio from the invariant ratio based on the curve type.
+                    // This ensures that an unbalances provision will be equivalent to a swap
+                    // followed by a balancedliquidity provision.
+                    invariant_ratio.checked_sub(Udec128::ONE)?
+                },
+                PassiveLiquidity::Geometric { .. } => {
+                    fn oracle_value(
+                        oracle_querier: &mut OracleQuerier,
+                        coin_pair: &CoinPair,
+                    ) -> anyhow::Result<Udec128> {
+                        let first_value = oracle_querier
+                            .query_price(coin_pair.first().denom, None)?
+                            .value_of_unit_amount(*coin_pair.first().amount)?;
+                        let second_value = oracle_querier
+                            .query_price(coin_pair.second().denom, None)?
+                            .value_of_unit_amount(*coin_pair.second().amount)?;
+                        Ok(first_value.checked_add(second_value)?)
+                    }
+
+                    let deposit_value = oracle_value(oracle_querier, &deposit)?;
+                    let reserve_value = oracle_value(oracle_querier, &reserve)?;
+
+                    deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?
+                },
+            };
+
             let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
 
             // Apply swap fee to unbalanced provision. Logic is based on Curve V2:
@@ -206,8 +240,8 @@ impl PassiveLiquidityPool for PairParams {
         let input_reserve = reserve.amount_of(&input.denom)?;
         let output_reserve = reserve.amount_of(&output_denom)?;
 
-        let output_amount_after_fee = match self.curve_invariant {
-            CurveInvariant::Xyk { .. } => {
+        let output_amount_after_fee = match self.pool_type {
+            PassiveLiquidity::Xyk { .. } => {
                 // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
                 // => output_amount = B - (A * B) / (A + input_amount)
                 // Round so that user takes the loss.
@@ -220,6 +254,10 @@ impl PassiveLiquidityPool for PairParams {
                 // Apply swap fee. Round so that user takes the loss.
                 output_amount
                     .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?
+            },
+            PassiveLiquidity::Geometric { .. } => {
+                // TODO: implement
+                todo!()
             },
         };
 
@@ -254,8 +292,8 @@ impl PassiveLiquidityPool for PairParams {
             output.amount
         );
 
-        let input_amount = match self.curve_invariant {
-            CurveInvariant::Xyk { .. } => {
+        let input_amount = match self.pool_type {
+            PassiveLiquidity::Xyk { .. } => {
                 // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
                 // offer amount after fees. So in this case we need to divide ask by (1 - fee)
                 // to get the ask amount after fees.
@@ -273,6 +311,10 @@ impl PassiveLiquidityPool for PairParams {
                         output_reserve.checked_sub(output_amount_before_fee)?,
                     )?
                     .checked_sub(input_reserve)?
+            },
+            PassiveLiquidity::Geometric { .. } => {
+                // TODO: implement
+                todo!()
             },
         };
 
@@ -295,19 +337,20 @@ impl PassiveLiquidityPool for PairParams {
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
-        let base_reserve = reserve.amount_of(&base_denom)?;
-        let quote_reserve = reserve.amount_of(&quote_denom)?;
+        let mut base_reserve = reserve.amount_of(&base_denom)?;
+        let mut quote_reserve = reserve.amount_of(&quote_denom)?;
 
         // Compute the marginal price. We will place orders above and below this price.
         let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
 
-        match self.curve_invariant {
-            CurveInvariant::Xyk { order_spacing } => {
-                let swap_fee_rate = self.swap_fee_rate.into_inner();
+        let swap_fee_rate = self.swap_fee_rate.into_inner();
+        let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
+        let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
 
+        match self.pool_type {
+            PassiveLiquidity::Xyk { order_spacing } => {
                 // Construct the bid order iterator.
                 // Start from the marginal price minus the swap fee rate.
-                let one_sub_fee_rate = Udec128::ONE.checked_sub(swap_fee_rate)?;
                 let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
                 let mut prev_size = Uint128::ZERO;
                 let mut prev_size_quote = Uint128::ZERO;
@@ -391,6 +434,71 @@ impl PassiveLiquidityPool for PairParams {
 
                 Ok((Box::new(bids), Box::new(asks)))
             },
+            PassiveLiquidity::Geometric {
+                ratio,
+                order_spacing,
+            } => {
+                // Construct bid price iterator with decreasing prices
+                let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
+                let mut maybe_price = Some(bid_starting_price);
+                let bid_prices = iter::from_fn(move || {
+                    let price = match maybe_price {
+                        Some(price) if price.is_non_zero() => price,
+                        _ => return None,
+                    };
+                    maybe_price = price.checked_sub(order_spacing).ok();
+                    Some(price)
+                });
+
+                // Iteratively assign `ratio` of the remaining liquidity to each
+                // consecutive order.
+                let bid_sizes_in_quote = std::iter::from_fn(move || {
+                    let size = match quote_reserve.checked_mul_dec(ratio.into_inner()) {
+                        Ok(size) => size,
+                        Err(_) => return None,
+                    };
+                    quote_reserve.checked_sub_assign(size).ok()?;
+                    Some(size)
+                });
+
+                // Zip sizes with prices and convert to each size to base asset size at
+                // the price.
+                let bids =
+                    bid_prices
+                        .zip(bid_sizes_in_quote)
+                        .filter_map(|(price, size_in_quote)| {
+                            let size = size_in_quote.checked_div_dec_floor(price).ok()?;
+                            Some((price, size))
+                        });
+
+                // Construct ask price iterator with increasing prices
+                let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
+                let mut maybe_price = Some(ask_starting_price);
+                let ask_prices = iter::from_fn(move || {
+                    let price = match maybe_price {
+                        Some(price) if price.is_non_zero() => price,
+                        _ => return None,
+                    };
+                    maybe_price = price.checked_add(order_spacing).ok();
+                    Some(price)
+                });
+
+                // Construct ask size placing `ratio` of the remaining liquidity of
+                // base reserve into each order.
+                let ask_sizes = std::iter::from_fn(move || {
+                    let size = match base_reserve.checked_mul_dec(ratio.into_inner()) {
+                        Ok(size) => size,
+                        Err(_) => return None,
+                    };
+                    base_reserve.checked_sub_assign(size).ok()?;
+                    Some(size)
+                });
+
+                // Zip sizes with prices
+                let asks = ask_prices.zip(ask_sizes);
+
+                Ok((Box::new(bids), Box::new(asks)))
+            },
         }
     }
 }
@@ -415,7 +523,7 @@ mod tests {
     };
 
     #[test_case(
-        CurveInvariant::Xyk {
+        PassiveLiquidity::Xyk {
             order_spacing: Udec128::ONE,
         },
         Udec128::new_permille(5),
@@ -451,7 +559,7 @@ mod tests {
         "xyk pool balance 1:200 tick size 1 0.5% fee"
     )]
     #[test_case(
-        CurveInvariant::Xyk {
+        PassiveLiquidity::Xyk {
             order_spacing: Udec128::ONE,
         },
         Udec128::new_percent(1),
@@ -487,7 +595,7 @@ mod tests {
         "xyk pool balance 1:200 tick size 1 one percent fee"
     )]
     #[test_case(
-        CurveInvariant::Xyk {
+        PassiveLiquidity::Xyk {
             order_spacing: Udec128::new_percent(1),
         },
         Udec128::new_permille(5),
@@ -523,7 +631,7 @@ mod tests {
         "xyk pool balance 1:1 0.5% fee"
     )]
     #[test_case(
-        CurveInvariant::Xyk {
+        PassiveLiquidity::Xyk {
             order_spacing: Udec128::new_percent(1),
         },
         Udec128::new_percent(1),
@@ -558,8 +666,45 @@ mod tests {
         1;
         "xyk pool balance 1:1 one percent fee"
     )]
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(70)).unwrap(),
+            order_spacing: Udec128::new_percent(1),
+        },
+        Udec128::new_percent(1),
+        coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        vec![
+            (Udec128::new_percent(99), Uint128::from(7070707)),
+            (Udec128::new_percent(98), Uint128::from(2142857)),
+            (Udec128::new_percent(97), Uint128::from(649484)),
+            (Udec128::new_percent(96), Uint128::from(196875)),
+            (Udec128::new_percent(95), Uint128::from(59684)),
+            (Udec128::new_percent(94), Uint128::from(18095)),
+            (Udec128::new_percent(93), Uint128::from(5487)),
+            (Udec128::new_percent(92), Uint128::from(1663)),
+            (Udec128::new_percent(91), Uint128::from(504)),
+            (Udec128::new_percent(90), Uint128::from(152)),
+        ],
+        vec![
+            (Udec128::new_percent(101), Uint128::from(7000000)),
+            (Udec128::new_percent(102), Uint128::from(2100000)),
+            (Udec128::new_percent(103), Uint128::from(630000)),
+            (Udec128::new_percent(104), Uint128::from(189000)),
+            (Udec128::new_percent(105), Uint128::from(56700)),
+            (Udec128::new_percent(106), Uint128::from(17010)),
+            (Udec128::new_percent(107), Uint128::from(5103)),
+            (Udec128::new_percent(108), Uint128::from(1530)),
+            (Udec128::new_percent(109), Uint128::from(459)),
+            (Udec128::new_percent(110), Uint128::from(137)),
+        ],
+        1;
+        "geometric pool balance 1:1 30% ratio"
+    )]
     fn curve_on_orderbook(
-        curve_invariant: CurveInvariant,
+        pool_type: PassiveLiquidity,
         swap_fee_rate: Udec128,
         pool_liquidity: Coins,
         expected_bids: Vec<(Udec128, Uint128)>,
@@ -567,7 +712,7 @@ mod tests {
         order_size_tolerance: u128,
     ) {
         let pair = PairParams {
-            curve_invariant,
+            pool_type,
             swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
@@ -578,24 +723,63 @@ mod tests {
             .unwrap();
 
         // Assert that at least 10 orders are returned.
-        let bids = bids.take(10).collect::<Vec<_>>();
-        let asks = asks.take(10).collect::<Vec<_>>();
-        assert_eq!(bids.len(), 10);
-        assert_eq!(asks.len(), 10);
+        let bids = bids.take(expected_bids.len()).collect::<Vec<_>>();
+        let asks = asks.take(expected_asks.len()).collect::<Vec<_>>();
+        assert_eq!(bids.len(), expected_bids.len());
+        assert_eq!(asks.len(), expected_asks.len());
 
         // Assert that the orders are correct.
-        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
-            assert_eq!(bid.0, expected_bid.0);
-            assert!(
-                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
-            );
-        }
-
         for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
             assert_eq!(ask.0, expected_ask.0);
             assert!(
                 ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
             );
         }
+
+        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert!(
+                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
+            );
+        }
+    }
+
+    #[test]
+    fn geometric_pool_iterator_stops_at_zero_price() {
+        let pair = PairParams {
+            pool_type: PassiveLiquidity::Geometric {
+                ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                order_spacing: Udec128::new_percent(50),
+            },
+            swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        let reserve = coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        }
+        .try_into()
+        .unwrap();
+
+        let (bids, asks) = pair
+            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .unwrap();
+
+        let bids_collected = bids.collect::<Vec<_>>();
+
+        assert_eq!(bids_collected.len(), 2);
+
+        for (bid, expected_bid) in bids_collected.into_iter().zip(vec![
+            (Udec128::new_percent(99), Uint128::from(5050505)),
+            (Udec128::new_percent(49), Uint128::from(5102040)),
+        ]) {
+            assert_eq!(bid.0, expected_bid.0);
+            assert_eq!(bid.1, expected_bid.1);
+        }
+
+        // Check that ask iterator keeps going after bid iterator is exhausted
+        let asks_collected = asks.take(10).collect::<Vec<_>>();
+        assert_eq!(asks_collected.len(), 10);
     }
 }
