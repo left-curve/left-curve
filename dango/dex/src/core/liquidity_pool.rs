@@ -140,75 +140,44 @@ impl PassiveLiquidityPool for PairParams {
         lp_token_supply: Uint128,
         deposit: CoinPair,
     ) -> anyhow::Result<(CoinPair, Uint128)> {
-        if lp_token_supply.is_zero() {
-            reserve.merge(deposit.clone())?;
+        let mint_ratio = match (&self.pool_type, lp_token_supply) {
+            (PassiveLiquidity::Xyk { .. }, Uint128::ZERO) => {
+                return xyk_add_initial_liquidity(reserve, deposit.clone());
+            },
+            (PassiveLiquidity::Geometric { .. }, Uint128::ZERO) => {
+                return geometric_add_initial_liquidity(reserve, deposit.clone());
+            },
+            (PassiveLiquidity::Xyk { .. }, _) => {
+                xyk_add_subsequent_liquidity(&mut reserve, deposit.clone())?
+            },
+            (PassiveLiquidity::Geometric { .. }, _) => {
+                geometric_add_subsequent_liquidity(oracle_querier, &mut reserve, deposit.clone())?
+            },
+        };
 
-            // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
-            let mint_amount = xyk_normalized_invariant(&reserve)?;
+        let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
 
-            Ok((reserve, mint_amount))
-        } else {
-            let mint_ratio = match self.pool_type {
-                PassiveLiquidity::Xyk { .. } => {
-                    let invariant_before = xyk_normalized_invariant(&reserve)?;
+        // Apply swap fee to unbalanced provision. Logic is based on Curve V2:
+        // https://github.com/curvefi/twocrypto-ng/blob/main/contracts/main/Twocrypto.vy#L1146-L1168
+        let (a, b, reserve_a, reserve_b) = (
+            *deposit.first().amount,
+            *deposit.second().amount,
+            *reserve.first().amount,
+            *reserve.second().amount,
+        );
 
-                    // Add the used funds to the pool reserves.
-                    reserve.merge(deposit.clone())?;
+        let sum_reserves = reserve_a.checked_add(reserve_b)?;
+        let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
+        let fee_rate = Udec128::checked_from_ratio(
+            abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
+            sum_reserves,
+        )?
+        .checked_mul(self.swap_fee_rate.checked_mul(HALF)?)?;
 
-                    // Compute the proportional increase in the invariant.
-                    let invariant_after = xyk_normalized_invariant(&reserve)?;
-                    let invariant_ratio =
-                        Udec128::checked_from_ratio(invariant_after, invariant_before)?;
+        let mint_amount =
+            mint_amount_before_fee.checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
 
-                    // Compute the mint ratio from the invariant ratio based on the curve type.
-                    // This ensures that an unbalances provision will be equivalent to a swap
-                    // followed by a balancedliquidity provision.
-                    invariant_ratio.checked_sub(Udec128::ONE)?
-                },
-                PassiveLiquidity::Geometric { .. } => {
-                    fn oracle_value(
-                        oracle_querier: &mut OracleQuerier,
-                        coin_pair: &CoinPair,
-                    ) -> anyhow::Result<Udec128> {
-                        let first_value = oracle_querier
-                            .query_price(coin_pair.first().denom, None)?
-                            .value_of_unit_amount(*coin_pair.first().amount)?;
-                        let second_value = oracle_querier
-                            .query_price(coin_pair.second().denom, None)?
-                            .value_of_unit_amount(*coin_pair.second().amount)?;
-                        Ok(first_value.checked_add(second_value)?)
-                    }
-
-                    let deposit_value = oracle_value(oracle_querier, &deposit)?;
-                    let reserve_value = oracle_value(oracle_querier, &reserve)?;
-
-                    deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?
-                },
-            };
-
-            let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
-
-            // Apply swap fee to unbalanced provision. Logic is based on Curve V2:
-            // https://github.com/curvefi/twocrypto-ng/blob/main/contracts/main/Twocrypto.vy#L1146-L1168
-            let (a, b, reserve_a, reserve_b) = (
-                *deposit.first().amount,
-                *deposit.second().amount,
-                *reserve.first().amount,
-                *reserve.second().amount,
-            );
-            let sum_reserves = reserve_a.checked_add(reserve_b)?;
-            let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
-            let fee_rate = Udec128::checked_from_ratio(
-                abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
-                sum_reserves,
-            )?
-            .checked_mul(self.swap_fee_rate.checked_mul(HALF)?)?;
-
-            let mint_amount = mint_amount_before_fee
-                .checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
-
-            Ok((reserve, mint_amount))
-        }
+        Ok((reserve, mint_amount))
     }
 
     fn swap_exact_amount_in(
@@ -486,6 +455,74 @@ impl PassiveLiquidityPool for PairParams {
             },
         }
     }
+}
+
+fn xyk_add_initial_liquidity(
+    mut reserve: CoinPair,
+    deposit: CoinPair,
+) -> anyhow::Result<(CoinPair, Uint128)> {
+    reserve.merge(deposit)?;
+
+    // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
+    let mint_amount = xyk_normalized_invariant(&reserve)?;
+
+    Ok((reserve, mint_amount))
+}
+
+// TODO: use oracle price
+fn geometric_add_initial_liquidity(
+    mut reserve: CoinPair,
+    deposit: CoinPair,
+) -> anyhow::Result<(CoinPair, Uint128)> {
+    reserve.merge(deposit)?;
+
+    // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
+    let mint_amount = xyk_normalized_invariant(&reserve)?;
+
+    Ok((reserve, mint_amount))
+}
+
+fn xyk_add_subsequent_liquidity(
+    reserve: &mut CoinPair,
+    deposit: CoinPair,
+) -> anyhow::Result<Udec128> {
+    let invariant_before = xyk_normalized_invariant(&reserve)?;
+
+    // Add the used funds to the pool reserves.
+    reserve.merge(deposit)?;
+
+    // Compute the proportional increase in the invariant.
+    let invariant_after = xyk_normalized_invariant(&reserve)?;
+    let invariant_ratio = Udec128::checked_from_ratio(invariant_after, invariant_before)?;
+
+    // Compute the mint ratio from the invariant ratio based on the curve type.
+    // This ensures that an unbalances provision will be equivalent to a swap
+    // followed by a balancedliquidity provision.
+    Ok(invariant_ratio.checked_sub(Udec128::ONE)?)
+}
+
+fn geometric_add_subsequent_liquidity(
+    oracle_querier: &mut OracleQuerier,
+    reserve: &mut CoinPair,
+    deposit: CoinPair,
+) -> anyhow::Result<Udec128> {
+    fn oracle_value(
+        oracle_querier: &mut OracleQuerier,
+        coin_pair: &CoinPair,
+    ) -> anyhow::Result<Udec128> {
+        let first_value = oracle_querier
+            .query_price(coin_pair.first().denom, None)?
+            .value_of_unit_amount(*coin_pair.first().amount)?;
+        let second_value = oracle_querier
+            .query_price(coin_pair.second().denom, None)?
+            .value_of_unit_amount(*coin_pair.second().amount)?;
+        Ok(first_value.checked_add(second_value)?)
+    }
+
+    let deposit_value = oracle_value(oracle_querier, &deposit)?;
+    let reserve_value = oracle_value(oracle_querier, &reserve)?;
+
+    Ok(deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?)
 }
 
 /// Compute `sqrt(A * B)`, where `A` and `B` are the reserve amount of the two
