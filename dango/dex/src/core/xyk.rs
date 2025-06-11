@@ -94,87 +94,93 @@ pub fn reflect_curve(
 
     // Construct the bid order iterator.
     // Start from the marginal price minus the swap fee rate.
-    let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
-    let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
-    let mut prev_size = Uint128::ZERO;
-    let mut prev_size_quote = Uint128::ZERO;
-    let bids = iter::from_fn(move || {
-        // Terminate if price is less or equal to zero.
-        let price = match maybe_price {
-            Some(price) if price.is_non_zero() => price,
-            _ => return None,
-        };
+    let bids = {
+        let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
+        let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
+        let mut prev_size = Uint128::ZERO;
+        let mut prev_size_quote = Uint128::ZERO;
 
-        // Compute the total order size (in base asset) at this price.
-        let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
-        let mut size = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
+        iter::from_fn(move || {
+            // Terminate if price is less or equal to zero.
+            let price = match maybe_price {
+                Some(price) if price.is_non_zero() => price,
+                _ => return None,
+            };
 
-        // Compute the order size (in base asset) at this price.
-        //
-        // This is the difference between the total order size at
-        // this price, and that at the previous price.
-        let mut amount = size.checked_sub(prev_size).ok()?;
+            // Compute the total order size (in base asset) at this price.
+            let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+            let mut size = quote_reserve_div_price.checked_sub(base_reserve).ok()?;
 
-        // Compute the total order size (in quote asset) at this price.
-        let mut amount_quote = amount.checked_mul_dec_ceil(price).ok()?;
-        let mut size_quote = prev_size_quote.checked_add(amount_quote).ok()?;
+            // Compute the order size (in base asset) at this price.
+            //
+            // This is the difference between the total order size at
+            // this price, and that at the previous price.
+            let mut amount = size.checked_sub(prev_size).ok()?;
 
-        // If total order size (in quote asset) is greater than the
-        // reserve, cap it to the reserve size.
-        if size_quote > quote_reserve {
-            size_quote = quote_reserve;
-            amount_quote = size_quote.checked_sub(prev_size_quote).ok()?;
-            amount = amount_quote.checked_div_dec_floor(price).ok()?;
-            size = prev_size.checked_add(amount).ok()?;
-        }
+            // Compute the total order size (in quote asset) at this price.
+            let mut amount_quote = amount.checked_mul_dec_ceil(price).ok()?;
+            let mut size_quote = prev_size_quote.checked_add(amount_quote).ok()?;
 
-        // If order size is zero, we have ran out of liquidity.
-        // Terminate the iterator.
-        if amount.is_zero() {
-            return None;
-        }
+            // If total order size (in quote asset) is greater than the
+            // reserve, cap it to the reserve size.
+            if size_quote > quote_reserve {
+                size_quote = quote_reserve;
+                amount_quote = size_quote.checked_sub(prev_size_quote).ok()?;
+                amount = amount_quote.checked_div_dec_floor(price).ok()?;
+                size = prev_size.checked_add(amount).ok()?;
+            }
 
-        // Update the iterator state.
-        prev_size = size;
-        prev_size_quote = size_quote;
-        maybe_price = price.checked_sub(order_spacing).ok();
+            // If order size is zero, we have ran out of liquidity.
+            // Terminate the iterator.
+            if amount.is_zero() {
+                return None;
+            }
 
-        Some((price, amount))
-    });
+            // Update the iterator state.
+            prev_size = size;
+            prev_size_quote = size_quote;
+            maybe_price = price.checked_sub(order_spacing).ok();
+
+            Some((price, amount))
+        })
+    };
 
     // Construct the ask order iterator.
-    let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
-    let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
-    let mut prev_size = Uint128::ZERO;
-    let asks = iter::from_fn(move || {
-        let price = maybe_price?;
+    let asks = {
+        let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
+        let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
+        let mut prev_size = Uint128::ZERO;
 
-        // Compute the total order size (in base asset) at this price.
-        let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
-        let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
+        iter::from_fn(move || {
+            let price = maybe_price?;
 
-        // If total order size (in base asset) exceeds the base asset
-        // reserve, cap it to the reserve size.
-        let size = cmp::min(size, base_reserve);
+            // Compute the total order size (in base asset) at this price.
+            let quote_reserve_div_price = quote_reserve.checked_div_dec(price).ok()?;
+            let size = base_reserve.checked_sub(quote_reserve_div_price).ok()?;
 
-        // Compute the order size (in base asset) at this price.
-        //
-        // This is the difference between the total order size at
-        // this price, and that at the previous price.
-        let amount = size.checked_sub(prev_size).ok()?;
+            // If total order size (in base asset) exceeds the base asset
+            // reserve, cap it to the reserve size.
+            let size = cmp::min(size, base_reserve);
 
-        // If order size is zero, we have ran out of liquidity.
-        // Terminate the iterator.
-        if amount.is_zero() {
-            return None;
-        }
+            // Compute the order size (in base asset) at this price.
+            //
+            // This is the difference between the total order size at
+            // this price, and that at the previous price.
+            let amount = size.checked_sub(prev_size).ok()?;
 
-        // Update the iterator state.
-        prev_size = size;
-        maybe_price = price.checked_add(order_spacing).ok();
+            // If order size is zero, we have ran out of liquidity.
+            // Terminate the iterator.
+            if amount.is_zero() {
+                return None;
+            }
 
-        Some((price, amount))
-    });
+            // Update the iterator state.
+            prev_size = size;
+            maybe_price = price.checked_add(order_spacing).ok();
+
+            Some((price, amount))
+        })
+    };
 
     Ok((Box::new(bids), Box::new(asks)))
 }
