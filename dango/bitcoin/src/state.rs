@@ -1,8 +1,7 @@
 use {
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction, Vout},
     grug::{
-        Addr, Counter, Empty, Hash256, HexByteArray, IndexedMap, Item, Map, Serde, Set, Uint128,
-        UniqueIndex,
+        Addr, Counter, Empty, Hash256, HexByteArray, Item, Map, Serde, Set, Uint128, UniqueIndex,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -14,7 +13,7 @@ pub const CONFIG: Item<Config, Serde> = Item::new("config");
 /// ```plain
 /// (transaction_hash, amount, recipient) => voted_guardians
 /// ```
-pub const INBOUNDS: Map<(Hash256, Vout, Uint128, Option<Addr>), BTreeSet<Addr>> =
+pub const INBOUNDS: Map<(Hash256, Vout, Uint128, Option<Addr>), BTreeSet<HexByteArray<33>>> =
     Map::new("inbound");
 
 /// UTXOs owned by the multisig, available to be spent for outbound transactions.
@@ -22,12 +21,7 @@ pub const INBOUNDS: Map<(Hash256, Vout, Uint128, Option<Addr>), BTreeSet<Addr>> 
 /// ```plain
 /// amount => transaction_hash
 /// ```
-///
-/// TODO: We should create `IndexedSet` for this.
-pub const UTXOS: IndexedMap<(Uint128, Hash256, Vout), Empty, UtxoIndexes> =
-    IndexedMap::new("utxo", UtxoIndexes {
-        transaction_hash: UniqueIndex::new(|(_, hash, _), _| *hash, "utxo", "utxo__hash"),
-    });
+pub const UTXOS: Set<(Uint128, Hash256, Vout)> = Set::new("utxo");
 
 /// UTXOs that have been processed by the multisig and accredited to the user.
 /// This is used to prevent double spending.

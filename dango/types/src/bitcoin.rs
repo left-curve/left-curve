@@ -6,7 +6,10 @@ use {
         TxIn, TxOut, Txid, Witness, absolute::LockTime, hashes::Hash,
         opcodes::all::OP_CHECKMULTISIG, script::Builder, transaction::Version,
     },
-    grug::{Addr, Denom, Hash256, HexBinary, HexByteArray, Inner, NonEmpty, Order, Uint128},
+    grug::{
+        Addr, BorshSerExt, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NonEmpty,
+        Order, StdResult, Uint128,
+    },
     serde::{Deserialize, Serialize, Serializer},
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -236,24 +239,7 @@ pub enum ExecuteMsg {
     /// Observe an inbound transaction.
     ///
     /// Can only be called by the guardians.
-    ObserveInbound {
-        /// The Bitcoin transaction hash.
-        transaction_hash: Hash256,
-        /// The transaction's output index.
-        vout: Vout,
-        /// The transaction's UTXO amount.
-        amount: Uint128,
-        /// The recipient of the inbound transfer.
-        ///
-        /// In case of a user making a deposit, he must indicate the recipient
-        /// address in the transaction's memo. The guardian must report this
-        /// recipient.
-        ///
-        /// Other kinds of inbound transactions do not have a recipient. For
-        /// example, an outbound transaction may have an excess amount. Or, the
-        /// operator may top up the multisig's balance to cover gas cost.
-        recipient: Option<Addr>,
-    },
+    ObserveInbound(InboundMsg),
     /// Withdraw Bitcoin buy burning the synthetic token on Dango.
     ///
     /// Can be called by anyone. Caller must send a non-zero amount of synthetic
@@ -362,4 +348,37 @@ pub struct OutboundConfirmed {
     pub id: u32,
     pub transaction: Transaction,
     pub signatures: BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>,
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct InboundMsg {
+    /// The Bitcoin transaction hash.
+    pub transaction_hash: Hash256,
+    /// The transaction's output index.
+    pub vout: Vout,
+    /// The transaction's UTXO amount.
+    pub amount: Uint128,
+    /// The recipient of the inbound transfer.
+    ///
+    /// In case of a user making a deposit, he must indicate the recipient
+    /// address in the transaction's memo. The guardian must report this
+    /// recipient.
+    ///
+    /// Other kinds of inbound transactions do not have a recipient. For
+    /// example, an outbound transaction may have an excess amount. Or, the
+    /// operator may top up the multisig's balance to cover gas cost.
+    pub recipient: Option<Addr>,
+    /// Pubkey of the guardian observing the inbound transaction.
+    pub pub_key: HexByteArray<33>,
+}
+
+impl InboundMsg {
+    pub fn hash(&self) -> StdResult<Hash256> {
+        Ok(self.to_borsh_vec()?.hash256())
+    }
+}
+
+#[grug::derive(Serde)]
+pub struct InboundCredential {
+    pub signature: HexBinary,
 }

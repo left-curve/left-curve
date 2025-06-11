@@ -593,9 +593,9 @@ impl Preset for BitcoinOption {
             multisig: MultisigSettings::new(
                 2,
                 NonEmpty::new_unchecked(btree_set! {
-                    HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap(),
-                    HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].1).unwrap(),
-                    HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[2].1).unwrap(),
+                    HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1),
+                    HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1),
+                    HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1),
 
                 }),
             )

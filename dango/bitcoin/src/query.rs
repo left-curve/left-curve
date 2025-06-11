@@ -69,7 +69,7 @@ fn query_utxos(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     UTXOS
-        .keys(storage, start, None, order)
+        .range(storage, start, None, order)
         .take(limit)
         .map(|res| {
             let (amount, transaction_hash, vout) = res?;

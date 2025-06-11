@@ -7,14 +7,15 @@ use {
     corepc_client::bitcoin::{
         Address, Amount, EcdsaSighashType,
         key::Secp256k1,
-        secp256k1::{Message as BtcMessage, PublicKey, ecdsa::Signature},
+        secp256k1::{self, PublicKey, ecdsa::Signature},
         sighash::SighashCache,
     },
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            BitcoinSignature, ExecuteMsg, INPUT_SIZE, InboundConfirmed, InstantiateMsg, Network,
-            OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed, OutboundRequested, Transaction, Vout,
+            BitcoinSignature, ExecuteMsg, INPUT_SIZE, InboundConfirmed, InboundCredential,
+            InstantiateMsg, Network, OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed,
+            OutboundRequested, Transaction, Vout,
         },
         gateway::{
             self, Remote,
@@ -22,8 +23,9 @@ use {
         },
     },
     grug::{
-        Addr, Coins, Empty, Hash256, HexByteArray, Inner, Message, MutableCtx, Number, NumberConst,
-        Order, QuerierExt as _, Response, StdResult, SudoCtx, Uint128,
+        Addr, AuthCtx, AuthResponse, Coins, Hash256, HexByteArray, Inner, JsonDeExt, Message,
+        MsgExecute, MutableCtx, Number, NumberConst, Order, QuerierExt as _, Response, StdResult,
+        SudoCtx, Tx, Uint128,
     },
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -48,18 +50,109 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+    let mut msgs = tx.msgs.iter();
+
+    // Assert the transaction contains exactly 1 MsgExecute.
+    let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
+        (msgs.next(), msgs.next())
+    else {
+        bail!("transaction must contain exactly one message");
+    };
+
+    // Assert the contract is the bridge.
+    ensure!(
+        contract == ctx.contract,
+        "contract must be the bitcoin bridge"
+    );
+
+    let cfg = CONFIG.load(ctx.storage)?;
+
+    if let Ok(ExecuteMsg::ObserveInbound(inbound_msg)) = msg.clone().deserialize_json() {
+        let credential: InboundCredential = tx.credential.deserialize_json()?;
+
+        ensure!(
+            cfg.multisig.pub_keys().contains(&inbound_msg.pub_key),
+            "public key `{}` is not a valid multisig public key",
+            inbound_msg.pub_key.to_string()
+        );
+
+        // Verify the credential is valid.
+        let secp = Secp256k1::verification_only();
+        let msg = secp256k1::Message::from_digest_slice(&inbound_msg.hash()?)?;
+
+        secp.verify_ecdsa(
+            &msg,
+            &Signature::from_der(credential.signature.inner())?,
+            &PublicKey::from_slice(inbound_msg.pub_key.inner())?,
+        )?;
+    } else if let Ok(ExecuteMsg::AuthorizeOutbound {
+        id,
+        signatures,
+        pub_key,
+    }) = msg.clone().deserialize_json()
+    {
+        let tx = OUTBOUNDS.load(ctx.storage, id)?;
+
+        ensure!(
+            cfg.multisig.pub_keys().contains(&pub_key),
+            "public key `{}` is not a valid multisig public key",
+            pub_key.to_string()
+        );
+
+        ensure!(
+            tx.inputs.len() == signatures.len(),
+            "transaction `{id}` has {} inputs, but {} signatures were provided",
+            tx.inputs.len(),
+            signatures.len()
+        );
+
+        // Validate the signatures.
+        let btc_transaction = tx.to_btc_transaction(cfg.network)?;
+        for (i, ((hash, vout), amount)) in tx.inputs.iter().enumerate() {
+            let signature = signatures.get(i).ok_or(anyhow!(
+                "missing signature for input `{hash}:{vout}` of transaction `{id}`"
+            ))?;
+
+            let signature = Signature::from_der(&signature[..signature.len() - 1])?;
+
+            // TODO: Can this be moved outside the loop?
+            let mut cache = SighashCache::new(&btc_transaction);
+
+            let sighash = cache.p2wsh_signature_hash(
+                i,
+                cfg.multisig.script(),
+                Amount::from_sat(amount.into_inner() as u64),
+                EcdsaSighashType::All,
+            )?;
+
+            let msg = secp256k1::Message::from_digest_slice(&sighash[..])?;
+
+            let secp = Secp256k1::verification_only();
+            secp.verify_ecdsa(&msg, &signature, &PublicKey::from_slice(pub_key.inner())?)?
+        }
+    } else {
+        bail!("the execute message must be either `ObserveInbound` or `AuthorizeOutbound`");
+    }
+
+    Ok(AuthResponse::new().request_backrun(false))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateConfig {
             sats_per_vbyte,
             outbound_strategy,
         } => update_config(ctx, sats_per_vbyte, outbound_strategy),
-        ExecuteMsg::ObserveInbound {
-            transaction_hash,
-            vout,
-            amount,
-            recipient,
-        } => observe_inbound(ctx, transaction_hash, vout, amount, recipient),
+        ExecuteMsg::ObserveInbound(inbound_msg) => observe_inbound(
+            ctx,
+            inbound_msg.transaction_hash,
+            inbound_msg.vout,
+            inbound_msg.amount,
+            inbound_msg.recipient,
+            inbound_msg.pub_key,
+        ),
         ExecuteMsg::Bridge(BridgeMsg::TransferRemote { req, amount }) => {
             transfer_remote(ctx, req, amount)
         },
@@ -102,11 +195,13 @@ fn observe_inbound(
     vout: Vout,
     amount: Uint128,
     recipient: Option<Addr>,
+    pub_key: HexByteArray<33>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
+    // Ensure only the bridge can call this function.
     ensure!(
-        cfg.guardians.contains(&ctx.sender),
+        ctx.sender == ctx.contract,
         "you don't have the right, O you don't have the right"
     );
 
@@ -126,7 +221,7 @@ fn observe_inbound(
     let mut voters = INBOUNDS.may_load(ctx.storage, inbound)?.unwrap_or_default();
 
     ensure!(
-        voters.insert(ctx.sender),
+        voters.insert(pub_key),
         "you've already voted for transaction `{hash}`"
     );
 
@@ -138,7 +233,7 @@ fn observe_inbound(
     // Otherwise, simply save the voters set, then we're done.
     let (maybe_msg, maybe_event) = if voters.len() >= cfg.multisig.threshold() as usize {
         PROCESSED_UTXOS.insert(ctx.storage, (hash, vout))?;
-        UTXOS.save(ctx.storage, (amount, hash, vout), &Empty {})?;
+        UTXOS.insert(ctx.storage, (amount, hash, vout))?;
         INBOUNDS.remove(ctx.storage, inbound);
 
         let maybe_msg = if let Some(recipient) = recipient {
@@ -237,7 +332,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut fee =
         (OVERHEAD_SIZE + Uint128::new(n_outupt as u128) * OUTPUT_SIZE) * cfg.sats_per_vbyte;
 
-    for res in UTXOS.keys(ctx.storage, None, None, cfg.outbound_strategy) {
+    for res in UTXOS.range(ctx.storage, None, None, cfg.outbound_strategy) {
         if sum >= withdraw_amount + fee {
             break;
         }
@@ -260,7 +355,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
     // Delete the chosen UTXOs.
     for ((hash, vout), amount) in &inputs {
-        UTXOS.remove(ctx.storage, (*amount, *hash, *vout))?;
+        UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
     }
 
     let (id, _) = NEXT_OUTBOUND_ID.increment(ctx.storage)?;
@@ -284,56 +379,18 @@ fn authorize_outbound(
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
+    // Ensure only the bridge can call this function.
     ensure!(
-        cfg.multisig.pub_keys().contains(&pub_key),
-        "public key `{pub_key}` is not a valid multisig public key"
+        ctx.sender == ctx.contract,
+        "you don't have the right, O you don't have the right"
     );
 
-    let transaction = OUTBOUNDS.load(ctx.storage, id)?;
-
-    ensure!(
-        transaction.inputs.len() == signatures.len(),
-        "transaction `{id}` has {} inputs, but {} signatures were provided",
-        transaction.inputs.len(),
-        signatures.len()
-    );
-
-    let redeem_script = cfg.multisig.script();
-
-    // Validate the signatures.
-    let btc_transaction = transaction.to_btc_transaction(cfg.network)?;
-    for (i, ((hash, vout), amount)) in transaction.inputs.iter().enumerate() {
-        let signature = signatures.get(i).ok_or(anyhow!(
-            "missing signature for input `{hash}:{vout}` of transaction `{id}`"
-        ))?;
-
-        let signature = Signature::from_der(&signature[..signature.len() - 1])?;
-
-        let mut cache = SighashCache::new(&btc_transaction);
-
-        let sighash = cache.p2wsh_signature_hash(
-            i,
-            redeem_script,
-            Amount::from_sat(amount.into_inner() as u64),
-            EcdsaSighashType::All,
-        )?;
-
-        let msg = BtcMessage::from_digest_slice(&sighash[..]).unwrap();
-
-        let secp = Secp256k1::verification_only();
-        secp.verify_ecdsa(
-            &msg,
-            &signature,
-            &PublicKey::from_slice(pub_key.inner()).unwrap(),
-        )?
-    }
-
+    // Add the signatures.
     let cumulative_signatures =
         SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
             let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
 
             // TODO: Ignore signatures when reach the threshold?
-
             ensure!(
                 cumulative_signatures.insert(pub_key, signatures).is_none(),
                 "you've already signed transaction `{id}`"

@@ -1,20 +1,18 @@
 use {
     corepc_client::bitcoin::{
-        Amount, EcdsaSighashType, Network, Script, Transaction as BtcTransaction,
-        hashes::Hash,
-        key::Secp256k1,
-        secp256k1::{Message as BtcMessage, SecretKey},
+        Amount, EcdsaSighashType, Network, Script, Transaction as BtcTransaction, hashes::Hash,
         sighash::SighashCache,
     },
     dango_testing::{
-        MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestAccount, TestAccounts,
-        TestSuite, setup_test_naive,
+        MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestAccount, TestSuite,
+        setup_test_naive,
     },
     dango_types::{
         bitcoin::{
-            BitcoinSignature, Config, ExecuteMsg, InboundConfirmed, InstantiateMsg,
-            MultisigSettings, OutboundConfirmed, QueryConfigRequest, QueryOutboundQueueRequest,
-            QueryOutboundTransactionRequest, QueryUtxosRequest,
+            BitcoinSignature, Config, ExecuteMsg, InboundConfirmed, InboundCredential, InboundMsg,
+            InstantiateMsg, MultisigSettings, OutboundConfirmed, QueryConfigRequest,
+            QueryOutboundQueueRequest, QueryOutboundTransactionRequest, QueryUtxosRequest, Utxo,
+            Vout,
         },
         constants::btc,
         gateway::{
@@ -24,10 +22,12 @@ use {
     },
     grug::{
         Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, HexBinary, HexByteArray,
-        Inner, JsonDeExt, Message, NonEmpty, Order, PrimaryKey, QuerierExt, ResultExt, SearchEvent,
-        Uint128, btree_map, btree_set, coins,
+        Inner, Json, JsonDeExt, JsonSerExt, Message, NonEmpty, Order, PrimaryKey, QuerierExt,
+        ResultExt, SearchEvent, Tx, TxOutcome, Uint128, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
+    grug_crypto::Identity256,
+    k256::ecdsa::{Signature, SigningKey, signature::DigestSigner},
     std::{str::FromStr, vec},
 };
 
@@ -35,33 +35,71 @@ use {
 fn deposit(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     bitcoin_contract: Addr,
-    accounts: &mut TestAccounts,
-    amount: Uint128,
-    recipient: Option<Addr>,
-    index: u64,
-) {
-    let mut bytes = [0u8; 32];
-    bytes[24..].copy_from_slice(&index.to_le_bytes());
+    msg: InboundMsg,
+    sk: &SigningKey,
+) -> TxOutcome {
+    let identity = Identity256::from(*msg.hash().unwrap().inner());
+    let signature: Signature = sk.sign_digest(identity);
 
-    let msg = ExecuteMsg::ObserveInbound {
-        transaction_hash: Hash256::from_inner(bytes),
-        vout: 1,
-        amount,
-        recipient,
+    let msg = Message::execute(
+        bitcoin_contract,
+        &ExecuteMsg::ObserveInbound(msg),
+        Coins::new(),
+    )
+    .unwrap();
+
+    let credential = InboundCredential {
+        signature: HexBinary::from_inner(signature.to_der().as_bytes().to_vec()),
     };
 
-    let msg = Message::execute(bitcoin_contract, &msg, Coins::new()).unwrap();
+    let tx = Tx {
+        sender: bitcoin_contract,
+        gas_limit: 5_000_000,
+        msgs: NonEmpty::new_unchecked(vec![msg]),
+        data: Json::null(),
+        credential: credential.to_json_value().unwrap(),
+    };
 
-    // Needs 2/3 guardians to confirm the deposit.
-    suite
-        .send_message(&mut accounts.val1, msg.clone())
-        .should_succeed();
-
-    suite
-        .send_message(&mut accounts.val2, msg.clone())
-        .should_succeed();
+    suite.send_transaction(tx)
 }
 
+// Create a deposit and sing it with 2 guardians.
+fn deposit_and_confirm(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    bitcoin_contract: Addr,
+    tx_hash: Hash256,
+    vout: Vout,
+    amount: Uint128,
+    recipient: Option<Addr>,
+) {
+    let val_sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
+    let val_pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
+
+    let val_sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
+    let val_pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+
+    let msg = InboundMsg {
+        transaction_hash: tx_hash,
+        vout,
+        amount,
+        recipient,
+        pub_key: val_pk1.clone(),
+    };
+
+    deposit(suite, bitcoin_contract, msg, &val_sk1).should_succeed();
+
+    let msg = InboundMsg {
+        transaction_hash: tx_hash,
+        vout,
+        amount,
+        recipient,
+        pub_key: val_pk2.clone(),
+    };
+
+    deposit(suite, bitcoin_contract, msg, &val_sk2).should_succeed();
+}
+
+// Create a withdrawal request from an user.
 fn withdraw(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     user: &mut TestAccount,
@@ -95,9 +133,10 @@ fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) {
     suite.block_time = Duration::ZERO;
 }
 
+// Sign the inputs of a Bitcoin transaction with the given secret key and redeem script.
 pub fn sing_inputs(
     tx: &BtcTransaction,
-    sk: &SecretKey,
+    sk: &SigningKey,
     redeem_script: &Script,
     amounts: Vec<u64>,
 ) -> Vec<HexBinary> {
@@ -115,10 +154,9 @@ pub fn sing_inputs(
                 )
                 .unwrap();
 
-            let secp = Secp256k1::new();
-            let msg = BtcMessage::from_digest(sighash.to_byte_array());
-            let sig = secp.sign_ecdsa(&msg, sk);
-            let mut der_sig = sig.serialize_der().to_vec();
+            let identity = Identity256::from(sighash.to_byte_array());
+            let signature: Signature = sk.sign_digest(identity);
+            let mut der_sig = signature.to_der().as_bytes().to_vec();
             der_sig.push(EcdsaSighashType::All.to_u32() as u8);
 
             BitcoinSignature::from_inner(der_sig)
@@ -137,9 +175,9 @@ fn instantiate() {
     let multisig_settings = MultisigSettings::new(
         2,
         NonEmpty::new(btree_set!(
-            HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap(),
-            HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].1).unwrap(),
-            HexByteArray::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[2].1).unwrap(),
+            HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1),
+            HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1),
+            HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1),
         ))
         .unwrap(),
     )
@@ -236,20 +274,137 @@ fn instantiate() {
 }
 
 #[test]
-fn observe_inbound() {
-    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+fn authenticate() {
+    let (mut suite, _, _, contracts, ..) = setup_test_naive(Default::default());
 
-    // Report a deposit with an amount lower than min deposit.
-    let msg = ExecuteMsg::ObserveInbound {
+    let bitcoin_contract = contracts.bitcoin;
+
+    let gas_limit = 5_000_000;
+
+    let msg = ExecuteMsg::ObserveInbound(InboundMsg {
         transaction_hash: Hash256::from_inner([0; 32]),
-        vout: 1,
-        amount: Uint128::new(100),
+        vout: 0,
+        amount: Uint128::new(10_000),
         recipient: None,
-    };
+        pub_key: HexByteArray::from_slice(&[0; 33]).unwrap(),
+    });
 
-    suite
-        .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
-        .should_fail_with_error("minimum deposit not met");
+    // Ensure the tx fails if there is't exactly 1 message.
+    {
+        let msg = Message::execute(bitcoin_contract, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: bitcoin_contract,
+            gas_limit,
+            msgs: NonEmpty::new_unchecked(vec![msg.clone(), msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
+        // Broadcast the tx
+        suite
+            .send_transaction(tx)
+            .should_fail_with_error("transaction must contain exactly one message");
+    }
+
+    // Ensure the tx fails if the message call a contract different from the bridge.
+    {
+        let msg = Message::execute(contracts.gateway, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: bitcoin_contract,
+            gas_limit,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
+        // Broadcast the tx
+        suite
+            .send_transaction(tx)
+            .should_fail_with_error("contract must be the bitcoin bridge");
+    }
+
+    // Ensure that only `ObserveInbound` or `AuthorizeOutbound` can be called.
+    // the execute message must be either `ObserveInbound` or `AuthorizeOutbound`
+    {
+        let msg = Message::execute(
+            bitcoin_contract,
+            &ExecuteMsg::UpdateConfig {
+                sats_per_vbyte: None,
+                outbound_strategy: None,
+            },
+            Coins::new(),
+        )
+        .unwrap();
+
+        let tx = Tx {
+            sender: bitcoin_contract,
+            gas_limit,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
+        // Broadcast the tx
+        suite.send_transaction(tx).should_fail_with_error(
+            "the execute message must be either `ObserveInbound` or `AuthorizeOutbound`",
+        );
+    }
+}
+
+#[test]
+fn observe_inbound() {
+    let (mut suite, accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    let val_sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
+    let val_pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
+
+    let val_sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
+    let val_pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+
+    let val_sk3 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[2].0.into()).unwrap();
+    let val_pk3 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1);
+
+    // Signature checks.
+    {
+        // Ensure the message is rejected if the signature is wrong.
+        let msg = InboundMsg {
+            transaction_hash: Hash256::from_inner([0; 32]),
+            vout: 1,
+            amount: Uint128::new(100),
+            recipient: None,
+            pub_key: val_pk2.clone(),
+        };
+
+        deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk1)
+            .should_fail_with_error("signature failed verification");
+
+        // Ensure the message is rejected if the pubkey in not part of the set.
+        let msg = InboundMsg {
+            transaction_hash: Hash256::from_inner([0; 32]),
+            vout: 1,
+            amount: Uint128::new(100),
+            recipient: None,
+            pub_key: HexByteArray::<33>::from_slice(&[0; 33]).unwrap(),
+        };
+        deposit(&mut suite, contracts.bitcoin, msg, &val_sk1)
+            .should_fail_with_error("is not a valid multisig public key");
+    }
+
+    // Ensure the message is rejected if the amount is lower than the minimum deposit.
+    {
+        let msg = InboundMsg {
+            transaction_hash: Hash256::from_inner([0; 32]),
+            vout: 1,
+            amount: Uint128::new(100),
+            recipient: None,
+            pub_key: val_pk1.clone(),
+        };
+
+        deposit(&mut suite, contracts.bitcoin, msg, &val_sk1)
+            .should_fail_with_error("minimum deposit not met");
+    }
 
     // Report a deposit.
     let bitcoin_tx_hash =
@@ -259,34 +414,32 @@ fn observe_inbound() {
     let amount = Uint128::new(2000);
     let recipient = accounts.user1.address.inner().clone();
 
-    let msg = ExecuteMsg::ObserveInbound {
+    let msg = InboundMsg {
         transaction_hash: bitcoin_tx_hash,
         vout,
         amount,
         recipient: Some(recipient),
+        pub_key: val_pk1.clone(),
     };
 
-    let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
-
-    // Broadcast the message with a non guardian signer.
-    suite
-        .send_message(&mut accounts.user4, msg.clone())
-        .should_fail_with_error("you don't have the right, O you don't have the right");
-
     // Broadcast the message with first guardian signer.
-    suite
-        .send_message(&mut accounts.val1, msg.clone())
-        .should_succeed();
+    deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk1).should_succeed();
 
-    // Broadcast again the message with the same signer (should fail).
-    suite
-        .send_message(&mut accounts.val1, msg.clone())
+    // Broadcast again the message with the same signer (should fail since already voted).
+    deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk1)
         .should_fail_with_error("you've already voted for transaction");
 
     // Broadcast the message with second guardian signer.
     // The threshold is met so there should be the event.
-    suite
-        .send_message(&mut accounts.val2, msg.clone())
+    let msg = InboundMsg {
+        transaction_hash: bitcoin_tx_hash,
+        vout,
+        amount,
+        recipient: Some(recipient),
+        pub_key: val_pk2.clone(),
+    };
+
+    deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk2)
         .should_succeed()
         .events
         .search_event::<CheckedContractEvent>()
@@ -302,6 +455,7 @@ fn observe_inbound() {
             recipient: Some(recipient),
         });
 
+    // Ensure the user has received the deposit.
     let balance = suite.query_balance(&recipient, btc::DENOM.clone()).unwrap();
     assert_eq!(
         balance, amount,
@@ -310,8 +464,14 @@ fn observe_inbound() {
 
     // Broadcast the message with third guardian signer
     // (should fail since already match the threshold).
-    suite
-        .send_message(&mut accounts.val3, msg.clone())
+    let msg = InboundMsg {
+        transaction_hash: bitcoin_tx_hash,
+        vout,
+        amount,
+        recipient: Some(recipient),
+        pub_key: val_pk3.clone(),
+    };
+    deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk3)
         .should_fail_with_error("already exists in UTXO set");
 
     // Ensure the inbound works with None recipient.
@@ -319,23 +479,26 @@ fn observe_inbound() {
         let tx_hash =
             Hash256::from_str("14A0BF02F69BD13C274ED22E20C1BF4CC5DABF99753DB32E5B8959BF4C5F1F5C")
                 .unwrap();
-        let msg = ExecuteMsg::ObserveInbound {
+        let msg = InboundMsg {
             transaction_hash: tx_hash,
             vout: 2,
             amount,
             recipient: None,
+            pub_key: val_pk1.clone(),
         };
 
-        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+        // Broadcast with first guardian.
+        deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk1).should_succeed();
 
-        // Broadcast the message with a non guardian signer.
-        suite
-            .send_message(&mut accounts.val1, msg.clone())
-            .should_succeed();
-
-        // Broadcast the message with a non guardian signer.
-        suite
-            .send_message(&mut accounts.val2, msg.clone())
+        // Broadcast with the second guardian.
+        let msg = InboundMsg {
+            transaction_hash: tx_hash,
+            vout: 2,
+            amount,
+            recipient: None,
+            pub_key: val_pk2.clone(),
+        };
+        deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk2)
             .should_succeed()
             .events
             .search_event::<CheckedContractEvent>()
@@ -354,6 +517,102 @@ fn observe_inbound() {
 }
 
 #[test]
+fn same_hash_different_vout() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    suite.block_time = Duration::from_minutes(10);
+
+    // Make 2 deposits with the same transaction hash but different vout.
+    let hash = Hash256::from_inner([0; 32]);
+    let amount1 = Uint128::new(10_000);
+    let amount2 = Uint128::new(20_000);
+    let recipient = Some(accounts.user1.address.inner().clone());
+
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        hash,
+        0,
+        amount1,
+        recipient.clone(),
+    );
+
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        hash,
+        1,
+        amount2,
+        recipient.clone(),
+    );
+
+    // Ensure there are the 2 deposits in the utxo.
+    suite
+        .query_wasm_smart(contracts.bitcoin, QueryUtxosRequest {
+            start_after: None,
+            limit: None,
+            order: Order::Ascending,
+        })
+        .should_succeed_and_equal(vec![
+            Utxo {
+                transaction_hash: hash,
+                vout: 0,
+                amount: amount1,
+            },
+            Utxo {
+                transaction_hash: hash,
+                vout: 1,
+                amount: amount2,
+            },
+        ]);
+
+    // Create a withdrawal request for the first vout.
+    let recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0";
+    let withdraw_amount = Uint128::new(25_000);
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        withdraw_amount,
+        recipient,
+    );
+
+    let withdraw_fee = suite
+        .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
+            denom: btc::DENOM.clone(),
+            remote: gateway::Remote::Bitcoin,
+        })
+        .unwrap()
+        .unwrap();
+
+    let vault = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .unwrap()
+        .vault;
+
+    // Ensure the withdrawal is stored in the outbound queue.
+    let tx = suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 0 })
+        .unwrap();
+
+    assert_eq!(
+        tx.inputs,
+        btree_map!(
+            (hash, 0) => amount1,
+            (hash, 1) => amount2,
+        )
+    );
+
+    // Ensure the inputs and outputs are correct.
+    assert_eq!(tx.outputs.len(), 2);
+    assert!(tx.outputs.contains_key(&vault));
+    assert_eq!(
+        tx.outputs.get(recipient).unwrap().clone(),
+        withdraw_amount - withdraw_fee,
+    );
+}
+
+#[test]
 fn transfer_remote() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
@@ -361,13 +620,13 @@ fn transfer_remote() {
     let user1_address = accounts.user1.address.inner().clone();
 
     // Deposit 100k sats do user1
-    deposit(
+    deposit_and_confirm(
         &mut suite,
         contracts.bitcoin,
-        &mut accounts,
-        Uint128::new(100_000),
-        Some(user1_address),
+        Hash256::from_inner([0; 32]),
         0,
+        Uint128::new(100_000),
+        Some(user1_address.clone()),
     );
 
     // Interact directly to the bridge (only gateway can).
@@ -537,13 +796,13 @@ fn cron_execute() {
         .unwrap();
 
     // Deposit 100k sats do user1
-    deposit(
+    deposit_and_confirm(
         &mut suite,
         contracts.bitcoin,
-        &mut accounts,
+        Hash256::from_inner([0; 32]),
+        0,
         Uint128::new(100_000),
         Some(user1_address),
-        0,
     );
 
     // Make 2 withdrawals.
@@ -600,7 +859,7 @@ fn cron_execute() {
 
     assert_eq!(
         tx.inputs,
-        btree_map!( (Hash256::from_inner([0u8; 32]), 1) => Uint128::new(100_000) )
+        btree_map!( (Hash256::from_inner([0u8; 32]), 0) => Uint128::new(100_000) )
     );
 
     assert_eq!(
@@ -630,11 +889,11 @@ fn authorize_outbound() {
 
     let user1_address = accounts.user1.address.inner().clone();
 
-    let val_sk1 = SecretKey::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].0).unwrap();
-    let val_pk1 = HexByteArray::<33>::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[0].1).unwrap();
+    let val_sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
+    let val_pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
 
-    let val_sk2 = SecretKey::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].0).unwrap();
-    let val_pk2 = HexByteArray::<33>::from_str(MOCK_BRIDGE_GUARDIANS_KEYS[1].1).unwrap();
+    let val_sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
+    let val_pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
 
     let config = suite
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
@@ -646,22 +905,22 @@ fn authorize_outbound() {
     let deposit_amount1 = Uint128::new(7_000);
     let deposit_amount2 = Uint128::new(8_000);
     {
-        deposit(
+        deposit_and_confirm(
             &mut suite,
             contracts.bitcoin,
-            &mut accounts,
+            Hash256::from_inner([0; 32]),
+            0,
             deposit_amount1,
             Some(user1_address),
-            0,
         );
 
-        deposit(
+        deposit_and_confirm(
             &mut suite,
             contracts.bitcoin,
-            &mut accounts,
+            Hash256::from_inner([1; 32]),
+            0,
             deposit_amount2,
             Some(user1_address),
-            1,
         );
 
         // Create 2 withdrawal.
@@ -677,11 +936,11 @@ fn authorize_outbound() {
     }
 
     // Retrieve the transaction.
-    let tx = suite
+    let outbound_tx = suite
         .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 0 })
         .should_succeed();
 
-    let btc_transaction = tx.to_btc_transaction(config.network).unwrap();
+    let btc_transaction = outbound_tx.to_btc_transaction(config.network).unwrap();
 
     let signatures1 = sing_inputs(&btc_transaction, &val_sk1, redeem_script, vec![
         deposit_amount1.into_inner() as u64,
@@ -693,6 +952,19 @@ fn authorize_outbound() {
         deposit_amount2.into_inner() as u64,
     ]);
 
+    // Ensure no one can call `AuthorizeOutbound` except bitcoin bridge.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: signatures1.clone(),
+            pub_key: val_pk1,
+        };
+
+        suite
+            .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
+            .should_fail_with_error("you don't have the right, O you don't have the right");
+    }
+
     // Ensure it fails with a invalid pubkey.
     {
         let msg = ExecuteMsg::AuthorizeOutbound {
@@ -701,8 +973,18 @@ fn authorize_outbound() {
             pub_key: HexByteArray::<33>::from_slice(&[0; 33]).unwrap(),
         };
 
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
         suite
-            .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
+            .send_transaction(tx)
             .should_fail_with_error("is not a valid multisig public key");
     }
 
@@ -714,8 +996,18 @@ fn authorize_outbound() {
             pub_key: val_pk1,
         };
 
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
         suite
-            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .send_transaction(tx)
             .should_fail_with_error("transaction `0` has 2 inputs, but 0 signatures were provided");
     }
 
@@ -727,8 +1019,18 @@ fn authorize_outbound() {
             pub_key: val_pk2, // Using val_pk2 instead of val_pk1
         };
 
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
         suite
-            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .send_transaction(tx)
             .should_fail_with_error("signature failed verification");
     }
 
@@ -740,8 +1042,18 @@ fn authorize_outbound() {
             pub_key: val_pk1,
         };
 
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
         suite
-            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .send_transaction(tx)
             .should_fail_with_error("signature failed verification");
     }
 
@@ -753,9 +1065,17 @@ fn authorize_outbound() {
             pub_key: val_pk1,
         };
 
-        suite
-            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
-            .should_succeed();
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
+        suite.send_transaction(tx).should_succeed();
     }
 
     // Ensure it fails when trying to submit the same signature again.
@@ -766,8 +1086,18 @@ fn authorize_outbound() {
             pub_key: val_pk1,
         };
 
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
         suite
-            .execute(&mut accounts.val1, contracts.bitcoin, &msg, Coins::new())
+            .send_transaction(tx)
             .should_fail_with_error("you've already signed transaction `0`");
     }
 
@@ -779,8 +1109,18 @@ fn authorize_outbound() {
             pub_key: val_pk2,
         };
 
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
         let event = suite
-            .execute(&mut accounts.val2, contracts.bitcoin, &msg, Coins::new())
+            .send_transaction(tx)
             .should_succeed()
             .events
             .search_event::<CheckedContractEvent>()
@@ -794,7 +1134,7 @@ fn authorize_outbound() {
 
         assert_eq!(event, OutboundConfirmed {
             id: 0,
-            transaction: tx,
+            transaction: outbound_tx,
             signatures: btree_map!(
                 val_pk1 => signatures1,
                 val_pk2 => signatures2,
