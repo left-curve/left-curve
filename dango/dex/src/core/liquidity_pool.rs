@@ -3,8 +3,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        StdResult, Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
+        NumberConst, StdResult, Udec128, Uint128,
     },
     std::{cmp, iter},
 };
@@ -130,14 +130,6 @@ pub trait PassiveLiquidityPool {
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
     )>;
-}
-
-fn xyk_normalized_invariant(reserve: &CoinPair) -> StdResult<Uint128> {
-    Ok(reserve
-        .first()
-        .amount
-        .checked_mul(*reserve.second().amount)?
-        .checked_sqrt()?)
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -496,6 +488,16 @@ impl PassiveLiquidityPool for PairParams {
     }
 }
 
+/// Compute `sqrt(A * B)`, where `A` and `B` are the reserve amount of the two
+/// assets in an xyk pool.
+fn xyk_normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
+    let a = *reserve.first().amount;
+    let b = *reserve.second().amount;
+
+    a.checked_mul(b)?.checked_sqrt()
+}
+
+/// Compute `|a - b|`.
 fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
     if a > b {
         a - b
