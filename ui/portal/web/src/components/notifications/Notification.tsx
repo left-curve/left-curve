@@ -91,7 +91,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
               })}
             >{`${isSent ? "−" : "+"}${formattedAmount}  ${coin.symbol}`}</span>
           </div>
-          <div className="flex diatype-m-medium text-gray-500 flex-wrap items-center gap-1">
+          <div className="flex diatype-m-medium text-tertiary-500 flex-wrap items-center gap-1">
             <div className="flex flex-wrap items-center gap-1">
               <span>
                 {m["notifications.notification.transfer.direction.first"]({ direction: type })}
@@ -107,7 +107,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
           </div>
         </div>
       </div>
-      <div className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative">
+      <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center relative">
         <IconClose
           className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px]"
           onClick={() => deleteNotification(notification.id)}

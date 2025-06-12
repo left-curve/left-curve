@@ -79,7 +79,7 @@ const buttonVariants = tv(
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility:
           "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-rice-100 hover:bg-rice-200 text-rice-700",
-        link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-gray-600 text-gray-500",
+        link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-gray-600 text-tertiary-500",
       },
       color: {
         blue: "",

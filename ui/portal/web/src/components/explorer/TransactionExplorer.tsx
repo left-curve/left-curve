@@ -71,7 +71,7 @@ const Details: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.txHash"]()}
           </p>
           <p className="break-all whitespace-normal">
@@ -83,7 +83,7 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.sender"]()}
           </p>
           <AddressVisualizer
@@ -94,13 +94,13 @@ const Details: React.FC = () => {
           />
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.time"]()}
           </p>
           <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
           <button
@@ -113,25 +113,25 @@ const Details: React.FC = () => {
           </button>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.index"]()}
           </p>
           <p>{transactionIdx}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
           <p>{gasUsed}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{gasWanted}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
           <div>
@@ -199,7 +199,7 @@ const NotFound: React.FC = () => {
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center border border-red-bean-50">
           <h3 className="exposure-m-italic text-gray-700">{m["explorer.txs.notFound.title"]()}</h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-gray-500 ">
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-tertiary-500 ">
             {m["explorer.txs.notFound.pre"]()}
             <span className="break-all overflow-hidden underline"> {txHash}</span>{" "}
             {m["explorer.txs.notFound.description"]()}

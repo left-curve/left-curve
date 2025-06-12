@@ -29,7 +29,7 @@ export const CreateAccountWrapper: React.FC<React.PropsWithChildren> = ({ childr
             )}
             <span className="h2-heavy">{m["accountCreation.title"]()}</span>
           </h2>
-          <p className="text-gray-500 diatype-m-medium">
+          <p className="text-tertiary-500 diatype-m-medium">
             {m["accountCreation.stepper.description"]({ step: activeStep })}
           </p>
         </div>

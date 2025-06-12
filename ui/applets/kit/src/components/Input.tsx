@@ -76,7 +76,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <div className="relative flex-1 flex items-center">
               {!props.value && !isLoading && placeholder ? (
                 <div
-                  className={twMerge("w-full absolute z-0 text-gray-500 text-left ", {
+                  className={twMerge("w-full absolute z-0 text-tertiary-500 text-left ", {
                     "text-right": startText === "right",
                   })}
                 >
@@ -117,11 +117,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             block: !bottomComponent && hintMessage,
           })}
         >
-          <span className="diatype-sm-regular text-gray-500">{hintMessage}</span>
+          <span className="diatype-sm-regular text-tertiary-500">{hintMessage}</span>
         </div>
 
         {bottomComponent ? (
-          <div className="text-gray-500 diatype-sm-regular">{bottomComponent}</div>
+          <div className="text-tertiary-500 diatype-sm-regular">{bottomComponent}</div>
         ) : null}
       </div>
     );

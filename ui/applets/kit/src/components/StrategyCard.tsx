@@ -25,10 +25,10 @@ export const StrategyCard: React.FC = () => {
           </div>
           <div className="flex flex-col gap-1">
             <p className="exposure-h3-italic">ETH Party!</p>
-            <p className="diatype-lg-medium text-gray-500">
+            <p className="diatype-lg-medium text-tertiary-500">
               Deposit <span className="font-bold">ETH-USDT</span>
             </p>
-            <p className="diatype-lg-medium text-gray-500">Earn USDT</p>
+            <p className="diatype-lg-medium text-tertiary-500">Earn USDT</p>
           </div>
         </div>
         <div className="flex flex-col gap-4">
@@ -37,11 +37,11 @@ export const StrategyCard: React.FC = () => {
           </Button>
           <div className="p-2 rounded-xl bg-rice-100/80 flex items-center justify-between">
             <div className="flex gap-2 items-center">
-              <span className="text-gray-500 diatype-xs-medium">APY</span>
+              <span className="text-tertiary-500 diatype-xs-medium">APY</span>
               <span className="text-gray-700 diatype-sm-bold">17.72%</span>
             </div>
             <div className="flex gap-2 items-center">
-              <span className="text-gray-500 diatype-xs-medium">TVL</span>
+              <span className="text-tertiary-500 diatype-xs-medium">TVL</span>
               <span className="text-gray-700 diatype-sm-bold">15.63%</span>
             </div>
           </div>

@@ -64,7 +64,7 @@ export const OrderBook: React.FC = () => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
         <p>Price</p>
         <p className="text-end">Size (ETH)</p>
         <p className="text-end">Total (ETH)</p>

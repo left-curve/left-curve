@@ -43,7 +43,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
         </div>
         <div>
           <p className="diatype-lg-medium text-gray-700">{title}</p>
-          <p className="diatype-m-regular text-gray-500">{description}</p>
+          <p className="diatype-m-regular text-tertiary-500">{description}</p>
         </div>
       </div>
       <div onClick={onClickStar}>
@@ -70,8 +70,8 @@ const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, name, symbol, price })
         <img src={logoURI} alt={name} className="w-8 h-8" />
         <div className="flex flex-col gap-1">
           <p className="diatype-m-bold">{name}</p>
-          <p className="diatype-m-regular text-gray-500">{symbol}</p>
-          {/* <p className="diatype-m-regular text-gray-500">{link}</p> */}
+          <p className="diatype-m-regular text-tertiary-500">{symbol}</p>
+          {/* <p className="diatype-m-regular text-tertiary-500">{link}</p> */}
         </div>
       </div>
       <div className="flex flex-col gap-1">
@@ -99,7 +99,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
         </div>
         <div className="flex flex-col">
           <p className="diatype-m-medium">#{height} Block</p>
-          <TruncateText className="diatype-sm-regular text-gray-500" text={hash} end={20} />
+          <TruncateText className="diatype-sm-regular text-tertiary-500" text={hash} end={20} />
         </div>
       </div>
     </motion.div>
@@ -125,7 +125,7 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
         <div className="flex flex-col">
           <TruncateText className="flex gap-2 diatype-m-medium" text={hash} end={20} />
 
-          <p className="diatype-sm-regular text-gray-500">Block: #{height}</p>
+          <p className="diatype-sm-regular text-tertiary-500">Block: #{height}</p>
         </div>
       </div>
     </motion.div>
@@ -152,9 +152,13 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
         <div className="flex flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
           {isMd ? (
-            <p className="diatype-sm-regular text-gray-500">{address}</p>
+            <p className="diatype-sm-regular text-tertiary-500">{address}</p>
           ) : (
-            <TruncateText className="diatype-sm-regular text-gray-500" text={address} end={20} />
+            <TruncateText
+              className="diatype-sm-regular text-tertiary-500"
+              text={address}
+              end={20}
+            />
           )}
         </div>
       </div>
@@ -185,9 +189,13 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{name}</p>
           {isMd ? (
-            <p className="diatype-sm-regular text-gray-500">{address}</p>
+            <p className="diatype-sm-regular text-tertiary-500">{address}</p>
           ) : (
-            <TruncateText className="diatype-sm-regular text-gray-500" text={address} end={20} />
+            <TruncateText
+              className="diatype-sm-regular text-tertiary-500"
+              text={address}
+              end={20}
+            />
           )}
         </div>
       </div>

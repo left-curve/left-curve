@@ -31,7 +31,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
                   <p className="diatype-lg-medium text-gray-700">{username}</p>
                 </div>
 
-                <IconButton variant="link" className="text-gray-500 p-0 h-fit w-fit">
+                <IconButton variant="link" className="text-tertiary-500 p-0 h-fit w-fit">
                   <IconChevronRight className="w-6 h-6" />
                 </IconButton>
               </div>

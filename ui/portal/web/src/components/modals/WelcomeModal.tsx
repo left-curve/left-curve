@@ -31,7 +31,7 @@ export const WelcomeModal: React.FC = () => {
             />
           </div>
           <p className="h4-bold">{m["common.testnet.title"]()}</p>
-          <div className="flex flex-col diatype-m-medium text-gray-500 gap-2">
+          <div className="flex flex-col diatype-m-medium text-tertiary-500 gap-2">
             <p>Hey guys,</p>
             <p>We have launched testnet-1.5!</p>
 

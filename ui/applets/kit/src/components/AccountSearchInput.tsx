@@ -76,7 +76,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
               : "h-0 -translate-x-30 overflow-hidden py-0 px-1",
           )}
         >
-          <p className="diatype-sm-medium text-gray-500 px-3 pt-2">Accounts</p>
+          <p className="diatype-sm-medium text-tertiary-500 px-3 pt-2">Accounts</p>
           {options.map(({ accountName, address }, i) => (
             <div
               onClick={() => [setInputValue(address), setShowMenu(false)]}
@@ -94,7 +94,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
                 <div className="w-fit flex flex-col gap-1 overflow-x-hidden">
                   <p className="diatype-lg-medium">{accountName}</p>
                   <TruncateText
-                    className="diatype-m-regular text-gray-500"
+                    className="diatype-m-regular text-tertiary-500"
                     text={address}
                     start={20}
                   />

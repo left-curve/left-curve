@@ -124,13 +124,13 @@ const FutureBlock: React.FC = () => {
           <h3 className="h4-heavy text-gray-900">
             {m["explorer.block.futureBlock.targetBlock"]()} {height}
           </h3>
-          <p className="diatype-m-medium text-gray-500">
+          <p className="diatype-m-medium text-tertiary-500">
             {m["explorer.block.futureBlock.description"]()}
           </p>
         </div>
         <div className="w-full lg:max-w-[45.5rem] flex gap-4 flex-col lg:flex-row lg:items-center justify-between">
           <div className="flex flex-col gap-1">
-            <p className="diatype-m-medium text-gray-500">
+            <p className="diatype-m-medium text-tertiary-500">
               {m["explorer.block.futureBlock.estimateTimeISO"]()}
             </p>
             <p className="diatype-m-bold text-gray-700">
@@ -138,7 +138,7 @@ const FutureBlock: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-col gap-1">
-            <p className="diatype-m-medium text-gray-500">
+            <p className="diatype-m-medium text-tertiary-500">
               {m["explorer.block.futureBlock.estimateTimeUTC"]()}
             </p>
             <p className="diatype-m-bold text-gray-700">
@@ -150,28 +150,28 @@ const FutureBlock: React.FC = () => {
         <div className="grid grid-cols-3 lg:grid-cols-7 gap-3 items-center text-center lg:max-w-[45.5rem]">
           <div>
             <p className="h1-bold text-gray-900">{days}</p>
-            <span className="diatype-m-medium uppercase text-gray-500">
+            <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.days"]({ days })}
             </span>
           </div>
           <span className="h1-bold text-gray-900">:</span>
           <div>
             <p className="h1-bold text-gray-900">{hours}</p>
-            <span className="diatype-m-medium uppercase text-gray-500">
+            <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.hours"]({ hours })}
             </span>
           </div>
           <span className="hidden lg:flex h1-bold text-gray-900">:</span>
           <div>
             <p className="h1-bold text-gray-900">{minutes}</p>
-            <span className="diatype-m-medium uppercase text-gray-500">
+            <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.minutes"]({ minutes })}
             </span>
           </div>
           <span className="h1-bold text-gray-900">:</span>
           <div>
             <p className="h1-bold text-gray-900">{seconds}</p>
-            <span className="diatype-m-medium uppercase text-gray-500">
+            <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.seconds"]({ seconds })}
             </span>
           </div>
@@ -189,14 +189,14 @@ const FutureBlock: React.FC = () => {
           </h3>
           <div className="flex items-center justify-around gap-4 flex-col lg:flex-row w-full">
             <div className="flex flex-col gap-1 items-center">
-              <p className="diatype-m-medium text-gray-500">
+              <p className="diatype-m-medium text-tertiary-500">
                 {m["explorer.block.futureBlock.targetBlock"]()}
               </p>
               <p className="diatype-m-bold text-gray-700">#{height}</p>
             </div>
             <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-gray-200" />
             <div className="flex flex-col gap-1 items-center">
-              <p className="diatype-m-medium text-gray-500">
+              <p className="diatype-m-medium text-tertiary-500">
                 {m["explorer.block.futureBlock.currentBlock"]()}
               </p>
               <p className="diatype-m-bold text-gray-700">
@@ -205,7 +205,7 @@ const FutureBlock: React.FC = () => {
             </div>
             <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-gray-200" />
             <div className="flex flex-col gap-1 items-center">
-              <p className="diatype-m-medium text-gray-500">
+              <p className="diatype-m-medium text-tertiary-500">
                 {m["explorer.block.futureBlock.remainingBlocks"]()}
               </p>
               <p className="diatype-m-bold text-gray-700">#{getRemainingBlocks()}</p>
@@ -232,7 +232,7 @@ const BlockDetails: React.FC = () => {
         </h1>
         <div className="grid grid-cols-1 gap-3 md:gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHash"]()}
             </p>
             <p className="break-all whitespace-normal diatype-mono-sm-medium">
@@ -244,19 +244,19 @@ const BlockDetails: React.FC = () => {
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.block.details.proposer"]()}
             </p>
             <p>Leftcurve Validator</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.block.details.numberOfTx"]()}
             </p>
             <p>{transactions.length}</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockTime"]()}
             </p>
             <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
@@ -282,7 +282,7 @@ const BlockNotFound: React.FC = () => {
           <h3 className="exposure-m-italic text-gray-700">
             {m["explorer.block.notFound.title"]()}
           </h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-gray-500 ">
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-tertiary-500 ">
             {m["explorer.block.notFound.description"]()}
           </p>
         </div>

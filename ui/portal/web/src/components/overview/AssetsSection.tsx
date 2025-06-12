@@ -42,7 +42,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
               <img src={coin.logoURI} alt={coin.name} className="h-7 w-7 drag-none select-none" />
               <div className="flex flex-col text-xs">
                 <p>{coin.symbol}</p>
-                <p className="text-gray-500">
+                <p className="text-tertiary-500">
                   {amount
                     ? formatNumber(formatUnits(amount, coins[denom].decimals), formatNumberOptions)
                     : "0"}

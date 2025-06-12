@@ -32,12 +32,12 @@ export const PairHeader: React.FC = () => {
             onClick={() => setExpanded(!expanded)}
           >
             <IconChevronDown
-              className={twMerge("text-gray-500 w-5 h-5 transition-all", {
+              className={twMerge("text-tertiary-500 w-5 h-5 transition-all", {
                 "rotate-180": expanded,
               })}
             />
           </div>
-          <IconEmptyStar className="w-5 h-5 text-gray-500" />
+          <IconEmptyStar className="w-5 h-5 text-tertiary-500" />
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -51,23 +51,23 @@ export const PairHeader: React.FC = () => {
             className="gap-2 lg:gap-4 grid grid-cols-1 lg:flex lg:flex-wrap overflow-hidden"
           >
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Mark</p>
+              <p className="diatype-sm-medium text-tertiary-500 lg:min-w-[8rem]">Mark</p>
               <p>83,565</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Last price</p>
+              <p className="diatype-sm-medium text-tertiary-500 lg:min-w-[8rem]">Last price</p>
               <p>$2,578</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Oracle</p>
+              <p className="diatype-sm-medium text-tertiary-500 lg:min-w-[8rem]">Oracle</p>
               <p>83,565</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">24h Change</p>
+              <p className="diatype-sm-medium text-tertiary-500 lg:min-w-[8rem]">24h Change</p>
               <p className="text-red-bean-400">-542 / 0.70</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">24h Volume</p>
+              <p className="diatype-sm-medium text-tertiary-500 lg:min-w-[8rem]">24h Volume</p>
               <p>$2,457,770,700.50</p>
             </div>
           </motion.div>

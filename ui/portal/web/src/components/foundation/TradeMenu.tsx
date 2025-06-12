@@ -50,7 +50,7 @@ export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           color="line-red"
         />
         <div className="flex items-center justify-between gap-2">
-          <p className="diatype-xs-regular text-gray-500">Available to Trade</p>
+          <p className="diatype-xs-regular text-tertiary-500">Available to Trade</p>
           <p className="diatype-xs-medium text-gray-700">1.23 ETH</p>
         </div>
         <Input
@@ -65,7 +65,7 @@ export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           startText="right"
           startContent={
             <CoinSelector
-              classNames={{ trigger: "!diatype-lg-medium text-gray-500" }}
+              classNames={{ trigger: "!diatype-lg-medium text-tertiary-500" }}
               coins={[
                 {
                   type: "native",
@@ -100,15 +100,15 @@ export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
         </div>
         <div className="flex flex-col gap-1 px-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Order value</p>
+            <p className="diatype-xs-regular text-tertiary-500">Order value</p>
             <p className="diatype-xs-medium text-gray-700">$12.345</p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Slippage</p>
+            <p className="diatype-xs-regular text-tertiary-500">Slippage</p>
             <p className="diatype-xs-medium text-status-success">Est: 0% / Max: 8.00%</p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Fees</p>
+            <p className="diatype-xs-regular text-tertiary-500">Fees</p>
             <p className="diatype-xs-medium text-gray-700">0.035% / 0.0100%</p>
           </div>
         </div>
@@ -117,34 +117,34 @@ export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Account Equity</p>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Spot</p>
+              <p className="diatype-xs-regular text-tertiary-500">Spot</p>
               <p className="diatype-xs-medium text-gray-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Perps</p>
+              <p className="diatype-xs-regular text-tertiary-500">Perps</p>
               <p className="diatype-xs-medium text-gray-700">$10.00</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Perp Overview</p>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Balance</p>
+              <p className="diatype-xs-regular text-tertiary-500">Balance</p>
               <p className="diatype-xs-medium text-gray-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Unrealized PNL</p>
+              <p className="diatype-xs-regular text-tertiary-500">Unrealized PNL</p>
               <p className="diatype-xs-medium text-gray-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Cross Margin Ratio</p>
+              <p className="diatype-xs-regular text-tertiary-500">Cross Margin Ratio</p>
               <p className="diatype-xs-medium text-gray-700">0.00%</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Maintenance</p>
+              <p className="diatype-xs-regular text-tertiary-500">Maintenance</p>
               <p className="diatype-xs-medium text-gray-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-gray-500">Cross Account Leverage</p>
+              <p className="diatype-xs-regular text-tertiary-500">Cross Account Leverage</p>
               <p className="diatype-xs-medium text-gray-700">0.00x</p>
             </div>
           </div>
@@ -169,7 +169,7 @@ export const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
         color="line-red"
       />
       <div className="flex items-center justify-between gap-2">
-        <p className="diatype-xs-medium text-gray-500">Current Position</p>
+        <p className="diatype-xs-medium text-tertiary-500">Current Position</p>
         <p className="diatype-xs-bold text-gray-700">123.00 ETH</p>
       </div>
       <Input
@@ -195,7 +195,7 @@ export const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           </div>
         }
         insideBottomComponent={
-          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-gray-500 diatype-sm-regular pl-4">
+          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular pl-4">
             <div className="flex items-center gap-2">
               <p>12.23</p>
               <Button

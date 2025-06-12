@@ -71,7 +71,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                 {activeStep !== 2 ? (
                   <div className="flex flex-col gap-3 items-center justify-center text-center w-full">
                     <h1 className="h2-heavy">{m["signup.stepper.title"]({ step: activeStep })}</h1>
-                    <p className="text-gray-500 diatype-m-medium">
+                    <p className="text-tertiary-500 diatype-m-medium">
                       {m["signup.stepper.description"]({ step: activeStep })}
                     </p>
                   </div>
@@ -80,7 +80,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                     <h1 className="h2-heavy">
                       {m["common.hi"]()}, {data.username}
                     </h1>
-                    <p className="text-gray-500 diatype-m-medium">
+                    <p className="text-tertiary-500 diatype-m-medium">
                       {m["signup.stepper.description"]({ step: activeStep })}
                     </p>
                   </div>
@@ -147,7 +147,9 @@ const Mobile: React.FC = () => {
             <IconAlert className="w-6 h-6 text-error-500" />
           </div>
           <p className="h4-bold">{m["signup.mobileModal.title"]()}</p>
-          <p className="diatype-m-medium text-gray-500">{m["signup.mobileModal.description"]()}</p>
+          <p className="diatype-m-medium text-tertiary-500">
+            {m["signup.mobileModal.description"]()}
+          </p>
         </div>
         <div className="p-4 w-full">
           <Button variant="secondary" fullWidth onClick={() => history.go(-1)}>
@@ -328,7 +330,7 @@ const Username: React.FC = () => {
         placeholder={
           <p className="flex gap-1 items-center justify-start">
             <span>{m["signin.placeholder"]()}</span>
-            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500">
+            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-tertiary-500">
               {m["common.username"]().toLowerCase()}
             </span>
           </p>

@@ -53,7 +53,7 @@ type CellAmountProps = {
 
 const Amount: React.FC<CellAmountProps> = ({ amount, price, decimals, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
       <p>{formatUnits(amount, decimals)}</p>
       <p>{price}</p>
     </div>
@@ -67,7 +67,7 @@ type CellTextProps = {
 
 const Text: React.FC<CellTextProps> = ({ text, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
       <p>{text}</p>
     </div>
   );
@@ -86,7 +86,7 @@ const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatO
   return (
     <div
       className={twMerge(
-        "flex h-full flex-col gap-1 diatype-sm-medium text-gray-500 my-auto justify-center",
+        "flex h-full flex-col gap-1 diatype-sm-medium text-tertiary-500 my-auto justify-center",
         className,
       )}
     >
@@ -179,7 +179,7 @@ type CellTimeProps = {
 
 const Time: React.FC<CellTimeProps> = ({ date, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
       <p>{format(date, "MM/dd")}</p>
     </div>
   );
@@ -193,7 +193,7 @@ type CellActionProps = {
 
 const Action: React.FC<CellActionProps> = ({ action, label, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
       <Button variant="link" onClick={action} className="p-0 m-0">
         {label}
       </Button>

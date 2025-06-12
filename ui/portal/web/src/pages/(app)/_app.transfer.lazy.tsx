@@ -195,7 +195,7 @@ function TransferApplet() {
                   }
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
-                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
+                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
                         <span>
                           {formatNumber(humanAmount, {
                             ...formatNumberOptions,
@@ -245,12 +245,12 @@ function TransferApplet() {
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">
                   <TruncateText
-                    className="diatype-sm-medium text-gray-500"
+                    className="diatype-sm-medium text-tertiary-500"
                     text={account?.address}
                   />
                   <TextCopy
                     copyText={account?.address}
-                    className="w-4 h-4 cursor-pointer text-gray-500"
+                    className="w-4 h-4 cursor-pointer text-tertiary-500"
                   />
                 </div>
               </div>

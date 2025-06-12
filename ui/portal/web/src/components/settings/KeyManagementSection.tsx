@@ -43,7 +43,7 @@ export const KeyManagementSection: React.FC = () => {
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-4 max-w-lg">
           <h3 className="h4-bold text-gray-900">{m["settings.keyManagement.title"]()}</h3>
-          <p className="text-gray-500 diatype-sm-regular">
+          <p className="text-tertiary-500 diatype-sm-regular">
             {m["settings.keyManagement.description"]()}
           </p>
         </div>
@@ -75,7 +75,7 @@ export const KeyManagementSection: React.FC = () => {
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
-                  <p className="text-gray-500 diatype-sm-medium">
+                  <p className="text-tertiary-500 diatype-sm-medium">
                     {KeyTranslation[keyType as keyof typeof KeyTranslation]}
                   </p>
                 </div>

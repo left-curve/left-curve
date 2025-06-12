@@ -104,11 +104,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
         <div className="flex gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-gray-500"
+            className="diatype-xs-medium text-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
         </div>
       </div>
       {type === AccountType.Margin ? (
@@ -164,11 +164,11 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
           <div className="flex gap-1 items-center">
             <TruncateText
               text={address}
-              className="diatype-xs-medium text-gray-500"
+              className="diatype-xs-medium text-tertiary-500"
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">

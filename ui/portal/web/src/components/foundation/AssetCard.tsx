@@ -27,12 +27,12 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
           <div className="h-8 w-8 rounded-full bg-gray-200" />
         )}
         <div className="flex flex-col text-base">
-          <p className="text-gray-500">{coinInfo.symbol}</p>
+          <p className="text-tertiary-500">{coinInfo.symbol}</p>
           <p>{formatNumber(humanAmount, formatNumberOptions)}</p>
         </div>
       </div>
       <div className="flex flex-col">
-        {/* <p className="text-gray-500">2,09%</p> */}
+        {/* <p className="text-tertiary-500">2,09%</p> */}
         <p>{price}</p>
       </div>
     </div>
