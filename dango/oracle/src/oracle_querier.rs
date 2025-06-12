@@ -10,7 +10,7 @@ use {
         Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Udec128,
     },
     pyth_types::PythId,
-    std::cell::OnceCell,
+    std::{cell::OnceCell, collections::HashMap},
 };
 
 pub struct OracleQuerier<'a> {
@@ -36,6 +36,17 @@ impl<'a> OracleQuerier<'a> {
         price_source: Option<PriceSource>,
     ) -> anyhow::Result<PrecisionedPrice> {
         self.cache.get_or_fetch(denom, price_source).cloned()
+    }
+
+    pub fn mock(prices: HashMap<Denom, PrecisionedPrice>) -> Self {
+        Self {
+            cache: Cache::new(move |denom, _| {
+                prices
+                    .get(denom)
+                    .cloned()
+                    .ok_or_else(|| anyhow!("price not found"))
+            }),
+        }
     }
 }
 
@@ -175,5 +186,57 @@ impl<'a> RemoteLending<'a> {
                 &dango_lending::MARKETS.path(underlying_denom),
             )
             .map(|market| market.supply_index)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use dango_types::constants::usdc;
+
+    use super::*;
+
+    use {dango_types::constants::eth, test_case::test_case};
+
+    #[test_case(
+        vec![(eth::DENOM.clone(), PrecisionedPrice::new(
+            Udec128::new_percent(2000),
+            Udec128::new_percent(2000),
+            1730802926,
+            6,
+        ))];
+        "mock with one price"
+    )]
+    #[test_case(
+        vec![
+            (eth::DENOM.clone(), PrecisionedPrice::new(
+                Udec128::new_percent(2000),
+                Udec128::new_percent(2000),
+                1730802926,
+                6,
+            )),
+            (usdc::DENOM.clone(), PrecisionedPrice::new(
+                Udec128::new_percent(1000),
+                Udec128::new_percent(1000),
+                1730802926,
+                6,
+            )),
+        ];
+        "mock with two prices"
+    )]
+    fn test_mock(prices: Vec<(Denom, PrecisionedPrice)>) {
+        let mut oracle_querier = OracleQuerier::mock(prices.clone().into_iter().collect());
+
+        for (denom, expected_price) in prices {
+            let price = oracle_querier.query_price(&denom, None).unwrap();
+            assert_eq!(price, expected_price);
+        }
+    }
+
+    #[test]
+    fn test_mock_querier_with_no_prices() {
+        let mut oracle_querier = OracleQuerier::mock(HashMap::new());
+
+        let error = oracle_querier.query_price(&eth::DENOM, None).unwrap_err();
+        assert_eq!(error.to_string(), "price not found");
     }
 }
