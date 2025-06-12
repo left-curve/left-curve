@@ -82,7 +82,7 @@ pub struct DiskDb {
     /// In archival mode, states from historical versions are preserved, unless
     /// pruned by calling the `Db::prune` method. Otherwise, only the state at
     /// the latest version is kept.
-    archive_mode: bool,
+    pub(crate) archive_mode: bool,
 }
 
 pub(crate) struct DiskDbInner {
