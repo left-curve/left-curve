@@ -156,7 +156,7 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
 };
 
 const tabVariants = tv({
-  base: "italic font-medium font-exposure transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "exposure-sm-italic transition-all relative z-10 whitespace-nowrap outline-none",
   variants: {
     color: {
       green: "",

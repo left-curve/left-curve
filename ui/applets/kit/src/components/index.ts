@@ -76,3 +76,6 @@ export { IconTimer } from "./icons/IconTimer";
 export { IconLink } from "./icons/IconLink";
 export { IconNetwork } from "./icons/IconNetwork";
 export { IconChevronDownFill } from "./icons/IconChevronDownFill";
+export { IconSun } from "./icons/IconSun";
+export { IconMoon } from "./icons/IconMoon";
+export { IconTheme } from "./icons/IconTheme";

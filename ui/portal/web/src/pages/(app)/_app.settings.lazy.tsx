@@ -24,6 +24,7 @@ function SettingsApplet() {
       <DisplaySection>
         <DisplaySection.Language />
         <DisplaySection.FormatNumber />
+        <DisplaySection.Theme />
       </DisplaySection>
       <KeyManagementSection />
     </div>
