@@ -30,6 +30,9 @@ pub enum DbError {
         "requested version ({version}) is older than the oldest available version ({oldest_version})"
     )]
     VersionTooOld { version: u64, oldest_version: u64 },
+
+    #[error("this operation is not supported unless in archive mode")]
+    NotArchival,
 }
 
 impl<'a> From<PoisonError<RwLockReadGuard<'a, Option<PendingData>>>> for DbError {
