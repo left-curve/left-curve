@@ -3482,6 +3482,7 @@ dependencies = [
  "dango-types",
  "grug",
  "pyth-types",
+ "test-case",
 ]
 
 [[package]]

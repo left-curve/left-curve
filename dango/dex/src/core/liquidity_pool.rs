@@ -4,8 +4,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
-        Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128,
     },
 };
 
@@ -76,6 +75,9 @@ pub trait PassiveLiquidityPool {
     /// The input asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_in(
         &self,
+        oracle_querier: &mut OracleQuerier,
+        base_denom: Denom,
+        quote_denom: Denom,
         reserve: CoinPair,
         input: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
@@ -122,11 +124,12 @@ pub trait PassiveLiquidityPool {
     /// error in computing the order, the iterator should return `None` and thus
     /// terminates.
     fn reflect_curve(
-        self,
+        &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
-    ) -> StdResult<(
+    ) -> anyhow::Result<(
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
     )>;
@@ -145,7 +148,9 @@ impl PassiveLiquidityPool for PairParams {
         if lp_token_supply.is_zero() {
             let mint_amount = match &self.pool_type {
                 PassiveLiquidity::Xyk { .. } => xyk::add_initial_liquidity(&deposit)?,
-                PassiveLiquidity::Geometric { .. } => geometric::add_initial_liquidity(&deposit)?,
+                PassiveLiquidity::Geometric { .. } => {
+                    geometric::add_initial_liquidity(oracle_querier, &deposit)?
+                },
             };
 
             reserve.merge(deposit.clone())?;
@@ -189,6 +194,9 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_in(
         &self,
+        oracle_querier: &mut OracleQuerier,
+        base_denom: Denom,
+        quote_denom: Denom,
         mut reserve: CoinPair,
         input: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
@@ -208,7 +216,19 @@ impl PassiveLiquidityPool for PairParams {
                 output_reserve,
                 self.swap_fee_rate,
             )?,
-            PassiveLiquidity::Geometric { .. } => geometric::swap_exact_amount_in()?,
+            PassiveLiquidity::Geometric {
+                order_spacing,
+                ratio,
+            } => geometric::swap_exact_amount_in(
+                oracle_querier,
+                base_denom,
+                quote_denom,
+                &reserve,
+                &input,
+                ratio,
+                order_spacing,
+                self.swap_fee_rate,
+            )?,
         };
 
         let output = Coin {
@@ -263,21 +283,20 @@ impl PassiveLiquidityPool for PairParams {
     }
 
     fn reflect_curve(
-        self,
+        &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
-    ) -> StdResult<(
+    ) -> anyhow::Result<(
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
-        let base_reserve = reserve.amount_of(&base_denom)?;
-        let quote_reserve = reserve.amount_of(&quote_denom)?;
-
         match self.pool_type {
             PassiveLiquidity::Xyk { order_spacing } => xyk::reflect_curve(
-                base_reserve,
-                quote_reserve,
+                base_denom,
+                quote_denom,
+                reserve,
                 order_spacing,
                 self.swap_fee_rate,
             ),
@@ -285,8 +304,10 @@ impl PassiveLiquidityPool for PairParams {
                 ratio,
                 order_spacing,
             } => geometric::reflect_curve(
-                base_reserve,
-                quote_reserve,
+                oracle_querier,
+                base_denom,
+                quote_denom,
+                reserve,
                 ratio,
                 order_spacing,
                 self.swap_fee_rate,
@@ -310,8 +331,11 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
 mod tests {
     use {
         super::*,
-        dango_types::constants::{eth, usdc},
-        grug::{Bounded, Coins, Inner, coins},
+        dango_types::{
+            constants::{eth, usdc},
+            oracle::PrecisionedPrice,
+        },
+        grug::{Bounded, Coins, Inner, coin_pair, coins},
         test_case::test_case,
     };
 
@@ -510,9 +534,41 @@ mod tests {
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
 
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        // TODO: Take prices as input to the test.
+        let mut oracle_querier = OracleQuerier::mock(
+            vec![
+                (
+                    eth::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+                (
+                    usdc::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
         let reserve = pool_liquidity.try_into().unwrap();
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
             .unwrap();
 
         // Assert that at least 10 orders are returned.
@@ -555,8 +611,39 @@ mod tests {
         .try_into()
         .unwrap();
 
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        let mut oracle_querier = OracleQuerier::mock(
+            vec![
+                (
+                    eth::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+                (
+                    usdc::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
             .unwrap();
 
         let bids_collected = bids.collect::<Vec<_>>();
@@ -574,5 +661,113 @@ mod tests {
         // Check that ask iterator keeps going after bid iterator is exhausted
         let asks_collected = asks.take(10).collect::<Vec<_>>();
         assert_eq!(asks_collected.len(), 10);
+    }
+
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            order_spacing: Udec128::new_percent(50),
+        },
+        coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        vec![
+                (
+                    eth::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+                (
+                    usdc::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+        ],
+        Udec128::new_percent(1),
+        Coin::new(eth::DENOM.clone(), 5000000).unwrap(),
+        Coin::new(usdc::DENOM.clone(), 4900500).unwrap(),
+        coin_pair! {
+            eth::DENOM.clone() => 10000000 + 5000000,
+            usdc::DENOM.clone() => 10000000 - 4900500,
+        };
+        "geometric pool 1:1 price swap in base denom amount matches first order"
+    )]
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            order_spacing: Udec128::new_percent(50),
+        },
+        coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        vec![
+                (
+                    eth::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+                (
+                    usdc::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+        ],
+        Udec128::new_percent(1),
+        Coin::new(usdc::DENOM.clone(), 5000000).unwrap(),
+        Coin::new(eth::DENOM.clone(), 4900990).unwrap(),
+        coin_pair! {
+            eth::DENOM.clone() => 10000000 - 4900990,
+            usdc::DENOM.clone() => 10000000 + 5000000,
+        };
+        "geometric pool 1:1 price swap in quote denom amount matches first order"
+    )]
+    fn swap_exact_amount_in(
+        pool_type: PassiveLiquidity,
+        reserve: CoinPair,
+        oracle_prices: Vec<(Denom, PrecisionedPrice)>,
+        fee_rate: Udec128,
+        input: Coin,
+        expected_output: Coin,
+        expected_reserve_after_swap: CoinPair,
+    ) {
+        let pair = PairParams {
+            pool_type,
+            swap_fee_rate: Bounded::new(fee_rate).unwrap(),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        let mut oracle_querier = OracleQuerier::mock(oracle_prices.into_iter().collect());
+
+        let (reserve, output) = pair
+            .swap_exact_amount_in(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                reserve,
+                input,
+            )
+            .unwrap();
+
+        assert_eq!(output, expected_output);
+        assert_eq!(reserve, expected_reserve_after_swap);
     }
 }

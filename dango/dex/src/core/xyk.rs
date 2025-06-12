@@ -1,7 +1,7 @@
 use {
     grug::{
-        Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
-        NumberConst, StdResult, Udec128, Uint128, ZeroExclusiveOneExclusive,
+        Bounded, CoinPair, Denom, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
+        NumberConst, Udec128, Uint128, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -73,14 +73,18 @@ pub fn swap_exact_amount_out(
 }
 
 pub fn reflect_curve(
-    base_reserve: Uint128,
-    quote_reserve: Uint128,
+    base_denom: Denom,
+    quote_denom: Denom,
+    reserve: &CoinPair,
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-) -> StdResult<(
+) -> anyhow::Result<(
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
 )> {
+    let base_reserve = reserve.amount_of(&base_denom)?;
+    let quote_reserve = reserve.amount_of(&quote_denom)?;
+
     // Compute the marginal price. We will place orders above and below this price.
     let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
 

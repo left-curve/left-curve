@@ -180,7 +180,12 @@ fn clear_orders_of_pair(
         Some(reserve) => {
             // Create the passive liquidity orders if the pair has a pool.
             let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            pair.reflect_curve(base_denom.clone(), quote_denom.clone(), reserve)?
+            pair.reflect_curve(
+                oracle_querier,
+                base_denom.clone(),
+                quote_denom.clone(),
+                reserve,
+            )?
         },
         None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
     };

@@ -272,7 +272,8 @@ fn swap_exact_amount_in(
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
-    let (reserves, output) = core::swap_exact_amount_in(ctx.storage, route, input.clone())?;
+    let (reserves, output) =
+        core::swap_exact_amount_in(ctx.storage, ctx.querier, route, input.clone())?;
 
     // Ensure the output is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
