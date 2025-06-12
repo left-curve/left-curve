@@ -19,7 +19,7 @@ use {
 pub struct NaiveProposalPreparer;
 
 impl ProposalPreparer for NaiveProposalPreparer {
-    type Error = NaiveError;
+    type Error = Infallible;
 
     fn prepare_proposal(
         &self,

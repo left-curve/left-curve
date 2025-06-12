@@ -2,6 +2,7 @@ use {
     crate::pyth_handler::PythHandler,
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
+    grug_app::NaiveProposalPreparer,
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::constants::PYTH_URL,
@@ -59,7 +60,7 @@ where
         &self,
         querier: QuerierWrapper,
         mut txs: Vec<Bytes>,
-        _max_tx_bytes: usize,
+        max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
         let cfg: AppConfig = querier.query_app_config()?;
 
@@ -75,27 +76,30 @@ where
         // Retrieve the VAAs.
         let vaas = pyth_handler.fetch_latest_vaas();
 
-        // Return if there are no VAAs to feed.
-        if vaas.is_empty() {
-            return Ok(txs);
+        // If VAAs isn't empty, insert a transaction to feed the prices.
+        if !vaas.is_empty() {
+            let tx = Tx {
+                sender: cfg.addresses.oracle,
+                gas_limit: GAS_LIMIT,
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
+                    cfg.addresses.oracle,
+                    &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
+                    Coins::new(),
+                )?]),
+                data: Json::null(),
+                credential: Json::null(),
+            };
+
+            txs.insert(0, tx.to_json_vec()?.into());
         }
 
-        // Build the tx.
-        let tx = Tx {
-            sender: cfg.addresses.oracle,
-            gas_limit: GAS_LIMIT,
-            msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                cfg.addresses.oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
-                Coins::new(),
-            )?]),
-            data: Json::null(),
-            credential: Json::null(),
-        };
-
-        txs.insert(0, tx.to_json_vec()?.into());
-
-        Ok(txs)
+        // Invoke the naive proposal preparer to trim the transactions to not
+        // exceed the maximum transaction size.
+        // According to the Tendermint spec, this is mandatory:
+        // https://docs.cometbft.com/v0.37/spec/abci/abci++_methods#prepareproposal:~:text=the%20Application%20MUST%20remove%20transactions%20to%20ensure
+        Ok(NaiveProposalPreparer
+            .prepare_proposal(querier, txs, max_tx_bytes)
+            .unwrap())
     }
 }
 
