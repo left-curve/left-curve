@@ -15,6 +15,8 @@ use {
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
+const GEOMETRIC_POOL_INITIAL_MINT_MULTIPLIER: Uint128 = Uint128::new(1000000);
+
 pub trait PassiveLiquidityPool {
     /// Provide liquidity to the pool. This function mutates the pool reserves.
     /// Liquidity is provided at the current pool balance, any excess funds are
@@ -150,11 +152,31 @@ impl PassiveLiquidityPool for PairParams {
         lp_token_supply: Uint128,
         deposit: CoinPair,
     ) -> anyhow::Result<(CoinPair, Uint128)> {
+        fn oracle_value(
+            oracle_querier: &mut OracleQuerier,
+            coin_pair: &CoinPair,
+        ) -> anyhow::Result<Udec128> {
+            let first_value = oracle_querier
+                .query_price(coin_pair.first().denom, None)?
+                .value_of_unit_amount(*coin_pair.first().amount)?;
+            let second_value = oracle_querier
+                .query_price(coin_pair.second().denom, None)?
+                .value_of_unit_amount(*coin_pair.second().amount)?;
+            Ok(first_value.checked_add(second_value)?)
+        }
+
         if lp_token_supply.is_zero() {
             reserve.merge(deposit.clone())?;
 
             // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
-            let mint_amount = xyk_normalized_invariant(&reserve)?;
+            let mint_amount = match self.pool_type {
+                PassiveLiquidity::Xyk { .. } => xyk_normalized_invariant(&reserve)?,
+                PassiveLiquidity::Geometric { .. } => {
+                    let deposit_value = oracle_value(oracle_querier, &deposit)?;
+
+                    GEOMETRIC_POOL_INITIAL_MINT_MULTIPLIER.checked_mul_dec_floor(deposit_value)?
+                },
+            };
 
             Ok((reserve, mint_amount))
         } else {
@@ -176,19 +198,6 @@ impl PassiveLiquidityPool for PairParams {
                     invariant_ratio.checked_sub(Udec128::ONE)?
                 },
                 PassiveLiquidity::Geometric { .. } => {
-                    fn oracle_value(
-                        oracle_querier: &mut OracleQuerier,
-                        coin_pair: &CoinPair,
-                    ) -> anyhow::Result<Udec128> {
-                        let first_value = oracle_querier
-                            .query_price(coin_pair.first().denom, None)?
-                            .value_of_unit_amount(*coin_pair.first().amount)?;
-                        let second_value = oracle_querier
-                            .query_price(coin_pair.second().denom, None)?
-                            .value_of_unit_amount(*coin_pair.second().amount)?;
-                        Ok(first_value.checked_add(second_value)?)
-                    }
-
                     let deposit_value = oracle_value(oracle_querier, &deposit)?;
                     let reserve_value = oracle_value(oracle_querier, &reserve)?;
 
