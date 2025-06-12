@@ -1,8 +1,5 @@
 use {
-    crate::{
-        entity::{self},
-        error::Result,
-    },
+    crate::{entity, error::Result},
     grug_types::{
         Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
         Inner, JsonSerExt, flatten_commitment_status,

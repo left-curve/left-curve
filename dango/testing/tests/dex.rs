@@ -6,8 +6,8 @@ use {
         config::AppConfig,
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
-            self, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest,
-            CurveInvariant, Direction, OrderId, OrderResponse, PairId, PairParams, PairUpdate,
+            self, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction,
+            OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
         },
         gateway::Remote,
@@ -1117,7 +1117,7 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    curve_invariant: CurveInvariant::Xyk {
+                    pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::new_bps(1),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
@@ -1137,7 +1137,7 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    curve_invariant: CurveInvariant::Xyk {
+                    pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::new_bps(1),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
@@ -1154,7 +1154,10 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    Uint128::new(99);
+    Uint128::new(99),
+    PassiveLiquidity::Xyk {
+        order_spacing: Udec128::ONE,
+    };
     "provision at pool ratio"
 )]
 #[test_case(
@@ -1163,7 +1166,10 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    Uint128::new(49);
+    Uint128::new(49),
+    PassiveLiquidity::Xyk {
+        order_spacing: Udec128::ONE,
+    };
     "provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1172,10 +1178,18 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    Uint128::new(72);
+    Uint128::new(72),
+    PassiveLiquidity::Xyk {
+        order_spacing: Udec128::ONE,
+    };
     "provision at different ratio"
 )]
-fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: Uint128) {
+fn provide_liquidity(
+    provision: Coins,
+    swap_fee: Udec128,
+    expected_lp_balance: Uint128,
+    pool_type: PassiveLiquidity,
+) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
@@ -1203,7 +1217,7 @@ fn provide_liquidity(provision: Coins, swap_fee: Udec128, expected_lp_balance: U
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            curve_invariant: pair_params.curve_invariant.clone(),
+                            pool_type,
                         },
                     }]),
                     Coins::new(),
@@ -1323,7 +1337,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            curve_invariant: pair_params.curve_invariant.clone(),
+                            pool_type: pair_params.pool_type.clone(),
                         },
                     }]),
                     Coins::new(),
@@ -1660,7 +1674,7 @@ fn swap_exact_amount_in(
                             params: PairParams {
                                 lp_denom: pair_params.lp_denom.clone(),
                                 swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                                curve_invariant: pair_params.curve_invariant.clone(),
+                                pool_type: pair_params.pool_type.clone(),
                             },
                         }]),
                         Coins::new(),
@@ -2060,7 +2074,7 @@ fn swap_exact_amount_out(
 }
 
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2106,7 +2120,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 one percent fee no matching orders"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_permille(5),
@@ -2150,7 +2164,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2194,7 +2208,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2240,7 +2254,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_permille(5),
@@ -2284,7 +2298,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_permille(5),
@@ -2328,7 +2342,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_permille(5),
@@ -2374,7 +2388,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after"
 )]
 #[test_case(
-    CurveInvariant::Xyk {
+    PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
     },
     Udec128::new_percent(1),
@@ -2434,7 +2448,7 @@ fn swap_exact_amount_out(
     "xyk pool balance 1:200 tick size 1 one percent fee three users with multiple orders"
 )]
 fn curve_on_orderbook(
-    curve_invariant: CurveInvariant,
+    pool_type: PassiveLiquidity,
     swap_fee_rate: Udec128,
     pool_liquidity: Coins,
     orders: Vec<Vec<CreateLimitOrderRequest>>,
@@ -2475,7 +2489,7 @@ fn curve_on_orderbook(
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
-                            curve_invariant,
+                            pool_type,
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                         },
                     }]),

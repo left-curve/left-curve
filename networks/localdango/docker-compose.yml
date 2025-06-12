@@ -4,9 +4,9 @@ services:
     shm_size: 1gb
     ports:
       # For security reasons, postgres should only accept connections from localhost.
-      - 127.0.0.1:5432:5432
+      - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
       # For when we'll need an init script ran at initialization
       # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
@@ -14,17 +14,23 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=grug_dev
     tty: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
 
   dango:
-    image: ghcr.io/left-curve/left-curve/dango:latest
+    image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
-      - 127.0.0.1:8080:8080
+      - 127.0.0.1:${DANGO_PORT:-8080}:8080
     volumes:
-      - ./configs/dango/config:/home/dango/.dango/config
-      - ./data/dango/data:/home/dango/.dango/data
-      - ./data/dango/indexer:/home/dango/.dango/indexer
+      - ./configs/dango/config:/root/.dango/config
+      - dango_data:/root/.dango/data
+      - dango_indexer:/root/.dango/indexer
     environment:
       - DB_HOST=db
       - DB_PORT=5432
@@ -32,14 +38,37 @@ services:
       - DB_NAME=grug_dev
       - INDEXER__DATABASE_URL=postgres://postgres@db:5432/grug_dev
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     depends_on:
       - dango
     ports:
-      - 127.0.0.1:26657:26657
+      - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
-      - ./configs/cometbft/config:/home/cometbft/.cometbft/config
-      - ./data/cometbft/data:/home/cometbft/.cometbft/data
+      - ./configs/cometbft/config:/root/.cometbft/config
+      - cometbft_data:/root/.cometbft/data
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    entrypoint: >
+      sh -c "
+      mkdir -p /root/.cometbft/data &&
+      [ -f /root/.cometbft/data/priv_validator_state.json ] ||
+      printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
+      exec cometbft start
+      "
+
+volumes:
+  db_data:
+  dango_data:
+  dango_indexer:
+  cometbft_data:

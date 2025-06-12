@@ -3,6 +3,7 @@ mod idens;
 
 mod m20250115_000001_create_table;
 mod m20250328_111712_accounts_table;
+mod m20250609_154519_transfers_transactions_hash;
 
 pub struct Migrator;
 
@@ -12,6 +13,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20250115_000001_create_table::Migration),
             Box::new(m20250328_111712_accounts_table::Migration),
+            Box::new(m20250609_154519_transfers_transactions_hash::Migration),
         ]
     }
 

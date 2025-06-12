@@ -19,13 +19,18 @@ use {
 ///   storage doesn't). The VM has to be added as a generic. We need to hide
 ///   this generic, otherwise we run into infinite recursive types with the
 ///   hybrid VM. (When using a single VM, this isn't a problem.)
-pub trait QuerierProvider {
+pub trait QuerierProvider: Send + Sync {
     fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse>;
+}
+
+impl Querier for &dyn QuerierProvider {
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        self.do_query_chain(req, 0).map_err(StdError::host)
+    }
 }
 
 impl Querier for Box<dyn QuerierProvider> {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        // TODO: ignoring query depth for now
         self.do_query_chain(req, 0).map_err(StdError::host)
     }
 }
@@ -56,7 +61,7 @@ impl<VM> QuerierProviderImpl<VM> {
 
 impl<VM> QuerierProviderImpl<VM>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     pub fn new_boxed(
@@ -71,7 +76,7 @@ where
 
 impl<VM> QuerierProvider for QuerierProviderImpl<VM>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {

@@ -50,7 +50,6 @@ enum BlockSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
-
 type Event {
 	createdAt: NaiveDateTime!
 	type: String!
@@ -118,10 +117,7 @@ enum FlatCommitmentStatus {
 	reverted
 }
 
-
 scalar GrugQueryInput
-
-
 
 """
 A scalar that can represent any JSON value.
@@ -270,7 +266,6 @@ type Store {
 	proof: String
 }
 
-
 type Subscription {
 	block: Block!
 	transactions(sinceBlockHeight: Int): [Transaction!]!
@@ -360,7 +355,13 @@ See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/s
 """
 scalar UnsignedTx
 
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
 directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
 directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
 schema {
 	query: Query

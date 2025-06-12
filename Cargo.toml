@@ -1,6 +1,9 @@
 [workspace]
 members = [
-  "dango/account/*",
+  "dango/account/factory",
+  "dango/account/margin",
+  "dango/account/multi",
+  "dango/account/spot",
   "dango/auth",
   "dango/bank",
   "dango/cli",
@@ -8,11 +11,11 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
-  "dango/httpd",
+  "dango/indexer/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
-  "dango/mocks/*",
+  "dango/mocks/httpd",
   "dango/oracle",
   "dango/proposal-preparer",
   "dango/taxman",
@@ -24,26 +27,36 @@ members = [
   "grug/bob-the-builder",
   "grug/client",
   "grug/crypto",
-  "grug/db/*",
+  "grug/db/disk",
+  "grug/db/memory",
   "grug/ffi",
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
-  "grug/mocks/*",
+  "grug/mocks/account",
+  "grug/mocks/bank",
+  "grug/mocks/taxman",
   "grug/std",
   "grug/storage",
   "grug/tester",
   "grug/testing",
   "grug/types",
-  "grug/vm/*",
-  "hyperlane/isms/*",
+  "grug/vm/rust",
+  "grug/vm/wasm",
+  "hyperlane/isms/multisig",
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
-  "indexer/*",
+  "indexer/client",
+  "indexer/disk-saver",
+  "indexer/httpd",
+  "indexer/sql",
+  "indexer/sql-migration",
+  "indexer/testing",
   "pyth/client",
   "pyth/types",
-  "utils/*",
+  "utils/config-parser",
+  "utils/dyn-event",
 ]
 resolver = "2"
 
@@ -170,8 +183,7 @@ dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
-dango-httpd                 = { path = "dango/httpd" }
-dango-ibc-transfer          = { path = "dango/ibc-transfer" }
+dango-httpd                 = { path = "dango/indexer/httpd" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
@@ -180,7 +192,6 @@ dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
-dango-token-factory         = { path = "dango/token-factory" }
 dango-types                 = { path = "dango/types" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }
@@ -228,7 +239,8 @@ features = [
   "decimal",
   "log",
   "opentelemetry",
-  "tracing",
+  # see https://github.com/async-graphql/async-graphql/issues/1726
+  # "tracing",
   "unblock",
   "url",
   "uuid",
