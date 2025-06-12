@@ -1,8 +1,5 @@
 use {
-    crate::{
-        MarketOrder, MergedOrders,
-        core::{market_order, order_matching},
-    },
+    crate::{MarketOrder, MergedOrders, core::market_order},
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::dex::{Direction, PairParams, PassiveLiquidity},
@@ -337,10 +334,8 @@ impl PassiveLiquidityPool for PairParams {
                         "failed to match market order in swap_exact_amount_in"
                     ))?;
 
-                let output_amount_after_fee = output_amount
-                    .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?;
-
-                output_amount_after_fee
+                output_amount
+                    .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?
             },
         };
 
@@ -559,8 +554,9 @@ impl PassiveLiquidityPool for PairParams {
                 // the price.
                 let bids = bid_prices
                     .zip(bid_sizes_in_quote)
-                    .map(|(price, size)| size.checked_div_dec_floor(price).ok().map(|s| (price, s)))
-                    .filter_map(|x| x);
+                    .filter_map(|(price, size)| {
+                        size.checked_div_dec_floor(price).ok().map(|s| (price, s))
+                    });
 
                 // Construct ask price iterator with increasing prices
                 let ask_starting_price = spot_price.checked_mul(one_plus_fee_rate)?;

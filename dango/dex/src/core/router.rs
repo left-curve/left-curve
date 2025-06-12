@@ -16,7 +16,7 @@ pub fn swap_exact_amount_in(
     let mut output = input;
 
     let oracle_address = querier.query_oracle()?;
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_address, querier.clone());
+    let mut oracle_querier = OracleQuerier::new_remote(oracle_address, querier);
 
     for pair in route.into_iter() {
         // Load the pair's parameters.
