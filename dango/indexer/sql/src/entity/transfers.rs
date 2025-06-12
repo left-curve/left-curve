@@ -23,6 +23,7 @@ pub struct Model {
     pub idx: i32,
     pub created_at: DateTime,
     pub block_height: i64,
+    pub tx_hash: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: String,
