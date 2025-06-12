@@ -334,21 +334,15 @@ jobs:
           DANGO_PORT: 0
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.17
-          # COMPOSE_PROJECT_NAME: localdango
         run: |
           cd networks/localdango
-          timeout 30 just start
 
-          # #  Wait for 3 services to be ready
-          # timeout 30 bash -c 'until [ $(docker compose ps | grep -c "Up") -eq 3 ]; do sleep 5; done'
-          #
-          # # Check if timeout failed
-          # if [ $? -ne 0 ]; then
-          #   echo "Services failed to start within timeout"
-          #   docker compose ps
-          #   docker compose logs
-          #   exit 1
-          # fi
+          docker compose up -d --wait || {
+            echo "Services failed to become healthy"
+            docker compose ps
+            docker compose logs
+            exit 1
+          }
       - name: Cleanup
         if: always()
         run: |
