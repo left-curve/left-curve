@@ -7,6 +7,7 @@ import { Modals } from "./components/modals/RootModal";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import { useNotifications } from "./hooks/useNotifications";
+import { useTheme } from "@left-curve/applets-kit";
 
 type AppState = {
   router: typeof router;
@@ -43,6 +44,9 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
+
+  // Initialize theme
+  const theme = useTheme();
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
