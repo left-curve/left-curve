@@ -39,46 +39,15 @@ start:
   trap 'cleanup SIGTERM' TERM
   trap 'cleanup' ERR
 
-  # 1. Check whether cometbft data already exists. If not, create it.
-  if [[ ! -f "data/cometbft/data/priv_validator_state.json" ]]; then
-    mkdir -p data/cometbft/data
-    echo '{"height":"0","round":0,"step":0}' > data/cometbft/data/priv_validator_state.json
-  fi
-
-  # 2. Start the postgres service in detached mode.
-  docker compose up -d db
-
-  # 3. Wait for the database to be ready.
-  until docker compose run --rm db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}; do
-    echo "Waiting for the database to be ready..."
-    sleep 1
-  done
-  echo "Database is ready!"
-
-  # 4. Check whether the development database already exists. If not, create it.
-  exists=$(docker compose run --rm db psql -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname='{{DB_NAME}}'")
-  if [ "$exists" = "1" ]; then
-    echo "Database {{DB_NAME}} already exists."
-  else
-    echo "Database {{DB_NAME}} does not exist. Creating..."
-    docker compose run --rm db createdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
-    if [ $? -ne 0 ]; then
-      echo "Failed to create database {{DB_NAME}}."
-      exit 1
-    fi
-    echo "Database {{DB_NAME}} successfully created."
-  fi
-
-  # 5. Run the cometbft service in detached mode.
-  # Since cometbft depends on dango, this also starts the dango service.
-  docker compose up -d cometbft
-
-  # 6. Follow the logs.
+  docker compose up -d --wait
   docker compose logs -f db -f dango -f cometbft
 
 # Stop the localnet
 stop:
   docker compose down --remove-orphans
+
+logs:
+  docker compose logs -f db -f dango -f cometbft
 
 # Delete the generate data in order to restart a new localnet from scratch
 reset:
