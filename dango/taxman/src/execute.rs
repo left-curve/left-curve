@@ -94,7 +94,9 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     //    using the oracle contract as sender during `PrepareProposal`.
     let withhold_amount = if ctx.mode == AuthMode::Simulate || {
         let app_cfg = ctx.querier.query_dango_config()?;
-        tx.sender == app_cfg.addresses.account_factory || tx.sender == app_cfg.addresses.oracle
+        tx.sender == app_cfg.addresses.account_factory
+            || tx.sender == app_cfg.addresses.oracle
+            || tx.sender == app_cfg.addresses.bitcoin
     } {
         Uint128::ZERO
     } else {
