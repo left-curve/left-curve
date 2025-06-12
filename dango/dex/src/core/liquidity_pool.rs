@@ -78,6 +78,7 @@ pub trait PassiveLiquidityPool {
     /// The input asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_in(
         &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: CoinPair,
@@ -244,6 +245,7 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_in(
         &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         mut reserve: CoinPair,
@@ -282,49 +284,63 @@ impl PassiveLiquidityPool for PairParams {
                     return Err(anyhow!("error"));
                 };
 
+                // Reflect the curve
                 let (passive_bids, passive_asks) =
-                    self.reflect_curve(base_denom, quote_denom, &reserve)?;
+                    self.reflect_curve(oracle_querier, base_denom, quote_denom, &reserve)?;
 
-                let mut passive_bids = MergedOrders::new(
-                    Box::new(iter::empty()),
-                    passive_bids,
-                    IterationOrder::Descending,
-                    Addr::mock(0),
-                )
-                .peekable();
+                // Construct the passive orders iterator. Asks for a bid, and bids for an ask.
+                let mut passive_orders = match order_direction {
+                    Direction::Bid => MergedOrders::new(
+                        Box::new(iter::empty()),
+                        passive_asks,
+                        IterationOrder::Ascending,
+                        Addr::mock(0),
+                    )
+                    .peekable(),
+                    Direction::Ask => MergedOrders::new(
+                        Box::new(iter::empty()),
+                        passive_bids,
+                        IterationOrder::Descending,
+                        Addr::mock(0),
+                    )
+                    .peekable(),
+                };
 
-                let mut passive_asks = MergedOrders::new(
-                    Box::new(iter::empty()),
-                    passive_asks,
-                    IterationOrder::Ascending,
-                    Addr::mock(0),
-                )
-                .peekable();
-
-                let filling_outcomes = match order_direction {
-                    Direction::Bid => {
-                        let mut market_orders = vec![(1u64, MarketOrder {
+                // Construct the market order iterator.
+                let mut market_orders = vec![(1u64, MarketOrder {
                             user: Addr::mock(0), // Won't be used. Only used when processing the filling outcomes in cron_execute which will not be called here. 
                             amount: input.amount,
-                            max_slippage: Udec128::MAX, // Slippage control is implemented in the top level swap_exact_amount_in function. We allow maximum slippage here to simply get an out amount. The swap will be failed on top level if the slippage is too high. 
+                            max_slippage: Udec128::new_permille(999), // Slippage control is implemented in the top level swap_exact_amount_in function. We allow maximum slippage here to simply get an out amount. The swap will be failed on top level if the slippage is too high. 
                         })]
                         .into_iter()
                         .peekable();
-                        market_order::match_and_fill_market_orders(
-                            &mut market_orders,
-                            &mut passive_asks,
-                            order_direction,
-                            Udec128::ZERO,
-                            Udec128::ZERO,
-                            0, // Both maker and taker
-                        )?
-                    },
-                    Direction::Ask => {
-                        todo!()
-                    },
-                };
 
-                todo!()
+                // Match and fill the market order with the passive orders.
+                let filling_outcomes = market_order::match_and_fill_market_orders(
+                    &mut market_orders,
+                    &mut passive_orders,
+                    order_direction,
+                    Udec128::ZERO, /* Setting fee rates to zero to just get the result of the pure matching. Swap fee is applied later. */
+                    Udec128::ZERO, /* Setting fee rates to zero to just get the result of the pure matching. Swap fee is applied later. */
+                    0,             // Both maker and taker.
+                )?;
+
+                // Get the output amount from the filling outcomes.
+                let output_amount = filling_outcomes
+                    .iter()
+                    .find(|outcome| outcome.order_id == 1u64)
+                    .map(|outcome| match order_direction {
+                        Direction::Bid => outcome.refund_base,
+                        Direction::Ask => outcome.refund_quote,
+                    })
+                    .ok_or(anyhow!(
+                        "failed to match market order in swap_exact_amount_in"
+                    ))?;
+
+                let output_amount_after_fee = output_amount
+                    .checked_mul_dec_floor(Udec128::ONE - self.swap_fee_rate.into_inner())?;
+
+                output_amount_after_fee
             },
         };
 
