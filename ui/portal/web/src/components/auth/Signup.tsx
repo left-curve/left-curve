@@ -330,7 +330,7 @@ const Username: React.FC = () => {
         placeholder={
           <p className="flex gap-1 items-center justify-start">
             <span>{m["signin.placeholder"]()}</span>
-            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-tertiary-500">
+            <span className="text-primary-rice exposure-m-italic group-data-[focus=true]:text-tertiary-500">
               {m["common.username"]().toLowerCase()}
             </span>
           </p>
