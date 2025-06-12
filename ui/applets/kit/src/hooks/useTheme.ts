@@ -1,7 +1,7 @@
 import { useStorage } from "@left-curve/store";
 import { useCallback, useEffect } from "react";
 
-type ThemeType = "dark" | "light";
+export type ThemeType = "dark" | "light";
 
 export type UseThemeReturnType = {
   theme: ThemeType;

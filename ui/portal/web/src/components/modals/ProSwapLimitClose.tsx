@@ -7,7 +7,7 @@ export const ProSwapLimitClose = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
-    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
+    <div className="flex flex-col bg-bg-primary-rice md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
       <div className="flex flex-col gap-2">
         <h2 className="text-gray-900 h4-bold w-full">Limit close</h2>
         <p className="text-gray-500 diatype-sm-regular">

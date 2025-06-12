@@ -27,7 +27,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
     const humanAmount = formatUnits(amount, coin.decimals);
 
     return (
-      <div className="flex flex-col bg-white-100 md:border border-gray-100 rounded-xl relative gap-4 w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-bg-primary-rice md:border border-gray-100 rounded-xl relative gap-4 w-full md:max-w-[25rem]">
         <IconButton
           className="hidden md:block absolute right-5 top-5"
           variant="link"

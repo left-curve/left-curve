@@ -2,8 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+
 body {
-  font-family: "ABCDiatypeRounded";
+  font-family: "ABCDiatypeRounded", sans-serif;
 }
 
 .header {

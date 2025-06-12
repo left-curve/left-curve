@@ -14,7 +14,7 @@ export const AuthCarousel: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "custom-width h-svh xl:min-w-[720px] xl:w-[720px] bg-white-100 overflow-hidden",
+        "custom-width h-svh xl:min-w-[720px] xl:w-[720px] bg-bg-primary-rice overflow-hidden",
         "items-start xl:pt-0 xl:items-center justify-center",
         "xl:bg-[url('./images/frame-rounded.svg')] bg-no-repeat bg-cover bg-center",
         isFirstVisit

@@ -41,7 +41,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-xl relative">
+    <div className="flex flex-col bg-bg-primary-rice rounded-xl relative">
       <IconButton
         className="hidden md:block absolute right-2 top-2"
         variant="link"
