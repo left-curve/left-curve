@@ -44,23 +44,10 @@ services:
       timeout: 5s
       retries: 3
 
-  cometbft-init:
-    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
-    volumes:
-      - cometbft_data:/target
-    command: >
-      sh -c "
-      if [ ! -f /target/priv_validator_state.json ]; then
-        mkdir -p /target &&
-        echo '{\"height\":\"0\",\"round\":0,\"step\":0}' > /target/priv_validator_state.json
-      fi
-      "
-
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     depends_on:
       - dango
-      - cometbft-init
     ports:
       - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
@@ -72,6 +59,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    entrypoint: >
+      sh -c "
+      mkdir -p /root/.cometbft/data &&
+      [ -f /root/.cometbft/data/priv_validator_state.json ] ||
+      printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
+      exec cometbft start
+      "
 
 volumes:
   db_data:

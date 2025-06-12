@@ -40,7 +40,7 @@ start:
   trap 'cleanup' ERR
 
   docker compose up -d --wait
-  docker compose logs -f db -f dango -f cometbft
+  docker compose logs -f
 
 # Stop the localnet
 stop:
