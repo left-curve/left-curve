@@ -19,7 +19,7 @@ pub fn do_execute<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtExecute>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_execute(
@@ -60,7 +60,7 @@ fn _do_execute<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtExecute>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtExecute::base(sender, msg.contract, msg.funds.clone(), msg.msg.clone());

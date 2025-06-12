@@ -69,7 +69,7 @@ pub fn handle_submessages<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<Vec<EventStatus<SubEvent>>>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];

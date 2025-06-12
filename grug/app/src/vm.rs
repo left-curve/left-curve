@@ -24,7 +24,7 @@ pub fn call_in_0_out_1<VM, R>(
 ) -> AppResult<R>
 where
     R: BorshDeserialize,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
@@ -62,7 +62,7 @@ pub fn call_in_1_out_1<VM, P, R>(
 where
     P: BorshSerialize,
     R: BorshDeserialize,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
@@ -105,7 +105,7 @@ where
     P1: BorshSerialize,
     P2: BorshSerialize,
     R: BorshDeserialize,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
@@ -147,7 +147,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtGuest>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -203,7 +203,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
 ) -> EventResult<EvtGuest>
 where
     P: BorshSerialize,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -258,7 +258,7 @@ pub fn call_in_1_out_1_handle_auth_response<VM, P>(
 ) -> EventResult<EvtGuest>
 where
     P: BorshSerialize,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -319,7 +319,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
 where
     P1: BorshSerialize,
     P2: BorshSerialize,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -370,7 +370,7 @@ fn create_vm_instance<VM>(
     code_hash: Hash256,
 ) -> AppResult<VM::Instance>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Load the program code from storage and deserialize
@@ -407,7 +407,7 @@ fn handle_response<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtGuest>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     evt.contract_events = response

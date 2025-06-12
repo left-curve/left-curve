@@ -2,6 +2,8 @@ import { Popover as HPopover, PopoverButton, PopoverPanel } from "@headlessui/re
 import { IconChevronDown } from "./icons/IconChevronDown";
 import { twMerge } from "#utils/twMerge.js";
 import { AnimatePresence, motion } from "framer-motion";
+import { useId } from "react";
+import { ResizerContainer } from "./ResizerContainer";
 
 interface Props {
   trigger: React.ReactNode | string;
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export const Popover: React.FC<Props> = ({ menu, trigger, classNames, showArrow = true }) => {
+  const id = useId();
   return (
     <HPopover className={twMerge("relative group w-fit", classNames?.base)}>
       {({ open }) => (
@@ -32,27 +35,28 @@ export const Popover: React.FC<Props> = ({ menu, trigger, classNames, showArrow 
 
           <PopoverPanel
             anchor="bottom"
-            className={twMerge("flex flex-col absolute z-50 p-2", classNames?.menu)}
+            className={twMerge("flex flex-col absolute z-50 p-2 scrollbar-none")}
           >
-            <motion.div
-              layout="size"
-              className="bg-rice-25 rounded-lg h-fit p-4 shadow-account-card"
+            <ResizerContainer
+              layoutId={`popover-menu-${id}`}
+              className={twMerge(
+                "bg-rice-25 rounded-xl h-fit p-4 shadow-account-card",
+                classNames?.menu,
+              )}
             >
               <AnimatePresence>
                 {open && (
                   <motion.div
-                    style={{ overflow: "hidden" }}
-                    initial={{ height: 0 }}
-                    animate={{ transition: { duration: 0.1 }, height: open ? "auto" : 0 }}
-                    exit={{ height: 0 }}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
-                    <motion.ul exit={{ opacity: 0 }} transition={{ duration: 0.05 }}>
-                      {menu}
-                    </motion.ul>
+                    {menu}
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </ResizerContainer>
           </PopoverPanel>
         </>
       )}

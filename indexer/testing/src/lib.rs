@@ -132,10 +132,7 @@ where
                     errors: graphql_response.errors,
                 })
             } else {
-                Err(anyhow!(
-                    "can't find {} in response",
-                    requests_body[index].name
-                ))
+                bail!("can't find {} in response", requests_body[index].name)
             }
         })
         .collect::<Result<Vec<_>, _>>()
@@ -305,16 +302,16 @@ where
                     errors: graphql_response.payload.errors,
                 }))
             } else {
-                Err(anyhow!("can't find {name} in response"))
+                bail!("can't find {name} in response")
             }
         },
         Some(Ok(ws::Frame::Ping(ping))) => {
             framed.send(ws::Message::Pong(ping)).await?;
-            Err(anyhow!("received ping"))
+            bail!("received ping")
         },
         Some(Err(e)) => Err(e.into()),
-        None => Err(anyhow!("connection closed unexpectedly")),
-        res => Err(anyhow!("unexpected message type: {res:?}")),
+        None => bail!("connection closed unexpectedly"),
+        res => bail!("unexpected message type: {res:?}"),
     }
 }
 

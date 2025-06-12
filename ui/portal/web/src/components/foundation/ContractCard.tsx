@@ -26,7 +26,10 @@ export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, ba
       />
       <div className="flex flex-col relative z-10">
         <div className="flex gap-1 items-center">
-          <AddressVisualizer address={address} className="exposure-m-italic capitalize" />
+          <AddressVisualizer
+            address={address}
+            classNames={{ text: "exposure-m-italic capitalize" }}
+          />
           <Badge text="App" color="green" className="h-fit capitalize" size="s" />
         </div>
         <div className="flex gap-1 items-center">
