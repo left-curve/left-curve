@@ -25,6 +25,7 @@ export default defineConfig({
       // Order matters
       "~/paraglide": path.resolve(__dirname, "./.paraglide"),
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
+      "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": storePath[(process.env.CONFIG_ENVIRONMENT || "local") as keyof typeof storePath],
       "~": path.resolve(__dirname, "./src"),
     },

@@ -35,7 +35,7 @@ where
     T: Into<Binary>,
     PP: ProposalPreparer,
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     // Deploy 200 accounts.

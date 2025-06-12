@@ -1,4 +1,4 @@
-import type { Address } from "@left-curve/sdk/types";
+import type { Address, Json } from "@left-curve/sdk/types";
 
 export type IndexedBlock = {
   blockHeight: number;
@@ -6,6 +6,15 @@ export type IndexedBlock = {
   hash: string;
   appHash: string;
   transactions: IndexedTransaction[];
+};
+
+export type IndexedTradeSideType = "BUY" | "SELL";
+export type IndexedTrade = {
+  price: string;
+  size: string;
+  createdAt: string;
+  hash: string;
+  side: IndexedTradeSideType;
 };
 
 export type IndexedTransaction = {
@@ -30,6 +39,7 @@ export type IndexedMessage = {
   senderAddr: Address;
   orderIdx: number;
   createdAt: string;
+  data: Record<string, Json>;
 };
 
 export type IndexedTransferEvent = {

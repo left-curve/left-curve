@@ -1,6 +1,7 @@
 use {
     crate::{block_to_index::BlockToIndex, context::Context},
     async_trait::async_trait,
+    grug_app::QuerierProvider,
     std::convert::Infallible,
 };
 
@@ -16,6 +17,7 @@ pub trait Hooks {
         &self,
         _context: Context,
         _block: BlockToIndex,
+        _querier: Box<dyn QuerierProvider>,
     ) -> Result<(), Self::Error> {
         Ok(())
     }
