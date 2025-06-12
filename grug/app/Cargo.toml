@@ -17,6 +17,7 @@ tracing = ["dep:tracing", "grug-types/chrono"]
 [dependencies]
 borsh         = { workspace = true }
 data-encoding = { workspace = true, optional = true }
+dyn-clone     = { workspace = true }
 dyn-event     = { workspace = true }
 grug-storage  = { workspace = true }
 grug-types    = { workspace = true }

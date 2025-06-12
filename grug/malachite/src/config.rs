@@ -1,4 +1,5 @@
 use {
+    grug::{BlockInfo, GenesisState},
     malachitebft_app::config::{
         ConsensusConfig, LoggingConfig, MempoolConfig, MetricsConfig, RuntimeConfig,
         ValueSyncConfig,
@@ -8,7 +9,7 @@ use {
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Config {
+pub struct ActorsConfig {
     /// A custom human-readable name for this node
     pub moniker: String,
 
@@ -37,4 +38,10 @@ pub struct Config {
 pub struct HostConfig {
     #[serde(with = "humantime_serde")]
     pub block_time: Duration,
+}
+
+pub struct GenesisConfig {
+    pub chain_id: String,
+    pub block: BlockInfo,
+    pub genesis_state: GenesisState,
 }

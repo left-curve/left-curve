@@ -3,7 +3,6 @@ use {
     dango_testing::{Preset, TestOption, setup_test},
     grug::setup_tracing_subscriber,
     grug_malachite::{PrivateKey, Validator, ValidatorSet, spawn_actors},
-    malachitebft_app::events::TxEvent,
     std::{path::PathBuf, sync::Arc},
 };
 
@@ -17,19 +16,16 @@ async fn single() {
 
     let (validator_set, priv_key) = mock_validator_set();
 
-    let tx_event = TxEvent::new();
-
     let app = Arc::new(suite.app);
 
     let _actors = spawn_actors(
         Some(PathBuf::from("./tests/wals/wal-single")),
         load_config("tests/nodes_config/node1.toml", None).unwrap(),
         validator_set,
-        None,
-        tx_event,
         priv_key,
         app.clone(),
-        tracing::span!(tracing::Level::INFO, "consensus"),
+        None,
+        Some(tracing::span!(tracing::Level::INFO, "consensus")),
     )
     .await;
 

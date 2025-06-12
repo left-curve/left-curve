@@ -441,50 +441,48 @@ impl Host {
             validity: Validity::from_bool(parts.fin.hash == block_hash),
         };
 
-        if value.validity == Validity::Invalid {
-            warn!(block_hash = %block_hash, proposal_block_hash = %parts.fin.hash, "Block hash mismatch");
-            return Ok(());
-        } else {
+        if value.validity == Validity::Valid {
             info!(block_hash = %block_hash, "Block hash matches");
+            // Store undecided proposal
+            state.with_db_storage_mut(|storage, db| {
+                db.undecided_proposals.save(
+                    storage,
+                    (
+                        *parts.init.height,
+                        parts.init.round.as_i64(),
+                        parts.fin.hash,
+                    ),
+                    &value,
+                )
+            })?;
+
+            // Store undecided block
+            state.with_db_storage_mut(|storage, db| {
+                db.undecided_block.save(
+                    storage,
+                    (
+                        *parts.init.height,
+                        parts.init.round.as_i64(),
+                        parts.fin.hash,
+                    ),
+                    &block,
+                )
+            })?;
+
+            // Store parts
+            state.with_memory_storage_mut(|storage, memory| {
+                memory
+                    .parts
+                    .save(storage, stream_id.to_bytes().to_vec(), &parts)
+            })?;
+        } else {
+            warn!(block_hash = %block_hash, proposal_block_hash = %parts.fin.hash, "Block hash mismatch");
         }
 
         // TODO: Should we resign the block hash?
 
         // TODO: If block_hash is different from the proposed value, what we should do?
         // store the undecided block with the new block_hash?
-
-        // Store undecided proposal
-        state.with_db_storage_mut(|storage, db| {
-            db.undecided_proposals.save(
-                storage,
-                (
-                    *parts.init.height,
-                    parts.init.round.as_i64(),
-                    parts.fin.hash,
-                ),
-                &value,
-            )
-        })?;
-
-        // Store undecided block
-        state.with_db_storage_mut(|storage, db| {
-            db.undecided_block.save(
-                storage,
-                (
-                    *parts.init.height,
-                    parts.init.round.as_i64(),
-                    parts.fin.hash,
-                ),
-                &block,
-            )
-        })?;
-
-        // Store parts
-        state.with_memory_storage_mut(|storage, memory| {
-            memory
-                .parts
-                .save(storage, stream_id.to_bytes().to_vec(), &parts)
-        })?;
 
         // Send to consensus
         reply_to.send(value)?;

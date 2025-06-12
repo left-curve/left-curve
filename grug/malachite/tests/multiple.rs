@@ -10,7 +10,6 @@ use {
         PrivateKey, RawTx, Validator, ValidatorSet, mempool::MempoolMsg, spawn_actors,
     },
     grug_vm_rust::RustVm,
-    malachitebft_app::events::TxEvent,
     std::{sync::Arc, time::Duration},
 };
 
@@ -51,8 +50,6 @@ async fn multiple() {
             GenesisOption::preset_test(),
         );
 
-        let tx_event = TxEvent::new();
-
         let app = Arc::new(suite.app);
 
         let temp_dir = tempfile::tempdir().unwrap();
@@ -63,11 +60,10 @@ async fn multiple() {
             Some(wal_path),
             load_config(format!("tests/nodes_config/node{}.toml", i), None).unwrap(),
             validator_set.clone(),
-            None,
-            tx_event,
             priv_keys[i - 1].clone(),
             app.clone(),
-            name,
+            None,
+            Some(name),
         )
         .await;
 

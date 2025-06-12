@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, VersionedMap},
-    grug_app::Db,
+    grug_app::{ConsensusStorage, Db},
     grug_jmt::MerkleTree,
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
     std::{
@@ -452,3 +452,5 @@ impl Storage for Consensus {
         });
     }
 }
+
+impl ConsensusStorage for Consensus {}

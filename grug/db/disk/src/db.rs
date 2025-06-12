@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{Db, PrunableDb},
+    grug_app::{ConsensusStorage, Db, PrunableDb},
     grug_jmt::MerkleTree,
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
     rocksdb::{
@@ -563,6 +563,8 @@ impl Storage for StateStorage {
 pub struct Consensus {
     inner: Arc<DiskDbInner>,
 }
+
+impl ConsensusStorage for Consensus {}
 
 impl Storage for Consensus {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {

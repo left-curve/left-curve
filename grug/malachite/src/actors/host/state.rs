@@ -7,6 +7,7 @@ use {
         types::{Block, BlockHash, DecidedBlock, ProposalParts},
     },
     grug::{IndexedMap, Map, MockStorage, Storage, UniqueIndex},
+    grug_app::ConsensusStorage,
     malachitebft_app::{
         consensus::Role,
         streaming::{StreamId, StreamMessage},
@@ -23,7 +24,7 @@ pub type RoundKey = i64;
 pub type StreamIdKey = Vec<u8>;
 
 pub struct State {
-    db_storage: Box<dyn Storage>,
+    db_storage: Box<dyn ConsensusStorage>,
     memory_storage: MockStorage,
     consensus: Option<ConsensusRef<Context>>,
     pub height: ctx!(Height),
@@ -38,7 +39,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new<S: Storage + 'static>(storage: S, config: HostConfig) -> Self {
+    pub fn new<S: ConsensusStorage + 'static>(storage: S, config: HostConfig) -> Self {
         Self {
             db_storage: Box::new(storage),
             consensus: None,
@@ -97,7 +98,7 @@ impl State {
 
     pub fn with_db_storage<C, R>(&self, callback: C) -> R
     where
-        C: FnOnce(&dyn Storage, &DbState) -> R,
+        C: FnOnce(&dyn ConsensusStorage, &DbState) -> R,
     {
         callback(&self.db_storage, &self.db_state)
     }
@@ -157,10 +158,12 @@ pub struct DbState {
     >,
 }
 
+const DECIDED_BLOCK: Map<'static, HeightKey, DecidedBlock> = Map::new("decided_block");
+
 impl Default for DbState {
     fn default() -> Self {
         Self {
-            decided_block: Map::new("decided_block"),
+            decided_block: DECIDED_BLOCK,
             undecided_block: Map::new("undecided_block"),
             undecided_proposals: IndexedMap::new("undecided_proposal", UndecidedProposalIndexes {
                 proposer: UniqueIndex::new(
@@ -181,4 +184,11 @@ pub struct UndecidedProposalIndexes<'a> {
         (HeightKey, RoundKey, ctx!(Address)),
         ProposedValue<Context>,
     >,
+}
+
+pub fn latest_height(consensus_storage: &dyn ConsensusStorage) -> Option<HeightKey> {
+    DECIDED_BLOCK
+        .range(consensus_storage, None, None, grug::Order::Descending)
+        .next()
+        .map(|res| res.unwrap().0)
 }

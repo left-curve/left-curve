@@ -1,16 +1,16 @@
 use {
     crate::{
-        HostConfig,
+        GenesisConfig, HostConfig,
         app::{HostApp, MempoolApp},
         codec,
-        config::Config,
+        config::ActorsConfig,
         context::Context,
         ctx,
-        host::{Host, HostRef},
+        host::{Host, HostRef, latest_height},
         mempool::{Mempool, MempoolActorRef},
         network::{MempoolNetwork, MempoolNetworkActorRef},
     },
-    grug_app::{App, Db},
+    grug_app::{App, AppError, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm},
     malachitebft_app::events::TxEvent,
     malachitebft_config::{
         BootstrapProtocol, ConsensusConfig, PubSubProtocol, Selector, ValuePayload, ValueSyncConfig,
@@ -24,7 +24,7 @@ use {
     },
     malachitebft_metrics::{Metrics as ConsensusMetrics, SharedRegistry},
     malachitebft_sync::Metrics as SyncMetrics,
-    std::{path::PathBuf, sync::Arc, time::Duration},
+    std::{fmt::Debug, path::PathBuf, sync::Arc, time::Duration},
     tokio::task::JoinHandle,
     tracing::Span,
 };
@@ -37,20 +37,67 @@ pub struct Actors {
 
 pub async fn spawn_actors<DB, VM, PP, ID>(
     home_dir: Option<PathBuf>,
-    cfg: Config,
+    cfg: ActorsConfig,
     validator_set: ctx!(ValidatorSet),
-    start_height: Option<ctx!(Height)>,
-    tx_event: TxEvent<Context>,
     private_key: ctx!(SigningScheme::PrivateKey),
     app: Arc<App<DB, VM, PP, ID>>,
-    span: Span,
+    genesis_config: Option<GenesisConfig>,
+    span: Option<Span>,
 ) -> Actors
 where
+    VM: Vm + Clone,
+    PP: ProposalPreparer,
+    ID: Indexer,
     DB: Db,
+    DB::Error: Debug,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
     App<DB, VM, PP, ID>: MempoolApp,
     App<DB, VM, PP, ID>: HostApp,
 {
-    let start_height = start_height.unwrap_or(<ctx!(Height)>::new(1));
+    let start_height = {
+        let app_storage = app.db.state_storage(None).unwrap();
+        let consensus_storage = app.db.consensus();
+        let consensus_height = latest_height(&consensus_storage).unwrap_or(0);
+
+        match LAST_FINALIZED_BLOCK.may_load(&app_storage).unwrap() {
+            // Genesis is done
+            Some(block) => {
+                if block.height != consensus_height {
+                    panic!("Consensus height is not the same as the app height");
+                }
+
+                block.height + 1
+            },
+            // Genesis is not done
+            None => {
+                if consensus_height != 0 {
+                    panic!("Genesis has not been committed, but the consensus height is not 0");
+                }
+
+                let genesis_config = genesis_config
+                    .expect("Genesis need to be runned, but genesis config is not provided");
+
+                // run the genesis block
+                app.do_init_chain(
+                    genesis_config.chain_id,
+                    genesis_config.block,
+                    genesis_config.genesis_state,
+                )
+                .unwrap();
+
+                // Sanity check:
+                assert_eq!(
+                    LAST_FINALIZED_BLOCK.load(&app_storage).expect("Genesis has been just committed, but LAST_FINALIZED_BLOCK can't be loaded").height,
+                    0,
+                    "Genesis block height is not 0"
+                );
+
+                1
+            },
+        }
+    };
+
+    let span = span.unwrap_or(Span::current());
 
     let registry = SharedRegistry::global().with_moniker(cfg.moniker.as_str());
 
@@ -85,7 +132,7 @@ where
     let wal = spawn_wal_actor(home_dir, &registry, &span).await;
 
     let consensus = spawn_consensus_actor(
-        start_height,
+        <ctx!(Height)>::new(start_height),
         validator_set,
         cfg.consensus,
         private_key,
@@ -94,7 +141,7 @@ where
         wal.clone(),
         sync.clone(),
         consensus_metrics,
-        tx_event,
+        TxEvent::new(),
         &span,
     )
     .await;
@@ -119,7 +166,7 @@ async fn spawn_mempool_actor(
 }
 
 async fn spawn_mempool_network_actor(
-    cfg: &Config,
+    cfg: &ActorsConfig,
     private_key: &ctx!(SigningScheme::PrivateKey),
     registry: &SharedRegistry,
 ) -> MempoolNetworkActorRef {
@@ -135,7 +182,7 @@ async fn spawn_mempool_network_actor(
 }
 
 async fn spawn_network_actor(
-    cfg: &Config,
+    cfg: &ActorsConfig,
     private_key: &ctx!(SigningScheme::PrivateKey),
     registry: &SharedRegistry,
     span: &tracing::Span,
