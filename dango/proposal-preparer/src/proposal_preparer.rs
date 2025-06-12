@@ -83,7 +83,8 @@ where
                 gas_limit: GAS_LIMIT,
                 msgs: NonEmpty::new_unchecked(vec![Message::execute(
                     cfg.addresses.oracle,
-                    &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
+                    // We already checked that `vaas` is not empty.
+                    &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vaas)),
                     Coins::new(),
                 )?]),
                 data: Json::null(),
