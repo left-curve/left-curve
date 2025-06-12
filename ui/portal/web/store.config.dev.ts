@@ -4,6 +4,8 @@ import type { Config } from "@left-curve/store/types";
 
 const chain = devnet;
 
+export const FAUCET_URI = `${chain.urls.indexer.replace("graphql", "faucet")}/mint`;
+
 export const coins = {
   dango: {
     type: "native",

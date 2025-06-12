@@ -37,24 +37,26 @@ export function transferSubscription<
 
   const { address, ...callbacks } = parameters;
 
-  const query = `subscription($address: String) {
-            sentTransfers: transfers(fromAddress: $address) {
-              fromAddress
-              toAddress
-              createdAt
-              blockHeight
-              amount
-              denom
-            }
-            receivedTransfers: transfers(toAddress: $address) {
-              fromAddress
-              toAddress
-              createdAt
-              blockHeight
-              amount
-              denom
-            }
-          }`;
+  const query = /* GraphQL */ `
+    subscription ($address: String) {
+      sentTransfers: transfers(fromAddress: $address) {
+        fromAddress
+        toAddress
+        createdAt
+        blockHeight
+        amount
+        denom
+      }
+      receivedTransfers: transfers(toAddress: $address) {
+        fromAddress
+        toAddress
+        createdAt
+        blockHeight
+        amount
+        denom
+      }
+    }
+  `;
 
   return client.subscribe({ query, variables: { address } }, callbacks);
 }

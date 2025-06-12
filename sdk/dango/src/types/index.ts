@@ -106,6 +106,7 @@ export type {
   IndexedTransferEvent,
   IndexedTrade,
   IndexedTradeSideType,
+  IndexedAccountEvent,
 } from "./indexer.js";
 
 export type {

@@ -1,7 +1,7 @@
 import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 
-import type { Account, AccountTypes, KeyHash, Username } from "@left-curve/dango/types";
+import type { Account, AccountTypes, Address, KeyHash, Username } from "@left-curve/dango/types";
 import type { Chain, ChainId } from "@left-curve/dango/types";
 
 import type { Connector } from "../types/connector.js";
@@ -21,7 +21,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
       isDisconnected: false;
       isReconnecting: false;
       status: "connected";
-      changeAccount: (account: Account) => void;
+      changeAccount: (address: Address) => void;
       refreshAccounts: () => Promise<void>;
     }
   | {
@@ -104,8 +104,8 @@ export function getAccount<
 
   const chain = config.chain;
 
-  const changeAccount = (account: Account) => {
-    changeAccountAction(config, { account, connectorUId: connectorUId! });
+  const changeAccount = (address: Address) => {
+    changeAccountAction(config, { address, connectorUId: connectorUId! });
   };
 
   const refreshAccounts = async () => {
