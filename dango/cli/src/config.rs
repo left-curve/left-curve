@@ -15,6 +15,7 @@ pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
     pub archive_mode: bool,
+    pub merklize_state: bool,
 }
 
 impl Default for GrugConfig {
@@ -23,6 +24,7 @@ impl Default for GrugConfig {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
             archive_mode: false,
+            merklize_state: false,
         }
     }
 }

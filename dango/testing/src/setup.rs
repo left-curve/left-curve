@@ -188,6 +188,7 @@ pub fn setup_test_with_indexer() -> (
 pub fn setup_benchmark_hybrid(
     dir: &TempDataDir,
     archive_mode: bool,
+    merklize_state: bool,
     wasm_cache_size: usize,
 ) -> (
     TestSuite<NaiveProposalPreparer, DiskDb, HybridVm, NullIndexer>,
@@ -196,7 +197,7 @@ pub fn setup_benchmark_hybrid(
     Contracts,
     MockValidatorSets,
 ) {
-    let db = DiskDb::open(dir, archive_mode).unwrap();
+    let db = DiskDb::open(dir, archive_mode, merklize_state).unwrap();
     let codes = HybridVm::genesis_codes();
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
@@ -234,6 +235,7 @@ pub fn setup_benchmark_hybrid(
 pub fn setup_benchmark_wasm(
     dir: &TempDataDir,
     archive_mode: bool,
+    merklize_state: bool,
     wasm_cache_size: usize,
 ) -> (
     TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, NullIndexer>,
@@ -242,7 +244,7 @@ pub fn setup_benchmark_wasm(
     Contracts,
     MockValidatorSets,
 ) {
-    let db = DiskDb::open(dir, archive_mode).unwrap();
+    let db = DiskDb::open(dir, archive_mode, merklize_state).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
     setup_suite_with_db_and_vm(

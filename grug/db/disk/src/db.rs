@@ -7,6 +7,7 @@ use {
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
+    sha2::{Digest, Sha256},
     std::{
         path::Path,
         sync::{Arc, RwLock},
@@ -83,6 +84,9 @@ pub struct DiskDb {
     /// pruned by calling the `Db::prune` method. Otherwise, only the state at
     /// the latest version is kept.
     pub(crate) archive_mode: bool,
+    /// Whether to Merklize the state. If not, the DB will return a digest over
+    /// the state diff as the "apphash".
+    merklize_state: bool,
 }
 
 pub(crate) struct DiskDbInner {
@@ -101,7 +105,7 @@ pub(crate) struct PendingData {
 
 impl DiskDb {
     /// Create a DiskDb instance by opening a physical RocksDB instance.
-    pub fn open<P>(data_dir: P, archive_mode: bool) -> DbResult<Self>
+    pub fn open<P>(data_dir: P, archive_mode: bool, merklize_state: bool) -> DbResult<Self>
     where
         P: AsRef<Path>,
     {
@@ -121,6 +125,7 @@ impl DiskDb {
                 pending_data: RwLock::new(None),
             }),
             archive_mode,
+            merklize_state,
         })
     }
 }
@@ -130,6 +135,7 @@ impl Clone for DiskDb {
         Self {
             inner: Arc::clone(&self.inner),
             archive_mode: self.archive_mode,
+            merklize_state: self.merklize_state,
         }
     }
 }
@@ -239,18 +245,20 @@ impl Db for DiskDb {
 
         // Commit hashed KVs to state commitment.
         // The DB writes here are kept in the in-memory `PendingData`.
-        let (root_hash, (_, pending)) = {
+        let (root_hash, pending) = if self.merklize_state {
             let mut buffer = Buffer::new(self.state_commitment(), None);
             let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
 
             // Unless in archival mode, prune the orphaned nodes.
-            if !self.archive_mode {
-                if old_version > 0 {
-                    MERKLE_TREE.prune(&mut buffer, old_version)?;
-                }
+            if !self.archive_mode && old_version > 0 {
+                MERKLE_TREE.prune(&mut buffer, old_version)?;
             }
 
-            (root_hash, buffer.disassemble())
+            let (_, pending) = buffer.disassemble();
+
+            (root_hash, pending)
+        } else {
+            (Some(state_diff_digest(&batch)), Batch::new())
         };
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
@@ -289,22 +297,24 @@ impl DiskDb {
         batch.put_cf(&cf, OLDEST_VERSION_KEY, pending.version.to_le_bytes());
 
         // Writes in state commitment
-        let cf = cf_state_commitment(&self.inner.db);
-        for (key, op) in pending.state_commitment {
-            if let Op::Insert(value) = op {
-                batch.put_cf(&cf, key, value);
-            } else {
-                batch.delete_cf(&cf, key);
+        if self.merklize_state {
+            let cf = cf_state_commitment(&self.inner.db);
+            for (key, op) in pending.state_commitment {
+                if let Op::Insert(value) = op {
+                    batch.put_cf(&cf, key, value);
+                } else {
+                    batch.delete_cf(&cf, key);
+                }
             }
-        }
 
-        // Writes in preimages (note: without timestamping).
-        let cf = cf_preimages(&self.inner.db);
-        for (key, op) in &pending.state_storage {
-            if let Op::Insert(_) = op {
-                batch.put_cf(&cf, key.hash256(), key);
-            } else {
-                batch.delete_cf(&cf, key.hash256());
+            // Writes in preimages (note: without timestamping).
+            let cf = cf_preimages(&self.inner.db);
+            for (key, op) in &pending.state_storage {
+                if let Op::Insert(_) = op {
+                    batch.put_cf(&cf, key.hash256(), key);
+                } else {
+                    batch.delete_cf(&cf, key.hash256());
+                }
             }
         }
 
@@ -327,23 +337,25 @@ impl DiskDb {
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
 
         // Writes in state commitment
-        let cf = cf_state_commitment(&self.inner.db);
-        for (key, op) in pending.state_commitment {
-            if let Op::Insert(value) = op {
-                batch.put_cf(&cf, key, value);
-            } else {
-                batch.delete_cf(&cf, key);
+        if self.merklize_state {
+            let cf = cf_state_commitment(&self.inner.db);
+            for (key, op) in pending.state_commitment {
+                if let Op::Insert(value) = op {
+                    batch.put_cf(&cf, key, value);
+                } else {
+                    batch.delete_cf(&cf, key);
+                }
             }
-        }
 
-        // Writes in preimages (note: don't forget timestamping, and deleting
-        // key hashes that are deleted in state storage - see Zellic audut).
-        let cf = cf_preimages(&self.inner.db);
-        for (key, op) in &pending.state_storage {
-            if let Op::Insert(_) = op {
-                batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
-            } else {
-                batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+            // Writes in preimages (note: don't forget timestamping, and deleting
+            // key hashes that are deleted in state storage - see Zellic audut).
+            let cf = cf_preimages(&self.inner.db);
+            for (key, op) in &pending.state_storage {
+                if let Op::Insert(_) = op {
+                    batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
+                } else {
+                    batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+                }
             }
         }
 
@@ -642,7 +654,6 @@ fn new_db_options() -> Options {
 
 fn new_cf_options(archive_mode: bool) -> Options {
     let mut opts = Options::default();
-
     // If archive mode is enabled, use a timestamp-enabled comparator.
     if archive_mode {
         opts.set_comparator_with_ts(
@@ -653,7 +664,6 @@ fn new_cf_options(archive_mode: bool) -> Options {
             Box::new(U64Comparator::compare_without_ts),
         );
     }
-
     opts
 }
 
@@ -697,6 +707,24 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
+}
+
+pub fn state_diff_digest(batch: &Batch) -> Hash256 {
+    let mut hasher = Sha256::new();
+    // hash(len(k1) | k1 | 0_or_1 | len(v1) | v1 | ...)
+    // 1 means insertion, 0 means deletion.
+    for (k, op) in batch {
+        hasher.update((k.len() as u16).to_be_bytes());
+        hasher.update(k);
+        if let Op::Insert(v) = op {
+            hasher.update([1]);
+            hasher.update((v.len() as u16).to_be_bytes());
+            hasher.update(v);
+        } else {
+            hasher.update([0]);
+        }
+    }
+    Hash256::from_inner(hasher.finalize().into())
 }
 
 // ----------------------------------- test ------------------------------------
@@ -860,7 +888,7 @@ mod tests {
     #[test]
     fn disk_db_works() {
         let path = TempDataDir::new("_grug_disk_db_works");
-        let db = DiskDb::open(&path, true).unwrap();
+        let db = DiskDb::open(&path, true, true).unwrap();
 
         // Write a batch. The very first batch have version 0.
         let batch = Batch::from([
@@ -1045,7 +1073,7 @@ mod tests {
     #[test]
     fn disk_db_pruning_works() {
         let path = TempDataDir::new("_grug_disk_db_pruning_works");
-        let db = DiskDb::open(&path, true).unwrap();
+        let db = DiskDb::open(&path, true, true).unwrap();
 
         // Apply a few batches. Same test data as used in the JMT test.
         for batch in [
@@ -1113,7 +1141,7 @@ mod tests {
     #[test]
     fn non_archive_mode_works() {
         let path = TempDataDir::new("_grug_disk_non_archive_mode_works");
-        let db = DiskDb::open(&path, false).unwrap();
+        let db = DiskDb::open(&path, false, false).unwrap();
 
         // Write the same two batches as in the previous tests.
         for batch in [
@@ -1151,5 +1179,10 @@ mod tests {
             assert_eq!(found_key, key.as_bytes());
             assert_eq!(found_value, value.as_bytes());
         }
+    }
+
+    #[test]
+    fn non_merklize_mode_works() {
+        // TODO!!!
     }
 }

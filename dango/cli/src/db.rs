@@ -46,7 +46,7 @@ impl DbCmd {
                     )?;
                 }
 
-                let db = DiskDb::open(data_dir, cfg.grug.archive_mode)?;
+                let db = DiskDb::open(data_dir, cfg.grug.archive_mode, cfg.grug.merklize_state)?;
 
                 Ok(db.prune(up_to_version)?)
             },
