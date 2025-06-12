@@ -27,7 +27,6 @@ export const Table = <T,>({ topContent, bottomContent, columns, data }: TablePro
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const { rows } = table.getRowModel();
