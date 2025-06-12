@@ -129,7 +129,8 @@ impl Timestamp {
     }
 
     pub fn to_rfc3339_string(&self) -> String {
-        self.to_utc_date_time().to_rfc3339()
+        self.to_utc_date_time()
+            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
     }
 }
 
