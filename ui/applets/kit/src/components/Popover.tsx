@@ -40,7 +40,7 @@ export const Popover: React.FC<Props> = ({ menu, trigger, classNames, showArrow 
             <ResizerContainer
               layoutId={`popover-menu-${id}`}
               className={twMerge(
-                "bg-rice-25 rounded-xl h-fit p-4 shadow-account-card",
+                "bg-bg-secondary-rice rounded-xl h-fit p-4 shadow-account-card",
                 classNames?.menu,
               )}
             >

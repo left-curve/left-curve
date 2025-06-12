@@ -17,7 +17,7 @@ export const OrderBookSection: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 lg:min-w-[25rem] min-h-[25rem] lg:min-h-[35.25rem]"
+      className="p-4 shadow-card-shadow bg-bg-secondary-rice flex flex-col gap-2 lg:min-w-[25rem] min-h-[25rem] lg:min-h-[35.25rem]"
     >
       <Tabs
         color="line-red"

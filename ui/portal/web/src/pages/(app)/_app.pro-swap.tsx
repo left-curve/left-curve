@@ -19,7 +19,7 @@ function RouteComponent() {
           <div className="flex flex-col flex-1">
             <PairHeader />
             {isLg && (
-              <div className="shadow-card-shadow bg-rice-25">
+              <div className="shadow-card-shadow bg-bg-secondary-rice">
                 <TradingViewChart />
               </div>
             )}
@@ -28,7 +28,7 @@ function RouteComponent() {
         </div>
         <OpenOrder />
       </div>
-      <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow relative z-20">
+      <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-bg-secondary-rice w-full shadow-card-shadow relative z-20">
         <TradeMenu.Menu />
       </div>
     </div>

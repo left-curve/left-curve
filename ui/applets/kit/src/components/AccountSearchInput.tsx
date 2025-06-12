@@ -69,7 +69,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
         <div
           ref={menuRef}
           className={twMerge(
-            "absolute top-[4.8rem] shadow-account-card bg-rice-25 rounded-lg p-1 z-30 w-full overflow-y-scroll max-h-[20rem] transition-all duration-300 ease-in-out scrollbar-none",
+            "absolute top-[4.8rem] shadow-account-card bg-bg-secondary-rice rounded-lg p-1 z-30 w-full overflow-y-scroll max-h-[20rem] transition-all duration-300 ease-in-out scrollbar-none",
             showMenu ? "block" : "hidden",
             options.length
               ? "h-auto translate-x-0"

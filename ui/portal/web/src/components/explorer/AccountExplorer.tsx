@@ -90,7 +90,7 @@ const Details: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <AccountCard account={account} balance={totalBalance} />
-      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-bg-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
