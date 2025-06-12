@@ -127,10 +127,11 @@ pub trait PassiveLiquidityPool {
     /// terminates.
     fn reflect_curve(
         &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
-    ) -> StdResult<(
+    ) -> anyhow::Result<(
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
     )>;
@@ -396,18 +397,16 @@ impl PassiveLiquidityPool for PairParams {
 
     fn reflect_curve(
         &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
-    ) -> StdResult<(
+    ) -> anyhow::Result<(
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
         let mut base_reserve = reserve.amount_of(&base_denom)?;
         let mut quote_reserve = reserve.amount_of(&quote_denom)?;
-
-        // Compute the marginal price. We will place orders above and below this price.
-        let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
 
         let swap_fee_rate = self.swap_fee_rate.into_inner();
         let one_plus_fee_rate = Udec128::ONE.checked_add(swap_fee_rate)?;
@@ -415,6 +414,9 @@ impl PassiveLiquidityPool for PairParams {
 
         match self.pool_type {
             PassiveLiquidity::Xyk { order_spacing } => {
+                // Compute the marginal price. We will place orders above and below this price.
+                let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+
                 // Construct the bid order iterator.
                 // Start from the marginal price minus the swap fee rate.
                 let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
@@ -504,8 +506,18 @@ impl PassiveLiquidityPool for PairParams {
                 ratio,
                 order_spacing,
             } => {
+                // Compute the spot price. We will place orders above and below this price.
+                let base_denom_price = oracle_querier
+                    .query_price(&base_denom, None)?
+                    .value_of_unit_amount(*reserve.first().amount)?;
+                let quote_denom_price = oracle_querier
+                    .query_price(&quote_denom, None)?
+                    .value_of_unit_amount(*reserve.second().amount)?;
+
+                let spot_price = base_denom_price.checked_div(quote_denom_price)?;
+
                 // Construct bid price iterator with decreasing prices
-                let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
+                let bid_starting_price = spot_price.checked_mul(one_sub_fee_rate)?;
                 let mut maybe_price = Some(bid_starting_price);
                 let bid_prices = iter::from_fn(move || {
                     let price = match maybe_price {
@@ -535,7 +547,7 @@ impl PassiveLiquidityPool for PairParams {
                     .filter_map(|x| x);
 
                 // Construct ask price iterator with increasing prices
-                let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
+                let ask_starting_price = spot_price.checked_mul(one_plus_fee_rate)?;
                 let mut maybe_price = Some(ask_starting_price);
                 let ask_prices = iter::from_fn(move || {
                     let price = match maybe_price {
@@ -580,8 +592,11 @@ fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
 mod tests {
     use {
         super::*,
-        dango_types::constants::{eth, usdc},
-        grug::{Bounded, Coins, coins},
+        dango_types::{
+            constants::{eth, usdc},
+            oracle::PrecisionedPrice,
+        },
+        grug::{Bounded, Coins, coin_pair, coins},
         test_case::test_case,
     };
 
@@ -780,9 +795,41 @@ mod tests {
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
 
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        // TODO: Take prices as input to the test.
+        let mut oracle_querier = OracleQuerier::mock(
+            vec![
+                (
+                    eth::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+                (
+                    usdc::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
         let reserve = pool_liquidity.try_into().unwrap();
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
             .unwrap();
 
         // Assert that at least 10 orders are returned.
@@ -825,8 +872,39 @@ mod tests {
         .try_into()
         .unwrap();
 
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        let mut oracle_querier = OracleQuerier::mock(
+            vec![
+                (
+                    eth::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+                (
+                    usdc::DENOM.clone(),
+                    PrecisionedPrice::new(
+                        Udec128::new_percent(100),
+                        Udec128::new_percent(100),
+                        1730802926,
+                        6,
+                    ),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
             .unwrap();
 
         let bids_collected = bids.collect::<Vec<_>>();
