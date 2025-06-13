@@ -1,0 +1,64 @@
+use {
+    anyhow::Ok,
+    assertor::*,
+    dango_genesis::GenesisOption,
+    dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
+    dango_testing::Preset,
+    dango_types::config::AppConfig,
+    grug::{QueryClientExt, setup_tracing_subscriber},
+    indexer_client::HttpClient,
+    indexer_httpd::server::run_metrics_server,
+    metrics_exporter_prometheus::PrometheusBuilder,
+};
+
+#[tokio::test]
+async fn graphql_returns_config() -> anyhow::Result<()> {
+    setup_tracing_subscriber(tracing::Level::INFO);
+
+    let metrics_handler = PrometheusBuilder::new().install_recorder()?;
+
+    let port = get_mock_socket_addr();
+    let metrics_port = get_mock_socket_addr();
+
+    // Spawn server in separate thread with its own runtime
+    let _server_handle = std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            tracing::info!("Starting mock HTTP server on port {port}");
+
+            if let Err(error) = dango_mock_httpd::run(
+                port,
+                BlockCreation::OnBroadcast,
+                None,
+                TestOption::default(),
+                GenesisOption::preset_test(),
+                true,
+                None,
+            )
+            .await
+            {
+                tracing::error!("Error running mock HTTP server: {error}");
+            }
+        });
+    });
+
+    wait_for_server_ready(port).await?;
+
+    // Spawn server in separate thread with its own runtime
+    let _server_handle = std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            tracing::info!("Starting metrics HTTP server on port {metrics_port}");
+            run_metrics_server("127.0.0.1", metrics_port, metrics_handler).await?;
+            Ok(())
+        })?;
+        Ok(())
+    });
+
+    let client = HttpClient::new(&format!("http://localhost:{port}"));
+    let res = client.query_app_config::<AppConfig>(None).await;
+
+    assert_that!(res).is_ok();
+
+    Ok(())
+}

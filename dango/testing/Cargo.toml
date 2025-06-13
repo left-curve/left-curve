@@ -29,7 +29,7 @@ grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
-indexer-httpd           = { workspace = true }
+indexer-httpd           = { workspace = true, features = ["metrics"] }
 indexer-sql             = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 k256                    = { workspace = true }
 pyth-client             = { workspace = true }
@@ -40,33 +40,34 @@ serde_json              = { workspace = true }
 sha2                    = { workspace = true }
 
 [dev-dependencies]
-anyhow                = { workspace = true }
-assert-json-diff      = { workspace = true }
-assertor              = { workspace = true }
-bip32                 = { workspace = true }
-chrono                = { workspace = true }
-criterion             = { workspace = true }
-dango-account-factory = { workspace = true, features = ["library"] }
-dango-auth            = { workspace = true }
-dango-gateway         = { workspace = true, features = ["library"] }
-dango-httpd           = { workspace = true }
-dango-lending         = { workspace = true, features = ["library"] }
-dango-mock-httpd      = { workspace = true }
-dango-oracle          = { workspace = true, features = ["library"] }
-grug-testing          = { workspace = true }
-hex                   = { workspace = true }
-home                  = { workspace = true }
-indexer-client        = { workspace = true, features = ["tracing"] }
-indexer-disk-saver    = { workspace = true }
-indexer-testing       = { workspace = true }
-itertools             = { workspace = true }
-proptest              = { workspace = true }
-rand                  = { workspace = true }
-reqwest               = { workspace = true, features = ["json"] }
-serde_json            = { workspace = true }
-test-case             = { workspace = true }
-tokio                 = { workspace = true, features = ["full"] }
-tracing               = { workspace = true }
+anyhow                      = { workspace = true }
+assert-json-diff            = { workspace = true }
+assertor                    = { workspace = true }
+bip32                       = { workspace = true }
+chrono                      = { workspace = true }
+criterion                   = { workspace = true }
+dango-account-factory       = { workspace = true, features = ["library"] }
+dango-auth                  = { workspace = true }
+dango-gateway               = { workspace = true, features = ["library"] }
+dango-httpd                 = { workspace = true }
+dango-lending               = { workspace = true, features = ["library"] }
+dango-mock-httpd            = { workspace = true }
+dango-oracle                = { workspace = true, features = ["library"] }
+grug-testing                = { workspace = true }
+hex                         = { workspace = true }
+home                        = { workspace = true }
+indexer-client              = { workspace = true, features = ["tracing"] }
+indexer-disk-saver          = { workspace = true }
+indexer-testing             = { workspace = true }
+itertools                   = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+proptest                    = { workspace = true }
+rand                        = { workspace = true }
+reqwest                     = { workspace = true, features = ["json"] }
+serde_json                  = { workspace = true }
+test-case                   = { workspace = true }
+tokio                       = { workspace = true, features = ["full"] }
+tracing                     = { workspace = true }
 
 [[bench]]
 harness = false
