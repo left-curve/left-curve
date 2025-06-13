@@ -53,9 +53,11 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             amount
             denom
             createdAt
-            accounts { address }
+            accounts { address users { username }}
+            fromAccount { address users { username }}
+            toAccount { address users { username }}
           }
-          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address } } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
