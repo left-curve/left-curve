@@ -244,10 +244,8 @@ impl Db for DiskDb {
             let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
 
             // Unless in archival mode, prune the orphaned nodes.
-            if !self.archive_mode {
-                if old_version > 0 {
-                    MERKLE_TREE.prune(&mut buffer, old_version)?;
-                }
+            if !self.archive_mode && old_version > 0 {
+                MERKLE_TREE.prune(&mut buffer, old_version)?;
             }
 
             (root_hash, buffer.disassemble())
