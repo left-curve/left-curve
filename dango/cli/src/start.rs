@@ -98,7 +98,7 @@ impl StartCmd {
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
                     Self::run_httpd_server(&cfg.indexer.httpd, httpd_context),
-                    Self::run_metrics_httpd_server(&cfg.indexer.httpd, metrics_handler),
+                    Self::run_metrics_httpd_server(&cfg.indexer.metrics_httpd, metrics_handler),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
                 )?;
 

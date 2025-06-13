@@ -90,7 +90,7 @@ where
     I: ToString + Display,
 {
     #[cfg(feature = "tracing")]
-    tracing::info!("Starting metrics httpd server at {ip}:{port}");
+    tracing::info!(%ip, port, "Starting metrics httpd server");
 
     let metrics = ActixWebMetricsBuilder::new().build().unwrap();
 
