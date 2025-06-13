@@ -29,7 +29,11 @@ impl StartCmd {
         tracing::info!("Using git commit: {GIT_COMMIT}");
 
         // Open disk DB.
-        let db = DiskDb::open(app_dir.data_dir(), cfg.grug.archive_mode)?;
+        let db = DiskDb::open(
+            app_dir.data_dir(),
+            cfg.grug.archive_mode,
+            cfg.grug.merklize_state,
+        )?;
 
         // Create Rust VM contract codes.
         let codes = HybridVm::genesis_codes();

@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn ics23_prove_works() {
         let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
-        let db = DiskDb::open(&path, false).unwrap();
+        let db = DiskDb::open(&path, false, true).unwrap();
 
         // Same test data as used in JMT crate.
         let (_, maybe_root) = db
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn ics23_prove_after_deletion() {
         let path = TempDataDir::new("__grug_disk_db_ics23_prove_after_deletion");
-        let db = DiskDb::open(&path, false).unwrap();
+        let db = DiskDb::open(&path, false, true).unwrap();
 
         // Apply batch at version 0.
         let _ = db
@@ -226,7 +226,7 @@ mod tests {
             deletes2 in prop::collection::vec(any::<prop::sample::Selector>(), 0..50)
         ) {
             let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
-            let db = DiskDb::open(&path, true).unwrap();
+            let db = DiskDb::open(&path, true, true).unwrap();
             let mut state = BTreeMap::new();
 
             // --------------------------- version 0 ---------------------------

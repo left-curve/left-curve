@@ -29,6 +29,17 @@ log_level = "info"
 # with one with non-archive mode. They come with different formats.
 archive_mode = false
 
+# Whether to use a Merkle tree to compute the chain's state root.
+#
+# If set to `true`, nodes will attempt to reach consensus on value of the state
+# Merkle root. Otherwise, nodes will attempt to reach consensus on each block's
+# state changes.
+#
+# Note that a node that Merklizes state will _NOT_ reach consensus with a node
+# that doesn't. Therefore it's necessary to configure this option to be consistent
+# to the rest of the network.
+merklize_state = false
+
 # Gas limit when serving query requests.
 query_gas_limit = 100000000
 
