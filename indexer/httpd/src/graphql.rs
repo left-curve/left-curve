@@ -5,7 +5,7 @@ use {
     async_graphql::{
         Schema,
         dataloader::DataLoader,
-        extensions::{self as AsyncGraphqlExtensions, OpenTelemetry},
+        extensions::{self as AsyncGraphqlExtensions},
     },
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,

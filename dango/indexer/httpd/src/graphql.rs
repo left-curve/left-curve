@@ -3,7 +3,6 @@ use {
     indexer_httpd::{
         context::Context,
         graphql::{
-            self,
             extensions::metrics::{MetricsExtension, init_graphql_metrics},
             mutation::Mutation,
             telemetry::SentryExtension,

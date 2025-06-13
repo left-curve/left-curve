@@ -1,11 +1,9 @@
 use {
     async_graphql::{
-        Response, ServerResult, Value, Variables,
+        Response, ServerResult, Value,
         extensions::{
-            Extension, ExtensionContext, ExtensionFactory, NextExecute, NextParseQuery,
-            NextResolve, ResolveInfo,
+            Extension, ExtensionContext, ExtensionFactory, NextExecute, NextResolve, ResolveInfo,
         },
-        parser::types::ExecutableDocument,
     },
     std::{sync::Arc, time::Instant},
 };

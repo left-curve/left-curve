@@ -12,9 +12,8 @@ use {
 };
 #[cfg(feature = "metrics")]
 use {
-    actix_web_metrics::{ActixWebMetrics, ActixWebMetricsBuilder},
+    actix_web_metrics::ActixWebMetricsBuilder,
     metrics::counter,
-    metrics::describe_counter,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
 };
 
