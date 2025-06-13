@@ -30,7 +30,7 @@ pub struct Account {
     feature = "sea-orm",
     derive(sea_orm::EnumIter, sea_orm::DeriveActiveEnum)
 )]
-#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i32", db_type = "Integer"))]
+#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i16", db_type = "Integer"))]
 pub enum AccountType {
     /// A single-signature account that cannot borrow margin loans.
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
