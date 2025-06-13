@@ -80,7 +80,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
         className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer"
         onClick={(event) => {
           const element = event.target as HTMLElement;
-          if (element.closest(".address-visualizer") || element.closest("remove-notification")) {
+          if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
             return;
           }
           onNavigate(`/tx/${txHash}`);
