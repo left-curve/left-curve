@@ -11,4 +11,7 @@ pub mod indexer_path;
 pub mod non_blocking_indexer;
 pub mod pubsub;
 
+#[cfg(feature = "metrics")]
+pub mod metrics;
+
 pub use context::Context;
