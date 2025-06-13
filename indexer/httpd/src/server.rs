@@ -14,7 +14,6 @@ use {
 use {
     crate::middlewares::metrics::init_httpd_metrics,
     actix_web_metrics::ActixWebMetricsBuilder,
-    metrics::counter,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
 };
 
@@ -94,11 +93,6 @@ where
 
     let metrics = ActixWebMetricsBuilder::new().build().unwrap();
 
-    // or use:
-    // let metrics_handler2 = PrometheusBuilder::new()
-    //     .install_recorder()
-    //     .expect("failed to install recorder");
-    // This allows actix endpoits to use the same metrics as the main application.
     let recorder = PrometheusBuilder::new().build_recorder();
     let metrics_handler2 = recorder.handle();
 
@@ -116,10 +110,7 @@ where
             )
             .route(
                 "/",
-                web::get().to(|| async {
-                    counter!("metrics.root.calls").increment(1);
-                    HttpResponse::Ok().body("Metrics server is running")
-                }),
+                web::get().to(|| async { HttpResponse::Ok().body("Metrics server is running") }),
             )
             .route(
                 "/metrics",
@@ -127,8 +118,6 @@ where
                     let metrics_handler = metrics_handler.clone();
                     let metrics_handler2 = metrics_handler2.clone();
                     metrics_handler2.run_upkeep();
-
-                    counter!("metrics.metrics.calls").increment(1);
 
                     async move {
                         let metrics2 = metrics_handler2.render();

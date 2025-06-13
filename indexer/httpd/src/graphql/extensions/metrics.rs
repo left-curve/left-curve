@@ -93,7 +93,7 @@ impl Extension for MetricsExtension {
 
         let duration = start.elapsed().as_secs_f64();
 
-        // Only record metrics for non-trivial fields (you can adjust this threshold)
+        // Only record metrics for non-trivial fields
         if duration > 0.001 {
             // 1ms
             histogram!(

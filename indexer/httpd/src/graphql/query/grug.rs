@@ -1,5 +1,3 @@
-#[cfg(feature = "metrics")]
-use metrics::counter;
 use {
     crate::graphql::types::{status::Status, store::Store},
     async_graphql::*,
@@ -19,9 +17,6 @@ impl GrugQuery {
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
-
-        #[cfg(feature = "metrics")]
-        counter!("graphql.grug.query_app.calls").increment(1);
 
         Ok(app_ctx.grug_app.query_app(request, height).await?)
     }
@@ -47,9 +42,6 @@ impl GrugQuery {
             return Err(Error::new(format!("Key not found: {}", key)));
         };
 
-        #[cfg(feature = "metrics")]
-        counter!("graphql.grug.query_store.calls").increment(1);
-
         Ok(Store {
             value,
             proof: proof.map(|proof| Binary::from(proof).to_string()),
@@ -64,9 +56,6 @@ impl GrugQuery {
             chain_id: app_ctx.grug_app.chain_id().await?,
         };
 
-        #[cfg(feature = "metrics")]
-        counter!("graphql.grug.query_status.calls").increment(1);
-
         Ok(status)
     }
 
@@ -76,9 +65,6 @@ impl GrugQuery {
         #[graphql(desc = "Transaction as Json")] tx: grug_types::UnsignedTx,
     ) -> Result<TxOutcome, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
-
-        #[cfg(feature = "metrics")]
-        counter!("graphql.grug.simulate.calls").increment(1);
 
         Ok(app_ctx.grug_app.simulate(tx).await?)
     }

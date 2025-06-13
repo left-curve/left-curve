@@ -79,7 +79,6 @@ where
 }
 
 pub fn init_httpd_metrics() {
-    // HTTP metrics
     describe_counter!(
         "http_requests_total",
         "Total HTTP requests by method, path, and status"
