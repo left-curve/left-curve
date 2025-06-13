@@ -77,6 +77,12 @@ pub(crate) const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct DiskDb {
     pub(crate) inner: Arc<DiskDbInner>,
+    /// Whether the DB is operating in **archival mode**.
+    ///
+    /// In archival mode, states from historical versions are preserved, unless
+    /// pruned by calling the `Db::prune` method. Otherwise, only the state at
+    /// the latest version is kept.
+    pub(crate) archive_mode: bool,
 }
 
 pub(crate) struct DiskDbInner {
@@ -95,16 +101,17 @@ pub(crate) struct PendingData {
 
 impl DiskDb {
     /// Create a DiskDb instance by opening a physical RocksDB instance.
-    pub fn open<P>(data_dir: P) -> DbResult<Self>
+    pub fn open<P>(data_dir: P, archive_mode: bool) -> DbResult<Self>
     where
         P: AsRef<Path>,
     {
-        // Note: For default and state commitment CFs, don't enable timestamping;
-        // for state storage column family, enable timestamping.
+        // Note:
+        // - For default and state commitment CFs, don't enable timestamping.
+        // - For state storage column family, enable timestamping _if archive mode is enabled_.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
-            (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
-            (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
+            (CF_NAME_PREIMAGES, new_cf_options(archive_mode)),
+            (CF_NAME_STATE_STORAGE, new_cf_options(archive_mode)),
             (CF_NAME_STATE_COMMITMENT, Options::default()),
         ])?;
 
@@ -113,6 +120,7 @@ impl DiskDb {
                 db,
                 pending_data: RwLock::new(None),
             }),
+            archive_mode,
         })
     }
 }
@@ -121,6 +129,7 @@ impl Clone for DiskDb {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
+            archive_mode: self.archive_mode,
         }
     }
 }
@@ -172,7 +181,12 @@ impl Db for DiskDb {
 
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
-            version,
+            // Do not specify the version unless in archival mode.
+            version: if self.archive_mode {
+                Some(version)
+            } else {
+                None
+            },
         })
     }
 
@@ -225,9 +239,17 @@ impl Db for DiskDb {
 
         // Commit hashed KVs to state commitment.
         // The DB writes here are kept in the in-memory `PendingData`.
-        let mut buffer = Buffer::new(self.state_commitment(), None);
-        let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
-        let (_, pending) = buffer.disassemble();
+        let (root_hash, (_, pending)) = {
+            let mut buffer = Buffer::new(self.state_commitment(), None);
+            let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+
+            // Unless in archival mode, prune the orphaned nodes.
+            if !self.archive_mode && old_version > 0 {
+                MERKLE_TREE.prune(&mut buffer, old_version)?;
+            }
+
+            (root_hash, buffer.disassemble())
+        };
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version: new_version,
@@ -245,7 +267,57 @@ impl Db for DiskDb {
             .write()?
             .take()
             .ok_or(DbError::PendingDataNotSet)?;
+
         let mut batch = WriteBatch::default();
+        if self.archive_mode {
+            self.prepare_archival_batch(pending, &mut batch);
+        } else {
+            self.prepare_non_archival_batch(pending, &mut batch);
+        };
+
+        Ok(self.inner.db.write(batch)?)
+    }
+}
+
+impl DiskDb {
+    fn prepare_non_archival_batch(&self, pending: PendingData, batch: &mut WriteBatch) {
+        // Set the old and new versions (note: use little endian).
+        let cf = cf_default(&self.inner.db);
+        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+        batch.put_cf(&cf, OLDEST_VERSION_KEY, pending.version.to_le_bytes());
+
+        // Writes in state commitment
+        let cf = cf_state_commitment(&self.inner.db);
+        for (key, op) in pending.state_commitment {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+
+        // Writes in preimages (note: without timestamping).
+        let cf = cf_preimages(&self.inner.db);
+        for (key, op) in &pending.state_storage {
+            if let Op::Insert(_) = op {
+                batch.put_cf(&cf, key.hash256(), key);
+            } else {
+                batch.delete_cf(&cf, key.hash256());
+            }
+        }
+
+        // Writes in state storage (note: without timestamping)
+        let cf = cf_state_storage(&self.inner.db);
+        for (key, op) in pending.state_storage {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+    }
+
+    fn prepare_archival_batch(&self, pending: PendingData, batch: &mut WriteBatch) {
         let ts = U64Timestamp::from(pending.version);
 
         // Set the new version (note: use little endian)
@@ -282,8 +354,6 @@ impl Db for DiskDb {
                 batch.delete_cf_with_ts(&cf, key, ts);
             }
         }
-
-        Ok(self.inner.db.write(batch)?)
     }
 }
 
@@ -307,7 +377,12 @@ impl PrunableDb for DiskDb {
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
-        let ts = U64Timestamp::from(up_to_version);
+        // Pruning is only supported in archival mode.
+        let ts = if self.archive_mode {
+            U64Timestamp::from(up_to_version)
+        } else {
+            return Err(DbError::NotArchival);
+        };
 
         // Prune state storage.
         //
@@ -453,12 +528,12 @@ impl Storage for StateCommitment {
 #[derive(Clone)]
 pub struct StateStorage {
     inner: Arc<DiskDbInner>,
-    version: u64,
+    version: Option<u64>,
 }
 
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let opts = new_read_options(Some(self.version), None, None);
+        let opts = new_read_options(self.version, None, None);
         self.inner
             .db
             .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
@@ -473,7 +548,7 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
+        let opts = new_read_options(self.version, min, max);
         let mode = into_iterator_mode(order);
         let iter = self
             .inner
@@ -494,7 +569,7 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
+        let opts = new_read_options(self.version, min, max);
         let mode = into_iterator_mode(order);
         let iter = self
             .inner
@@ -515,7 +590,7 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
+        let opts = new_read_options(self.version, min, max);
         let mode = into_iterator_mode(order);
         let iter = self
             .inner
@@ -563,16 +638,20 @@ fn new_db_options() -> Options {
     opts
 }
 
-fn new_cf_options_with_ts() -> Options {
+fn new_cf_options(archive_mode: bool) -> Options {
     let mut opts = Options::default();
-    // Must use a timestamp-enabled comparator
-    opts.set_comparator_with_ts(
-        U64Comparator::NAME,
-        U64Timestamp::SIZE,
-        Box::new(U64Comparator::compare),
-        Box::new(U64Comparator::compare_ts),
-        Box::new(U64Comparator::compare_without_ts),
-    );
+
+    // If archive mode is enabled, use a timestamp-enabled comparator.
+    if archive_mode {
+        opts.set_comparator_with_ts(
+            U64Comparator::NAME,
+            U64Timestamp::SIZE,
+            Box::new(U64Comparator::compare),
+            Box::new(U64Comparator::compare_ts),
+            Box::new(U64Comparator::compare_without_ts),
+        );
+    }
+
     opts
 }
 
@@ -779,7 +858,7 @@ mod tests {
     #[test]
     fn disk_db_works() {
         let path = TempDataDir::new("_grug_disk_db_works");
-        let db = DiskDb::open(&path).unwrap();
+        let db = DiskDb::open(&path, true).unwrap();
 
         // Write a batch. The very first batch have version 0.
         let batch = Batch::from([
@@ -964,7 +1043,7 @@ mod tests {
     #[test]
     fn disk_db_pruning_works() {
         let path = TempDataDir::new("_grug_disk_db_pruning_works");
-        let db = DiskDb::open(&path).unwrap();
+        let db = DiskDb::open(&path, true).unwrap();
 
         // Apply a few batches. Same test data as used in the JMT test.
         for batch in [
@@ -1026,6 +1105,49 @@ mod tests {
                 err.to_string()
                     .contains("data not found! type: grug_jmt::node::Node")
             }));
+        }
+    }
+
+    #[test]
+    fn non_archive_mode_works() {
+        let path = TempDataDir::new("_grug_disk_non_archive_mode_works");
+        let db = DiskDb::open(&path, false).unwrap();
+
+        // Write the same two batches as in the previous tests.
+        for batch in [
+            Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
+                (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+                (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+                (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+            ]),
+            Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+                (b"joe".to_vec(), Op::Delete),
+                (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
+            ]),
+        ] {
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        // Both oldest and latest versions should be 1.
+        assert_eq!(db.oldest_version(), Some(1));
+        assert_eq!(db.latest_version(), Some(1));
+
+        // Check the content of state storage is correct.
+        for ((found_key, found_value), (key, value)) in db
+            .state_storage(Some(1))
+            .unwrap()
+            .scan(None, None, Order::Ascending)
+            .zip([
+                ("donald", "duck"),
+                ("jake", "shepherd"),
+                ("larry", "engineer"),
+                ("pumpkin", "cat"),
+            ])
+        {
+            assert_eq!(found_key, key.as_bytes());
+            assert_eq!(found_value, value.as_bytes());
         }
     }
 }
