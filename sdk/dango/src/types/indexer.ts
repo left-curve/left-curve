@@ -1,4 +1,4 @@
-import type { Address, Json, UID } from "@left-curve/sdk/types";
+import type { Address, Hex, Json, UID } from "@left-curve/sdk/types";
 import type { AccountTypes } from "./account.js";
 
 export type IndexedBlock = {
@@ -45,6 +45,8 @@ export type IndexedMessage = {
 };
 
 export type IndexedTransferEvent = {
+  id: UID;
+  txHash: Hex;
   fromAddress: Address;
   toAddress: Address;
   createdAt: string;

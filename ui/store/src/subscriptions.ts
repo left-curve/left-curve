@@ -84,9 +84,8 @@ const transferSubscriptionExecutor: SubscriptionExecutor<"transfer"> = ({
 }) => {
   return client.transferSubscription({
     ...params,
-    next: ({ sentTransfers, receivedTransfers }) => {
+    next: (event) => {
       const currentListeners = getListeners();
-      const event = (sentTransfers?.at(0) || receivedTransfers?.at(0)) as IndexedTransferEvent;
       currentListeners.forEach((listener) => listener(event));
     },
   });
