@@ -240,16 +240,11 @@ impl Host {
         proposer: ctx!(Address),
         role: Role,
     ) -> ActorResult<()> {
-        state.height = height;
-        state.round = round;
-        state.proposer = Some(proposer);
-        state.role = role;
+        state.started_round(height, round, proposer, role);
 
         // If we have already built or seen one or more values for this height and round,
         // feed them back to consensus. This may happen when we are restarting after a crash.
         let consensus = state.consensus()?;
-
-        state.started_round();
 
         for value in UNDECIDED_PROPOSALS
             .prefix(*height)

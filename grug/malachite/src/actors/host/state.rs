@@ -18,12 +18,12 @@ pub type RoundKey = i64;
 
 #[derive(Clone)]
 pub struct State {
-    pub db_storage: Box<dyn ConsensusStorage>,
-    consensus: Option<ConsensusRef<Context>>,
     pub height: ctx!(Height),
     pub proposer: Option<ctx!(Address)>,
     pub role: Role,
     pub round: Round,
+    db_storage: Box<dyn ConsensusStorage>,
+    consensus: Option<ConsensusRef<Context>>,
     config: HostConfig,
     started_round: Instant,
 }
@@ -60,8 +60,18 @@ impl State {
         StreamId::new(bytes.into())
     }
 
-    pub fn started_round(&mut self) {
+    pub fn started_round(
+        &mut self,
+        height: ctx!(Height),
+        round: Round,
+        proposer: ctx!(Address),
+        role: Role,
+    ) {
         self.started_round = Instant::now();
+        self.height = height;
+        self.round = round;
+        self.proposer = Some(proposer);
+        self.role = role;
     }
 
     pub fn calculate_block_sleep(&self) -> Duration {
