@@ -1,12 +1,12 @@
 use {
     crate::{
-        ActorResult, HostConfig,
+        ActorResult, HostConfig, PreBlock, ProposalData,
         app::{HostApp, HostAppRef},
         context::Context,
         ctx,
-        host::state::State,
+        host::state::{DECIDED_BLOCK, State, UNDECIDED_BLOCK, UNDECIDED_PROPOSALS},
         mempool::{MempoolActorRef, MempoolMsg},
-        types::{Block, DecidedBlock, PreBlock, ProposalFin, ProposalInit, ProposalParts},
+        types::{Block, DecidedBlock},
     },
     grug::{BorshDeExt, BorshSerExt, Timestamp},
     grug_app::{App, Db},
@@ -21,7 +21,7 @@ use {
         network::{NetworkMsg, NetworkRef},
     },
     malachitebft_network::Bytes,
-    malachitebft_sync::{PeerId, RawDecidedValue},
+    malachitebft_sync::RawDecidedValue,
     ractor::{Actor, RpcReplyPort, async_trait},
     std::{sync::Arc, time::Duration},
     tracing::{Span, error, info, warn},
@@ -35,7 +35,6 @@ pub struct Host {
     mempool: MempoolActorRef,
     network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
-    private_key: ctx!(SigningScheme::PrivateKey),
     address: ctx!(Address),
     span: Span,
 }
@@ -71,11 +70,11 @@ impl Actor for Host {
 
 impl Host {
     pub async fn spawn<DB, VM, PP, ID>(
+        address: ctx!(Address),
         app: Arc<App<DB, VM, PP, ID>>,
         mempool: MempoolActorRef,
         network: NetworkRef<Context>,
         validator_set: ctx!(ValidatorSet),
-        private_key: ctx!(SigningScheme::PrivateKey),
         span: Span,
         config: HostConfig,
     ) -> HostRef
@@ -90,8 +89,7 @@ impl Host {
             mempool,
             network,
             validator_set,
-            address: private_key.derive_address(),
-            private_key,
+            address,
             span,
         };
 
@@ -99,22 +97,17 @@ impl Host {
         actor_ref
     }
 
-    pub async fn stream_parts(
+    pub async fn stream_data(
         &self,
         stream_id: StreamId,
-        parts: ProposalParts,
+        data: ProposalData,
         with_fin: bool,
     ) -> ActorResult<()> {
-        let mut sequence = 0;
-
-        for part in parts {
-            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Data(part));
-            self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
-            sequence += 1;
-        }
+        let msg = StreamMessage::new(stream_id.clone(), 0, StreamContent::Data(data));
+        self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
 
         if with_fin {
-            let msg = StreamMessage::new(stream_id.clone(), sequence, StreamContent::Fin);
+            let msg = StreamMessage::new(stream_id.clone(), 1, StreamContent::Fin);
             self.network.cast(NetworkMsg::PublishProposalPart(msg))?;
         }
 
@@ -156,13 +149,8 @@ impl Host {
                 self.restream_value(state, height, round, valid_round, address, value_id)
                     .await
             },
-            HostMsg::ReceivedProposalPart {
-                from,
-                part,
-                reply_to,
-            } => {
-                self.received_proposal_part(state, from, part, reply_to)
-                    .await
+            HostMsg::ReceivedProposalPart { part, reply_to, .. } => {
+                self.received_proposal_part(state, part, reply_to).await
             },
             HostMsg::GetValidatorSet { reply_to, .. } => {
                 reply_to.send(Some(self.validator_set.clone()))?;
@@ -210,13 +198,10 @@ impl Host {
         state: &mut State,
         consensus: ConsensusRef<Context>,
     ) -> ActorResult<()> {
-        let height = state
-            .with_db_storage(|storage, db| {
-                db.decided_block
-                    .keys(storage, None, None, grug::Order::Descending)
-                    .next()
-                    .transpose()
-            })?
+        let height = DECIDED_BLOCK
+            .keys(state, None, None, grug::Order::Descending)
+            .next()
+            .transpose()?
             .unwrap_or_default();
 
         state.set_consensus(consensus.clone());
@@ -236,13 +221,10 @@ impl Host {
         state: &State,
         reply_to: RpcReplyPort<ctx!(Height)>,
     ) -> ActorResult<()> {
-        let height = state
-            .with_db_storage(|storage, db| {
-                db.decided_block
-                    .keys(storage, None, None, grug::Order::Ascending)
-                    .next()
-                    .transpose()
-            })?
+        let height = DECIDED_BLOCK
+            .keys(state, None, None, grug::Order::Ascending)
+            .next()
+            .transpose()?
             .unwrap_or_default();
 
         reply_to.send(<ctx!(Height)>::new(height))?;
@@ -269,21 +251,20 @@ impl Host {
 
         state.started_round();
 
-        state.with_db_storage(|storage, db| {
-            for value in db.undecided_proposals
-                .prefix(*height)
-                .append(round.as_i64())
-                .values(storage, None, None, grug::Order::Ascending) {
-                    let value = value?;
-                    info!(%height, %round, hash = ?value.value, "Replaying already known proposed value");
+        for value in UNDECIDED_PROPOSALS
+            .prefix(*height)
+            .append(round.as_i64())
+            .values(state, None, None, grug::Order::Ascending)
+        {
+            let value = value?;
+            info!(%height, %round, hash = ?value.value, "Replaying already known proposed value");
 
-                    consensus.cast(ConsensusMsg::ReceivedProposedValue(
-                        value,
-                        ValueOrigin::Consensus,
-                    ))?;
-                }
-                Ok(())
-        })
+            consensus.cast(ConsensusMsg::ReceivedProposedValue(
+                value,
+                ValueOrigin::Consensus,
+            ))?;
+        }
+        Ok(())
     }
 
     /// Equivalent of prepare_proposal
@@ -298,12 +279,11 @@ impl Host {
     ) -> ActorResult<()> {
         // If we have already built a block for this height and round, return it to consensus
         // This may happen when we are restarting after a crash and replaying the WAL.
-        if let Some(value) = state.with_db_storage(|storage, db| {
-            db.undecided_proposals
-                .idx
-                .proposer
-                .may_load_value(storage, (*height, round.as_i64(), self.address))
-        })? {
+        if let Some(value) = UNDECIDED_PROPOSALS
+            .idx
+            .proposer
+            .may_load_value(state, (*height, round.as_i64(), self.address))?
+        {
             info!(%height, %round, hash = ?value.value, "Returning previously built value");
 
             reply_to.send(LocallyProposedValue::new(
@@ -357,51 +337,37 @@ impl Host {
             pre_block.with_app_hash(app_hash)
         };
 
-        let parts = block.as_parts(&self.private_key);
+        let proposal_data = block.as_proposal_data();
 
         let stream_id = state.stream_id();
 
-        // Store parts
-        {
-            state.with_memory_storage_mut(|storage, memory| {
-                memory
-                    .parts
-                    .save(storage, stream_id.to_bytes().to_vec(), &parts)
-            })?;
-        }
-
         // Store undecided proposal
-        {
-            let proposed_value = ProposedValue {
-                height,
-                round,
-                valid_round: Round::Nil,
-                proposer: self.address,
-                value: <ctx!(Value)>::new(parts.fin.hash),
-                validity: Validity::Valid,
-            };
+        let proposed_value = ProposedValue {
+            height,
+            round,
+            valid_round: Round::Nil,
+            proposer: self.address,
+            value: <ctx!(Value)>::new(proposal_data.block.block_hash()),
+            validity: Validity::Valid,
+        };
 
-            state.with_db_storage_mut(|storage, db| {
-                db.undecided_proposals.save(
-                    storage,
-                    (*height, round.as_i64(), parts.fin.hash),
-                    &proposed_value,
-                )
-            })?;
-        }
+        UNDECIDED_PROPOSALS.save(
+            state,
+            (*height, round.as_i64(), proposal_data.block.block_hash()),
+            &proposed_value,
+        )?;
 
         // Store undecided block
-        {
-            state.with_db_storage_mut(|storage, db| {
-                db.undecided_block
-                    .save(storage, (*height, round.as_i64(), parts.fin.hash), &block)
-            })?;
-        }
+        UNDECIDED_BLOCK.save(state, proposal_data.block.block_hash(), &block)?;
 
-        let value = LocallyProposedValue::new(height, round, <ctx!(Value)>::new(parts.fin.hash));
+        let value = LocallyProposedValue::new(
+            height,
+            round,
+            <ctx!(Value)>::new(proposal_data.block.block_hash()),
+        );
 
         // Stream parts to consensus
-        self.stream_parts(stream_id, parts, true).await?;
+        self.stream_data(stream_id, proposal_data, true).await?;
 
         // Return the proposed value
         reply_to.send(value)?;
@@ -413,70 +379,43 @@ impl Host {
     async fn received_proposal_part(
         &self,
         state: &mut State,
-        from: PeerId,
         part: StreamMessage<ctx!(ProposalPart)>,
         reply_to: RpcReplyPort<ProposedValue<Context>>,
     ) -> ActorResult<()> {
-        let stream_id = part.stream_id.clone();
-
-        let Some(parts) = state.buffer_part(from, part) else {
+        // Since we are using a single part proposal, we only need data
+        let Some(ProposalData { block, valid_round }) = part.content.into_data() else {
             return Ok(());
         };
 
-        info!(height = %parts.init.height, round = %parts.init.round, "All parts received");
+        info!(height = %block.height, round = %block.round, "All parts received");
 
         // Run FinalizeBlock
-        let block = parts.clone().into_pre_block();
         let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
-        let block = block.with_app_hash(app_hash);
-
-        let block_hash = block.hash();
+        let block_hash = block.calculate_block_hash(app_hash);
 
         let value = ProposedValue {
-            height: parts.init.height,
-            round: parts.init.round,
-            valid_round: parts.init.valid_round,
-            proposer: parts.init.proposer,
-            value: <ctx!(Value)>::new(parts.fin.hash),
-            validity: Validity::from_bool(parts.fin.hash == block_hash),
+            height: block.height,
+            round: block.round,
+            valid_round,
+            proposer: block.proposer,
+            // TODO: Is this correct? If block hashes are different, which one we should use?
+            value: <ctx!(Value)>::new(block.block_hash()),
+            validity: Validity::from_bool(block.block_hash() == block_hash),
         };
 
         if value.validity == Validity::Valid {
             info!(block_hash = %block_hash, "Block hash matches");
             // Store undecided proposal
-            state.with_db_storage_mut(|storage, db| {
-                db.undecided_proposals.save(
-                    storage,
-                    (
-                        *parts.init.height,
-                        parts.init.round.as_i64(),
-                        parts.fin.hash,
-                    ),
-                    &value,
-                )
-            })?;
+            UNDECIDED_PROPOSALS.save(
+                state,
+                (*block.height, block.round.as_i64(), block.block_hash()),
+                &value,
+            )?;
 
             // Store undecided block
-            state.with_db_storage_mut(|storage, db| {
-                db.undecided_block.save(
-                    storage,
-                    (
-                        *parts.init.height,
-                        parts.init.round.as_i64(),
-                        parts.fin.hash,
-                    ),
-                    &block,
-                )
-            })?;
-
-            // Store parts
-            state.with_memory_storage_mut(|storage, memory| {
-                memory
-                    .parts
-                    .save(storage, stream_id.to_bytes().to_vec(), &parts)
-            })?;
+            UNDECIDED_BLOCK.save(state, block.block_hash(), &block)?;
         } else {
-            warn!(block_hash = %block_hash, proposal_block_hash = %parts.fin.hash, "Block hash mismatch");
+            warn!(block_hash = %block_hash, proposal_block_hash = %block.block_hash(), "Block hash mismatch");
         }
 
         // TODO: Should we resign the block hash?
@@ -498,17 +437,7 @@ impl Host {
         certificate: CommitCertificate<Context>,
         consensus: ConsensusRef<Context>,
     ) -> ActorResult<()> {
-        let Some(block) = state.with_db_storage(|storage, db| {
-            db.undecided_block.may_load(
-                storage,
-                (
-                    *certificate.height,
-                    certificate.round.as_i64(),
-                    certificate.value_id,
-                ),
-            )
-        })?
-        else {
+        let Some(block) = UNDECIDED_BLOCK.may_load(state, certificate.value_id)? else {
             warn!(value_id = %certificate.value_id, "Proposed block not found");
             return Err(anyhow::anyhow!("Proposed block not found").into());
         };
@@ -521,12 +450,9 @@ impl Host {
         let txs = block.txs.clone();
 
         // Store decided block
-        state.with_db_storage_mut(|storage, db| {
-            db.decided_block
-                .save(storage, *certificate.height, &DecidedBlock {
-                    block,
-                    certificate,
-                })
+        DECIDED_BLOCK.save(state, *certificate.height, &DecidedBlock {
+            block,
+            certificate,
         })?;
 
         // Notify the mempool to remove corresponding txs
@@ -555,28 +481,22 @@ impl Host {
     async fn restream_value(
         &self,
         state: &mut State,
-        height: ctx!(Height),
-        round: Round,
+        _height: ctx!(Height),
+        _round: Round,
         valid_round: Round,
-        address: ctx!(Address),
+        _address: ctx!(Address),
         block_hash: ctx!(Value::Id),
     ) -> ActorResult<()> {
-        if let Some(mut parts) = state.with_memory_storage(|storage, db| {
-            db.parts.idx.value_id.may_load_value(storage, block_hash)
-        })? {
-            // recreate fin and init parts
-            parts.init = ProposalInit::new_with_valid_round(
-                height,
-                address,
-                round,
-                parts.init.timestamp,
-                valid_round,
-            );
-            // TODO: Should we re-sign the block hash? Or just restream?
-            let sig = self.private_key.sign_digest(block_hash);
-            parts.fin = ProposalFin::new(block_hash, sig);
+        if let Some(data) = UNDECIDED_BLOCK.may_load(state, block_hash)? {
+            // TODO: Should we assert height, round and proposer?
 
-            self.stream_parts(state.stream_id(), parts, false).await?;
+            // recreate fin and init parts
+            let data = ProposalData {
+                block: data,
+                valid_round,
+            };
+
+            self.stream_data(state.stream_id(), data, false).await?;
         }
 
         Ok(())
@@ -588,9 +508,7 @@ impl Host {
         height: ctx!(Height),
         reply_to: RpcReplyPort<Option<RawDecidedValue<Context>>>,
     ) -> ActorResult<()> {
-        let Some(decided_block) =
-            state.with_db_storage(|storage, db| db.decided_block.may_load(storage, *height))?
-        else {
+        let Some(decided_block) = DECIDED_BLOCK.may_load(state, *height)? else {
             reply_to.send(None)?;
             return Ok(());
         };
@@ -614,44 +532,35 @@ impl Host {
         value: Bytes,
         reply_to: RpcReplyPort<ProposedValue<Context>>,
     ) -> ActorResult<()> {
-        let Ok(mut block): Result<Block, _> = value.deserialize_borsh() else {
+        let Ok(block): Result<Block, _> = value.deserialize_borsh() else {
             return Ok(());
         };
 
-        let received_block_hash = block.hash();
-
         // Check validity
         let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
-        block.override_app_hash(app_hash);
-
-        let validity = received_block_hash == block.hash();
-
-        // Store undecided block
-        state.with_db_storage_mut(|storage, db| {
-            db.undecided_block.save(
-                storage,
-                (*height, round.as_i64(), received_block_hash),
-                &block,
-            )
-        })?;
+        let block_hash = block.calculate_block_hash(app_hash);
 
         let proposed_value = ProposedValue {
             height,
             round,
             valid_round: Round::Nil,
             proposer: validator_address,
-            value: <ctx!(Value)>::new(received_block_hash),
-            validity: Validity::from_bool(validity),
+            value: <ctx!(Value)>::new(block.block_hash()),
+            validity: Validity::from_bool(block_hash == block.block_hash()),
         };
 
-        // Store undecided proposal
-        state.with_db_storage_mut(|storage, db| {
-            db.undecided_proposals.save(
-                storage,
-                (*height, round.as_i64(), received_block_hash),
+        if proposed_value.validity == Validity::Valid {
+            // Store undecided block
+            UNDECIDED_BLOCK.save(state, block_hash, &block)?;
+
+            // Store undecided proposal
+
+            UNDECIDED_PROPOSALS.save(
+                state,
+                (*height, round.as_i64(), block_hash),
                 &proposed_value,
-            )
-        })?;
+            )?;
+        }
 
         reply_to.send(proposed_value)?;
 

@@ -1,5 +1,5 @@
 use {
-    crate::{context::Context, ctx},
+    crate::{Block, context::Context, ctx},
     grug::{BorshSerExt, SignData, StdError},
     k256::sha2::Sha256,
     malachitebft_core_types::Round,
@@ -64,5 +64,30 @@ impl SignData for Proposal {
 
     fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
         self.to_borsh_vec()
+    }
+}
+
+#[grug::derive(Borsh)]
+pub struct ProposalData {
+    pub block: Block,
+    pub valid_round: Round,
+}
+
+impl SignData for ProposalData {
+    type Error = StdError;
+    type Hasher = Sha256;
+
+    fn to_prehash_sign_data(&self) -> Result<Vec<u8>, Self::Error> {
+        self.to_borsh_vec()
+    }
+}
+
+impl malachitebft_core_types::ProposalPart<Context> for ProposalData {
+    fn is_first(&self) -> bool {
+        true
+    }
+
+    fn is_last(&self) -> bool {
+        true
     }
 }

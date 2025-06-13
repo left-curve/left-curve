@@ -12,7 +12,7 @@ impl malachitebft_core_types::Context for Context {
     type Extension = types::Extension;
     type Height = types::Height;
     type Proposal = types::Proposal;
-    type ProposalPart = types::ProposalPart;
+    type ProposalPart = types::ProposalData;
     type SigningScheme = types::SigningScheme;
     type Validator = types::Validator;
     type ValidatorSet = types::ValidatorSet;

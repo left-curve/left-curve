@@ -110,12 +110,12 @@ where
     let network = spawn_network_actor(&cfg, &private_key, &registry, &span).await;
 
     let host = spawn_host_actor(
+        private_key.derive_address(),
         app,
         cfg.host,
         mempool.clone(),
         network.clone(),
         validator_set.clone(),
-        private_key.clone(),
         span.clone(),
     )
     .await;
@@ -249,28 +249,19 @@ async fn spawn_network_actor(
 }
 
 async fn spawn_host_actor<DB, VM, PP, ID>(
+    address: ctx!(Address),
     app: Arc<App<DB, VM, PP, ID>>,
     config: HostConfig,
     mempool: MempoolActorRef,
     network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
-    private_key: ctx!(SigningScheme::PrivateKey),
     span: Span,
 ) -> HostRef
 where
     DB: Db,
     App<DB, VM, PP, ID>: HostApp,
 {
-    Host::spawn(
-        app,
-        mempool,
-        network,
-        validator_set,
-        private_key,
-        span,
-        config,
-    )
-    .await
+    Host::spawn(address, app, mempool, network, validator_set, span, config).await
 }
 
 async fn spawn_sync_actor(
