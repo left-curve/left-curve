@@ -29,15 +29,6 @@ impl Default for GrugConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
-pub struct SentryConfig {
-    pub enabled: bool,
-    pub dsn: String,
-    pub environment: String,
-    pub sample_rate: f32,
-    pub traces_sample_rate: f32,
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct IndexerConfig {
     pub enabled: bool,
@@ -104,4 +95,13 @@ impl Default for TransactionsConfig {
             gas_adjustment: 1.4,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct SentryConfig {
+    pub enabled: bool,
+    pub dsn: String,
+    pub environment: String,
+    pub sample_rate: f32,
+    pub traces_sample_rate: f32,
 }
