@@ -477,11 +477,9 @@ impl Host {
         // Notify the mempool to remove corresponding txs
         self.mempool.cast(MempoolMsg::Remove(txs))?;
 
-        // TODO: Notify the Host of the decision.
-        // Is this the equivalent to call commit into the App?
+        // TODO: Prune the undecided blocks and proposals
 
         // Start the next height
-
         let sleep = state.calculate_block_sleep();
         let validator_set = self.validator_set.clone();
         let next_height = state.height.increment();
