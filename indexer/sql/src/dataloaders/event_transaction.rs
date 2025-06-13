@@ -1,7 +1,6 @@
-#[cfg(feature = "async-graphql")]
-use async_graphql::{dataloader::*, *};
 use {
     crate::entity,
+    async_graphql::{dataloader::*, *},
     sea_orm::{DatabaseConnection, entity::prelude::*},
     std::{collections::HashMap, sync::Arc},
 };
@@ -10,7 +9,6 @@ pub struct EventTransactionDataLoader {
     pub db: DatabaseConnection,
 }
 
-#[cfg(feature = "async-graphql")]
 impl Loader<entity::events::Model> for EventTransactionDataLoader {
     type Error = Arc<sea_orm::DbErr>;
     type Value = entity::transactions::Model;

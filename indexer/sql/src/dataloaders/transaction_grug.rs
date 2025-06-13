@@ -1,8 +1,7 @@
-#[cfg(feature = "async-graphql")]
-use async_graphql::{dataloader::Loader, *};
 use {
     crate::{block_to_index::BlockToIndex, entity, error::IndexerError, indexer_path::IndexerPath},
     anyhow::{anyhow, ensure},
+    async_graphql::{dataloader::Loader, *},
     grug_types::{Cache, Tx, TxOutcome},
     std::{collections::HashMap, sync::Arc},
 };
@@ -13,7 +12,6 @@ pub struct FileTransactionDataLoader {
     pub indexer: IndexerPath,
 }
 
-#[cfg(feature = "async-graphql")]
 impl Loader<entity::transactions::Model> for FileTransactionDataLoader {
     type Error = Arc<anyhow::Error>;
     type Value = (Tx, TxOutcome);

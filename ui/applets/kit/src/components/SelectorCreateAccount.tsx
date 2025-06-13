@@ -22,7 +22,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
   return (
     <div
       className={twMerge(
-        "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-card-shadow items-start justify-start",
+        "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-account-card items-start justify-start",
         { "cursor-pointer": onClick },
         { " border border-red-bean-400": isSelected },
         {

@@ -1,6 +1,8 @@
+#[cfg(feature = "tracing")]
+use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_1_out_1_handle_auth_response, catch_and_update_event, catch_event,
     },
     grug_types::{AuthMode, BlockInfo, Context, EvtAuthenticate, Storage, Tx},
@@ -13,19 +15,25 @@ pub fn do_authenticate<VM>(
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtAuthenticate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_authenticate(vm, storage, gas_tracker, block, tx, mode);
+    let evt = _do_authenticate(vm, storage, gas_tracker, block, tx, mode, trace_opt);
 
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            tracing::info!(sender = tx.sender.to_string(), "Authenticated transaction");
+            dyn_event!(
+                trace_opt.ok_level.into(),
+                sender = tx.sender.to_string(),
+                "Authenticated transaction"
+            );
         },
         "Failed to authenticate transaction",
+        trace_opt.error_level.into(),
     );
 
     evt
@@ -38,9 +46,10 @@ pub fn _do_authenticate<VM>(
     block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
+    trace_opt: TraceOption,
 ) -> EventResult<EvtAuthenticate>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtAuthenticate::base(tx.sender);
@@ -77,6 +86,7 @@ where
             &ctx,
             tx,
             &mut evt.backrun,
+            trace_opt,
         ),
         evt => guest_event
     }

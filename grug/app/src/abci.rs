@@ -1,8 +1,7 @@
 use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
-    grug_math::Inner,
     grug_types::{
-        BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256,
+        BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256, Inner,
         JsonSerExt, TxOutcome,
     },
     prost::bytes::Bytes,
@@ -27,7 +26,7 @@ use {
 impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -50,7 +49,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,

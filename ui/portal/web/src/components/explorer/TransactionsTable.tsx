@@ -2,16 +2,26 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "~/paraglide/messages";
 
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Cell, CursorPagination, Table } from "@left-curve/applets-kit";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { IndexedTransaction } from "@left-curve/dango/types";
 
 type TransactionsTableProps = {
-  transactions: IndexedTransaction[];
+  transactions?: IndexedTransaction[];
+  pagination?: {
+    isLoading: boolean;
+    goNext: () => void;
+    goPrev: () => void;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 };
 
-export const TransactionsTable: React.FC<TransactionsTableProps> = ({ transactions }) => {
+export const TransactionsTable: React.FC<TransactionsTableProps> = ({
+  transactions,
+  pagination,
+}) => {
   const navigate = useNavigate();
 
   const columns: TableColumn<IndexedTransaction> = [
@@ -64,5 +74,22 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({ transactio
     },
   ];
 
-  return transactions.length ? <Table data={transactions} columns={columns} /> : null;
+  if (!transactions?.length) return null;
+
+  return (
+    <Table
+      data={transactions}
+      columns={columns}
+      bottomContent={
+        pagination ? (
+          <CursorPagination
+            {...pagination}
+            className="flex w-full justify-end gap-2"
+            nextLabel={m["pagination.next"]()}
+            previousLabel={m["pagination.previous"]()}
+          />
+        ) : null
+      }
+    />
+  );
 };

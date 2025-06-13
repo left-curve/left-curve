@@ -7,11 +7,15 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    actix_web_metrics::{ActixWebMetrics, ActixWebMetricsBuilder},
-    metrics::{counter, describe_counter},
-    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     sentry_actix::Sentry,
     std::fmt::Display,
+};
+#[cfg(feature = "metrics")]
+use {
+    actix_web_metrics::{ActixWebMetrics, ActixWebMetricsBuilder},
+    metrics::counter,
+    metrics::describe_counter,
+    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
@@ -31,8 +35,9 @@ where
     let graphql_schema = build_schema(context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!("Starting indexer httpd server at {ip}:{port}");
+    tracing::info!(%ip, port, "Starting indexer httpd server");
 
+    #[cfg(feature = "metrics")]
     let metrics = ActixWebMetricsBuilder::new().build().unwrap();
 
     HttpServer::new(move || {
@@ -54,11 +59,13 @@ where
         }
 
         let app = App::new()
-            .wrap(metrics.clone())
             .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
             .wrap(cors);
+
+        #[cfg(feature = "metrics")]
+        let app = app.wrap(metrics.clone());
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
     })
@@ -69,6 +76,7 @@ where
     Ok(())
 }
 
+#[cfg(feature = "metrics")]
 /// Run the metrics HTTP server
 pub async fn run_metrics_server<I>(
     ip: I,

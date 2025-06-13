@@ -1,7 +1,6 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
-import { useNotifications } from "~/hooks/useNotifications";
 
 import {
   IconMobile,
@@ -21,12 +20,8 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
-  const { session } = useSessionKey();
-
-  if (!session) return null;
-
   return (
-    <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4 gap-4">
+    <div className="rounded-xl bg-rice-25 shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
       <h3 className="h4-bold text-gray-900 px-2">{m["settings.session.title"]()}</h3>
       {children}
     </div>
@@ -34,7 +29,10 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const UsernameSection: React.FC = () => {
-  const { username } = useAccount();
+  const { username, isConnected } = useAccount();
+
+  if (!isConnected) return null;
+
   return (
     <div className="flex items-center justify-between rounded-md gap-8 px-2">
       <div className="flex flex-col">
@@ -43,7 +41,7 @@ const UsernameSection: React.FC = () => {
           <p className="diatype-m-bold text-gray-700">{m["common.username"]()}</p>
         </div>
       </div>
-      <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+      <div className="text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
         {username}
       </div>
     </div>
@@ -51,6 +49,9 @@ const UsernameSection: React.FC = () => {
 };
 
 const RemainingTimeSection: React.FC = () => {
+  const { session } = useSessionKey();
+  if (!session) return null;
+
   return (
     <div className="flex items-start justify-between rounded-md gap-8 px-2">
       <div className="flex flex-col gap-2 md:gap-0 w-full">
@@ -75,15 +76,17 @@ const RemainingTimeSection: React.FC = () => {
 const NetworkSection: React.FC = () => {
   const [currentBlock, setCurrentBlock] = useState<BlockInfo>();
   const { chain } = useConfig();
-  const { notifier } = useNotifications();
+  const { subscriptions } = useApp();
 
   useEffect(() => {
-    const unsubscribe = notifier.subscribe("block", ({ blockHeight, hash, createdAt }) => {
-      setCurrentBlock({
-        height: blockHeight.toString(),
-        hash,
-        timestamp: new Date(createdAt).toJSON(),
-      });
+    const unsubscribe = subscriptions.subscribe("block", {
+      listener: ({ blockHeight, hash, createdAt }) => {
+        setCurrentBlock({
+          height: blockHeight.toString(),
+          hash,
+          timestamp: new Date(createdAt).toJSON(),
+        });
+      },
     });
     return () => unsubscribe();
   }, []);
@@ -98,7 +101,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.title"]()}
             </span>
           </div>
-          <div className="text-gray-700 px-4 py-3 shadow-card-shadow rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+          <div className="text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
             {chain.name}
           </div>
         </div>
@@ -151,8 +154,9 @@ const ConnectMobileSection: React.FC = () => {
   const { showModal } = useApp();
   const { isConnected } = useAccount();
   const { isLg } = useMediaQuery();
+  const { session } = useSessionKey();
 
-  if (!isConnected && !isLg) return null;
+  if ((!isConnected && !isLg) || !session) return null;
 
   return (
     <div className="flex w-full pr-2">

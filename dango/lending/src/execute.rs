@@ -7,7 +7,7 @@ use {
         lending::{Borrowed, ExecuteMsg, InstantiateMsg, InterestRateModel, Market, Repaid},
     },
     grug::{
-        Coin, Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response,
+        Coins, Denom, Inner, Message, MutableCtx, NonEmpty, Order, QuerierExt, Response,
         StorageQuerier,
     },
     std::collections::BTreeMap,
@@ -203,10 +203,10 @@ fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
             let (denom, market) = res?;
             let market = core::update_indices(market, ctx.querier, ctx.block.timestamp)?;
 
-            coins_to_mint.insert(Coin {
-                denom: market.supply_lp_denom.clone(),
-                amount: market.pending_protocol_fee_scaled,
-            })?;
+            coins_to_mint.insert((
+                market.supply_lp_denom.clone(),
+                market.pending_protocol_fee_scaled,
+            ))?;
 
             Ok((denom, market.reset_pending_protocol_fee()))
         })

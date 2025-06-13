@@ -159,21 +159,20 @@ impl MigrationTrait for Migration {
                     .col(Event::BlockHeight)
                     .to_owned(),
             )
-            .await?;
-
-        Ok(())
+            .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(Block::Table).to_owned())
             .await?;
+
         manager
             .drop_table(Table::drop().table(Transaction::Table).to_owned())
             .await?;
+
         manager
             .drop_table(Table::drop().table(Message::Table).to_owned())
-            .await?;
-        Ok(())
+            .await
     }
 }

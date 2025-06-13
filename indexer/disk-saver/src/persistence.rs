@@ -4,7 +4,7 @@ use {
     grug_types::{BorshDeExt, BorshSerExt},
     lzma_rs::{lzma_compress, lzma_decompress},
     std::{
-        fs::{self, File},
+        fs::{self, OpenOptions},
         io::{BufReader, BufWriter, Write},
         path::{Path, PathBuf},
     },
@@ -39,12 +39,10 @@ impl DiskPersistence {
                 tracing::error!(
                     file_path = %file_path.display(),
                     compressed_file_path = %compressed_file_path.display(),
-                    "Both compressed and uncompressed file exists. Keeping uncompressed."
+                    "Both compressed and uncompressed file exists."
                 );
 
-                std::fs::remove_file(&compressed_file_path).ok();
-
-                should_compress = false;
+                should_compress = true;
             },
             // Compressed file exists, we'll use it.
             (_, _, true) => {
@@ -66,6 +64,27 @@ impl DiskPersistence {
         Self {
             file_path,
             compressed: should_compress,
+        }
+    }
+
+    fn detect_file_existence(&mut self) {
+        let mut file_path = self.file_path.clone();
+
+        while file_path.extension().is_some() {
+            file_path.set_extension("");
+        }
+
+        file_path.set_extension("borsh");
+
+        let mut compressed_file_path = file_path.clone();
+        compressed_file_path.set_extension("borsh.xz");
+
+        if compressed_file_path.exists() {
+            self.file_path = compressed_file_path;
+            self.compressed = true;
+        } else {
+            self.file_path = file_path;
+            self.compressed = false;
         }
     }
 
@@ -109,8 +128,12 @@ impl DiskPersistence {
             return Ok(false);
         }
 
-        // Define the path for the temporary compressed file
-        let compressed_path = self.file_path.with_extension("xz");
+        #[cfg(feature = "tracing")]
+        tracing::debug!(?self.file_path, "Compressing file");
+
+        // Define the path for the compressed file
+        let mut compressed_path = self.file_path.clone();
+        compressed_path.set_extension("borsh.xz");
 
         // This shouldn't happen since if compressed file already exists,
         // we should have `self.compressed` to true.
@@ -120,14 +143,46 @@ impl DiskPersistence {
 
         // Compress the file
         {
-            let input_file = File::open(&self.file_path)?;
+            let input_file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&self.file_path)?;
             let mut reader = BufReader::new(input_file);
 
-            let output_file = File::create(&compressed_path)?;
-            let mut writer = BufWriter::new(output_file);
+            let parent = Path::new(&self.file_path)
+                .parent()
+                .unwrap_or_else(|| Path::new("."));
 
-            // Use lzma_compress to compress the input file into the output file
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            let tmp_file = NamedTempFile::new_in(parent)?;
+            let mut writer = BufWriter::new(&tmp_file);
+
             lzma_compress(&mut reader, &mut writer)?;
+
+            writer.flush()?;
+            drop(writer);
+
+            tmp_file.persist(&compressed_path)?;
+        }
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            from_file = %self.file_path.display(),
+            to_file = %compressed_path.display(),
+            "Compressed file",
+        );
+
+        // Delete the non-compressed file
+        if let Err(_e) = std::fs::remove_file(&self.file_path) {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                file = %self.file_path.display(),
+                error = %_e,
+                "Failed to remove original file after compression, but compressed file was created successfully"
+            );
         }
 
         self.file_path = compressed_path;
@@ -141,19 +196,55 @@ impl DiskPersistence {
             return Ok(());
         }
 
+        #[cfg(feature = "tracing")]
+        tracing::debug!(?self.file_path, "Decompressing file");
+
         // Define the path for the temporary decompressed file
         let decompressed_path = self.file_path.with_extension(""); // Remove extension
 
         // Decompress the file
         {
-            let input_file = File::open(&self.file_path)?;
+            let input_file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&self.file_path)?;
             let mut reader = BufReader::new(input_file);
 
-            let output_file = File::create(&decompressed_path)?;
-            let mut writer = BufWriter::new(output_file);
+            let parent = Path::new(&decompressed_path)
+                .parent()
+                .unwrap_or_else(|| Path::new("."));
+
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            let tmp_file = NamedTempFile::new_in(parent)?;
+            let mut writer = BufWriter::new(&tmp_file);
 
             // Use lzma_decompress to decompress the input file into the output file
             lzma_rs::lzma_decompress(&mut reader, &mut writer)?;
+
+            writer.flush()?;
+            drop(writer);
+
+            tmp_file.persist(&decompressed_path)?;
+        }
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            from_file = %self.file_path.display(),
+            to_file = %decompressed_path.display(),
+            "Decompressed file",
+        );
+
+        // Delete the compressed file
+        if let Err(_e) = std::fs::remove_file(&self.file_path) {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                file = %self.file_path.display(),
+                error = %_e,
+                "failed to remove compressed file after decompression, but decompressed file was created successfully"
+            );
         }
 
         self.file_path = decompressed_path;
@@ -163,8 +254,21 @@ impl DiskPersistence {
     }
 
     /// Load and decompress the data from disk and deserialize it.
-    pub fn load<T: BorshDeserialize>(&self) -> Result<T, Error> {
-        let disk_data = fs::read(&self.file_path)?;
+    pub fn load<T: BorshDeserialize>(&mut self) -> Result<T, Error> {
+        let disk_data = match fs::read(&self.file_path) {
+            Ok(data) => data,
+            Err(_e) => {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    file_path = %self.file_path.display(),
+                    error = %_e,
+                    "Failed to read file, will try again"
+                );
+
+                self.detect_file_existence();
+                fs::read(&self.file_path)?
+            },
+        };
 
         let data = if self.compressed {
             let mut decompressed = Vec::new();
@@ -197,9 +301,9 @@ impl DiskPersistence {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, assertor::*};
+    use {super::*, assertor::*, grug::setup_tracing_subscriber};
 
-    #[derive(BorshSerialize, BorshDeserialize, Default)]
+    #[derive(Debug, BorshSerialize, BorshDeserialize, Default, PartialEq, Eq)]
     struct Block {
         height: u64,
         hash: String,
@@ -207,7 +311,9 @@ mod tests {
 
     #[test]
     fn test_disk_automatic_compression() {
-        let temp_file = NamedTempFile::new().expect("Failed to create a temp file");
+        setup_tracing_subscriber(tracing::Level::INFO);
+
+        let temp_file = NamedTempFile::new().expect("failed to create a temp file");
         let mut temp_filename = temp_file.path().to_path_buf();
         let temp_filename2 = temp_file.path().to_path_buf();
 
@@ -216,7 +322,7 @@ mod tests {
         let block = Block::default();
 
         let disk_persistence = DiskPersistence::new(temp_filename.clone(), true);
-        disk_persistence.save(&block).expect("Failed to save block");
+        disk_persistence.save(&block).expect("failed to save block");
         assert!(!temp_filename.exists());
 
         temp_filename.set_extension("borsh.xz");
@@ -228,12 +334,14 @@ mod tests {
         assert_that!(disk_persistence.file_path).is_equal_to(temp_filename);
 
         // Ensure calling compress on a compressed file doesn't do anything
-        assert!(!disk_persistence.compress().expect("Can't compress"));
+        assert!(!disk_persistence.compress().expect("can't compress"));
     }
 
     #[test]
     fn test_disk_later_compression() {
-        let temp_file = NamedTempFile::new().expect("Failed to create a temp file");
+        setup_tracing_subscriber(tracing::Level::DEBUG);
+
+        let temp_file = NamedTempFile::new().expect("failed to create a temp file");
         let mut temp_filename = temp_file.path().to_path_buf();
         let temp_filename2 = temp_file.path().to_path_buf();
 
@@ -242,7 +350,7 @@ mod tests {
         let block = Block::default();
 
         let disk_persistence = DiskPersistence::new(temp_filename.clone(), false);
-        disk_persistence.save(&block).expect("Failed to save block");
+        disk_persistence.save(&block).expect("failed to save block");
         assert!(!temp_filename.exists());
 
         temp_filename.set_extension("borsh");
@@ -251,10 +359,108 @@ mod tests {
         // This test if the file_path is properly set when we ask to compress
         // but the file already exists uncompressed.
         let mut disk_persistence = DiskPersistence::new(temp_filename2, true);
-        assert_that!(disk_persistence.file_path).is_equal_to(temp_filename);
+        assert_that!(&disk_persistence.file_path).is_equal_to(&temp_filename);
         assert!(!disk_persistence.compressed);
 
         // Ensure calling compress on a compressed file does something
-        assert!(disk_persistence.compress().expect("Can't compress"));
+        assert!(disk_persistence.compress().expect("can't compress"));
+
+        assert!(
+            !temp_filename.exists(),
+            "Compressed file should not exist: {}",
+            temp_filename.display()
+        );
+
+        temp_filename.set_extension("borsh.xz");
+        assert!(
+            temp_filename.exists(),
+            "Compressed file should exist: {}",
+            temp_filename.display()
+        );
+
+        disk_persistence
+            .decompress()
+            .expect("Failed to decompress file");
+
+        assert!(
+            !temp_filename.exists(),
+            "Compressed file should not exist: {}",
+            temp_filename.display()
+        );
+
+        // This removes the `.xz` extension but leaves the `.borsh` extension
+        temp_filename.set_extension("");
+
+        assert!(
+            temp_filename.exists(),
+            "Decompressed file should exist: {}",
+            temp_filename.display()
+        );
+    }
+
+    #[test]
+    fn test_compression_then_read() {
+        setup_tracing_subscriber(tracing::Level::DEBUG);
+
+        let temp_file = NamedTempFile::new().expect("failed to create a temp file");
+        let mut temp_filename1 = temp_file.path().to_path_buf();
+        let temp_filename2 = temp_filename1.clone();
+
+        drop(temp_file);
+
+        let block = Block::default();
+
+        // 1. save the block without compression
+        let mut disk_persistence1 = DiskPersistence::new(temp_filename1.clone(), false);
+        disk_persistence1.save(&block).expect("failed to save data");
+        temp_filename1.set_extension("borsh");
+        assert!(temp_filename1.exists());
+
+        let mut disk_persistence2 = DiskPersistence::new(temp_filename2, true);
+
+        // 2. compress the file
+        assert!(disk_persistence2.compress().expect("can't compress"));
+
+        // 3. try to read the data back from the uncompressed file
+        assert_that!(block).is_equal_to(
+            disk_persistence1
+                .load::<Block>()
+                .expect("failed to load data"),
+        );
+    }
+
+    #[test]
+    fn test_decompression_then_read() {
+        setup_tracing_subscriber(tracing::Level::DEBUG);
+
+        let temp_file = NamedTempFile::new().expect("failed to create a temp file");
+        let mut temp_filename1 = temp_file.path().to_path_buf();
+        let temp_filename2 = temp_filename1.clone();
+
+        drop(temp_file);
+
+        let block = Block::default();
+
+        // 1. save the block without compression
+        let disk_persistence1 = DiskPersistence::new(temp_filename1.clone(), false);
+        disk_persistence1.save(&block).expect("failed to save data");
+        temp_filename1.set_extension("borsh");
+        assert!(temp_filename1.exists());
+
+        let mut disk_persistence2 = DiskPersistence::new(temp_filename2, true);
+
+        // 2. compress the file
+        assert!(disk_persistence2.compress().expect("can't compress"));
+
+        // 3. open the compressed file and decompress it
+        let mut disk_persistence1 = DiskPersistence::new(temp_filename1.clone(), false);
+        assert!(disk_persistence1.decompress().is_ok());
+
+        // 3. try to read the data back from the uncompressed file
+        assert_that!(block).is_equal_to(
+            disk_persistence2
+                .load::<Block>()
+                .expect("failed to load data"),
+        );
     }
 }

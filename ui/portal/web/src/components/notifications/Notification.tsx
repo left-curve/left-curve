@@ -12,11 +12,11 @@ import {
 
 import { m } from "~/paraglide/messages";
 
-import { AddressVisualizer, IconInfo, twMerge } from "@left-curve/applets-kit";
+import { AddressVisualizer, IconClose, IconInfo, twMerge } from "@left-curve/applets-kit";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
-import type { Notifications } from "~/hooks/useNotifications";
+import { type Notification as NotificationType, useNotifications } from "~/hooks/useNotifications";
 
 const formatNotificationTimestamp = (timestamp: Date): string => {
   const now = new Date();
@@ -45,7 +45,7 @@ const formatNotificationTimestamp = (timestamp: Date): string => {
 };
 
 export type NotificationProps = {
-  notification: Notifications;
+  notification: Notification[keyof Notification];
 };
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
@@ -53,20 +53,21 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 type NotificationTransferProps = {
-  notification: Notifications<"transfer">;
+  notification: NotificationType<"transfer">;
 };
 
 const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notification }) => {
   const navigate = useNavigate();
   const { settings, setNotificationMenuVisibility } = useApp();
+  const { deleteNotification } = useNotifications();
   const { coin, type, fromAddress, toAddress, amount } = notification.data;
   const { formatNumberOptions } = settings;
   const isSent = type === "sent";
 
   const formattedAmount = formatNumber(formatUnits(amount, coin.decimals), formatNumberOptions);
 
-  const originAddress = isSent ? toAddress : fromAddress;
-  const targetAddress = isSent ? fromAddress : toAddress;
+  const originAddress = isSent ? fromAddress : toAddress;
+  const targetAddress = isSent ? toAddress : fromAddress;
 
   const onNavigate = (url: string) => {
     setNotificationMenuVisibility(false);
@@ -74,7 +75,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   };
 
   return (
-    <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100 max-w-full">
+    <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100 max-w-full group">
       <div className="flex items-start gap-2 max-w-full overflow-hidden">
         <IconInfo className="text-gray-700 w-5 h-5 flex-shrink-0" />
 
@@ -106,8 +107,12 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
           </div>
         </div>
       </div>
-      <div className="diatype-sm-medium text-gray-500 min-w-fit">
-        {formatNotificationTimestamp(new Date(notification.createdAt))}
+      <div className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative">
+        <IconClose
+          className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px]"
+          onClick={() => deleteNotification(notification.id)}
+        />
+        <p>{formatNotificationTimestamp(new Date(notification.createdAt))}</p>
       </div>
     </div>
   );

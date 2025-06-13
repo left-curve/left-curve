@@ -1,7 +1,10 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
-    grug_types::{BroadcastClientExt, Coins, Denom, JsonSerExt, ResultExt},
+    grug_types::{
+        Block, BlockOutcome, BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt,
+        Message, Query, QueryAppConfigRequest, ResultExt,
+    },
     indexer_sql::entity,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, block::create_block, build_app_service, call_api,
@@ -75,37 +78,29 @@ async fn api_returns_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context.clone());
 
-                let block: grug_types::Block = call_api(app, "/api/block/info/1").await?;
-
+                let block = call_api::<Block>(app, "/api/block/info/1").await?;
                 assert_that!(block.info.height).is_equal_to(1);
 
                 let app = build_app_service(httpd_context.clone());
 
-                let block: grug_types::Block = call_api(app, "/api/block/info").await?;
-
+                let block = call_api::<Block>(app, "/api/block/info").await?;
                 assert_that!(block.info.height).is_equal_to(1);
 
                 let app = build_app_service(httpd_context.clone());
 
-                let block_outcome: grug_types::BlockOutcome =
-                    call_api(app, "/api/block/result/1").await?;
-
+                let block_outcome = call_api::<BlockOutcome>(app, "/api/block/result/1").await?;
                 assert_that!(block_outcome.cron_outcomes).is_empty();
                 assert_that!(block_outcome.tx_outcomes).has_length(1);
 
                 let app = build_app_service(httpd_context.clone());
 
-                let block_outcome: grug_types::BlockOutcome =
-                    call_api(app, "/api/block/result").await?;
-
+                let block_outcome = call_api::<BlockOutcome>(app, "/api/block/result").await?;
                 assert_that!(block_outcome.cron_outcomes).is_empty();
                 assert_that!(block_outcome.tx_outcomes).has_length(1);
 
                 let app = build_app_service(httpd_context);
 
-                let block_outcome: Result<grug_types::BlockOutcome, _> =
-                    call_api(app, "/api/block/result/2").await;
-
+                let block_outcome = call_api::<BlockOutcome>(app, "/api/block/result/2").await;
                 assert_that!(block_outcome).is_err();
 
                 Ok::<(), anyhow::Error>(())
@@ -146,7 +141,6 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
                 let app = build_app_service(httpd_context);
 
                 let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
-
                 assert_that!(response.data.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
@@ -462,11 +456,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )
                 .await
@@ -561,11 +552,8 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )
                 .await
@@ -665,11 +653,8 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    grug_types::Message::transfer(
-                        to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
-                    grug_types::GasOption::Predefined { gas_limit: 2000 },
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )
                 .await
@@ -751,8 +736,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
       }
     "#;
 
-    let body_request =
-        grug_types::Query::AppConfig(grug_types::QueryAppConfigRequest {}).to_json_string()?;
+    let body_request = Query::AppConfig(QueryAppConfigRequest {}).to_json_value()?;
 
     let variables = json!({
         "request": body_request,
@@ -775,9 +759,9 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<String>(app, request_body).await?;
+                let response = call_graphql::<Json>(app, request_body).await?;
 
-                assert_that!(response.data.as_str()).is_equal_to("{\"app_config\":null}");
+                assert_that!(response.data.into_inner()).is_equal_to(json!({"app_config": null}));
 
                 Ok::<(), anyhow::Error>(())
             })

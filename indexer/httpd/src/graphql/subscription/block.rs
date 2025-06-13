@@ -30,7 +30,7 @@ impl BlockSubscription {
                         .await
                         .inspect_err(|_e| {
                             #[cfg(feature = "tracing")]
-                            tracing::error!("block error: {_e:?}");
+                            tracing::error!(%_e, "Block error");
                         })
                         .ok()
                         .unwrap_or_default()

@@ -48,7 +48,14 @@ export async function broadcastTxSync<transport extends Transport>(
 
     const { broadcastTxSync } = await queryIndexer<
       {
-        broadcastTxSync: string;
+        broadcastTxSync: {
+          txHash: string;
+          checkTx: {
+            gaslimit: number;
+            gasUsed: number;
+            result: { Ok: null } | { Error: string };
+          };
+        };
       },
       Chain,
       Signer | undefined

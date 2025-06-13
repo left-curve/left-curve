@@ -8,6 +8,7 @@ mod query;
 mod start;
 #[cfg(feature = "testing")]
 mod test;
+mod tracing_filter;
 mod tx;
 
 #[cfg(feature = "testing")]
@@ -15,7 +16,7 @@ use crate::test::TestCmd;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
-        query::QueryCmd, start::StartCmd, tx::TxCmd,
+        query::QueryCmd, start::StartCmd, tracing_filter::SuppressingLevelFilter, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -23,8 +24,7 @@ use {
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
-    tracing::metadata::LevelFilter,
-    tracing_subscriber::{prelude::*, registry},
+    tracing_subscriber::prelude::*,
 };
 
 #[derive(Parser)]
@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
     let cfg: Config = parse_config(app_dir.config_file())?;
 
     // Set up tracing, depending on whether Sentry is enabled or not.
-    let max_level: LevelFilter = cfg.log_level.parse()?;
+    let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
             environment: Some(cfg.sentry.environment.into()),
@@ -98,16 +98,14 @@ async fn main() -> anyhow::Result<()> {
                 tracing_subscriber::EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
             )
-            .with(
-                tracing_subscriber::fmt::layer()
-                    // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
-            )
+            .with(tracing_subscriber::fmt::layer().with_filter(filter))
             .with(sentry_layer())
             .init();
 
         tracing::info!("Sentry initialized");
     } else {
         tracing_subscriber::registry()
+            .with(tracing_subscriber::fmt::layer().with_filter(filter))
             .with(
                 tracing_subscriber::EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set

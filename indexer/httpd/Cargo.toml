@@ -14,10 +14,11 @@ path = "src/lib.rs"
 
 [features]
 metrics = [
-    "dep:actix-web-metrics",
-    "dep:metrics",
-    "dep:metrics-exporter-prometheus",
-    "dep:prometheus",
+  "dep:actix-web-metrics",
+  "dep:futures-util",
+  "dep:metrics",
+  "dep:metrics-exporter-prometheus",
+  "dep:prometheus",
 ]
 testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
@@ -35,12 +36,11 @@ async-trait                 = { workspace = true }
 base64                      = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
-futures-util                = { workspace = true }
-grug-app                    = { workspace = true }
-grug-math                   = { workspace = true }
+futures-util                = { workspace = true, optional = true }
+grug-app                    = { workspace = true, features = ["tracing"] }
 grug-testing                = { workspace = true, optional = true }
-grug-types                  = { workspace = true, features = ["chrono"] }
-indexer-sql                 = { workspace = true }
+grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
+indexer-sql                 = { workspace = true, features = ["async-graphql", "tracing"] }
 itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }

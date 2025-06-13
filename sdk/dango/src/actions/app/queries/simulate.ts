@@ -6,7 +6,6 @@ import {
   snakeCaseJsonSerialization,
 } from "@left-curve/sdk/encoding";
 import { serialize } from "@left-curve/sdk/encoding";
-import { gql } from "graphql-request";
 import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
 import type { SimulateParameters, SimulateReturnType } from "@left-curve/sdk";
@@ -41,13 +40,17 @@ export async function simulate<chain extends Chain | undefined, signer extends S
       return deserialize<SimulateResponse>(decodeBase64(value ?? ""));
     }
 
-    const document = gql`
+    const document = `
       query simulateResult($tx: String!)  {
         simulate(tx: $tx)
       }
     `;
 
-    const { simulate: response } = await queryIndexer<{ simulate: string }, chain, signer>(client, {
+    const { simulate: response } = await queryIndexer<
+      { simulate: SimulateResponse },
+      chain,
+      signer
+    >(client, {
       document,
       variables: {
         tx: snakeCaseJsonSerialization(simulate),

@@ -1,3 +1,5 @@
+#[cfg(feature = "async-graphql")]
+use async_graphql::{InputValueError, InputValueResult, Scalar, ScalarType, Value};
 use {
     crate::{
         Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
@@ -37,6 +39,36 @@ impl Tx {
     }
 }
 
+// NOTE: implementing `InputType` doesn't work for complex enums, `Message` in this case
+/// A transaction that can be sent to the chain.
+///
+/// Contains:
+/// - Sender address
+/// - List of messages to execute
+/// - Gas limit
+/// - Cryptographic signature
+///
+/// See [Tx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+#[cfg(feature = "async-graphql")]
+#[Scalar(name = "Tx")]
+impl ScalarType for Tx {
+    fn parse(value: Value) -> InputValueResult<Self> {
+        value
+            .into_json()
+            .and_then(serde_json::from_value)
+            .map_err(|err| {
+                InputValueError::custom(format!("failed to parse `Tx` from GraphQL value: {err}"))
+            })
+    }
+
+    fn to_value(&self) -> Value {
+        serde_json::to_value(self)
+            .and_then(serde_json::from_value)
+            .map(Value::Object)
+            .unwrap_or(Value::Null)
+    }
+}
+
 /// A transaction but without a gas limit or credential.
 ///
 /// This is for using in gas simulation.
@@ -45,6 +77,36 @@ pub struct UnsignedTx {
     pub sender: Addr,
     pub msgs: NonEmpty<Vec<Message>>,
     pub data: Json,
+}
+
+// NOTE: implementing `InputType` doesn't work for complex enums, `Message` in this case
+/// A transaction to simulate.
+///
+/// Contains:
+/// - Sender address
+/// - List of messages to execute
+///
+/// See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/src/tx.rs).
+#[cfg(feature = "async-graphql")]
+#[Scalar(name = "UnsignedTx")]
+impl ScalarType for UnsignedTx {
+    fn parse(value: Value) -> InputValueResult<Self> {
+        value
+            .into_json()
+            .and_then(serde_json::from_value)
+            .map_err(|err| {
+                InputValueError::custom(format!(
+                    "failed to parse `UnsignedTx` from GraphQL value: {err}"
+                ))
+            })
+    }
+
+    fn to_value(&self) -> Value {
+        serde_json::to_value(self)
+            .and_then(serde_json::from_value)
+            .map(Value::Object)
+            .unwrap_or(Value::Null)
+    }
 }
 
 /// A message.

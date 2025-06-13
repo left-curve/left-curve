@@ -7,9 +7,14 @@ use {
         },
         parser::types::ExecutableDocument,
     },
-    metrics::{counter, histogram},
     std::{sync::Arc, time::Instant},
 };
+
+#[cfg(feature = "metrics")]
+use metrics::{counter, histogram};
+
+#[cfg(feature = "metrics")]
+use metrics::{describe_counter, describe_histogram};
 
 pub struct MetricsExtension;
 
@@ -49,6 +54,7 @@ impl Extension for MetricsExtension {
 
         let operation = operation_name.unwrap_or("anonymous");
 
+        #[cfg(feature = "metrics")]
         // Record metrics
         counter!(
             "graphql.requests.total",
@@ -56,12 +62,14 @@ impl Extension for MetricsExtension {
         )
         .increment(1);
 
+        #[cfg(feature = "metrics")]
         histogram!(
             "graphql.request.duration",
             "operation_name" => operation.to_string()
         )
         .record(duration);
 
+        #[cfg(feature = "metrics")]
         // Check if there are errors
         if !res.errors.is_empty() {
             counter!(
@@ -96,6 +104,7 @@ impl Extension for MetricsExtension {
 
         let duration = start.elapsed().as_secs_f64();
 
+        #[cfg(feature = "metrics")]
         // Only record metrics for non-trivial fields (you can adjust this threshold)
         if duration > 0.001 {
             // 1ms
@@ -107,6 +116,7 @@ impl Extension for MetricsExtension {
             .record(duration);
         }
 
+        #[cfg(feature = "metrics")]
         if result.is_err() {
             counter!(
                 "graphql.field.errors",
@@ -120,9 +130,8 @@ impl Extension for MetricsExtension {
     }
 }
 
+#[cfg(feature = "metrics")]
 pub fn init_graphql_metrics() {
-    use metrics::{describe_counter, describe_histogram};
-
     describe_counter!("graphql.requests.total", "Total GraphQL requests");
     describe_counter!(
         "graphql.requests.errors",

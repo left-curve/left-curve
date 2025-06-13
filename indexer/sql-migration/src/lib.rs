@@ -3,6 +3,7 @@ mod idens;
 
 mod m20220101_000001_create_table;
 mod m20250324_094658_blocks_transactions_count;
+mod m20250529_142838_transactions_sender_index;
 
 pub struct Migrator;
 
@@ -12,6 +13,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20220101_000001_create_table::Migration),
             Box::new(m20250324_094658_blocks_transactions_count::Migration),
+            Box::new(m20250529_142838_transactions_sender_index::Migration),
         ]
     }
 

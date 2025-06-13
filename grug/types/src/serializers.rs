@@ -1,7 +1,6 @@
 use {
-    crate::{Json, StdError, StdResult},
+    crate::{Inner, Json, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Inner,
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
 };

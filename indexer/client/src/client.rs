@@ -1,12 +1,13 @@
 use {
-    crate::{Variables, broadcast_tx_sync, query_app, query_store, simulate},
+    crate::{Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
+    anyhow::{anyhow, bail},
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
-    grug_math::Inner,
     grug_types::{
-        Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient, BroadcastTxOutcome,
-        Hash256, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse, SearchTxClient,
-        SearchTxOutcome, Tx, TxOutcome, UnsignedTx,
+        Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
+        BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
+        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
+        UnsignedTx,
     },
     serde::Serialize,
     std::{fmt::Display, str::FromStr},
@@ -42,7 +43,9 @@ impl HttpClient {
         variables: V,
     ) -> Result<<V::Query as GraphQLQuery>::ResponseData, anyhow::Error>
     where
-        V: Variables + Serialize,
+        V: Variables + Serialize + std::fmt::Debug,
+        <<V as crate::types::Variables>::Query as graphql_client::GraphQLQuery>::ResponseData:
+            std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);
         let response = self
@@ -52,14 +55,22 @@ impl HttpClient {
             .send()
             .await?;
 
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!("GraphQL request: {query:#?}");
+            tracing::debug!("GraphQL response: {response:#?}");
+        }
+
         let body: Response<<V::Query as GraphQLQuery>::ResponseData> = response.json().await?;
 
         match body.data {
-            Some(data) => Ok(data),
-            None => Err(anyhow::anyhow!(
-                "No data returned from query: errors: {:?}",
-                body.errors
-            )),
+            Some(data) => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!("GraphQL body response: {data:#?}");
+
+                Ok(data)
+            },
+            None => bail!("no data returned from query: errors: {:?}", body.errors),
         }
     }
 }
@@ -76,12 +87,13 @@ impl QueryClient for HttpClient {
     ) -> Result<QueryResponse, Self::Error> {
         let response = self
             .post_graphql(query_app::Variables {
-                request: query.to_json_string()?,
+                request: query.to_json_value()?.into_inner(),
                 height: height.map(|h| h as i64),
             })
             .await?;
 
-        Ok(response.query_app.deserialize_json()?)
+        // TODO
+        Ok(serde_json::from_value(response.query_app)?)
     }
 
     async fn query_store(
@@ -109,11 +121,11 @@ impl QueryClient for HttpClient {
     async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
         let response = self
             .post_graphql(simulate::Variables {
-                tx: tx.to_json_string()?,
+                tx: tx.to_json_value()?.into_inner(),
             })
             .await?;
 
-        Ok(response.simulate.deserialize_json()?)
+        Ok(serde_json::from_value(response.simulate)?)
     }
 }
 
@@ -147,13 +159,12 @@ impl BroadcastClient for HttpClient {
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
         let response = self
             .post_graphql(broadcast_tx_sync::Variables {
-                tx: tx.to_json_string()?,
+                tx: tx.to_json_value()?.into_inner(),
             })
             .await?
-            .broadcast_tx_sync
-            .deserialize_json()?;
+            .broadcast_tx_sync;
 
-        Ok(response)
+        Ok(serde_json::from_value(response)?)
     }
 }
 
@@ -162,12 +173,49 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let response: SearchTxOutcome = self
-            .get(format!("api/tendermint/search_tx/{hash}"))
+        let response = self
+            .post_graphql(search_tx::Variables {
+                hash: hash.to_string(),
+            })
             .await?
-            .json()
-            .await?;
+            .transactions
+            .nodes;
 
-        Ok(response)
+        let res = response.first().ok_or(anyhow!("no tx found"))?;
+
+        let msgs = res
+            .messages
+            .iter()
+            .map(|m| Json::from_inner(m.data.clone()).deserialize_json())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx = Tx {
+            sender: Addr::from_str(&res.sender)?,
+            gas_limit: res.gas_wanted as u64,
+            msgs: NonEmpty::new(msgs)?,
+            data: Json::from_inner(res.data.clone()),
+            credential: Json::from_inner(res.credential.clone()),
+        };
+
+        Ok(SearchTxOutcome {
+            hash,
+            height: res.block_height as u64,
+            index: res.transaction_idx as u32,
+            tx,
+            outcome: TxOutcome {
+                gas_limit: res.gas_wanted as u64,
+                gas_used: res.gas_used as u64,
+                result: if res.has_succeeded {
+                    GenericResult::Ok(())
+                } else {
+                    GenericResult::Err(res.error_message.clone().unwrap_or_default())
+                },
+                events: res
+                    .nested_events
+                    .clone()
+                    .ok_or(anyhow!("no nested events"))?
+                    .deserialize_json()?,
+            },
+        })
     }
 }

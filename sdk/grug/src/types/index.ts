@@ -58,6 +58,8 @@ export type {
   DerivedTransportSchema,
   RequestFn,
   RequestFnParameters,
+  SubscribeFn,
+  SubscriptionCallbacks,
   RequestOptions,
   TransportSchema,
   TransportSchemaOverride,
@@ -139,7 +141,7 @@ export type {
 
 export type {
   HttpRequestParameters,
-  HttpRpcClientOptions,
+  HttpClientOptions,
 } from "./http.js";
 
 export {

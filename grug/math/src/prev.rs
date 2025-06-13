@@ -1,9 +1,12 @@
 use {
     crate::{
-        Dec128, Dec256, Inner, Int64, Int128, Int256, Int512, MathError, MathResult, Udec128,
-        Udec256, Uint64, Uint128, Uint256, Uint512,
+        Dec128, Dec256, Int64, Int128, Int256, Int512, MathError, MathResult, Udec128, Udec256,
+        Uint64, Uint128, Uint256, Uint512,
     },
-    bnum::BTryFrom,
+    bnum::{
+        BTryFrom,
+        types::{I512, U512},
+    },
 };
 
 /// Describes a number type can be cast into another type of a smaller word size.
@@ -48,27 +51,27 @@ impl_prev! {
 // ----------------------------------- bnum ------------------------------------
 
 macro_rules! impl_prev_bnum {
-    ($this:ty => $prev:ty) => {
+    ($this:ty => $this_inner:ty => $prev:ty) => {
         impl PrevNumber for $this {
             type Prev = $prev;
 
             fn checked_into_prev(self) -> MathResult<Self::Prev> {
-                BTryFrom::<<$this as Inner>::U>::try_from(self.0)
+                BTryFrom::<$this_inner>::try_from(self.0)
                     .map(<$prev>::new)
                     .map_err(|_| MathError::overflow_conversion::<_, Uint256>(self))
             }
         }
     };
-    ($($this:ty => $prev:ty),+ $(,)?) => {
+    ($($this:ty => $this_inner:ty => $prev:ty),+ $(,)?) => {
         $(
-            impl_prev_bnum!($this => $prev);
+            impl_prev_bnum!($this => $this_inner => $prev);
         )+
     };
 }
 
 impl_prev_bnum! {
-    Uint512 => Uint256,
-    Int512  => Int256,
+    Uint512 => U512 => Uint256,
+    Int512  => I512 => Int256,
 }
 
 // ----------------------------------- dec -------------------------------------

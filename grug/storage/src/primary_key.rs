@@ -4,9 +4,9 @@ use {
         cast::CastFrom,
         types::{I256, I512, U256, U512},
     },
-    grug_math::{Bytable, Dec, Inner, Int},
+    grug_math::{Bytable, Dec, Int},
     grug_types::{
-        Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, LengthBounded,
+        Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner, LengthBounded,
         Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
     },
     std::{mem, str, vec},

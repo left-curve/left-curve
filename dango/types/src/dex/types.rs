@@ -1,5 +1,8 @@
-use grug::{
-    Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
+use {
+    grug::{
+        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroExclusiveOneExclusive,
+    },
+    std::ops::Neg,
 };
 
 /// Numerical identifier of an order.
@@ -24,6 +27,17 @@ pub enum Direction {
     Bid,
     /// Give away the base asset, get the quote asset; a.k.a. a SELL order.
     Ask,
+}
+
+impl Neg for Direction {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Direction::Bid => Direction::Ask,
+            Direction::Ask => Direction::Bid,
+        }
+    }
 }
 
 impl PrimaryKey for Direction {

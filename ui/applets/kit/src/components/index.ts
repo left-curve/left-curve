@@ -28,9 +28,12 @@ export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
 export { Popover } from "./Popover";
-export { Pagination } from "./Pagination";
+export { Pagination, CursorPagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
+export { Range } from "./Range";
+export { Tooltip } from "./Tooltip";
+export { Radio } from "./RadioGroup";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -72,3 +75,4 @@ export { IconUserCircle } from "./icons/IconUserCircle";
 export { IconTimer } from "./icons/IconTimer";
 export { IconLink } from "./icons/IconLink";
 export { IconNetwork } from "./icons/IconNetwork";
+export { IconChevronDownFill } from "./icons/IconChevronDownFill";

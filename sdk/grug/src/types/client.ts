@@ -33,6 +33,7 @@ export type Client<
   chain?: chain;
   name: string;
   request: ReturnType<transport>["request"];
+  subscribe: ReturnType<transport>["subscribe"];
   transport: ReturnType<transport>["config"];
   type: string;
   uid: string;

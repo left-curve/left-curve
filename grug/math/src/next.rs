@@ -1,6 +1,9 @@
-use crate::{
-    Bytable, Dec128, Dec256, Inner, Int64, Int128, Int256, Int512, Udec128, Udec256, Uint64,
-    Uint128, Uint256, Uint512,
+use {
+    crate::{
+        Bytable, Dec128, Dec256, Int64, Int128, Int256, Int512, Udec128, Udec256, Uint64, Uint128,
+        Uint256, Uint512,
+    },
+    bnum::types::{I512, U512},
 };
 
 /// Describes a number type can be cast into another type of a bigger word size.
@@ -43,27 +46,27 @@ impl_next! {
 // ----------------------------------- bnum ------------------------------------
 
 macro_rules! impl_next_bnum {
-    ($this:ty => $next:ty) => {
+    ($this:ty => $next_inner:ty => $next:ty) => {
         impl NextNumber for $this {
             type Next = $next;
 
             fn into_next(self) -> Self::Next {
-                <$next>::new(<$next as Inner>::U::from_be_bytes_growing(
+                <$next>::new(<$next_inner>::from_be_bytes_growing(
                     self.0.to_be_bytes(),
                 ))
             }
         }
     };
-    ($($this:ty => $next:ty),+ $(,)?) => {
+    ($($this:ty => $next_inner:ty => $next:ty),+ $(,)?) => {
         $(
-            impl_next_bnum!($this => $next);
+            impl_next_bnum!($this => $next_inner => $next);
         )+
     };
 }
 
 impl_next_bnum! {
-    Uint256 => Uint512,
-    Int256  => Int512,
+    Uint256 => U512 => Uint512,
+    Int256  => I512 => Int512,
 }
 
 // ----------------------------------- dec -------------------------------------

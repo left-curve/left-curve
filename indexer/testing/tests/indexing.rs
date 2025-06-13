@@ -517,3 +517,60 @@ fn index_block_events() {
         assert_that!(events).is_not_empty();
     });
 }
+
+/// Ensure the indexed blocks are compressed on disk.
+#[test]
+fn blocks_on_disk_compressed() {
+    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+        .with_memory_database()
+        .with_keep_blocks(true)
+        .build()
+        .expect("Can't create indexer");
+
+    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
+        .add_account("sender", Coins::new())
+        .set_owner("owner")
+        .build();
+
+    // Just create a block.
+    let replier_code = ContractBuilder::new(Box::new(replier::instantiate))
+        .with_execute(Box::new(replier::execute))
+        .with_query(Box::new(replier::query))
+        .with_reply(Box::new(replier::reply))
+        .build();
+
+    let _ = suite
+        .upload_and_instantiate(
+            &mut accounts["owner"],
+            replier_code,
+            &Empty {},
+            "salt",
+            Some("label"),
+            None,
+            Coins::default(),
+        )
+        .should_succeed()
+        .address;
+
+    // Force the runtime to wait for the async indexer task to finish
+    suite.app.indexer.wait_for_finish();
+
+    let mut block_path = suite.app.indexer.indexer_path.block_path(1);
+
+    block_path.set_extension("borsh.xz");
+
+    assert!(
+        block_path.exists(),
+        "Compressed block_file should exist: {}",
+        block_path.display()
+    );
+
+    block_path.set_extension("");
+
+    assert!(
+        !block_path.exists(),
+        "Decompressed block_file should not exist: {}",
+        block_path.display()
+    );
+}

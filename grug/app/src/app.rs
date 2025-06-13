@@ -8,7 +8,7 @@ use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
         Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
-        NullIndexer, ProposalPreparer, QuerierProviderImpl, Vm, catch_and_push_event,
+        NullIndexer, ProposalPreparer, QuerierProviderImpl, TraceOption, Vm, catch_and_push_event,
         catch_and_update_event, do_authenticate, do_backrun, do_configure, do_cron_execute,
         do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upload,
         do_withhold_fee, query_app_config, query_balance, query_balances, query_code, query_codes,
@@ -83,7 +83,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -139,6 +139,7 @@ where
                 0,
                 GENESIS_SENDER,
                 msg,
+                TraceOption::LOUD,
             );
 
             if let Err((_event, err)) = output.as_result() {
@@ -251,6 +252,7 @@ where
                 block.info,
                 tx.clone(),
                 AuthMode::Finalize,
+                TraceOption::LOUD,
             );
 
             tx_outcomes.push(tx_outcome);
@@ -299,6 +301,7 @@ where
                 contract,
                 time,
                 next_time,
+                TraceOption::LOUD,
             );
 
             // Commit state changes if the cronjob was successful.
@@ -390,7 +393,18 @@ where
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
         if let Some(block_height) = self.db.latest_version() {
-            self.indexer.post_indexing(block_height)?;
+            let querier = {
+                let storage = self.db.state_storage(Some(block_height))?;
+                let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+                Box::new(QuerierProviderImpl::new(
+                    self.vm.clone(),
+                    Box::new(storage),
+                    GasTracker::new_limitless(),
+                    block,
+                ))
+            };
+
+            self.indexer.post_indexing(block_height, querier)?;
         }
 
         Ok(())
@@ -414,6 +428,7 @@ where
                 block,
                 &tx,
                 AuthMode::Check,
+                TraceOption::MUTE,
             )
             .into_commitment_status(),
         );
@@ -433,6 +448,7 @@ where
             block,
             &tx,
             AuthMode::Check,
+            TraceOption::MUTE,
         )
         .into_commitment_status();
 
@@ -563,6 +579,7 @@ where
             block,
             tx,
             AuthMode::Simulate,
+            TraceOption::MUTE, // Mute tracing outputs during simulation.
         ))
     }
 }
@@ -574,7 +591,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -660,10 +677,17 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
+fn process_tx<S, VM>(
+    vm: VM,
+    storage: S,
+    block: BlockInfo,
+    tx: Tx,
+    mode: AuthMode,
+    trace_opt: TraceOption,
+) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Create the gas tracker, with the limit being the gas limit requested by
@@ -696,6 +720,7 @@ where
             block,
             &tx,
             mode,
+            trace_opt,
         )
         .into_commitment_status(),
     );
@@ -726,6 +751,7 @@ where
         block,
         &tx,
         mode,
+        trace_opt,
     )
     .into_commitment_status();
 
@@ -742,6 +768,7 @@ where
                 mode,
                 events,
                 Err(err),
+                trace_opt,
             );
         },
         Ok(event) => {
@@ -770,6 +797,7 @@ where
         &tx,
         mode,
         request_backrun,
+        trace_opt,
     )
     .into_commitment();
 
@@ -786,6 +814,7 @@ where
                 mode,
                 events,
                 Err(err),
+                trace_opt,
             );
         },
         None => {
@@ -804,7 +833,17 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(vm, fee_buffer, gas_tracker, block, tx, mode, events, Ok(()))
+    process_finalize_fee(
+        vm,
+        fee_buffer,
+        gas_tracker,
+        block,
+        tx,
+        mode,
+        events,
+        Ok(()),
+        trace_opt,
+    )
 }
 
 #[inline]
@@ -816,10 +855,11 @@ fn process_msgs_then_backrun<S, VM>(
     tx: &Tx,
     mode: AuthMode,
     request_backrun: bool,
+    trace_opt: TraceOption,
 ) -> EventResult<MsgsAndBackrunEvents>
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = MsgsAndBackrunEvents::base();
@@ -838,6 +878,7 @@ where
                 0,
                 tx.sender,
                 msg.clone(),
+                trace_opt,
             ),
             evt,
             msgs
@@ -853,6 +894,7 @@ where
                 block,
                 tx,
                 mode,
+                trace_opt,
             ),
             evt => backrun
         };
@@ -870,10 +912,11 @@ fn process_finalize_fee<S, VM>(
     mode: AuthMode,
     mut events: TxEvents,
     result: GenericResult<()>,
+    trace_opt: TraceOption,
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
@@ -886,6 +929,7 @@ where
         &tx,
         &outcome_so_far,
         mode,
+        trace_opt,
     )
     .into_commitment_status();
 
@@ -915,14 +959,15 @@ pub fn process_msg<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: Message,
+    trace_opt: TraceOption,
 ) -> EventResult<Event>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     match msg {
         Message::Configure(msg) => {
-            let res = do_configure(&mut storage, block, sender, msg);
+            let res = do_configure(&mut storage, block, sender, msg, trace_opt);
             res.map(Event::Configure)
         },
         Message::Transfer(msg) => {
@@ -935,23 +980,51 @@ where
                 sender,
                 msg,
                 true,
+                trace_opt,
             );
             res.map(Event::Transfer)
         },
         Message::Upload(msg) => {
-            let res = do_upload(&mut storage, gas_tracker, block, sender, msg);
+            let res = do_upload(&mut storage, gas_tracker, block, sender, msg, trace_opt);
             res.map(Event::Upload)
         },
         Message::Instantiate(msg) => {
-            let res = do_instantiate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            let res = do_instantiate(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Instantiate)
         },
         Message::Execute(msg) => {
-            let res = do_execute(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            let res = do_execute(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Execute)
         },
         Message::Migrate(msg) => {
-            let res = do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            let res = do_migrate(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Migrate)
         },
     }
@@ -966,7 +1039,7 @@ pub fn process_query<VM>(
     req: Query,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     match req {

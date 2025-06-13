@@ -45,9 +45,7 @@ SET transactions_count = (
 DROP TABLE tmp_counts;
 "#;
         transaction.execute_unprepared(query).await?;
-        transaction.commit().await?;
-
-        Ok(())
+        transaction.commit().await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -58,7 +56,6 @@ DROP TABLE tmp_counts;
                     .drop_column(Block::TransactionsCount)
                     .to_owned(),
             )
-            .await?;
-        Ok(())
+            .await
     }
 }

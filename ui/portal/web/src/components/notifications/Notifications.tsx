@@ -1,5 +1,5 @@
-import { useNotifications } from "~/hooks/useNotifications";
 import { useState } from "react";
+import { useNotifications } from "~/hooks/useNotifications";
 
 import {
   Pagination,
@@ -10,13 +10,13 @@ import {
 } from "@left-curve/applets-kit";
 import { capitalize } from "@left-curve/dango/utils";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { Notification } from "./Notification";
 
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
 import type { NotificationProps } from "./Notification";
-import { AnimatePresence, motion } from "framer-motion";
 
 type NotificationsProps = {
   className?: string;
@@ -79,16 +79,11 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
               <motion.div key={dateKey}>
                 <p className="text-sm text-gray-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
-                  {n.map((notification, i) => {
+                  {n.map((notification) => {
                     const NotificationCard = Notification[
                       capitalize(notification.type) as keyof typeof Notification
                     ] as React.FC<NotificationProps>;
-                    return (
-                      <NotificationCard
-                        key={`${notification.createdAt}-${i}`}
-                        notification={notification}
-                      />
-                    );
+                    return <NotificationCard key={notification.id} notification={notification} />;
                   })}
                 </div>
               </motion.div>

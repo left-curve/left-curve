@@ -101,9 +101,11 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
         // search for tx hash
         promises.push(
           (async () => {
-            const tx = await client.searchTx({ hash: searchText });
-            if (tx) setSearchResult({ txs: [tx] });
-            queryClient.setQueryData(["tx", searchText], tx);
+            const txs = await client.searchTxs({ hash: searchText });
+            if (txs.nodes.length) {
+              setSearchResult({ txs: txs.nodes });
+              queryClient.setQueryData(["tx", searchText], txs.nodes[0]);
+            }
           })(),
         );
       } else if (!Number.isNaN(Number(searchText))) {

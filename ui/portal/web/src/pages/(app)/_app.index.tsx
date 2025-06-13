@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
 import { AppletsSection } from "~/components/overview/AppletsSection";
@@ -87,7 +87,7 @@ function OverviewComponent() {
       </div>
       {/*   <div
         ref={topYieldsRef}
-        className="bg-rice-25 shadow-card-shadow flex flex-col rounded-xl w-full pt-4"
+        className="bg-rice-25 shadow-account-card flex flex-col rounded-xl w-full pt-4"
       >
         <p className="h3-heavy font-extrabold px-4 py-3">Top Yields</p>
 

@@ -72,6 +72,24 @@ jobs:
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
 
+
+  check-no-features:
+    needs: [format]
+    name: Check compiling without features
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Check without features
+        run: |
+          set -euo pipefail
+          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
+            echo "Checking $crate..."
+            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
+          done
+
   test:
     needs: [format]
     name: Lint + Test
@@ -121,6 +139,16 @@ jobs:
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
+      - name: Build GraphQL schema
+        run: cargo run -p indexer-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+
+      - name: Check if schema is up-to-date
+        run: |
+          if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
+            echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
+            exit 1
+          fi
+
       - name: Run tests
         run: cargo test --all-features
         env:
@@ -132,7 +160,8 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-        runner: [self-hosted]
+        runner:
+          [self-hosted]
           # when needing to try on all runner types
           # - [self-hosted, Linux]
           # - [self-hosted, macOS]
@@ -332,4 +361,4 @@ jobs:
             -e dango_image_tag=${{ env.GIT_COMMIT }} \
             -e "dango_db_password=$DANGO_DB_PASSWORD" \
             -e '{"dango_networks":["devnet"]}'
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e bot_version=0.1.3

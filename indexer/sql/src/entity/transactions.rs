@@ -1,17 +1,14 @@
 #[cfg(feature = "async-graphql")]
 use {
     crate::dataloaders::transaction_grug::FileTransactionDataLoader,
-    async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
-};
-use {
     crate::dataloaders::{
         transaction_events::TransactionEventsDataLoader,
         transaction_messages::TransactionMessagesDataLoader,
     },
-    grug_types::{FlatCategory, JsonSerExt, Tx, TxOutcome},
-    sea_orm::entity::prelude::*,
-    serde::Deserialize,
+    async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::{JsonSerExt, Tx, TxOutcome},
 };
+use {grug_types::FlatCategory, sea_orm::entity::prelude::*, serde::Deserialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
 #[sea_orm(table_name = "transactions")]
@@ -62,16 +59,6 @@ impl Model {
         let loader = ctx.data_unchecked::<DataLoader<TransactionMessagesDataLoader>>();
         Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
     }
-
-    // async fn data(&self, ctx: &Context<'_>) -> Result<String> {
-    //     let (tx, _) = load_tx_from_file(self, ctx).await?;
-    //     Ok(tx.data.to_json_string()?)
-    // }
-
-    // async fn credential(&self, ctx: &Context<'_>) -> Result<String> {
-    //     let (tx, _) = load_tx_from_file(self, ctx).await?;
-    //     Ok(tx.credential.to_json_string()?)
-    // }
 }
 
 #[cfg(feature = "async-graphql")]

@@ -57,7 +57,7 @@ impl PythClientCache {
 
             // If the file is not in memory, try to read from disk.
             stored_vaas.entry(filename.clone()).or_insert_with(|| {
-                let cache_file = DiskPersistence::new(filename, true);
+                let mut cache_file = DiskPersistence::new(filename, true);
 
                 if cache_file.exists() {
                     return cache_file.load::<Vec<Vec<Binary>>>().unwrap();

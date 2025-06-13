@@ -3,7 +3,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Debug, Clone, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),

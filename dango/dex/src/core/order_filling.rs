@@ -1,5 +1,5 @@
 use {
-    crate::LimitOrder,
+    crate::{LimitOrder, Order},
     dango_types::dex::{Direction, OrderId},
     grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
@@ -10,9 +10,11 @@ pub struct FillingOutcome {
     pub order_price: Udec128,
     pub order_id: OrderId,
     /// The order with the `filled` amount updated.
-    pub order: LimitOrder,
+    pub order: Order,
     /// The amount, measured in the base asset, that has been filled.
     pub filled: Uint128,
+    /// The clearing price at which the order was filled.
+    pub clearing_price: Udec128,
     /// Whether the order has been fully filled.
     pub cleared: bool,
     /// Amount of base asset that should be refunded to the trader.
@@ -93,8 +95,9 @@ fn fill_bids(
             order_direction: Direction::Bid,
             order_price,
             order_id,
-            order,
+            order: Order::Limit(order),
             filled,
+            clearing_price,
             cleared: order.remaining.is_zero(),
             // Reduce the base refund by the fee amount.
             refund_base: filled.checked_sub(fee_base)?,
@@ -145,8 +148,9 @@ fn fill_asks(
             order_direction: Direction::Ask,
             order_price,
             order_id,
-            order,
+            order: Order::Limit(order),
             filled,
+            clearing_price,
             cleared: order.remaining.is_zero(),
             refund_base: Uint128::ZERO,
             // Reduce the quote refund by the fee amount.

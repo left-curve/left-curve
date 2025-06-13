@@ -16,7 +16,7 @@ async-graphql           = { workspace = true }
 dango-genesis           = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-proposal-preparer = { workspace = true }
-dango-types             = { workspace = true }
+dango-types             = { workspace = true, features = ["async-graphql"] }
 digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
@@ -51,9 +51,12 @@ dango-auth            = { workspace = true }
 dango-gateway         = { workspace = true, features = ["library"] }
 dango-httpd           = { workspace = true }
 dango-lending         = { workspace = true, features = ["library"] }
+dango-mock-httpd      = { workspace = true }
 dango-oracle          = { workspace = true, features = ["library"] }
+grug-testing          = { workspace = true }
 hex                   = { workspace = true }
 home                  = { workspace = true }
+indexer-client        = { workspace = true, features = ["tracing"] }
 indexer-disk-saver    = { workspace = true }
 indexer-testing       = { workspace = true }
 itertools             = { workspace = true }

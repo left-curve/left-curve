@@ -1,3 +1,7 @@
+#[cfg(any(feature = "tendermint", feature = "async-graphql"))]
+use crate::serializers::JsonDeExt;
+#[cfg(feature = "tendermint")]
+use {crate::StdResult, data_encoding::BASE64};
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
@@ -7,10 +11,13 @@ use {
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
 };
-#[cfg(feature = "tendermint")]
+#[cfg(feature = "async-graphql")]
 use {
-    crate::{JsonDeExt, StdResult},
-    data_encoding::BASE64,
+    async_graphql::{
+        OutputType, Positioned, ServerResult, context::ContextSelectionSet, parser::types::Field,
+        registry::Registry,
+    },
+    std::borrow::Cow,
 };
 
 /// Outcome of performing an operation that is not a full tx. These include:
@@ -126,6 +133,27 @@ impl TxOutcome {
             result: into_generic_result(tm_tx_result.code, tm_tx_result.log),
             events: BASE64.decode(&tm_tx_result.data)?.deserialize_json()?,
         })
+    }
+}
+
+#[cfg(feature = "async-graphql")]
+impl OutputType for TxOutcome {
+    fn type_name() -> Cow<'static, str> {
+        "TxOutcome".into()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<serde_json::Value> as OutputType>::create_type_info(registry)
+    }
+
+    async fn resolve(
+        &self,
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.clone())
+            .resolve(ctx, field)
+            .await
     }
 }
 
@@ -267,6 +295,27 @@ impl BroadcastTxOutcome {
                 check_tx: self.check_tx.should_fail(),
             }),
         }
+    }
+}
+
+#[cfg(feature = "async-graphql")]
+impl OutputType for BroadcastTxOutcome {
+    fn type_name() -> Cow<'static, str> {
+        "BroadcastTxOutcome".into()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <async_graphql::types::Json<serde_json::Value> as OutputType>::create_type_info(registry)
+    }
+
+    async fn resolve(
+        &self,
+        ctx: &ContextSelectionSet<'_>,
+        field: &Positioned<Field>,
+    ) -> ServerResult<async_graphql::Value> {
+        async_graphql::types::Json(self.clone())
+            .resolve(ctx, field)
+            .await
     }
 }
 

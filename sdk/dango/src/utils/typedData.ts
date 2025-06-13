@@ -1,7 +1,6 @@
 import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
 
-import type { Coins, Hex, Json, Message } from "@left-curve/sdk/types";
-import type { Definition } from "ox/TypedData";
+import type { Coins, Json, Message } from "@left-curve/sdk/types";
 
 import type {
   ArbitraryTypedData,
@@ -12,20 +11,6 @@ import type {
   TypedDataParameter,
   TypedDataProperty,
 } from "../types/typedData.js";
-
-/**
- * @description Hash the typed data.
- *
- * @param typedData The typed data to hash.
- * @returns The hashed typed data.
- */
-export async function hashTypedData(
-  typedData: Definition<Record<string, unknown>, string>,
-): Promise<Hex> {
-  const { getSignPayload } = await import("ox/TypedData");
-
-  return getSignPayload(typedData);
-}
 
 /**
  * @description Composes arbitrary typed data.

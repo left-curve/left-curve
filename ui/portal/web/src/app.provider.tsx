@@ -1,25 +1,25 @@
-import { useAccount, useAppConfig, useSessionKey, useStorage } from "@left-curve/store";
+import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
 import * as Sentry from "@sentry/react";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 
 import { router } from "./app.router";
 import { Modals } from "./components/modals/RootModal";
 
-import { useNotifications } from "./hooks/useNotifications";
-
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import type { notifier as notifierType } from "./hooks/useNotifications";
+import { useNotifications } from "./hooks/useNotifications";
 
 type AppState = {
   router: typeof router;
+  subscriptions: ReturnType<typeof useConfig>["subscriptions"];
   config: ReturnType<typeof useAppConfig>;
-  notifier: typeof notifierType;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
   isNotificationMenuVisible: boolean;
   setNotificationMenuVisibility: (visibility: boolean) => void;
   isSearchBarVisible: boolean;
   setSearchBarVisibility: (visibility: boolean) => void;
+  isTradeBarVisible: boolean;
+  setTradeBarVisibility: (visibility: boolean) => void;
   isQuestBannerVisible: boolean;
   setQuestBannerVisibility: (visibility: boolean) => void;
   showModal: (modalName: string, props?: Record<string, unknown>) => void;
@@ -41,6 +41,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
+  const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
 
   // App settings
@@ -61,6 +62,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   });
 
   // App Config
+  const { subscriptions } = useConfig();
   const config = useAppConfig();
 
   const changeSettings = useCallback(
@@ -90,12 +92,11 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   }, [username]);
 
-  // App notifications
-  const { notifier, subscribe } = useNotifications();
+  // Initialize notifications
+  const { startNotifications } = useNotifications();
   useEffect(() => {
-    if (!account) return;
-    const unsubscribe = subscribe(account);
-    return () => unsubscribe();
+    const stopNotifications = startNotifications();
+    return stopNotifications;
   }, [account]);
 
   // Track session key expiration
@@ -124,13 +125,15 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
       value={{
         router,
         config,
-        notifier,
+        subscriptions,
         isSidebarVisible,
         setSidebarVisibility,
         isNotificationMenuVisible,
         setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
+        isTradeBarVisible,
+        setTradeBarVisibility,
         isQuestBannerVisible: false,
         setQuestBannerVisibility,
         showModal,

@@ -20,6 +20,7 @@ function AccountExplorerApplet() {
         <AccountExplorer.NotFound />
         <AccountExplorer.Details />
         <AccountExplorer.Assets />
+        <AccountExplorer.Transactions />
       </AccountExplorer>
     </div>
   );

@@ -103,6 +103,9 @@ export type {
   IndexedTransaction,
   IndexedMessage,
   IndexedTransactionType,
+  IndexedTransferEvent,
+  IndexedTrade,
+  IndexedTradeSideType,
 } from "./indexer.js";
 
 export type {
@@ -119,6 +122,8 @@ export type {
   PairParams,
   PairUpdate,
 } from "./dex.js";
+
+export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
 
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 

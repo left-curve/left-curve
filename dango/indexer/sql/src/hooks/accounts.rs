@@ -1,11 +1,13 @@
 use {
-    crate::{
-        entity::{self},
-        error::Error,
-        hooks::Hooks,
+    crate::{entity, error::Error, hooks::Hooks},
+    dango_types::{
+        DangoQuerier,
+        account_factory::{
+            AccountParams, AccountRegistered, KeyDisowned, KeyOwned, UserRegistered,
+        },
     },
-    dango_types::account_factory::{self, AccountParams},
     grug::{EventName, Inner, JsonDeExt},
+    grug_app::QuerierProvider,
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
     indexer_sql::{Context, block_to_index::BlockToIndex},
     sea_orm::{
@@ -19,14 +21,17 @@ impl Hooks {
         &self,
         context: &Context,
         block: &BlockToIndex,
+        querier: &dyn QuerierProvider,
     ) -> Result<(), Error> {
+        let account_factory = querier.query_account_factory()?;
+
         let mut user_registered_events = Vec::new();
         let mut account_registered_events = Vec::new();
         let mut account_key_added_events = Vec::new();
         let mut account_key_removed_events = Vec::new();
 
         // NOTE:
-        // The kind of operations which needs to be executed after are :
+        // The kind of operations which needs to be executed after are:
         // - UserRegistered: a username, key and key hash. We should create a user entry.
         // - AccountRegistered: an address, username, We should create an account entry.
         // - KeyOwned: a username, key and key hash. We should update the users entry with the new key.
@@ -35,7 +40,7 @@ impl Hooks {
         for tx in block.block_outcome.tx_outcomes.iter() {
             if tx.result.is_err() {
                 #[cfg(feature = "tracing")]
-                tracing::debug!("tx failed, skipping");
+                tracing::debug!("Tx failed, skipping");
 
                 continue;
             }
@@ -51,40 +56,34 @@ impl Hooks {
                     continue;
                 };
 
+                if event.contract != account_factory {
+                    continue;
+                }
+
                 match event.ty.as_str() {
-                    account_factory::UserRegistered::EVENT_NAME => {
-                        let Ok(event) = event
-                            .data
-                            .deserialize_json::<account_factory::UserRegistered>()
-                        else {
+                    UserRegistered::EVENT_NAME => {
+                        let Ok(event) = event.data.deserialize_json::<UserRegistered>() else {
                             continue;
                         };
 
                         user_registered_events.push(event.clone());
                     },
-                    account_factory::AccountRegistered::EVENT_NAME => {
-                        let Ok(event) = event
-                            .data
-                            .deserialize_json::<account_factory::AccountRegistered>()
-                        else {
+                    AccountRegistered::EVENT_NAME => {
+                        let Ok(event) = event.data.deserialize_json::<AccountRegistered>() else {
                             continue;
                         };
 
                         account_registered_events.push(event);
                     },
-                    account_factory::KeyOwned::EVENT_NAME => {
-                        let Ok(event) = event.data.deserialize_json::<account_factory::KeyOwned>()
-                        else {
+                    KeyOwned::EVENT_NAME => {
+                        let Ok(event) = event.data.deserialize_json::<KeyOwned>() else {
                             continue;
                         };
 
                         account_key_added_events.push(event);
                     },
-                    account_factory::KeyDisowned::EVENT_NAME => {
-                        let Ok(event) = event
-                            .data
-                            .deserialize_json::<account_factory::KeyDisowned>()
-                        else {
+                    KeyDisowned::EVENT_NAME => {
+                        let Ok(event) = event.data.deserialize_json::<KeyDisowned>() else {
                             continue;
                         };
 
@@ -103,7 +102,7 @@ impl Hooks {
 
         if !user_registered_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!("Detected user_registered_events: {user_registered_events:?}");
+            tracing::debug!("Detected `user_registered_events`: {user_registered_events:?}");
 
             for user_register_events in user_registered_events.chunks(chunk_size) {
                 let new_users = user_register_events
@@ -140,7 +139,7 @@ impl Hooks {
 
         if !account_registered_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!("Detected account_registered_events: {account_registered_events:?}");
+            tracing::debug!("Detected `account_registered_events`: {account_registered_events:?}");
 
             for account_registered_event in account_registered_events {
                 let new_account_id = Uuid::new_v4();
@@ -206,7 +205,7 @@ impl Hooks {
 
         if !account_key_added_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!("Detected account_key_added_events: {account_key_added_events:?}");
+            tracing::debug!("Detected `account_key_added_events`: {account_key_added_events:?}");
 
             for account_key_added_event in account_key_added_events {
                 let model = entity::public_keys::ActiveModel {
@@ -225,7 +224,9 @@ impl Hooks {
 
         if !account_key_removed_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!("Detected `account_key_removed_events`: {account_key_removed_events:?}");
+            tracing::debug!(
+                "Detected `account_key_removed_events`: {account_key_removed_events:?}"
+            );
 
             for account_key_removed_event in account_key_removed_events {
                 entity::public_keys::Entity::delete_many()

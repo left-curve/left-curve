@@ -1,4 +1,4 @@
-import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
+import { useConfig, useInfiniteGraphqlQuery, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -9,8 +9,9 @@ import { Badge, TextCopy } from "@left-curve/applets-kit";
 import { ContractCard } from "../foundation/ContractCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
+import { TransactionsTable } from "./TransactionsTable";
 
-import type { Address, Coins, ContractInfo } from "@left-curve/dango/types";
+import type { Address, Coins, ContractInfo, IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -86,7 +87,7 @@ const Details: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <ContractCard address={address} balance={totalBalance} />
-      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-card-shadow relative overflow-hidden w-full min-h-[10rem]">
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
@@ -146,8 +147,32 @@ const Assets: React.FC = () => {
   return <AssetsTable balances={contract.balances} />;
 };
 
+const Transactions: React.FC = () => {
+  const { isLoading, data: contract, address } = useContractExplorer();
+  const client = usePublicClient();
+
+  const { data, pagination, ...transactions } = useInfiniteGraphqlQuery<IndexedTransaction>({
+    limit: 10,
+    query: {
+      enabled: !!contract,
+      queryKey: ["contract_transactions", address],
+      queryFn: async ({ pageParam }) => client.searchTxs({ senderAddress: address, ...pageParam }),
+    },
+  });
+
+  if (isLoading || !contract) return null;
+
+  return (
+    <TransactionsTable
+      transactions={data?.pages[pagination?.currentPage - 1]?.nodes || []}
+      pagination={{ ...pagination, isLoading: transactions.isLoading }}
+    />
+  );
+};
+
 export const ContractExplorer = Object.assign(Root, {
   Details,
   NotFound,
   Assets,
+  Transactions,
 });

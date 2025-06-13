@@ -22,7 +22,7 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Dec<U, const S: u32>(pub(crate) Int<U>);
+pub struct Dec<U, const S: u32>(pub Int<U>);
 
 impl<U, const S: u32> Dec<U, S> {
     pub const DECIMAL_PLACES: u32 = S;
