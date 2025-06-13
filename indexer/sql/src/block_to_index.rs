@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use metrics::counter;
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -51,6 +53,14 @@ impl BlockToIndex {
         entity::blocks::Entity::insert(models.block)
             .exec_without_returning(db)
             .await?;
+
+        #[cfg(feature = "metrics")]
+        {
+            counter!("indexer.blocks.total").increment(1);
+            counter!("indexer.transactions.total").increment(models.transactions.len() as u64);
+            counter!("indexer.messages.total").increment(models.messages.len() as u64);
+            counter!("indexer.events.total").increment(models.events.len() as u64);
+        }
 
         if !models.transactions.is_empty() {
             entity::transactions::Entity::insert_many(models.transactions)

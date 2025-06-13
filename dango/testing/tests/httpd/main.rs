@@ -1,8 +1,8 @@
 pub mod accounts;
 pub mod grug;
+pub mod metrics;
 pub mod transfers;
 pub mod users;
-
 use {
     actix_web::{
         App,
