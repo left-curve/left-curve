@@ -262,6 +262,30 @@ impl Host {
         Ok(())
     }
 
+    async fn restream_value(
+        &self,
+        state: &mut State,
+        _height: ctx!(Height),
+        _round: Round,
+        valid_round: Round,
+        _address: ctx!(Address),
+        block_hash: ctx!(Value::Id),
+    ) -> ActorResult<()> {
+        if let Some(data) = UNDECIDED_BLOCK.may_load(state, block_hash)? {
+            // TODO: Should we assert height, round and proposer?
+
+            // recreate fin and init parts
+            let data = ProposalData {
+                block: data,
+                valid_round,
+            };
+
+            self.stream_data(state.stream_id(), data, false).await?;
+        }
+
+        Ok(())
+    }
+
     /// Equivalent of prepare_proposal
     #[tracing::instrument("get_value", skip_all, fields(height = %height, round = %round))]
     async fn get_value(
@@ -469,30 +493,6 @@ impl Host {
                 error!("Error starting height: {:?}", e);
             }
         });
-
-        Ok(())
-    }
-
-    async fn restream_value(
-        &self,
-        state: &mut State,
-        _height: ctx!(Height),
-        _round: Round,
-        valid_round: Round,
-        _address: ctx!(Address),
-        block_hash: ctx!(Value::Id),
-    ) -> ActorResult<()> {
-        if let Some(data) = UNDECIDED_BLOCK.may_load(state, block_hash)? {
-            // TODO: Should we assert height, round and proposer?
-
-            // recreate fin and init parts
-            let data = ProposalData {
-                block: data,
-                valid_round,
-            };
-
-            self.stream_data(state.stream_id(), data, false).await?;
-        }
 
         Ok(())
     }
