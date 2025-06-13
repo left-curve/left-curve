@@ -1,16 +1,12 @@
 use {
-    async_graphql::extensions::{Extension, ExtensionFactory},
-    std::sync::Arc,
-};
-
-#[cfg(feature = "metrics")]
-use {
     async_graphql::{
         Response, ServerResult, Value,
-        extensions::{ExtensionContext, NextExecute, NextResolve, ResolveInfo},
+        extensions::{
+            Extension, ExtensionContext, ExtensionFactory, NextExecute, NextResolve, ResolveInfo,
+        },
     },
     metrics::{counter, describe_counter, describe_histogram, histogram},
-    std::time::Instant,
+    std::{sync::Arc, time::Instant},
 };
 
 pub struct MetricsExtension;
@@ -24,7 +20,6 @@ impl ExtensionFactory for MetricsExtension {
 #[async_trait::async_trait]
 impl Extension for MetricsExtension {
     /// Called at the beginning of query execution
-    #[cfg(feature = "metrics")]
     async fn execute(
         &self,
         ctx: &ExtensionContext<'_>,
@@ -77,7 +72,6 @@ impl Extension for MetricsExtension {
         res
     }
 
-    #[cfg(feature = "metrics")]
     /// Called for each field resolution
     async fn resolve(
         &self,
@@ -123,7 +117,6 @@ impl Extension for MetricsExtension {
     }
 }
 
-#[cfg(feature = "metrics")]
 pub fn init_graphql_metrics() {
     describe_counter!("graphql.requests.total", "Total GraphQL requests");
     describe_counter!(

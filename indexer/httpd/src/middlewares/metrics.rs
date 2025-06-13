@@ -4,7 +4,7 @@ use {
         dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
     },
     futures_util::future::LocalBoxFuture,
-    metrics::{counter, histogram},
+    metrics::{counter, describe_counter, describe_histogram, histogram},
     std::{
         future::{Ready, ready},
         time::Instant,
@@ -76,4 +76,16 @@ where
             Ok(res)
         })
     }
+}
+
+pub fn init_httpd_metrics() {
+    // HTTP metrics
+    describe_counter!(
+        "http_requests_total",
+        "Total HTTP requests by method, path, and status"
+    );
+    describe_histogram!(
+        "http_request_duration_seconds",
+        "HTTP request duration in seconds by method, path, and status"
+    );
 }

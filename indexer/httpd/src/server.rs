@@ -12,6 +12,7 @@ use {
 };
 #[cfg(feature = "metrics")]
 use {
+    crate::middlewares::metrics::init_httpd_metrics,
     actix_web_metrics::ActixWebMetricsBuilder,
     metrics::counter,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -38,6 +39,9 @@ where
 
     #[cfg(feature = "metrics")]
     let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+
+    #[cfg(feature = "metrics")]
+    init_httpd_metrics();
 
     HttpServer::new(move || {
         let mut cors = Cors::default()
