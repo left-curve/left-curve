@@ -81,8 +81,8 @@ async fn main() -> anyhow::Result<()> {
     // Set up tracing, depending on whether Sentry is enabled or not.
     let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
     if cfg.sentry.enabled {
-        let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
-            environment: Some(cfg.sentry.environment.into()),
+        let _sentry_guard = sentry::init((cfg.sentry.dsn.clone(), sentry::ClientOptions {
+            environment: Some(cfg.sentry.environment.clone().into()),
             release: sentry::release_name!(),
             sample_rate: cfg.sentry.sample_rate,
             traces_sample_rate: cfg.sentry.traces_sample_rate,
@@ -120,11 +120,11 @@ async fn main() -> anyhow::Result<()> {
     let metrics_handle = init_metrics()?;
 
     match cli.command {
-        Command::Db(cmd) => cmd.run(app_dir),
+        Command::Db(cmd) => cmd.run(app_dir, cfg),
         Command::Indexer(cmd) => cmd.run(app_dir, metrics_handle).await,
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
-        Command::Start(cmd) => cmd.run(app_dir, metrics_handle).await,
+        Command::Start(cmd) => cmd.run(app_dir, cfg, metrics_handle).await,
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run().await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
