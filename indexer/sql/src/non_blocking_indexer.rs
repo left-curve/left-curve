@@ -554,21 +554,51 @@ where
             // NOTE: sqlite in-memory sometimes returns `database is deadlocked` which seems to be
             // more likely when we have multiple tasks or thread.
             //
-            // I'm trying a few extra times if error occurs.
-            for _ in 1..=5 {
+            // I'm trying a few extra times if error occurs, but only for transient errors.
+            for attempt in 1..=5 {
                 let db = context.db.begin().await?;
 
-                if let Err(_err) = block_to_index.save(&db).await {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "Can't save to db in `post_indexing`");
+                match block_to_index.save(&db).await {
+                    Ok(_) => {
+                        db.commit().await?;
+                        break;
+                    }
+                    Err(err) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error = %err, attempt, "Can't save to db in `post_indexing`");
 
-                    sleep(Duration::from_millis(100));
-                    continue;
+                        // Only retry for specific transient errors like SQLite deadlocks
+                        let should_retry = match &err {
+                            error::IndexerError::SeaOrm(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx_err))) => {
+                                matches!(
+                                    sqlx_err.as_database_error(),
+                                    Some(db_err) if db_err.message().contains("database is deadlocked")
+                                        || db_err.message().contains("database is locked")
+                                        || db_err.message().contains("SQLITE_BUSY")
+                                )
+                            }
+                            error::IndexerError::SeaOrm(sea_orm::DbErr::Conn(sea_orm::RuntimeErr::SqlxError(sqlx_err))) => {
+                                matches!(
+                                    sqlx_err.as_database_error(),
+                                    Some(db_err) if db_err.message().contains("database is deadlocked")
+                                        || db_err.message().contains("database is locked")
+                                        || db_err.message().contains("SQLITE_BUSY")
+                                )
+                            }
+                            _ => false,
+                        };
+
+                        if should_retry && attempt < 5 {
+                            #[cfg(feature = "tracing")]
+                            tracing::warn!(error = %err, attempt, "Retrying transient database error");
+
+                            sleep(Duration::from_millis(100));
+                            continue;
+                        } else {
+                            return Err(err);
+                        }
+                    }
                 }
-
-                db.commit().await?;
-
-                break;
             }
 
             hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {

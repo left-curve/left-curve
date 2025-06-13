@@ -72,6 +72,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         tokio::spawn,
     );
 
+    #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
         query::Query::default(),
         mutation::Mutation::default(),

@@ -1,18 +1,17 @@
 use {
-    async_graphql::{
-        Response, ServerResult, Value,
-        extensions::{
-            Extension, ExtensionContext, ExtensionFactory, NextExecute, NextResolve, ResolveInfo,
-        },
-    },
-    std::{sync::Arc, time::Instant},
+    async_graphql::extensions::{Extension, ExtensionFactory},
+    std::sync::Arc,
 };
 
 #[cfg(feature = "metrics")]
-use metrics::{counter, histogram};
-
-#[cfg(feature = "metrics")]
-use metrics::{describe_counter, describe_histogram};
+use {
+    async_graphql::{
+        Response, ServerResult, Value,
+        extensions::{ExtensionContext, NextExecute, NextResolve, ResolveInfo},
+    },
+    metrics::{counter, describe_counter, describe_histogram, histogram},
+    std::time::Instant,
+};
 
 pub struct MetricsExtension;
 
@@ -25,6 +24,7 @@ impl ExtensionFactory for MetricsExtension {
 #[async_trait::async_trait]
 impl Extension for MetricsExtension {
     /// Called at the beginning of query execution
+    #[cfg(feature = "metrics")]
     async fn execute(
         &self,
         ctx: &ExtensionContext<'_>,
@@ -49,10 +49,8 @@ impl Extension for MetricsExtension {
                 ),
             );
         }
-
         let operation = operation_name.unwrap_or("anonymous");
 
-        #[cfg(feature = "metrics")]
         // Record metrics
         counter!(
             "graphql.requests.total",
@@ -60,14 +58,12 @@ impl Extension for MetricsExtension {
         )
         .increment(1);
 
-        #[cfg(feature = "metrics")]
         histogram!(
             "graphql.request.duration",
             "operation_name" => operation.to_string()
         )
         .record(duration);
 
-        #[cfg(feature = "metrics")]
         // Check if there are errors
         if !res.errors.is_empty() {
             counter!(
@@ -81,6 +77,7 @@ impl Extension for MetricsExtension {
         res
     }
 
+    #[cfg(feature = "metrics")]
     /// Called for each field resolution
     async fn resolve(
         &self,
@@ -102,7 +99,6 @@ impl Extension for MetricsExtension {
 
         let duration = start.elapsed().as_secs_f64();
 
-        #[cfg(feature = "metrics")]
         // Only record metrics for non-trivial fields (you can adjust this threshold)
         if duration > 0.001 {
             // 1ms
@@ -114,7 +110,6 @@ impl Extension for MetricsExtension {
             .record(duration);
         }
 
-        #[cfg(feature = "metrics")]
         if result.is_err() {
             counter!(
                 "graphql.field.errors",
