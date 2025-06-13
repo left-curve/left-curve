@@ -39,6 +39,8 @@ pub trait Db {
     /// A _Merklized_ KV store that stores _hashed_ keys and _hashed_ values.
     type StateCommitment: Storage + Clone + 'static;
 
+    type Consensus: ConsensusStorage;
+
     /// Type of the Merkle proof. The DB can choose any Merkle tree scheme.
     type Proof: BorshSerialize + BorshDeserialize;
 
@@ -49,6 +51,9 @@ pub trait Db {
     ///
     /// Error if the specified version has already been pruned.
     fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
+
+    /// Return the state consensus.
+    fn consensus(&self) -> Self::Consensus;
 
     /// Return the most recent version that has been committed.
     ///
@@ -91,6 +96,9 @@ pub trait Db {
         self.commit()?;
         Ok((new_version, root_hash))
     }
+
+    /// Discard the current changeset.
+    fn discard_changeset(&self);
 }
 
 /// Represents a database that can be pruned.
@@ -131,3 +139,55 @@ pub trait IbcDb: Db {
         version: Option<u64>,
     ) -> Result<CommitmentProof, Self::Error>;
 }
+
+pub trait ConsensusStorage: Storage {}
+
+impl Storage for Box<dyn ConsensusStorage> {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.as_ref().read(key)
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+        self.as_ref().scan(min, max, order)
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        self.as_ref().scan_keys(min, max, order)
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        self.as_ref().scan_values(min, max, order)
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.as_mut().write(key, value)
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.as_mut().remove(key)
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        self.as_mut().remove_range(min, max)
+    }
+}
+
+impl ConsensusStorage for Box<dyn ConsensusStorage> {}
+
+// derive std Clone trait for any type that implements ConsensusStorage
+dyn_clone::clone_trait_object!(ConsensusStorage);
