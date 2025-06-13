@@ -3435,6 +3435,7 @@ dependencies = [
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
+ "metrics",
  "sea-orm",
  "serde",
  "thiserror 2.0.12",
