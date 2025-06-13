@@ -134,7 +134,7 @@ const Item: React.FC<PropsWithChildren<SelectItemProps>> = ({ value, children })
       value={value}
       onClick={() => setSelected(value)}
       className={twMerge(
-        "rounded-sm py-2 px-3 text-base outline-none cursor-pointer flex items-center transition-all diatype-m-medium bg-bg-secondary-rice leading-none hover:bg-rice-50",
+        "rounded-sm py-2 px-3 text-base outline-none cursor-pointer flex items-center transition-all diatype-m-medium bg-bg-secondary-rice leading-none hover:bg-bg-tertiary-rice",
       )}
     >
       {children}

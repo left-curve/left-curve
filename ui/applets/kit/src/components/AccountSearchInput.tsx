@@ -80,7 +80,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
           {options.map(({ accountName, address }, i) => (
             <div
               onClick={() => [setInputValue(address), setShowMenu(false)]}
-              className="w-full px-3 py-2 hover:bg-rice-50 rounded-md text-left cursor-pointer"
+              className="w-full px-3 py-2 hover:bg-bg-tertiary-rice rounded-md text-left cursor-pointer"
               key={address}
             >
               <div className="flex items-center gap-4">

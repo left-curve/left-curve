@@ -111,7 +111,7 @@ const tabsVariants = tv({
       simple: {
         base: "text-tertiary-500 border-separate",
         header: "p-2 text-tertiary-500 diatype-xs-regular last:text-end",
-        cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-rice-50",
+        cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-bg-tertiary-rice",
         row: "rounded-xl group",
       },
     },

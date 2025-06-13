@@ -30,7 +30,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
               <span
                 className={twMerge(
                   "w-full h-[2px]  transition-all",
-                  i < activeStep ? "bg-red-bean-500" : "bg-gray-100",
+                  i < activeStep ? "bg-primary-red0" : "bg-gray-100",
                 )}
               />
             )}

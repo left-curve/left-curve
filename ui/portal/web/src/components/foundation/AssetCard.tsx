@@ -19,7 +19,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
-    <div className="flex items-center justify-between p-4 hover:bg-rice-50">
+    <div className="flex items-center justify-between p-4 hover:bg-bg-tertiary-rice">
       <div className="flex gap-2 items-center">
         {coinInfo.logoURI ? (
           <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />

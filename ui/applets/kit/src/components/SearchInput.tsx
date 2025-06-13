@@ -70,7 +70,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <button
               onClick={() => [setInputValue(value), setShowMenu(false)]}
               type="button"
-              className="w-full p-3 hover:bg-rice-50 rounded-md text-left"
+              className="w-full p-3 hover:bg-bg-tertiary-rice rounded-md text-left"
               key={key}
             >
               {cloneElement(OptionComponent as ReactElement, { children: key })}

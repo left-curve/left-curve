@@ -162,7 +162,7 @@ const ConnectMobileSection: React.FC = () => {
     <div className="flex w-full pr-2">
       <button
         type="button"
-        className="flex items-center justify-between pl-2 py-4 rounded-md hover:bg-rice-50 transition-all cursor-pointer w-full"
+        className="flex items-center justify-between pl-2 py-4 rounded-md hover:bg-bg-tertiary-rice transition-all cursor-pointer w-full"
         onClick={() => showModal(Modals.QRConnect)}
       >
         <span className="flex items-center justify-center gap-2">

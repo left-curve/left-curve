@@ -108,7 +108,7 @@ export const Item: React.FC<RadioProps> = ({
         initial={false}
         className={twMerge(
           "w-4 h-4 rounded-full flex items-center justify-center transition-all border-2",
-          isSelected ? "border-red-bean-500 bg-red-bean-500" : "border-gray-200 bg-transparent",
+          isSelected ? "border-red-bean-500 bg-primary-red0" : "border-gray-200 bg-transparent",
         )}
       >
         {isSelected && (

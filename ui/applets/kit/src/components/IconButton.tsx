@@ -124,7 +124,7 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "red",
-        class: "bg-red-bean-50 hover:bg-red-bean-100 text-red-bean-500",
+        class: "bg-primary-red hover:bg-red-bean-100 text-red-bean-500",
       },
       {
         variant: "secondary",
