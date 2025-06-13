@@ -12,19 +12,19 @@ pub struct Config {
 
 #[derive(Serialize, Deserialize)]
 pub struct GrugConfig {
-    pub wasm_cache_capacity: usize,
-    pub query_gas_limit: u64,
     pub archive_mode: bool,
     pub merklize_state: bool,
+    pub query_gas_limit: u64,
+    pub wasm_cache_capacity: usize,
 }
 
 impl Default for GrugConfig {
     fn default() -> Self {
         Self {
-            wasm_cache_capacity: 1000,
-            query_gas_limit: 100_000_000,
             archive_mode: false,
             merklize_state: false,
+            query_gas_limit: 100_000_000,
+            wasm_cache_capacity: 1000,
         }
     }
 }
