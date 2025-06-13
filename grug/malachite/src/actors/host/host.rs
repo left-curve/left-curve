@@ -463,6 +463,9 @@ impl Host {
 
         info!(value_id = %certificate.value_id, "Proposed block found");
 
+        // TODO: We should check if the pre_commit changes inside app
+        // has been calculated with the same block hash we are committing
+
         // Call commit
         self.app.commit()?;
 
