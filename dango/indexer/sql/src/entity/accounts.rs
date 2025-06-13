@@ -58,6 +58,20 @@ impl Model {
     }
 }
 
+impl Model {
+    // to avoid unused function warning when async-graphql feature is not enabled
+    #[allow(dead_code)]
+    pub async fn find_account_by_address(
+        db: &DatabaseConnection,
+        address: &str,
+    ) -> Result<Option<Self>, DbErr> {
+        Entity::find()
+            .filter(Column::Address.eq(address))
+            .one(db)
+            .await
+    }
+}
+
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(

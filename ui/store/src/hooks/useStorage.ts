@@ -92,7 +92,7 @@ export function useStorage<T = undefined>(
     (valOrFunc: T | ((t: T) => void)) => {
       const newState = (() => {
         if (typeof valOrFunc !== "function") return valOrFunc as T;
-        const { value } = storage.getItem(key) as { value: T };
+        const { value } = storage.getItem(key, { value: initialValue! }) as { value: T };
         return (valOrFunc as (prevState: T) => T)(value);
       })();
 

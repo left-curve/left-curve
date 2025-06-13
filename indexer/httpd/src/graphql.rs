@@ -78,7 +78,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         subscription::Subscription::default(),
     )
     .extension(AsyncGraphqlExtensions::Logger)
-    .extension(AsyncGraphqlExtensions::Tracing)
+    // .extension(AsyncGraphqlExtensions::Tracing)
     .extension(SentryExtension);
 
     #[cfg(feature = "metrics")]

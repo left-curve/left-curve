@@ -1490,8 +1490,6 @@ dependencies = [
  "static_assertions_next",
  "tempfile",
  "thiserror 1.0.69",
- "tracing",
- "tracing-futures",
  "url",
  "uuid",
 ]

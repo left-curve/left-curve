@@ -1,4 +1,5 @@
-import type { Address, Json } from "@left-curve/sdk/types";
+import type { Address, Json, UID } from "@left-curve/sdk/types";
+import type { AccountTypes } from "./account.js";
 
 export type IndexedBlock = {
   blockHeight: number;
@@ -9,6 +10,7 @@ export type IndexedBlock = {
 };
 
 export type IndexedTradeSideType = "BUY" | "SELL";
+
 export type IndexedTrade = {
   price: string;
   size: string;
@@ -49,6 +51,15 @@ export type IndexedTransferEvent = {
   blockHeight: number;
   amount: string;
   denom: string;
+};
+
+export type IndexedAccountEvent = {
+  id: UID;
+  accountIndex: number;
+  address: Address;
+  accountType: AccountTypes;
+  createdAt: string;
+  createdBlockHeight: number;
 };
 
 export type IndexedTransactionType = "CRON" | "TX";

@@ -1,8 +1,10 @@
 import type {
   Address,
+  IndexedAccountEvent,
   IndexedBlock,
   IndexedTransferEvent,
   PublicClient,
+  Username,
 } from "@left-curve/dango/types";
 
 export type SubscriptionSchema = [
@@ -15,6 +17,11 @@ export type SubscriptionSchema = [
     key: "transfer";
     params: { address: Address };
     listener: (event: IndexedTransferEvent) => void;
+  },
+  {
+    key: "account";
+    params: { username: Username; sinceBlockHeight?: number };
+    listener: (event: { accounts: IndexedAccountEvent[] }) => void;
   },
   {
     key: "submitTx";

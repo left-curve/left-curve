@@ -244,7 +244,8 @@ features = [
   "decimal",
   "log",
   "opentelemetry",
-  "tracing",
+  # see https://github.com/async-graphql/async-graphql/issues/1726
+  # "tracing",
   "unblock",
   "url",
   "uuid",

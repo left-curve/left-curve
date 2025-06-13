@@ -75,7 +75,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         Subscription::default(),
     )
     .extension(extensions::Logger)
-    .extension(extensions::Tracing)
+    // .extension(extensions::Tracing)
     .extension(SentryExtension)
     .extension(MetricsExtension)
     .data(app_ctx.db.clone())

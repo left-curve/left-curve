@@ -3,6 +3,7 @@ use {
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{Context, block_to_index::BlockToIndex, entity as main_entity},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
+    std::collections::HashMap,
     uuid::Uuid,
 };
 
@@ -44,6 +45,14 @@ impl Hooks {
                 })
                 .collect::<Vec<_>>();
 
+        let transactions_by_id = main_entity::transactions::Entity::find()
+            .filter(main_entity::transactions::Column::BlockHeight.eq(block.block.info.height))
+            .all(&context.db)
+            .await?
+            .into_iter()
+            .map(|t| (t.id, t))
+            .collect::<HashMap<_, _>>();
+
         #[cfg(feature = "tracing")]
         tracing::debug!(
             transfer_event_count = transfer_events.len(),
@@ -67,6 +76,12 @@ impl Hooks {
                                     id: Set(Uuid::new_v4()),
                                     idx: Set(idx),
                                     block_height: Set(te.block_height),
+                                    tx_hash: Set(te
+                                        .transaction_id
+                                        .and_then(|tx_id| {
+                                            transactions_by_id.get(&tx_id).map(|tx| tx.hash.clone())
+                                        })
+                                        .unwrap_or_default()),
                                     created_at: Set(te.created_at),
                                     from_address: Set(flat_transfer_event.sender.to_string()),
                                     to_address: Set(recipient.to_string()),

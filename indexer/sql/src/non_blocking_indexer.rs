@@ -562,6 +562,7 @@ where
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, "Can't save to db in `post_indexing`");
 
+                    sleep(Duration::from_millis(100));
                     continue;
                 }
 
