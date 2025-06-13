@@ -130,7 +130,7 @@
       "img": "/images/applets/account-creation.svg",
       "title": "Subaccount creation",
       "description": "Create subaccounts.",
-      "path": "/create-account",
+      "path": "/account/create",
       "keywords": "account,create,register"
     },
     "5": {
@@ -456,6 +456,9 @@
             }
           ]
         }
+      },
+      "account": {
+        "title": "{accountType} Account Created"
       }
     }
   },
