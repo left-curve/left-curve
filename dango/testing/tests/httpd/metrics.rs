@@ -12,8 +12,8 @@ use {
 };
 
 #[tokio::test]
-async fn graphql_returns_config() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
+async fn metrics_are_available() -> anyhow::Result<()> {
+    setup_tracing_subscriber(tracing::Level::ERROR);
 
     let metrics_handler = PrometheusBuilder::new().install_recorder()?;
 
@@ -59,6 +59,19 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
     let res = client.query_app_config::<AppConfig>(None).await;
 
     assert_that!(res).is_ok();
+
+    let metrics_client = reqwest::Client::new();
+    let metrics_response = metrics_client
+        .get(format!("http://localhost:{metrics_port}/metrics"))
+        .send()
+        .await?;
+
+    let metrics_body = metrics_response.text().await?;
+    // Uncomment the line below to print the metrics response for debugging
+    // println!("Metrics response:\n{}", metrics_body);
+
+    assert_that!(metrics_body).contains("graphql_requests_total");
+    assert_that!(metrics_body).contains("http_requests_total");
 
     Ok(())
 }

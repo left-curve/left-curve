@@ -10,7 +10,7 @@ use {
 
 #[tokio::test]
 async fn graphql_returns_config() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::INFO);
+    setup_tracing_subscriber(tracing::Level::ERROR);
 
     let port = get_mock_socket_addr();
 

@@ -49,7 +49,7 @@ criterion                   = { workspace = true }
 dango-account-factory       = { workspace = true, features = ["library"] }
 dango-auth                  = { workspace = true }
 dango-gateway               = { workspace = true, features = ["library"] }
-dango-httpd                 = { workspace = true }
+dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-lending               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
