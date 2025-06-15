@@ -11,6 +11,7 @@ version       = { workspace = true }
 
 [features]
 async-graphql = ["dep:actix-web", "dep:async-graphql", "grug-types/async-graphql"]
+metrics       = ["dep:metrics"]
 testing       = []
 tracing       = ["dep:tracing"]
 
@@ -29,6 +30,7 @@ grug-types                  = { workspace = true, features = ["chrono"] }
 indexer-disk-saver          = { workspace = true }
 indexer-sql                 = { workspace = true }
 itertools                   = { workspace = true }
+metrics                     = { workspace = true, optional = true }
 sea-orm                     = { workspace = true }
 serde                       = { workspace = true }
 serde_json                  = { workspace = true }
