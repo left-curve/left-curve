@@ -3534,6 +3534,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "metrics",
  "prost",
  "pyth-client",
  "pyth-types",
