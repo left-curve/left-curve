@@ -22,8 +22,8 @@ colored_json                = { workspace = true }
 config-parser               = { workspace = true }
 dango-client                = { workspace = true }
 dango-genesis               = { workspace = true }
-dango-httpd                 = { workspace = true }
-dango-indexer-sql           = { workspace = true, features = ["async-graphql", "tracing"] }
+dango-httpd                 = { workspace = true, features = ["metrics"] }
+dango-indexer-sql           = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true }
 dango-types                 = { workspace = true }
 data-encoding               = { workspace = true }

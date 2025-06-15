@@ -10,7 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dep:metrics", "indexer-httpd/metrics"]
+metrics = ["dep:metrics", "indexer-httpd/metrics", "indexer-sql/metrics"]
 
 [dependencies]
 actix-web               = { workspace = true }
