@@ -10,6 +10,20 @@ export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
       colors: {
+        "bg-primary-rice": "var(--color-bg-primary-rice)",
+        "bg-secondary-rice": "var(--color-bg-secondary-rice)",
+        "bg-tertiary-rice": "var(--color-bg-tertiary-rice)",
+        primary: {
+          red: "var(--color-primary-red)",
+          rice: "var(--color-primary-rice)",
+          "900": "var(--color-primary-900)",
+        },
+        secondary: {
+          "700": "var(--color-secondary-700)",
+        },
+        tertiary: {
+          "500": "var(--color-tertiary-500)",
+        },
         transparent: "transparent",
         status: {
           success: "#25B12A",
@@ -122,8 +136,7 @@ export const tailwindConfig: Partial<Config> = {
       boxShadow: {
         "card-shadow":
           "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
-        "account-card":
-          "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5)",
+        "account-card": "var(--shadow-card)",
         "btn-shadow-gradient":
           "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
         "btn-shadow-disabled":
@@ -145,8 +158,7 @@ export const tailwindConfig: Partial<Config> = {
         full: "9999px",
       },
       backgroundImage: {
-        "account-card-red":
-          "linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%)",
+        "account-card-red": "var(--color-bg-card-red)",
         "account-card-blue":
           "linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%)",
         "account-card-green":
