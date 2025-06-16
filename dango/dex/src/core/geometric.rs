@@ -87,21 +87,30 @@ pub fn swap_exact_amount_in(
 
     // Construct the market order iterator.
     let mut market_orders = vec![(1u64, MarketOrder {
-                user: Addr::mock(0), // Won't be used. Only used when processing the filling outcomes in cron_execute which will not be called here.
-                amount: input.amount,
-                max_slippage: Udec128::new_permille(999), // Slippage control is implemented in the top level swap_exact_amount_in function. We allow maximum slippage here to simply get an out amount. The swap will be failed on top level if the slippage is too high.
-            })]
-            .into_iter()
-            .peekable();
+        // Won't be used. Only used when processing the filling outcomes in
+        // `cron_execute` which will not be called here.
+        user: Addr::mock(0),
+        amount: input.amount,
+        // Slippage control is implemented in the top level `swap_exact_amount_in`
+        // function. We allow maximum slippage here to simply get an out amount.
+        // The swap will be failed on top level if the slippage is too high.
+        max_slippage: Udec128::new_permille(999),
+    })]
+    .into_iter()
+    .peekable();
 
     // Match and fill the market order with the passive orders.
     let filling_outcomes = market_order::match_and_fill_market_orders(
         &mut market_orders,
         &mut passive_orders,
         order_direction,
-        Udec128::ZERO, /* Setting fee rates to zero to just get the result of the pure matching. Swap fee is applied later. */
-        Udec128::ZERO, /* Setting fee rates to zero to just get the result of the pure matching. Swap fee is applied later. */
-        0,             // Both maker and taker.
+        // Setting fee rates to zero to just get the result of the pure matching. Swap fee is applied later.
+        Udec128::ZERO,
+        Udec128::ZERO,
+        // This parameter is used to determine whether a limit order is a maker
+        // or a taker order. This isn't relevant here, as we're matching against
+        // the passive pool orders, which don't pay maker/taker fees.
+        0,
     )?;
 
     // Get the output amount from the filling outcomes.
