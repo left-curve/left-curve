@@ -3289,7 +3289,7 @@ dependencies = [
  "futures",
  "grug-app",
  "grug-client",
- "grug-db-disk",
+ "grug-db-disk-lite",
  "grug-types",
  "grug-vm-hybrid",
  "hex",
@@ -3535,7 +3535,7 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-crypto",
- "grug-db-disk",
+ "grug-db-disk-lite",
  "grug-db-memory",
  "grug-testing",
  "grug-vm-hybrid",
@@ -3562,6 +3562,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "temp-rocksdb",
  "test-case",
  "tokio",
  "tracing",
@@ -4621,6 +4622,19 @@ dependencies = [
  "ics23",
  "proptest",
  "rocksdb",
+ "temp-rocksdb",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "grug-db-disk-lite"
+version = "0.0.0"
+dependencies = [
+ "grug-app",
+ "grug-types",
+ "rocksdb",
+ "sha2 0.10.9",
+ "temp-rocksdb",
  "tempfile",
  "thiserror 2.0.12",
 ]
@@ -9358,6 +9372,14 @@ name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
+
+[[package]]
+name = "temp-rocksdb"
+version = "0.0.0"
+dependencies = [
+ "rocksdb",
+ "tempfile",
+]
 
 [[package]]
 name = "tempfile"

@@ -28,6 +28,7 @@ members = [
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
+  "grug/db/disk-lite",
   "grug/db/memory",
   "grug/ffi",
   "grug/jellyfish-merkle",
@@ -57,6 +58,7 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/temp-rocksdb",
 ]
 resolver = "2"
 
@@ -152,6 +154,7 @@ sqlx                    = "0.8"
 strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
+temp-rocksdb            = { path = "utils/temp-rocksdb" }
 tempfile                = "3"
 tendermint              = "0.40.4"
 tendermint-rpc          = "0.40.4"
@@ -201,6 +204,7 @@ grug-auth                   = { path = "grug/auth" }
 grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
+grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
 grug-ffi                    = { path = "grug/ffi" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
