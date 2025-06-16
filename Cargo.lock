@@ -4626,6 +4626,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-db-disk-lite"
+version = "0.0.0"
+dependencies = [
+ "grug-app",
+ "grug-types",
+ "rocksdb",
+ "sha2 0.10.9",
+ "temp-rocksdb",
+ "tempfile",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "grug-db-memory"
 version = "0.0.0"
 dependencies = [

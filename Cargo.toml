@@ -28,6 +28,7 @@ members = [
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
+  "grug/db/disk-lite",
   "grug/db/memory",
   "grug/ffi",
   "grug/jellyfish-merkle",
@@ -203,6 +204,7 @@ grug-auth                   = { path = "grug/auth" }
 grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
+grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
 grug-ffi                    = { path = "grug/ffi" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
