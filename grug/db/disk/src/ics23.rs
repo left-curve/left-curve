@@ -90,11 +90,11 @@ impl IbcDb for DiskDb {
 mod tests {
     use {
         super::*,
-        crate::TempDataDir,
         grug_types::{Batch, Op},
         ics23::HostFunctionsManager,
         proptest::prelude::*,
         std::collections::BTreeMap,
+        temp_rocksdb::TempDataDir,
     };
 
     #[test]
