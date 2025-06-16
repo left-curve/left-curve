@@ -10,30 +10,11 @@ log_level = "info"
 
 [grug]
 
-# Whether to enable archive on the database.
-#
-# Under archive mode, application states of historical block heights are
-# preserved. This allows for querying the chain at historical heights, which can
-# be useful for some use cases. As a tradeoff, disk usage is significantly
-# higher, and disk reads (especially iterations) are slower.
-#
-# You may choose to prune states of older heights using the CLI command:
-#
-# ```bash
-# dango db prune [up-to-height]
-# ```
-#
-# Under non-archive mode, only the state of the latest height is preserved.
-#
-# It's important to note that a database with archive mode is NOT compatible
-# with one with non-archive mode. They come with different formats.
-archive_mode = false
+# Capacity of the wasm module cache; zero means to not use a cache.
+wasm_cache_capacity = 1000
 
 # Gas limit when serving query requests.
 query_gas_limit = 100000000
-
-# Capacity of the wasm module cache; zero means to not use a cache.
-wasm_cache_capacity = 1000
 
 ################################################################################
 ###                          Indexer Configuration                           ###
