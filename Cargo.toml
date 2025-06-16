@@ -57,6 +57,7 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/temp-rocksdb",
 ]
 resolver = "2"
 
@@ -152,6 +153,7 @@ sqlx                    = "0.8"
 strum                   = "0.27"
 strum_macros            = "0.27"
 syn                     = "2"
+temp-rocksdb            = { path = "utils/temp-rocksdb" }
 tempfile                = "3"
 tendermint              = "0.40.4"
 tendermint-rpc          = "0.40.4"
