@@ -1,7 +1,5 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{
-    ComplexObject, Context, ErrorExtensions, Result as GraphQLResult, SimpleObject,
-};
+use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
 use {
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
@@ -54,35 +52,19 @@ impl Model {
     pub async fn from_account(
         &self,
         ctx: &Context<'_>,
-    ) -> GraphQLResult<crate::entity::accounts::Model> {
+    ) -> GraphQLResult<Option<crate::entity::accounts::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        crate::entity::accounts::Model::find_account_by_address(db, &self.from_address)
-            .await?
-            .ok_or_else(|| {
-                async_graphql::Error::new(format!(
-                    "account with address {} not found. This is not expected.",
-                    self.from_address
-                ))
-                .extend_with(|_err, e| e.set("code", "NOT_FOUND"))
-            })
+        Ok(crate::entity::accounts::Model::find_account_by_address(db, &self.from_address).await?)
     }
 
     pub async fn to_account(
         &self,
         ctx: &Context<'_>,
-    ) -> GraphQLResult<crate::entity::accounts::Model> {
+    ) -> GraphQLResult<Option<crate::entity::accounts::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        crate::entity::accounts::Model::find_account_by_address(db, &self.to_address)
-            .await?
-            .ok_or_else(|| {
-                async_graphql::Error::new(format!(
-                    "account with address {} not found. This is not expected.",
-                    self.to_address
-                ))
-                .extend_with(|_err, e| e.set("code", "NOT_FOUND"))
-            })
+        Ok(crate::entity::accounts::Model::find_account_by_address(db, &self.to_address).await?)
     }
 }
 

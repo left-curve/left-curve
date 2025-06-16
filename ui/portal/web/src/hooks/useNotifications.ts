@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { uid } from "@left-curve/dango/utils";
 import { format, isToday } from "date-fns";
 
-import type { AccountTypes, Address, UID, Username } from "@left-curve/dango/types";
+import type { AccountTypes, Address, Hex, UID, Username } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 
 export type Notifications = {
@@ -14,6 +14,7 @@ export type Notifications = {
     coin: AnyCoin;
     fromAddress: Address;
     toAddress: Address;
+    txHash: Hex;
     type: "received" | "sent";
   };
   account: {
@@ -125,7 +126,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     const sinceBlockHeight = lastKnownBlockHeight + 1;
 
     const unsubscribeAccount = subscriptions.subscribe("account", {
-      params: { username, sinceBlockHeight },
+      params: { username },
       listener: ({ accounts }) => {
         for (const account of accounts) {
           const { address, accountType, accountIndex, createdAt, createdBlockHeight } = account;
@@ -148,28 +149,32 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     });
 
     const unsubscribeTransfer = subscriptions.subscribe("transfer", {
-      params: { address: account.address },
-      listener: (transfer) => {
-        const { fromAddress, toAddress, amount, createdAt, blockHeight } = transfer;
-        const coin = coins[transfer.denom];
-        const isSent = accounts?.some((a) => a.address === fromAddress);
+      params: { username },
+      listener: ({ transfers }) => {
+        for (const transfer of transfers) {
+          const { id, fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
+            transfer;
 
-        const notification = {
-          amount,
-          createdAt,
-          fromAddress,
-          toAddress,
-          type: isSent ? "sent" : "received",
-          coin,
-        } as const;
+          const coin = coins[denom];
 
-        addNotification({
-          id: uid(),
-          type: "transfer",
-          data: notification,
-          blockHeight,
-          createdAt,
-        });
+          const notification = {
+            createdAt,
+            amount,
+            txHash,
+            coin,
+            fromAddress,
+            toAddress,
+            type: fromAddress === account.address ? "sent" : "received",
+          } as const;
+
+          addNotification({
+            id,
+            type: "transfer",
+            data: notification,
+            blockHeight,
+            createdAt,
+          });
+        }
       },
     });
 

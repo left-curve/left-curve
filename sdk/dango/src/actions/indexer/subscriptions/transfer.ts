@@ -2,28 +2,24 @@ import type {
   Chain,
   Client,
   IndexedTransferEvent,
-  OneRequired,
   Signer,
   SubscriptionCallbacks,
   Transport,
 } from "#types/index.js";
 
-export type TransferSubscriptionParameters = SubscriptionCallbacks<
-  OneRequired<
-    { sentTransfers: IndexedTransferEvent[]; receivedTransfers: IndexedTransferEvent[] },
-    "sentTransfers",
-    "receivedTransfers"
-  >
-> & {
-  address: string;
+export type TransferSubscriptionParameters = SubscriptionCallbacks<{
+  transfers: IndexedTransferEvent[];
+}> & {
+  username: string;
+  sinceBlockHeight?: number;
 };
 
 export type TransferSubscriptionReturnType = () => void;
 
 /**
- * @description Subscribes to transfer events for a specific address.
+ * @description Subscribes to transfer events for a specific username.
  * @param client - The client instance to use for the subscription.
- * @param parameters - The parameters for the subscription, including the address and callbacks.
+ * @param parameters - The parameters for the subscription, including the username and callbacks.
  * @returns A function to unsubscribe from the transfer events.
  */
 export function transferSubscription<
@@ -35,28 +31,22 @@ export function transferSubscription<
 ): TransferSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
-  const { address, ...callbacks } = parameters;
+  const { username, sinceBlockHeight, ...callbacks } = parameters;
 
   const query = /* GraphQL */ `
-    subscription ($address: String) {
-      sentTransfers: transfers(fromAddress: $address) {
-        fromAddress
-        toAddress
-        createdAt
-        blockHeight
+    subscription ($username: String, $sinceBlockHeight: Int) {
+      transfers(username: $username, sinceBlockHeight: $sinceBlockHeight) {
+        id
+        txHash
         amount
         denom
-      }
-      receivedTransfers: transfers(toAddress: $address) {
-        fromAddress
-        toAddress
         createdAt
         blockHeight
-        amount
-        denom
+        fromAddress
+        toAddress
       }
     }
   `;
 
-  return client.subscribe({ query, variables: { address } }, callbacks);
+  return client.subscribe({ query, variables: { username, sinceBlockHeight } }, callbacks);
 }

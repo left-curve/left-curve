@@ -60,7 +60,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   const navigate = useNavigate();
   const { settings, setNotificationMenuVisibility } = useApp();
   const { deleteNotification } = useNotifications();
-  const { coin, type, fromAddress, toAddress, amount } = notification.data;
+  const { coin, type, fromAddress, toAddress, amount, txHash } = notification.data;
   const { formatNumberOptions } = settings;
   const isSent = type === "sent";
 
@@ -76,7 +76,16 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
 
   return (
     <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100 max-w-full group">
-      <div className="flex items-start gap-2 max-w-full overflow-hidden">
+      <div
+        className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer"
+        onClick={(event) => {
+          const element = event.target as HTMLElement;
+          if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
+            return;
+          }
+          onNavigate(`/tx/${txHash}`);
+        }}
+      >
         <IconInfo className="text-gray-700 w-5 h-5 flex-shrink-0" />
 
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
@@ -96,20 +105,30 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
               <span>
                 {m["notifications.notification.transfer.direction.first"]({ direction: type })}
               </span>
-              <AddressVisualizer address={originAddress} withIcon onClick={onNavigate} />
+              <AddressVisualizer
+                classNames={{ container: "address-visualizer" }}
+                address={originAddress}
+                withIcon
+                onClick={onNavigate}
+              />
             </div>
             <div className="flex flex-wrap items-center gap-1">
               <span>
                 {m["notifications.notification.transfer.direction.second"]({ direction: type })}
               </span>
-              <AddressVisualizer address={targetAddress} withIcon onClick={onNavigate} />{" "}
+              <AddressVisualizer
+                classNames={{ container: "address-visualizer" }}
+                address={targetAddress}
+                withIcon
+                onClick={onNavigate}
+              />{" "}
             </div>
           </div>
         </div>
       </div>
       <div className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative">
         <IconClose
-          className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px]"
+          className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px] remove-notification"
           onClick={() => deleteNotification(notification.id)}
         />
         <p>{formatNotificationTimestamp(new Date(notification.createdAt))}</p>

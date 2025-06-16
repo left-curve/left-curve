@@ -1,5 +1,4 @@
 import type {
-  Address,
   IndexedAccountEvent,
   IndexedBlock,
   IndexedTransferEvent,
@@ -15,8 +14,8 @@ export type SubscriptionSchema = [
   },
   {
     key: "transfer";
-    params: { address: Address };
-    listener: (event: IndexedTransferEvent) => void;
+    params: { username: Username; sinceBlockHeight?: number };
+    listener: (event: { transfers: IndexedTransferEvent[] }) => void;
   },
   {
     key: "account";
