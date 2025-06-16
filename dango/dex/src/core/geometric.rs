@@ -122,7 +122,7 @@ pub fn swap_exact_amount_in(
             Direction::Ask => outcome.refund_quote,
         })
         .ok_or(anyhow!(
-            "failed to match market order in swap_exact_amount_in"
+            "failed to match market order in `swap_exact_amount_in`"
         ))?;
 
     Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - swap_fee_rate.into_inner())?)
