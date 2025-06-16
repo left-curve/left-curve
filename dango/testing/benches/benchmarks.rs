@@ -7,7 +7,6 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
-        constants::dango,
     },
     grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
@@ -52,7 +51,7 @@ where
                     )),
                 },
                 if i < 100 {
-                    Coins::one(dango::DENOM.clone(), 123).unwrap()
+                    Coins::one("uusdc", 100_000_000).unwrap()
                 } else {
                     Coins::new()
                 },
@@ -91,8 +90,7 @@ where
             );
 
             // Sign the transaction.
-            let msg = Message::transfer(receiver, Coins::one(dango::DENOM.clone(), 123).unwrap())
-                .unwrap();
+            let msg = Message::transfer(receiver, Coins::one("uusdc", 123).unwrap()).unwrap();
 
             let (data, credential) = accounts
                 .owner
@@ -131,8 +129,7 @@ fn sends(c: &mut Criterion) {
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, accounts, codes, contracts, _) =
-                    setup_benchmark_wasm(&dir, false, 100);
+                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_wasm(&dir, 100);
 
                 let txs = do_send(&mut suite, accounts, codes, contracts);
 
@@ -157,8 +154,7 @@ fn sends(c: &mut Criterion) {
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, accounts, codes, contracts, _) =
-                    setup_benchmark_hybrid(&dir, true, 100);
+                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_hybrid(&dir, 100);
 
                 let txs = do_send(&mut suite, accounts, codes, contracts);
 

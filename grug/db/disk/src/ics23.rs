@@ -32,14 +32,6 @@ impl IbcDb for DiskDb {
             })
         };
 
-        let new_read_options = || {
-            if self.archive_mode {
-                new_read_options(Some(version), None, None)
-            } else {
-                new_read_options(None, None, None)
-            }
-        };
-
         let proof = match state_storage.read(&key) {
             // Value is found. Generate an ICS-23 existence proof.
             Some(value) => CommitmentProofInner::Exist(generate_existence_proof(key, value)?),
@@ -56,7 +48,7 @@ impl IbcDb for DiskDb {
                 let cf = cf_preimages(&self.inner.db);
                 let key_hash = key.hash256();
 
-                let opts = new_read_options();
+                let opts = new_read_options(Some(version), None, None);
                 let mode = IteratorMode::From(&key_hash, Direction::Reverse);
                 let left = self
                     .inner
@@ -70,7 +62,7 @@ impl IbcDb for DiskDb {
                     })
                     .transpose()?;
 
-                let opts = new_read_options();
+                let opts = new_read_options(Some(version), None, None);
                 let mode = IteratorMode::From(&key_hash, Direction::Forward);
                 let right = self
                     .inner
@@ -108,7 +100,7 @@ mod tests {
     #[test]
     fn ics23_prove_works() {
         let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
-        let db = DiskDb::open(&path, false).unwrap();
+        let db = DiskDb::open(&path).unwrap();
 
         // Same test data as used in JMT crate.
         let (_, maybe_root) = db
@@ -182,7 +174,7 @@ mod tests {
     #[test]
     fn ics23_prove_after_deletion() {
         let path = TempDataDir::new("__grug_disk_db_ics23_prove_after_deletion");
-        let db = DiskDb::open(&path, false).unwrap();
+        let db = DiskDb::open(&path).unwrap();
 
         // Apply batch at version 0.
         let _ = db
@@ -226,7 +218,7 @@ mod tests {
             deletes2 in prop::collection::vec(any::<prop::sample::Selector>(), 0..50)
         ) {
             let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
-            let db = DiskDb::open(&path, true).unwrap();
+            let db = DiskDb::open(&path).unwrap();
             let mut state = BTreeMap::new();
 
             // --------------------------- version 0 ---------------------------

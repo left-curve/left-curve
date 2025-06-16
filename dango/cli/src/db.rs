@@ -1,10 +1,6 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory},
-    clap::Subcommand,
-    colored::Colorize,
-    grug_app::PrunableDb,
-    grug_db_disk::DiskDb,
-    std::fs,
+    crate::home_directory::HomeDirectory, clap::Subcommand, colored::Colorize,
+    grug_app::PrunableDb, grug_db_disk::DiskDb, std::fs,
 };
 
 #[derive(Subcommand)]
@@ -26,7 +22,7 @@ pub enum DbCmd {
 }
 
 impl DbCmd {
-    pub fn run(self, dir: HomeDirectory, cfg: Config) -> anyhow::Result<()> {
+    pub fn run(self, dir: HomeDirectory) -> anyhow::Result<()> {
         let data_dir = dir.data_dir();
 
         if !data_dir.exists() {
@@ -46,9 +42,7 @@ impl DbCmd {
                     )?;
                 }
 
-                let db = DiskDb::open(data_dir, cfg.grug.archive_mode)?;
-
-                Ok(db.prune(up_to_version)?)
+                Ok(DiskDb::open(data_dir)?.prune(up_to_version)?)
             },
             DbCmd::Reset { yes } => {
                 if !yes {
