@@ -1,4 +1,5 @@
 use {
+    anyhow::bail,
     dango_oracle::OracleQuerier,
     grug::{
         Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult,
@@ -67,6 +68,7 @@ pub fn swap_exact_amount_in(
     Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)?)
 }
 
+// NOTE: Always round down (floor) the output amount; always round up (ceil) the input amount.
 fn bid_exact_amount_in(
     bid_amount_in_quote: Uint128,
     passive_asks: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
@@ -75,18 +77,19 @@ fn bid_exact_amount_in(
     let mut output_amount = Uint128::ZERO;
 
     for (price, size) in passive_asks {
-        let matched_amount = cmp::min(size, remaining_bid_in_quote.checked_div_dec_floor(price)?);
+        let remaining_bid = remaining_bid_in_quote.checked_div_dec_floor(price)?;
+        let matched_amount = cmp::min(size, remaining_bid);
         output_amount.checked_add_assign(matched_amount)?;
 
         let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
         remaining_bid_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
         if remaining_bid_in_quote.is_zero() {
-            break;
+            return Ok(output_amount);
         }
     }
 
-    Ok(output_amount)
+    bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_bid_in_quote}");
 }
 
 fn ask_exact_amount_in(
@@ -104,11 +107,11 @@ fn ask_exact_amount_in(
         output_amount_in_quote.checked_add_assign(matched_amount_in_quote)?;
 
         if remaining_ask.is_zero() {
-            break;
+            return Ok(output_amount_in_quote);
         }
     }
 
-    Ok(output_amount_in_quote)
+    bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_ask}")
 }
 
 pub fn swap_exact_amount_out() -> StdResult<Uint128> {
