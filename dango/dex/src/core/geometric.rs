@@ -50,7 +50,10 @@ pub fn swap_exact_amount_in(
     } else if quote_denom == input.denom {
         Direction::Bid
     } else {
-        return Err(anyhow!("error"));
+        unreachable!(
+            "input denom (`{}`) is neither the base denom (`{}`) nor the quote denom (`{}`)",
+            input.denom, base_denom, quote_denom
+        );
     };
 
     // Reflect the curve
