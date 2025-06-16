@@ -335,7 +335,8 @@ mod tests {
             constants::{eth, usdc},
             oracle::PrecisionedPrice,
         },
-        grug::{Bounded, Coins, Inner, coin_pair, coins},
+        grug::{Bounded, Coins, Inner, coin_pair, coins, hash_map},
+        std::collections::HashMap,
         test_case::test_case,
     };
 
@@ -536,30 +537,20 @@ mod tests {
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         // TODO: Take prices as input to the test.
-        let mut oracle_querier = OracleQuerier::new_mock(
-            vec![
-                (
-                    eth::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-                (
-                    usdc::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        });
 
         let reserve = pool_liquidity.try_into().unwrap();
         let (bids, asks) = pair
@@ -612,30 +603,20 @@ mod tests {
         .unwrap();
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
-        let mut oracle_querier = OracleQuerier::new_mock(
-            vec![
-                (
-                    eth::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-                (
-                    usdc::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        );
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        });
 
         let (bids, asks) = pair
             .reflect_curve(
@@ -672,26 +653,20 @@ mod tests {
             eth::DENOM.clone() => 10000000,
             usdc::DENOM.clone() => 10000000,
         },
-        vec![
-                (
-                    eth::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-                (
-                    usdc::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-        ],
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        },
         Udec128::new_percent(1),
         Coin::new(eth::DENOM.clone(), 5000000).unwrap(),
         Coin::new(usdc::DENOM.clone(), 4900500).unwrap(),
@@ -710,26 +685,20 @@ mod tests {
             eth::DENOM.clone() => 10000000,
             usdc::DENOM.clone() => 10000000,
         },
-        vec![
-                (
-                    eth::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-                (
-                    usdc::DENOM.clone(),
-                    PrecisionedPrice::new(
-                        Udec128::new_percent(100),
-                        Udec128::new_percent(100),
-                        1730802926,
-                        6,
-                    ),
-                ),
-        ],
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        },
         Udec128::new_percent(1),
         Coin::new(usdc::DENOM.clone(), 5000000).unwrap(),
         Coin::new(eth::DENOM.clone(), 4900990).unwrap(),
@@ -742,7 +711,7 @@ mod tests {
     fn swap_exact_amount_in(
         pool_type: PassiveLiquidity,
         reserve: CoinPair,
-        oracle_prices: Vec<(Denom, PrecisionedPrice)>,
+        oracle_prices: HashMap<Denom, PrecisionedPrice>,
         fee_rate: Udec128,
         input: Coin,
         expected_output: Coin,
@@ -755,7 +724,7 @@ mod tests {
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
-        let mut oracle_querier = OracleQuerier::new_mock(oracle_prices.into_iter().collect());
+        let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
 
         let (reserve, output) = pair
             .swap_exact_amount_in(

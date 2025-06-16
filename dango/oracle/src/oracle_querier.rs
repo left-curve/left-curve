@@ -188,46 +188,52 @@ impl<'a> RemoteLending<'a> {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-    use dango_types::constants::usdc;
-
-    use super::*;
-
-    use {dango_types::constants::eth, test_case::test_case};
+    use {
+        super::*,
+        dango_types::constants::{eth, usdc},
+        grug::{ResultExt, hash_map},
+        test_case::test_case,
+    };
 
     #[test_case(
-        vec![(eth::DENOM.clone(), PrecisionedPrice::new(
-            Udec128::new_percent(2000),
-            Udec128::new_percent(2000),
-            1730802926,
-            6,
-        ))];
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(2000),
+                Udec128::new_percent(2000),
+                1730802926,
+                6,
+            ),
+        };
         "mock with one price"
     )]
     #[test_case(
-        vec![
-            (eth::DENOM.clone(), PrecisionedPrice::new(
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(2000),
                 Udec128::new_percent(2000),
                 1730802926,
                 6,
-            )),
-            (usdc::DENOM.clone(), PrecisionedPrice::new(
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(1000),
                 Udec128::new_percent(1000),
                 1730802926,
                 6,
-            )),
-        ];
+            ),
+        };
         "mock with two prices"
     )]
-    fn test_mock(prices: Vec<(Denom, PrecisionedPrice)>) {
-        let mut oracle_querier = OracleQuerier::new_mock(prices.clone().into_iter().collect());
+    fn test_mock(prices: HashMap<Denom, PrecisionedPrice>) {
+        let mut oracle_querier = OracleQuerier::new_mock(prices.clone());
 
         for (denom, expected_price) in prices {
-            let price = oracle_querier.query_price(&denom, None).unwrap();
-            assert_eq!(price, expected_price);
+            oracle_querier
+                .query_price(&denom, None)
+                .should_succeed_and_equal(expected_price);
         }
     }
 
@@ -235,7 +241,11 @@ mod tests {
     fn test_mock_querier_with_no_prices() {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
-        let error = oracle_querier.query_price(&eth::DENOM, None).unwrap_err();
-        assert_eq!(error.to_string(), "price not found");
+        oracle_querier
+            .query_price(&eth::DENOM, None)
+            .should_fail_with_error(format!(
+                "price not provided to oracle querier for denom `{}`",
+                eth::DENOM.clone()
+            ));
     }
 }
