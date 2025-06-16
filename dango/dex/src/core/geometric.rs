@@ -45,7 +45,7 @@ pub fn swap_exact_amount_in(
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<Uint128> {
-    let order_direction = if base_denom == input.denom {
+    let market_order_direction = if base_denom == input.denom {
         Direction::Ask
     } else if quote_denom == input.denom {
         Direction::Bid
@@ -68,7 +68,7 @@ pub fn swap_exact_amount_in(
     )?;
 
     // Construct the passive orders iterator. Asks for a bid, and bids for an ask.
-    let mut passive_orders = match order_direction {
+    let mut passive_orders = match market_order_direction {
         Direction::Bid => MergedOrders::new(
             Box::new(iter::empty()),
             passive_asks,
@@ -103,7 +103,7 @@ pub fn swap_exact_amount_in(
     let filling_outcomes = market_order::match_and_fill_market_orders(
         &mut market_orders,
         &mut passive_orders,
-        order_direction,
+        market_order_direction,
         // Setting fee rates to zero to just get the result of the pure matching. Swap fee is applied later.
         Udec128::ZERO,
         Udec128::ZERO,
@@ -117,7 +117,7 @@ pub fn swap_exact_amount_in(
     let output_amount = filling_outcomes
         .iter()
         .find(|outcome| outcome.order_id == 1u64)
-        .map(|outcome| match order_direction {
+        .map(|outcome| match market_order_direction {
             Direction::Bid => outcome.refund_base,
             Direction::Ask => outcome.refund_quote,
         })
