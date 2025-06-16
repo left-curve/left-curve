@@ -13,19 +13,6 @@ use {
 
 const GEOMETRIC_POOL_INITIAL_MINT_MULTIPLIER: Uint128 = Uint128::new(1000000);
 
-fn oracle_value(
-    oracle_querier: &mut OracleQuerier,
-    coin_pair: &CoinPair,
-) -> anyhow::Result<Udec128> {
-    let first_value = oracle_querier
-        .query_price(coin_pair.first().denom, None)?
-        .value_of_unit_amount(*coin_pair.first().amount)?;
-    let second_value = oracle_querier
-        .query_price(coin_pair.second().denom, None)?
-        .value_of_unit_amount(*coin_pair.second().amount)?;
-    Ok(first_value.checked_add(second_value)?)
-}
-
 pub fn add_initial_liquidity(
     oracle_querier: &mut OracleQuerier,
     deposit: &CoinPair,
@@ -97,9 +84,9 @@ pub fn swap_exact_amount_in(
 
     // Construct the market order iterator.
     let mut market_orders = vec![(1u64, MarketOrder {
-                user: Addr::mock(0), // Won't be used. Only used when processing the filling outcomes in cron_execute which will not be called here. 
+                user: Addr::mock(0), // Won't be used. Only used when processing the filling outcomes in cron_execute which will not be called here.
                 amount: input.amount,
-                max_slippage: Udec128::new_permille(999), // Slippage control is implemented in the top level swap_exact_amount_in function. We allow maximum slippage here to simply get an out amount. The swap will be failed on top level if the slippage is too high. 
+                max_slippage: Udec128::new_permille(999), // Slippage control is implemented in the top level swap_exact_amount_in function. We allow maximum slippage here to simply get an out amount. The swap will be failed on top level if the slippage is too high.
             })]
             .into_iter()
             .peekable();
@@ -201,4 +188,19 @@ pub fn reflect_curve(
     };
 
     Ok((Box::new(bids), Box::new(asks)))
+}
+
+fn oracle_value(
+    oracle_querier: &mut OracleQuerier,
+    coin_pair: &CoinPair,
+) -> anyhow::Result<Udec128> {
+    let first = coin_pair.first();
+    let first_price = oracle_querier.query_price(first.denom, None)?;
+    let first_value = first_price.value_of_unit_amount(*first.amount)?;
+
+    let second = coin_pair.second();
+    let second_price = oracle_querier.query_price(second.denom, None)?;
+    let second_value = second_price.value_of_unit_amount(*second.amount)?;
+
+    Ok(first_value.checked_add(second_value)?)
 }
