@@ -122,6 +122,11 @@ export type {
   SwapRoute,
   PairParams,
   PairUpdate,
+  CancelOrderRequest,
+  CreateLimitOrderRequest,
+  CreateMarketOrderRequest,
+  GetDexMsg,
+  OrderId,
 } from "./dex.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";

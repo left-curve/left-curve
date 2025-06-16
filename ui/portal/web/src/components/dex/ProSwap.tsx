@@ -21,6 +21,7 @@ import type { AnyCoin } from "@left-curve/store/types";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
+import { useAccount, useSigningClient } from "@left-curve/store";
 import { mockOpenOrder } from "~/mock";
 
 const [ProSwapProvider, useProSwap] = createContext<any>({
@@ -104,6 +105,8 @@ const ProSwapChart: React.FC = () => {
 };
 
 const ProSwapOrders: React.FC = () => {
+  const { account } = useAccount();
+  const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const columns: TableColumn<{
@@ -157,7 +160,16 @@ const ProSwapOrders: React.FC = () => {
     {
       id: "cancel-order",
       header: () => (
-        <Button variant="link" className="p-0 m-0">
+        <Button
+          variant="link"
+          className="p-0 m-0"
+          onClick={() =>
+            signingClient?.batchUpdateOrders({
+              cancels: "all",
+              sender: account!.address,
+            })
+          }
+        >
           Cancel All
         </Button>
       ),

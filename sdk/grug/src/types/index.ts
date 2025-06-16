@@ -114,6 +114,7 @@ export type {
   Result,
   Option,
   AllLeafKeys,
+  KeyOfUnion,
 } from "./utils.js";
 
 export type {

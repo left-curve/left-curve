@@ -42,6 +42,12 @@ import {
   swapExactAmountIn,
 } from "./mutations/swapExactAmountIn.js";
 
+import {
+  type BatchUpdateOrdersParameters,
+  type BatchUpdateOrdersReturnType,
+  batchUpdateOrders,
+} from "./mutations/batchUpdateOrders.js";
+
 export type DexQueryActions = {
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
@@ -65,6 +71,7 @@ export function dexQueryActions<transport extends Transport = Transport>(
 }
 
 export type DexMutationActions = {
+  batchUpdateOrders: (args: BatchUpdateOrdersParameters) => BatchUpdateOrdersReturnType;
   swapExactAmountIn: (args: SwapExactAmountInParameters) => SwapExactAmountInReturnType;
   swapExactAmountOut: (args: SwapExactAmountOutParameters) => SwapExactAmountOutReturnType;
   provideLiquidity: (args: ProvideLiquidityParameters) => ProvideLiquidityReturnType;
@@ -75,6 +82,7 @@ export function dexMutationActions<transport extends Transport = Transport>(
   client: DangoClient<transport, Signer>,
 ): DexMutationActions {
   return {
+    batchUpdateOrders: (args) => batchUpdateOrders(client, args),
     swapExactAmountIn: (args) => swapExactAmountIn(client, args),
     swapExactAmountOut: (args) => swapExactAmountOut(client, args),
     provideLiquidity: (args) => provideLiquidity(client, args),
