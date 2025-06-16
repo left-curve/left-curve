@@ -14,7 +14,7 @@ use {
         Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
-    grug_db_disk::{DiskDb, TempDataDir},
+    grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
@@ -25,6 +25,7 @@ use {
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
     std::sync::Arc,
+    temp_rocksdb::TempDataDir,
 };
 
 /// Configurable options for setting up a test.

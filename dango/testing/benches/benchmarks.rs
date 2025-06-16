@@ -10,9 +10,9 @@ use {
     },
     grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
-    grug_db_disk::TempDataDir,
     rand::{Rng, distributions::Alphanumeric},
     std::time::Duration,
+    temp_rocksdb::TempDataDir,
 };
 
 const MEASUREMENT_TIME: Duration = Duration::from_secs(90);
