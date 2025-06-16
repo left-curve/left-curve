@@ -58,7 +58,7 @@ where
             let res = fut.await?;
 
             counter!(
-                "http_requests_total",
+                "http.requests.total",
                 "method" => method.clone(),
                 "path" => path.clone(),
                 "status" => res.status().as_u16().to_string()
@@ -66,7 +66,7 @@ where
             .increment(1);
 
             histogram!(
-                "http_request_duration_seconds",
+                "http.request.duration.seconds",
                 "method" => method,
                 "path" => path,
                 "status" => res.status().as_u16().to_string()
@@ -80,11 +80,11 @@ where
 
 pub fn init_httpd_metrics() {
     describe_counter!(
-        "http_requests_total",
+        "http.requests.total",
         "Total HTTP requests by method, path, and status"
     );
     describe_histogram!(
-        "http_request_duration_seconds",
+        "http.request.duration.seconds",
         "HTTP request duration in seconds by method, path, and status"
     );
 }
