@@ -58,6 +58,40 @@ const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
   );
 };
 
+type CellAssetsProps = {
+  className?: string;
+  assets: AnyCoin[];
+  noImage?: boolean;
+};
+
+const Assets: React.FC<CellAssetsProps> = ({ assets, noImage }) => {
+  return (
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+      {!noImage && (
+        <div className="flex">
+          {assets.map((asset, i) => (
+            <img
+              key={`asset-logo-${asset.symbol}-${i}`}
+              src={asset.logoURI}
+              alt={asset.symbol}
+              className={`min-w-8 min-h-8 w-8 h-8 rounded-full object-cover -ml-${i + 3}`}
+              loading="lazy"
+            />
+          ))}
+        </div>
+      )}
+      <p className="min-w-fit">
+        {assets.map((asset, i) => (
+          <span key={`text-${asset.symbol}-${i}`}>
+            {asset.symbol}
+            {i < assets.length - 1 ? "- " : ""}
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+};
+
 type CellAmountProps = {
   className?: string;
   price: string;
@@ -283,6 +317,7 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type }) => {
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
+  Assets,
   Action,
   Amount,
   Time,

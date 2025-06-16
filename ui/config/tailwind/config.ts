@@ -3,9 +3,8 @@ import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
   safelist: [
-    {
-      pattern: /grid-cols-.+/,
-    },
+    { pattern: /grid-cols-.+/ },
+    { pattern: /^-ml-(1|2|3|4|5|6|7|8|9|10|12|16|20|24|32|40|48|56|64)$/ },
   ],
   theme: {
     extend: {
