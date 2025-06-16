@@ -4,7 +4,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::Direction,
     grug::{
-        Addr, Bounded, Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst,
+        Addr, Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst,
         Order as IterationOrder, StdResult, Udec128, Uint128, ZeroExclusiveOneExclusive,
         ZeroExclusiveOneInclusive,
     },
@@ -125,7 +125,7 @@ pub fn swap_exact_amount_in(
             "failed to match market order in `swap_exact_amount_in`"
         ))?;
 
-    Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - swap_fee_rate.into_inner())?)
+    Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)?)
 }
 
 pub fn swap_exact_amount_out() -> StdResult<Uint128> {
