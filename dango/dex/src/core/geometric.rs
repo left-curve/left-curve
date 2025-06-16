@@ -1,10 +1,10 @@
 use {
     dango_oracle::OracleQuerier,
     grug::{
-        Bounded, CoinPair, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
-        Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult,
+        Udec128, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
-    std::iter,
+    std::{cmp, iter},
 };
 
 /// When adding liquidity for the first time into an empty pool, we determine
@@ -33,9 +33,82 @@ pub fn add_subsequent_liquidity(
     Ok(deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?)
 }
 
-pub fn swap_exact_amount_in() -> StdResult<Uint128> {
-    // FIXME
-    todo!();
+pub fn swap_exact_amount_in(
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    input: &Coin,
+    reserve: &CoinPair,
+    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
+    order_spacing: Udec128,
+    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+) -> anyhow::Result<Uint128> {
+    let (passive_bids, passive_asks) = reflect_curve(
+        reserve.amount_of(base_denom)?,
+        reserve.amount_of(quote_denom)?,
+        ratio,
+        order_spacing,
+        swap_fee_rate,
+    )?;
+
+    // Pretend the input is a market order. Match it against the opposite side
+    // of the passive limit orders.
+    let output_amount = if input.denom == *base_denom {
+        ask_exact_amount_in(input.amount, passive_bids)?
+    } else if input.denom == *quote_denom {
+        bid_exact_amount_in(input.amount, passive_asks)?
+    } else {
+        unreachable!(
+            "input denom (`{}`) is neither base (`{}`) nor quote (`{}`). this should have been caught earlier.",
+            input.denom, base_denom, quote_denom
+        );
+    };
+
+    // Apply swap fee. Round so that user takes the loss.
+    Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)?)
+}
+
+fn bid_exact_amount_in(
+    bid_amount_in_quote: Uint128,
+    passive_asks: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+) -> anyhow::Result<Uint128> {
+    let mut remaining_bid_in_quote = bid_amount_in_quote;
+    let mut output_amount = Uint128::ZERO;
+
+    for (price, size) in passive_asks {
+        let matched_amount = cmp::min(size, remaining_bid_in_quote.checked_div_dec_floor(price)?);
+        output_amount.checked_add_assign(matched_amount)?;
+
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
+        remaining_bid_in_quote.checked_sub_assign(matched_amount_in_quote)?;
+
+        if remaining_bid_in_quote.is_zero() {
+            break;
+        }
+    }
+
+    Ok(output_amount)
+}
+
+fn ask_exact_amount_in(
+    ask_amount: Uint128,
+    passive_bids: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+) -> anyhow::Result<Uint128> {
+    let mut remaining_ask = ask_amount;
+    let mut output_amount_in_quote = Uint128::ZERO;
+
+    for (price, size) in passive_bids {
+        let matched_amount = cmp::min(size, remaining_ask);
+        remaining_ask.checked_sub_assign(matched_amount)?;
+
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_floor(price)?;
+        output_amount_in_quote.checked_add_assign(matched_amount_in_quote)?;
+
+        if remaining_ask.is_zero() {
+            break;
+        }
+    }
+
+    Ok(output_amount_in_quote)
 }
 
 pub fn swap_exact_amount_out() -> StdResult<Uint128> {

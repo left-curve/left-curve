@@ -1,6 +1,6 @@
 use {
     crate::core::{geometric, xyk},
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
@@ -75,6 +75,8 @@ pub trait PassiveLiquidityPool {
     /// The input asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_in(
         &self,
+        base_denom: &Denom,
+        quote_denom: &Denom,
         reserve: CoinPair,
         input: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
@@ -243,26 +245,43 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_in(
         &self,
+        base_denom: &Denom,
+        quote_denom: &Denom,
         mut reserve: CoinPair,
         input: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
         let output_denom = if reserve.first().denom == &input.denom {
             reserve.second().denom.clone()
-        } else {
+        } else if reserve.second().denom == &input.denom {
             reserve.first().denom.clone()
+        } else {
+            bail!(
+                "input denom `{}` is neither the base `{}` nor the quote `{}`",
+                input.denom,
+                base_denom,
+                quote_denom
+            );
         };
-
-        let input_reserve = reserve.amount_of(&input.denom)?;
-        let output_reserve = reserve.amount_of(&output_denom)?;
 
         let output_amount_after_fee = match self.pool_type {
             PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_in(
                 input.amount,
-                input_reserve,
-                output_reserve,
+                reserve.amount_of(&input.denom)?,
+                reserve.amount_of(&output_denom)?,
                 self.swap_fee_rate,
             )?,
-            PassiveLiquidity::Geometric { .. } => geometric::swap_exact_amount_in()?,
+            PassiveLiquidity::Geometric {
+                ratio,
+                order_spacing,
+            } => geometric::swap_exact_amount_in(
+                base_denom,
+                quote_denom,
+                &input,
+                &reserve,
+                ratio,
+                order_spacing,
+                self.swap_fee_rate,
+            )?,
         };
 
         let output = Coin {

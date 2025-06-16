@@ -22,7 +22,8 @@ pub fn swap_exact_amount_in(
 
         // Perform the swap.
         // The output of the previous step is the input of this step.
-        (reserve, output) = params.swap_exact_amount_in(reserve, output)?;
+        (reserve, output) =
+            params.swap_exact_amount_in(&pair.base_denom, &pair.quote_denom, reserve, output)?;
 
         // Save the updated pool reserve.
         reserves.insert(pair.clone(), reserve);
