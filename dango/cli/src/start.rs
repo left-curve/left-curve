@@ -11,7 +11,7 @@ use {
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
-    grug_db_disk::DiskDb,
+    grug_db_disk_lite::DiskDbLite,
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
@@ -33,7 +33,7 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db = DiskDb::open(app_dir.data_dir())?;
+        let db = DiskDbLite::open(app_dir.data_dir())?;
 
         // Create Rust VM contract codes.
         let codes = HybridVm::genesis_codes();
@@ -128,7 +128,7 @@ impl StartCmd {
         self,
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
-        db: DiskDb,
+        db: DiskDbLite,
         vm: HybridVm,
         mut indexer: ID,
     ) -> anyhow::Result<()>

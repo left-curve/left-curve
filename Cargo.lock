@@ -3289,7 +3289,7 @@ dependencies = [
  "futures",
  "grug-app",
  "grug-client",
- "grug-db-disk",
+ "grug-db-disk-lite",
  "grug-types",
  "grug-vm-hybrid",
  "hex",
