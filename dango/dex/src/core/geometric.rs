@@ -58,7 +58,7 @@ pub fn swap_exact_amount_in(
         bid_exact_amount_in(input.amount, passive_asks)?
     } else {
         unreachable!(
-            "input denom (`{}`) is neither base (`{}`) nor quote (`{}`). this should have been caught earlier.",
+            "input denom (`{}`) is neither the base (`{}`) nor the quote (`{}`). this should have been caught earlier.",
             input.denom, base_denom, quote_denom
         );
     };
