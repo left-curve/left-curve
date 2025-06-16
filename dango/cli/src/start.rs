@@ -5,6 +5,7 @@ use {
     },
     anyhow::anyhow,
     clap::Parser,
+    config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
@@ -25,11 +26,14 @@ use {
 pub struct StartCmd;
 
 impl StartCmd {
-    pub async fn run(self, app_dir: HomeDirectory, cfg: Config) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         tracing::info!("Using git commit: {GIT_COMMIT}");
 
+        // Parse the config file.
+        let cfg: Config = parse_config(app_dir.config_file())?;
+
         // Open disk DB.
-        let db = DiskDb::open(app_dir.data_dir(), cfg.grug.archive_mode)?;
+        let db = DiskDb::open(app_dir.data_dir())?;
 
         // Create Rust VM contract codes.
         let codes = HybridVm::genesis_codes();
