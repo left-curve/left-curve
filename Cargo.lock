@@ -3535,7 +3535,7 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-crypto",
- "grug-db-disk",
+ "grug-db-disk-lite",
  "grug-db-memory",
  "grug-testing",
  "grug-vm-hybrid",

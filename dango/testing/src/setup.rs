@@ -14,7 +14,7 @@ use {
         Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
-    grug_db_disk::DiskDb,
+    grug_db_disk_lite::DiskDbLite,
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
@@ -182,7 +182,7 @@ pub fn setup_test_with_indexer() -> (
     )
 }
 
-/// Set up a `TestSuite` with `DiskDb`, `HybridVm`, `NaiveProposalPreparer`, and
+/// Set up a `TestSuite` with `DiskDbLite`, `HybridVm`, `NaiveProposalPreparer`, and
 /// `ContractWrapper` codes.
 ///
 /// Used for running benchmarks with the hybrid VM.
@@ -190,13 +190,13 @@ pub fn setup_benchmark_hybrid(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb, HybridVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDbLite, HybridVm, NullIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
 ) {
-    let db = DiskDb::open(dir).unwrap();
+    let db = DiskDbLite::open(dir).unwrap();
     let codes = HybridVm::genesis_codes();
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
@@ -227,7 +227,7 @@ pub fn setup_benchmark_hybrid(
     )
 }
 
-/// Set up a `TestSuite` with `DiskDb`, `WasmVm`, `NaiveProposalPreparer`, and
+/// Set up a `TestSuite` with `DiskDbLite`, `WasmVm`, `NaiveProposalPreparer`, and
 /// `Vec<u8>` codes.
 ///
 /// Used for running benchmarks with the Wasm VM.
@@ -235,13 +235,13 @@ pub fn setup_benchmark_wasm(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDbLite, WasmVm, NullIndexer>,
     TestAccounts,
     Codes<Vec<u8>>,
     Contracts,
     MockValidatorSets,
 ) {
-    let db = DiskDb::open(dir).unwrap();
+    let db = DiskDbLite::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
     setup_suite_with_db_and_vm(
