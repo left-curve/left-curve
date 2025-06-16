@@ -15,13 +15,14 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
-import { useState, type PropsWithChildren } from "react";
+import { useState } from "react";
 import type React from "react";
 
 import { m } from "~/paraglide/messages";
 
-const Container: React.FC<PropsWithChildren> = ({ children }) => {
-  return <>{children}</>;
+export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
+  const { isLg } = useMediaQuery();
+  return <>{isLg ? <Menu {...props} /> : <MenuMobile {...props} />}</>;
 };
 
 type TradeMenuProps = {
@@ -34,7 +35,7 @@ type TradeMenu = {
   action?: "sell" | "buy";
 };
 
-export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
+const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   const { isLg } = useMediaQuery();
   const [operation, setOperation] = useState<"market" | "limit">("limit");
 
@@ -154,7 +155,7 @@ export const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   );
 };
 
-export const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
+const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   const { isLg } = useMediaQuery();
   const [operation, setOperation] = useState<"market" | "limit">("limit");
 
@@ -238,11 +239,7 @@ export const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   );
 };
 
-export const Menu: React.FC<TradeMenuProps> = ({
-  action: defaultAction,
-  type = "spot",
-  className,
-}) => {
+const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction, type = "spot", className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
   const [action, setAction] = useState<"sell" | "buy">(defaultAction || "buy");
@@ -282,7 +279,7 @@ export const Menu: React.FC<TradeMenuProps> = ({
   );
 };
 
-export const Mobile: React.FC = () => {
+const MenuMobile: React.FC<TradeMenuProps> = (props) => {
   const { isTradeBarVisible, setTradeBarVisibility } = useApp();
 
   return (
@@ -290,17 +287,10 @@ export const Mobile: React.FC = () => {
       <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
-          <Menu className="overflow-y-auto" />
+          <Menu className="overflow-y-auto" {...props} />
         </Sheet.Content>
       </Sheet.Container>
       <Sheet.Backdrop onTap={() => setTradeBarVisibility(false)} />
     </Sheet>
   );
 };
-
-const ExportComponent = Object.assign(Container, {
-  Mobile,
-  Menu,
-});
-
-export { ExportComponent as TradeMenu };

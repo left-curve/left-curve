@@ -1,0 +1,197 @@
+import { createContext, twMerge, useInputs, useMediaQuery } from "@left-curve/applets-kit";
+import { useState } from "react";
+
+import {
+  Badge,
+  Button,
+  Cell,
+  IconChevronDown,
+  IconEmptyStar,
+  Table,
+  Tabs,
+} from "@left-curve/applets-kit";
+import { AnimatePresence, motion } from "framer-motion";
+import { OrderBookOverview } from "./OrderBookOverview";
+import { SearchToken } from "./SearchToken";
+import { TradeMenu } from "./TradeMenu";
+import { TradingViewChart } from "./TradingViewChart";
+
+import type { TableColumn } from "@left-curve/applets-kit";
+import type { AnyCoin } from "@left-curve/store/types";
+import type { UseMutationResult } from "@tanstack/react-query";
+import type { PropsWithChildren } from "react";
+
+import { mockOpenOrder } from "~/mock";
+
+const [ProSwapProvider, useProSwap] = createContext<any>({
+  name: "ProSwapContext",
+});
+
+const ProSwapContainer: React.FC<PropsWithChildren> = ({ children }) => {
+  return <ProSwapProvider value={{}}>{children}</ProSwapProvider>;
+};
+
+const ProSwapHeader: React.FC = () => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  return (
+    <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+      <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
+        <div className="flex lg:flex-col gap-2">
+          <SearchToken />
+          <Badge text="Spot" color="blue" />
+        </div>
+        <div className="flex gap-2 items-center">
+          <div
+            className="cursor-pointer flex items-center justify-center lg:hidden"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <IconChevronDown
+              className={twMerge("text-gray-500 w-5 h-5 transition-all", {
+                "rotate-180": isExpanded,
+              })}
+            />
+          </div>
+          <IconEmptyStar className="w-5 h-5 text-gray-500" />
+        </div>
+      </div>
+      <AnimatePresence initial={false}>
+        {isExpanded ? (
+          <motion.div
+            layout
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="gap-2 lg:gap-4 grid grid-cols-1 lg:flex lg:flex-wrap overflow-hidden"
+          >
+            <div className="flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
+              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Mark</p>
+              <p>83,565</p>
+            </div>
+            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Last price</p>
+              <p>$2,578</p>
+            </div>
+            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Oracle</p>
+              <p>83,565</p>
+            </div>
+            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">24h Change</p>
+              <p className="text-red-bean-400">-542 / 0.70</p>
+            </div>
+            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">24h Volume</p>
+              <p>$2,457,770,700.50</p>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const ProSwapChart: React.FC = () => {
+  const { isLg } = useMediaQuery();
+
+  if (!isLg) return null;
+
+  return (
+    <div className="shadow-card-shadow bg-rice-25">
+      <TradingViewChart />
+    </div>
+  );
+};
+
+const ProSwapOrders: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
+
+  const columns: TableColumn<{
+    time: Date;
+    type: string;
+    coin: AnyCoin;
+    direction: string;
+    size: number;
+    orderValue: number;
+    price: number;
+    reduceOnly: boolean;
+    triggerConditions: string;
+    onCancel: () => void;
+  }> = [
+    {
+      header: "Time",
+      cell: ({ row }) => <Cell.Time date={row.original.time} />,
+    },
+    {
+      header: "Type",
+      cell: ({ row }) => <Cell.Text text={row.original.type} />,
+    },
+    {
+      header: "Coin",
+      cell: ({ row }) => <Cell.Asset noImage asset={row.original.coin} />,
+    },
+    {
+      header: "Direction",
+      cell: ({ row }) => <Cell.Text text={row.original.direction} />,
+    },
+    {
+      header: "Size",
+      cell: ({ row }) => <Cell.Text text={row.original.size} />,
+    },
+    {
+      header: "Order Value",
+      cell: ({ row }) => <Cell.Text text={row.original.orderValue} />,
+    },
+    {
+      header: "Price",
+      cell: ({ row }) => <Cell.Text text={row.original.price} />,
+    },
+    {
+      header: "Reduce Only",
+      cell: ({ row }) => <Cell.Text text={row.original.reduceOnly ? "Yes" : "No"} />,
+    },
+    {
+      header: "Trigger Conditions",
+      cell: ({ row }) => <Cell.Text text={row.original.triggerConditions} />,
+    },
+    {
+      id: "cancel-order",
+      header: () => (
+        <Button variant="link" className="p-0 m-0">
+          Cancel All
+        </Button>
+      ),
+      accessorFn: (row) => row.onCancel,
+      cell: ({ row }) => (
+        <Cell.Action action={row.original.onCancel} label="Cancel" className="items-end" />
+      ),
+    },
+  ];
+
+  return (
+    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-0">
+      <div className="relative">
+        <Tabs
+          color="line-red"
+          layoutId="tabs-open-order"
+          selectedTab={activeTab}
+          keys={["open order", "trade history"]}
+          onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
+        />
+
+        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
+      </div>
+      {activeTab === "open order" ? (
+        <Table data={mockOpenOrder} columns={columns} style="simple" />
+      ) : null}
+    </div>
+  );
+};
+
+export const ProSwap = Object.assign(ProSwapContainer, {
+  Header: ProSwapHeader,
+  Chart: ProSwapChart,
+  Orders: ProSwapOrders,
+  OrderBook: OrderBookOverview,
+  TradeMenu,
+});

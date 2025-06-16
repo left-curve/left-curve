@@ -1,36 +1,29 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
 import { createFileRoute } from "@tanstack/react-router";
-import { TradeMenu } from "~/components/foundation/TradeMenu";
-import { OpenOrder } from "~/components/pro-swap/OpenOrder";
-import { OrderBookSection } from "~/components/pro-swap/OrderBookSection";
-import { PairHeader } from "~/components/pro-swap/PairHeader";
-import { TradingViewChart } from "~/components/pro-swap/TradingViewChart";
+
+import { ProSwap } from "~/components/dex/ProSwap";
 
 export const Route = createFileRoute("/(app)/_app/pro-swap")({
-  component: RouteComponent,
+  component: ProSwapApplet,
 });
 
-function RouteComponent() {
-  const { isLg } = useMediaQuery();
+function ProSwapApplet() {
   return (
     <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)]">
-      <div className="flex flex-col flex-1">
-        <div className="flex flex-col xl:flex-row flex-1">
-          <div className="flex flex-col flex-1">
-            <PairHeader />
-            {isLg && (
-              <div className="shadow-card-shadow bg-rice-25">
-                <TradingViewChart />
-              </div>
-            )}
+      <ProSwap>
+        <div className="flex flex-col flex-1">
+          <div className="flex flex-col xl:flex-row flex-1">
+            <div className="flex flex-col flex-1">
+              <ProSwap.Header />
+              <ProSwap.Chart />
+            </div>
+            <ProSwap.OrderBook />
           </div>
-          <OrderBookSection />
+          <ProSwap.Orders />
         </div>
-        <OpenOrder />
-      </div>
-      <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow relative z-20">
-        <TradeMenu.Menu />
-      </div>
+        <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow relative z-20">
+          <ProSwap.TradeMenu />
+        </div>
+      </ProSwap>
     </div>
   );
 }

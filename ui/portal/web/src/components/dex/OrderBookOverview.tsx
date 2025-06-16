@@ -1,6 +1,42 @@
-import { twMerge } from "@left-curve/applets-kit";
+import { useMediaQuery } from "@left-curve/applets-kit";
+import { useEffect, useState } from "react";
+
+import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { TradingViewChart } from "./TradingViewChart";
+
 import type React from "react";
-import { mockOrderBookData, type OrderBookRow } from "~/mock";
+
+import { mockTrades } from "~/mock";
+import { type OrderBookRow, mockOrderBookData } from "~/mock";
+
+export const OrderBookOverview: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
+
+  const { isLg } = useMediaQuery();
+
+  useEffect(() => {
+    setActiveTab(isLg ? "order book" : "graph");
+  }, [isLg]);
+
+  return (
+    <ResizerContainer
+      layoutId="order-book-section"
+      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 lg:min-w-[25rem] min-h-[25rem] lg:min-h-[35.25rem]"
+    >
+      <Tabs
+        color="line-red"
+        layoutId="tabs-order-history"
+        selectedTab={activeTab}
+        keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
+        fullWidth
+        onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
+      />
+      {activeTab === "graph" && <TradingViewChart />}
+      {activeTab === "order book" && <OrderBook />}
+      {activeTab === "trades" && <LiveTrades />}
+    </ResizerContainer>
+  );
+};
 
 function groupOrdersByPrice(orders: { price: number; amount: number }[]) {
   const groupedMap = new Map<number, number>();
@@ -55,7 +91,7 @@ const OrderRow: React.FC<
   );
 };
 
-export const OrderBook: React.FC = () => {
+const OrderBook: React.FC = () => {
   const { bids, asks } = mockOrderBookData;
   const maxCumulativeAsk = asks.length > 0 ? asks[asks.length - 1].cumulativeTotal : 0;
   const maxCumulativeBid = bids.length > 0 ? bids[bids.length - 1].cumulativeTotal : 0;
@@ -98,6 +134,46 @@ export const OrderBook: React.FC = () => {
             />
           ))}
         </div>
+      </div>
+    </div>
+  );
+};
+
+const LiveTrades: React.FC = () => {
+  return (
+    <div className="flex gap-2 flex-col items-center justify-center ">
+      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">
+        <p>Price</p>
+        <p className="text-end">Size (ETH)</p>
+        <p className="text-end">Time</p>
+      </div>
+      <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
+        {mockTrades.slice(0, 20).map((trade) => {
+          return (
+            <div
+              key={trade.hash}
+              className={
+                "grid grid-cols-3 text-xs-medium text-gray-700 w-full cursor-pointer group relative"
+              }
+            >
+              <p
+                className={twMerge(
+                  "z-10",
+                  trade.side === "BUY" ? "text-status-success" : "text-status-fail",
+                )}
+              >
+                {trade.price}
+              </p>
+              <p className="text-end z-10">{trade.size}</p>
+
+              <div className="flex gap-1 items-center justify-end z-10">
+                <p>{trade.createdAt}</p>
+                <IconLink className="w-3 h-3" />
+              </div>
+              <span className="group-hover:bg-rice-50 h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
