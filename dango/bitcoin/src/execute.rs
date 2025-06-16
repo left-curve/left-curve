@@ -253,6 +253,7 @@ fn observe_inbound(
 
         let event = InboundConfirmed {
             transaction_hash: hash,
+            vout,
             amount,
             recipient,
         };

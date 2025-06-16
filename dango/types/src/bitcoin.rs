@@ -221,6 +221,40 @@ pub struct Utxo {
     pub amount: Uint128,
 }
 
+#[grug::derive(Serde, Borsh)]
+pub struct InboundMsg {
+    /// The Bitcoin transaction hash.
+    pub transaction_hash: Hash256,
+    /// The transaction's output index.
+    pub vout: Vout,
+    /// The transaction's UTXO amount.
+    pub amount: Uint128,
+    /// The recipient of the inbound transfer.
+    ///
+    /// In case of a user making a deposit, he must indicate the recipient
+    /// address in the transaction's memo. The guardian must report this
+    /// recipient.
+    ///
+    /// Other kinds of inbound transactions do not have a recipient. For
+    /// example, an outbound transaction may have an excess amount. Or, the
+    /// operator may top up the multisig's balance to cover gas cost.
+    pub recipient: Option<Addr>,
+    /// Pubkey of the guardian observing the inbound transaction.
+    pub pub_key: HexByteArray<33>,
+}
+
+impl InboundMsg {
+    pub fn hash(&self) -> StdResult<Hash256> {
+        Ok(self.to_borsh_vec()?.hash256())
+    }
+}
+
+#[grug::derive(Serde)]
+pub struct InboundCredential {
+    pub signature: HexBinary,
+}
+
+// ------------------------------- Messages -----------------------------------
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub config: Config,
@@ -240,22 +274,13 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the guardians.
     ObserveInbound(InboundMsg),
-    /// Withdraw Bitcoin buy burning the synthetic token on Dango.
+    /// Withdraw Bitcoin request.
     ///
-    /// Can be called by anyone. Caller must send a non-zero amount of synthetic
-    /// Bitcoin token and nothing else.
+    /// Can be called only by gateway, which needs to burn the tokens.
     ///
     /// Outbound transactions are pushed into a queue. Every once in a while (as
     /// defined by the contract's cronjob frequency), the contract finds all
-    /// withdrawals in the queue, and builds a transaction.
-    // Withdraw {
-    //     /// The recipient Bitcoin address.
-    //     ///
-    //     /// TODO: There are various bitcoin address formats. Should we enforce one?
-    //     ///
-    //     /// https://bitcoin.stackexchange.com/questions/119736
-    //     recipient: BitcoinAddress,
-    // },
+    /// withdrawals in the queue and builds a transaction.
     Bridge(BridgeMsg),
     /// Authorize an outbound transaction.
     ///
@@ -317,12 +342,15 @@ pub enum QueryMsg {
     },
 }
 
+// ------------------------------- Events --------------------------------------
+
 /// Event indicating an inbound transaction has been observed by a threshold
 /// number of guardians.
 #[grug::derive(Serde)]
 #[grug::event("inbound_confirmed")]
 pub struct InboundConfirmed {
     pub transaction_hash: Hash256,
+    pub vout: Vout,
     pub amount: Uint128,
     pub recipient: Option<Addr>,
 }
@@ -348,37 +376,4 @@ pub struct OutboundConfirmed {
     pub id: u32,
     pub transaction: Transaction,
     pub signatures: BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>,
-}
-
-#[grug::derive(Serde, Borsh)]
-pub struct InboundMsg {
-    /// The Bitcoin transaction hash.
-    pub transaction_hash: Hash256,
-    /// The transaction's output index.
-    pub vout: Vout,
-    /// The transaction's UTXO amount.
-    pub amount: Uint128,
-    /// The recipient of the inbound transfer.
-    ///
-    /// In case of a user making a deposit, he must indicate the recipient
-    /// address in the transaction's memo. The guardian must report this
-    /// recipient.
-    ///
-    /// Other kinds of inbound transactions do not have a recipient. For
-    /// example, an outbound transaction may have an excess amount. Or, the
-    /// operator may top up the multisig's balance to cover gas cost.
-    pub recipient: Option<Addr>,
-    /// Pubkey of the guardian observing the inbound transaction.
-    pub pub_key: HexByteArray<33>,
-}
-
-impl InboundMsg {
-    pub fn hash(&self) -> StdResult<Hash256> {
-        Ok(self.to_borsh_vec()?.hash256())
-    }
-}
-
-#[grug::derive(Serde)]
-pub struct InboundCredential {
-    pub signature: HexBinary,
 }

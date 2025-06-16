@@ -451,6 +451,7 @@ fn observe_inbound() {
         .deserialize_json::<InboundConfirmed>()
         .should_succeed_and_equal(InboundConfirmed {
             transaction_hash: bitcoin_tx_hash,
+            vout,
             amount,
             recipient: Some(recipient),
         });
@@ -479,9 +480,10 @@ fn observe_inbound() {
         let tx_hash =
             Hash256::from_str("14A0BF02F69BD13C274ED22E20C1BF4CC5DABF99753DB32E5B8959BF4C5F1F5C")
                 .unwrap();
+        let vout = 2;
         let msg = InboundMsg {
             transaction_hash: tx_hash,
-            vout: 2,
+            vout,
             amount,
             recipient: None,
             pub_key: val_pk1.clone(),
@@ -493,7 +495,7 @@ fn observe_inbound() {
         // Broadcast with the second guardian.
         let msg = InboundMsg {
             transaction_hash: tx_hash,
-            vout: 2,
+            vout,
             amount,
             recipient: None,
             pub_key: val_pk2.clone(),
@@ -510,6 +512,7 @@ fn observe_inbound() {
             .deserialize_json::<InboundConfirmed>()
             .should_succeed_and_equal(InboundConfirmed {
                 transaction_hash: tx_hash,
+                vout,
                 amount,
                 recipient: None,
             });
