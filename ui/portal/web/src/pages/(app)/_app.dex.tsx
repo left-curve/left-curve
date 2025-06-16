@@ -1,29 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { ProSwap } from "~/components/dex/ProSwap";
+import { ProTrade } from "~/components/dex/ProTrade";
 
-export const Route = createFileRoute("/(app)/_app/pro-swap")({
-  component: ProSwapApplet,
+export const Route = createFileRoute("/(app)/_app/dex")({
+  component: ProTradeApplet,
 });
 
-function ProSwapApplet() {
+function ProTradeApplet() {
   return (
     <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)]">
-      <ProSwap>
+      <ProTrade>
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
             <div className="flex flex-col flex-1">
-              <ProSwap.Header />
-              <ProSwap.Chart />
+              <ProTrade.Header />
+              <ProTrade.Chart />
             </div>
-            <ProSwap.OrderBook />
+            <ProTrade.OrderBook />
           </div>
-          <ProSwap.Orders />
+          <ProTrade.Orders />
         </div>
         <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow relative z-20">
-          <ProSwap.TradeMenu />
+          <ProTrade.TradeMenu />
         </div>
-      </ProSwap>
+      </ProTrade>
     </div>
   );
 }

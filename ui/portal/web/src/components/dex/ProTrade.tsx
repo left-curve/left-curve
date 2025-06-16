@@ -24,15 +24,15 @@ import type { PropsWithChildren } from "react";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { mockOpenOrder } from "~/mock";
 
-const [ProSwapProvider, useProSwap] = createContext<any>({
-  name: "ProSwapContext",
+const [ProTradeProvider, useProTrade] = createContext<any>({
+  name: "ProTradeContext",
 });
 
-const ProSwapContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  return <ProSwapProvider value={{}}>{children}</ProSwapProvider>;
+const ProTradeContainer: React.FC<PropsWithChildren> = ({ children }) => {
+  return <ProTradeProvider value={{}}>{children}</ProTradeProvider>;
 };
 
-const ProSwapHeader: React.FC = () => {
+const ProTradeHeader: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   return (
     <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
@@ -92,7 +92,7 @@ const ProSwapHeader: React.FC = () => {
   );
 };
 
-const ProSwapChart: React.FC = () => {
+const ProTradeChart: React.FC = () => {
   const { isLg } = useMediaQuery();
 
   if (!isLg) return null;
@@ -104,7 +104,7 @@ const ProSwapChart: React.FC = () => {
   );
 };
 
-const ProSwapOrders: React.FC = () => {
+const ProTradeOrders: React.FC = () => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
@@ -200,10 +200,10 @@ const ProSwapOrders: React.FC = () => {
   );
 };
 
-export const ProSwap = Object.assign(ProSwapContainer, {
-  Header: ProSwapHeader,
-  Chart: ProSwapChart,
-  Orders: ProSwapOrders,
+export const ProTrade = Object.assign(ProTradeContainer, {
+  Header: ProTradeHeader,
+  Chart: ProTradeChart,
+  Orders: ProTradeOrders,
   OrderBook: OrderBookOverview,
   TradeMenu,
 });
