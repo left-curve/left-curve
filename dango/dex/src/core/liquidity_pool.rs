@@ -536,7 +536,7 @@ mod tests {
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         // TODO: Take prices as input to the test.
-        let mut oracle_querier = OracleQuerier::mock(
+        let mut oracle_querier = OracleQuerier::new_mock(
             vec![
                 (
                     eth::DENOM.clone(),
@@ -612,7 +612,7 @@ mod tests {
         .unwrap();
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
-        let mut oracle_querier = OracleQuerier::mock(
+        let mut oracle_querier = OracleQuerier::new_mock(
             vec![
                 (
                     eth::DENOM.clone(),
@@ -755,7 +755,7 @@ mod tests {
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
-        let mut oracle_querier = OracleQuerier::mock(oracle_prices.into_iter().collect());
+        let mut oracle_querier = OracleQuerier::new_mock(oracle_prices.into_iter().collect());
 
         let (reserve, output) = pair
             .swap_exact_amount_in(

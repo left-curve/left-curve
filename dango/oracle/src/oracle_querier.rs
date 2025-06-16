@@ -30,23 +30,22 @@ impl<'a> OracleQuerier<'a> {
         }
     }
 
+    pub fn new_mock(prices: HashMap<Denom, PrecisionedPrice>) -> Self {
+        Self {
+            cache: Cache::new(move |denom, _| {
+                prices.get(denom).cloned().ok_or_else(|| {
+                    anyhow!("[mock]: price not provided to oracle querier for denom `{denom}`")
+                })
+            }),
+        }
+    }
+
     pub fn query_price(
         &mut self,
         denom: &Denom,
         price_source: Option<PriceSource>,
     ) -> anyhow::Result<PrecisionedPrice> {
         self.cache.get_or_fetch(denom, price_source).cloned()
-    }
-
-    pub fn mock(prices: HashMap<Denom, PrecisionedPrice>) -> Self {
-        Self {
-            cache: Cache::new(move |denom, _| {
-                prices
-                    .get(denom)
-                    .cloned()
-                    .ok_or_else(|| anyhow!("price not found"))
-            }),
-        }
     }
 }
 
@@ -224,7 +223,7 @@ mod tests {
         "mock with two prices"
     )]
     fn test_mock(prices: Vec<(Denom, PrecisionedPrice)>) {
-        let mut oracle_querier = OracleQuerier::mock(prices.clone().into_iter().collect());
+        let mut oracle_querier = OracleQuerier::new_mock(prices.clone().into_iter().collect());
 
         for (denom, expected_price) in prices {
             let price = oracle_querier.query_price(&denom, None).unwrap();
@@ -234,7 +233,7 @@ mod tests {
 
     #[test]
     fn test_mock_querier_with_no_prices() {
-        let mut oracle_querier = OracleQuerier::mock(HashMap::new());
+        let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         let error = oracle_querier.query_price(&eth::DENOM, None).unwrap_err();
         assert_eq!(error.to_string(), "price not found");
