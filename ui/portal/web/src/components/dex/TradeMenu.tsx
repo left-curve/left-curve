@@ -49,6 +49,7 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           fullWidth
           onTabChange={(tab) => setOperation(tab as "market" | "limit")}
           color="line-red"
+          classNames={{ button: "exposure-xs-italic" }}
         />
         <div className="flex items-center justify-between gap-2">
           <p className="diatype-xs-regular text-gray-500">Available to Trade</p>
@@ -263,6 +264,7 @@ const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction, type = "spot", 
           fullWidth
           onTabChange={(tab) => setAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "green"}
+          classNames={{ button: "exposure-sm-italic" }}
         />
         <IconButton
           variant="utility"

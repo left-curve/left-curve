@@ -21,7 +21,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 lg:min-w-[25rem] min-h-[25rem] lg:min-h-[35.25rem]"
+      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,422px)] min-h-[25rem]"
     >
       <Tabs
         color="line-red"
@@ -30,6 +30,7 @@ export const OrderBookOverview: React.FC = () => {
         keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
+        classNames={{ button: "exposure-xs-italic" }}
       />
       {activeTab === "graph" && <TradingViewChart />}
       {activeTab === "order book" && <OrderBook />}
@@ -72,7 +73,7 @@ const OrderRow: React.FC<
     type === "bid" ? "bg-green-300 lg:-left-4" : "bg-red-300 -right-0 lg:-left-4 lg:right-auto";
 
   return (
-    <div className="relative flex-1 diatype-sm-medium text-gray-700 grid grid-cols-3">
+    <div className="relative flex-1 diatype-xs-medium text-gray-700 grid grid-cols-3">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -148,12 +149,12 @@ const LiveTrades: React.FC = () => {
         <p className="text-end">Time</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
-        {mockTrades.slice(0, 20).map((trade) => {
+        {mockTrades.slice(0, 26).map((trade) => {
           return (
             <div
               key={trade.hash}
               className={
-                "grid grid-cols-3 text-xs-medium text-gray-700 w-full cursor-pointer group relative"
+                "grid grid-cols-3 diatype-xs-medium text-gray-700 w-full cursor-pointer group relative"
               }
             >
               <p

@@ -59,7 +59,7 @@ const SearchTokenHeader: React.FC = () => {
       <img
         src="https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg"
         alt=""
-        className="h-7 w-7 drag-none select-none"
+        className="h-6 w-6 drag-none select-none"
       />
       <p className="diatype-lg-heavy text-gray-700 min-w-fit">ETH-USDC</p>
       <IconChevronDownFill className="text-gray-500 w-4 h-4 transition-all" />
@@ -84,7 +84,7 @@ const SearchTokenMenu: React.FC = () => {
       <div className="relative overflow-x-auto scrollbar-none">
         <Tabs
           color="line-red"
-          layoutId="tabs-open-order"
+          layoutId="search-token-tabs"
           selectedTab={activeFilter}
           keys={[
             "All",

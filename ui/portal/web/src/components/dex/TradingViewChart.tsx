@@ -65,7 +65,7 @@ export const TradingViewChart: React.FC = () => {
     <div
       id="tv_chart_container"
       ref={chartContainerRef}
-      className="w-full min-h-[40.5rem] h-full"
+      className="w-full min-h-[35.25rem] h-full"
     />
   );
 };

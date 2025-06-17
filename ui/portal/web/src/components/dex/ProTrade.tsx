@@ -1,4 +1,4 @@
-import { createContext, twMerge, useInputs, useMediaQuery } from "@left-curve/applets-kit";
+import { createContext, twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { useState } from "react";
 
 import {
@@ -18,7 +18,6 @@ import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { AnyCoin } from "@left-curve/store/types";
-import type { UseMutationResult } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import { useAccount, useSigningClient } from "@left-curve/store";
@@ -39,7 +38,9 @@ const ProTradeHeader: React.FC = () => {
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
           <SearchToken />
-          <Badge text="Spot" color="blue" />
+          <div className="lg:pl-8">
+            <Badge text="Spot" color="blue" size="s" />
+          </div>
         </div>
         <div className="flex gap-2 items-center">
           <div
@@ -63,27 +64,27 @@ const ProTradeHeader: React.FC = () => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="gap-2 lg:gap-4 grid grid-cols-1 lg:flex lg:flex-wrap overflow-hidden"
+            className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Mark</p>
-              <p>83,565</p>
+              <p className="diatype-xs-medium text-gray-500">Mark</p>
+              <p className="diatype-sm-bold text-gray-700">83,565</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Last price</p>
-              <p>$2,578</p>
+              <p className="diatype-xs-medium text-gray-500">Last price</p>
+              <p className="diatype-sm-bold text-gray-700">$2,578</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">Oracle</p>
-              <p>83,565</p>
+              <p className="diatype-xs-medium text-gray-500">Oracle</p>
+              <p className="diatype-sm-bold text-gray-700">83,565</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">24h Change</p>
-              <p className="text-red-bean-400">-542 / 0.70</p>
+              <p className="diatype-xs-medium text-gray-500">24h Change</p>
+              <p className="diatype-sm-bold text-red-bean-400">-542 / 0.70</p>
             </div>
             <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-sm-medium text-gray-500 lg:min-w-[8rem]">24h Volume</p>
-              <p>$2,457,770,700.50</p>
+              <p className="diatype-xs-medium text-gray-500">24h Volume</p>
+              <p className="diatype-sm-bold text-gray-700">$2,457,770,700.50</p>
             </div>
           </motion.div>
         ) : null}
@@ -189,6 +190,7 @@ const ProTradeOrders: React.FC = () => {
           selectedTab={activeTab}
           keys={["open order", "trade history"]}
           onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
+          classNames={{ button: "exposure-xs-italic" }}
         />
 
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />

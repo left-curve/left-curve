@@ -8,7 +8,7 @@ export const Route = createFileRoute("/(app)/_app/dex")({
 
 function ProTradeApplet() {
   return (
-    <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)]">
+    <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)] relative overflow-visible">
       <ProTrade>
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
@@ -20,7 +20,7 @@ function ProTradeApplet() {
           </div>
           <ProTrade.Orders />
         </div>
-        <div className="hidden lg:flex pt-4 lg:max-w-[25rem] lg:bg-rice-25 w-full shadow-card-shadow relative z-20">
+        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,422px)] lg:bg-rice-25 shadow-card-shadow xl:relative z-20 max-h-[calc(100vh-76px)] md:sticky top-[76px] xl:top-0">
           <ProTrade.TradeMenu />
         </div>
       </ProTrade>
