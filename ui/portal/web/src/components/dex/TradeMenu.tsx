@@ -12,6 +12,7 @@ import {
   Range,
   Tabs,
   twMerge,
+  useControlledState,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
@@ -29,6 +30,7 @@ type TradeMenuProps = {
   action?: "sell" | "buy";
   type?: "spot" | "perp";
   className?: string;
+  setAction?: (action: "sell" | "buy") => void;
 };
 
 type TradeMenu = {
@@ -114,7 +116,7 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
             <p className="diatype-xs-medium text-gray-700">0.035% / 0.0100%</p>
           </div>
         </div>
-        <span className="w-full h-[1px] bg-gray-100" />
+        {/*  <span className="w-full h-[1px] bg-gray-100" />
         <div className="px-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Account Equity</p>
@@ -150,7 +152,7 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
               <p className="diatype-xs-medium text-gray-700">0.00x</p>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
@@ -240,10 +242,10 @@ const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   );
 };
 
-const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction, type = "spot", className }) => {
+const Menu: React.FC<TradeMenuProps> = ({ action, setAction, type = "spot", className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const [action, setAction] = useState<"sell" | "buy">(defaultAction || "buy");
+  const [state, setState] = useControlledState(action, setAction, "buy");
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
@@ -259,12 +261,12 @@ const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction, type = "spot", 
         </IconButton>
         <Tabs
           layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}
-          selectedTab={action}
+          selectedTab={state}
           keys={["buy", "sell"]}
           fullWidth
-          onTabChange={(tab) => setAction(tab as "sell" | "buy")}
-          color={action === "sell" ? "red" : "green"}
           classNames={{ button: "exposure-sm-italic" }}
+          onTabChange={(tab) => setState(tab as "sell" | "buy")}
+          color={state === "sell" ? "red" : "green"}
         />
         <IconButton
           variant="utility"
@@ -276,7 +278,7 @@ const Menu: React.FC<TradeMenuProps> = ({ action: defaultAction, type = "spot", 
           <IconUser className="h-6 w-6" />
         </IconButton>
       </div>
-      <SpotTradeMenu action={action} />
+      {type === "spot" ? <SpotTradeMenu action={state} /> : null}
     </div>
   );
 };

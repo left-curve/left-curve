@@ -1,15 +1,11 @@
-import { createContext, twMerge, useMediaQuery } from "@left-curve/applets-kit";
+import { createContext, twMerge, useInputs, useMediaQuery } from "@left-curve/applets-kit";
+import { useProTrade } from "@left-curve/store";
+import { useAccount, useSigningClient } from "@left-curve/store";
 import { useState } from "react";
 
-import {
-  Badge,
-  Button,
-  Cell,
-  IconChevronDown,
-  IconEmptyStar,
-  Table,
-  Tabs,
-} from "@left-curve/applets-kit";
+import { m } from "~/paraglide/messages";
+
+import { Badge, Cell, IconChevronDown, IconEmptyStar, Table, Tabs } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
@@ -17,18 +13,26 @@ import { TradeMenu } from "./TradeMenu";
 import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { AnyCoin } from "@left-curve/store/types";
+import type { OrdersByUserResponse } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
 
-import { useAccount, useSigningClient } from "@left-curve/store";
-import { mockOpenOrder } from "~/mock";
-
-const [ProTradeProvider, useProTrade] = createContext<any>({
+const [ProTradeProvider, useProTradeState] = createContext<{
+  state: ReturnType<typeof useProTrade>;
+}>({
   name: "ProTradeContext",
 });
 
 const ProTradeContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  return <ProTradeProvider value={{}}>{children}</ProTradeProvider>;
+  const __state__ = useProTrade({});
+  return (
+    <ProTradeProvider
+      value={{
+        state: __state__,
+      }}
+    >
+      {children}
+    </ProTradeProvider>
+  );
 };
 
 const ProTradeHeader: React.FC = () => {
@@ -105,84 +109,82 @@ const ProTradeChart: React.FC = () => {
   );
 };
 
+const ProTradeMenu: React.FC = () => {
+  return <TradeMenu />;
+};
+
 const ProTradeOrders: React.FC = () => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
-  const columns: TableColumn<{
-    time: Date;
-    type: string;
-    coin: AnyCoin;
-    direction: string;
-    size: number;
-    orderValue: number;
-    price: number;
-    reduceOnly: boolean;
-    triggerConditions: string;
-    onCancel: () => void;
-  }> = [
-    {
+  const { state } = useProTradeState();
+  const { orders } = state;
+
+  const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
+    /*  {
       header: "Time",
       cell: ({ row }) => <Cell.Time date={row.original.time} />,
-    },
+    }, */
     {
       header: "Type",
-      cell: ({ row }) => <Cell.Text text={row.original.type} />,
+      cell: ({ row }) => <Cell.Text text="Limit" />,
     },
     {
       header: "Coin",
-      cell: ({ row }) => <Cell.Asset noImage asset={row.original.coin} />,
+      cell: ({ row }) => {
+        return <Cell.Asset noImage denom={row.original.baseDenom} />;
+      },
     },
     {
       header: "Direction",
-      cell: ({ row }) => <Cell.Text text={row.original.direction} />,
+      cell: ({ row }) => (
+        <Cell.OrderDirection
+          text={m["dex.protrade.spot.direction"]({ direction: row.original.direction })}
+          direction={row.original.direction}
+        />
+      ),
     },
     {
       header: "Size",
-      cell: ({ row }) => <Cell.Text text={row.original.size} />,
+      cell: ({ row }) => <Cell.Text text={row.original.remaining} />,
     },
     {
-      header: "Order Value",
-      cell: ({ row }) => <Cell.Text text={row.original.orderValue} />,
+      header: "Original Size",
+      cell: ({ row }) => <Cell.Text text={row.original.amount} />,
     },
     {
       header: "Price",
       cell: ({ row }) => <Cell.Text text={row.original.price} />,
     },
     {
-      header: "Reduce Only",
-      cell: ({ row }) => <Cell.Text text={row.original.reduceOnly ? "Yes" : "No"} />,
-    },
-    {
-      header: "Trigger Conditions",
-      cell: ({ row }) => <Cell.Text text={row.original.triggerConditions} />,
-    },
-    {
       id: "cancel-order",
       header: () => (
-        <Button
-          variant="link"
-          className="p-0 m-0"
-          onClick={() =>
+        <Cell.Action
+          action={() =>
+            signingClient?.batchUpdateOrders({ cancels: "all", sender: account!.address })
+          }
+          label="Cancel All"
+          className="items-end"
+        />
+      ),
+      cell: ({ row }) => (
+        <Cell.Action
+          action={() =>
             signingClient?.batchUpdateOrders({
-              cancels: "all",
               sender: account!.address,
+              cancels: { some: [row.original.id] },
             })
           }
-        >
-          Cancel All
-        </Button>
-      ),
-      accessorFn: (row) => row.onCancel,
-      cell: ({ row }) => (
-        <Cell.Action action={row.original.onCancel} label="Cancel" className="items-end" />
+          label="Cancel"
+          className="items-end"
+        />
       ),
     },
   ];
 
   return (
-    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-0">
+    <div className="flex-1 p-4 !pr-2 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-0">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -196,7 +198,7 @@ const ProTradeOrders: React.FC = () => {
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
       {activeTab === "open order" ? (
-        <Table data={mockOpenOrder} columns={columns} style="simple" />
+        <Table data={orders.data} columns={columns} style="simple" />
       ) : null}
     </div>
   );
@@ -207,5 +209,5 @@ export const ProTrade = Object.assign(ProTradeContainer, {
   Chart: ProTradeChart,
   Orders: ProTradeOrders,
   OrderBook: OrderBookOverview,
-  TradeMenu,
+  TradeMenu: ProTradeMenu,
 });

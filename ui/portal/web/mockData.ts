@@ -237,48 +237,22 @@ export const mockTrades: IndexedTrade[] = [
 
 export const mockOpenOrder = [
   {
-    time: new Date(),
-    type: "Limit",
-    coin: {
-      symbol: "USDC",
-      name: "USDC",
-      denom: "usdc",
-      decimals: 6,
-      type: "contract",
-      logoURI:
-        "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-    } as AnyCoin,
-    direction: "Long",
-    size: 0.063,
-    orderValue: 11.98,
-    price: 1.889,
-    reduceOnly: false,
-    triggerConditions: "N/A",
-    onCancel: () => {
-      console.log("Order cancelled");
-    },
+    id: 1,
+    baseDenom: "bridge/usdc",
+    quoteDenom: "dango",
+    direction: 1,
+    remaining: "0.063",
+    amount: "11.98",
+    price: "1.889",
   },
   {
-    time: new Date(),
-    type: "Limit",
-    coin: {
-      symbol: "USDC",
-      name: "USDC",
-      denom: "usdc",
-      decimals: 6,
-      type: "contract",
-      logoURI:
-        "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-    } as AnyCoin,
-    direction: "Long",
-    size: 0.063,
-    orderValue: 11.98,
-    price: 1.889,
-    reduceOnly: false,
-    triggerConditions: "N/A",
-    onCancel: () => {
-      console.log("Order cancelled");
-    },
+    id: 2,
+    baseDenom: "bridge/usdc",
+    quoteDenom: "dango",
+    direction: 0,
+    remaining: "0.063",
+    amount: "11.98",
+    price: "1.889",
   },
 ];
 
