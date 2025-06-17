@@ -38,7 +38,8 @@ pub struct SentryConfig {
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
-    pub httpd: IndexerHttpdConfig,
+    pub httpd: HttpdConfig,
+    pub metrics_httpd: HttpdConfig,
     pub database: IndexerDatabaseConfig,
 }
 
@@ -58,19 +59,19 @@ impl Default for IndexerDatabaseConfig {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct IndexerHttpdConfig {
+pub struct HttpdConfig {
     pub enabled: bool,
     pub ip: String,
     pub port: u16,
     pub cors_allowed_origin: Option<String>,
 }
 
-impl Default for IndexerHttpdConfig {
+impl Default for HttpdConfig {
     fn default() -> Self {
-        IndexerHttpdConfig {
+        HttpdConfig {
             enabled: false,
             ip: "127.0.0.1".to_string(),
-            port: 8080,
+            port: 0,
             cors_allowed_origin: None,
         }
     }
