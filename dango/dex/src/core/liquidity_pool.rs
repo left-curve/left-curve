@@ -352,7 +352,7 @@ impl PassiveLiquidityPool for PairParams {
 /// Compute `|a - b|`.
 fn abs_diff<T>(a: T, b: T) -> <T as Sub>::Output
 where
-    T: PartialOrd + Sub, // TODO: do we use PartialOrd or Ord?
+    T: Ord + Sub,
 {
     if a > b {
         a - b
