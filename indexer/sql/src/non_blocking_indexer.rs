@@ -575,6 +575,7 @@ where
 
             let db = context.db.begin().await?;
 
+            #[allow(clippy::question_mark)]
             if let Err(err) = block_to_index.save(&db).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %err, "Can't save to db in `post_indexing`");
