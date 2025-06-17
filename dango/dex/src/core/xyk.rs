@@ -1,7 +1,7 @@
 use {
     grug::{
         Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
-        NumberConst, StdResult, Udec128, Uint128, ZeroExclusiveOneExclusive,
+        NumberConst, Udec128, Uint128, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -77,7 +77,7 @@ pub fn reflect_curve(
     quote_reserve: Uint128,
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-) -> StdResult<(
+) -> anyhow::Result<(
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
 )> {
