@@ -178,11 +178,11 @@ impl PassiveLiquidityPool for PairParams {
 
         // In case the deposit is asymmetrical, we need to apply a deposit fee.
         //
-        // This is to prevent an attach where a user deposits asymmetrical, then
-        // immediately withdraw symmetrical, essentially accomplishing a swap
-        // without paying any fee.
+        // This is to prevent an attach where a user deposits asymmetrically,
+        // then immediately withdraw symmetrically, essentially accomplishing a
+        // swap without paying the swap fee.
         //
-        // We determine the fee rate based oracle price as follows:
+        // We determine the deposit fee rate based oracle price as follows:
         //
         // - Suppose the pool's reserve is `A` dollars of the 1st asset and `B`
         //   dollars of the 2nd asset.
