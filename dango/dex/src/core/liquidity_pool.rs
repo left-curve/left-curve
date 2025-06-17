@@ -4,8 +4,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
-        Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128,
     },
     std::ops::Sub,
 };
@@ -75,6 +74,7 @@ pub trait PassiveLiquidityPool {
     /// The input asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_in(
         &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: &Denom,
         quote_denom: &Denom,
         reserve: CoinPair,
@@ -124,10 +124,11 @@ pub trait PassiveLiquidityPool {
     /// terminates.
     fn reflect_curve(
         self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
-    ) -> StdResult<(
+    ) -> anyhow::Result<(
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
         Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
     )>;
@@ -245,6 +246,7 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_in(
         &self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: &Denom,
         quote_denom: &Denom,
         mut reserve: CoinPair,
@@ -274,6 +276,7 @@ impl PassiveLiquidityPool for PairParams {
                 ratio,
                 order_spacing,
             } => geometric::swap_exact_amount_in(
+                oracle_querier,
                 base_denom,
                 quote_denom,
                 &input,
@@ -337,10 +340,11 @@ impl PassiveLiquidityPool for PairParams {
 
     fn reflect_curve(
         self,
+        oracle_querier: &mut OracleQuerier,
         base_denom: Denom,
         quote_denom: Denom,
         reserve: &CoinPair,
-    ) -> StdResult<(
+    ) -> anyhow::Result<(
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
         Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     )> {
@@ -358,6 +362,9 @@ impl PassiveLiquidityPool for PairParams {
                 ratio,
                 order_spacing,
             } => geometric::reflect_curve(
+                oracle_querier,
+                &base_denom,
+                &quote_denom,
                 base_reserve,
                 quote_reserve,
                 ratio,
@@ -386,8 +393,12 @@ where
 mod tests {
     use {
         super::*,
-        dango_types::constants::{eth, usdc},
-        grug::{Bounded, Coins, Inner, coins},
+        dango_types::{
+            constants::{eth, usdc},
+            oracle::PrecisionedPrice,
+        },
+        grug::{Bounded, Coins, Inner, coin_pair, coins, hash_map},
+        std::collections::HashMap,
         test_case::test_case,
     };
 
@@ -586,9 +597,31 @@ mod tests {
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
 
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        // TODO: take prices as test parameters
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        });
+
         let reserve = pool_liquidity.try_into().unwrap();
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
             .unwrap();
 
         // Assert that at least 10 orders are returned.
@@ -631,8 +664,29 @@ mod tests {
         .try_into()
         .unwrap();
 
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        });
+
         let (bids, asks) = pair
-            .reflect_curve(eth::DENOM.clone(), usdc::DENOM.clone(), &reserve)
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
             .unwrap();
 
         let bids_collected = bids.collect::<Vec<_>>();

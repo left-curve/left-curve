@@ -35,6 +35,7 @@ pub fn add_subsequent_liquidity(
 }
 
 pub fn swap_exact_amount_in(
+    oracle_querier: &mut OracleQuerier,
     base_denom: &Denom,
     quote_denom: &Denom,
     input: &Coin,
@@ -44,6 +45,9 @@ pub fn swap_exact_amount_in(
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<Uint128> {
     let (passive_bids, passive_asks) = reflect_curve(
+        oracle_querier,
+        base_denom,
+        quote_denom,
         reserve.amount_of(base_denom)?,
         reserve.amount_of(quote_denom)?,
         ratio,
@@ -120,22 +124,30 @@ pub fn swap_exact_amount_out() -> StdResult<Uint128> {
 }
 
 pub fn reflect_curve(
+    oracle_querier: &mut OracleQuerier,
+    base_denom: &Denom,
+    quote_denom: &Denom,
     base_reserve: Uint128,
     quote_reserve: Uint128,
     ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-) -> StdResult<(
+) -> anyhow::Result<(
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
 )> {
-    // FIXME: use oracle price instead
-    let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+    let base_price = oracle_querier
+        .query_price(base_denom, None)?
+        .value_of_unit_amount(Uint128::new(1_000_000))?;
+    let quote_price = oracle_querier
+        .query_price(quote_denom, None)?
+        .value_of_unit_amount(Uint128::new(1_000_000))?;
+    let spot_price = base_price.checked_div(quote_price)?;
 
     // Construct bid price iterator with decreasing prices.
     let bids = {
         let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
-        let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
+        let bid_starting_price = spot_price.checked_mul(one_sub_fee_rate)?;
         let mut maybe_price = Some(bid_starting_price);
         let mut remaining_quote = quote_reserve;
 
@@ -158,7 +170,7 @@ pub fn reflect_curve(
     // Construct ask price iterator with increasing prices.
     let asks = {
         let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
-        let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
+        let ask_starting_price = spot_price.checked_mul(one_plus_fee_rate)?;
         let mut maybe_price = Some(ask_starting_price);
         let mut remaining_base = base_reserve;
 
