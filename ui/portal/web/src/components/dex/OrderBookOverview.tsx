@@ -21,7 +21,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,422px)] min-h-[25rem]"
+      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,422px)] min-h-[calc(50vh+86px)]"
     >
       <Tabs
         color="line-red"
@@ -96,8 +96,8 @@ const OrderBook: React.FC = () => {
   const { bids, asks } = mockOrderBookData;
   const maxCumulativeAsk = asks.length > 0 ? asks[asks.length - 1].cumulativeTotal : 0;
   const maxCumulativeBid = bids.length > 0 ? bids[bids.length - 1].cumulativeTotal : 0;
-  const groupedAsks = groupOrdersByPrice(mockOrderBookData.asks).slice(0, 11);
-  const groupedBids = groupOrdersByPrice(mockOrderBookData.bids).slice(0, 11);
+  const groupedAsks = groupOrdersByPrice(mockOrderBookData.asks).slice(0, 9);
+  const groupedBids = groupOrdersByPrice(mockOrderBookData.bids).slice(0, 9);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
