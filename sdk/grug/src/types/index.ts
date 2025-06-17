@@ -115,6 +115,7 @@ export type {
   Option,
   AllLeafKeys,
   KeyOfUnion,
+  ExtractFromUnion,
 } from "./utils.js";
 
 export type {

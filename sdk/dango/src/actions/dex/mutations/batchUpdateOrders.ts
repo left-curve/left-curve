@@ -7,12 +7,12 @@ import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcast
 import type {
   AppConfig,
   DangoClient,
-  GetDexMsg,
+  GetDexExecuteMsg,
   Signer,
   TypedDataParameter,
 } from "#types/index.js";
 
-type ActionMsg = GetDexMsg<"batchUpdateOrders">;
+type ActionMsg = GetDexExecuteMsg<"batchUpdateOrders">;
 
 export type BatchUpdateOrdersParameters = Prettify<{
   sender: Address;
@@ -52,7 +52,7 @@ export async function batchUpdateOrders<transport extends Transport>(
           ? [
               cancels === "all"
                 ? { name: "cancels", type: "string" }
-                : { name: "cancels", type: "uint64[]" },
+                : { name: "cancels", type: "CancelSome" },
             ]
           : []),
       ],
@@ -70,6 +70,7 @@ export async function batchUpdateOrders<transport extends Transport>(
         { name: "amount", type: "string" },
         { name: "price", type: "string" },
       ],
+      ...(cancels && cancels !== "all" ? { CancelSome: [{ name: "some", type: "uint64[]" }] } : {}),
     },
   };
 

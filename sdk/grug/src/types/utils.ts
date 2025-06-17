@@ -99,3 +99,5 @@ export type AllLeafKeys<T> = {
       : AllLeafKeys<T[K]>
     : K;
 }[keyof T];
+
+export type ExtractFromUnion<T, K extends KeyOfUnion<T>> = Extract<T, { [P in K]: unknown }>;

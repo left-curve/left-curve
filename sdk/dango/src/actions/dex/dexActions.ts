@@ -48,9 +48,16 @@ import {
   batchUpdateOrders,
 } from "./mutations/batchUpdateOrders.js";
 
+import {
+  type OrdersByUserParameters,
+  type OrdersByUserReturnType,
+  ordersByUser,
+} from "./queries/ordersByUser.js";
+
 export type DexQueryActions = {
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
+  ordersByUser: (args: OrdersByUserParameters) => OrdersByUserReturnType;
   simulateSwapExactAmountOut: (
     args: SimulateSwapExactAmountOutParameters,
   ) => SimulateSwapExactAmountOutReturnType;
@@ -65,6 +72,7 @@ export function dexQueryActions<transport extends Transport = Transport>(
   return {
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
+    ordersByUser: (args) => ordersByUser(client, args),
     simulateSwapExactAmountOut: (args) => simulateSwapExactAmountOut(client, args),
     simulateSwapExactAmountIn: (args) => simulateSwapExactAmountIn(client, args),
   };

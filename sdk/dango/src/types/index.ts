@@ -125,7 +125,8 @@ export type {
   CancelOrderRequest,
   CreateLimitOrderRequest,
   CreateMarketOrderRequest,
-  GetDexMsg,
+  GetDexExecuteMsg,
+  GetDexQueryMsg,
   OrderId,
 } from "./dex.js";
 

@@ -1,4 +1,12 @@
-import type { Address, Coin, Denom, KeyOfUnion, Option, Timestamp } from "@left-curve/sdk/types";
+import type {
+  Address,
+  Coin,
+  Denom,
+  ExtractFromUnion,
+  KeyOfUnion,
+  Option,
+  Timestamp,
+} from "@left-curve/sdk/types";
 import type { Username } from "./account.js";
 
 export type SwapRoute = PairId[];
@@ -176,10 +184,12 @@ export type DexExecuteMsg =
       };
     };
 
-export type GetDexMsg<K extends KeyOfUnion<DexExecuteMsg>> = Extract<
+export type GetDexExecuteMsg<K extends KeyOfUnion<DexExecuteMsg>> = ExtractFromUnion<
   DexExecuteMsg,
-  { [P in K]: unknown }
+  K
 >;
+
+export type GetDexQueryMsg<K extends KeyOfUnion<DexQueryMsg>> = ExtractFromUnion<DexQueryMsg, K>;
 
 export type PairId = {
   baseDenom: string;
