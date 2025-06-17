@@ -34,21 +34,25 @@ pub struct SentryConfig {
     pub traces_sample_rate: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
-    pub database_url: String,
     pub httpd: IndexerHttpdConfig,
+    pub database: IndexerDatabaseConfig,
 }
 
-impl Default for IndexerConfig {
+#[derive(Serialize, Deserialize)]
+pub struct IndexerDatabaseConfig {
+    pub url: String,
+    pub concurrency: u32,
+}
+
+impl Default for IndexerDatabaseConfig {
     fn default() -> Self {
-        Self {
-            enabled: false,
-            keep_blocks: false,
-            database_url: "postgres://localhost".to_string(),
-            httpd: IndexerHttpdConfig::default(),
+        IndexerDatabaseConfig {
+            url: "sqlite::memory:".to_string(),
+            concurrency: 10,
         }
     }
 }
