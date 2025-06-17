@@ -591,6 +591,20 @@
       "errors": {
         "failure": "Swap failed"
       }
+    },
+    "protrade": {
+      "spot": {
+        "direction": [
+          {
+            "declarations": ["input direction"],
+            "selectors": ["direction"],
+            "match": {
+              "direction=0": "Buy",
+              "direction=1": "Sell"
+            }
+          }
+        ]
+      }
     }
   },
   "errors": {
