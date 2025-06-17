@@ -18,21 +18,15 @@ import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTradeState] = createContext<{
   state: ReturnType<typeof useProTrade>;
+  controllers: ReturnType<typeof useInputs>;
 }>({
   name: "ProTradeContext",
 });
 
 const ProTradeContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  const __state__ = useProTrade({});
-  return (
-    <ProTradeProvider
-      value={{
-        state: __state__,
-      }}
-    >
-      {children}
-    </ProTradeProvider>
-  );
+  const controllers = useInputs();
+  const state = useProTrade({ inputs: controllers.inputs });
+  return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 
 const ProTradeHeader: React.FC = () => {
@@ -116,7 +110,8 @@ const ProTradeChart: React.FC = () => {
 };
 
 const ProTradeMenu: React.FC = () => {
-  return <TradeMenu />;
+  const { state, controllers } = useProTradeState();
+  return <TradeMenu state={state} controllers={controllers} />;
 };
 
 const ProTradeOrders: React.FC = () => {

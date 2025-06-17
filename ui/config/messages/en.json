@@ -594,6 +594,10 @@
     },
     "protrade": {
       "spot": {
+        "fees": "Fees",
+        "orderValue": "Order Value",
+        "availableToTrade": "Available to trade",
+        "slippage": "Slippage",
         "direction": [
           {
             "declarations": ["input direction"],

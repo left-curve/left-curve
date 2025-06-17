@@ -1,12 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-export type UseProTradeParameters = {};
+export type UseProTradeParameters = {
+  inputs: Record<string, { value: string }>;
+};
 
 export function useProTrade(parameters: UseProTradeParameters) {
   const { account } = useAccount();
   const publicClient = usePublicClient();
+
+  const [operation, setOperation] = useState<"market" | "limit">("limit");
+  const [action, setAction] = useState<"buy" | "sell">("buy");
 
   const orders = useQuery({
     enabled: !!account,
@@ -25,5 +31,10 @@ export function useProTrade(parameters: UseProTradeParameters) {
 
   return {
     orders,
+    operation,
+    setOperation,
+    action,
+    setAction,
+    type: "spot",
   };
 }

@@ -13,13 +13,16 @@ import {
   Tabs,
   twMerge,
   useControlledState,
+  type useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
 import { useState } from "react";
-import type React from "react";
 
 import { m } from "~/paraglide/messages";
+
+import type { useProTrade } from "@left-curve/store";
+import type React from "react";
 
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
   const { isLg } = useMediaQuery();
@@ -27,19 +30,14 @@ export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
 };
 
 type TradeMenuProps = {
-  action?: "sell" | "buy";
-  type?: "spot" | "perp";
   className?: string;
-  setAction?: (action: "sell" | "buy") => void;
+  state: ReturnType<typeof useProTrade>;
+  controllers: ReturnType<typeof useInputs>;
 };
 
-type TradeMenu = {
-  action?: "sell" | "buy";
-};
-
-const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
+const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
   const { isLg } = useMediaQuery();
-  const [operation, setOperation] = useState<"market" | "limit">("limit");
+  const { operation, setOperation, action } = state;
 
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
@@ -54,7 +52,9 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           classNames={{ button: "exposure-xs-italic" }}
         />
         <div className="flex items-center justify-between gap-2">
-          <p className="diatype-xs-regular text-gray-500">Available to Trade</p>
+          <p className="diatype-xs-regular text-gray-500">
+            {m["dex.protrade.spot.availableToTrade"]()}
+          </p>
           <p className="diatype-xs-medium text-gray-700">1.23 ETH</p>
         </div>
         <Input
@@ -107,15 +107,21 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
         </div>
         <div className="flex flex-col gap-1 px-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Order value</p>
+            <p className="diatype-xs-regular text-gray-500">
+              {m["dex.protrade.spot.orderValue"]()}
+            </p>
             <p className="diatype-xs-medium text-gray-700">$12.345</p>
           </div>
+          {operation === "market" ? (
+            <div className="flex items-center justify-between gap-2">
+              <p className="diatype-xs-regular text-gray-500">
+                {m["dex.protrade.spot.slippage"]()}
+              </p>
+              <p className="diatype-xs-medium text-status-success">Est: 0% / Max: 8.00%</p>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Slippage</p>
-            <p className="diatype-xs-medium text-status-success">Est: 0% / Max: 8.00%</p>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-gray-500">Fees</p>
+            <p className="diatype-xs-regular text-gray-500">{m["dex.protrade.spot.fees"]()}</p>
             <p className="diatype-xs-medium text-gray-700">0.035% / 0.0100%</p>
           </div>
         </div>
@@ -161,9 +167,9 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   );
 };
 
-const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
+const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
   const { isLg } = useMediaQuery();
-  const [operation, setOperation] = useState<"market" | "limit">("limit");
+  const { operation, setOperation, action } = state;
 
   return (
     <div className="w-full flex flex-col gap-4 p-4">
@@ -245,10 +251,10 @@ const PerpsTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   );
 };
 
-const Menu: React.FC<TradeMenuProps> = ({ action, setAction, type = "spot", className }) => {
+const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const [state, setState] = useControlledState(action, setAction, "buy");
+  const { action, setAction, type } = state;
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
@@ -264,12 +270,12 @@ const Menu: React.FC<TradeMenuProps> = ({ action, setAction, type = "spot", clas
         </IconButton>
         <Tabs
           layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}
-          selectedTab={state}
+          selectedTab={action}
           keys={["buy", "sell"]}
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
-          onTabChange={(tab) => setState(tab as "sell" | "buy")}
-          color={state === "sell" ? "red" : "green"}
+          onTabChange={(tab) => setAction(tab as "sell" | "buy")}
+          color={action === "sell" ? "red" : "green"}
         />
         <IconButton
           variant="utility"
@@ -281,7 +287,8 @@ const Menu: React.FC<TradeMenuProps> = ({ action, setAction, type = "spot", clas
           <IconUser className="h-6 w-6" />
         </IconButton>
       </div>
-      {type === "spot" ? <SpotTradeMenu action={state} /> : null}
+      {type === "spot" ? <SpotTradeMenu state={state} controllers={controllers} /> : null}
+      {type === "perps" ? <PerpsTradeMenu state={state} controllers={controllers} /> : null}
     </div>
   );
 };
