@@ -1154,10 +1154,14 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    Uint128::new(99),
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
-    };
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(1)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(100);
     "provision at pool ratio"
 )]
 #[test_case(
@@ -1166,10 +1170,14 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    Uint128::new(49),
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
-    };
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(1)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(50);
     "provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1178,17 +1186,22 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    Uint128::new(72),
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
-    };
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(1)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(72);
     "provision at different ratio"
 )]
 fn provide_liquidity(
     provision: Coins,
     swap_fee: Udec128,
-    expected_lp_balance: Uint128,
     pool_type: PassiveLiquidity,
+    oracle_prices: Vec<(Denom, Udec128)>,
+    expected_lp_balance: Uint128,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
@@ -1225,6 +1238,24 @@ fn provide_liquidity(
                 .should_succeed();
             true
         });
+
+    // Register the oracle prices
+    for (denom, price) in oracle_prices {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                    denom => PriceSource::Fixed {
+                        humanized_price: price,
+                        precision: 6,
+                        timestamp: 1730802926,
+                    },
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+    }
 
     suite
         .execute(
@@ -1346,6 +1377,38 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             true
         });
 
+    // Register the oracle prices
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Owner provides some initial liquidity.
     suite
         .execute(
             &mut accounts.owner,
@@ -1363,7 +1426,6 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
         dango::DENOM.clone() => 100,
         usdc::DENOM.clone() => 100,
     };
-
     suite
         .execute(
             &mut accounts.user1,
