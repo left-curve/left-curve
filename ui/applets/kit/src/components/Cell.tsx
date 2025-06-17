@@ -213,15 +213,20 @@ const Time: React.FC<CellTimeProps> = ({ date, className }) => {
 };
 
 type CellActionProps = {
-  className?: string;
+  classNames?: {
+    cell?: string;
+    button?: string;
+  };
   action: () => void;
   label: string;
 };
 
-const Action: React.FC<CellActionProps> = ({ action, label, className }) => {
+const Action: React.FC<CellActionProps> = ({ action, label, classNames }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
-      <Button variant="link" onClick={action} className="">
+    <div
+      className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", classNames?.cell)}
+    >
+      <Button variant="link" onClick={action} className={twMerge(classNames?.button)}>
         {label}
       </Button>
     </div>

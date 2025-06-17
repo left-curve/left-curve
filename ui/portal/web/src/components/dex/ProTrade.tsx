@@ -165,7 +165,10 @@ const ProTradeOrders: React.FC = () => {
             signingClient?.batchUpdateOrders({ cancels: "all", sender: account!.address })
           }
           label="Cancel All"
-          className="items-end"
+          classNames={{
+            cell: "items-end diatype-xs-regular",
+            button: "!exposure-xs-italic m-0 px-1 h-fit ",
+          }}
         />
       ),
       cell: ({ row }) => (
@@ -177,7 +180,7 @@ const ProTradeOrders: React.FC = () => {
             })
           }
           label="Cancel"
-          className="items-end"
+          classNames={{ cell: "items-end", button: "!exposure-xs-italic m-0 px-1 h-fit" }}
         />
       ),
     },
@@ -198,7 +201,7 @@ const ProTradeOrders: React.FC = () => {
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
       {activeTab === "open order" ? (
-        <Table data={orders.data} columns={columns} style="simple" />
+        <Table data={orders.data} columns={columns} style="simple" classNames={{ row: "h-fit" }} />
       ) : null}
     </div>
   );
