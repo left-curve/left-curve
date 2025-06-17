@@ -25,5 +25,4 @@ grug          = { workspace = true }
 pyth-types    = { workspace = true }
 
 [dev-dependencies]
-
 test-case = { workspace = true }
