@@ -138,6 +138,10 @@ pub fn reflect_curve(
 )> {
     // Compute the price of the base asset denominated in the quote asset.
     // We will place orders above and below this price.
+    //
+    // Note that we aren't computing the price in the human units, but in their
+    // base units. In other words, we don't want to know how many BTC is per USDC;
+    // we want to know how many sat (1e-8 BTC) is per 1e-6 USDC.
     let marginal_price = {
         const PRECISION: Uint128 = Uint128::new(1_000_000);
 
