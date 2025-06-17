@@ -74,7 +74,7 @@ type CellTextProps = {
 
 const Text: React.FC<CellTextProps> = ({ text, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 text-gray-500", className)}>
       <p>{text}</p>
     </div>
   );
@@ -90,7 +90,7 @@ const OrderDirection: React.FC<CellOrderDirectionProps> = ({ text, direction, cl
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-1 diatype-sm-medium",
+        "flex flex-col gap-1 diatype-xs-medium",
         direction === 1 ? "text-status-fail" : "text-status-success",
         className,
       )}

@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
-  const isProSwap = location.pathname.includes("pro-swap");
+  const isProSwap = location.pathname.includes("dex");
 
   return (
     <header

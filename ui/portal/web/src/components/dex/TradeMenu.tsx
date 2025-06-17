@@ -42,7 +42,7 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
   const [operation, setOperation] = useState<"market" | "limit">("limit");
 
   return (
-    <div className="w-full flex flex-col justify-between  gap-4 flex-1">
+    <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
       <div className="w-full flex flex-col gap-4 px-4">
         <Tabs
           layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
@@ -101,7 +101,7 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
         <div className="px-4">
-          <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth>
+          <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth size="md">
             Enable Trading
           </Button>
         </div>
@@ -267,7 +267,7 @@ const Menu: React.FC<TradeMenuProps> = ({ action, setAction, type = "spot", clas
           selectedTab={state}
           keys={["buy", "sell"]}
           fullWidth
-          classNames={{ button: "exposure-sm-italic" }}
+          classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
           onTabChange={(tab) => setState(tab as "sell" | "buy")}
           color={state === "sell" ? "red" : "green"}
         />
@@ -294,7 +294,7 @@ const MenuMobile: React.FC<TradeMenuProps> = (props) => {
       <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
-          <Menu className="overflow-y-auto" {...props} />
+          <Menu className="overflow-y-auto h-full" {...props} />
         </Sheet.Content>
       </Sheet.Container>
       <Sheet.Backdrop onTap={() => setTradeBarVisibility(false)} />

@@ -60,13 +60,13 @@ export const Table = <T,>({
       >
         {table.getHeaderGroups().map((headerGroup) => (
           <thead key={headerGroup.id}>
-            {headerGroup.headers.map((header) => {
-              return (
-                <td key={header.id} className={twMerge(styles.header(), "", classNames?.header)}>
+            <tr>
+              {headerGroup.headers.map((header) => (
+                <th key={header.id} className={twMerge(styles.header(), classNames?.header)}>
                   {flexRender(header.column.columnDef.header, header.getContext())}
-                </td>
-              );
-            })}
+                </th>
+              ))}
+            </tr>
           </thead>
         ))}
 
@@ -104,13 +104,13 @@ const tabsVariants = tv({
       default: {
         base: "bg-rice-25 shadow-account-card px-4 pt-4",
         header:
-          "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl",
-        cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end",
+          "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
+        cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
         row: "border-b border-gray-100 last:border-b-0",
       },
       simple: {
         base: "text-gray-500 border-separate",
-        header: "p-2 text-gray-500 diatype-xs-regular last:text-end",
+        header: "p-2 text-gray-500 diatype-xs-regular last:text-end text-start",
         cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-rice-50",
         row: "rounded-xl group",
       },
