@@ -9,8 +9,8 @@ import {
 } from "@tanstack/react-table";
 import type React from "react";
 
+import { type VariantProps, tv } from "tailwind-variants";
 import { twMerge } from "#utils/twMerge.js";
-import { tv, type VariantProps } from "tailwind-variants";
 
 export type TableColumn<T> = ColumnDef<T>[];
 
@@ -58,17 +58,19 @@ export const Table = <T,>({
           "scrollbar-none w-full min-w-fit whitespace-nowrap overflow-hidden relative overflow-x-scroll ",
         )}
       >
-        {table.getHeaderGroups().map((headerGroup) => (
-          <thead key={headerGroup.id}>
-            <tr>
-              {headerGroup.headers.map((header) => (
-                <th key={header.id} className={twMerge(styles.header(), classNames?.header)}>
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
+        <thead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                return (
+                  <td key={header.id} className={twMerge(styles.header(), classNames?.header)}>
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </td>
+                );
+              })}
             </tr>
-          </thead>
-        ))}
+          ))}
+        </thead>
 
         <tbody>
           {rows.map((row) => {
