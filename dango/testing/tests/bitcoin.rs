@@ -188,11 +188,6 @@ fn instantiate() {
         let config = Config {
             network: Network::Bitcoin,
             vault: "Hello Dango!".to_string(),
-            guardians: NonEmpty::new_unchecked(btree_set!(
-                *accounts.user1.address.inner(),
-                *accounts.user2.address.inner(),
-                *accounts.user3.address.inner(),
-            )),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
@@ -219,11 +214,6 @@ fn instantiate() {
         let config = Config {
             network: Network::Testnet,
             vault: "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4".to_string(),
-            guardians: NonEmpty::new_unchecked(btree_set!(
-                *accounts.user1.address.inner(),
-                *accounts.user2.address.inner(),
-                *accounts.user3.address.inner(),
-            )),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
@@ -248,11 +238,6 @@ fn instantiate() {
         let config = Config {
             network: Network::Regtest,
             vault: MOCK_BITCOIN_REGTEST_VAULT.to_string(),
-            guardians: NonEmpty::new_unchecked(btree_set!(
-                *accounts.user1.address.inner(),
-                *accounts.user2.address.inner(),
-                *accounts.user3.address.inner(),
-            )),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
@@ -1238,5 +1223,6 @@ fn fee() {
 
     // Ensure the fee estimation is not too high.
     let percentage = fee_estimation * Uint128::new(100) / fee;
+    println!("Percentage: {percentage}");
     assert!(percentage < Uint128::new(105));
 }

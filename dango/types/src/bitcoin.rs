@@ -22,6 +22,7 @@ pub use corepc_client::bitcoin::Network;
 /// Size of one signature in bytes for P2WSH.
 pub const INPUT_SIGNATURES_OVERHEAD: Uint128 = Uint128::new(28);
 pub const SIGNATURE_SIZE: Uint128 = Uint128::new(20);
+pub const OUTPUT_SIZE: Uint128 = Uint128::new(34);
 
 /// A Bitcoin address. This is a string representation of the address, which can be in
 /// all kinds of formats. It's validated inside the contract since it depends on the network.
@@ -99,7 +100,6 @@ impl MultisigSettings {
 pub struct Config {
     pub network: Network,
     pub vault: BitcoinAddress,
-    pub guardians: NonEmpty<BTreeSet<Addr>>,
     pub multisig: MultisigSettings,
     /// The amount of Sats for each vByte to calculate the fee.
     pub sats_per_vbyte: Uint128,

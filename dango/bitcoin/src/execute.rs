@@ -14,8 +14,8 @@ use {
         DangoQuerier,
         bitcoin::{
             BitcoinSignature, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
-            InboundCredential, InstantiateMsg, Network, OutboundConfirmed, OutboundRequested,
-            SIGNATURE_SIZE, Transaction, Vout, create_tx_in,
+            InboundCredential, InstantiateMsg, Network, OUTPUT_SIZE, OutboundConfirmed,
+            OutboundRequested, SIGNATURE_SIZE, Transaction, Vout, create_tx_in,
         },
         gateway::{
             self, Remote,
@@ -313,8 +313,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         return Ok(Response::new());
     }
 
-    outputs.insert(cfg.vault, Uint128::ONE);
-
     // Sum up the total outbound amount.
     let withdraw_amount = outputs
         .iter()
@@ -334,13 +332,16 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     let mut btc_transaction = tx.to_btc_transaction(cfg.network)?;
 
-    // The size of the transaction is calculated as:
-    // size = overhead + n_input * input_size + n_output * output_size
-    // and the fee = size * sats_per_vbyte
+    // The fee is calculated as tx_size * sats_per_vbyte.
+    // The function `vsize()` returns the size of the transaction in vbyte, but
+    // it doesn't include the size of the signatures.
     let mut fee = Uint128::ZERO;
 
-    // The size in vbyte of the signatures per input.
-    let signature_size_per_input = SIGNATURE_SIZE * Uint128::new(cfg.multisig.threshold() as u128);
+    // For each input, we need a number of signatures equal to the threshold.
+    // So for each input, we calculate the size of the signatures in vbyte as
+    // INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * threshold.
+    let signature_size_per_input =
+        INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * Uint128::new(cfg.multisig.threshold() as u128);
 
     // Keep adding UTXOs until we reach the withdraw amount + fee.
     for res in UTXOS.range(ctx.storage, None, None, cfg.outbound_strategy) {
@@ -354,13 +355,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         sum.checked_add_assign(amount)?;
         btc_transaction.input.push(create_tx_in(&hash, vout));
 
-        // The fee for a tx is calculated as tx_size * sats_per_vbyte.
-        // The tx_size is calculated with `vsize()` function + the size of the signatures.
-        let signatures_size = Uint128::new(inputs.len() as u128)
-            * (INPUT_SIGNATURES_OVERHEAD + signature_size_per_input);
+        // Size of signatures.
+        let signatures_size = Uint128::new(inputs.len() as u128) * signature_size_per_input;
 
-        fee =
-            (Uint128::new(btc_transaction.vsize() as u128) + signatures_size) * cfg.sats_per_vbyte;
+        // Adding 1 output for the vault.
+        fee = (Uint128::new(btc_transaction.vsize() as u128) + signatures_size + OUTPUT_SIZE)
+            * cfg.sats_per_vbyte;
     }
 
     // Ensure we have enough UTXOs to cover the withdraw amount + fee.
@@ -371,13 +371,13 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         withdraw_amount + fee
     );
 
-    // // Total amount of BTC needed for this tx.
-    // let total = withdraw_amount + fee;
+    // Total amount of BTC needed for this tx.
+    let total = withdraw_amount + fee;
 
-    // // If there's excess input, send the excess back to the vault.
-    // if sum > total {
-    //     outputs.insert(cfg.vault, sum - total);
-    // }
+    // If there's excess input, send the excess back to the vault.
+    if sum > total {
+        outputs.insert(cfg.vault, sum - total);
+    }
 
     // Delete the chosen UTXOs.
     for ((hash, vout), amount) in &inputs {

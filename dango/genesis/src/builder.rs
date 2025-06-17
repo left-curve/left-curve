@@ -1,6 +1,5 @@
 use {
     crate::{Addresses, Codes, Contracts, GenesisOption},
-    anyhow::anyhow,
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt},
         bank, bitcoin,
@@ -10,8 +9,8 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
-        IsZero, JsonSerExt, Message, NonEmpty, Permission, Permissions, ResultExt, StdResult,
-        btree_map, btree_set, coins,
+        IsZero, JsonSerExt, Message, Permission, Permissions, ResultExt, StdResult, btree_map,
+        btree_set, coins,
     },
     hyperlane_types::{isms, mailbox, va},
     serde::Serialize,
@@ -165,19 +164,6 @@ where
         "dango/lending",
     )?;
 
-    // Instantiate the bitcoin bridge contract.
-    let btc_guardians_addresses = opt
-        .bitcoin
-        .guardians
-        .iter()
-        .map(|username| {
-            addresses.get(username).cloned().ok_or(anyhow!(
-                "Missing address for bitcoin guardian: {}",
-                username
-            ))
-        })
-        .collect::<anyhow::Result<_>>()?;
-
     let bitcoin = instantiate(
         &mut msgs,
         bitcoin_code_hash,
@@ -185,7 +171,6 @@ where
             config: bitcoin::Config {
                 network: opt.bitcoin.network,
                 vault: opt.bitcoin.vault,
-                guardians: NonEmpty::new(btc_guardians_addresses)?,
                 multisig: opt.bitcoin.multisig,
                 sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
                 outbound_strategy: opt.bitcoin.outbound_strategy,

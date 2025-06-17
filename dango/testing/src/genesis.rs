@@ -585,11 +585,6 @@ impl Preset for BitcoinOption {
         BitcoinOption {
             network: Network::Regtest,
             vault: MOCK_BITCOIN_REGTEST_VAULT.to_string(),
-            guardians: NonEmpty::new_unchecked(btree_set! {
-                val1::USERNAME.clone(),
-                val2::USERNAME.clone(),
-                val3::USERNAME.clone(),
-            }),
             multisig: MultisigSettings::new(
                 2,
                 NonEmpty::new_unchecked(btree_set! {
