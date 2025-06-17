@@ -7,9 +7,8 @@ use {
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
         Uint128,
     },
+    std::ops::Sub,
 };
-
-const HALF: Udec128 = Udec128::new_percent(50);
 
 pub trait PassiveLiquidityPool {
     /// Provide liquidity to the pool. This function mutates the pool reserves.
@@ -140,12 +139,27 @@ impl PassiveLiquidityPool for PairParams {
         lp_token_supply: Uint128,
         deposit: CoinPair,
     ) -> anyhow::Result<(CoinPair, Uint128)> {
+        // The deposit must have the same denoms as the reserve. This should
+        // have been caught earlier in `execute::provide_liquidity`.
+        // We assert this in debug builds only.
+        #[cfg(debug_assertions)]
+        {
+            let deposit_denoms = (deposit.first().denom, deposit.second().denom);
+            let reserve_denoms = (reserve.first().denom, reserve.second().denom);
+            assert_eq!(
+                deposit_denoms, reserve_denoms,
+                "deposit denoms {deposit_denoms:?} don't match reserve denoms {reserve_denoms:?}",
+            );
+        }
+
         // If there isn't any liquidity in the pool yet, run the special logic
         // for adding initial liquidity, then early return.
         if lp_token_supply.is_zero() {
             let mint_amount = match &self.pool_type {
                 PassiveLiquidity::Xyk { .. } => xyk::add_initial_liquidity(&deposit)?,
-                PassiveLiquidity::Geometric { .. } => geometric::add_initial_liquidity(&deposit)?,
+                PassiveLiquidity::Geometric { .. } => {
+                    geometric::add_initial_liquidity(oracle_querier, &deposit)?
+                },
             };
 
             reserve.merge(deposit.clone())?;
@@ -162,27 +176,67 @@ impl PassiveLiquidityPool for PairParams {
             },
         };
 
-        let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
-
-        // Apply swap fee to unbalanced provision. Logic is based on Curve V2:
+        // In case the deposit is asymmetrical, we need to apply a deposit fee.
+        //
+        // This is to prevent an attach where a user deposits asymmetrical, then
+        // immediately withdraw symmetrical, essentially accomplishing a swap
+        // without paying any fee.
+        //
+        // We determine the fee rate based oracle price as follows:
+        //
+        // - Suppose the pool's reserve is `A` dollars of the 1st asset and `B`
+        //   dollars of the 2nd asset.
+        // - Suppose a user deposits `a` dollars of 1st asset and `b` dollars of
+        //   the 2nd asset.
+        // - Note that `A`, `B`, `a`, and `b` here are values in USD, not the
+        //   unit amounts.
+        // - Without losing generality, assume a / A > b / B. In this case, the
+        //   user is over-supplying the 1st asset and under-supplying the 2nd
+        //   asset. To make the deposit symmetrical, the user needs to swap some
+        //   1st asset into some 2nd asset.
+        // - Suppose user swap `x` dollars of the 1st asset into the 2nd asset.
+        //   Also suppose our pool does the swap at exactly the oracle price
+        //   without slippage. This assumption obviously isn't true, but is good
+        //   enough for the purpose of preventing the aforementioned attack.
+        // - We must solve:
+        //   (a - x) / (A + x) = (b + x) / (B - x)
+        //   The solution is:
+        //   x = (a * B - A * b) / (a + A + b + B)
+        // - We charge a fee assuming this swap is to be carried out. The USD
+        //   value of the fee is:
+        //   x * swap_fee_rate
+        // - To charge the fee, we mint slightly less LP tokens corresponding to
+        //   the ratio:
+        //   x * swap_fee_rate / (a + b)
+        //
+        // Related: Curve V2 also applies a fee for asymmetrical deposits:
         // https://github.com/curvefi/twocrypto-ng/blob/main/contracts/main/Twocrypto.vy#L1146-L1168
-        let (a, b, reserve_a, reserve_b) = (
-            *deposit.first().amount,
-            *deposit.second().amount,
-            *reserve.first().amount,
-            *reserve.second().amount,
-        );
+        // However, their math appears to be only suitable for the Curve V2 curve.
+        // Our oracle approach is more generalizable to different pool types.
+        let fee_rate = {
+            let price = oracle_querier.query_price(reserve.first().denom, None)?;
+            let a = price.value_of_unit_amount(*deposit.first().amount)?;
+            let reserve_a = price.value_of_unit_amount(*reserve.first().amount)?;
 
-        let sum_reserves = reserve_a.checked_add(reserve_b)?;
-        let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
-        let fee_rate = Udec128::checked_from_ratio(
-            abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
-            sum_reserves,
-        )?
-        .checked_mul(self.swap_fee_rate.checked_mul(HALF)?)?;
+            let price = oracle_querier.query_price(reserve.second().denom, None)?;
+            let b = price.value_of_unit_amount(*deposit.second().amount)?;
+            let reserve_b = price.value_of_unit_amount(*reserve.second().amount)?;
 
-        let mint_amount =
-            mint_amount_before_fee.checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
+            let deposit_value = a.checked_add(b)?;
+            let reserve_value = reserve_a.checked_add(reserve_b)?;
+
+            abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
+                .checked_div(deposit_value.checked_add(reserve_value)?)?
+                .checked_mul(*self.swap_fee_rate)?
+                .checked_div(deposit_value)?
+        };
+
+        let mint_amount = {
+            let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
+            let one_sub_fee_rate = Udec128::ONE.checked_sub(fee_rate)?;
+
+            mint_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?
+        };
 
         Ok((reserve, mint_amount))
     }
@@ -296,7 +350,10 @@ impl PassiveLiquidityPool for PairParams {
 }
 
 /// Compute `|a - b|`.
-fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
+fn abs_diff<T>(a: T, b: T) -> <T as Sub>::Output
+where
+    T: PartialOrd + Sub, // TODO: do we use PartialOrd or Ord?
+{
     if a > b {
         a - b
     } else {
