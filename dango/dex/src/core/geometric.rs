@@ -136,18 +136,25 @@ pub fn reflect_curve(
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
 )> {
-    let base_price = oracle_querier
-        .query_price(base_denom, None)?
-        .value_of_unit_amount(Uint128::new(1_000_000))?;
-    let quote_price = oracle_querier
-        .query_price(quote_denom, None)?
-        .value_of_unit_amount(Uint128::new(1_000_000))?;
-    let spot_price = base_price.checked_div(quote_price)?;
+    // Compute the price of the base asset denominated in the quote asset.
+    // We will place orders above and below this price.
+    let marginal_price = {
+        const PRECISION: Uint128 = Uint128::new(1_000_000);
+
+        let base_price = oracle_querier
+            .query_price(base_denom, None)?
+            .value_of_unit_amount(PRECISION)?;
+        let quote_price = oracle_querier
+            .query_price(quote_denom, None)?
+            .value_of_unit_amount(PRECISION)?;
+
+        base_price.checked_div(quote_price)?
+    };
 
     // Construct bid price iterator with decreasing prices.
     let bids = {
         let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
-        let bid_starting_price = spot_price.checked_mul(one_sub_fee_rate)?;
+        let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
         let mut maybe_price = Some(bid_starting_price);
         let mut remaining_quote = quote_reserve;
 
@@ -170,7 +177,7 @@ pub fn reflect_curve(
     // Construct ask price iterator with increasing prices.
     let asks = {
         let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
-        let ask_starting_price = spot_price.checked_mul(one_plus_fee_rate)?;
+        let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
         let mut maybe_price = Some(ask_starting_price);
         let mut remaining_base = base_reserve;
 
