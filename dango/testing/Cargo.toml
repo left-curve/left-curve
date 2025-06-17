@@ -21,7 +21,7 @@ digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
 grug-crypto             = { workspace = true }
-grug-db-disk            = { workspace = true }
+grug-db-disk-lite       = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
@@ -38,6 +38,7 @@ sea-orm                 = { workspace = true }
 serde                   = { workspace = true }
 serde_json              = { workspace = true }
 sha2                    = { workspace = true }
+temp-rocksdb            = { workspace = true }
 
 [dev-dependencies]
 anyhow                      = { workspace = true }

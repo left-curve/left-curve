@@ -4,23 +4,18 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-db-disk"
+name          = "grug-db-disk-lite"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[features]
-ibc = ["grug-app/ibc", "grug-jmt/ibc", "ics23"]
-
 [dependencies]
 grug-app   = { workspace = true }
-grug-jmt   = { workspace = true }
 grug-types = { workspace = true }
-ics23      = { workspace = true, optional = true }
 rocksdb    = { workspace = true }
+sha2       = { workspace = true }
+tempfile   = { workspace = true }
 thiserror  = { workspace = true }
 
 [dev-dependencies]
-hex-literal  = { workspace = true }
-proptest     = { workspace = true }
 temp-rocksdb = { workspace = true }

@@ -7,12 +7,13 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
+        constants::usdc,
     },
-    grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx},
+    grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx, coins},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
-    grug_db_disk::TempDataDir,
     rand::{Rng, distributions::Alphanumeric},
     std::time::Duration,
+    temp_rocksdb::TempDataDir,
 };
 
 const MEASUREMENT_TIME: Duration = Duration::from_secs(90);
@@ -51,7 +52,7 @@ where
                     )),
                 },
                 if i < 100 {
-                    Coins::one("uusdc", 100_000_000).unwrap()
+                    coins! { usdc::DENOM.clone() => 100_000_000 }
                 } else {
                     Coins::new()
                 },
@@ -90,7 +91,7 @@ where
             );
 
             // Sign the transaction.
-            let msg = Message::transfer(receiver, Coins::one("uusdc", 123).unwrap()).unwrap();
+            let msg = Message::transfer(receiver, coins! { usdc::DENOM.clone() => 123 }).unwrap();
 
             let (data, credential) = accounts
                 .owner

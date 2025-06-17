@@ -28,6 +28,7 @@ use {
 pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks> {
     handle: RuntimeHandler,
     db_url: DB,
+    db_max_connections: u32,
     indexer_path: P,
     keep_blocks: bool,
     hooks: H,
@@ -39,10 +40,25 @@ impl Default for IndexerBuilder {
         Self {
             handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
+            db_max_connections: 10,
             indexer_path: Undefined::default(),
             keep_blocks: false,
             hooks: NullHooks,
             pubsub: PubSubType::Memory,
+        }
+    }
+}
+
+impl IndexerBuilder<Defined<String>> {
+    pub fn with_database_max_connections(self, db_max_connections: u32) -> Self {
+        IndexerBuilder {
+            handle: self.handle,
+            indexer_path: self.indexer_path,
+            db_url: self.db_url,
+            db_max_connections,
+            keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 }
@@ -56,6 +72,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             handle: self.handle,
             indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
+            db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -73,6 +90,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::default()),
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -84,6 +102,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::Dir(dir)),
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -99,6 +118,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks,
@@ -110,6 +130,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
@@ -131,6 +152,7 @@ where
         Self {
             handle: self.handle,
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             indexer_path: self.indexer_path,
             keep_blocks,
             hooks: self.hooks,
@@ -140,9 +162,9 @@ where
 
     pub fn build_context(self) -> error::Result<Context> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self
-                .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
+            Some(url) => self.handle.block_on(async {
+                Context::connect_db_with_url(&url, self.db_max_connections).await
+            }),
             None => self.handle.block_on(async { Context::connect_db().await }),
         }?;
 
@@ -170,9 +192,9 @@ where
 
     pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self
-                .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
+            Some(url) => self.handle.block_on(async {
+                Context::connect_db_with_url(&url, self.db_max_connections).await
+            }),
             None => self.handle.block_on(async { Context::connect_db().await }),
         }?;
 
@@ -384,9 +406,7 @@ where
             tracing::info!(block_height, "`index_previous_unindexed_blocks` started");
 
             self.handle.block_on(async {
-                let db = self.context.db.begin().await?;
-                block_to_index.save(&db).await?;
-                db.commit().await?;
+                block_to_index.save(self.context.db.clone()).await?;
 
                 Ok::<(), error::IndexerError>(())
             })?;
@@ -554,54 +574,13 @@ where
 
             let block_height = block_to_index.block.info.height;
 
-            // NOTE: sqlite in-memory sometimes returns `database is deadlocked` which seems to be
-            // more likely when we have multiple tasks or thread.
-            //
-            // I'm trying a few extra times if error occurs, but only for transient errors.
-            for attempt in 1..=5 {
-                let db = context.db.begin().await?;
 
-                match block_to_index.save(&db).await {
-                    Ok(_) => {
-                        db.commit().await?;
-                        break;
-                    }
-                    Err(err) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error = %err, attempt, "Can't save to db in `post_indexing`");
 
-                        // Only retry for specific transient errors like SQLite deadlocks
-                        let should_retry = match &err {
-                            error::IndexerError::SeaOrm(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(sqlx_err))) => {
-                                matches!(
-                                    sqlx_err.as_database_error(),
-                                    Some(db_err) if db_err.message().contains("database is deadlocked")
-                                        || db_err.message().contains("database is locked")
-                                        || db_err.message().contains("SQLITE_BUSY")
-                                )
-                            }
-                            error::IndexerError::SeaOrm(sea_orm::DbErr::Conn(sea_orm::RuntimeErr::SqlxError(sqlx_err))) => {
-                                matches!(
-                                    sqlx_err.as_database_error(),
-                                    Some(db_err) if db_err.message().contains("database is deadlocked")
-                                        || db_err.message().contains("database is locked")
-                                        || db_err.message().contains("SQLITE_BUSY")
-                                )
-                            }
-                            _ => false,
-                        };
-
-                        if should_retry && attempt < 5 {
-                            #[cfg(feature = "tracing")]
-                            tracing::warn!(error = %err, attempt, "Retrying transient database error");
-
-                            sleep(Duration::from_millis(100));
-                            continue;
-                        } else {
-                            return Err(err);
-                        }
-                    }
-                }
+            #[allow(clippy::question_mark)]
+            if let Err(err) = block_to_index.save(context.db.clone()).await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %err, "Can't save to db in `post_indexing`");
+                return Err(err);
             }
 
             hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {

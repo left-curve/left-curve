@@ -1,16 +1,23 @@
 use {
-    crate::core::xyk,
     dango_oracle::OracleQuerier,
     grug::{
-        Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, Number, NumberConst, StdResult,
-        Udec128, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Bounded, CoinPair, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
+        Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
     std::iter,
 };
 
-pub fn add_initial_liquidity(deposit: &CoinPair) -> MathResult<Uint128> {
-    // FIXME: Use oracle price to compute amoutn of intial LP tokens.
-    xyk::normalized_invariant(deposit)
+/// When adding liquidity for the first time into an empty pool, we determine
+/// how many LP tokens to mint based on the USD value of the deposit.
+const INITIAL_LP_TOKENS_PER_USD: Uint128 = Uint128::new(1_000_000);
+
+pub fn add_initial_liquidity(
+    oracle_querier: &mut OracleQuerier,
+    deposit: &CoinPair,
+) -> anyhow::Result<Uint128> {
+    let deposit_value = oracle_value(oracle_querier, deposit)?;
+
+    Ok(INITIAL_LP_TOKENS_PER_USD.checked_mul_dec(deposit_value)?)
 }
 
 pub fn add_subsequent_liquidity(

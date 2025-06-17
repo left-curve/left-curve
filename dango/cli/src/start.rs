@@ -11,7 +11,7 @@ use {
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
-    grug_db_disk::DiskDb,
+    grug_db_disk_lite::DiskDbLite,
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
@@ -38,7 +38,7 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db = DiskDb::open(app_dir.data_dir())?;
+        let db = DiskDbLite::open(app_dir.data_dir())?;
 
         // Create Rust VM contract codes.
         let codes = HybridVm::genesis_codes();
@@ -66,7 +66,8 @@ impl StartCmd {
         if cfg.indexer.enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
                 .with_keep_blocks(cfg.indexer.keep_blocks)
-                .with_database_url(&cfg.indexer.database_url)
+                .with_database_url(&cfg.indexer.database.url)
+                .with_database_max_connections(cfg.indexer.database.max_connections)
                 .with_dir(app_dir.indexer_dir())
                 .with_sqlx_pubsub()
                 .with_hooks(dango_indexer_sql::hooks::Hooks)
@@ -157,7 +158,7 @@ impl StartCmd {
         self,
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
-        db: DiskDb,
+        db: DiskDbLite,
         vm: HybridVm,
         mut indexer: ID,
     ) -> anyhow::Result<()>

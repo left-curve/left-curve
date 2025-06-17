@@ -1,18 +1,7 @@
-use {
-    crate::home_directory::HomeDirectory, clap::Subcommand, colored::Colorize,
-    grug_app::PrunableDb, grug_db_disk::DiskDb, std::fs,
-};
+use {crate::home_directory::HomeDirectory, clap::Subcommand, colored::Colorize, std::fs};
 
 #[derive(Subcommand)]
 pub enum DbCmd {
-    /// Delete data up to a version
-    Prune {
-        /// Cutoff version for the pruning
-        up_to_version: u64,
-        /// Skip confirmation
-        #[arg(short, long)]
-        yes: bool,
-    },
     /// Delete the entire database
     Reset {
         /// Skip confirmation
@@ -31,19 +20,6 @@ impl DbCmd {
         }
 
         match self {
-            DbCmd::Prune { up_to_version, yes } => {
-                if !yes {
-                    confirm(
-                        format!(
-                            "Confirm pruning data up to version {up_to_version}? This operation is irreversible."
-                        )
-                        .bold()
-                        .to_string(),
-                    )?;
-                }
-
-                Ok(DiskDb::open(data_dir)?.prune(up_to_version)?)
-            },
             DbCmd::Reset { yes } => {
                 if !yes {
                     confirm(
