@@ -1,7 +1,7 @@
 import { createContext, twMerge, useInputs, useMediaQuery } from "@left-curve/applets-kit";
 import { useProTrade } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { m } from "~/paraglide/messages";
 
@@ -36,7 +36,13 @@ const ProTradeContainer: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const ProTradeHeader: React.FC = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { isLg } = useMediaQuery();
+  const [isExpanded, setIsExpanded] = useState(isLg);
+
+  useEffect(() => {
+    setIsExpanded(isLg);
+  }, [isLg]);
+
   return (
     <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
