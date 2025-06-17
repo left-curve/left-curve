@@ -571,6 +571,7 @@ where
 
             let block_height = block_to_index.block.info.height;
 
+            #[allow(clippy::map_identity)]
             block_to_index.save(context.db.clone()).await.map_err(|err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %err, "Can't save to db in `post_indexing`");
