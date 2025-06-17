@@ -39,7 +39,11 @@ impl Context {
                 #[cfg(feature = "tracing")]
                 tracing::info!(database_url, "Connected to database");
 
-                if database_url.contains("sqlite") {
+                // NOTE: not doing all but this is what we should do based on Claude Code:
+                // In-memory + single connection: Skip all pragmas
+                // File-based + single connection: Only use synchronous=NORMAL
+                // Any database + multiple connections: Use all 3 pragmas
+                if database_url.contains("sqlite") && !database_url.contains(":memory:") {
                     #[cfg(feature = "tracing")]
                     tracing::info!("SQLite database detected, enabling optimizations");
 
