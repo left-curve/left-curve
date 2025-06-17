@@ -178,7 +178,7 @@ impl PassiveLiquidityPool for PairParams {
 
         // In case the deposit is asymmetrical, we need to apply a deposit fee.
         //
-        // This is to prevent an attach where a user deposits asymmetrically,
+        // This is to prevent an attack where a user deposits asymmetrically,
         // then immediately withdraw symmetrically, essentially accomplishing a
         // swap without paying the swap fee.
         //
