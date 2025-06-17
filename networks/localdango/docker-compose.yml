@@ -36,7 +36,7 @@ services:
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_NAME=grug_dev
-      - INDEXER__DATABASE_URL=${INDEXER__DATABASE_URL:-postgres://postgres@db:5432/grug_dev}
+      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
