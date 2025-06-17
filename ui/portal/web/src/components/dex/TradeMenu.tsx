@@ -69,7 +69,10 @@ const SpotTradeMenu: React.FC<TradeMenu> = ({ action }) => {
           startText="right"
           startContent={
             <CoinSelector
-              classNames={{ trigger: "!diatype-lg-medium text-gray-500" }}
+              classNames={{
+                trigger: "!diatype-lg-medium text-gray-500 p-0",
+                selectorIcon: "w-4 h-4",
+              }}
               coins={[
                 {
                   type: "native",

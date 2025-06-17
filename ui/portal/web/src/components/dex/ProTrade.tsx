@@ -36,7 +36,7 @@ const ProTradeContainer: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const ProTradeHeader: React.FC = () => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   return (
     <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
@@ -70,23 +70,23 @@ const ProTradeHeader: React.FC = () => {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
-            <div className="flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
+            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
               <p className="diatype-xs-medium text-gray-500">Mark</p>
               <p className="diatype-sm-bold text-gray-700">83,565</p>
             </div>
-            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
               <p className="diatype-xs-medium text-gray-500">Last price</p>
               <p className="diatype-sm-bold text-gray-700">$2,578</p>
             </div>
-            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
               <p className="diatype-xs-medium text-gray-500">Oracle</p>
               <p className="diatype-sm-bold text-gray-700">83,565</p>
             </div>
-            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
               <p className="diatype-xs-medium text-gray-500">24h Change</p>
               <p className="diatype-sm-bold text-red-bean-400">-542 / 0.70</p>
             </div>
-            <div className="flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
               <p className="diatype-xs-medium text-gray-500">24h Volume</p>
               <p className="diatype-sm-bold text-gray-700">$2,457,770,700.50</p>
             </div>
@@ -103,7 +103,7 @@ const ProTradeChart: React.FC = () => {
   if (!isLg) return null;
 
   return (
-    <div className="shadow-card-shadow bg-rice-25">
+    <div className="shadow-card-shadow bg-rice-25 h-full">
       <TradingViewChart />
     </div>
   );

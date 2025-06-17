@@ -86,7 +86,7 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
                 )?.props.children
               }
             </span>
-            <IconChevronDown className={icon({ className: classNames?.icon })} />
+            <IconChevronDown className={twMerge(icon(), classNames?.icon)} />
           </button>
 
           <motion.div
@@ -163,7 +163,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   ) as { props: { children: ReactElement } };
 
   return (
-    <div className={twMerge(base({ className: classNames?.base }), "relative md:hidden block")}>
+    <div className={twMerge("relative md:hidden block", base({ className: classNames?.base }))}>
       <select
         id={selectId}
         className="absolute top-[-20px] right-0 opacity-0 h-full w-full"

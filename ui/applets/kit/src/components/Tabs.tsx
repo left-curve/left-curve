@@ -96,7 +96,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
 const tabsVariants = tv({
   slots: {
-    base: "flex text-base relative items-center w-fit p-1 rounded-md",
+    base: "flex text-base relative items-center w-fit p-1 rounded-md exposure-sm-italic",
     button:
       "relative capitalize transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
     "animated-element": "absolute bottom-0 left-0",
@@ -156,7 +156,7 @@ export const Tab: React.FC<PropsWithChildren<TabProps>> = ({
 };
 
 const tabVariants = tv({
-  base: "italic font-medium font-exposure transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none",
   variants: {
     color: {
       green: "",
