@@ -406,9 +406,7 @@ where
             tracing::info!(block_height, "`index_previous_unindexed_blocks` started");
 
             self.handle.block_on(async {
-                let db = self.context.db.begin().await?;
-                block_to_index.save(&db).await?;
-                db.commit().await?;
+                block_to_index.save(self.context.db.clone()).await?;
 
                 Ok::<(), error::IndexerError>(())
             })?;
@@ -573,16 +571,14 @@ where
 
             let block_height = block_to_index.block.info.height;
 
-            let db = context.db.begin().await?;
+
 
             #[allow(clippy::question_mark)]
-            if let Err(err) = block_to_index.save(&db).await {
+            if let Err(err) = block_to_index.save(context.db.clone()).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %err, "Can't save to db in `post_indexing`");
                 return Err(err);
             }
-
-            db.commit().await?;
 
             hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
                 #[cfg(feature = "tracing")]

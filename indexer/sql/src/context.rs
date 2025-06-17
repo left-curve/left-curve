@@ -1,7 +1,7 @@
 use {
     crate::pubsub::PubSub,
     indexer_sql_migration::{Migrator, MigratorTrait},
-    sea_orm::{ConnectOptions, Database, DatabaseConnection},
+    sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection},
     std::sync::Arc,
 };
 
@@ -38,6 +38,18 @@ impl Context {
             Ok(db) => {
                 #[cfg(feature = "tracing")]
                 tracing::info!(database_url, "Connected to database");
+
+                if database_url.contains("sqlite") {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!("SQLite database detected, enabling optimizations");
+
+                    db.execute_unprepared(
+                        "PRAGMA journal_mode=WAL;
+                         PRAGMA busy_timeout=5000;
+                         PRAGMA synchronous=NORMAL;",
+                    )
+                    .await?;
+                }
 
                 Ok(db)
             },
