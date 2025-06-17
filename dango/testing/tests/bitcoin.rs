@@ -897,11 +897,14 @@ fn authorize_outbound() {
 
     let user1_address = *accounts.user1.address.inner();
 
-    let val_sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
-    let val_pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
+    let sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
+    let pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
 
-    let val_sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
-    let val_pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+    let sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
+    let pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+
+    let sk3 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[2].0.into()).unwrap();
+    let pk3 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1);
 
     let config = suite
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
@@ -950,12 +953,17 @@ fn authorize_outbound() {
 
     let btc_transaction = outbound_tx.to_btc_transaction(config.network).unwrap();
 
-    let signatures1 = sing_inputs(&btc_transaction, &val_sk1, redeem_script, vec![
+    let signatures1 = sing_inputs(&btc_transaction, &sk1, redeem_script, vec![
         deposit_amount1.into_inner() as u64,
         deposit_amount2.into_inner() as u64,
     ]);
 
-    let signatures2 = sing_inputs(&btc_transaction, &val_sk2, redeem_script, vec![
+    let signatures2 = sing_inputs(&btc_transaction, &sk2, redeem_script, vec![
+        deposit_amount1.into_inner() as u64,
+        deposit_amount2.into_inner() as u64,
+    ]);
+
+    let signatures3 = sing_inputs(&btc_transaction, &sk3, redeem_script, vec![
         deposit_amount1.into_inner() as u64,
         deposit_amount2.into_inner() as u64,
     ]);
@@ -965,7 +973,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: signatures1.clone(),
-            pub_key: val_pk1,
+            pub_key: pk1,
         };
 
         suite
@@ -1001,7 +1009,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: vec![],
-            pub_key: val_pk1,
+            pub_key: pk1,
         };
 
         let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
@@ -1024,7 +1032,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: signatures1.clone(),
-            pub_key: val_pk2, // Using val_pk2 instead of val_pk1
+            pub_key: pk2, // Using val_pk2 instead of val_pk1
         };
 
         let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
@@ -1047,7 +1055,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: vec![signatures1[0].clone(), signatures2[1].clone()],
-            pub_key: val_pk1,
+            pub_key: pk1,
         };
 
         let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
@@ -1070,7 +1078,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: signatures1.clone(),
-            pub_key: val_pk1,
+            pub_key: pk1,
         };
 
         let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
@@ -1091,7 +1099,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: signatures1.clone(),
-            pub_key: val_pk1,
+            pub_key: pk1,
         };
 
         let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
@@ -1114,7 +1122,7 @@ fn authorize_outbound() {
         let msg = ExecuteMsg::AuthorizeOutbound {
             id: 0,
             signatures: signatures2.clone(),
-            pub_key: val_pk2,
+            pub_key: pk2,
         };
 
         let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
@@ -1144,10 +1152,33 @@ fn authorize_outbound() {
             id: 0,
             transaction: outbound_tx,
             signatures: btree_map!(
-                val_pk1 => signatures1,
-                val_pk2 => signatures2,
+                pk1 => signatures1,
+                pk2 => signatures2,
             ),
         });
+    }
+
+    // Ensure it fails trying to upload another signature when the threshold is already met.
+    {
+        let msg = ExecuteMsg::AuthorizeOutbound {
+            id: 0,
+            signatures: signatures3,
+            pub_key: pk3,
+        };
+
+        let msg = Message::execute(contracts.bitcoin, &msg, Coins::new()).unwrap();
+
+        let tx = Tx {
+            sender: contracts.bitcoin,
+            gas_limit: 5_000_000,
+            msgs: NonEmpty::new_unchecked(vec![msg]),
+            data: Json::null(),
+            credential: Json::null(),
+        };
+
+        suite
+            .send_transaction(tx)
+            .should_fail_with_error("transaction `0` already has enough signatures");
     }
 }
 

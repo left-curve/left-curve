@@ -416,7 +416,10 @@ fn authorize_outbound(
         SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
             let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
 
-            // TODO: Ignore signatures when reach the threshold?
+            if cumulative_signatures.len() >= cfg.multisig.threshold() as usize {
+                bail!("transaction `{id}` already has enough signatures");
+            }
+
             ensure!(
                 cumulative_signatures.insert(pub_key, signatures).is_none(),
                 "you've already signed transaction `{id}`"
