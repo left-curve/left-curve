@@ -30,14 +30,8 @@ impl<'a> OracleQuerier<'a> {
         }
     }
 
-    pub fn query_price(
-        &mut self,
-        denom: &Denom,
-        price_source: Option<PriceSource>,
-    ) -> anyhow::Result<PrecisionedPrice> {
-        self.cache.get_or_fetch(denom, price_source).cloned()
-    }
-
+    /// Create a new `OracleQuerier` that returns predefined prices in a hash map.
+    /// For using in tests.
     pub fn new_mock(prices: HashMap<Denom, PrecisionedPrice>) -> Self {
         Self {
             cache: Cache::new(move |denom, _| {
@@ -46,6 +40,14 @@ impl<'a> OracleQuerier<'a> {
                 })
             }),
         }
+    }
+
+    pub fn query_price(
+        &mut self,
+        denom: &Denom,
+        price_source: Option<PriceSource>,
+    ) -> anyhow::Result<PrecisionedPrice> {
+        self.cache.get_or_fetch(denom, price_source).cloned()
     }
 }
 
