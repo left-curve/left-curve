@@ -45,14 +45,14 @@ pub struct IndexerConfig {
 #[derive(Serialize, Deserialize)]
 pub struct IndexerDatabaseConfig {
     pub url: String,
-    pub concurrency: u32,
+    pub max_connections: u32,
 }
 
 impl Default for IndexerDatabaseConfig {
     fn default() -> Self {
         IndexerDatabaseConfig {
             url: "sqlite::memory:".to_string(),
-            concurrency: 10,
+            max_connections: 10,
         }
     }
 }

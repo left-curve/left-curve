@@ -143,6 +143,7 @@ pub fn setup_test_with_indexer() -> (
 ) {
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
+        .with_database_max_connections(1)
         .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()
         .unwrap();

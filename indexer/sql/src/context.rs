@@ -19,14 +19,15 @@ impl Context {
     pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
         let database_url = "sqlite::memory:";
 
-        Self::connect_db_with_url(database_url).await
+        Self::connect_db_with_url(database_url, 10).await
     }
 
     pub async fn connect_db_with_url(
         database_url: &str,
+        max_connections: u32,
     ) -> Result<DatabaseConnection, sea_orm::DbErr> {
         let mut opt = ConnectOptions::new(database_url.to_owned());
-        opt.max_connections(10)
+        opt.max_connections(max_connections)
         // .min_connections(5)
         //.connect_timeout(Duration::from_secs(settings.timeout))
         //.idle_timeout(Duration::from_secs(8))
