@@ -146,8 +146,8 @@ impl PassiveLiquidityPool for PairParams {
         {
             let deposit_denoms = (deposit.first().denom, deposit.second().denom);
             let reserve_denoms = (reserve.first().denom, reserve.second().denom);
-            assert_eq!(
-                deposit_denoms, reserve_denoms,
+            ensure!(
+                deposit_denoms == reserve_denoms,
                 "deposit denoms {deposit_denoms:?} don't match reserve denoms {reserve_denoms:?}",
             );
         }
