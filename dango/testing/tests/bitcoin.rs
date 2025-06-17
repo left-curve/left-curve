@@ -22,8 +22,8 @@ use {
     },
     grug::{
         Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, HexBinary, HexByteArray,
-        Inner, Json, JsonDeExt, JsonSerExt, Message, NonEmpty, Order, PrimaryKey, QuerierExt,
-        ResultExt, SearchEvent, Tx, TxOutcome, Uint128, btree_map, btree_set, coins,
+        Inner, Json, JsonDeExt, JsonSerExt, MakeBlockOutcome, Message, NonEmpty, Order, PrimaryKey,
+        QuerierExt, ResultExt, SearchEvent, Tx, TxOutcome, Uint128, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     grug_crypto::Identity256,
@@ -122,15 +122,12 @@ fn withdraw(
 }
 
 // Advance 10 minutes in the test suite, which is enough for the cron job to execute.
-fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) {
+fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) -> MakeBlockOutcome {
     suite.block_time = Duration::from_minutes(10);
-    let b = suite.make_empty_block();
-    for cron_outcom in b.block_outcome.cron_outcomes {
-        if let Some(error) = cron_outcom.cron_event.maybe_error() {
-            panic!("cron job failed: {error}");
-        }
-    }
+    let outcome = suite.make_empty_block();
     suite.block_time = Duration::ZERO;
+
+    outcome
 }
 
 // Sign the inputs of a Bitcoin transaction with the given secret key and redeem script.
@@ -853,6 +850,43 @@ fn cron_execute() {
             order: Order::Ascending,
         })
         .should_succeed_and_equal(vec![]);
+
+    // Make another withdrawal. Now, there are no more UTXO available since
+    // the only one is already used. The cron job should fail.
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        Uint128::new(10_000),
+        &recipient2,
+    );
+
+    // Wait for the cron job to execute.
+    let outcome = advance_ten_minutes(&mut suite);
+
+    let events = outcome
+        .block_outcome
+        .cron_outcomes
+        .iter()
+        .filter_map(|co| {
+            if let Err((event_status, error)) = co.cron_event.as_result() {
+                match event_status {
+                    grug::EventStatus::NestedFailed(event) => Some((event, error)),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].0.contract, contracts.bitcoin);
+    assert!(
+        events[0]
+            .1
+            .contains("not enough UTXOs to cover the withdraw amount + fee")
+    );
 }
 
 #[test]
