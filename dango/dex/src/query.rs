@@ -65,7 +65,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountIn { route, input } => {
-            let (_, output) = core::swap_exact_amount_in(ctx.storage, route.into_inner(), input)?;
+            let (_, output) =
+                core::swap_exact_amount_in(ctx.storage, ctx.querier, route.into_inner(), input)?;
             output.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {

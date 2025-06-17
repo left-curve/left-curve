@@ -1,10 +1,11 @@
 use {
+    anyhow::bail,
     dango_oracle::OracleQuerier,
     grug::{
-        Bounded, CoinPair, IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128,
-        Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult,
+        Udec128, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
-    std::iter,
+    std::{cmp, iter},
 };
 
 /// When adding liquidity for the first time into an empty pool, we determine
@@ -33,9 +34,88 @@ pub fn add_subsequent_liquidity(
     Ok(deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?)
 }
 
-pub fn swap_exact_amount_in() -> StdResult<Uint128> {
-    // FIXME
-    todo!();
+pub fn swap_exact_amount_in(
+    oracle_querier: &mut OracleQuerier,
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    input: &Coin,
+    reserve: &CoinPair,
+    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
+    order_spacing: Udec128,
+    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+) -> anyhow::Result<Uint128> {
+    let (passive_bids, passive_asks) = reflect_curve(
+        oracle_querier,
+        base_denom,
+        quote_denom,
+        reserve.amount_of(base_denom)?,
+        reserve.amount_of(quote_denom)?,
+        ratio,
+        order_spacing,
+        swap_fee_rate,
+    )?;
+
+    // Pretend the input is a market order. Match it against the opposite side
+    // of the passive limit orders.
+    let output_amount = if input.denom == *base_denom {
+        ask_exact_amount_in(input.amount, passive_bids)?
+    } else if input.denom == *quote_denom {
+        bid_exact_amount_in(input.amount, passive_asks)?
+    } else {
+        unreachable!(
+            "input denom (`{}`) is neither the base (`{}`) nor the quote (`{}`). this should have been caught earlier.",
+            input.denom, base_denom, quote_denom
+        );
+    };
+
+    // Apply swap fee. Round so that user takes the loss.
+    Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)?)
+}
+
+// NOTE: Always round down (floor) the output amount; always round up (ceil) the input amount.
+fn bid_exact_amount_in(
+    bid_amount_in_quote: Uint128,
+    passive_asks: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+) -> anyhow::Result<Uint128> {
+    let mut remaining_bid_in_quote = bid_amount_in_quote;
+    let mut output_amount = Uint128::ZERO;
+
+    for (price, size) in passive_asks {
+        let remaining_bid = remaining_bid_in_quote.checked_div_dec_floor(price)?;
+        let matched_amount = cmp::min(size, remaining_bid);
+        output_amount.checked_add_assign(matched_amount)?;
+
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
+        remaining_bid_in_quote.checked_sub_assign(matched_amount_in_quote)?;
+
+        if remaining_bid_in_quote.is_zero() {
+            return Ok(output_amount);
+        }
+    }
+
+    bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_bid_in_quote}");
+}
+
+fn ask_exact_amount_in(
+    ask_amount: Uint128,
+    passive_bids: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+) -> anyhow::Result<Uint128> {
+    let mut remaining_ask = ask_amount;
+    let mut output_amount_in_quote = Uint128::ZERO;
+
+    for (price, size) in passive_bids {
+        let matched_amount = cmp::min(size, remaining_ask);
+        remaining_ask.checked_sub_assign(matched_amount)?;
+
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_floor(price)?;
+        output_amount_in_quote.checked_add_assign(matched_amount_in_quote)?;
+
+        if remaining_ask.is_zero() {
+            return Ok(output_amount_in_quote);
+        }
+    }
+
+    bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_ask}")
 }
 
 pub fn swap_exact_amount_out() -> StdResult<Uint128> {
@@ -44,17 +124,36 @@ pub fn swap_exact_amount_out() -> StdResult<Uint128> {
 }
 
 pub fn reflect_curve(
+    oracle_querier: &mut OracleQuerier,
+    base_denom: &Denom,
+    quote_denom: &Denom,
     base_reserve: Uint128,
     quote_reserve: Uint128,
     ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-) -> StdResult<(
+) -> anyhow::Result<(
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
     Box<dyn Iterator<Item = (Udec128, Uint128)>>,
 )> {
-    // FIXME: use oracle price instead
-    let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+    // Compute the price of the base asset denominated in the quote asset.
+    // We will place orders above and below this price.
+    //
+    // Note that we aren't computing the price in the human units, but in their
+    // base units. In other words, we don't want to know how many BTC is per USDC;
+    // we want to know how many sat (1e-8 BTC) is per 1e-6 USDC.
+    let marginal_price = {
+        const PRECISION: Uint128 = Uint128::new(1_000_000);
+
+        let base_price = oracle_querier
+            .query_price(base_denom, None)?
+            .value_of_unit_amount(PRECISION)?;
+        let quote_price = oracle_querier
+            .query_price(quote_denom, None)?
+            .value_of_unit_amount(PRECISION)?;
+
+        base_price.checked_div(quote_price)?
+    };
 
     // Construct bid price iterator with decreasing prices.
     let bids = {
