@@ -13,9 +13,9 @@ use {
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            BitcoinSignature, ExecuteMsg, INPUT_SIZE, InboundConfirmed, InboundCredential,
-            InstantiateMsg, Network, OUTPUT_SIZE, OVERHEAD_SIZE, OutboundConfirmed,
-            OutboundRequested, Transaction, Vout,
+            BitcoinSignature, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
+            InboundCredential, InstantiateMsg, Network, OutboundConfirmed, OutboundRequested,
+            SIGNATURE_SIZE, Transaction, Vout, create_tx_in,
         },
         gateway::{
             self, Remote,
@@ -302,7 +302,7 @@ fn transfer_remote(
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
     // Take the pending outbound transfers from the storage.
@@ -313,8 +313,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         return Ok(Response::new());
     }
 
-    // Calculate the number of outputs, adding 1 (vault) for the change.
-    let n_outupt = outputs.len() + 1;
+    outputs.insert(cfg.vault, Uint128::ONE);
 
     // Sum up the total outbound amount.
     let withdraw_amount = outputs
@@ -327,12 +326,23 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut inputs = BTreeMap::new();
     let mut sum = Uint128::ZERO;
 
+    let tx = Transaction {
+        inputs: inputs.clone(),
+        outputs: outputs.clone(),
+        fee: Uint128::ZERO,
+    };
+
+    let mut btc_transaction = tx.to_btc_transaction(cfg.network)?;
+
     // The size of the transaction is calculated as:
     // size = overhead + n_input * input_size + n_output * output_size
     // and the fee = size * sats_per_vbyte
-    let mut fee =
-        (OVERHEAD_SIZE + Uint128::new(n_outupt as u128) * OUTPUT_SIZE) * cfg.sats_per_vbyte;
+    let mut fee = Uint128::ZERO;
 
+    // The size in vbyte of the signatures per input.
+    let signature_size_per_input = SIGNATURE_SIZE * Uint128::new(cfg.multisig.threshold() as u128);
+
+    // Keep adding UTXOs until we reach the withdraw amount + fee.
     for res in UTXOS.range(ctx.storage, None, None, cfg.outbound_strategy) {
         if sum >= withdraw_amount + fee {
             break;
@@ -342,17 +352,32 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
         inputs.insert((hash, vout), amount);
         sum.checked_add_assign(amount)?;
+        btc_transaction.input.push(create_tx_in(&hash, vout));
 
-        fee += INPUT_SIZE * cfg.sats_per_vbyte;
+        // The fee for a tx is calculated as tx_size * sats_per_vbyte.
+        // The tx_size is calculated with `vsize()` function + the size of the signatures.
+        let signatures_size = Uint128::new(inputs.len() as u128)
+            * (INPUT_SIGNATURES_OVERHEAD + signature_size_per_input);
+
+        fee =
+            (Uint128::new(btc_transaction.vsize() as u128) + signatures_size) * cfg.sats_per_vbyte;
     }
 
-    // Total amount of BTC needed for this tx.
-    let total = withdraw_amount + fee;
+    // Ensure we have enough UTXOs to cover the withdraw amount + fee.
+    ensure!(
+        sum >= withdraw_amount + fee,
+        "not enough UTXOs to cover the withdraw amount + fee: {} < {}",
+        sum,
+        withdraw_amount + fee
+    );
 
-    // If there's excess input, send the excess back to the vault.
-    if sum > total {
-        outputs.insert(cfg.vault, sum - total);
-    }
+    // // Total amount of BTC needed for this tx.
+    // let total = withdraw_amount + fee;
+
+    // // If there's excess input, send the excess back to the vault.
+    // if sum > total {
+    //     outputs.insert(cfg.vault, sum - total);
+    // }
 
     // Delete the chosen UTXOs.
     for ((hash, vout), amount) in &inputs {
@@ -369,7 +394,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     // Save the outbound transaction.
     OUTBOUNDS.save(ctx.storage, id, &transaction)?;
 
-    Response::new().add_event(OutboundRequested { id, transaction })
+    Ok(Response::new().add_event(OutboundRequested { id, transaction })?)
 }
 
 fn authorize_outbound(

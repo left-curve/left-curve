@@ -171,7 +171,7 @@ where
         .guardians
         .iter()
         .map(|username| {
-            addresses.get(&username).cloned().ok_or(anyhow!(
+            addresses.get(username).cloned().ok_or(anyhow!(
                 "Missing address for bitcoin guardian: {}",
                 username
             ))

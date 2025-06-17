@@ -7,28 +7,21 @@ use {
         opcodes::all::OP_CHECKMULTISIG, script::Builder, transaction::Version,
     },
     grug::{
-        Addr, BorshSerExt, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NonEmpty,
-        Order, StdResult, Uint128,
+        Addr, BorshSerExt, Hash256, HashExt, HexBinary, HexByteArray, Inner, NonEmpty, Order,
+        StdResult, Uint128,
     },
     serde::{Deserialize, Serialize, Serializer},
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
-        sync::LazyLock,
     },
 };
 
 pub use corepc_client::bitcoin::Network;
 
-pub const OVERHEAD_SIZE: Uint128 = Uint128::new(11);
-pub const INPUT_SIZE: Uint128 = Uint128::new(105);
-pub const OUTPUT_SIZE: Uint128 = Uint128::new(43);
-
-pub const NAMESPACE: &str = "bitcoin";
-
-pub const SUBDENOM: &str = "satoshi";
-
-pub const DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked([NAMESPACE, SUBDENOM]));
+/// Size of one signature in bytes for P2WSH.
+pub const INPUT_SIGNATURES_OVERHEAD: Uint128 = Uint128::new(28);
+pub const SIGNATURE_SIZE: Uint128 = Uint128::new(20);
 
 /// A Bitcoin address. This is a string representation of the address, which can be in
 /// all kinds of formats. It's validated inside the contract since it depends on the network.
@@ -170,32 +163,34 @@ where
         .collect()
 }
 
+pub fn create_tx_in(hash: &Hash256, vout: Vout) -> TxIn {
+    let outpoint = OutPoint {
+        txid: Txid::from_byte_array(hash.into_inner()),
+        vout,
+    };
+
+    TxIn {
+        previous_output: outpoint,
+        script_sig: ScriptBuf::new(),
+        sequence: Sequence::MAX,
+        witness: Witness::default(),
+    }
+}
+
 impl Transaction {
     /// Converts the object into a Bitcoin transaction.
     pub fn to_btc_transaction(&self, network: Network) -> anyhow::Result<BtcTransaction> {
         let inputs = self
             .inputs
             .iter()
-            .map(|((hash, vout), _)| {
-                let outpoint = OutPoint {
-                    txid: Txid::from_byte_array(hash.into_inner()),
-                    vout: *vout,
-                };
-
-                TxIn {
-                    previous_output: outpoint,
-                    script_sig: ScriptBuf::new(),
-                    sequence: Sequence::MAX,
-                    witness: Witness::default(),
-                }
-            })
+            .map(|((hash, vout), _)| create_tx_in(hash, *vout))
             .collect::<Vec<_>>();
 
         let outputs = self
             .outputs
             .iter()
             .map(|(address, amount)| {
-                let script = Address::from_str(&address)?
+                let script = Address::from_str(address)?
                     .require_network(network)?
                     .script_pubkey();
                 Ok(TxOut {

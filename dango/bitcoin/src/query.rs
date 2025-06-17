@@ -60,11 +60,7 @@ fn query_utxos(
     limit: Option<u32>,
     order: Order,
 ) -> StdResult<Vec<Utxo>> {
-    let start = if let Some(utxo) = start_after {
-        Some((utxo.amount, utxo.transaction_hash, utxo.vout))
-    } else {
-        None
-    };
+    let start = start_after.map(|utxo| (utxo.amount, utxo.transaction_hash, utxo.vout));
     let start = start.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
