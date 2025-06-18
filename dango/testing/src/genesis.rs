@@ -3,7 +3,7 @@ use {
         BridgeOp, MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestOption,
         constants::{
             DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner,
-            user1, user2, user3, user4, user5, user6, user7, user8, user9, val1, val2, val3,
+            user1, user2, user3, user4, user5, user6, user7, user8, user9,
         },
     },
     dango_genesis::{
@@ -254,21 +254,7 @@ impl Preset for AccountOption {
                     key_hash: user9::PUBLIC_KEY.hash256(),
                     dango_balance: Uint128::new(100_000_000_000_000),
                 },
-                val1::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(val1::PUBLIC_KEY.into()),
-                    key_hash: val1::PUBLIC_KEY.hash256(),
-                    dango_balance: Uint128::new(100_000_000_000_000),
-                },
-                val2::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(val2::PUBLIC_KEY.into()),
-                    key_hash: val2::PUBLIC_KEY.hash256(),
-                    dango_balance: Uint128::new(100_000_000_000_000),
-                },
-                val3::USERNAME.clone() => GenesisUser {
-                    key: Key::Secp256k1(val3::PUBLIC_KEY.into()),
-                    key_hash: val3::PUBLIC_KEY.hash256(),
-                    dango_balance: Uint128::new(100_000_000_000_000),
-                },
+
             },
             minimum_deposit: coins! { usdc::DENOM.clone() => 10_000_000 },
         }
