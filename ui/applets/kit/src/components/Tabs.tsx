@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Children, cloneElement } from "react";
+import { tv } from "tailwind-variants";
 import { useControlledState } from "#hooks/useControlledState.js";
 import { twMerge } from "#utils/twMerge.js";
-import { tv } from "tailwind-variants";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -15,6 +15,7 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   keys?: string[];
   selectedTab?: string;
   layoutId: string;
+  isDisabled?: boolean;
   classNames?: {
     base?: string;
     button?: string;
@@ -31,6 +32,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   layoutId,
   color,
   classNames,
+  isDisabled,
 }) => {
   const hasMounted = useHasMounted();
   const tabs = keys ? keys : Children.toArray(children);
@@ -46,6 +48,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   const styles = tabsVariants({
     fullWidth,
     color,
+    isDisabled,
   });
 
   return (
@@ -97,11 +100,15 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 const tabsVariants = tv({
   slots: {
     base: "flex text-base relative items-center w-fit p-1 rounded-md exposure-sm-italic",
-    button:
-      "relative capitalize transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
+    button: "relative capitalize transition-all flex items-center justify-center py-2 px-4",
     "animated-element": "absolute bottom-0 left-0",
   },
   variants: {
+    isDisabled: {
+      true: {
+        button: "cursor-not-allowed opacity-50",
+      },
+    },
     color: {
       green: {
         base: "bg-green-bean-200",

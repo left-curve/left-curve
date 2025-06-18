@@ -45,6 +45,8 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   const { operation, setOperation, action, coin, onChangeCoin, coins, submission } = state;
   const { register, setValue, inputs } = controllers;
 
+  const [_, quoteDenom] = coins;
+
   const navigate = useNavigate();
 
   const balance = formatUnits(coin.balance, coin.decimals);
@@ -63,6 +65,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           onTabChange={(tab) => setOperation(tab as "market" | "limit")}
           color="line-red"
           classNames={{ button: "exposure-xs-italic" }}
+          isDisabled={submission.isPending}
         />
         <div className="flex items-center justify-between gap-2">
           <p className="diatype-xs-regular text-gray-500">
@@ -72,6 +75,16 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             {balance} {coin.symbol}
           </p>
         </div>
+        {operation === "limit" ? (
+          <Input
+            placeholder="0"
+            isDisabled={!isConnected || submission.isPending}
+            label="Price"
+            {...register("price", { mask: numberMask })}
+            startText="right"
+            endContent={quoteDenom.symbol}
+          />
+        ) : null}
         <Input
           placeholder="0"
           isDisabled={!isConnected || submission.isPending}
@@ -290,7 +303,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
 const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const { action, setAction, type } = state;
+  const { action, setAction, type, submission } = state;
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
@@ -312,6 +325,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
           onTabChange={(tab) => setAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "green"}
+          isDisabled={submission.isPending}
         />
         <IconButton
           variant="utility"

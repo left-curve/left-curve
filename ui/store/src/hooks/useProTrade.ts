@@ -31,7 +31,9 @@ export function useProTrade(parameters: UseProTradeParameters) {
   const [operation, setOperation] = useState<"market" | "limit">("market");
   const [action, setAction] = useState<"buy" | "sell">("buy");
 
-  const { data: balances = {} } = useBalances({ address: account?.address });
+  const { data: balances = {}, refetch: updateBalance } = useBalances({
+    address: account?.address,
+  });
 
   const balance = balances[coin.denom] || "0";
 
@@ -58,6 +60,7 @@ export function useProTrade(parameters: UseProTradeParameters) {
       if (!account) throw new Error("No account found");
 
       const amount = parseUnits(inputs.size.value, coin.decimals).toString();
+      const price = inputs.price.value;
       const direction = Direction[capitalize(action) as keyof typeof Direction];
       const { baseDenom, quoteDenom } = pairId;
 
@@ -81,7 +84,7 @@ export function useProTrade(parameters: UseProTradeParameters) {
                   baseDenom,
                   quoteDenom,
                   direction,
-                  price: "",
+                  price,
                 },
               ],
             };
@@ -92,6 +95,7 @@ export function useProTrade(parameters: UseProTradeParameters) {
       });
 
       await orders.refetch();
+      await updateBalance();
     },
   });
 

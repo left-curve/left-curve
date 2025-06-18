@@ -194,6 +194,7 @@ const ProTradeOrders: React.FC = () => {
       id: "cancel-order",
       header: () => (
         <Cell.Action
+          isDisabled={!orders.data.length}
           action={() =>
             signingClient?.batchUpdateOrders({ cancels: "all", sender: account!.address })
           }

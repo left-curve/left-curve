@@ -224,16 +224,22 @@ type CellActionProps = {
     cell?: string;
     button?: string;
   };
+  isDisabled?: boolean;
   action: () => void;
   label: string;
 };
 
-const Action: React.FC<CellActionProps> = ({ action, label, classNames }) => {
+const Action: React.FC<CellActionProps> = ({ action, label, classNames, isDisabled }) => {
   return (
     <div
       className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", classNames?.cell)}
     >
-      <Button variant="link" onClick={action} className={twMerge(classNames?.button)}>
+      <Button
+        variant="link"
+        onClick={action}
+        className={twMerge(classNames?.button)}
+        isDisabled={isDisabled}
+      >
         {label}
       </Button>
     </div>
