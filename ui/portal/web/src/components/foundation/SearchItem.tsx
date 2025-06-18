@@ -147,7 +147,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
-          <img src="/images/emojis/detailed/factory.svg" alt="test" className="w-12 h-12" />
+          <img src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />

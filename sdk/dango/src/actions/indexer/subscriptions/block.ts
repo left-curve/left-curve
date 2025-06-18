@@ -28,15 +28,17 @@ export function blockSubscription<
 ): BlockSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
-  const query = `subscription {
-              block {
-                blockHeight
-                createdAt
-                hash
-                transactionsCount
-                appHash
-              }
-            }`;
+  const query = /* GraphQL */ `
+    subscription {
+      block {
+        blockHeight
+        createdAt
+        hash
+        transactionsCount
+        appHash
+      }
+    }
+  `;
 
   return client.subscribe({ query }, parameters);
 }

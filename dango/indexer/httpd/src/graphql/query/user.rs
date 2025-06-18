@@ -3,7 +3,7 @@ use {
         connection::{Connection, Edge, EmptyFields, OpaqueCursor, query_with},
         *,
     },
-    dango_indexer_sql::entity::{self},
+    dango_indexer_sql::entity,
     indexer_httpd::context::Context,
     sea_orm::{
         ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,

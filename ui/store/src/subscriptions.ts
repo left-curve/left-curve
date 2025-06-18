@@ -82,15 +82,29 @@ const transferSubscriptionExecutor: SubscriptionExecutor<"transfer"> = ({
   params,
   getListeners,
 }) => {
-  const unsubscribe = client.transferSubscription({
+  return client.transferSubscription({
     ...params,
-    next: ({ sentTransfers, receivedTransfers }) => {
+    next: (event) => {
       const currentListeners = getListeners();
-      const event = (sentTransfers?.at(0) || receivedTransfers?.at(0)) as IndexedTransferEvent;
       currentListeners.forEach((listener) => listener(event));
     },
   });
-  return unsubscribe;
+};
+
+const accountSubscriptionExecutor: SubscriptionExecutor<"account"> = ({
+  client,
+  params,
+  getListeners,
+}) => {
+  return client.accountSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => {
+        listener(event);
+      });
+    },
+  });
 };
 
 const submitTxSubscriptionExecutor: SubscriptionExecutor<"submitTx"> = () => {
@@ -101,5 +115,6 @@ const submitTxSubscriptionExecutor: SubscriptionExecutor<"submitTx"> = () => {
 const SubscriptionExecutors = {
   block: blockSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
+  account: accountSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
 };

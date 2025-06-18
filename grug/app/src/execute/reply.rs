@@ -21,7 +21,7 @@ pub fn do_reply<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtReply>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_reply(
@@ -66,7 +66,7 @@ fn _do_reply<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtReply>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtReply::base(contract, reply_on.clone());

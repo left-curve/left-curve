@@ -47,14 +47,17 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             id
             idx
             blockHeight
+            txHash
             fromAddress
             toAddress
             amount
             denom
             createdAt
-            accounts { address }
+            accounts { address users { username }}
+            fromAccount { address users { username }}
+            toAccount { address users { username }}
           }
-          edges { node { id idx blockHeight fromAddress toAddress amount denom createdAt accounts { address } } cursor }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -106,6 +109,13 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                 )
                 .is_equal_to(vec!["100000000", "100000000"]);
 
+                response.data.edges.iter().for_each(|edge| {
+                    assert!(
+                        !edge.node.tx_hash.is_empty(),
+                        "Transaction hash should not be empty."
+                    );
+                });
+
                 Ok::<(), anyhow::Error>(())
             })
             .await
@@ -141,6 +151,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
           idx
           createdAt
           blockHeight
+          txHash
           fromAddress
           toAddress
           amount
@@ -271,6 +282,7 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
           idx
           createdAt
           blockHeight
+          txHash
           fromAddress
           toAddress
           amount

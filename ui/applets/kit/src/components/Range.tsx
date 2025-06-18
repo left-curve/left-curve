@@ -6,6 +6,7 @@ import { Input } from "./Input";
 import { twMerge } from "#utils/twMerge.js";
 
 import type React from "react";
+import { set } from "date-fns";
 
 const clampValueToStep = (value: number, min: number, max: number, step: number): number => {
   const valueRelativeToMin = value - min;
@@ -34,7 +35,10 @@ export type RangeProps = {
   label?: string | ReactNode;
   isDisabled?: boolean;
   showSteps?: boolean | StepObject[];
-  className?: string;
+  classNames?: {
+    base?: string;
+    input?: string;
+  };
   withInput?: boolean;
   inputEndContent?: ReactNode;
 };
@@ -49,7 +53,7 @@ export const Range: React.FC<RangeProps> = ({
   label,
   isDisabled = false,
   showSteps = false,
-  className,
+  classNames,
   withInput = false,
   inputEndContent,
 }) => {
@@ -189,7 +193,9 @@ export const Range: React.FC<RangeProps> = ({
   );
 
   return (
-    <div className={twMerge("w-full flex flex-col", className)}>
+    <div
+      className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, classNames?.base)}
+    >
       {label && <div className="text-gray-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
@@ -243,7 +249,11 @@ export const Range: React.FC<RangeProps> = ({
             <div className="flex justify-between mt-2 px-1">
               {stepsToDisplay.map((s) => {
                 return (
-                  <span key={`stepper-${s.value}`} className="text-gray-500 diatype-xs-regular">
+                  <span
+                    key={`stepper-${s.value}`}
+                    className="text-gray-500 diatype-xs-regular cursor-pointer"
+                    onClick={() => setValue(s.value)}
+                  >
                     {s.label}
                   </span>
                 );
@@ -272,7 +282,7 @@ export const Range: React.FC<RangeProps> = ({
                 }
               }
             }}
-            classNames={{ base: "max-w-[5rem]" }}
+            classNames={{ base: twMerge("max-w-[5rem]", classNames?.input) }}
           />
         )}
       </div>

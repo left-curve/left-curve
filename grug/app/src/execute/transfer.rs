@@ -24,7 +24,7 @@ pub fn do_transfer<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtTransfer>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_transfer(
@@ -72,7 +72,7 @@ pub(crate) fn _do_transfer<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtTransfer>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtTransfer::base(sender, msg.clone());
@@ -160,7 +160,7 @@ fn _do_receive<VM>(
     trace_opt: TraceOption,
 ) -> EventResult<EvtGuest>
 where
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     #[allow(clippy::redundant_closure_call)]

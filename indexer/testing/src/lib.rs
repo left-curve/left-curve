@@ -132,10 +132,7 @@ where
                     errors: graphql_response.errors,
                 })
             } else {
-                Err(anyhow!(
-                    "can't find {} in response",
-                    requests_body[index].name
-                ))
+                bail!("can't find {} in response", requests_body[index].name)
             }
         })
         .collect::<Result<Vec<_>, _>>()
@@ -289,32 +286,35 @@ pub async fn parse_graphql_subscription_response<R>(
 where
     R: DeserializeOwned,
 {
-    match framed.next().await {
-        Some(Ok(ws::Frame::Text(text))) => {
-            // When I need to debug the response
-            // println!("text response: \n{}", str::from_utf8(&text)?);
+    loop {
+        match framed.next().await {
+            Some(Ok(ws::Frame::Text(text))) => {
+                // When I need to debug the response
+                // println!("text response: \n{}", str::from_utf8(&text)?);
 
-            let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
+                let mut graphql_response: GraphQLSubscriptionResponse =
+                    serde_json::from_slice(&text)?;
 
-            // When I need to debug the response
-            // println!("response: \n{:#?}", graphql_response);
+                // When I need to debug the response
+                // println!("response: \n{:#?}", graphql_response);
 
-            if let Some(data) = graphql_response.payload.data.remove(name) {
-                Ok((framed, GraphQLCustomResponse {
-                    data: serde_json::from_value(data)?,
-                    errors: graphql_response.payload.errors,
-                }))
-            } else {
-                Err(anyhow!("can't find {name} in response"))
-            }
-        },
-        Some(Ok(ws::Frame::Ping(ping))) => {
-            framed.send(ws::Message::Pong(ping)).await?;
-            Err(anyhow!("received ping"))
-        },
-        Some(Err(e)) => Err(e.into()),
-        None => Err(anyhow!("connection closed unexpectedly")),
-        res => Err(anyhow!("unexpected message type: {res:?}")),
+                if let Some(data) = graphql_response.payload.data.remove(name) {
+                    return Ok((framed, GraphQLCustomResponse {
+                        data: serde_json::from_value(data)?,
+                        errors: graphql_response.payload.errors,
+                    }));
+                } else {
+                    bail!("can't find {name} in response");
+                }
+            },
+            Some(Ok(ws::Frame::Ping(ping))) => {
+                framed.send(ws::Message::Pong(ping)).await?;
+                continue;
+            },
+            Some(Err(e)) => return Err(e.into()),
+            None => bail!("connection closed unexpectedly"),
+            res => bail!("unexpected message type: {res:?}"),
+        }
     }
 }
 

@@ -10,6 +10,12 @@ import {
 } from "./subscriptions/block.js";
 
 import {
+  type AccountSubscriptionParameters,
+  type AccountSubscriptionReturnType,
+  accountSubscription,
+} from "./subscriptions/account.js";
+
+import {
   type TransferSubscriptionParameters,
   type TransferSubscriptionReturnType,
   transferSubscription,
@@ -20,6 +26,7 @@ export type IndexerActions = {
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
+  accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
 };
 
 export function indexerActions<transport extends Transport = Transport>(
@@ -30,5 +37,6 @@ export function indexerActions<transport extends Transport = Transport>(
     queryBlock: (args) => queryBlock(client, args),
     blockSubscription: (args) => blockSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
+    accountSubscription: (args) => accountSubscription(client, args),
   };
 }

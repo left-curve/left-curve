@@ -1,5 +1,5 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Result, SimpleObject};
+use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
 use {
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
@@ -21,6 +21,7 @@ pub struct Model {
     pub idx: i32,
     pub created_at: DateTime,
     pub block_height: i64,
+    pub tx_hash: String,
     pub from_address: String,
     pub to_address: String,
     pub amount: String,
@@ -30,7 +31,10 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
-    pub async fn accounts(&self, ctx: &Context<'_>) -> Result<Vec<crate::entity::accounts::Model>> {
+    pub async fn accounts(
+        &self,
+        ctx: &Context<'_>,
+    ) -> GraphQLResult<Vec<crate::entity::accounts::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
 
         let accounts = crate::entity::accounts::Entity::find()
@@ -45,32 +49,22 @@ impl Model {
         Ok(accounts)
     }
 
-    pub async fn from_accounts(
+    pub async fn from_account(
         &self,
         ctx: &Context<'_>,
-    ) -> Result<Vec<crate::entity::accounts::Model>> {
+    ) -> GraphQLResult<Option<crate::entity::accounts::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        let accounts = crate::entity::accounts::Entity::find()
-            .filter(crate::entity::accounts::Column::Address.eq(&self.from_address))
-            .all(db)
-            .await?;
-
-        Ok(accounts)
+        Ok(crate::entity::accounts::Model::find_account_by_address(db, &self.from_address).await?)
     }
 
-    pub async fn to_accounts(
+    pub async fn to_account(
         &self,
         ctx: &Context<'_>,
-    ) -> Result<Vec<crate::entity::accounts::Model>> {
+    ) -> GraphQLResult<Option<crate::entity::accounts::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
 
-        let accounts = crate::entity::accounts::Entity::find()
-            .filter(crate::entity::accounts::Column::Address.eq(&self.to_address))
-            .all(db)
-            .await?;
-
-        Ok(accounts)
+        Ok(crate::entity::accounts::Model::find_account_by_address(db, &self.to_address).await?)
     }
 }
 

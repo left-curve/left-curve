@@ -7,6 +7,7 @@ pub enum Transfer {
     Id,
     Idx,
     BlockHeight,
+    TxHash,
     CreatedAt,
     FromAddress,
     ToAddress,

@@ -755,7 +755,7 @@ fn cf_consensus(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> 
 #[cfg(test)]
 mod tests {
     use {
-        crate::{DiskDb, TempDataDir},
+        crate::DiskDb,
         grug_app::{Db, PrunableDb},
         grug_jmt::verify_proof,
         grug_types::{
@@ -763,6 +763,7 @@ mod tests {
             ProofNode, Storage,
         },
         hex_literal::hex,
+        temp_rocksdb::TempDataDir,
     };
 
     // Using the same test case as in our rust-rocksdb fork:

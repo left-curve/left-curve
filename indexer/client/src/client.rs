@@ -1,6 +1,6 @@
 use {
     crate::{Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
-    anyhow::bail,
+    anyhow::{anyhow, bail},
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
@@ -181,7 +181,7 @@ impl SearchTxClient for HttpClient {
             .transactions
             .nodes;
 
-        let res = response.first().ok_or(anyhow::anyhow!("no tx found"))?;
+        let res = response.first().ok_or(anyhow!("no tx found"))?;
 
         let msgs = res
             .messages
@@ -213,7 +213,7 @@ impl SearchTxClient for HttpClient {
                 events: res
                     .nested_events
                     .clone()
-                    .ok_or(anyhow::anyhow!("no nested events"))?
+                    .ok_or(anyhow!("no nested events"))?
                     .deserialize_json()?,
             },
         })

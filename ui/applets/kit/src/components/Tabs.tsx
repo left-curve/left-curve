@@ -7,6 +7,7 @@ import { tv } from "tailwind-variants";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { VariantProps } from "tailwind-variants";
+import { useHasMounted } from "#hooks/useHasMounted.js";
 
 export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onTabChange?: (tab: string) => void;
@@ -14,6 +15,10 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   keys?: string[];
   selectedTab?: string;
   layoutId: string;
+  classNames?: {
+    base?: string;
+    button?: string;
+  };
 }
 
 export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
@@ -25,7 +30,9 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   fullWidth,
   layoutId,
   color,
+  classNames,
 }) => {
+  const hasMounted = useHasMounted();
   const tabs = keys ? keys : Children.toArray(children);
   const [activeTab, setActiveTab] = useControlledState(selectedTab, onTabChange, () => {
     if (defaultKey) return defaultKey;
@@ -42,7 +49,15 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   });
 
   return (
-    <motion.div layoutId={layoutId} className={twMerge(styles.base())}>
+    <motion.div
+      layout
+      layoutId={layoutId}
+      initial={false}
+      transition={{ duration: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className={twMerge(styles.base(), classNames?.base)}
+    >
       {tabs.map((e, i) => {
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
@@ -50,7 +65,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
         return (
           <motion.button
-            className={twMerge(styles.button(), { "flex-1": fullWidth })}
+            className={twMerge(styles.button(), { "flex-1": fullWidth }, classNames?.button)}
             key={`navLink-${e}`}
             onClick={() => setActiveTab(elemKey)}
           >
@@ -65,8 +80,12 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
             ) : (
               cloneElement(e as React.ReactElement, { isActive })
             )}
-            {isActive ? (
-              <motion.div className={twMerge(styles["animated-element"]())} layoutId="active" />
+            {isActive && hasMounted ? (
+              <motion.div
+                initial={false}
+                layoutId={`active-tab-indicator-${layoutId}`}
+                className={twMerge(styles["animated-element"]())}
+              />
             ) : null}
           </motion.button>
         );
@@ -77,7 +96,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
 const tabsVariants = tv({
   slots: {
-    base: "flex text-base relative items-center w-fit  p-1 rounded-md",
+    base: "flex text-base relative items-center w-fit p-1 rounded-md",
     button:
       "relative capitalize transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
     "animated-element": "absolute bottom-0 left-0",
@@ -88,6 +107,11 @@ const tabsVariants = tv({
         base: "bg-green-bean-200",
         "animated-element":
           "bg-green-bean-50 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+      },
+      red: {
+        base: "bg-red-100",
+        "animated-element":
+          "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "light-green": {
         base: "bg-green-bean-100",
@@ -136,6 +160,7 @@ const tabVariants = tv({
   variants: {
     color: {
       green: "",
+      red: "",
       "light-green": "",
       "line-red": "",
     },
@@ -158,6 +183,16 @@ const tabVariants = tv({
       isActive: true,
       color: "green",
       class: "text-black",
+    },
+    {
+      isActive: true,
+      color: "red",
+      class: "text-white-100",
+    },
+    {
+      isActive: false,
+      color: "red",
+      class: "text-gray-300",
     },
     {
       isActive: false,

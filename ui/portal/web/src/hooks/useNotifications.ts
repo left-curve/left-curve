@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { uid } from "@left-curve/dango/utils";
 import { format, isToday } from "date-fns";
 
-import type { Address, UID, Username } from "@left-curve/dango/types";
+import type { AccountTypes, Address, Hex, UID, Username } from "@left-curve/dango/types";
 import type { AnyCoin } from "@left-curve/store/types";
 
 export type Notifications = {
@@ -14,7 +14,13 @@ export type Notifications = {
     coin: AnyCoin;
     fromAddress: Address;
     toAddress: Address;
+    txHash: Hex;
     type: "received" | "sent";
+  };
+  account: {
+    address: Address;
+    accountType: AccountTypes;
+    accountIndex: number;
   };
 };
 
@@ -53,6 +59,19 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const userNotification = useMemo(
     () => (allNotifications[username] || []).filter((n) => !n.isHidden),
     [allNotifications, username],
+  );
+
+  const addNotification = useCallback(
+    (notification: Notification) => {
+      setAllNotifications((notifications) => {
+        const previousUserNotification = notifications[username] || [];
+        return {
+          ...notifications,
+          [username]: [...previousUserNotification, notification],
+        };
+      });
+    },
+    [username],
   );
 
   const deleteNotification = useCallback(
@@ -97,44 +116,73 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
   }, [userNotification, limit, page]);
 
   const startNotifications = useCallback(() => {
-    if (!account) return;
+    if (!account || !username) return;
 
-    const _lastKnownBlockHeight = userNotification.reduce(
+    const lastKnownBlockHeight = userNotification.reduce(
       (max, notification) => Math.max(max, notification.blockHeight),
       0,
     );
 
-    const unsubscribe = subscriptions.subscribe("transfer", {
-      params: { address: account.address },
-      listener: (transfer) => {
-        const { fromAddress, toAddress, amount, createdAt, blockHeight } = transfer;
-        const coin = coins[transfer.denom];
-        const isSent = accounts?.some((a) => a.address === fromAddress);
+    const sinceBlockHeight = lastKnownBlockHeight + 1;
 
-        const notification = {
-          amount,
-          createdAt,
-          fromAddress,
-          toAddress,
-          type: isSent ? "sent" : "received",
-          coin,
-        } as const;
+    const unsubscribeAccount = subscriptions.subscribe("account", {
+      params: { username },
+      listener: ({ accounts }) => {
+        for (const account of accounts) {
+          const { address, accountType, accountIndex, createdAt, createdBlockHeight } = account;
 
-        setAllNotifications((prev) => {
-          const previousUserNotification = prev[username] || [];
-          return {
-            ...prev,
-            [username]: [
-              ...previousUserNotification,
-              { id: uid(), type: "transfer", data: notification, blockHeight, createdAt },
-            ],
+          const notification = {
+            address,
+            accountType,
+            accountIndex,
           };
-        });
+
+          addNotification({
+            id: uid(),
+            type: "account",
+            data: notification,
+            blockHeight: createdBlockHeight,
+            createdAt,
+          });
+        }
       },
     });
 
-    return unsubscribe;
-  }, [username, accounts, account]);
+    const unsubscribeTransfer = subscriptions.subscribe("transfer", {
+      params: { username },
+      listener: ({ transfers }) => {
+        for (const transfer of transfers) {
+          const { id, fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
+            transfer;
+
+          const coin = coins[denom];
+
+          const notification = {
+            createdAt,
+            amount,
+            txHash,
+            coin,
+            fromAddress,
+            toAddress,
+            type: fromAddress === account.address ? "sent" : "received",
+          } as const;
+
+          addNotification({
+            id,
+            type: "transfer",
+            data: notification,
+            blockHeight,
+            createdAt,
+          });
+        }
+      },
+    });
+
+    return () => {
+      unsubscribeTransfer();
+      unsubscribeAccount();
+    };
+  }, [addNotification, userNotification, username, accounts, account]);
 
   return {
     startNotifications,

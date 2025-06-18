@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
 import { AppletsSection } from "~/components/overview/AppletsSection";

@@ -3,7 +3,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
-    sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter},
+    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
     serde::{Deserialize, Serialize},
     std::path::PathBuf,
 };
@@ -28,11 +28,13 @@ impl BlockToIndex {
     }
 
     /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save<C: ConnectionTrait>(&self, db: &C) -> error::Result<()> {
+    pub async fn save(&self, db: DatabaseConnection) -> error::Result<()> {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = self.block.info.height, "Indexing block");
 
         let models = Models::build(&self.block, &self.block_outcome)?;
+
+        let db = db.begin().await?;
 
         // I check if the block already exists, if so it means we can skip the
         // whole block, transactions, messages and events since those are created
@@ -41,7 +43,7 @@ impl BlockToIndex {
         // indexed but before the tmp_file was removed.
         let existing_block = entity::blocks::Entity::find()
             .filter(entity::blocks::Column::BlockHeight.eq(self.block.info.height))
-            .one(db)
+            .one(&db)
             .await?;
 
         if existing_block.is_some() {
@@ -49,26 +51,28 @@ impl BlockToIndex {
         }
 
         entity::blocks::Entity::insert(models.block)
-            .exec_without_returning(db)
+            .exec_without_returning(&db)
             .await?;
 
         if !models.transactions.is_empty() {
             entity::transactions::Entity::insert_many(models.transactions)
-                .exec_without_returning(db)
+                .exec_without_returning(&db)
                 .await?;
         }
 
         if !models.messages.is_empty() {
             entity::messages::Entity::insert_many(models.messages)
-                .exec_without_returning(db)
+                .exec_without_returning(&db)
                 .await?;
         }
 
         if !models.events.is_empty() {
             entity::events::Entity::insert_many(models.events)
-                .exec_without_returning(db)
+                .exec_without_returning(&db)
                 .await?;
         }
+
+        db.commit().await?;
 
         Ok(())
     }

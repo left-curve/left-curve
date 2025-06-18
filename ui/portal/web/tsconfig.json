@@ -5,6 +5,7 @@
       "~/*": ["./src/*"],
       "~/paraglide/*": ["./.paraglide/*"],
       "~/constants": ["./constants.config.ts"],
+      "~/mock": ["./mockData.ts"],
       "~/store": ["./store.config.dev.ts"]
     },
     "noEmit": true
