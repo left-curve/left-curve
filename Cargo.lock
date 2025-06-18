@@ -5027,6 +5027,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "tempfile",
+ "thiserror 2.0.12",
  "tokio",
  "tracing",
  "tracing-subscriber",

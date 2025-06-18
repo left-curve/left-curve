@@ -19,7 +19,7 @@ use {
         consensus::{Consensus, ConsensusParams, ConsensusRef},
         network::{Network, NetworkRef},
         node::{Node, NodeRef},
-        sync::{Params as SyncParams, Sync, SyncRef},
+        sync::{Params as SyncParams, Sync as SyncActor, SyncRef},
         wal::{Wal, WalRef},
     },
     malachitebft_metrics::{Metrics as ConsensusMetrics, SharedRegistry},
@@ -45,7 +45,7 @@ pub async fn spawn_actors<DB, VM, PP, ID>(
     span: Option<Span>,
 ) -> Actors
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + Send + Sync,
     PP: ProposalPreparer,
     ID: Indexer,
     DB: Db,
@@ -280,7 +280,7 @@ async fn spawn_sync_actor(
         request_timeout: config.request_timeout,
     };
 
-    let actor_ref = Sync::spawn(Context, network, host, params, sync_metrics, span.clone())
+    let actor_ref = SyncActor::spawn(Context, network, host, params, sync_metrics, span.clone())
         .await
         .unwrap();
 

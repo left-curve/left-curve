@@ -15,6 +15,7 @@ use {
         collections::{HashMap, HashSet, VecDeque},
         sync::Arc,
     },
+    thiserror::Error,
     tracing::{Span, error, info, warn},
 };
 
@@ -37,7 +38,7 @@ pub enum Msg {
     NetworkEvent(Arc<NetworkEvent>),
     Add {
         tx: RawTx,
-        reply: RpcReplyPort<Result<CheckTxOutcome, AppError>>,
+        reply: RpcReplyPort<Result<CheckTxOutcome, MempoolError>>,
     },
     Take {
         amount: usize,
@@ -112,13 +113,16 @@ impl Mempool {
     fn add_tx(
         &self,
         tx: RawTx,
-        reply: Option<RpcReplyPort<Result<CheckTxOutcome, AppError>>>,
+        reply: Option<RpcReplyPort<Result<CheckTxOutcome, MempoolError>>>,
         state: &mut State,
     ) -> ActorResult<()> {
         let tx_hash = tx.hash();
 
         if state.exists(tx_hash) {
             warn!("tx already exists in mempool");
+            if let Some(reply) = reply {
+                reply.send(Err(MempoolError::TxAlreadyExists(tx_hash)))?;
+            }
             return Ok(());
         }
 
@@ -134,7 +138,7 @@ impl Mempool {
         }
 
         if let Some(reply) = reply {
-            reply.send(check_tx_outcome)?;
+            reply.send(check_tx_outcome.map_err(MempoolError::App))?;
         }
 
         Ok(())
@@ -249,4 +253,13 @@ impl Actor for Mempool {
 
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Error)]
+pub enum MempoolError {
+    #[error(transparent)]
+    App(#[from] AppError),
+
+    #[error("tx already exists in mempool: {0}")]
+    TxAlreadyExists(Hash256),
 }
