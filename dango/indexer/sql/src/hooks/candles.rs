@@ -52,10 +52,12 @@ impl Hooks {
                         ..
                     } = event.data.clone().deserialize_json()?;
 
+                    let pair_id = (base_denom, quote_denom);
+
                     // If this trading pair doesn't have a clearing price recorded
                     // yet, insert it into the map.
-                    if !clearing_prices.contains_key(&(base_denom.clone(), quote_denom.clone())) {
-                        clearing_prices.insert((base_denom, quote_denom), clearing_price);
+                    if !clearing_prices.contains_key(&pair_id) {
+                        clearing_prices.insert(pair_id, clearing_price);
                     }
                 }
             }
