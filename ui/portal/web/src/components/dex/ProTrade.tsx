@@ -5,9 +5,11 @@ import {
   useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAppConfig, useBalances, usePrices, useProTrade } from "@left-curve/store";
+import { useAppConfig, usePrices, useProTrade } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
@@ -20,9 +22,7 @@ import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { useNavigate } from "@tanstack/react-router";
 import type { PropsWithChildren } from "react";
-import { useApp } from "~/hooks/useApp";
 
 const [ProTradeProvider, useProTradeState] = createContext<{
   state: ReturnType<typeof useProTrade>;
@@ -170,17 +170,17 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => <Cell.Time date={row.original.time} />,
     }, */
     {
-      header: "Type",
+      header: m["dex.protrade.spot.ordersTable.type"](),
       cell: ({ row }) => <Cell.Text text="Limit" />,
     },
     {
-      header: "Coin",
+      header: m["dex.protrade.spot.ordersTable.coin"](),
       cell: ({ row }) => {
         return <Cell.Asset noImage denom={row.original.baseDenom} />;
       },
     },
     {
-      header: "Direction",
+      header: m["dex.protrade.spot.ordersTable.direction"](),
       cell: ({ row }) => (
         <Cell.OrderDirection
           text={m["dex.protrade.spot.direction"]({ direction: row.original.direction })}
@@ -189,15 +189,15 @@ const ProTradeOrders: React.FC = () => {
       ),
     },
     {
-      header: "Size",
+      header: m["dex.protrade.spot.ordersTable.size"](),
       cell: ({ row }) => <Cell.Text text={row.original.remaining} />,
     },
     {
-      header: "Original Size",
+      header: m["dex.protrade.spot.ordersTable.originalSize"](),
       cell: ({ row }) => <Cell.Text text={row.original.amount} />,
     },
     {
-      header: "Price",
+      header: m["dex.protrade.spot.price"](),
       cell: ({ row }) => <Cell.Text text={row.original.price} />,
     },
     {
@@ -208,7 +208,7 @@ const ProTradeOrders: React.FC = () => {
           action={() =>
             signingClient?.batchUpdateOrders({ cancels: "all", sender: account!.address })
           }
-          label="Cancel All"
+          label={m["common.cancelAll"]()}
           classNames={{
             cell: "items-end diatype-xs-regular",
             button: "!exposure-xs-italic m-0 p-0 px-1 h-fit ",
@@ -223,7 +223,7 @@ const ProTradeOrders: React.FC = () => {
               cancels: { some: [row.original.id] },
             })
           }
-          label="Cancel"
+          label={m["common.cancel"]()}
           classNames={{ cell: "items-end", button: "!exposure-xs-italic m-0 p-0 px-1 h-fit" }}
         />
       ),

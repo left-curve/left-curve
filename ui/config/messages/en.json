@@ -12,6 +12,7 @@
     "continue": "Continue",
     "back": "Back",
     "cancel": "Cancel",
+    "cancelAll": "Cancel All",
     "delete": "Delete",
     "available": "Available",
     "username": "Username",
@@ -599,6 +600,13 @@
       "spot": {
         "noOpenOrders": "No open orders yet",
         "price": "Price",
+        "ordersTable": {
+          "coin": "Coin",
+          "size": "Size",
+          "type": "Type",
+          "originalSize": "Original Size",
+          "direction": "Direction"
+        },
         "24hChange": "24h Change",
         "volume": "Volume",
         "fees": "Fees",
