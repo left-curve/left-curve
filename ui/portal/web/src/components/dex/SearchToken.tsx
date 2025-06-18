@@ -125,8 +125,7 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
                 pairId={pairId}
                 onChangePairId={(pairId) => {
                   setIsSearchTokenVisible(false);
-                  // onChangePairId(pairId);
-                  console.log("Selected pairId:", pairId);
+                  onChangePairId(pairId);
                 }}
               />
             </div>
