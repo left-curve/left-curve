@@ -17,7 +17,7 @@ export type AppConfig = {
   };
   makerFeeRate: string;
   takerFeeRate: string;
-  maxLiquiditationBonus: string;
-  minLiquiditationBonus: string;
+  maxLiquidationBonus: string;
+  minLiquidationBonus: string;
   targetUtilizationRate: string;
 };
