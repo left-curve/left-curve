@@ -1,6 +1,6 @@
 use {
     crate::types::{AppHash, RawTx},
-    grug::{BlockInfo, CheckTxOutcome, JsonDeExt},
+    grug::{Batch, BlockInfo, CheckTxOutcome, JsonDeExt},
     grug_app::{AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     std::sync::Arc,
 };
@@ -28,7 +28,7 @@ pub type HostAppRef = Arc<dyn HostApp>;
 pub trait HostApp: Send + Sync + 'static {
     fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx>;
     fn finalize_block(&self, block: BlockInfo, txs: &[RawTx]) -> AppResult<AppHash>;
-    fn commit(&self) -> AppResult<()>;
+    fn commit(&self, consensus_batch: Batch) -> AppResult<()>;
 }
 
 impl<DB, VM, PP, ID> HostApp for grug_app::App<DB, VM, PP, ID>
@@ -56,7 +56,8 @@ where
             .map(|outcome| AppHash::new(outcome.app_hash))
     }
 
-    fn commit(&self) -> AppResult<()> {
+    fn commit(&self, consensus_batch: Batch) -> AppResult<()> {
+        self.db.flush_consensus_but_not_commit(consensus_batch)?;
         self.do_commit()
     }
 }

@@ -81,7 +81,12 @@ pub trait Db {
     /// version.
     ///
     /// This is typically invoked in the ABCI `FinalizeBlock` call.
-    fn flush_but_not_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error>;
+    fn flush_storage_but_not_commit(
+        &self,
+        batch: Batch,
+    ) -> Result<(u64, Option<Hash256>), Self::Error>;
+
+    fn flush_consensus_but_not_commit(&self, batch: Batch) -> Result<(), Self::Error>;
 
     /// Persist pending data added in the `flush` method to disk.
     ///
@@ -92,7 +97,7 @@ pub trait Db {
     ///
     /// This is typically only invoked in the ABCI `InitChain` call.
     fn flush_and_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error> {
-        let (new_version, root_hash) = self.flush_but_not_commit(batch)?;
+        let (new_version, root_hash) = self.flush_storage_but_not_commit(batch)?;
         self.commit()?;
         Ok((new_version, root_hash))
     }

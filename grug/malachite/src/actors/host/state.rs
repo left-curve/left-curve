@@ -6,7 +6,7 @@ use {
         ctx,
         types::{Block, BlockHash, DecidedBlock},
     },
-    grug::{IndexedMap, Map, Storage, UniqueIndex},
+    grug::{Batch, IndexedMap, Map, Storage, UniqueIndex},
     grug_app::{AppResult, ConsensusStorage},
     malachitebft_app::{consensus::Role, streaming::StreamId, types::ProposedValue},
     malachitebft_core_types::Round,
@@ -28,7 +28,7 @@ pub struct State {
     config: HostConfig,
     started_round: Instant,
     app: HostAppRef,
-    prending_commit_block_hash: Option<BlockHash>,
+    pending_commit_block_hash: Option<BlockHash>,
 }
 
 impl State {
@@ -47,7 +47,7 @@ impl State {
             config,
             started_round: Instant::now(),
             app,
-            prending_commit_block_hash: None,
+            pending_commit_block_hash: None,
         }
     }
 
@@ -101,17 +101,34 @@ impl State {
 
         let block_hash = block.calculate_block_hash(app_hash);
 
-        self.prending_commit_block_hash = Some(block_hash);
+        self.pending_commit_block_hash = Some(block_hash);
 
         Ok(block_hash)
     }
 
-    pub fn commit(&self, block: &Block) -> AppResult<()> {
-        if let Some(pending) = self.prending_commit_block_hash {
-            if pending == block.block_hash() {}
+    pub fn commit(&mut self, block: &Block, consensus_batch: Batch) -> AppResult<()> {
+        let mut rerun = true;
+
+        // If the pending_commit_block_hash is equal to the block hash, this mean that the app batch in memory
+        // is the same as the block we are trying to commit, so we don't need to rerun the finalize_block.
+        if let Some(pending) = self.pending_commit_block_hash {
+            if pending == block.block_hash() {
+                rerun = false;
+            }
         }
 
-        self.app.commit()
+        if rerun {
+            let block_hash = self.finalize_block(&block)?;
+            if block_hash != block.block_hash() {
+                // TODO: We should panic here? This mean the the we have some non-deterministic behavior in the app.
+                panic!("Block hash mismatch");
+            }
+        }
+
+        self.app.commit(consensus_batch)?;
+        self.pending_commit_block_hash = None;
+
+        Ok(())
     }
 }
 

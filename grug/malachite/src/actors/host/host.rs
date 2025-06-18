@@ -8,7 +8,7 @@ use {
         mempool::{MempoolActorRef, MempoolMsg},
         types::{Block, DecidedBlock},
     },
-    grug::{BorshDeExt, BorshSerExt, Timestamp},
+    grug::{BorshDeExt, BorshSerExt, Buffer, MockStorage, Timestamp},
     grug_app::{App, Db},
     malachitebft_app::{
         consensus::Role,
@@ -458,19 +458,23 @@ impl Host {
 
         info!(value_id = %certificate.value_id, "Proposed block found");
 
-        // TODO: We should check if the pre_commit changes inside app
-        // has been calculated with the same block hash we are committing
-
-        // Call commit
-        state.commit(&block)?;
-
-        let txs = block.txs.clone();
+        // We want to ensure to save the decided block atomically with the app.
+        // To do this, we use a MockStorage to create the batch to insert.
+        // This is possible because we don't need to read data, just to create the insertionbatch.
+        let mut buffer = Buffer::new(MockStorage::new(), None);
 
         // Store decided block
-        DECIDED_BLOCK.save(state, *certificate.height, &DecidedBlock {
-            block,
+        DECIDED_BLOCK.save(&mut buffer, *certificate.height, &DecidedBlock {
+            block: block.clone(),
             certificate,
         })?;
+
+        let (_, batch) = buffer.disassemble();
+
+        // Call commit with the consensus batch to insert
+        state.commit(&block, batch)?;
+
+        let txs = block.txs;
 
         // Notify the mempool to remove corresponding txs
         self.mempool.cast(MempoolMsg::Remove(txs))?;

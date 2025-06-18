@@ -86,10 +86,11 @@ pub(crate) struct DiskDbInner {
     // Data that are ready to be persisted to the physical database.
     // Ideally we want to just use a `rocksdb::WriteBatch` here, but it's not
     // thread-safe.
-    pending_data: RwLock<Option<PendingData>>,
+    app_pending_data: RwLock<Option<AppPendingData>>,
+    consensus_pending_data: RwLock<Option<Batch>>,
 }
 
-pub(crate) struct PendingData {
+pub(crate) struct AppPendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
@@ -114,7 +115,8 @@ impl DiskDb {
         Ok(Self {
             inner: Arc::new(DiskDbInner {
                 db,
-                pending_data: RwLock::new(None),
+                app_pending_data: RwLock::new(None),
+                consensus_pending_data: RwLock::new(None),
             }),
         })
     }
@@ -214,11 +216,11 @@ impl Db for DiskDb {
         Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
-    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+    fn flush_storage_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
-        if self.inner.pending_data.read()?.is_some() {
+        if self.inner.app_pending_data.read()?.is_some() {
             return Err(DbError::PendingDataAlreadySet);
         }
 
@@ -239,7 +241,7 @@ impl Db for DiskDb {
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
-        *(self.inner.pending_data.write()?) = Some(PendingData {
+        *(self.inner.app_pending_data.write()?) = Some(AppPendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
@@ -248,23 +250,36 @@ impl Db for DiskDb {
         Ok((new_version, root_hash))
     }
 
+    fn flush_consensus_but_not_commit(&self, batch: Batch) -> Result<(), Self::Error> {
+        *(self.inner.consensus_pending_data.write()?) = Some(batch);
+        Ok(())
+    }
+
     fn commit(&self) -> DbResult<()> {
-        let pending = self
+        let app_pending = self
             .inner
-            .pending_data
+            .app_pending_data
             .write()?
             .take()
             .ok_or(DbError::PendingDataNotSet)?;
+
+        let consensus_pending = self
+            .inner
+            .consensus_pending_data
+            .write()?
+            .take()
+            .ok_or(DbError::PendingDataNotSet)?;
+
         let mut batch = WriteBatch::default();
-        let ts = U64Timestamp::from(pending.version);
+        let ts = U64Timestamp::from(app_pending.version);
 
         // Set the new version (note: use little endian)
         let cf = cf_default(&self.inner.db);
-        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+        batch.put_cf(&cf, LATEST_VERSION_KEY, app_pending.version.to_le_bytes());
 
         // Writes in state commitment
         let cf = cf_state_commitment(&self.inner.db);
-        for (key, op) in pending.state_commitment {
+        for (key, op) in app_pending.state_commitment {
             if let Op::Insert(value) = op {
                 batch.put_cf(&cf, key, value);
             } else {
@@ -275,7 +290,7 @@ impl Db for DiskDb {
         // Writes in preimages (note: don't forget timestamping, and deleting
         // key hashes that are deleted in state storage - see Zellic audut).
         let cf = cf_preimages(&self.inner.db);
-        for (key, op) in &pending.state_storage {
+        for (key, op) in &app_pending.state_storage {
             if let Op::Insert(_) = op {
                 batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
             } else {
@@ -285,7 +300,7 @@ impl Db for DiskDb {
 
         // Writes in state storage (note: don't forget timestamping)
         let cf = cf_state_storage(&self.inner.db);
-        for (key, op) in pending.state_storage {
+        for (key, op) in app_pending.state_storage {
             if let Op::Insert(value) = op {
                 batch.put_cf_with_ts(&cf, key, ts, value);
             } else {
@@ -293,11 +308,21 @@ impl Db for DiskDb {
             }
         }
 
+        // Writes in consensus
+        let cf = cf_consensus(&self.inner.db);
+        for (key, op) in consensus_pending {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+
         Ok(self.inner.db.write(batch)?)
     }
 
     fn discard_changeset(&self) {
-        *(self.inner.pending_data.write().unwrap()) = None;
+        *(self.inner.app_pending_data.write().unwrap()) = None;
     }
 }
 

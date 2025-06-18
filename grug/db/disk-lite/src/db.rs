@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, batch_hash},
-    grug_app::Db,
+    grug_app::{ConsensusStorage, Db},
     grug_types::{Batch, Empty, Hash256, Op, Order, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
@@ -12,7 +12,9 @@ use {
     },
 };
 
-const CF_NAME_DEFAULT: &str = "default";
+const CF_NAME_STORAGE: &str = "storage";
+
+const CF_NAME_CONSENSUS: &str = "consensus";
 
 const CF_NAME_METADATA: &str = "metadata";
 
@@ -26,7 +28,8 @@ pub struct DiskDbLite {
 
 struct DiskDbLiteInner {
     db: DBWithThreadMode<MultiThreaded>,
-    pending_data: RwLock<Option<PendingData>>,
+    storage_pending_data: RwLock<Option<PendingData>>,
+    consensus_pending_data: RwLock<Option<Batch>>,
 }
 
 pub(crate) struct PendingData {
@@ -41,14 +44,16 @@ impl DiskDbLite {
         P: AsRef<Path>,
     {
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
-            (CF_NAME_DEFAULT, Options::default()),
+            (CF_NAME_STORAGE, Options::default()),
+            (CF_NAME_CONSENSUS, Options::default()),
             (CF_NAME_METADATA, Options::default()),
         ])?;
 
         Ok(Self {
             inner: Arc::new(DiskDbLiteInner {
                 db,
-                pending_data: RwLock::new(None),
+                storage_pending_data: RwLock::new(None),
+                consensus_pending_data: RwLock::new(None),
             }),
         })
     }
@@ -63,12 +68,13 @@ impl Clone for DiskDbLite {
 }
 
 impl Db for DiskDbLite {
+    type Consensus = ReadState;
     type Error = DbError;
     // The lite DB doesn't support Merkle proofs, as it doesn't Merklize the chain state.
     type Proof = Empty;
     // The lite DB doesn't utilize a state commitment storage.
-    type StateCommitment = StateStorage;
-    type StateStorage = StateStorage;
+    type StateCommitment = ReadState;
+    type StateStorage = ReadState;
 
     fn state_commitment(&self) -> Self::StateCommitment {
         unimplemented!("`DiskDbLite` does not support state commitment");
@@ -86,9 +92,9 @@ impl Db for DiskDbLite {
             }
         }
 
-        Ok(StateStorage {
+        Ok(ReadState {
             inner: Arc::clone(&self.inner),
-            cf_name: CF_NAME_DEFAULT,
+            cf_name: CF_NAME_STORAGE,
         })
     }
 
@@ -142,9 +148,9 @@ impl Db for DiskDbLite {
         Err(DbError::ProofUnsupported)
     }
 
-    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+    fn flush_storage_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         // A pending data can't already exist.
-        if self.inner.pending_data.read()?.is_some() {
+        if self.inner.storage_pending_data.read()?.is_some() {
             return Err(DbError::PendingDataAlreadySet);
         }
 
@@ -158,7 +164,7 @@ impl Db for DiskDbLite {
         // on the changeset.
         let hash = batch_hash(&batch);
 
-        *(self.inner.pending_data.write()?) = Some(PendingData {
+        *(self.inner.storage_pending_data.write()?) = Some(PendingData {
             version,
             hash,
             batch,
@@ -167,11 +173,23 @@ impl Db for DiskDbLite {
         Ok((version, Some(hash)))
     }
 
+    fn flush_consensus_but_not_commit(&self, batch: Batch) -> DbResult<()> {
+        *(self.inner.consensus_pending_data.write()?) = Some(batch);
+        Ok(())
+    }
+
     fn commit(&self) -> DbResult<()> {
         // A pending data must already exists.
-        let pending = self
+        let storage_pending = self
             .inner
-            .pending_data
+            .storage_pending_data
+            .write()?
+            .take()
+            .ok_or(DbError::PendingDataNotSet)?;
+
+        let consensus_pending = self
+            .inner
+            .consensus_pending_data
             .write()?
             .take()
             .ok_or(DbError::PendingDataNotSet)?;
@@ -179,8 +197,18 @@ impl Db for DiskDbLite {
         let mut batch = WriteBatch::default();
 
         // Wriet batch to default CF.
-        let cf = cf_handle(&self.inner.db, CF_NAME_DEFAULT);
-        for (k, op) in pending.batch {
+        let cf = cf_handle(&self.inner.db, CF_NAME_STORAGE);
+        for (k, op) in storage_pending.batch {
+            if let Op::Insert(v) = op {
+                batch.put_cf(&cf, k, v);
+            } else {
+                batch.delete_cf(&cf, k);
+            }
+        }
+
+        // Write consensus batch to consensus CF.
+        let cf = cf_handle(&self.inner.db, CF_NAME_CONSENSUS);
+        for (k, op) in consensus_pending {
             if let Op::Insert(v) = op {
                 batch.put_cf(&cf, k, v);
             } else {
@@ -190,22 +218,37 @@ impl Db for DiskDbLite {
 
         // Write version and hash to metadata CF.
         let cf = cf_handle(&self.inner.db, CF_NAME_METADATA);
-        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
-        batch.put_cf(&cf, LATEST_BATCH_HASH_KEY, pending.hash);
+        batch.put_cf(
+            &cf,
+            LATEST_VERSION_KEY,
+            storage_pending.version.to_le_bytes(),
+        );
+        batch.put_cf(&cf, LATEST_BATCH_HASH_KEY, storage_pending.hash);
 
         Ok(self.inner.db.write(batch)?)
     }
+
+    fn consensus(&self) -> Self::Consensus {
+        ReadState {
+            inner: Arc::clone(&self.inner),
+            cf_name: CF_NAME_CONSENSUS,
+        }
+    }
+
+    fn discard_changeset(&self) {
+        *(self.inner.storage_pending_data.write().unwrap()) = None;
+    }
 }
 
-// ------------------------------- state storage -------------------------------
+// ------------------------------- read state -------------------------------
 
 #[derive(Clone)]
-pub struct StateStorage {
+pub struct ReadState {
     inner: Arc<DiskDbLiteInner>,
     cf_name: &'static str,
 }
 
-impl Storage for StateStorage {
+impl Storage for ReadState {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.inner
             .db
@@ -302,6 +345,8 @@ impl Storage for StateStorage {
         unreachable!("write function called on read-only storage");
     }
 }
+
+impl ConsensusStorage for ReadState {}
 
 // ---------------------------------- helpers ----------------------------------
 
