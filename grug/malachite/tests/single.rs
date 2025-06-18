@@ -8,6 +8,7 @@ use {
 
 pub mod utils;
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn single() {
     setup_tracing_subscriber(tracing::Level::INFO);

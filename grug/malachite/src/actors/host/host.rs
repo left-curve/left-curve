@@ -432,8 +432,6 @@ impl Host {
             warn!(block_hash = %block_hash, proposal_block_hash = %block.block_hash(), "Block hash mismatch");
         }
 
-        // TODO: Should we resign the block hash?
-
         // TODO: If block_hash is different from the proposed value, what we should do?
         // store the undecided block with the new block_hash?
 
