@@ -91,4 +91,5 @@ enabled = false
 size    = "0 B"
 
 [host]
-block_time = "5s"
+block_time   = "5s"
+max_tx_bytes = "4 MB"

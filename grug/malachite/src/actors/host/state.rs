@@ -23,9 +23,9 @@ pub struct State {
     pub proposer: Option<ctx!(Address)>,
     pub role: Role,
     pub round: Round,
+    pub config: HostConfig,
     db_storage: Box<dyn ConsensusStorage>,
     consensus: Option<ConsensusRef<Context>>,
-    config: HostConfig,
     started_round: Instant,
     app: HostAppRef,
     pending_commit_block_hash: Option<BlockHash>,
@@ -93,7 +93,8 @@ impl State {
     }
 
     pub fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx> {
-        self.app.prepare_proposal(txs)
+        self.app
+            .prepare_proposal(txs, self.config.max_tx_bytes.as_u64() as usize)
     }
 
     pub fn finalize_block<T>(&mut self, block: &Block<T>) -> AppResult<BlockHash> {

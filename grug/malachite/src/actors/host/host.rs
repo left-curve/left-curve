@@ -320,8 +320,7 @@ impl Host {
                 .mempool
                 .call(
                     |reply| MempoolMsg::Take {
-                        // TODO: set a limit
-                        amount: usize::MAX,
+                        max_tx_bytes: state.config.max_tx_bytes.as_u64() as usize,
                         reply,
                     },
                     None,

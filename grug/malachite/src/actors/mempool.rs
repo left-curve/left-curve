@@ -41,7 +41,7 @@ pub enum Msg {
         reply: RpcReplyPort<Result<CheckTxOutcome, MempoolError>>,
     },
     Take {
-        amount: usize,
+        max_tx_bytes: usize,
         reply: RpcReplyPort<Vec<RawTx>>,
     },
     Remove(Vec<RawTx>),
@@ -79,7 +79,10 @@ impl Mempool {
         match msg {
             Msg::NetworkEvent(event) => self.handle_network_event(&event, state)?,
             Msg::Add { tx, reply } => self.add_tx(tx, Some(reply), state)?,
-            Msg::Take { amount, reply } => self.take(state, amount, reply)?,
+            Msg::Take {
+                max_tx_bytes,
+                reply,
+            } => self.take(state, max_tx_bytes, reply)?,
             Msg::Remove(tx_hashes) => self.remove(tx_hashes, state)?,
         }
 
@@ -147,24 +150,22 @@ impl Mempool {
     fn take(
         &self,
         state: &mut State,
-        mut amount: usize,
+        mut max_tx_bytes: usize,
         reply: RpcReplyPort<Vec<RawTx>>,
     ) -> ActorResult<()> {
-        let mut txs = Vec::with_capacity(min(amount, state.txs.len()));
-
-        if amount == 0 {
-            reply.send(txs)?;
-            return Ok(());
-        }
+        let mut txs = Vec::with_capacity(min(max_tx_bytes, state.txs.len()));
 
         for tx in state.txs.iter() {
             // we are not removing the tx from the mempool, here because prepare proposal could not
             // include some txs. Txs will be removed during decided.
-            txs.push(tx.clone());
-            amount -= 1;
-            if amount == 0 {
+
+            max_tx_bytes = max_tx_bytes.saturating_sub(tx.0.len());
+
+            if max_tx_bytes == 0 {
                 break;
             }
+
+            txs.push(tx.clone());
         }
 
         reply.send(txs)?;

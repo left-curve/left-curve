@@ -12,6 +12,7 @@ version       = { workspace = true }
 [dependencies]
 anyhow          = { workspace = true }
 borsh           = { workspace = true }
+bytesize        = { workspace = true }
 grug            = { workspace = true }
 grug-app        = { workspace = true }
 grug-crypto     = { workspace = true }

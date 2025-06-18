@@ -102,6 +102,7 @@ blake3                  = "1"
 bnum                    = "0.13"
 borsh                   = "1"
 byteorder               = "1"
+bytesize                = { version = "2", features = ["serde"] }
 chrono                  = "0.4"
 clap                    = "4"
 clru                    = "0.6"

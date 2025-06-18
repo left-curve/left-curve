@@ -79,4 +79,5 @@ listen_addr = "127.0.0.1:29000"
 flavor = "single_threaded"
 
 [host]
-block_time = "5s"
+block_time   = "5s"
+max_tx_bytes = "4 MB"

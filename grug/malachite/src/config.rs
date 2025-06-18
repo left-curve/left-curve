@@ -1,4 +1,5 @@
 use {
+    bytesize::ByteSize,
     grug::{BlockInfo, GenesisState},
     malachitebft_app::config::{
         ConsensusConfig, LoggingConfig, MempoolConfig, MetricsConfig, RuntimeConfig,
@@ -38,6 +39,7 @@ pub struct ActorsConfig {
 pub struct HostConfig {
     #[serde(with = "humantime_serde")]
     pub block_time: Duration,
+    pub max_tx_bytes: ByteSize,
 }
 
 pub struct GenesisConfig {

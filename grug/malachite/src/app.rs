@@ -26,7 +26,7 @@ where
 
 pub type HostAppRef = Arc<dyn HostApp>;
 pub trait HostApp: Send + Sync + 'static {
-    fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx>;
+    fn prepare_proposal(&self, txs: Vec<RawTx>, max_tx_bytes: usize) -> Vec<RawTx>;
     fn finalize_block(&self, block: BlockInfo, txs: &[RawTx]) -> AppResult<AppHash>;
     fn commit(&self, consensus_batch: Batch) -> AppResult<()>;
 }
@@ -39,10 +39,10 @@ where
     ID: Indexer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx> {
+    fn prepare_proposal(&self, txs: Vec<RawTx>, max_tx_bytes: usize) -> Vec<RawTx> {
         // TODO: This need to be optimized, probably the best solution is to change to perpare proposal function signature
 
-        self.do_prepare_proposal(txs.into_iter().map(|tx| tx.0).collect(), usize::MAX)
+        self.do_prepare_proposal(txs.into_iter().map(|tx| tx.0).collect(), max_tx_bytes)
             .into_iter()
             .map(RawTx)
             .collect()
