@@ -1,5 +1,4 @@
 import type { IndexedTrade } from "@left-curve/dango/types";
-import type { AnyCoin } from "@left-curve/store/types";
 
 export const mockTrades: IndexedTrade[] = [
   {
@@ -237,48 +236,22 @@ export const mockTrades: IndexedTrade[] = [
 
 export const mockOpenOrder = [
   {
-    time: new Date(),
-    type: "Limit",
-    coin: {
-      symbol: "USDC",
-      name: "USDC",
-      denom: "usdc",
-      decimals: 6,
-      type: "contract",
-      logoURI:
-        "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-    } as AnyCoin,
-    direction: "Long",
-    size: 0.063,
-    orderValue: 11.98,
-    price: 1.889,
-    reduceOnly: false,
-    triggerConditions: "N/A",
-    onCancel: () => {
-      console.log("Order cancelled");
-    },
+    id: 1,
+    baseDenom: "bridge/usdc",
+    quoteDenom: "dango",
+    direction: 1,
+    remaining: "0.063",
+    amount: "11.98",
+    price: "1.889",
   },
   {
-    time: new Date(),
-    type: "Limit",
-    coin: {
-      symbol: "USDC",
-      name: "USDC",
-      denom: "usdc",
-      decimals: 6,
-      type: "contract",
-      logoURI:
-        "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-    } as AnyCoin,
-    direction: "Long",
-    size: 0.063,
-    orderValue: 11.98,
-    price: 1.889,
-    reduceOnly: false,
-    triggerConditions: "N/A",
-    onCancel: () => {
-      console.log("Order cancelled");
-    },
+    id: 2,
+    baseDenom: "bridge/usdc",
+    quoteDenom: "dango",
+    direction: 0,
+    remaining: "0.063",
+    amount: "11.98",
+    price: "1.889",
   },
 ];
 
@@ -400,45 +373,3 @@ export const mockOrderBookData: OrderBookData = {
     { price: 1917.11, amount: 1.022, total: 1959.2864, cumulativeTotal: 121277.364 },
   ],
 };
-
-export const mockSearchPair = [
-  {
-    name: "BTC-USD",
-    isFavorite: true,
-    lastPrice: 45000,
-    change: 2.5,
-    "8hourChange": "-0.0100%",
-    volume: "$2,227,275,754",
-    openInterest: "$2,227,275,754",
-  },
-  {
-    name: "ETH-USD",
-    isFavorite: false,
-    lastPrice: 45000,
-    change: -0.2,
-    "8hourChange": "-0.0100%",
-    volume: "$2,227,275,754",
-    openInterest: "$2,227,275,754",
-  },
-  {
-    name: "FARTCOIN-USD",
-    lastPrice: 45000,
-    change: 2.5,
-    "8hourChange": "-0.0100%",
-    volume: "$2,227,275,754",
-    openInterest: "$2,227,275,754",
-  },
-];
-
-export type activeFilterType =
-  | "All"
-  | "Spot"
-  | "Trending"
-  | "DEX only"
-  | "Pre-launch"
-  | "AI"
-  | "Defi"
-  | "Gaming"
-  | "Layer 1"
-  | "Layer 2"
-  | "Meme";

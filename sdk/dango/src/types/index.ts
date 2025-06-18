@@ -122,6 +122,12 @@ export type {
   SwapRoute,
   PairParams,
   PairUpdate,
+  CancelOrderRequest,
+  CreateLimitOrderRequest,
+  CreateMarketOrderRequest,
+  GetDexExecuteMsg,
+  GetDexQueryMsg,
+  OrderId,
 } from "./dex.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
@@ -135,3 +141,5 @@ export { AccountType } from "./account.js";
 export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
+
+export { Direction } from "./dex.js";

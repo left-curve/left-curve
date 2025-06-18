@@ -23,16 +23,26 @@ export const TradeButtons: React.FC = () => {
         <IconChevronRight className="h-6 w-6 rotate-180 " />
       </IconButton>
       {isConnected ? (
-        <div className="flex-1 flex gap-2">
+        <div className="flex-1 flex gap-2 ">
           <Button
-            className="h-full"
+            className="h-[44px]"
             fullWidth
             variant="tertiary"
-            onClick={() => setTradeBarVisibility(true)}
+            onClick={() => {
+              setTradeBarVisibility(true);
+              navigate({ to: ".", search: { action: "buy" } });
+            }}
           >
             {m["proSwap.buy"]()}
           </Button>
-          <Button className="h-full" fullWidth onClick={() => setTradeBarVisibility(true)}>
+          <Button
+            className="h-[44px]"
+            fullWidth
+            onClick={() => {
+              setTradeBarVisibility(true);
+              navigate({ to: ".", search: { action: "sell" } });
+            }}
+          >
             {m["proSwap.sell"]()}
           </Button>
         </div>

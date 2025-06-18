@@ -1,30 +1,37 @@
 import {
-  type ColumnDef,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type React from "react";
 
+import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/twMerge.js";
-import { tv, type VariantProps } from "tailwind-variants";
+
+import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
+import type React from "react";
+import type { VariantProps } from "tailwind-variants";
 
 export type TableColumn<T> = ColumnDef<T>[];
+export type { ColumnFiltersState };
+
+export type TableClassNames = {
+  base?: string;
+  header?: string;
+  cell?: string;
+  row?: string;
+};
 
 interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   bottomContent?: React.ReactNode;
   topContent?: React.ReactNode;
   columns: TableColumn<T>;
   data: T[];
-  classNames?: {
-    base?: string;
-    header?: string;
-    cell?: string;
-    row?: string;
-  };
+  columnFilters?: ColumnFiltersState;
+  onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
+  onRowClick?: (row: Row<T>) => void;
+  classNames?: TableClassNames;
 }
 
 export const Table = <T,>({
@@ -34,14 +41,19 @@ export const Table = <T,>({
   data,
   style,
   classNames,
+  columnFilters,
+  onColumnFiltersChange,
+  onRowClick,
 }: TableProps<T>) => {
   const table = useReactTable<T>({
     data,
     columns,
+    state: { columnFilters },
+    enableFilters: true,
+    onColumnFiltersChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const styles = tabsVariants({
@@ -58,23 +70,29 @@ export const Table = <T,>({
           "scrollbar-none w-full min-w-fit whitespace-nowrap overflow-hidden relative overflow-x-scroll ",
         )}
       >
-        {table.getHeaderGroups().map((headerGroup) => (
-          <thead key={headerGroup.id}>
-            {headerGroup.headers.map((header) => {
-              return (
-                <td key={header.id} className={twMerge(styles.header(), "", classNames?.header)}>
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </td>
-              );
-            })}
-          </thead>
-        ))}
+        <thead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                return (
+                  <td key={header.id} className={twMerge(styles.header(), classNames?.header)}>
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </thead>
 
         <tbody>
           {rows.map((row) => {
             const cells = row.getVisibleCells();
             return (
-              <tr key={row.id} className={twMerge(styles.row(), classNames?.row)}>
+              <tr
+                key={row.id}
+                className={twMerge(styles.row(), classNames?.row, { "cursor-pointer": onRowClick })}
+                onClick={() => onRowClick?.(row)}
+              >
                 {cells.map((cell) => {
                   return (
                     <td key={cell.id} className={twMerge(styles.cell(), classNames?.cell)}>
@@ -104,13 +122,13 @@ const tabsVariants = tv({
       default: {
         base: "bg-rice-25 shadow-account-card px-4 pt-4",
         header:
-          "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl",
-        cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end",
+          "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
+        cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
         row: "border-b border-gray-100 last:border-b-0",
       },
       simple: {
         base: "text-gray-500 border-separate",
-        header: "p-2 text-gray-500 diatype-xs-regular last:text-end",
+        header: "p-2 text-gray-500 diatype-xs-regular last:text-end text-start",
         cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-rice-50",
         row: "rounded-xl group",
       },
