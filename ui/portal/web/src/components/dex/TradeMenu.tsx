@@ -303,7 +303,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
 const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const { action, setAction, type, submission } = state;
+  const { action, onChangeAction, type, submission } = state;
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
@@ -323,7 +323,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           keys={["buy", "sell"]}
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
-          onTabChange={(tab) => setAction(tab as "sell" | "buy")}
+          onTabChange={(tab) => onChangeAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "green"}
           isDisabled={submission.isPending}
         />

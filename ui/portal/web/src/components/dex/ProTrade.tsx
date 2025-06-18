@@ -32,17 +32,27 @@ const [ProTradeProvider, useProTradeState] = createContext<{
 });
 
 type ProTradeProps = {
+  action: "buy" | "sell";
+  onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
+  action,
+  onChangeAction,
   pairId,
   onChangePairId,
   children,
 }) => {
   const controllers = useInputs();
-  const state = useProTrade({ inputs: controllers.inputs, pairId, onChangePairId });
+  const state = useProTrade({
+    inputs: controllers.inputs,
+    pairId,
+    onChangePairId,
+    action,
+    onChangeAction,
+  });
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 

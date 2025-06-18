@@ -12,13 +12,15 @@ import { capitalize, parseUnits } from "@left-curve/dango/utils";
 import type { PairId } from "@left-curve/dango/types";
 
 export type UseProTradeParameters = {
+  action: "buy" | "sell";
+  onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
   inputs: Record<string, { value: string }>;
 };
 
 export function useProTrade(parameters: UseProTradeParameters) {
-  const { inputs, pairId, onChangePairId } = parameters;
+  const { inputs, pairId, onChangePairId, action, onChangeAction } = parameters;
   const { account } = useAccount();
   const { coins } = useConfig();
   const publicClient = usePublicClient();
@@ -29,7 +31,6 @@ export function useProTrade(parameters: UseProTradeParameters) {
 
   const [coin, setCoin] = useState(baseCoin);
   const [operation, setOperation] = useState<"market" | "limit">("market");
-  const [action, setAction] = useState<"buy" | "sell">("buy");
 
   const { data: balances = {}, refetch: updateBalance } = useBalances({
     address: account?.address,
@@ -110,7 +111,7 @@ export function useProTrade(parameters: UseProTradeParameters) {
     operation,
     setOperation,
     action,
-    setAction,
+    onChangeAction,
     submission,
     type: "spot",
   };

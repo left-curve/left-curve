@@ -1,4 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+
+import { z } from "zod";
 import { coinsBySymbol } from "~/store";
 
 export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
@@ -12,4 +14,7 @@ export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
     const pair = await client?.getPair({ baseDenom, quoteDenom }).catch(() => null);
     if (!pair) throw redirect({ to: "/trade/$pairSymbols", params: { pairSymbols: "BTC-USDC" } });
   },
+  validateSearch: z.object({
+    action: z.enum(["buy", "sell"]).default("buy"),
+  }),
 });

@@ -28,11 +28,21 @@ export const TradeButtons: React.FC = () => {
             className="h-[44px]"
             fullWidth
             variant="tertiary"
-            onClick={() => setTradeBarVisibility(true)}
+            onClick={() => {
+              setTradeBarVisibility(true);
+              navigate({ to: ".", search: { action: "buy" } });
+            }}
           >
             {m["proSwap.buy"]()}
           </Button>
-          <Button className="h-[44px]" fullWidth onClick={() => setTradeBarVisibility(true)}>
+          <Button
+            className="h-[44px]"
+            fullWidth
+            onClick={() => {
+              setTradeBarVisibility(true);
+              navigate({ to: ".", search: { action: "sell" } });
+            }}
+          >
             {m["proSwap.sell"]()}
           </Button>
         </div>

@@ -28,7 +28,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
 
   const {
     setSidebarVisibility,
-    setTradeBarVisibility,
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
     isSidebarVisible,

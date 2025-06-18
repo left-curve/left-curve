@@ -14,6 +14,7 @@ function ProTradeApplet() {
   const navigate = useNavigate();
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
+  const { action = "buy" } = Route.useSearch();
 
   const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
     const baseSymbol = coins[baseDenom]?.symbol;
@@ -26,6 +27,15 @@ function ProTradeApplet() {
     });
   };
 
+  const onChangeAction = (action: "buy" | "sell") => {
+    navigate({
+      to: "/trade/$pairSymbols",
+      params: { pairSymbols },
+      replace: false,
+      search: { action },
+    });
+  };
+
   const [baseSymbol, quoteSymbol] = pairSymbols.split("-");
 
   const pairId = {
@@ -35,7 +45,12 @@ function ProTradeApplet() {
 
   return (
     <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)] relative overflow-visible">
-      <ProTrade pairId={pairId} onChangePairId={onChangePairId}>
+      <ProTrade
+        pairId={pairId}
+        onChangePairId={onChangePairId}
+        action={action}
+        onChangeAction={onChangeAction}
+      >
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
             <div className="flex flex-col flex-1">
