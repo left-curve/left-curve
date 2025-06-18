@@ -157,24 +157,24 @@ enum OracleContext<'a> {
 
 #[rustfmt::skip]
 impl OracleContext<'_> {
-    fn get_price(&self, pyth_id: PythId) -> StdResult<(PrecisionlessPrice, u64)> {
+    fn get_price(&self, pyth_id: PythId) -> anyhow::Result<(PrecisionlessPrice, u64)> {
         match self {
             OracleContext::Local { storage } => {
-                PRICES.load(*storage, pyth_id)
+                PRICES.load(*storage, pyth_id).map_err(|e| anyhow!("price not found for pyth id: {:?}. Error: {:?}", pyth_id, e))
             },
             OracleContext::Remote { address, querier } => {
-                querier.query_wasm_path(*address, &PRICES.path(pyth_id))
+                querier.query_wasm_path(*address, &PRICES.path(pyth_id)).map_err(|e| anyhow!("price not found for pyth id: {:?}. Error: {:?}", pyth_id, e))
             },
         }
     }
 
-    fn get_price_source(&self, denom: &Denom) -> StdResult<PriceSource> {
+    fn get_price_source(&self, denom: &Denom) -> anyhow::Result<PriceSource> {
         match self {
             OracleContext::Local { storage } => {
-                PRICE_SOURCES.load(*storage, denom)
+                PRICE_SOURCES.load(*storage, denom).map_err(|e| anyhow!("price source not found for denom: {:?}. Error: {:?}", denom, e))
             },
             OracleContext::Remote { address, querier } => {
-                querier.query_wasm_path(*address, &PRICE_SOURCES.path(denom))
+                querier.query_wasm_path(*address, &PRICE_SOURCES.path(denom)).map_err(|e| anyhow!("price source not found for denom: {:?}. Error: {:?}", denom, e))
             },
         }
     }

@@ -320,20 +320,25 @@ impl PassiveLiquidityPool for PairParams {
         let input_reserve = reserve.amount_of(&input_denom)?;
         let output_reserve = reserve.amount_of(&output.denom)?;
 
+        // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
+        // offer amount after fees. So in this case we need to divide ask by (1 - fee)
+        // to get the ask amount after fees.
+        // Round so that user takes the loss.
+        let output_amount_before_fee = output
+            .amount
+            .checked_div_dec_ceil(Udec128::ONE - *self.swap_fee_rate)?;
+
         ensure!(
-            output_reserve > output.amount,
+            output_reserve > output_amount_before_fee,
             "insufficient liquidity: {} <= {}",
             output_reserve,
-            output.amount
+            output_amount_before_fee
         );
 
         let input_amount = match self.pool_type {
-            PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_out(
-                output.amount,
-                input_reserve,
-                output_reserve,
-                self.swap_fee_rate,
-            )?,
+            PassiveLiquidity::Xyk { .. } => {
+                xyk::swap_exact_amount_out(output_amount_before_fee, input_reserve, output_reserve)?
+            },
             PassiveLiquidity::Geometric {
                 ratio,
                 order_spacing,
