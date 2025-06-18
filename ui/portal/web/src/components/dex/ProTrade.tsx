@@ -225,7 +225,7 @@ const ProTradeOrders: React.FC = () => {
           />
         ) : null}
         {orders.data.length === 0 && activeTab === "open order" ? (
-          <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[4rem]">
+          <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[3.5rem]">
             <p className="diatype-xs-regular text-gray-700">No open orders yet</p>
           </div>
         ) : null}
