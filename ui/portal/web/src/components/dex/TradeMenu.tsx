@@ -11,17 +11,18 @@ import {
   Input,
   Range,
   Tabs,
+  numberMask,
   twMerge,
-  useControlledState,
   type useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
+import { formatUnits } from "@left-curve/dango/utils";
 import { useState } from "react";
 
 import { m } from "~/paraglide/messages";
 
-import type { useProTrade } from "@left-curve/store";
+import { useAccount, useAppConfig, usePrices, type useProTrade } from "@left-curve/store";
 import type React from "react";
 
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
@@ -35,9 +36,20 @@ type TradeMenuProps = {
   controllers: ReturnType<typeof useInputs>;
 };
 
-const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
+const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { isLg } = useMediaQuery();
-  const { operation, setOperation, action } = state;
+  const { isConnected } = useAccount();
+  const { data: appConfig } = useAppConfig();
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const { operation, setOperation, action, coin, onChangeCoin, coins } = state;
+  const { register, setValue, inputs } = controllers;
+
+  const balance = formatUnits(coin.balance, coin.decimals);
+  const amount = inputs.size?.value || "0";
+
+  const percent = Math.round((+amount / +balance) * 100);
 
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
@@ -55,11 +67,22 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
           <p className="diatype-xs-regular text-gray-500">
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
-          <p className="diatype-xs-medium text-gray-700">1.23 ETH</p>
+          <p className="diatype-xs-medium text-gray-700">
+            {balance} {coin.symbol}
+          </p>
         </div>
         <Input
           placeholder="0"
+          isDisabled={!isConnected}
           label="Size"
+          {...register("size", {
+            strategy: "onChange",
+            validate: (v) => {
+              if (Number(v) > Number(balance)) return m["errors.validations.insufficientFunds"]();
+              return true;
+            },
+            mask: numberMask,
+          })}
           classNames={{
             base: "z-20",
             inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
@@ -70,34 +93,24 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
           startContent={
             <CoinSelector
               classNames={{
-                trigger: "!diatype-lg-medium text-gray-500 p-0",
+                trigger: "!diatype-lg-medium text-gray-500",
                 selectorIcon: "w-4 h-4",
               }}
-              coins={[
-                {
-                  type: "native",
-                  symbol: "ETH",
-                  name: "Ethereum",
-                  denom: "wei",
-                  decimals: 18,
-                  logoURI: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
-                  coingeckoId: "ethereum",
-                },
-                {
-                  type: "contract",
-                  symbol: "USDC",
-                  name: "USD Coin",
-                  denom: "uusdc",
-                  decimals: 6,
-                  contractAddress: "juno1xyzcontractaddress1234567890",
-                  logoURI: "https://assets.coingecko.com/coins/images/6319/large/USD_Coin_icon.png",
-                  coingeckoId: "usd-coin",
-                },
-              ]}
+              onChange={(coin) => onChangeCoin(coin)}
+              value={coin.denom}
+              coins={coins}
             />
           }
         />
-        <Range minValue={0} maxValue={100} defaultValue={50} withInput inputEndContent="%" />
+        <Range
+          minValue={0}
+          maxValue={100}
+          defaultValue={0}
+          withInput
+          inputEndContent="%"
+          value={percent > 100 ? 100 : percent}
+          onChange={(v) => setValue("size", Math.round(+balance * (v / 100)).toString())}
+        />
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
         <div className="px-4">
@@ -110,19 +123,23 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
             <p className="diatype-xs-regular text-gray-500">
               {m["dex.protrade.spot.orderValue"]()}
             </p>
-            <p className="diatype-xs-medium text-gray-700">$12.345</p>
+            <p className="diatype-xs-medium text-gray-700">
+              {getPrice(amount, coin.denom, { format: true })}
+            </p>
           </div>
           {operation === "market" ? (
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-gray-500">
                 {m["dex.protrade.spot.slippage"]()}
               </p>
-              <p className="diatype-xs-medium text-status-success">Est: 0% / Max: 8.00%</p>
+              <p className="diatype-xs-medium">-</p>
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-gray-500">{m["dex.protrade.spot.fees"]()}</p>
-            <p className="diatype-xs-medium text-gray-700">0.035% / 0.0100%</p>
+            <p className="diatype-xs-medium text-gray-700">
+              {Number(appConfig?.takerFeeRate) * 100} % / {Number(appConfig?.makerFeeRate) * 100} %
+            </p>
           </div>
         </div>
         {/*  <span className="w-full h-[1px] bg-gray-100" />

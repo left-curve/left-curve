@@ -52,11 +52,13 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
-  getAppConfig(): Promise<{
-    addresses: AppConfig["addresses"] & Record<Address, string>;
-    accountFactory: { codeHashes: Record<AccountTypes, Hex> };
-    pairs: Record<Denom, PairUpdate>;
-  }>;
+  getAppConfig(): Promise<
+    {
+      addresses: AppConfig["addresses"] & Record<Address, string>;
+      accountFactory: { codeHashes: Record<AccountTypes, Hex> };
+      pairs: Record<Denom, PairUpdate>;
+    } & Omit<AppConfig, "addresses">
+  >;
   getClient(): Client<transport>;
   _internal: Internal<transport>;
 };

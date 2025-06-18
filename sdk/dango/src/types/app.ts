@@ -15,4 +15,9 @@ export type AppConfig = {
       va: Address;
     };
   };
+  makerFeeRate: string;
+  takerFeeRate: string;
+  maxLiquiditationBonus: string;
+  minLiquiditationBonus: string;
+  targetUtilizationRate: string;
 };
