@@ -30,7 +30,7 @@ async fn single() {
     )
     .await;
 
-    loop {}
+    tokio::signal::ctrl_c().await.unwrap();
 }
 
 fn mock_validator_set() -> (ValidatorSet, PrivateKey) {

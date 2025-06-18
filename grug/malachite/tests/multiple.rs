@@ -125,13 +125,12 @@ async fn multiple() {
         .result
         .should_succeed();
 
-    loop {}
+    tokio::signal::ctrl_c().await.unwrap();
 }
 
 fn mock_validator_set() -> (ValidatorSet, Vec<PrivateKey>) {
     let mut validators = Vec::new();
     let priv_keys = (1..=3)
-        .into_iter()
         .map(|_| {
             let priv_key =
                 PrivateKey::from_inner(k256::ecdsa::SigningKey::random(&mut rand::thread_rng()));

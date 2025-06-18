@@ -30,7 +30,7 @@ pub struct State {
 
 impl State {
     pub fn exists(&self, tx: Hash256) -> bool {
-        self.tx_hashes.get(&tx).is_some()
+        self.tx_hashes.contains_key(&tx)
     }
 }
 

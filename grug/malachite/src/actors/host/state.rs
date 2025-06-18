@@ -119,7 +119,7 @@ impl State {
         }
 
         if rerun {
-            let block_hash = self.finalize_block(&block)?;
+            let block_hash = self.finalize_block(block)?;
             if block_hash != block.block_hash() {
                 // TODO: We should panic here? This mean the the we have some non-deterministic behavior in the app.
                 panic!("Block hash mismatch");
