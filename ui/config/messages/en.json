@@ -134,11 +134,11 @@
       "keywords": "account,create,register"
     },
     "5": {
-      "id": "dex",
+      "id": "trade",
       "img": "/images/emojis/simple/spot.svg",
-      "title": "DEX",
+      "title": "Trade",
       "description": "Real-Time Charts, Data & Trading",
-      "path": "/dex",
+      "path": "/trade",
       "keywords": "swap,dex,trade,pro,charts,data,trading"
     }
   },

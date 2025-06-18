@@ -13,7 +13,7 @@ import { TradeMenu } from "./TradeMenu";
 import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrdersByUserResponse } from "@left-curve/dango/types";
+import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTradeState] = createContext<{
@@ -23,7 +23,12 @@ const [ProTradeProvider, useProTradeState] = createContext<{
   name: "ProTradeContext",
 });
 
-const ProTradeContainer: React.FC<PropsWithChildren> = ({ children }) => {
+type ProTradeProps = {
+  pairId: PairId;
+  onChangePairId: (pairId: PairId) => void;
+};
+
+const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({ children }) => {
   const controllers = useInputs();
   const state = useProTrade({ inputs: controllers.inputs });
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
