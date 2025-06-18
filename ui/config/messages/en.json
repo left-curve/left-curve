@@ -597,6 +597,7 @@
     },
     "protrade": {
       "spot": {
+        "noOpenOrders": "No open orders yet",
         "price": "Price",
         "24hChange": "24h Change",
         "volume": "Volume",
