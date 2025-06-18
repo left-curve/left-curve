@@ -114,9 +114,15 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
         <div className="px-4">
-          <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth size="md">
-            Enable Trading
-          </Button>
+          {isConnected ? (
+            <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth size="md">
+              {m["dex.protrade.spot.triggerAction"]({ action })}
+            </Button>
+          ) : (
+            <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth size="md">
+              {m["dex.protrade.spot.enableTrading"]()}
+            </Button>
+          )}
         </div>
         <div className="flex flex-col gap-1 px-4">
           <div className="flex items-center justify-between gap-2">

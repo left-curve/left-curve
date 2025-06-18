@@ -604,6 +604,17 @@
         "orderValue": "Order Value",
         "availableToTrade": "Available to trade",
         "slippage": "Slippage",
+        "enableTrading": "Enable Trading",
+        "triggerAction": [
+          {
+            "declarations": ["input action"],
+            "selectors": ["action"],
+            "match": {
+              "action=buy": "Buy",
+              "action=sell": "Sell"
+            }
+          }
+        ],
         "direction": [
           {
             "declarations": ["input direction"],
