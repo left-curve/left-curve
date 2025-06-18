@@ -1,7 +1,7 @@
 import { createContext, twMerge, useInputs, useMediaQuery } from "@left-curve/applets-kit";
 import { useProTrade } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { m } from "~/paraglide/messages";
 
@@ -28,15 +28,21 @@ type ProTradeProps = {
   onChangePairId: (pairId: PairId) => void;
 };
 
-const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({ children }) => {
+const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
+  pairId,
+  onChangePairId,
+  children,
+}) => {
   const controllers = useInputs();
-  const state = useProTrade({ inputs: controllers.inputs });
+  const state = useProTrade({ inputs: controllers.inputs, pairId, onChangePairId });
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 
 const ProTradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
+  const { state } = useProTradeState();
+  const { pairId, onChangePairId } = state;
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -46,7 +52,7 @@ const ProTradeHeader: React.FC = () => {
     <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
-          <SearchToken />
+          <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
           <div className="lg:pl-8">
             <Badge text="Spot" color="blue" size="s" />
           </div>
@@ -126,8 +132,6 @@ const ProTradeOrders: React.FC = () => {
 
   const { state } = useProTradeState();
   const { orders } = state;
-
-  console.log("Orders:", orders.data.length);
 
   const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
     /*  {

@@ -3,11 +3,16 @@ import { useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { usePublicClient } from "./usePublicClient.js";
 
+import type { PairId } from "@left-curve/dango/types";
+
 export type UseProTradeParameters = {
+  pairId: PairId;
+  onChangePairId: (pairId: PairId) => void;
   inputs: Record<string, { value: string }>;
 };
 
 export function useProTrade(parameters: UseProTradeParameters) {
+  const { inputs, pairId, onChangePairId } = parameters;
   const { account } = useAccount();
   const publicClient = usePublicClient();
 
@@ -30,6 +35,8 @@ export function useProTrade(parameters: UseProTradeParameters) {
   });
 
   return {
+    pairId,
+    onChangePairId,
     orders,
     operation,
     setOperation,

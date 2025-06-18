@@ -20,7 +20,7 @@ function ProTradeApplet() {
     const quoteSymbol = coins[quoteDenom]?.symbol;
 
     navigate({
-      to: ".",
+      to: "/trade/$pairSymbols",
       params: { pairSymbols: `${baseSymbol}-${quoteSymbol}` },
       replace: false,
     });

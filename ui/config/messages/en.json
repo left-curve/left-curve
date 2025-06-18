@@ -580,6 +580,8 @@
     "apy": "APY",
     "tvl": "TVL",
     "24h": "24h",
+    "searchFor": "Search for",
+    "tokens": "Tokens",
     "swapping": "Swapping",
     "convert": {
       "swap": "Swap",

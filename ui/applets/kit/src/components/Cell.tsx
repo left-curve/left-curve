@@ -9,7 +9,13 @@ import { Badge } from "./Badge";
 import { TextCopy } from "./TextCopy";
 import { IconLink } from "./icons/IconLink";
 
-import type { Address, IndexedMessage, OneRequired, Prettify } from "@left-curve/dango/types";
+import type {
+  Address,
+  IndexedMessage,
+  OneRequired,
+  PairId,
+  Prettify,
+} from "@left-curve/dango/types";
 import { format } from "date-fns";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
@@ -248,6 +254,25 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
   );
 };
 
+type CellPairNameProps = {
+  pairId: PairId;
+  type: string;
+};
+
+const PairName: React.FC<CellPairNameProps> = ({ pairId, type }) => {
+  const { coins } = useConfig();
+  const { baseDenom, quoteDenom } = pairId;
+  const baseCoin = coins[baseDenom];
+  const quoteCoin = coins[quoteDenom];
+
+  return (
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <Badge text={type} color="blue" size="s" />
+    </div>
+  );
+};
+
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
@@ -261,5 +286,6 @@ export const Cell = Object.assign(Container, {
   TxMessages,
   TxResult,
   MarketPrice,
+  PairName,
   BlockHeight,
 });

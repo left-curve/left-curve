@@ -1,83 +1,55 @@
+import { useAppConfig, useConfig } from "@left-curve/store";
+import { useState } from "react";
+
 import {
-  Cell,
   IconChevronDownFill,
   IconSearch,
   Input,
   Popover,
-  Table,
-  type TableColumn,
   Tabs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import type React from "react";
-import { useState } from "react";
 import { Sheet } from "react-modal-sheet";
-import { type activeFilterType, mockSearchPair } from "~/mock";
 
-const columns: TableColumn<{
-  name: string;
-  lastPrice: number;
-  change: number;
-  "8hourChange": string;
-  volume: string;
-  openInterest: string;
-}> = [
-  {
-    header: "Name",
-    cell: ({ row }) => <Cell.Text text={row.original.name} />,
-  },
-  {
-    header: "Last Price",
-    cell: ({ row }) => <Cell.Text text={`$${row.original.lastPrice}`} />,
-  },
-  {
-    header: "Change",
-    cell: ({ row }) => (
-      <Cell.Text
-        text={`${row.original.change}%`}
-        className={row.original.change > 0 ? "text-green-500" : "text-red-500"}
-      />
-    ),
-  },
-  {
-    header: "8h Change",
-    cell: ({ row }) => <Cell.Text text={row.original["8hourChange"]} />,
-  },
-  {
-    header: "Volume",
-    cell: ({ row }) => <Cell.Text text={row.original.volume} />,
-  },
-  {
-    header: "Open Interest",
-    cell: ({ row }) => <Cell.Text text={row.original.openInterest} />,
-  },
-];
+import type { PairId } from "@left-curve/dango/types";
+import type React from "react";
 
-const SearchTokenHeader: React.FC = () => {
+import { m } from "~/paraglide/messages";
+import { SearchTokenTable } from "./SearchTokenTable";
+
+type SearchTokenHeaderProps = {
+  pairId: PairId;
+};
+
+const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId }) => {
+  const { coins } = useConfig();
+  const baseCoin = coins[pairId.baseDenom];
+  const quoteCoin = coins[pairId.quoteDenom];
   return (
     <div className="flex gap-2 items-center">
-      <img
-        src="https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg"
-        alt=""
-        className="h-6 w-6 drag-none select-none"
-      />
-      <p className="diatype-lg-heavy text-gray-700 min-w-fit">ETH-USDC</p>
+      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
+      <p className="diatype-lg-heavy text-gray-700 min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
       <IconChevronDownFill className="text-gray-500 w-4 h-4 transition-all" />
     </div>
   );
 };
 
-const SearchTokenMenu: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<activeFilterType>("All");
+const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId }) => {
+  const [activeFilter, setActiveFilter] = useState<string>("All");
+  const [searchText, setSearchText] = useState<string>("");
+  const { data: config } = useAppConfig();
+
   return (
     <div className="flex flex-col gap-2">
       <Input
         fullWidth
         startContent={<IconSearch className="w-5 h-5 text-gray-500" />}
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
         placeholder={
           <div className="flex gap-1 items-center">
-            <p className="text-gray-500 diatype-m-regular mt-[2px]">Search for</p>
-            <p className="exposure-m-italic text-rice-700">tokens</p>
+            <p className="text-gray-500 diatype-m-regular mt-[2px]">{m["dex.searchFor"]()}</p>
+            <p className="exposure-m-italic text-rice-700">{m["dex.tokens"]()}</p>
           </div>
         }
       />
@@ -86,30 +58,31 @@ const SearchTokenMenu: React.FC = () => {
           color="line-red"
           layoutId="search-token-tabs"
           selectedTab={activeFilter}
-          keys={[
-            "All",
-            "Spot",
-            "Trending",
-            "DEX only",
-            "Pre-launch",
-            "AI",
-            "Defi",
-            "Gaming",
-            "Layer 1",
-            "Layer 2",
-            "Meme",
-          ]}
-          onTabChange={(tab) => setActiveFilter(tab as activeFilterType)}
+          keys={["All", "Spot"]}
+          onTabChange={setActiveFilter}
         />
 
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
-      <Table data={mockSearchPair} columns={columns} style="simple" classNames={{ cell: "py-2" }} />
+      <SearchTokenTable>
+        <SearchTokenTable.Spot
+          classNames={{ cell: "py-2" }}
+          data={Object.values(config?.pairs || {})}
+          searchText={searchText.toUpperCase()}
+          onChangePairId={onChangePairId}
+          pairId={pairId}
+        />
+      </SearchTokenTable>
     </div>
   );
 };
 
-export const SearchToken: React.FC = () => {
+type SearchTokenProps = {
+  pairId: PairId;
+  onChangePairId: (pairId: PairId) => void;
+};
+
+export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId }) => {
   const { isLg } = useMediaQuery();
   const [isSearchTokenVisible, setIsSearchTokenVisible] = useState<boolean>(false);
 
@@ -118,15 +91,15 @@ export const SearchToken: React.FC = () => {
       <Popover
         classNames={{ menu: "min-w-[45rem]" }}
         showArrow={false}
-        trigger={<SearchTokenHeader />}
-        menu={<SearchTokenMenu />}
+        trigger={<SearchTokenHeader pairId={pairId} />}
+        menu={<SearchTokenMenu pairId={pairId} onChangePairId={onChangePairId} />}
       />
     );
 
   return (
     <>
       <div onClick={() => setIsSearchTokenVisible(true)} className="cursor-pointer">
-        <SearchTokenHeader />
+        <SearchTokenHeader pairId={pairId} />
       </div>
       <Sheet
         isOpen={isSearchTokenVisible}
@@ -137,7 +110,7 @@ export const SearchToken: React.FC = () => {
           <Sheet.Header />
           <Sheet.Content>
             <div className="flex flex-col gap-4 p-4">
-              <SearchTokenMenu />
+              <SearchTokenMenu pairId={pairId} onChangePairId={onChangePairId} />
             </div>
           </Sheet.Content>
         </Sheet.Container>
