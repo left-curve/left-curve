@@ -39,16 +39,9 @@ impl PreBlock {
         }
     }
 
-    pub fn with_app_hash(self, app_hash: AppHash) -> Block<Defined<BlockHash>> {
+    pub fn into_block(self, block_hash: BlockHash) -> Block<Defined<BlockHash>> {
         Block {
-            block_hash: Defined::new(Self::compute_block_hash(
-                app_hash,
-                self.height,
-                self.proposer,
-                self.round,
-                self.timestamp,
-                &self.txs,
-            )),
+            block_hash: Defined::new(block_hash),
             height: self.height,
             proposer: self.proposer,
             round: self.round,
@@ -59,37 +52,42 @@ impl PreBlock {
 }
 
 impl<BH> Block<BH> {
-    fn pre_hash(&self) -> Hash256 {
-        let mut hasher = Sha256::new();
-
-        hasher.update(self.height.to_be_bytes());
-        hasher.update(self.proposer.as_ref());
-        hasher.update(self.round.as_i64().to_be_bytes());
-        hasher.update(self.timestamp.into_nanos().to_be_bytes());
-
-        for tx in &self.txs {
-            hasher.update(tx.as_ref());
-        }
-
-        Hash256::from_inner(hasher.finalize().into())
-    }
-
     pub fn as_block_info(&self) -> grug::BlockInfo {
         grug::BlockInfo {
             height: *self.height,
             timestamp: self.timestamp,
-            hash: self.pre_hash(),
+            hash: Self::calculate_hash(
+                self.height,
+                self.proposer,
+                self.round,
+                self.timestamp,
+                &self.txs,
+                None,
+            ),
         }
     }
 
-    fn compute_block_hash(
-        app_hash: AppHash,
+    pub fn calculate_block_hash(&self, app_hash: AppHash) -> BlockHash {
+        let inner = Self::calculate_hash(
+            self.height,
+            self.proposer,
+            self.round,
+            self.timestamp,
+            &self.txs,
+            Some(app_hash),
+        );
+
+        BlockHash(inner)
+    }
+
+    fn calculate_hash(
         height: ctx!(Height),
         proposer: ctx!(Address),
         round: Round,
         timestamp: Timestamp,
         txs: &[RawTx],
-    ) -> BlockHash {
+        app_hash: Option<AppHash>,
+    ) -> Hash256 {
         let mut hasher = Sha256::new();
 
         hasher.update(height.to_be_bytes());
@@ -101,20 +99,11 @@ impl<BH> Block<BH> {
             hasher.update(tx.as_ref());
         }
 
-        hasher.update(app_hash.0.into_inner());
+        if let Some(app_hash) = app_hash {
+            hasher.update(app_hash.0.into_inner());
+        }
 
-        BlockHash(Hash256::from_inner(hasher.finalize().into()))
-    }
-
-    pub fn calculate_block_hash(&self, app_hash: AppHash) -> BlockHash {
-        Self::compute_block_hash(
-            app_hash,
-            self.height,
-            self.proposer,
-            self.round,
-            self.timestamp,
-            &self.txs,
-        )
+        Hash256::from_inner(hasher.finalize().into())
     }
 }
 

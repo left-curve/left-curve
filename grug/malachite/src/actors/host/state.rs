@@ -1,12 +1,13 @@
 use {
     crate::{
-        ActorResult, HostConfig,
+        ActorResult, HostConfig, RawTx,
+        app::HostAppRef,
         context::Context,
         ctx,
         types::{Block, BlockHash, DecidedBlock},
     },
     grug::{IndexedMap, Map, Storage, UniqueIndex},
-    grug_app::ConsensusStorage,
+    grug_app::{AppResult, ConsensusStorage},
     malachitebft_app::{consensus::Role, streaming::StreamId, types::ProposedValue},
     malachitebft_core_types::Round,
     malachitebft_engine::consensus::ConsensusRef,
@@ -26,10 +27,16 @@ pub struct State {
     consensus: Option<ConsensusRef<Context>>,
     config: HostConfig,
     started_round: Instant,
+    app: HostAppRef,
+    prending_commit_block_hash: Option<BlockHash>,
 }
 
 impl State {
-    pub fn new<S: ConsensusStorage + 'static>(storage: S, config: HostConfig) -> Self {
+    pub fn new<S: ConsensusStorage + 'static>(
+        storage: S,
+        config: HostConfig,
+        app: HostAppRef,
+    ) -> Self {
         Self {
             db_storage: Box::new(storage),
             consensus: None,
@@ -39,6 +46,8 @@ impl State {
             role: Role::None,
             config,
             started_round: Instant::now(),
+            app,
+            prending_commit_block_hash: None,
         }
     }
 
@@ -81,6 +90,28 @@ impl State {
         } else {
             Duration::ZERO
         }
+    }
+
+    pub fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx> {
+        self.app.prepare_proposal(txs)
+    }
+
+    pub fn finalize_block<T>(&mut self, block: &Block<T>) -> AppResult<BlockHash> {
+        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
+
+        let block_hash = block.calculate_block_hash(app_hash);
+
+        self.prending_commit_block_hash = Some(block_hash);
+
+        Ok(block_hash)
+    }
+
+    pub fn commit(&self, block: &Block) -> AppResult<()> {
+        if let Some(pending) = self.prending_commit_block_hash {
+            if pending == block.block_hash() {}
+        }
+
+        self.app.commit()
     }
 }
 

@@ -49,7 +49,7 @@ where
     }
 
     fn finalize_block(&self, block: BlockInfo, txs: &[RawTx]) -> AppResult<AppHash> {
-        // TODO: This is a temporary solution to discard the changeset, we need to find a better solution to handle the changeset
+        // Discard all the changes in the changeset
         self.db.discard_changeset();
 
         self.do_finalize_block_raw(block, txs)

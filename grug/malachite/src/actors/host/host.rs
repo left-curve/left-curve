@@ -1,7 +1,7 @@
 use {
     crate::{
         ActorResult, HostConfig, PreBlock, ProposalData,
-        app::{HostApp, HostAppRef},
+        app::HostApp,
         context::Context,
         ctx,
         host::state::{DECIDED_BLOCK, State, UNDECIDED_BLOCK, UNDECIDED_PROPOSALS},
@@ -31,7 +31,6 @@ pub type HostRef = malachitebft_engine::host::HostRef<Context>;
 pub type HostMsg = malachitebft_engine::host::HostMsg<Context>;
 
 pub struct Host {
-    app: HostAppRef,
     mempool: MempoolActorRef,
     network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
@@ -82,10 +81,9 @@ impl Host {
         DB: Db,
         App<DB, VM, PP, ID>: HostApp,
     {
-        let args = State::new(app.db.consensus(), config);
+        let args = State::new(app.db.consensus(), config, app);
 
         let host = Host {
-            app,
             mempool,
             network,
             validator_set,
@@ -333,7 +331,7 @@ impl Host {
 
             // Call prepare_proposal
             info!("Calling prepare_proposal");
-            let txs = self.app.prepare_proposal(txs);
+            let txs = state.prepare_proposal(txs);
 
             let pre_block = PreBlock::new(
                 height,
@@ -349,11 +347,9 @@ impl Host {
             );
 
             info!("Calling finalize_block");
-            let app_hash = self
-                .app
-                .finalize_block(pre_block.as_block_info(), &pre_block.txs)?;
+            let block_hash = state.finalize_block(&pre_block)?;
 
-            pre_block.with_app_hash(app_hash)
+            pre_block.into_block(block_hash)
         };
 
         let proposal_data = block.as_proposal_data();
@@ -409,8 +405,7 @@ impl Host {
         info!(height = %block.height, round = %block.round, "All parts received");
 
         // Run FinalizeBlock
-        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
-        let block_hash = block.calculate_block_hash(app_hash);
+        let block_hash = state.finalize_block(&block)?;
 
         let value = ProposedValue {
             height: block.height,
@@ -467,7 +462,7 @@ impl Host {
         // has been calculated with the same block hash we are committing
 
         // Call commit
-        self.app.commit()?;
+        state.commit(&block)?;
 
         let txs = block.txs.clone();
 
@@ -533,8 +528,7 @@ impl Host {
         };
 
         // Check validity
-        let app_hash = self.app.finalize_block(block.as_block_info(), &block.txs)?;
-        let block_hash = block.calculate_block_hash(app_hash);
+        let block_hash = state.finalize_block(&block)?;
 
         let proposed_value = ProposedValue {
             height,
