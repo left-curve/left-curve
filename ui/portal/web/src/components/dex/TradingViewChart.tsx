@@ -20,7 +20,7 @@ export const TradingViewChart: React.FC = () => {
             symbol: "BINANCE:ETHUSDT",
             interval: "15",
             timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
-            backgroundColor: "rgb(255 249 240)",
+            backgroundColor: "#FFF9F0",
             theme: "light",
             enable_publishing: false,
             allow_symbol_change: false,
