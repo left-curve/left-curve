@@ -190,7 +190,7 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 !pr-2 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-0 z-10">
+    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -203,35 +203,28 @@ const ProTradeOrders: React.FC = () => {
 
         <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
       </div>
-      {activeTab === "open order" ? (
-        <Table
-          data={
-            orders.data.length
-              ? orders.data
-              : [
-                  {
-                    id: 0,
-                    baseDenom: "",
-                    quoteDenom: "",
-                    direction: 0,
-                    price: "",
-                    amount: "",
-                    remaining: "",
-                  },
-                ]
-          }
-          columns={columns}
-          style="simple"
-          classNames={{
-            row: "h-fit",
-            header: "pt-0",
-            cell: twMerge("diatype-xs-regular", {
-              "group-hover:bg-transparent": !orders.data.length,
-            }),
-          }}
-        />
-      ) : null}
-      {}
+      <div className="w-full h-full relative">
+        {activeTab === "open order" ? (
+          <Table
+            data={orders.data}
+            columns={columns}
+            style="simple"
+            classNames={{
+              row: "h-fit",
+              header: "pt-0",
+              base: "pb-0",
+              cell: twMerge("diatype-xs-regular", {
+                "group-hover:bg-transparent": !orders.data.length,
+              }),
+            }}
+          />
+        ) : null}
+        {orders.data.length === 0 && activeTab === "open order" ? (
+          <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[4rem]">
+            <p className="diatype-xs-regular text-gray-700">No open orders yet</p>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };
