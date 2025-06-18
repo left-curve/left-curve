@@ -89,35 +89,37 @@ const ProTradeHeader: React.FC = () => {
       <AnimatePresence initial={false}>
         {isExpanded ? (
           <motion.div
-            layout
+            layout="position"
+            layoutId="protrade-header"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
-            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
+            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
               <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.price"]()}</p>
               <p className="diatype-sm-bold text-gray-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
               </p>
             </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
               <p className="diatype-xs-medium text-gray-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
               <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.volume"]()}</p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
+            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
               <p className="diatype-xs-medium text-gray-500">{m["dex.contract"]()}</p>
               <AddressVisualizer
                 address={config?.addresses.dex || "0x"}
                 withIcon
                 onClick={(url) => navigate({ to: url })}
+                classNames={{ text: "diatype-sm-bold" }}
               />
             </div>
           </motion.div>
