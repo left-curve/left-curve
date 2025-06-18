@@ -1,30 +1,37 @@
 import {
-  type ColumnDef,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type React from "react";
 
-import { type VariantProps, tv } from "tailwind-variants";
+import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/twMerge.js";
 
+import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
+import type React from "react";
+import type { VariantProps } from "tailwind-variants";
+
 export type TableColumn<T> = ColumnDef<T>[];
+export type { ColumnFiltersState };
+
+export type TableClassNames = {
+  base?: string;
+  header?: string;
+  cell?: string;
+  row?: string;
+};
 
 interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   bottomContent?: React.ReactNode;
   topContent?: React.ReactNode;
   columns: TableColumn<T>;
   data: T[];
-  classNames?: {
-    base?: string;
-    header?: string;
-    cell?: string;
-    row?: string;
-  };
+  columnFilters?: ColumnFiltersState;
+  onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
+  onRowClick?: (row: Row<T>) => void;
+  classNames?: TableClassNames;
 }
 
 export const Table = <T,>({
@@ -34,14 +41,19 @@ export const Table = <T,>({
   data,
   style,
   classNames,
+  columnFilters,
+  onColumnFiltersChange,
+  onRowClick,
 }: TableProps<T>) => {
   const table = useReactTable<T>({
     data,
     columns,
+    state: { columnFilters },
+    enableFilters: true,
+    onColumnFiltersChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const styles = tabsVariants({
@@ -76,7 +88,11 @@ export const Table = <T,>({
           {rows.map((row) => {
             const cells = row.getVisibleCells();
             return (
-              <tr key={row.id} className={twMerge(styles.row(), classNames?.row)}>
+              <tr
+                key={row.id}
+                className={twMerge(styles.row(), classNames?.row, { "cursor-pointer": onRowClick })}
+                onClick={() => onRowClick?.(row)}
+              >
                 {cells.map((cell) => {
                   return (
                     <td key={cell.id} className={twMerge(styles.cell(), classNames?.cell)}>

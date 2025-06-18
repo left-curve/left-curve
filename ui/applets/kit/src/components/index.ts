@@ -9,7 +9,7 @@ export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
 export { Select } from "./Select";
 export { TruncateText } from "./TruncateText";
-export { Table, type TableColumn } from "./Table";
+export { Table, type TableColumn, type TableClassNames, type ColumnFiltersState } from "./Table";
 export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
