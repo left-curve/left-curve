@@ -11,6 +11,7 @@ import { IconLink } from "./icons/IconLink";
 
 import type {
   Address,
+  Directions,
   IndexedMessage,
   OneRequired,
   PairId,
@@ -88,7 +89,7 @@ const Text: React.FC<CellTextProps> = ({ text, className }) => {
 
 type CellOrderDirectionProps = {
   className?: string;
-  direction: number;
+  direction: Directions;
   text: string;
 };
 
@@ -97,7 +98,7 @@ const OrderDirection: React.FC<CellOrderDirectionProps> = ({ text, direction, cl
     <div
       className={twMerge(
         "flex flex-col gap-1 diatype-xs-medium",
-        direction === 1 ? "text-status-fail" : "text-status-success",
+        direction === "ask" ? "text-status-fail" : "text-status-success",
         className,
       )}
     >

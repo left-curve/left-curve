@@ -12,7 +12,7 @@ export function withPagination<T = unknown>(parameters: WithPaginationParameters
     if (!pageInfo.hasNextPage) return undefined;
 
     return {
-      last: limit,
+      first: limit,
       after: pageInfo.endCursor as string,
       sortBy,
     };

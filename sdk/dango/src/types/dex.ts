@@ -206,9 +206,9 @@ export type ReservesResponse = {
 };
 
 export const Direction = {
-  Bid: 0,
-  Ask: 1,
-};
+  Buy: "bid",
+  Sell: "ask",
+} as const;
 
 export type Directions = (typeof Direction)[keyof typeof Direction];
 

@@ -141,3 +141,5 @@ export { AccountType } from "./account.js";
 export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
+
+export { Direction } from "./dex.js";

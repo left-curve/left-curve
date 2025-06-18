@@ -1,11 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useAccount } from "./useAccount.js";
-import { usePublicClient } from "./usePublicClient.js";
-
-import type { PairId } from "@left-curve/dango/types";
 import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
+import { usePublicClient } from "./usePublicClient.js";
+import { useSigningClient } from "./useSigningClient.js";
+
+import { Direction } from "@left-curve/dango/types";
+import { capitalize, parseUnits } from "@left-curve/dango/utils";
+
+import type { PairId } from "@left-curve/dango/types";
 
 export type UseProTradeParameters = {
   pairId: PairId;
@@ -18,12 +22,13 @@ export function useProTrade(parameters: UseProTradeParameters) {
   const { account } = useAccount();
   const { coins } = useConfig();
   const publicClient = usePublicClient();
+  const { data: signingClient } = useSigningClient();
 
   const baseCoin = coins[pairId.baseDenom];
   const quoteCoin = coins[pairId.quoteDenom];
 
   const [coin, setCoin] = useState(baseCoin);
-  const [operation, setOperation] = useState<"market" | "limit">("limit");
+  const [operation, setOperation] = useState<"market" | "limit">("market");
   const [action, setAction] = useState<"buy" | "sell">("buy");
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -47,6 +52,49 @@ export function useProTrade(parameters: UseProTradeParameters) {
     refetchInterval: 1000 * 10,
   });
 
+  const submission = useMutation({
+    mutationFn: async () => {
+      if (!signingClient) throw new Error("No signing client available");
+      if (!account) throw new Error("No account found");
+
+      const amount = parseUnits(inputs.size.value, coin.decimals).toString();
+      const direction = Direction[capitalize(action) as keyof typeof Direction];
+      const { baseDenom, quoteDenom } = pairId;
+
+      const order =
+        operation === "market"
+          ? {
+              createsMarket: [
+                {
+                  baseDenom,
+                  quoteDenom,
+                  amount,
+                  direction,
+                  maxSlippage: "0.01",
+                },
+              ],
+            }
+          : {
+              createsLimit: [
+                {
+                  amount,
+                  baseDenom,
+                  quoteDenom,
+                  direction,
+                  price: "",
+                },
+              ],
+            };
+
+      await signingClient.batchUpdateOrders({
+        sender: account.address,
+        ...order,
+      });
+
+      await orders.refetch();
+    },
+  });
+
   return {
     pairId,
     coin: Object.assign({}, coin, { balance }),
@@ -59,6 +107,7 @@ export function useProTrade(parameters: UseProTradeParameters) {
     setOperation,
     action,
     setAction,
+    submission,
     type: "spot",
   };
 }

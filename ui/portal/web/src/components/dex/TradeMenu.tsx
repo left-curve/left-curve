@@ -1,4 +1,5 @@
-import { Sheet } from "react-modal-sheet";
+import { useAccount, useAppConfig, usePrices, type useProTrade } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -16,13 +17,11 @@ import {
   type useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
+import { Sheet } from "react-modal-sheet";
 
 import { formatUnits } from "@left-curve/dango/utils";
-import { useState } from "react";
-
 import { m } from "~/paraglide/messages";
 
-import { useAccount, useAppConfig, usePrices, type useProTrade } from "@left-curve/store";
 import type React from "react";
 
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
@@ -43,8 +42,10 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   const { isConnected } = useAccount();
   const { data: appConfig } = useAppConfig();
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const { operation, setOperation, action, coin, onChangeCoin, coins } = state;
+  const { operation, setOperation, action, coin, onChangeCoin, coins, submission } = state;
   const { register, setValue, inputs } = controllers;
+
+  const navigate = useNavigate();
 
   const balance = formatUnits(coin.balance, coin.decimals);
   const amount = inputs.size?.value || "0";
@@ -73,7 +74,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
         </div>
         <Input
           placeholder="0"
-          isDisabled={!isConnected}
+          isDisabled={!isConnected || submission.isPending}
           label="Size"
           {...register("size", {
             strategy: "onChange",
@@ -103,23 +104,35 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           }
         />
         <Range
+          isDisabled={!isConnected || submission.isPending}
           minValue={0}
           maxValue={100}
           defaultValue={0}
           withInput
           inputEndContent="%"
-          value={percent > 100 ? 100 : percent}
+          value={Number.isNaN(percent) ? 0 : percent > 100 ? 100 : percent}
           onChange={(v) => setValue("size", Math.round(+balance * (v / 100)).toString())}
         />
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
         <div className="px-4">
           {isConnected ? (
-            <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth size="md">
+            <Button
+              variant={action === "sell" ? "primary" : "tertiary"}
+              fullWidth
+              size="md"
+              isLoading={submission.isPending}
+              onClick={() => submission.mutateAsync()}
+            >
               {m["dex.protrade.spot.triggerAction"]({ action })}
             </Button>
           ) : (
-            <Button variant={action === "sell" ? "primary" : "tertiary"} fullWidth size="md">
+            <Button
+              variant={action === "sell" ? "primary" : "tertiary"}
+              fullWidth
+              size="md"
+              onClick={() => navigate({ to: "/signin" })}
+            >
               {m["dex.protrade.spot.enableTrading"]()}
             </Button>
           )}

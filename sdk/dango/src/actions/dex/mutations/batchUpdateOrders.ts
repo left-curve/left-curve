@@ -59,14 +59,14 @@ export async function batchUpdateOrders<transport extends Transport>(
       CreatesMarket: [
         { name: "base_denom", type: "string" },
         { name: "quote_denom", type: "string" },
-        { name: "direction", type: "uint8" },
+        { name: "direction", type: "string" },
         { name: "amount", type: "string" },
         { name: "max_slippage", type: "string" },
       ],
       CreatesLimit: [
         { name: "base_denom", type: "string" },
         { name: "quote_denom", type: "string" },
-        { name: "direction", type: "uint8" },
+        { name: "direction", type: "string" },
         { name: "amount", type: "string" },
         { name: "price", type: "string" },
       ],
