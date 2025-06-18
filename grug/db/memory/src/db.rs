@@ -182,10 +182,7 @@ impl Db for MemDb {
         self.with_write(|mut inner| {
             let app_changeset = inner.app_changeset.take().ok_or(DbError::ChangeSetNotSet)?;
 
-            let consensus_changeset = inner
-                .consensus_changeset
-                .take()
-                .ok_or(DbError::ChangeSetNotSet)?;
+            let consensus_changeset = inner.consensus_changeset.take().unwrap_or_default();
 
             // Update the version
             inner.latest_version = Some(app_changeset.version);

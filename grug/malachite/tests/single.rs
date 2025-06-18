@@ -10,7 +10,7 @@ pub mod utils;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn single() {
-    setup_tracing_subscriber(tracing::Level::DEBUG);
+    setup_tracing_subscriber(tracing::Level::INFO);
 
     let (suite, ..) = setup_test(TestOption::preset_test());
 

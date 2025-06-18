@@ -192,7 +192,7 @@ impl Db for DiskDbLite {
             .consensus_pending_data
             .write()?
             .take()
-            .ok_or(DbError::PendingDataNotSet)?;
+            .unwrap_or_default();
 
         let mut batch = WriteBatch::default();
 

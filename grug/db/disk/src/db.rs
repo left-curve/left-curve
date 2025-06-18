@@ -268,7 +268,7 @@ impl Db for DiskDb {
             .consensus_pending_data
             .write()?
             .take()
-            .ok_or(DbError::PendingDataNotSet)?;
+            .unwrap_or_default();
 
         let mut batch = WriteBatch::default();
         let ts = U64Timestamp::from(app_pending.version);
