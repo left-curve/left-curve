@@ -225,12 +225,15 @@ fn observe_inbound(
         "you've already voted for transaction `{hash}`"
     );
 
-    // If a threshold number of votes has been reached,
+    // If a threshold number of votes has been reached:
     //
     // 1. Mint synthetic Bitcoin tokens to the recipient, if presents.
-    // 2. Add the transaction to the UTXO set.
+    // 2. Add the transaction to the available UTXO set.
+    // 3. Add the UTXO to the processed UTXOs set (to prevent double spending).
     //
     // Otherwise, simply save the voters set, then we're done.
+    // Note that, if the recipient is None, we cannot mint tokens, since
+    // it could be the change of a withdrawal transaction.
     let (maybe_msg, maybe_event) = if voters.len() >= cfg.multisig.threshold() as usize {
         PROCESSED_UTXOS.insert(ctx.storage, (hash, vout))?;
         UTXOS.insert(ctx.storage, (amount, hash, vout))?;
