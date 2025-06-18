@@ -1,5 +1,5 @@
 import { useAppConfig, useConfig } from "@left-curve/store";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   IconChevronDownFill,
@@ -10,12 +10,13 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
-
-import type { PairId } from "@left-curve/dango/types";
-import type React from "react";
+import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "~/paraglide/messages";
-import { SearchTokenTable } from "./SearchTokenTable";
+
+import type { PopoverRef } from "@left-curve/applets-kit";
+import type { PairId } from "@left-curve/dango/types";
+import type React from "react";
 
 type SearchTokenHeaderProps = {
   pairId: PairId;
@@ -85,14 +86,24 @@ type SearchTokenProps = {
 export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId }) => {
   const { isLg } = useMediaQuery();
   const [isSearchTokenVisible, setIsSearchTokenVisible] = useState<boolean>(false);
+  const popoverRef = useRef<PopoverRef>(null);
 
   if (isLg)
     return (
       <Popover
+        ref={popoverRef}
         classNames={{ menu: "min-w-[45rem]" }}
         showArrow={false}
         trigger={<SearchTokenHeader pairId={pairId} />}
-        menu={<SearchTokenMenu pairId={pairId} onChangePairId={onChangePairId} />}
+        menu={
+          <SearchTokenMenu
+            pairId={pairId}
+            onChangePairId={(pairId) => {
+              popoverRef.current?.close();
+              onChangePairId(pairId);
+            }}
+          />
+        }
       />
     );
 
@@ -110,7 +121,14 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
           <Sheet.Header />
           <Sheet.Content>
             <div className="flex flex-col gap-4 p-4">
-              <SearchTokenMenu pairId={pairId} onChangePairId={onChangePairId} />
+              <SearchTokenMenu
+                pairId={pairId}
+                onChangePairId={(pairId) => {
+                  setIsSearchTokenVisible(false);
+                  // onChangePairId(pairId);
+                  console.log("Selected pairId:", pairId);
+                }}
+              />
             </div>
           </Sheet.Content>
         </Sheet.Container>

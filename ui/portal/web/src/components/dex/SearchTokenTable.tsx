@@ -1,4 +1,4 @@
-import { useConfig } from "@left-curve/store";
+import { useConfig, usePrices } from "@left-curve/store";
 import { useMemo } from "react";
 
 import { Cell, Table } from "@left-curve/applets-kit";
@@ -7,6 +7,7 @@ import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { useApp } from "~/hooks/useApp";
 
 const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -26,7 +27,10 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   searchText,
   onChangePairId,
 }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const { coins } = useConfig();
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const columns: TableColumn<PairUpdate> = [
     {
       id: "pairName",
@@ -45,8 +49,8 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       },
     },
     {
-      header: "Last Price",
-      cell: ({ row }) => <Cell.Text text="-" />,
+      header: "Price",
+      cell: ({ row }) => <Cell.Text text={getPrice(1, row.original.baseDenom, { format: true })} />,
     },
     {
       header: "24h Change",

@@ -583,6 +583,7 @@
     "searchFor": "Search for",
     "tokens": "Tokens",
     "swapping": "Swapping",
+    "contract": "Contract",
     "convert": {
       "swap": "Swap",
       "title": "Convert",
@@ -596,6 +597,9 @@
     },
     "protrade": {
       "spot": {
+        "price": "Price",
+        "24hChange": "24h Change",
+        "volume": "Volume",
         "fees": "Fees",
         "orderValue": "Order Value",
         "availableToTrade": "Available to trade",

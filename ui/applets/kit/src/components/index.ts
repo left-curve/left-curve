@@ -27,7 +27,7 @@ export { ExpandOptions } from "./ExpandOptions";
 export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
-export { Popover } from "./Popover";
+export { Popover, type PopoverRef } from "./Popover";
 export { Pagination, CursorPagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";

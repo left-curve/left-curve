@@ -1,5 +1,11 @@
-import { createContext, twMerge, useInputs, useMediaQuery } from "@left-curve/applets-kit";
-import { useProTrade } from "@left-curve/store";
+import {
+  AddressVisualizer,
+  createContext,
+  twMerge,
+  useInputs,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
+import { useAppConfig, useBalances, usePrices, useProTrade } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { useEffect, useState } from "react";
 
@@ -14,7 +20,9 @@ import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
+import { useNavigate } from "@tanstack/react-router";
 import type { PropsWithChildren } from "react";
+import { useApp } from "~/hooks/useApp";
 
 const [ProTradeProvider, useProTradeState] = createContext<{
   state: ReturnType<typeof useProTrade>;
@@ -39,10 +47,17 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 };
 
 const ProTradeHeader: React.FC = () => {
+  const { data: config } = useAppConfig();
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { state } = useProTradeState();
   const { pairId, onChangePairId } = state;
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -82,24 +97,28 @@ const ProTradeHeader: React.FC = () => {
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-xs-medium text-gray-500">Mark</p>
-              <p className="diatype-sm-bold text-gray-700">83,565</p>
+              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.price"]()}</p>
+              <p className="diatype-sm-bold text-gray-700">
+                {getPrice(1, pairId.baseDenom, { format: true })}
+              </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">Last price</p>
-              <p className="diatype-sm-bold text-gray-700">$2,578</p>
+              <p className="diatype-xs-medium text-gray-500">
+                {m["dex.protrade.spot.24hChange"]()}
+              </p>
+              <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">Oracle</p>
-              <p className="diatype-sm-bold text-gray-700">83,565</p>
+              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.volume"]()}</p>
+              <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">24h Change</p>
-              <p className="diatype-sm-bold text-red-bean-400">-542 / 0.70</p>
-            </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">24h Volume</p>
-              <p className="diatype-sm-bold text-gray-700">$2,457,770,700.50</p>
+              <p className="diatype-xs-medium text-gray-500">{m["dex.contract"]()}</p>
+              <AddressVisualizer
+                address={config?.addresses.dex || "0x"}
+                withIcon
+                onClick={(url) => navigate({ to: url })}
+              />
             </div>
           </motion.div>
         ) : null}
