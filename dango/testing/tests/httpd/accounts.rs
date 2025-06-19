@@ -9,8 +9,8 @@ use {
         setup_test_with_indexer,
     },
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, GraphQLCustomResponse, PaginatedResponse, call_graphql,
+        call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     tokio::sync::mpsc,
 };
@@ -56,11 +56,8 @@ async fn query_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
-                    app,
-                    request_body,
-                )
-                .await?;
+                let response: GraphQLCustomResponse<PaginatedResponse<serde_json::Value>> =
+                    call_graphql(app, request_body).await?;
 
                 let received_accounts = response
                     .data

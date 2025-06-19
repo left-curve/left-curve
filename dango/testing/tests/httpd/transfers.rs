@@ -11,7 +11,7 @@ use {
     },
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
+        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
     itertools::Itertools,
@@ -85,18 +85,13 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<entity::transfers::Model>, _, _, _>(
-                        app,
-                        request_body,
-                    )
-                    .await?;
+                let response: PaginatedResponse<entity::transfers::Model> =
+                    call_paginated_graphql(app, request_body).await?;
 
-                assert_that!(response.data.edges).has_length(2);
+                assert_that!(response.edges).has_length(2);
 
                 assert_that!(
                     response
-                        .data
                         .edges
                         .iter()
                         .map(|t| t.node.block_height)
@@ -106,7 +101,6 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 
                 assert_that!(
                     response
-                        .data
                         .edges
                         .iter()
                         .map(|t| t.node.amount.as_str())
@@ -114,7 +108,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                 )
                 .is_equal_to(vec!["100000000", "100000000"]);
 
-                response.data.edges.iter().for_each(|edge| {
+                response.edges.iter().for_each(|edge| {
                     assert!(
                         !edge.node.tx_hash.is_empty(),
                         "Transaction hash should not be empty."

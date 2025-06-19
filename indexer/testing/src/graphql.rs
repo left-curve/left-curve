@@ -1,5 +1,9 @@
 use {
     crate::{GraphQLCustomRequest, PaginatedResponse, build_app_service, call_paginated_graphql},
+    actix_web::{
+        body::MessageBody,
+        dev::{AppConfig, ServiceFactory, ServiceResponse},
+    },
     indexer_httpd::context::Context,
     serde_json::json,
 };
@@ -15,12 +19,46 @@ pub async fn paginate_models<R>(
 where
     R: serde::de::DeserializeOwned,
 {
+    paginate_models_with_app_builder(
+        httpd_context,
+        graphql_query,
+        name,
+        sort_by,
+        first,
+        last,
+        build_app_service,
+    )
+    .await
+}
+
+pub async fn paginate_models_with_app_builder<R, A, S, B, F>(
+    httpd_context: Context,
+    graphql_query: &str,
+    name: &str,
+    sort_by: &str,
+    first: Option<i32>,
+    last: Option<i32>,
+    app_builder: F,
+) -> anyhow::Result<Vec<R>>
+where
+    R: serde::de::DeserializeOwned,
+    F: Fn(Context) -> A,
+    A: actix_service::IntoServiceFactory<S, actix_http::Request>,
+    S: ServiceFactory<
+            actix_http::Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
     let mut models = vec![];
     let mut after: Option<String> = None;
     let mut before: Option<String> = None;
 
     loop {
-        let app = build_app_service(httpd_context.clone());
+        let app = app_builder(httpd_context.clone());
 
         let variables = json!({
               "first": first,
