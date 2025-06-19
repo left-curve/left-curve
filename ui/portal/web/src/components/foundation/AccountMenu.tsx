@@ -203,7 +203,7 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           <IconLogOut />
         </IconButton>
       </div>
-      <div className="flex flex-col w-full overflow-y-auto scrollbar-none pb-4">
+      <div className="flex flex-col w-full overflow-y-scroll scrollbar-none pb-4 h-full max-h-[calc(100svh-20rem)]">
         {Object.entries(balances).map(([denom, amount]) => (
           <AssetCard key={denom} coin={{ amount, denom }} />
         ))}
