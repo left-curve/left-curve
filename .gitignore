@@ -63,6 +63,7 @@ ui/config/project.inlang/*
 **/proptest-regressions/
 **/*.proptest-regressions
 !pyth/client/testdata/
+**/wals/
 
 # Network data
 networks/**/configs/cometbft/config/addrbook.json
