@@ -48,7 +48,7 @@ pub struct CreateLimitOrderRequest {
     /// ```plain
     /// base_asset_amount = floor(quote_asset_amount / price)
     /// ```
-    pub amount: Uint128,
+    pub amount: NonZero<Uint128>,
     /// The limit price measured _in the quote asset_, i.e. how many units of
     /// quote asset is equal in value to 1 unit of base asset.
     pub price: Udec128,
@@ -61,7 +61,7 @@ pub struct CreateMarketOrderRequest {
     pub direction: Direction,
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
     /// base asset.
-    pub amount: Uint128,
+    pub amount: NonZero<Uint128>,
     /// The maximum slippage percentage.
     ///
     /// This parameter works as follow:

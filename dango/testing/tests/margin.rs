@@ -17,7 +17,7 @@ use {
     },
     grug::{
         Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
-        JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, Number,
+        JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, NonZero, Number,
         NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Udec128,
         Uint128, btree_map, coins,
     },
@@ -726,7 +726,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: dango_types::dex::Direction::Bid,
-                    amount: Uint128::new(100_000_000),
+                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: Udec128::ONE,
                 }],
                 cancels: None,
