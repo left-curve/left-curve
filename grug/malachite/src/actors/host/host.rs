@@ -546,7 +546,6 @@ impl Host {
             UNDECIDED_BLOCK.save(state, block_hash, &block)?;
 
             // Store undecided proposal
-
             UNDECIDED_PROPOSALS.save(
                 state,
                 (*height, round.as_i64(), block_hash),
