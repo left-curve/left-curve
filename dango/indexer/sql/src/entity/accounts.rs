@@ -2,10 +2,9 @@
 use async_graphql::{ComplexObject, Context, Result, SimpleObject};
 use {
     crate::entity::OrderByBlocks,
-    sea_orm::{Order, QueryOrder},
+    dango_types::account_factory,
+    sea_orm::{Order, QueryOrder, entity::prelude::*},
 };
-
-use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
     Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, serde::Serialize, serde::Deserialize,

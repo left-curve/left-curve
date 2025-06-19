@@ -1,8 +1,8 @@
-use crate::entity::OrderByBlocks;
 #[cfg(feature = "async-graphql")]
 use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
 
 use {
+    crate::entity::OrderByBlocks,
     sea_orm::{Order, QueryOrder, entity::prelude::*},
     serde::{Deserialize, Serialize},
 };
