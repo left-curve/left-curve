@@ -1,7 +1,7 @@
 use {
     crate::{
         ActorResult,
-        actors::network::{GossipNetworkMsg, MempoolNetworkActorRef, MempoolNetworkMsg},
+        actors::mempool::network::{GossipNetworkMsg, MempoolNetworkActorRef, MempoolNetworkMsg},
         app::MempoolAppRef,
         types::RawTx,
     },

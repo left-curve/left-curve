@@ -7,8 +7,10 @@ use {
         context::Context,
         ctx,
         host::{Host, HostRef, latest_height},
-        mempool::{Mempool, MempoolActorRef},
-        network::{MempoolNetwork, MempoolNetworkActorRef},
+        mempool::{
+            Mempool, MempoolActorRef,
+            network::{MempoolNetwork, MempoolNetworkActorRef},
+        },
     },
     grug_app::{App, AppError, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm},
     malachitebft_app::events::TxEvent,
