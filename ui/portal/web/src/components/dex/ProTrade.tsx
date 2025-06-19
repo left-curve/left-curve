@@ -48,7 +48,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 }) => {
   const controllers = useInputs();
   const state = useProTrade({
-    inputs: controllers.inputs,
+    controllers,
     pairId,
     onChangePairId,
     action,
@@ -164,9 +164,7 @@ const ProTradeOrders: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTradeState();
-  const { orders, coins } = state;
-
-  const [baseCoin, quoteCoin] = coins;
+  const { orders, quoteCoin, baseCoin } = state;
 
   const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
     /*  {
