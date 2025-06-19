@@ -60,17 +60,19 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   }
 
   function convertAmount<T extends boolean = false>(
-    amount: string | number,
+    fromAmount: string | number,
     fromDenom: string,
     targetDenom: string,
     parse?: T,
   ): T extends false ? number : string {
-    const fromPrice = getPrice(amount, fromDenom);
+    const fromPrice = getPrice(fromAmount, fromDenom);
     const targetPrice = getPrice(1, targetDenom);
 
-    const units = Big(fromPrice).div(targetPrice).toNumber();
+    const targetAmount = Big(fromPrice).div(targetPrice).toNumber();
     return (
-      parse ? parseUnits(units.toString(), coins[targetDenom].decimals).toString() : units
+      parse
+        ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals).toString()
+        : targetAmount
     ) as T extends false ? number : string;
   }
 
