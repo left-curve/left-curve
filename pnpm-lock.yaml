@@ -250,6 +250,9 @@ importers:
       '@storybook/react':
         specifier: ^8.6.12
         version: 8.6.14(@storybook/test@8.6.14(storybook@8.6.14(prettier@3.5.0)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.14(prettier@3.5.0))(typescript@5.6.3)
+      '@types/big.js':
+        specifier: ^6.2.2
+        version: 6.2.2
       '@types/node':
         specifier: 'catalog:'
         version: 20.16.10
@@ -462,6 +465,9 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../sdk/dango
+      big.js:
+        specifier: '>=6.0.0'
+        version: 7.0.1
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -484,6 +490,9 @@ importers:
       '@tanstack/query-core':
         specifier: ^5.56.2
         version: 5.59.0
+      '@types/big.js':
+        specifier: ^6.2.2
+        version: 6.2.2
       '@types/use-sync-external-store':
         specifier: ^0.0.6
         version: 0.0.6
@@ -3492,6 +3501,9 @@ packages:
 
   '@types/base16@1.0.5':
     resolution: {integrity: sha512-OzOWrTluG9cwqidEzC/Q6FAmIPcnZfm8BFRlIx0+UIUqnuAmi5OS88O0RpT3Yz6qdmqObvUhasrbNsCofE4W9A==}
+
+  '@types/big.js@6.2.2':
+    resolution: {integrity: sha512-e2cOW9YlVzFY2iScnGBBkplKsrn2CsObHQ2Hiw4V1sSyiGbgWL8IyqE3zFi1Pt5o1pdAtYkDAIsF3KKUPjdzaA==}
 
   '@types/date-fns@2.6.3':
     resolution: {integrity: sha512-Ke1lw2Ni1t/wMUoLtKFmSNCLozcTBd6vmMqFP4hRzXn6qzkNt97bPAX0x5Y/c15DP43kKvwW1ycStD5+43jVQA==}
@@ -11319,6 +11331,8 @@ snapshots:
       '@babel/types': 7.26.8
 
   '@types/base16@1.0.5': {}
+
+  '@types/big.js@6.2.2': {}
 
   '@types/date-fns@2.6.3':
     dependencies:
