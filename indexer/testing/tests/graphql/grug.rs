@@ -38,7 +38,7 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<Json>(app, request_body).await?;
+                let response = call_graphql::<Json, _, _, _>(app, request_body).await?;
 
                 assert_that!(response.data.into_inner()).is_equal_to(json!({"app_config": null}));
 

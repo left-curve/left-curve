@@ -3513,6 +3513,7 @@ dependencies = [
 name = "dango-testing"
 version = "0.0.0"
 dependencies = [
+ "actix-service",
  "actix-web",
  "anyhow",
  "assert-json-diff",
@@ -5680,6 +5681,7 @@ version = "0.1.0"
 dependencies = [
  "actix-codec",
  "actix-http",
+ "actix-service",
  "actix-test",
  "actix-web",
  "anyhow",

@@ -78,9 +78,11 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
-                        .await?;
+                let response = call_graphql::<PaginatedResponse<entity::events::Model>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 assert_that!(response.data.edges).is_not_empty();
 
@@ -139,8 +141,11 @@ async fn graphql_returns_events_transaction_hashes() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let hashes = response
                     .data
@@ -464,8 +469,11 @@ async fn graphql_returns_nested_events() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let nested_events: &str = response.data.edges[0]
                     .node

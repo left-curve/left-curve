@@ -56,8 +56,11 @@ async fn query_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let received_accounts = response
                     .data
@@ -141,8 +144,11 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let expected_data = serde_json::json!({
                     "accountType": "spot",
@@ -209,7 +215,8 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
+                let response =
+                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
 
                 let nodes = response
                     .data
@@ -279,8 +286,11 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let received_accounts = response
                     .data

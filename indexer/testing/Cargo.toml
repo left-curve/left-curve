@@ -7,6 +7,7 @@ version = "0.1.0"
 [dependencies]
 actix-codec    = { workspace = true }
 actix-http     = { workspace = true }
+actix-service  = { workspace = true }
 actix-test     = { workspace = true }
 actix-web      = { workspace = true }
 anyhow         = { workspace = true }

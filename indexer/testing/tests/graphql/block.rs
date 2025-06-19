@@ -50,7 +50,8 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
                 let app = build_app_service(httpd_context);
 
                 let response =
-                    call_graphql::<PaginatedResponse<grug_types::Json>>(app, request_body).await?;
+                    call_graphql::<PaginatedResponse<grug_types::Json>, _, _, _>(app, request_body)
+                        .await?;
 
                 assert_that!(response.data.edges).is_not_empty();
 
@@ -98,7 +99,7 @@ async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
                 let app = build_app_service(httpd_context);
 
                 let responses =
-                    call_batch_graphql::<PaginatedResponse<grug_types::Json>>(app, vec![
+                    call_batch_graphql::<PaginatedResponse<grug_types::Json>, _, _, _>(app, vec![
                         request_body.clone(),
                         request_body,
                     ])
@@ -155,7 +156,8 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
+                let response =
+                    call_graphql::<entity::blocks::Model, _, _, _>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
@@ -196,7 +198,8 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<entity::blocks::Model>(app, request_body).await?;
+                let response =
+                    call_graphql::<entity::blocks::Model, _, _, _>(app, request_body).await?;
                 assert_that!(response.data.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())

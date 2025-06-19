@@ -86,8 +86,11 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                 let app = build_actix_app(httpd_context);
 
                 let response =
-                    call_graphql::<PaginatedResponse<entity::transfers::Model>>(app, request_body)
-                        .await?;
+                    call_graphql::<PaginatedResponse<entity::transfers::Model>, _, _, _>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
 
                 assert_that!(response.data.edges).has_length(2);
 

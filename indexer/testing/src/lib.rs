@@ -1,11 +1,12 @@
 use {
     actix_codec::Framed,
-    actix_http::ws,
+    actix_http::{Request, ws},
+    actix_service::IntoServiceFactory,
     actix_test::{Client, TestServer, read_body},
     actix_web::{
         App,
         body::MessageBody,
-        dev::{ServiceFactory, ServiceRequest, ServiceResponse},
+        dev::{AppConfig, ServiceFactory, ServiceRequest, ServiceResponse},
         middleware::{Compress, Logger},
         test::try_call_service,
         web::ServiceConfig,
@@ -91,20 +92,21 @@ pub struct PageInfo {
     pub has_previous_page: bool,
 }
 
-pub async fn call_batch_graphql<R>(
-    app: App<
-        impl ServiceFactory<
-            ServiceRequest,
-            Response = ServiceResponse<impl MessageBody>,
-            Config = (),
-            InitError = (),
-            Error = actix_web::Error,
-        > + 'static,
-    >,
+pub async fn call_batch_graphql<R, A, S, B>(
+    app: A,
     requests_body: Vec<GraphQLCustomRequest<'_>>,
 ) -> anyhow::Result<Vec<GraphQLCustomResponse<R>>>
 where
     R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
 {
     let app = actix_web::test::init_service(app).await;
 
@@ -148,22 +150,23 @@ where
         .collect::<Result<Vec<_>, _>>()
 }
 
-pub async fn call_graphql<R>(
-    app: App<
-        impl ServiceFactory<
-            ServiceRequest,
-            Response = ServiceResponse<impl MessageBody>,
-            Config = (),
-            InitError = (),
-            Error = actix_web::Error,
-        > + 'static,
-    >,
+pub async fn call_graphql<R, A, S, B>(
+    app: A,
     request_body: GraphQLCustomRequest<'_>,
 ) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
     R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
 {
-    call_batch_graphql::<R>(app, vec![request_body])
+    call_batch_graphql(app, vec![request_body])
         .await
         .and_then(|mut responses| responses.pop().ok_or_else(|| anyhow!("no response found")))
 }

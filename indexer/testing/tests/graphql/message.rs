@@ -63,9 +63,11 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<entity::messages::Model>>(app, request_body)
-                        .await?;
+                let response = call_graphql::<PaginatedResponse<entity::messages::Model>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 assert_that!(response.data.edges).has_length(1);
 

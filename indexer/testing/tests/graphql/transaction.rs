@@ -43,7 +43,8 @@ async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
+                let response =
+                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
 
                 let expected = json!({
                     "blockHeight": 1,
@@ -104,11 +105,12 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
-                    app,
-                    request_body,
-                )
-                .await?;
+                let response =
+                    call_graphql::<PaginatedResponse<entity::transactions::Model>, _, _, _>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
 
                 assert_that!(response.data.edges).has_length(1);
 

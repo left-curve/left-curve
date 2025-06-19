@@ -39,7 +39,7 @@ where
             variables,
         };
 
-        let response = call_graphql::<PaginatedResponse<R>>(app, request_body).await?;
+        let response = call_graphql::<PaginatedResponse<R>, _, _, _>(app, request_body).await?;
 
         match (first, last) {
             (Some(_), None) => {
