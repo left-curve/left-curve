@@ -206,7 +206,9 @@ export type ReservesResponse = {
 };
 
 export const Direction = {
+  /** Give away the quote asset, get the base asset; a.k.a. a BUY order. */
   Buy: "bid",
+  /** Give away the base asset, get the quote asset; a.k.a. a SELL order. */
   Sell: "ask",
 } as const;
 

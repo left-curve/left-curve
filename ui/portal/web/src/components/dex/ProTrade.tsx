@@ -22,6 +22,7 @@ import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
+import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTradeState] = createContext<{
@@ -157,12 +158,15 @@ const ProTradeMenu: React.FC = () => {
 };
 
 const ProTradeOrders: React.FC = () => {
+  const { showModal: _ } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTradeState();
-  const { orders } = state;
+  const { orders, coins } = state;
+
+  const [baseCoin, quoteCoin] = coins;
 
   const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
     /*  {
@@ -190,15 +194,17 @@ const ProTradeOrders: React.FC = () => {
     },
     {
       header: m["dex.protrade.spot.ordersTable.size"](),
-      cell: ({ row }) => <Cell.Text text={row.original.remaining} />,
+      cell: ({ row }) => (
+        <Cell.Text text={formatUnits(row.original.remaining, baseCoin.decimals)} />
+      ),
     },
     {
       header: m["dex.protrade.spot.ordersTable.originalSize"](),
-      cell: ({ row }) => <Cell.Text text={row.original.amount} />,
+      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.amount, baseCoin.decimals)} />,
     },
     {
       header: m["dex.protrade.spot.price"](),
-      cell: ({ row }) => <Cell.Text text={row.original.price} />,
+      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.price, quoteCoin.decimals)} />,
     },
     {
       id: "cancel-order",
