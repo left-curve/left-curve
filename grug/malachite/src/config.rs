@@ -32,14 +32,24 @@ pub struct ActorsConfig {
     /// Runtime configuration options
     pub runtime: RuntimeConfig,
 
+    /// Host configuration options
     pub host: HostConfig,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HostConfig {
     #[serde(with = "humantime_serde")]
     pub block_time: Duration,
     pub max_tx_bytes: ByteSize,
+}
+
+impl Default for HostConfig {
+    fn default() -> Self {
+        Self {
+            block_time: Duration::from_millis(500),
+            max_tx_bytes: ByteSize::mb(4),
+        }
+    }
 }
 
 pub struct GenesisConfig {
