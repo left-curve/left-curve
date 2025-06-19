@@ -379,3 +379,25 @@ where
 
     app.configure(config_app(app_ctx, graphql_schema))
 }
+
+/// Convenience function for paginated GraphQL calls
+pub async fn call_paginated_graphql<R, A, S, B>(
+    app: A,
+    request_body: GraphQLCustomRequest<'_>,
+) -> anyhow::Result<PaginatedResponse<R>>
+where
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let response: GraphQLCustomResponse<PaginatedResponse<R>> =
+        call_graphql(app, request_body).await?;
+    Ok(response.data)
+}
