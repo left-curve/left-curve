@@ -3,9 +3,14 @@ use {
     grug_types::{BroadcastClientExt, Coins, Denom, ResultExt},
     indexer_sql::entity,
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, block::create_block, build_app_service,
-        call_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginatedResponse,
+        block::{create_block, create_blocks},
+        build_app_service, call_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
+    itertools::Itertools,
+    sea_orm::{EntityTrait, PaginatorTrait},
+    serde_json::json,
     std::str::FromStr,
     tokio::sync::mpsc,
 };
@@ -145,6 +150,266 @@ async fn graphql_returns_events_transaction_hashes() -> anyhow::Result<()> {
                     .collect::<Vec<_>>();
 
                 assert_that!(hashes).is_not_empty();
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_paginate_events() -> anyhow::Result<()> {
+    let (httpd_context, _client, _) = create_blocks(10).await?;
+
+    let events_total_count = entity::events::Entity::find()
+        .count(&httpd_context.db)
+        .await?;
+
+    let graphql_query = r#"
+      query Events($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
+        events(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
+          nodes {
+            id
+            parentId
+            transactionId
+            messageId
+            blockHeight
+            createdAt
+            eventIdx
+            type
+            method
+            eventStatus
+            commitmentStatus
+            transactionType
+            transactionIdx
+            messageIdx
+            eventIdx
+            data
+          }
+          edges {
+            node {
+              id
+              parentId
+              transactionId
+              messageId
+              blockHeight
+              createdAt
+              type
+              method
+              eventStatus
+              commitmentStatus
+              transactionType
+              transactionIdx
+              messageIdx
+              data
+              eventIdx
+            }
+            cursor
+          }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut after: Option<String> = None;
+                let mut before: Option<String> = None;
+                let events_count = 2;
+
+                let mut block_heights = vec![];
+
+                // 1. first with descending order
+                loop {
+                    let app = build_app_service(httpd_context.clone());
+
+                    let variables = json!({
+                          "first": events_count,
+                          "sortBy": "BLOCK_HEIGHT_DESC",
+                          "after": after,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "events",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response =
+                        call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
+                            .await?;
+
+                    for edge in &response.data.edges {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_next_page {
+                        break;
+                    }
+
+                    after = Some(response.data.page_info.end_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+
+                assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
+
+                after = None;
+                block_heights.clear();
+
+                // 2. first with ascending order
+                loop {
+                    let app = build_app_service(httpd_context.clone());
+
+                    let variables = json!({
+                          "first": events_count,
+                          "sortBy": "BLOCK_HEIGHT_ASC",
+                          "after": after,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "events",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response =
+                        call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
+                            .await?;
+
+                    for edge in &response.data.edges {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_next_page {
+                        break;
+                    }
+
+                    after = Some(response.data.page_info.end_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).collect::<Vec<_>>());
+
+                assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
+
+                block_heights.clear();
+
+                // 3. last with descending order
+                loop {
+                    let app = build_app_service(httpd_context.clone());
+
+                    let variables = json!({
+                          "last": events_count,
+                          "sortBy": "BLOCK_HEIGHT_DESC",
+                          "before": before,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "events",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response =
+                        call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
+                            .await?;
+
+                    for edge in response.data.edges.iter().rev() {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_previous_page {
+                        break;
+                    }
+
+                    before = Some(response.data.page_info.start_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).collect::<Vec<_>>());
+
+                assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
+
+                block_heights.clear();
+                before = None;
+
+                // 4. last with ascending order
+                loop {
+                    let app = build_app_service(httpd_context.clone());
+
+                    let variables = json!({
+                          "last": events_count,
+                          "sortBy": "BLOCK_HEIGHT_ASC",
+                          "before": before,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "events",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response =
+                        call_graphql::<PaginatedResponse<entity::events::Model>>(app, request_body)
+                            .await?;
+
+                    for edge in response.data.edges.iter().rev() {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_previous_page {
+                        break;
+                    }
+
+                    before = Some(response.data.page_info.start_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+
+                assert_that!(block_heights.len()).is_equal_to(events_total_count as usize);
 
                 Ok::<(), anyhow::Error>(())
             })

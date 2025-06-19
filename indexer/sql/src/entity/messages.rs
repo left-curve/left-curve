@@ -1,5 +1,10 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::{Result, SimpleObject};
+use {
+    crate::entity::OrderByBlocks,
+    sea_orm::{Order, QueryOrder},
+};
+
 use {sea_orm::entity::prelude::*, serde::Deserialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
@@ -33,3 +38,17 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl OrderByBlocks for Select<Entity> {
+    fn order_by_blocks_desc(&self) -> Self {
+        self.clone()
+            .order_by(Column::BlockHeight, Order::Desc)
+            .order_by(Column::OrderIdx, Order::Desc)
+    }
+
+    fn order_by_blocks_asc(&self) -> Self {
+        self.clone()
+            .order_by(Column::BlockHeight, Order::Asc)
+            .order_by(Column::OrderIdx, Order::Asc)
+    }
+}

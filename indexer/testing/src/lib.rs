@@ -120,7 +120,12 @@ where
     let graphql_responses: Vec<GraphQLResponse> = serde_json::from_slice(&graphql_response)
         .inspect_err(|err| {
             println!("Failed to parse GraphQL response: {err}");
-            println!("text response: \n{:#?}", graphql_response);
+
+            if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&graphql_response) {
+                println!("{json:#?}");
+            } else {
+                println!("{graphql_response:#?}");
+            }
         })?;
 
     // When I need to debug the response
