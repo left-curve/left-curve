@@ -420,7 +420,7 @@
   "notifications": {
     "title": "Notifications",
     "noNotifications": {
-      "title": "No Notifications yet",
+      "title": "No notifications yet",
       "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
     },
     "notification": {
