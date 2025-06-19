@@ -1,5 +1,10 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::{ComplexObject, Context, Result, SimpleObject};
+use {
+    crate::entity::OrderByBlocks,
+    sea_orm::{Order, QueryOrder},
+};
+
 use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
@@ -99,3 +104,17 @@ impl Related<super::accounts_users::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl OrderByBlocks for Select<Entity> {
+    fn order_by_blocks_desc(&self) -> Self {
+        self.clone()
+            .order_by(Column::CreatedBlockHeight, Order::Desc)
+            .order_by(Column::Address, Order::Desc)
+    }
+
+    fn order_by_blocks_asc(&self) -> Self {
+        self.clone()
+            .order_by(Column::CreatedBlockHeight, Order::Asc)
+            .order_by(Column::Address, Order::Asc)
+    }
+}

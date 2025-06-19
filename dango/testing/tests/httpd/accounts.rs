@@ -11,6 +11,7 @@ use {
         GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
+    serde_json::json,
     tokio::sync::mpsc,
 };
 
@@ -312,6 +313,224 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                 ]);
 
                 assert_json_include!(actual: received_accounts, expected: expected_accounts);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_paginate_accounts() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    // Create 10 accounts to paginate through
+    for idx in 0..10 {
+        let _user = create_user_and_account(
+            &mut suite,
+            &mut accounts,
+            &contracts,
+            &codes,
+            &format!("foo{idx}"),
+        );
+    }
+
+    suite.app.indexer.wait_for_finish();
+
+    let graphql_query = r#"
+      query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
+        accounts(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
+          nodes {
+            id
+            address
+            accountIndex
+            accountType
+            createdAt
+            createdBlockHeight
+          }
+          edges { node { id address accountIndex accountType createdAt createdBlockHeight } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut after: Option<String> = None;
+                let mut before: Option<String> = None;
+                let accounts_count = 2;
+
+                let mut block_heights = vec![];
+
+                // 1. first with descending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "first": accounts_count,
+                          "sortBy": "BLOCK_HEIGHT_DESC",
+                          "after": after,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "accounts",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::accounts::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in &response.data.edges {
+                        block_heights.push(edge.node.created_block_height);
+                    }
+
+                    if !response.data.page_info.has_next_page {
+                        break;
+                    }
+
+                    after = Some(response.data.page_info.end_cursor);
+                }
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
+
+                after = None;
+                block_heights.clear();
+
+                // 2. first with ascending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "first": accounts_count,
+                          "sortBy": "BLOCK_HEIGHT_ASC",
+                          "after": after,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "accounts",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::accounts::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in &response.data.edges {
+                        block_heights.push(edge.node.created_block_height);
+                    }
+
+                    if !response.data.page_info.has_next_page {
+                        break;
+                    }
+
+                    after = Some(response.data.page_info.end_cursor);
+                }
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+
+                block_heights.clear();
+
+                // 3. last with descending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "last": accounts_count,
+                          "sortBy": "BLOCK_HEIGHT_DESC",
+                          "before": before,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "accounts",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::accounts::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in response.data.edges.iter().rev() {
+                        block_heights.push(edge.node.created_block_height);
+                    }
+
+                    if !response.data.page_info.has_previous_page {
+                        break;
+                    }
+
+                    before = Some(response.data.page_info.start_cursor);
+                }
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+
+                block_heights.clear();
+                before = None;
+
+                // 4. last with ascending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "last": accounts_count,
+                          "sortBy": "BLOCK_HEIGHT_ASC",
+                          "before": before,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "accounts",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::accounts::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in response.data.edges.iter().rev() {
+                        block_heights.push(edge.node.created_block_height);
+                    }
+
+                    if !response.data.page_info.has_previous_page {
+                        break;
+                    }
+
+                    before = Some(response.data.page_info.start_cursor);
+                }
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })

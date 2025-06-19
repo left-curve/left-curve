@@ -1,11 +1,10 @@
 use {
     async_graphql::{types::connection::*, *},
-    dango_indexer_sql::entity,
+    dango_indexer_sql::entity::{self, OrderByBlocks},
     indexer_httpd::context::Context,
-    sea_orm::{
-        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
-    },
+    sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, Select},
     serde::{Deserialize, Serialize},
+    std::cmp,
 };
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq, Debug, Default)]
@@ -43,10 +42,10 @@ impl TransferQuery {
     async fn transfers(
         &self,
         ctx: &async_graphql::Context<'_>,
-        after: Option<String>,
-        before: Option<String>,
-        first: Option<i32>,
-        last: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] after: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] before: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] last: Option<i32>,
         sort_by: Option<SortBy>,
         // The block height of the transfer
         block_height: Option<u64>,
@@ -68,28 +67,60 @@ impl TransferQuery {
                 let mut query = entity::transfers::Entity::find();
                 let sort_by = sort_by.unwrap_or_default();
                 let limit;
-                let has_before = before.is_some();
 
-                match (after, before, first, last) {
-                    (after, None, first, None) => {
-                        if let Some(after) = after {
-                            query = apply_filter(query, sort_by, &after);
-                        }
+                let mut has_next_page = false;
+                let mut has_previous_page = false;
 
-                        limit = first.map(|x| x as u64).unwrap_or(MAX_TRANSFERS);
+                match (last, sort_by) {
+                    (None, SortBy::BlockHeightAsc) | (Some(_), SortBy::BlockHeightDesc) => {
+                        query = query.order_by_blocks_asc()
+                    },
+                    (None, SortBy::BlockHeightDesc) | (Some(_), SortBy::BlockHeightAsc) => {
+                        query = query.order_by_blocks_desc()
+                    },
+                }
 
+                match (first, after, last, before) {
+                    (Some(first), None, None, None) => {
+                        limit = cmp::min(first as u64, MAX_TRANSFERS);
                         query = query.limit(limit + 1);
                     },
-                    (None, before, None, last) => {
-                        if let Some(before) = before {
-                            query = apply_filter(query, sort_by, &before);
-                        }
+                    (first, Some(after), None, None) => {
+                        query = apply_filter(query, sort_by, &after);
 
-                        limit = last.map(|x| x as u64).unwrap_or(MAX_TRANSFERS);
+                        limit = cmp::min(first.unwrap_or(0) as u64, MAX_TRANSFERS);
+                        query = query.limit(limit + 1);
 
+                        has_previous_page = true;
+                    },
+
+                    (None, None, Some(last), None) => {
+                        limit = cmp::min(last as u64, MAX_TRANSFERS);
                         query = query.limit(limit + 1);
                     },
-                    _ => unreachable!(),
+
+                    (None, None, last, Some(before)) => {
+                        query = match &sort_by {
+                            SortBy::BlockHeightAsc =>  apply_filter(query, SortBy::BlockHeightDesc, &before),
+                            SortBy::BlockHeightDesc => apply_filter(query, SortBy::BlockHeightAsc, &before),
+                        };
+
+                        limit = cmp::min(last.unwrap_or(0) as u64, MAX_TRANSFERS);
+                        query = query.limit(limit + 1);
+
+                        has_next_page = true;
+                    },
+
+                    (None, None, None, None) => {
+                        limit = MAX_TRANSFERS;
+                        query = query.limit(MAX_TRANSFERS + 1);
+                    }
+
+                    _ => {
+                        return Err(async_graphql::Error::new(
+                            "Unexpected combination of pagination parameters, should use first with after or last with before",
+                        ));
+                    },
                 }
 
                 if let Some(block_height) = block_height {
@@ -124,28 +155,22 @@ impl TransferQuery {
                     );
                 }
 
-                match sort_by {
-                    SortBy::BlockHeightAsc => {
-                        query = query.order_by(entity::transfers::Column::BlockHeight, Order::Asc)
-                    },
-                    SortBy::BlockHeightDesc => {
-                        query = query.order_by(entity::transfers::Column::BlockHeight, Order::Desc)
-                    },
-                }
-
                 let mut transfers = query.all(&app_ctx.db).await?;
 
-                if has_before {
+                if transfers.len() > limit as usize {
+                    transfers.pop();
+                    if last.is_some() {
+                        has_previous_page = true;
+                    } else {
+                        has_next_page = true;
+                    }
+                }
+
+                if last.is_some() {
                     transfers.reverse();
                 }
 
-                let mut has_more = false;
-                if transfers.len() > limit as usize {
-                    transfers.pop();
-                    has_more = true;
-                }
-
-                let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
+                let mut connection = Connection::new(has_previous_page, has_next_page);
                 connection
                     .edges
                     .extend(transfers.into_iter().map(|transfer| {
@@ -169,18 +194,18 @@ fn apply_filter(
     after: &TransferCursor,
 ) -> Select<entity::transfers::Entity> {
     query.filter(match sort_by {
-        SortBy::BlockHeightAsc => Condition::any()
+        SortBy::BlockHeightDesc => Condition::any()
             .add(entity::transfers::Column::BlockHeight.lt(after.block_height as i64))
             .add(
                 entity::transfers::Column::BlockHeight
-                    .eq(after.block_height as i64)
+                    .lte(after.block_height as i64)
                     .and(entity::transfers::Column::Idx.lt(after.idx)),
             ),
-        SortBy::BlockHeightDesc => Condition::any()
+        SortBy::BlockHeightAsc => Condition::any()
             .add(entity::transfers::Column::BlockHeight.gt(after.block_height as i64))
             .add(
                 entity::transfers::Column::BlockHeight
-                    .eq(after.block_height as i64)
+                    .gte(after.block_height as i64)
                     .and(entity::transfers::Column::Idx.gt(after.idx)),
             ),
     })

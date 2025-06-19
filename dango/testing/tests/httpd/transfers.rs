@@ -13,6 +13,7 @@ use {
         GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
+    itertools::Itertools,
     serde_json::json,
     tokio::sync::mpsc,
 };
@@ -115,6 +116,261 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                         "Transaction hash should not be empty."
                     );
                 });
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_paginate_transfers() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
+
+    // Create 10 transfers to paginate through
+    for _ in 0..10 {
+        // Copied from benchmarks.rs
+        let msgs = vec![Message::execute(
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+            },
+            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        )?];
+
+        suite
+            .send_messages_with_gas(
+                &mut accounts.user1,
+                50_000_000,
+                NonEmpty::new_unchecked(msgs),
+            )
+            .should_succeed();
+    }
+
+    suite.app.indexer.wait_for_finish();
+
+    let graphql_query = r#"
+      query Transfers($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
+        transfers(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
+          nodes {
+            id
+            idx
+            blockHeight
+            txHash
+            fromAddress
+            toAddress
+            amount
+            denom
+            createdAt
+            accounts { address users { username }}
+            fromAccount { address users { username }}
+            toAccount { address users { username }}
+          }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut after: Option<String> = None;
+                let mut before: Option<String> = None;
+                let transfers_count = 2;
+
+                let mut block_heights = vec![];
+
+                // 1. first with descending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "first": transfers_count,
+                          "sortBy": "BLOCK_HEIGHT_DESC",
+                          "after": after,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "transfers",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::transfers::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in &response.data.edges {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_next_page {
+                        break;
+                    }
+
+                    after = Some(response.data.page_info.end_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
+
+                after = None;
+                block_heights.clear();
+
+                // 2. first with ascending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "first": transfers_count,
+                          "sortBy": "BLOCK_HEIGHT_ASC",
+                          "after": after,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "transfers",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::transfers::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in &response.data.edges {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_next_page {
+                        break;
+                    }
+
+                    after = Some(response.data.page_info.end_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).collect::<Vec<_>>());
+
+                block_heights.clear();
+
+                // 3. last with descending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "last": transfers_count,
+                          "sortBy": "BLOCK_HEIGHT_DESC",
+                          "before": before,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "transfers",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::transfers::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in response.data.edges.iter().rev() {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_previous_page {
+                        break;
+                    }
+
+                    before = Some(response.data.page_info.start_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).collect::<Vec<_>>());
+
+                block_heights.clear();
+                before = None;
+
+                // 4. last with ascending order
+                loop {
+                    let app = build_actix_app(httpd_context.clone());
+
+                    let variables = json!({
+                          "last": transfers_count,
+                          "sortBy": "BLOCK_HEIGHT_ASC",
+                          "before": before,
+                    })
+                    .as_object()
+                    .unwrap()
+                    .clone();
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "transfers",
+                        query: graphql_query,
+                        variables,
+                    };
+
+                    let response = call_graphql::<PaginatedResponse<entity::transfers::Model>>(
+                        app,
+                        request_body,
+                    )
+                    .await?;
+
+                    for edge in response.data.edges.iter().rev() {
+                        block_heights.push(edge.node.block_height);
+                    }
+
+                    if !response.data.page_info.has_previous_page {
+                        break;
+                    }
+
+                    before = Some(response.data.page_info.start_cursor);
+                }
+
+                assert_that!(
+                    block_heights
+                        .clone()
+                        .into_iter()
+                        .unique()
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to((1..=10).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
