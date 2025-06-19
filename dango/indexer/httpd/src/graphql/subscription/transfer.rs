@@ -19,7 +19,7 @@ impl TransferSubscription {
         block_heights: RangeInclusive<i64>,
         address: Option<String>,
         username: Option<String>,
-    ) -> Vec<entity::transfers::Model> {
+    ) -> Option<Vec<entity::transfers::Model>> {
         let mut filter = entity::transfers::Column::BlockHeight.is_in(block_heights);
 
         if let Some(username) = username {
@@ -50,14 +50,20 @@ impl TransferSubscription {
             );
         }
 
-        entity::transfers::Entity::find()
+        let transfers = entity::transfers::Entity::find()
             .filter(filter)
             .order_by_asc(entity::transfers::Column::BlockHeight)
             .order_by_asc(entity::transfers::Column::Idx)
             .all(&app_ctx.db)
             .await
             .inspect_err(|e| tracing::error!(%e, "`get_transfers` error"))
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        if transfers.is_empty() {
+            None
+        } else {
+            Some(transfers)
+        }
     }
 }
 
@@ -111,13 +117,7 @@ impl TransferSubscription {
                             }
                         }),
                 )
-                .filter_map(|transfers| async move {
-                    if transfers.is_empty() {
-                        None
-                    } else {
-                        Some(transfers)
-                    }
-                }),
+                .filter_map(|transfers| async move { transfers }),
         )
     }
 }
