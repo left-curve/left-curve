@@ -1,41 +1,10 @@
-pub mod accounts;
-pub mod grug;
-pub mod transfers;
-pub mod users;
-
 use {
-    actix_web::{
-        App,
-        body::MessageBody,
-        dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-    },
-    dango_httpd::{graphql::build_schema, server::config_app},
+    crate::{GraphQLCustomRequest, PaginatedResponse, build_app_service, call_graphql},
     indexer_httpd::context::Context,
-    indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, build_actix_app_with_config, call_graphql,
-    },
     serde_json::json,
 };
 
-fn build_actix_app(
-    app_ctx: Context,
-) -> App<
-    impl ServiceFactory<
-        ServiceRequest,
-        Response = ServiceResponse<impl MessageBody>,
-        Config = (),
-        InitError = (),
-        Error = actix_web::Error,
-    >,
-> {
-    let graphql_schema = build_schema(app_ctx.clone());
-
-    build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
-        config_app(app_ctx, graphql_schema)
-    })
-}
-
-async fn paginate_models<R>(
+pub async fn paginate_models<R>(
     httpd_context: Context,
     graphql_query: &str,
     name: &str,
@@ -51,7 +20,7 @@ where
     let mut before: Option<String> = None;
 
     loop {
-        let app = build_actix_app(httpd_context.clone());
+        let app = build_app_service(httpd_context.clone());
 
         let variables = json!({
               "first": first,

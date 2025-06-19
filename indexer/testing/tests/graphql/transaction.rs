@@ -7,6 +7,7 @@ use {
         GraphQLCustomRequest, PaginatedResponse,
         block::{create_block, create_blocks},
         build_app_service, call_graphql, call_ws_graphql_stream,
+        graphql::paginate_models,
         parse_graphql_subscription_response,
     },
     serde_json::json,
@@ -154,169 +155,69 @@ async fn graphql_paginate_transactions() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut after: Option<String> = None;
-                let mut before: Option<String> = None;
                 let transactions_count = 2;
 
-                let mut block_heights = vec![];
-
                 // 1. first with descending order
-                loop {
-                    let app = build_app_service(httpd_context.clone());
-
-                    let variables = json!({
-                          "first": transactions_count,
-                          "sortBy": "BLOCK_HEIGHT_DESC",
-                          "after": after,
-                    })
-                    .as_object()
-                    .unwrap()
-                    .clone();
-
-                    let request_body = GraphQLCustomRequest {
-                        name: "transactions",
-                        query: graphql_query,
-                        variables,
-                    };
-
-                    let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
-                        app,
-                        request_body,
-                    )
-                    .await?;
-
-                    for edge in &response.data.edges {
-                        block_heights.push(edge.node.block_height);
-                    }
-
-                    if !response.data.page_info.has_next_page {
-                        break;
-                    }
-
-                    after = Some(response.data.page_info.end_cursor);
-                }
+                let block_heights = paginate_models::<entity::transactions::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "transactions",
+                    "BLOCK_HEIGHT_DESC",
+                    Some(transactions_count),
+                    None,
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.block_height as u64)
+                .collect::<Vec<_>>();
 
                 assert_that!(block_heights).is_equal_to((1..=10).rev().collect::<Vec<_>>());
 
-                after = None;
-                block_heights.clear();
-
                 // 2. first with ascending order
-                loop {
-                    let app = build_app_service(httpd_context.clone());
-
-                    let variables = json!({
-                          "first": transactions_count,
-                          "sortBy": "BLOCK_HEIGHT_ASC",
-                          "after": after,
-                    })
-                    .as_object()
-                    .unwrap()
-                    .clone();
-
-                    let request_body = GraphQLCustomRequest {
-                        name: "transactions",
-                        query: graphql_query,
-                        variables,
-                    };
-
-                    let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
-                        app,
-                        request_body,
-                    )
-                    .await?;
-
-                    for edge in &response.data.edges {
-                        block_heights.push(edge.node.block_height);
-                    }
-
-                    if !response.data.page_info.has_next_page {
-                        break;
-                    }
-
-                    after = Some(response.data.page_info.end_cursor);
-                }
+                let block_heights = paginate_models::<entity::transactions::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "transactions",
+                    "BLOCK_HEIGHT_ASC",
+                    Some(transactions_count),
+                    None,
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.block_height as u64)
+                .collect::<Vec<_>>();
 
                 assert_that!(block_heights).is_equal_to((1..=10).collect::<Vec<_>>());
-
-                block_heights.clear();
 
                 // 3. last with descending order
-                loop {
-                    let app = build_app_service(httpd_context.clone());
-
-                    let variables = json!({
-                          "last": transactions_count,
-                          "sortBy": "BLOCK_HEIGHT_DESC",
-                          "before": before,
-                    })
-                    .as_object()
-                    .unwrap()
-                    .clone();
-
-                    let request_body = GraphQLCustomRequest {
-                        name: "transactions",
-                        query: graphql_query,
-                        variables,
-                    };
-
-                    let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
-                        app,
-                        request_body,
-                    )
-                    .await?;
-
-                    for edge in response.data.edges.iter().rev() {
-                        block_heights.push(edge.node.block_height);
-                    }
-
-                    if !response.data.page_info.has_previous_page {
-                        break;
-                    }
-
-                    before = Some(response.data.page_info.start_cursor);
-                }
+                let block_heights = paginate_models::<entity::transactions::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "transactions",
+                    "BLOCK_HEIGHT_DESC",
+                    None,
+                    Some(transactions_count),
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.block_height as u64)
+                .collect::<Vec<_>>();
 
                 assert_that!(block_heights).is_equal_to((1..=10).collect::<Vec<_>>());
 
-                block_heights.clear();
-                before = None;
-
                 // 4. last with ascending order
-                loop {
-                    let app = build_app_service(httpd_context.clone());
-
-                    let variables = json!({
-                          "last": transactions_count,
-                          "sortBy": "BLOCK_HEIGHT_ASC",
-                          "before": before,
-                    })
-                    .as_object()
-                    .unwrap()
-                    .clone();
-
-                    let request_body = GraphQLCustomRequest {
-                        name: "transactions",
-                        query: graphql_query,
-                        variables,
-                    };
-
-                    let response = call_graphql::<PaginatedResponse<entity::transactions::Model>>(
-                        app,
-                        request_body,
-                    )
-                    .await?;
-
-                    for edge in response.data.edges.iter().rev() {
-                        block_heights.push(edge.node.block_height);
-                    }
-
-                    if !response.data.page_info.has_previous_page {
-                        break;
-                    }
-
-                    before = Some(response.data.page_info.start_cursor);
-                }
+                let block_heights = paginate_models::<entity::transactions::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "transactions",
+                    "BLOCK_HEIGHT_ASC",
+                    None,
+                    Some(transactions_count),
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.block_height as u64)
+                .collect::<Vec<_>>();
 
                 assert_that!(block_heights).is_equal_to((1..=10).rev().collect::<Vec<_>>());
 

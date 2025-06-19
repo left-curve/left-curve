@@ -22,6 +22,7 @@ use {
 };
 
 pub mod block;
+pub mod graphql;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
