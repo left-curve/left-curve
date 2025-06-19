@@ -24,7 +24,7 @@ pub struct State {
     pub role: Role,
     pub round: Round,
     pub config: HostConfig,
-    db_storage: Box<dyn ConsensusStorage>,
+    pub db_storage: Box<dyn ConsensusStorage>,
     consensus: Option<ConsensusRef<Context>>,
     started_round: Instant,
     app: HostAppRef,

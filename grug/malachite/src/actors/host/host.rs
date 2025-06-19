@@ -8,7 +8,7 @@ use {
         mempool::{MempoolActorRef, MempoolMsg},
         types::{Block, DecidedBlock},
     },
-    grug::{BorshDeExt, BorshSerExt, Buffer, MockStorage, Timestamp},
+    grug::{BorshDeExt, BorshSerExt, Buffer, Timestamp},
     grug_app::{App, Db},
     malachitebft_app::{
         consensus::Role,
@@ -455,16 +455,19 @@ impl Host {
 
         info!(value_id = %certificate.value_id, "Proposed block found");
 
-        // We want to ensure to save the decided block atomically with the app.
-        // To do this, we use a MockStorage to create the batch to insert.
-        // This is possible because we don't need to read data, just to create the insertionbatch.
-        let mut buffer = Buffer::new(MockStorage::new(), None);
+        // We want to ensure to save the decided block and clear the undecided block and proposals
+        // atomically with the app.
+        let mut buffer = Buffer::new(state.db_storage.clone(), None);
 
         // Store decided block
         DECIDED_BLOCK.save(&mut buffer, *certificate.height, &DecidedBlock {
             block: block.clone(),
             certificate,
         })?;
+
+        UNDECIDED_BLOCK.clear(&mut buffer, None, None);
+
+        UNDECIDED_PROPOSALS.clear(&mut buffer, None, None);
 
         let (_, batch) = buffer.disassemble();
 
@@ -475,8 +478,6 @@ impl Host {
 
         // Notify the mempool to remove corresponding txs
         self.mempool.cast(MempoolMsg::Remove(txs))?;
-
-        // TODO: Prune the undecided blocks and proposals
 
         // Start the next height
         let sleep = state.calculate_block_sleep();
