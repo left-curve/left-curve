@@ -173,17 +173,15 @@ const UsernameStep: React.FC = () => {
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     session: signingSession,
-    mutation: {
-      onSuccess: () => {
-        navigate({ to: "/" });
-      },
-      onError: (err) => {
-        console.error(err);
+    toast: {
+      error: () =>
         toast.error({
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
-        });
-      },
+        }),
+    },
+    mutation: {
+      onSuccess: () => navigate({ to: "/" }),
     },
   });
 

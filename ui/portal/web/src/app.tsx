@@ -3,6 +3,7 @@ import { RootModal } from "./components/modals/RootModal";
 
 import { createToaster } from "@left-curve/applets-kit";
 import { DangoStoreProvider } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
@@ -34,6 +35,16 @@ const queryClient = new QueryClient({
     },
   }),
   defaultOptions: {
+    mutations: {
+      onError: (error: unknown) => {
+        if (!error) return;
+        if (typeof error === "object" && ("code" in error || !(error instanceof Error))) return;
+        if (typeof error === "string" && error.includes("reject")) return;
+
+        const errorMessage = error instanceof Error ? error.message : error;
+        captureException(errorMessage);
+      },
+    },
     queries: {
       refetchOnWindowFocus: false,
       retry: 0,

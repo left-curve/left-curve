@@ -1,22 +1,23 @@
 import { encodeBase64, encodeUtf8, serializeJson } from "@left-curve/dango/encoding";
 
 import { useChainId } from "./useChainId.js";
-import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
+import { useConnectors } from "./useConnectors.js";
+import { useSubmitTx } from "./useSubmitTx.js";
 
 import { Secp256k1 } from "@left-curve/dango/crypto";
 import { Actions, DataChannel } from "@left-curve/dango/utils";
 
-import type { Result, SessionResponse } from "@left-curve/dango/types";
-import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
+import type { NestedOmit, Result, SessionResponse } from "@left-curve/dango/types";
+import type { UseConnectorsReturnType } from "./useConnectors.js";
+import type { UseSubmitTxParameters, UseSubmitTxReturnType } from "./useSubmitTx.js";
 
 export type UseSigninWithDesktopParameters = {
   url: string;
   expiresAt?: number;
   connectors?: UseConnectorsReturnType;
-  mutation?: UseMutationParameters<void, Error, { socketId: string }>;
-};
+} & NestedOmit<UseSubmitTxParameters<void, Error, { socketId: string }>, "mutation.mutationFn">;
 
-export type UseSigninWithDesktopReturnType = UseMutationReturnType<
+export type UseSigninWithDesktopReturnType = UseSubmitTxReturnType<
   void,
   Error,
   { socketId: string }
@@ -27,47 +28,49 @@ export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters)
   const connectors = parameters?.connectors ?? useConnectors();
   const chainId = useChainId();
 
-  return useMutation({
-    mutationFn: async ({ socketId }) => {
-      const dataChannel = await DataChannel.create(url);
-      const connector = connectors.find((connector) => connector.id === "session");
-      if (!connector) throw new Error("error: missing connector");
+  return useSubmitTx({
+    mutation: {
+      ...mutation,
+      mutationFn: async ({ socketId }) => {
+        const dataChannel = await DataChannel.create(url);
+        const connector = connectors.find((connector) => connector.id === "session");
+        if (!connector) throw new Error("error: missing connector");
 
-      await dataChannel.createPeerConnection(socketId);
+        await dataChannel.createPeerConnection(socketId);
 
-      const keyPair = Secp256k1.makeKeyPair();
-      const publicKey = keyPair.getPublicKey();
+        const keyPair = Secp256k1.makeKeyPair();
+        const publicKey = keyPair.getPublicKey();
 
-      const { error, data } = await dataChannel.sendAsyncMessage<
-        Result<SessionResponse & { username: string }>
-      >({
-        type: Actions.GenerateSession,
-        message: {
-          expireAt: +expiresAt,
-          publicKey: encodeBase64(publicKey),
-        },
-      });
+        const { error, data } = await dataChannel.sendAsyncMessage<
+          Result<SessionResponse & { username: string }>
+        >({
+          type: Actions.GenerateSession,
+          message: {
+            expireAt: +expiresAt,
+            publicKey: encodeBase64(publicKey),
+          },
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const { authorization, keyHash, sessionInfo, username } = data;
+        const { authorization, keyHash, sessionInfo, username } = data;
 
-      await connector.connect({
-        username,
-        chainId,
-        challenge: encodeBase64(
-          encodeUtf8(
-            serializeJson({
-              authorization,
-              keyHash,
-              sessionInfo,
-              publicKey,
-              privateKey: keyPair.privateKey,
-            }),
+        await connector.connect({
+          username,
+          chainId,
+          challenge: encodeBase64(
+            encodeUtf8(
+              serializeJson({
+                authorization,
+                keyHash,
+                sessionInfo,
+                publicKey,
+                privateKey: keyPair.privateKey,
+              }),
+            ),
           ),
-        ),
-      });
+        });
+      },
     },
-    ...mutation,
   });
 }

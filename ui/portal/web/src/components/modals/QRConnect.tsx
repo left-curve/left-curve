@@ -50,7 +50,6 @@ export const QRConnect = forwardRef((_props, _ref) => {
         title: m["common.error"](),
         description: m["signin.errors.mobileSessionAborted"](),
       });
-      captureException(error);
       hideModal();
       dataChannel.sendMessage({
         id,

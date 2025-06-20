@@ -152,32 +152,27 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         };
       },
       async signTx(signDoc) {
-        try {
-          const provider = await this.getProvider();
-          await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
-          const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+        const provider = await this.getProvider();
+        await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
+        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-          const signData = JSON.stringify(signDoc);
+        const signData = JSON.stringify(signDoc);
 
-          const signature = await provider.request({
-            method: "eth_signTypedData_v4",
-            params: [controllerAddress, signData],
-          });
+        const signature = await provider.request({
+          method: "eth_signTypedData_v4",
+          params: [controllerAddress, signData],
+        });
 
-          const eip712: Eip712Signature = {
-            sig: encodeBase64(decodeHex(signature.slice(2))),
-            typed_data: encodeBase64(encodeUtf8(signData)),
-          };
+        const eip712: Eip712Signature = {
+          sig: encodeBase64(decodeHex(signature.slice(2))),
+          typed_data: encodeBase64(encodeUtf8(signData)),
+        };
 
-          const keyHash = createKeyHash(controllerAddress.toLowerCase());
+        const keyHash = createKeyHash(controllerAddress.toLowerCase());
 
-          const standard = { signature: { eip712 }, keyHash };
+        const standard = { signature: { eip712 }, keyHash };
 
-          return { credential: { standard }, signed: signDoc };
-        } catch (error) {
-          console.error(error);
-          throw error;
-        }
+        return { credential: { standard }, signed: signDoc };
       },
     };
   });

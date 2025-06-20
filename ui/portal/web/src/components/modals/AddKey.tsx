@@ -1,6 +1,5 @@
-import { useAccount, useConnectors, useSigningClient } from "@left-curve/store";
-import { captureException } from "@sentry/react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -16,28 +15,29 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
   const queryClient = useQueryClient();
   const { hideModal } = useApp();
 
-  const { mutateAsync: addKey, isPending } = useMutation({
-    mutationFn: async (connectorId: string) => {
-      const connector = connectors.find((c) => c.id === connectorId);
-      if (!connector) throw new Error("Connector not found");
-      if (!account || !signingClient) throw new Error("We couldn't process the request");
+  const { mutateAsync: addKey, isPending } = useSubmitTx({
+    mutation: {
+      mutationFn: async (connectorId: string) => {
+        const connector = connectors.find((c) => c.id === connectorId);
+        if (!connector) throw new Error("Connector not found");
+        if (!account || !signingClient) throw new Error("We couldn't process the request");
 
-      const { keyHash, key } = await connector.createNewKey!();
+        const { keyHash, key } = await connector.createNewKey!();
 
-      await signingClient?.updateKey({
-        keyHash,
-        sender: account.address,
-        action: {
-          insert: key,
-        },
-      });
+        await signingClient?.updateKey({
+          keyHash,
+          sender: account.address,
+          action: {
+            insert: key,
+          },
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["user_keys"] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        hideModal();
+      },
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user_keys"] });
-      queryClient.invalidateQueries({ queryKey: ["quests", account] });
-      hideModal();
-    },
-    onError: (e) => captureException(e),
   });
 
   return (
