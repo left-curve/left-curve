@@ -2,19 +2,13 @@ use {
     crate::context::Context,
     async_graphql::{types::connection::*, *},
     indexer_sql::entity::OrderByBlocks,
-    sea_orm::{EntityTrait, QuerySelect, Select},
+    sea_orm::{EntityTrait, Order, QuerySelect, Select},
     serde::Serialize,
     std::{cmp, future::Future, pin::Pin},
 };
 
 pub trait CursorFilter<C> {
-    fn apply_cursor_filter(self, sort_by: SortByEnum, cursor: &C) -> Self;
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum SortByEnum {
-    BlockHeightAsc,
-    BlockHeightDesc,
+    fn cursor_filter(self, order: Order, cursor: &C) -> Self;
 }
 
 pub async fn paginate_models<C, E, S>(
@@ -38,7 +32,7 @@ where
     Select<E>: OrderByBlocks<E> + CursorFilter<C>,
     C: std::convert::From<<E as EntityTrait>::Model>,
     S: Default + Send + Sync + Copy,
-    SortByEnum: std::convert::From<S>,
+    sea_orm::Order: std::convert::From<S>,
 {
     query_with::<OpaqueCursor<C>, _, _, _, _>(
             after,
@@ -47,19 +41,22 @@ where
             last,
             |after, before, first, last| async move {
                 let mut query = E::find();
-                let sort_by: SortByEnum = sort_by.unwrap_or_default().into();
+                let sort_by = sort_by.unwrap_or_default();
+                let order: Order = sort_by.into();
+
                 let limit;
 
                 let mut has_next_page = false;
                 let mut has_previous_page = false;
 
-                match (last, sort_by) {
-                    (None, SortByEnum::BlockHeightAsc) | (Some(_), SortByEnum::BlockHeightDesc) => {
-                        query = query.order_by_blocks_asc()
+                match (last, &order) {
+                    (None, Order::Asc) | (Some(_), Order::Desc) => {
+                        query = query.order_by_blocks(Order::Asc)
                     },
-                    (None, SortByEnum::BlockHeightDesc) | (Some(_), SortByEnum::BlockHeightAsc) => {
-                        query = query.order_by_blocks_desc()
+                    (None, Order::Desc) | (Some(_), Order::Asc) => {
+                        query = query.order_by_blocks(Order::Desc)
                     },
+                    _ => {}
                 }
 
                 match (first, after, last, before) {
@@ -68,7 +65,7 @@ where
                         query = query.limit(limit + 1);
                     },
                     (first, Some(after), None, None) => {
-                        query = query.apply_cursor_filter(sort_by, &after);
+                        query = query.cursor_filter(order.clone(), &after);
 
                         limit = cmp::min(first.unwrap_or(0) as u64, max_items   );
                         query = query.limit(limit + 1);
@@ -82,10 +79,15 @@ where
                     },
 
                     (None, None, last, Some(before)) => {
-                        query = match &sort_by {
-                            SortByEnum::BlockHeightAsc =>  query.apply_cursor_filter(SortByEnum::BlockHeightDesc, &before),
-                            SortByEnum::BlockHeightDesc => query.apply_cursor_filter(SortByEnum::BlockHeightAsc, &before),
-                        };
+                        match order {
+                            Order::Asc => {
+                                query = query.cursor_filter(Order::Desc, &before);
+                            },
+                            Order::Desc => {
+                                query = query.cursor_filter(Order::Asc, &before);
+                            },
+                            Order::Field(_) => {}
+                        }
 
                         limit = cmp::min(last.unwrap_or(0) as u64, max_items);
                         query = query.limit(limit + 1);

@@ -1,11 +1,11 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, SortByEnum, paginate_models},
+        graphql::query::pagination::{CursorFilter, paginate_models},
     },
     async_graphql::{types::connection::*, *},
     indexer_sql::entity,
-    sea_orm::{ColumnTrait, Condition, QueryFilter, Select},
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -17,11 +17,11 @@ pub enum SortBy {
     BlockHeightDesc,
 }
 
-impl From<SortBy> for SortByEnum {
+impl From<SortBy> for Order {
     fn from(sort_by: SortBy) -> Self {
         match sort_by {
-            SortBy::BlockHeightAsc => SortByEnum::BlockHeightAsc,
-            SortBy::BlockHeightDesc => SortByEnum::BlockHeightDesc,
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
         }
     }
 }
@@ -75,9 +75,9 @@ impl EventQuery {
 }
 
 impl CursorFilter<EventCursor> for Select<entity::events::Entity> {
-    fn apply_cursor_filter(self, sort_by: SortByEnum, cursor: &EventCursor) -> Self {
-        match sort_by {
-            SortByEnum::BlockHeightAsc => self.filter(
+    fn cursor_filter(self, order: Order, cursor: &EventCursor) -> Self {
+        match order {
+            Order::Asc => self.filter(
                 Condition::any()
                     .add(entity::events::Column::BlockHeight.gt(cursor.block_height))
                     .add(
@@ -86,7 +86,7 @@ impl CursorFilter<EventCursor> for Select<entity::events::Entity> {
                             .and(entity::events::Column::EventIdx.gt(cursor.event_idx)),
                     ),
             ),
-            SortByEnum::BlockHeightDesc => self.filter(
+            Order::Desc => self.filter(
                 Condition::any()
                     .add(entity::events::Column::BlockHeight.lt(cursor.block_height))
                     .add(
@@ -95,6 +95,7 @@ impl CursorFilter<EventCursor> for Select<entity::events::Entity> {
                             .and(entity::events::Column::EventIdx.lt(cursor.event_idx)),
                     ),
             ),
+            Order::Field(_) => self,
         }
     }
 }

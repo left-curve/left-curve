@@ -1,11 +1,11 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, SortByEnum, paginate_models},
+        graphql::query::pagination::{CursorFilter, paginate_models},
     },
     async_graphql::{connection::*, *},
     indexer_sql::entity,
-    sea_orm::{ColumnTrait, Condition, QueryFilter, Select},
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -17,11 +17,11 @@ pub enum SortBy {
     BlockHeightDesc,
 }
 
-impl From<SortBy> for SortByEnum {
+impl From<SortBy> for Order {
     fn from(sort_by: SortBy) -> Self {
         match sort_by {
-            SortBy::BlockHeightAsc => SortByEnum::BlockHeightAsc,
-            SortBy::BlockHeightDesc => SortByEnum::BlockHeightDesc,
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
         }
     }
 }
@@ -104,9 +104,9 @@ impl TransactionQuery {
 }
 
 impl CursorFilter<TransactionCursor> for Select<entity::transactions::Entity> {
-    fn apply_cursor_filter(self, sort_by: SortByEnum, cursor: &TransactionCursor) -> Self {
-        match sort_by {
-            SortByEnum::BlockHeightAsc => self.filter(
+    fn cursor_filter(self, order: Order, cursor: &TransactionCursor) -> Self {
+        match order {
+            Order::Asc => self.filter(
                 Condition::any()
                     .add(entity::transactions::Column::BlockHeight.gt(cursor.block_height))
                     .add(
@@ -118,7 +118,7 @@ impl CursorFilter<TransactionCursor> for Select<entity::transactions::Entity> {
                             ),
                     ),
             ),
-            SortByEnum::BlockHeightDesc => self.filter(
+            Order::Desc => self.filter(
                 Condition::any()
                     .add(entity::transactions::Column::BlockHeight.lt(cursor.block_height))
                     .add(
@@ -130,6 +130,7 @@ impl CursorFilter<TransactionCursor> for Select<entity::transactions::Entity> {
                             ),
                     ),
             ),
+            Order::Field(_) => self,
         }
     }
 }

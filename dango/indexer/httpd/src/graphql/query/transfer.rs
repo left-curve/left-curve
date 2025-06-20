@@ -3,9 +3,9 @@ use {
     dango_indexer_sql::entity,
     indexer_httpd::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, SortByEnum, paginate_models},
+        graphql::query::pagination::{CursorFilter, paginate_models},
     },
-    sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, Select},
+    sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -17,11 +17,11 @@ pub enum SortBy {
     BlockHeightDesc,
 }
 
-impl From<SortBy> for SortByEnum {
+impl From<SortBy> for Order {
     fn from(sort_by: SortBy) -> Self {
         match sort_by {
-            SortBy::BlockHeightAsc => SortByEnum::BlockHeightAsc,
-            SortBy::BlockHeightDesc => SortByEnum::BlockHeightDesc,
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
         }
     }
 }
@@ -127,9 +127,9 @@ impl TransferQuery {
 }
 
 impl CursorFilter<TransferCursor> for Select<entity::transfers::Entity> {
-    fn apply_cursor_filter(self, sort_by: SortByEnum, cursor: &TransferCursor) -> Self {
-        match sort_by {
-            SortByEnum::BlockHeightAsc => self.filter(
+    fn cursor_filter(self, order: Order, cursor: &TransferCursor) -> Self {
+        match order {
+            Order::Asc => self.filter(
                 Condition::any()
                     .add(entity::transfers::Column::BlockHeight.gt(cursor.block_height as i64))
                     .add(
@@ -138,7 +138,7 @@ impl CursorFilter<TransferCursor> for Select<entity::transfers::Entity> {
                             .and(entity::transfers::Column::Idx.gt(cursor.idx)),
                     ),
             ),
-            SortByEnum::BlockHeightDesc => self.filter(
+            Order::Desc => self.filter(
                 Condition::any()
                     .add(entity::transfers::Column::BlockHeight.lt(cursor.block_height as i64))
                     .add(
@@ -147,6 +147,7 @@ impl CursorFilter<TransferCursor> for Select<entity::transfers::Entity> {
                             .and(entity::transfers::Column::Idx.lt(cursor.idx)),
                     ),
             ),
+            Order::Field(_) => self,
         }
     }
 }

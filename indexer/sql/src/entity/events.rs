@@ -133,15 +133,9 @@ pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}
 
 impl OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks_desc(self) -> Self {
+    fn order_by_blocks(self, order: Order) -> Self {
         self.clone()
-            .order_by(Column::BlockHeight, Order::Desc)
-            .order_by(Column::EventIdx, Order::Desc)
-    }
-
-    fn order_by_blocks_asc(self) -> Self {
-        self.clone()
-            .order_by(Column::BlockHeight, Order::Asc)
-            .order_by(Column::EventIdx, Order::Asc)
+            .order_by(Column::BlockHeight, order.clone())
+            .order_by(Column::EventIdx, order)
     }
 }

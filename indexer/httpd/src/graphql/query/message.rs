@@ -1,11 +1,11 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, SortByEnum, paginate_models},
+        graphql::query::pagination::{CursorFilter, paginate_models},
     },
     async_graphql::{connection::*, *},
     indexer_sql::entity,
-    sea_orm::{ColumnTrait, Condition, QueryFilter, Select},
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -17,11 +17,11 @@ pub enum SortBy {
     BlockHeightDesc,
 }
 
-impl From<SortBy> for SortByEnum {
+impl From<SortBy> for Order {
     fn from(sort_by: SortBy) -> Self {
         match sort_by {
-            SortBy::BlockHeightAsc => SortByEnum::BlockHeightAsc,
-            SortBy::BlockHeightDesc => SortByEnum::BlockHeightDesc,
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
         }
     }
 }
@@ -102,9 +102,9 @@ impl MessageQuery {
 }
 
 impl CursorFilter<MessageCursor> for Select<entity::messages::Entity> {
-    fn apply_cursor_filter(self, sort_by: SortByEnum, cursor: &MessageCursor) -> Self {
-        match sort_by {
-            SortByEnum::BlockHeightAsc => self.filter(
+    fn cursor_filter(self, order: Order, cursor: &MessageCursor) -> Self {
+        match order {
+            Order::Asc => self.filter(
                 Condition::any()
                     .add(entity::messages::Column::BlockHeight.gt(cursor.block_height))
                     .add(
@@ -113,7 +113,7 @@ impl CursorFilter<MessageCursor> for Select<entity::messages::Entity> {
                             .and(entity::messages::Column::OrderIdx.gt(cursor.order_idx)),
                     ),
             ),
-            SortByEnum::BlockHeightDesc => self.filter(
+            Order::Desc => self.filter(
                 Condition::any()
                     .add(entity::messages::Column::BlockHeight.lt(cursor.block_height))
                     .add(
@@ -122,6 +122,7 @@ impl CursorFilter<MessageCursor> for Select<entity::messages::Entity> {
                             .and(entity::messages::Column::OrderIdx.lt(cursor.order_idx)),
                     ),
             ),
+            Order::Field(_) => self,
         }
     }
 }

@@ -3,9 +3,11 @@ use {
     dango_indexer_sql::entity,
     indexer_httpd::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, SortByEnum, paginate_models},
+        graphql::query::pagination::{CursorFilter, paginate_models},
     },
-    sea_orm::{ColumnTrait, Condition, JoinType, QueryFilter, QuerySelect, RelationTrait, Select},
+    sea_orm::{
+        ColumnTrait, Condition, JoinType, Order, QueryFilter, QuerySelect, RelationTrait, Select,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -17,11 +19,11 @@ pub enum SortBy {
     BlockHeightDesc,
 }
 
-impl From<SortBy> for SortByEnum {
+impl From<SortBy> for Order {
     fn from(sort_by: SortBy) -> Self {
         match sort_by {
-            SortBy::BlockHeightAsc => SortByEnum::BlockHeightAsc,
-            SortBy::BlockHeightDesc => SortByEnum::BlockHeightDesc,
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
         }
     }
 }
@@ -108,9 +110,9 @@ impl AccountQuery {
 }
 
 impl CursorFilter<AccountCursor> for Select<entity::accounts::Entity> {
-    fn apply_cursor_filter(self, sort_by: SortByEnum, cursor: &AccountCursor) -> Self {
-        match sort_by {
-            SortByEnum::BlockHeightAsc => self.filter(
+    fn cursor_filter(self, order: Order, cursor: &AccountCursor) -> Self {
+        match order {
+            Order::Asc => self.filter(
                 Condition::any()
                     .add(
                         entity::accounts::Column::CreatedBlockHeight
@@ -122,7 +124,7 @@ impl CursorFilter<AccountCursor> for Select<entity::accounts::Entity> {
                             .and(entity::accounts::Column::Address.gt(&cursor.address)),
                     ),
             ),
-            SortByEnum::BlockHeightDesc => self.filter(
+            Order::Desc => self.filter(
                 Condition::any()
                     .add(
                         entity::accounts::Column::CreatedBlockHeight
@@ -134,6 +136,7 @@ impl CursorFilter<AccountCursor> for Select<entity::accounts::Entity> {
                             .and(entity::accounts::Column::Address.lt(&cursor.address)),
                     ),
             ),
+            Order::Field(_) => self,
         }
     }
 }
