@@ -102,7 +102,11 @@ where
                 // If we are paginating with `last`, we use the start cursor for the next request
                 before = Some(response.page_info.start_cursor);
             },
-            _ => {},
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Pagination requires either `first` or `last` to be provided."
+                ));
+            },
         }
     }
 

@@ -383,7 +383,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 crate_block_tx.send(2).await?;
 
-                // 2st response
+                // 2nd response
                 let (framed, response) =
                     parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
                         .await?;
