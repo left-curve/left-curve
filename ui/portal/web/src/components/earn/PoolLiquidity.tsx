@@ -10,7 +10,7 @@ import {
 } from "@left-curve/applets-kit";
 import type { PairId } from "@left-curve/dango/types";
 import { usePoolLiquidity } from "@left-curve/store";
-import { useState, type PropsWithChildren } from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
@@ -31,6 +31,11 @@ const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = 
 }) => {
   const [action, setAction] = useState<"deposit" | "withdraw">("deposit");
   const state = usePoolLiquidity({ pairId, action, onChangeAction: (v) => setAction(v) });
+
+  useEffect(() => {
+    setAction("deposit");
+  }, [state.userLiquidity]);
+
   return (
     <PoolLiquidityProvider value={{ state }}>
       <motion.div
@@ -112,6 +117,7 @@ const UserPoolLiquidity: React.FC = () => {
   const { baseCoin, quoteCoin } = coins;
 
   if (!userLiquidity) return null;
+
   return (
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card w-full h-fit">
       <div className="flex items-center justify-between">
@@ -229,30 +235,55 @@ const PoolDeposit: React.FC = () => {
 
 const PoolWithdraw: React.FC = () => {
   const { state } = usePoolLiquidityState();
-  const { coins, userLiquidity } = state;
+  const { coins } = state;
 
   const { baseCoin, quoteCoin } = coins;
   const [range, setRange] = useState(50);
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="exposure-sm-italic text-gray-700">Withdrawal amount</p>
-      <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
-        <p className="h1-regular text-gray-700">{range}%</p>
-        <Range minValue={0} maxValue={100} value={range} onChange={(val) => setRange(val)} />
-        <div className="flex gap-2 items-center justify-center mt-2">
-          <Button size="xs" variant="secondary" onClick={() => setRange(25)}>
-            25%
-          </Button>
-          <Button size="xs" variant="secondary" onClick={() => setRange(50)}>
-            50%
-          </Button>
-          <Button size="xs" variant="secondary" onClick={() => setRange(75)}>
-            75%
-          </Button>
-          <Button size="xs" variant="secondary" onClick={() => setRange(100)}>
-            Max
-          </Button>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <p className="exposure-sm-italic text-gray-700">Withdrawal amount</p>
+        <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
+          <p className="h1-regular text-gray-700">{range}%</p>
+          <Range minValue={0} maxValue={100} value={range} onChange={(val) => setRange(val)} />
+          <div className="flex gap-2 items-center justify-center mt-2">
+            <Button size="xs" variant="secondary" onClick={() => setRange(25)}>
+              25%
+            </Button>
+            <Button size="xs" variant="secondary" onClick={() => setRange(50)}>
+              50%
+            </Button>
+            <Button size="xs" variant="secondary" onClick={() => setRange(75)}>
+              75%
+            </Button>
+            <Button size="xs" variant="secondary" onClick={() => setRange(100)}>
+              Max
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className="w-full flex flex-col gap-1 diatype-sm-regular">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-gray-500">{baseCoin.symbol} amount</p>
+          <div className="flex items-center gap-1 text-gray-700">
+            <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-4 h-4 rounded-full" />
+            <p>120.00 {baseCoin.symbol}</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-gray-500">{quoteCoin.symbol} amount</p>
+          <div className="flex items-center gap-1 text-gray-700">
+            <img src={quoteCoin.logoURI} alt={quoteCoin.symbol} className="w-4 h-4 rounded-full" />
+            <p>120.00 {quoteCoin.symbol}</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-gray-500">Network fee</p>
+          <div className="flex items-center gap-1 text-gray-700">
+            <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-4 h-4 rounded-full" />
+            <p>$0.02</p>
+          </div>
         </div>
       </div>
     </div>
@@ -261,7 +292,7 @@ const PoolWithdraw: React.FC = () => {
 
 const PoolDepositWithdraw: React.FC = () => {
   const { state } = usePoolLiquidityState();
-  const { coins, action, onChangeAction } = state;
+  const { coins, action, onChangeAction, userLiquidity } = state;
 
   const { baseCoin, quoteCoin } = coins;
 
@@ -270,7 +301,7 @@ const PoolDepositWithdraw: React.FC = () => {
       <Tabs
         layoutId="tabs-send-and-receive"
         selectedTab={action}
-        keys={["deposit", "withdraw"]}
+        keys={userLiquidity ? ["deposit", "withdraw"] : ["deposit"]}
         fullWidth
         onTabChange={(tab) => onChangeAction(tab as "deposit" | "withdraw")}
       />

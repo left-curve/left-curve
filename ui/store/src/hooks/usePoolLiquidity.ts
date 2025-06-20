@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
@@ -15,7 +15,7 @@ export function usePoolLiquidity(parameters: UsePoolLiquidityParameters) {
   const { pairId, action, onChangeAction } = parameters;
   const { account } = useAccount();
   const { coins } = useConfig();
-  const userLiquidity = true;
+  const userLiquidity = false;
 
   const baseCoin = coins[pairId.baseDenom];
   const quoteCoin = coins[pairId.quoteDenom];
