@@ -40,23 +40,23 @@ const EarnPoolsCards: React.FC = () => {
 const EarnUserPoolsTable: React.FC = () => {
   const columns: TableColumn<PoolInfo> = [
     {
-      header: "Vault",
+      header: m["earn.vault"](),
       cell: ({ row }) => <Cell.Assets assets={row.original.pairs} />,
     },
     {
-      header: "APR",
+      header: m["earn.apr"](),
       cell: () => <Cell.Text text="TBD" />,
     },
     {
-      header: "My Position",
+      header: m["earn.myPosition"](),
       cell: ({ row }) => <Cell.Text text={row.original.userPosition} />,
     },
     {
-      header: "TVL",
+      header: m["earn.tvl"](),
       cell: ({ row }) => <Cell.Text text={row.original.tvl} />,
     },
     {
-      header: "Manage",
+      header: m["earn.manage"](),
       cell: () => <Cell.Action action={() => console.log("Manage Pool")} label="Manage" />,
     },
   ];

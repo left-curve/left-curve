@@ -81,7 +81,7 @@ const PoolLiquidityHeader: React.FC = () => {
             "lg:flex-row lg:gap-1 lg:items-center": userLiquidity,
           })}
         >
-          <p className="text-gray-500 diatype-xs-medium">APY</p>
+          <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
           <p className="text-gray-700 diatype-sm-bold">TBD</p>
         </div>
         <div
@@ -89,7 +89,7 @@ const PoolLiquidityHeader: React.FC = () => {
             "lg:flex-row lg:gap-1": userLiquidity,
           })}
         >
-          <p className="text-gray-500 diatype-xs-medium">24h vol</p>
+          <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
           <p className="text-gray-700 diatype-sm-bold">-</p>
         </div>
         <div
@@ -97,7 +97,7 @@ const PoolLiquidityHeader: React.FC = () => {
             "lg:flex-row lg:gap-1 lg:items-center": userLiquidity,
           })}
         >
-          <p className="text-gray-500 diatype-xs-medium">TVL</p>
+          <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
           <p className="text-gray-700 diatype-sm-bold">$15.63M</p>
         </div>
       </div>
@@ -121,7 +121,7 @@ const UserPoolLiquidity: React.FC = () => {
   return (
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card w-full h-fit">
       <div className="flex items-center justify-between">
-        <p className="exposure-sm-italic text-gray-500">Liquidity</p>
+        <p className="exposure-sm-italic text-gray-500">{m["poolLiquidity.liquidity"]()}</p>
         <p className="h4-bold text-gray-900">$1000.50</p>
       </div>
       <div className="flex flex-col w-full gap-2">
@@ -157,7 +157,7 @@ const PoolDeposit: React.FC = () => {
   const { baseCoin, quoteCoin } = coins;
   return (
     <div className="flex flex-col gap-2">
-      <p className="exposure-sm-italic text-gray-700">You deposit</p>
+      <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.deposit"]()}</p>
       <div className="flex flex-col rounded-xl bg-rice-25 shadow-account-card">
         <Input
           value={amountToken0}
@@ -243,7 +243,7 @@ const PoolWithdraw: React.FC = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <p className="exposure-sm-italic text-gray-700">Withdrawal amount</p>
+        <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
         <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
           <p className="h1-regular text-gray-700">{range}%</p>
           <Range minValue={0} maxValue={100} value={range} onChange={(val) => setRange(val)} />
@@ -265,21 +265,25 @@ const PoolWithdraw: React.FC = () => {
       </div>
       <div className="w-full flex flex-col gap-1 diatype-sm-regular">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-500">{baseCoin.symbol} amount</p>
+          <p className="text-gray-500">
+            {baseCoin.symbol} {m["poolLiquidity.amount"]()}
+          </p>
           <div className="flex items-center gap-1 text-gray-700">
             <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-4 h-4 rounded-full" />
             <p>120.00 {baseCoin.symbol}</p>
           </div>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-500">{quoteCoin.symbol} amount</p>
+          <p className="text-gray-500">
+            {quoteCoin.symbol} {m["poolLiquidity.amount"]()}
+          </p>
           <div className="flex items-center gap-1 text-gray-700">
             <img src={quoteCoin.logoURI} alt={quoteCoin.symbol} className="w-4 h-4 rounded-full" />
             <p>120.00 {quoteCoin.symbol}</p>
           </div>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-500">Network fee</p>
+          <p className="text-gray-500">{m["poolLiquidity.networkFee"]()}</p>
           <div className="flex items-center gap-1 text-gray-700">
             <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-4 h-4 rounded-full" />
             <p>$0.02</p>
@@ -292,9 +296,7 @@ const PoolWithdraw: React.FC = () => {
 
 const PoolDepositWithdraw: React.FC = () => {
   const { state } = usePoolLiquidityState();
-  const { coins, action, onChangeAction, userLiquidity } = state;
-
-  const { baseCoin, quoteCoin } = coins;
+  const { action, onChangeAction, userLiquidity } = state;
 
   return (
     <div className="w-full flex flex-col gap-4">

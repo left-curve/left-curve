@@ -509,7 +509,22 @@
   },
   "earn": {
     "title": "Select a strategy",
-    "description": "Earn tokens by lending or providing liquidity"
+    "description": "Earn tokens by lending or providing liquidity",
+    "vault": "Vault",
+    "apr": "APR",
+    "myPosition": "My Position",
+    "tvl": "TVL",
+    "manage": "Manage"
+  },
+  "poolLiquidity": {
+    "apy": "APY",
+    "networkFee": "Network fee",
+    "24hVol": "24h vol",
+    "tvl": "TVL",
+    "liquidity": "Liquidity",
+    "deposit": "You deposit",
+    "withdrawAmount": "Withdrawal amount",
+    "amount": "amount"
   },
   "settings": {
     "title": "Settings",
