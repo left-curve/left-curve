@@ -14,7 +14,10 @@ pub type PrecisionlessPrice = Price<Undefined<Precision>>;
 pub type PrecisionedPrice = Price<Defined<Precision>>;
 
 #[grug::derive(Serde, Borsh)]
-pub struct Price<P: MaybeDefined<Precision> = Defined<Precision>> {
+pub struct Price<P>
+where
+    P: MaybeDefined<Precision>,
+{
     /// The price of the token in its humanized form. I.e. the price of 1 ATOM,
     /// rather than 1 uatom.
     pub humanized_price: Udec128,
