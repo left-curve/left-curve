@@ -104,12 +104,12 @@ impl Related<super::accounts_users::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl indexer_sql::entity::OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks_desc(self, _phantom: std::marker::PhantomData<Entity>) -> Self {
+    fn order_by_blocks_desc(self) -> Self {
         self.order_by(Column::CreatedBlockHeight, Order::Desc)
             .order_by(Column::Address, Order::Desc)
     }
 
-    fn order_by_blocks_asc(self, _phantom: std::marker::PhantomData<Entity>) -> Self {
+    fn order_by_blocks_asc(self) -> Self {
         self.clone()
             .order_by(Column::CreatedBlockHeight, Order::Asc)
             .order_by(Column::Address, Order::Asc)

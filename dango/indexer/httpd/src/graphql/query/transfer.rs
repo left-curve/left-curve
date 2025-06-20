@@ -46,6 +46,7 @@ pub struct TransferQuery {}
 
 #[Object]
 impl TransferQuery {
+    /// Get paginated transfers
     async fn transfers(
         &self,
         ctx: &async_graphql::Context<'_>,

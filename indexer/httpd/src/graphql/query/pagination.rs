@@ -55,10 +55,10 @@ where
 
                 match (last, sort_by) {
                     (None, SortByEnum::BlockHeightAsc) | (Some(_), SortByEnum::BlockHeightDesc) => {
-                        query = query.order_by_blocks_asc(std::marker::PhantomData::<E>)
+                        query = query.order_by_blocks_asc()
                     },
                     (None, SortByEnum::BlockHeightDesc) | (Some(_), SortByEnum::BlockHeightAsc) => {
-                        query = query.order_by_blocks_desc(std::marker::PhantomData::<E>)
+                        query = query.order_by_blocks_desc()
                     },
                 }
 

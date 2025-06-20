@@ -5,6 +5,8 @@ pub mod prelude;
 pub mod transactions;
 
 pub trait OrderByBlocks<C> {
-    fn order_by_blocks_desc(self, _phantom: std::marker::PhantomData<C>) -> Self;
-    fn order_by_blocks_asc(self, _phantom: std::marker::PhantomData<C>) -> Self;
+    fn order_by_blocks_desc(self) -> Self;
+    fn order_by_blocks_asc(self) -> Self;
+
+    fn foo(_phantom: std::marker::PhantomData<C>) {}
 }

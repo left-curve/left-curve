@@ -41,15 +41,12 @@ impl From<entity::accounts::Model> for AccountCursor {
     }
 }
 
-// pub type AccountCursorType = OpaqueCursor<AccountCursor>;
-
-// const MAX_ACCOUNTS: u64 = 100;
-
 #[derive(Default, Debug)]
 pub struct AccountQuery {}
 
 #[Object]
 impl AccountQuery {
+    /// Get paginated accounts
     async fn accounts(
         &self,
         ctx: &async_graphql::Context<'_>,
