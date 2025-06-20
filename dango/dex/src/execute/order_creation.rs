@@ -29,7 +29,7 @@ pub(super) fn create_limit_order(
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
-            amount: order.amount,
+            amount: *order.amount,
         },
     };
 
@@ -50,7 +50,7 @@ pub(super) fn create_limit_order(
         quote_denom: order.quote_denom.clone(),
         direction: order.direction,
         price: order.price,
-        amount: order.amount,
+        amount: *order.amount,
         deposit,
     })?;
 
@@ -66,8 +66,8 @@ pub(super) fn create_limit_order(
             ),
             LimitOrder {
                 user,
-                amount: order.amount,
-                remaining: order.amount,
+                amount: *order.amount,
+                remaining: *order.amount,
                 created_at_block_height: current_block_height,
             },
         ),
@@ -93,11 +93,11 @@ pub(super) fn create_market_order(
     let deposit = match order.direction {
         Direction::Bid => Coin {
             denom: order.quote_denom.clone(),
-            amount: order.amount,
+            amount: *order.amount,
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
-            amount: order.amount,
+            amount: *order.amount,
         },
     };
 
@@ -116,7 +116,7 @@ pub(super) fn create_market_order(
         ),
         &MarketOrder {
             user,
-            amount: order.amount,
+            amount: *order.amount,
             max_slippage: order.max_slippage,
         },
     )?;

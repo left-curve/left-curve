@@ -26,7 +26,7 @@ where
     /// Attempt to create a new non-zero wrapper. Error if a zero is provided.
     pub fn new(inner: T) -> StdResult<Self> {
         if inner.is_zero() {
-            return Err(StdError::zero_value::<Self>());
+            return Err(StdError::zero_value::<T>());
         }
 
         Ok(Self(inner))
@@ -136,13 +136,13 @@ mod tests {
         assert_eq!(res, NonZero(123));
 
         let err = "0".deserialize_json::<NonZero<u32>>().unwrap_err();
-        assert_is_non_zero_err::<NonZero<u32>>(err);
+        assert_is_non_zero_err::<u32>(err);
 
         let res = "\"123\"".deserialize_json::<NonZero<Uint128>>().unwrap();
         assert_eq!(res, NonZero(Uint128::new(123)));
 
         let err = "\"0\"".deserialize_json::<NonZero<Uint128>>().unwrap_err();
-        assert_is_non_zero_err::<NonZero<Uint128>>(err);
+        assert_is_non_zero_err::<Uint128>(err);
     }
 
     #[test]
@@ -155,7 +155,7 @@ mod tests {
         // This is only possible here because the inner value is `pub(crate)`.
         let bad = NonZero(Uint128::ZERO).to_borsh_vec().unwrap();
         let err = bad.deserialize_borsh::<NonZero<Uint128>>().unwrap_err();
-        assert_is_non_zero_err::<NonZero<Uint128>>(err);
+        assert_is_non_zero_err::<Uint128>(err);
     }
 
     #[test]
