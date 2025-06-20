@@ -27,6 +27,12 @@ use {
     test_case::test_case,
 };
 
+/// Ensure order amounts can't be zero.
+///
+/// Typically this should fail during `CheckTx`, because the tx would fail to
+/// deserialize. However, let's just assume an attacker somehow circumvents that
+/// (which would require him to collude with a validator), then the contract
+/// would still reject the order.
 #[test]
 fn cannot_submit_order_with_zero_amount() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
