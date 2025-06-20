@@ -71,7 +71,6 @@ impl TransferQuery {
         >,
     > {
         let app_ctx = ctx.data::<Context>()?;
-        let db = app_ctx.db.clone();
 
         paginate_models::<TransferCursor, entity::transfers::Entity, SortBy>(
             app_ctx,
@@ -81,7 +80,7 @@ impl TransferQuery {
             last,
             sort_by,
             100,
-            |query| {
+            |query, txn| {
                 Box::pin(async move {
                     let mut query = query;
 
@@ -103,7 +102,7 @@ impl TransferQuery {
                         let accounts = entity::accounts::Entity::find()
                             .find_also_related(entity::users::Entity)
                             .filter(entity::users::Column::Username.eq(username))
-                            .all(&db)
+                            .all(txn)
                             .await?;
 
                         let addresses = accounts

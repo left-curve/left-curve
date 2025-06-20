@@ -76,7 +76,7 @@ impl TransactionQuery {
             last,
             sort_by,
             100,
-            |query| {
+            |query, _| {
                 Box::pin(async move {
                     let mut query = query;
 

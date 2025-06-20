@@ -20,7 +20,7 @@ use {
     tracing::Level,
 };
 
-pub const DEFAULT_TRACING_LEVEL: Level = Level::ERROR;
+pub const DEFAULT_TRACING_LEVEL: Level = Level::WARN;
 pub const DEFAULT_CHAIN_ID: &str = "dev-1";
 pub const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 pub const DEFAULT_DEFAULT_GAS_LIMIT: u64 = 1_000_000;

@@ -2,7 +2,7 @@ use {
     crate::context::Context,
     async_graphql::{types::connection::*, *},
     indexer_sql::entity::OrderByBlocks,
-    sea_orm::{EntityTrait, Order, QuerySelect, Select},
+    sea_orm::{DatabaseTransaction, EntityTrait, Order, QuerySelect, Select, TransactionTrait},
     serde::{Serialize, de::DeserializeOwned},
     std::{cmp, future::Future, pin::Pin},
 };
@@ -19,10 +19,11 @@ pub async fn paginate_models<C, E, S>(
     last: Option<i32>,
     sort_by: Option<S>,
     max_items: u64,
-    update_query: impl FnOnce(
+    update_query: impl for<'txn> FnOnce(
         Select<E>,
+        &'txn DatabaseTransaction,
     ) -> Pin<
-        Box<dyn Future<Output = Result<Select<E>, async_graphql::Error>> + Send>,
+        Box<dyn Future<Output = Result<Select<E>, async_graphql::Error>> + Send + 'txn>,
     >,
 ) -> Result<Connection<OpaqueCursor<C>, E::Model, EmptyFields, EmptyFields>>
 where
@@ -67,7 +68,7 @@ where
                     (first, Some(after), None, None) => {
                         query = query.cursor_filter(order.clone(), &after);
 
-                        limit = cmp::min(first.unwrap_or(0) as u64, max_items   );
+                        limit = cmp::min(first.unwrap_or(0) as u64, max_items);
                         query = query.limit(limit + 1);
 
                         has_previous_page = true;
@@ -102,14 +103,16 @@ where
 
                     _ => {
                         return Err(async_graphql::Error::new(
-                            "Unexpected combination of pagination parameters, should use first with after or last with before",
+                            "unexpected combination of pagination parameters, should use `first` with `after` or `last` with `before`",
                         ));
                     },
                 }
 
-                let query = update_query(query).await?;
+                let txn = app_ctx.db.begin().await?;
 
-                let mut models = query.all(&app_ctx.db).await?;
+                let query = update_query(query, &txn).await?;
+
+                let mut models = query.all(&txn).await?;
 
                 if models.len() > limit as usize {
                     models.pop();
