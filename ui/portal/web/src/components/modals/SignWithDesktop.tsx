@@ -5,13 +5,12 @@ import { useApp } from "~/hooks/useApp";
 
 import { Spinner } from "@left-curve/applets-kit";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { toast } from "../foundation/Toast";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
-  const { router, hideModal } = useApp();
+  const { router, toast, hideModal } = useApp();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,

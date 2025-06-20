@@ -3,8 +3,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import { useAccount, useSigningClient } from "@left-curve/store";
-import { useMutation } from "@tanstack/react-query";
+import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
 export const ProTradeCloseAll = forwardRef(() => {
@@ -12,26 +11,18 @@ export const ProTradeCloseAll = forwardRef(() => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
 
-  const { isPending, mutateAsync: cancelAllOrders } = useMutation({
-    mutationFn: async () => {
-      if (!signingClient) throw new Error("No signing client available");
-      subscriptions.emit("submitTx", { isSubmitting: true });
-      await signingClient
-        .batchUpdateOrders({ cancels: "all", sender: account!.address })
-        .then(() => {
-          subscriptions.emit("submitTx", {
-            isSubmitting: false,
-            txResult: { hasSucceeded: true, message: m["dex.protrade.allOrdersCancelled"]() },
-          });
-        })
-        .catch(() => {
-          subscriptions.emit("submitTx", {
-            isSubmitting: false,
-            txResult: { hasSucceeded: false, message: m["errors.failureRequest"]() },
-          });
-        });
+  const { isPending, mutateAsync: cancelAllOrders } = useSubmitTx({
+    submission: {
+      success: m["dex.protrade.allOrdersCancelled"](),
+      error: m["errors.failureRequest"](),
     },
-    onSuccess: () => hideModal(),
+    mutation: {
+      mutationFn: async () => {
+        if (!signingClient) throw new Error("No signing client available");
+        await signingClient.batchUpdateOrders({ cancels: "all", sender: account!.address });
+      },
+      onSuccess: () => hideModal(),
+    },
   });
 
   return (

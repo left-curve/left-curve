@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
@@ -6,6 +6,7 @@ import { useConfig } from "./useConfig.js";
 import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
+import { useSubmitTx } from "./useSubmitTx.js";
 
 import { Direction } from "@left-curve/dango/types";
 import { capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
@@ -94,52 +95,54 @@ export function useProTrade(parameters: UseProTradeParameters) {
     refetchInterval: 1000 * 10,
   });
 
-  const submission = useMutation({
-    mutationFn: async () => {
-      if (!signingClient) throw new Error("No signing client available");
-      if (!account) throw new Error("No account found");
+  const submission = useSubmitTx({
+    mutation: {
+      mutationFn: async () => {
+        if (!signingClient) throw new Error("No signing client available");
+        if (!account) throw new Error("No account found");
 
-      const direction = Direction[capitalize(action) as keyof typeof Direction];
-      const { baseDenom, quoteDenom } = pairId;
+        const direction = Direction[capitalize(action) as keyof typeof Direction];
+        const { baseDenom, quoteDenom } = pairId;
 
-      const amount = needsConversion
-        ? convertAmount(inputs.size.value, sizeCoin.denom, availableCoin.denom, true)
-        : parseUnits(inputs.size.value, availableCoin.decimals).toString();
+        const amount = needsConversion
+          ? convertAmount(inputs.size.value, sizeCoin.denom, availableCoin.denom, true)
+          : parseUnits(inputs.size.value, availableCoin.decimals).toString();
 
-      const order =
-        operation === "market"
-          ? {
-              createsMarket: [
-                {
-                  baseDenom,
-                  quoteDenom,
-                  amount,
-                  direction,
-                  maxSlippage: "0.08",
-                },
-              ],
-            }
-          : {
-              createsLimit: [
-                {
-                  amount,
-                  baseDenom,
-                  quoteDenom,
-                  direction,
-                  price: parseUnits(inputs.price.value, quoteCoin.decimals).toString(),
-                },
-              ],
-            };
+        const order =
+          operation === "market"
+            ? {
+                createsMarket: [
+                  {
+                    baseDenom,
+                    quoteDenom,
+                    amount,
+                    direction,
+                    maxSlippage: "0.08",
+                  },
+                ],
+              }
+            : {
+                createsLimit: [
+                  {
+                    amount,
+                    baseDenom,
+                    quoteDenom,
+                    direction,
+                    price: parseUnits(inputs.price.value, quoteCoin.decimals).toString(),
+                  },
+                ],
+              };
 
-      await signingClient.batchUpdateOrders({
-        sender: account.address,
-        ...order,
-        funds: { [availableCoin.denom]: amount },
-      });
+        await signingClient.batchUpdateOrders({
+          sender: account.address,
+          ...order,
+          funds: { [availableCoin.denom]: amount },
+        });
 
-      await orders.refetch();
-      await updateBalance();
-      controllers.reset();
+        await orders.refetch();
+        await updateBalance();
+        controllers.reset();
+      },
     },
   });
 

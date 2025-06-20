@@ -118,7 +118,11 @@ export {
   useInfiniteGraphqlQuery,
 } from "./hooks/useInfiniteGraphqlQuery.js";
 
-export { type UseSubmitTxParameters, useSubmitTx } from "./hooks/useSubmitTx.js";
+export {
+  type UseSubmitTxParameters,
+  type UseSubmitTxReturnType,
+  useSubmitTx,
+} from "./hooks/useSubmitTx.js";
 
 export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
 

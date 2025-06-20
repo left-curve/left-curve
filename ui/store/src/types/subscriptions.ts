@@ -25,9 +25,11 @@ export type SubscriptionSchema = [
   {
     key: "submitTx";
     params?: undefined;
-    listener: (event: {
+    listener: <T>(event: {
       isSubmitting: boolean;
-      txResult?: { hasSucceeded: boolean; message: string };
+      isSuccess?: boolean;
+      message?: string;
+      data?: T;
     }) => void;
   },
 ];

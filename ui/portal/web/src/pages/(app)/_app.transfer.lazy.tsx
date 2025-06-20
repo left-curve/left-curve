@@ -1,5 +1,12 @@
 import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
-import { useAccount, useBalances, useConfig, usePrices, useSigningClient } from "@left-curve/store";
+import {
+  useAccount,
+  useBalances,
+  useConfig,
+  usePrices,
+  useSigningClient,
+  useSubmitTx,
+} from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
@@ -20,7 +27,6 @@ import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
 import { Modals } from "~/components/modals/RootModal";
 
-import { toast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
 import { isValidAddress } from "@left-curve/dango";
@@ -37,6 +43,7 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 });
 
 function TransferApplet() {
+  const { toast } = useApp();
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
   const { settings, showModal, subscriptions } = useApp();
@@ -70,15 +77,27 @@ function TransferApplet() {
     formatOptions: { ...formatNumberOptions, currency: "USD" },
   });
 
-  const { mutateAsync: onSubmit, isPending } = useMutation<
+  const { mutateAsync: onSubmit, isPending } = useSubmitTx<
     void,
     Error,
     { amount: string; address: string }
   >({
-    mutationFn: async ({ address, amount }) => {
-      if (!signingClient) throw new Error("error: no signing client");
-      subscriptions.emit("submitTx", { isSubmitting: true });
-      try {
+    toast: {
+      success: () => toast.success({ title: m["sendAndReceive.sendSuccessfully"]() }),
+      error: () =>
+        toast.error(
+          { title: m["transfer.error.title"](), description: m["transfer.error.description"]() },
+          { duration: Number.POSITIVE_INFINITY },
+        ),
+    },
+    submission: {
+      success: m["sendAndReceive.sendSuccessfully"](),
+      error: m["transfer.error.description"](),
+    },
+    mutation: {
+      mutationFn: async ({ address, amount }, { abort }) => {
+        if (!signingClient) throw new Error("error: no signing client");
+
         const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
         const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
@@ -91,17 +110,7 @@ function TransferApplet() {
           rejectSend,
         });
 
-        const response = await promise
-          .then(() => true)
-          .catch(() => {
-            subscriptions.emit("submitTx", {
-              isSubmitting: false,
-              txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
-            });
-            return false;
-          });
-
-        if (!response) return undefined;
+        await promise.catch(abort);
 
         await signingClient.transfer({
           transfer: {
@@ -111,31 +120,12 @@ function TransferApplet() {
           },
           sender: account!.address as Address,
         });
-
+      },
+      onSuccess: () => {
         reset();
-        toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-        subscriptions.emit("submitTx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
-        });
         refreshBalances();
         queryClient.invalidateQueries({ queryKey: ["quests", account] });
-      } catch (e) {
-        console.error(e);
-        subscriptions.emit("submitTx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
-        });
-        toast.error(
-          {
-            title: m["transfer.error.title"](),
-            description: m["transfer.error.description"](),
-          },
-          {
-            duration: Number.POSITIVE_INFINITY,
-          },
-        );
-      }
+      },
     },
   });
 

@@ -31,6 +31,13 @@ export type UseSubmitTxParameters<
   };
 };
 
+export type UseSubmitTxReturnType<
+  TData = unknown,
+  TError = DefaultError,
+  TVariables = void,
+  TContext = unknown,
+> = UseMutationResult<TData, TError, TVariables, TContext>;
+
 export function useSubmitTx<
   TData = unknown,
   TError = DefaultError,
@@ -39,7 +46,7 @@ export function useSubmitTx<
 >(
   parameters: UseSubmitTxParameters<TData, TError, TVariables, TContext>,
   queryClient?: QueryClient,
-): UseMutationResult<TData | undefined, TError, TVariables, TContext> {
+): UseSubmitTxReturnType<TData, TError, TVariables, TContext> {
   const { subscriptions } = useConfig();
   const { mutation, submission = {}, toast = {} } = parameters;
 
@@ -68,6 +75,7 @@ export function useSubmitTx<
 
           return data;
         } catch (error) {
+          console.log(error);
           if (error instanceof Error && error.name === "AbortError") {
             const message = submission?.abort || "Transaction submission aborted.";
             subscriptions.emit("submitTx", { isSubmitting: false, isSuccess: false, message });
