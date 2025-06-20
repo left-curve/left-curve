@@ -32,15 +32,15 @@ macro_rules! generate_types {
                 graphql_client::{GraphQLQuery, Response},
                 serde_json::json,
             };
-            // #[cfg(feature = "tracing")]
-            // use grug::setup_tracing_subscriber;
+            #[cfg(feature = "tracing")]
+            use grug::setup_tracing_subscriber;
 
             $($(
                 paste::paste! {
                     #[tokio::test]
                     async fn [<test_ $name:snake>]() -> anyhow::Result<()> {
-                        // #[cfg(feature = "tracing")]
-                        // setup_tracing_subscriber(tracing::Level::WARN);
+                        #[cfg(feature = "tracing")]
+                        setup_tracing_subscriber(tracing::Level::WARN);
 
                         let port = get_mock_socket_addr();
 
