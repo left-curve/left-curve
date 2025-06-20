@@ -46,7 +46,7 @@ function TransferApplet() {
   const { toast } = useApp();
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal, subscriptions } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();

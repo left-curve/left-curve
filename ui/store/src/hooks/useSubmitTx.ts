@@ -57,12 +57,14 @@ export function useSubmitTx<
       ...mutation,
       mutationFn: async (variables: TVariables) => {
         const controller = new AbortController();
-
         subscriptions.emit("submitTx", { isSubmitting: true });
+
         try {
           const data = await mutationFn(variables, {
             signal: controller.signal,
-            abort: () => controller.abort(),
+            abort: () => {
+              throw controller.abort();
+            },
           });
 
           const message = (() => {
@@ -75,15 +77,15 @@ export function useSubmitTx<
 
           return data;
         } catch (error) {
-          console.log(error);
-          if (error instanceof Error && error.name === "AbortError") {
-            const message = submission?.abort || "Transaction submission aborted.";
-            subscriptions.emit("submitTx", { isSubmitting: false, isSuccess: false, message });
-            const abortError = new Error(message);
-            toast.error?.(abortError as TError);
-            throw abortError;
+          if (error) {
+            console.log(error);
+            toast.error?.(error as TError);
           }
+
+          const abortError = new Error(submission?.abort || "Transaction submission aborted.");
+
           const message = (() => {
+            if (!error) return abortError.message;
             if (typeof submission.error === "function") return submission.error(error as TError);
             return submission.error || "An error occurred while submitting the transaction.";
           })();
@@ -93,9 +95,8 @@ export function useSubmitTx<
             isSuccess: false,
             message,
           });
-          toast.error?.(error as TError);
 
-          throw error;
+          throw error || abortError;
         }
       },
     },
