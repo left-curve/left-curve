@@ -16,7 +16,8 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdResult, Udec128, Uint128, UniqueVec, btree_map, coin_pair, coins,
+        ResultExt, Signer, StdResult, Timestamp, Udec128, Uint128, UniqueVec, btree_map, coin_pair,
+        coins,
     },
     hyperlane_types::constants::ethereum,
     std::{
@@ -294,7 +295,7 @@ fn dex_works(
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -308,7 +309,7 @@ fn dex_works(
                 dango::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -1249,7 +1250,7 @@ fn provide_liquidity(
                     denom => PriceSource::Fixed {
                         humanized_price: price,
                         precision: 6,
-                        timestamp: 1730802926,
+                        timestamp: Timestamp::from_seconds(1730802926),
                     },
                 }),
                 Coins::new(),
@@ -1386,7 +1387,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                 dango::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -1401,7 +1402,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -2570,7 +2571,7 @@ fn curve_on_orderbook(
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -2586,7 +2587,7 @@ fn curve_on_orderbook(
                 eth::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::new_percent(2000),
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -2711,7 +2712,7 @@ fn volume_tracking_works() {
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -2727,7 +2728,7 @@ fn volume_tracking_works() {
                 dango::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -3032,7 +3033,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -3048,7 +3049,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 dango::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -3064,7 +3065,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 eth::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::from_str("85248.71").unwrap(),
                     precision: 8,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -5035,13 +5036,13 @@ fn market_order_clearing(
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
                 dango::DENOM.clone() => PriceSource::Fixed {
-                   humanized_price: Udec128::ONE,
-                   precision: 6,
-                   timestamp: 1730802926,
-               },
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
             }),
             Coins::new(),
         )

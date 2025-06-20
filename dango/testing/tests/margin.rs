@@ -18,8 +18,8 @@ use {
     grug::{
         Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
         JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, Number,
-        NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Udec128,
-        Uint128, btree_map, coins,
+        NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Timestamp,
+        Udec128, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -181,7 +181,7 @@ fn register_fixed_price(
                 denom => dango_types::oracle::PriceSource::Fixed {
                     humanized_price,
                     precision,
-                    timestamp: 0,
+                    timestamp: Timestamp::from_seconds(0),
                 }
             }),
             Coins::default(),
@@ -871,7 +871,8 @@ fn test_denom(index: usize) -> impl Strategy<Value = TestDenom> {
     )
         .prop_map(|(denom, precision, price)| TestDenom {
             denom,
-            initial_price: PrecisionlessPrice::new(price, price, 0u64).with_precision(precision),
+            initial_price: PrecisionlessPrice::new(price, price, Timestamp::from_seconds(0))
+                .with_precision(precision),
         })
 }
 
