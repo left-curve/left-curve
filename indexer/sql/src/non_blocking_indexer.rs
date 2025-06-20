@@ -345,8 +345,6 @@ where
 
     /// Wait for all blocks to be indexed
     pub fn wait_for_finish(&self) {
-        let _span = tracing::info_span!("indexer", id = self.id).entered();
-
         for _ in 0..100 {
             if self.blocks.lock().expect("can't lock blocks").is_empty() {
                 break;
@@ -418,7 +416,11 @@ where
             });
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "`index_previous_unindexed_blocks` started");
+            tracing::info!(
+                block_height,
+                indexer_id = self.id,
+                "`index_previous_unindexed_blocks` started"
+            );
 
             self.handle.block_on(async {
                 block_to_index
@@ -436,7 +438,11 @@ where
             }
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "`index_previous_unindexed_blocks` ended");
+            tracing::info!(
+                block_height,
+                indexer_id = self.id,
+                "`index_previous_unindexed_blocks` ended"
+            );
         }
 
         Ok(())
@@ -453,8 +459,6 @@ where
     where
         S: Storage,
     {
-        let _span = tracing::info_span!("indexer", id = self.id).entered();
-
         self.handle.block_on(async {
             self.context.migrate_db().await?;
             self.hooks
@@ -488,8 +492,6 @@ where
     }
 
     fn shutdown(&mut self) -> error::Result<()> {
-        let _span = tracing::info_span!("indexer", id = self.id).entered();
-
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -539,14 +541,16 @@ where
     }
 
     fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> error::Result<()> {
-        let _span = tracing::info_span!("indexer", id = self.id).entered();
-
         if !self.indexing {
             bail!("can't index after shutdown");
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.info.height, "`index_block` called");
+        tracing::debug!(
+            block_height = block.info.height,
+            indexer_id = self.id,
+            "`index_block` called"
+        );
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
@@ -557,7 +561,11 @@ where
             block_to_index.save_to_disk()?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.info.height, "`index_block` finished");
+            tracing::info!(
+                block_height = block.info.height,
+                indexer_id = self.id,
+                "`index_block` finished"
+            );
 
             Ok(())
         })
@@ -568,8 +576,6 @@ where
         block_height: u64,
         querier: Box<dyn QuerierProvider>,
     ) -> error::Result<()> {
-        let _span = tracing::info_span!("indexer", id = self.id).entered();
-
         if !self.indexing {
             bail!("can't index after shutdown");
         }
