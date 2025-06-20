@@ -1,6 +1,6 @@
 use {
     crate::{
-        GenesisConfig, HostConfig,
+        GenesisConfig, MempoolConfig,
         app::{HostApp, MempoolApp},
         codec,
         config::ActorsConfig,
@@ -107,14 +107,15 @@ where
     let sync_metrics: SyncMetrics = SyncMetrics::register(&registry);
 
     let mempool_network = spawn_mempool_network_actor(&cfg, &private_key, &registry).await;
-    let mempool = spawn_mempool_actor(mempool_network, app.clone(), span.clone()).await;
+    let mempool =
+        spawn_mempool_actor(mempool_network, app.clone(), span.clone(), &cfg.mempool).await;
 
     let network = spawn_network_actor(&cfg, &private_key, &registry, &span).await;
 
     let host = spawn_host_actor(
         private_key.derive_address(),
         app,
-        cfg.host,
+        &cfg,
         mempool.clone(),
         network.clone(),
         validator_set.clone(),
@@ -163,8 +164,11 @@ async fn spawn_mempool_actor(
     mempool_network: MempoolNetworkActorRef,
     app: Arc<dyn MempoolApp>,
     span: Span,
+    config: &MempoolConfig,
 ) -> MempoolActorRef {
-    Mempool::spawn(mempool_network, app, span).await.unwrap()
+    Mempool::spawn(mempool_network, app, span, config.clone())
+        .await
+        .unwrap()
 }
 
 async fn spawn_mempool_network_actor(
@@ -253,7 +257,7 @@ async fn spawn_network_actor(
 async fn spawn_host_actor<DB, VM, PP, ID>(
     address: ctx!(Address),
     app: Arc<App<DB, VM, PP, ID>>,
-    config: HostConfig,
+    config: &ActorsConfig,
     mempool: MempoolActorRef,
     network: NetworkRef<Context>,
     validator_set: ctx!(ValidatorSet),
@@ -263,7 +267,17 @@ where
     DB: Db,
     App<DB, VM, PP, ID>: HostApp,
 {
-    Host::spawn(address, app, mempool, network, validator_set, span, config).await
+    Host::spawn(
+        address,
+        app,
+        mempool,
+        network,
+        validator_set,
+        span,
+        config.host.clone(),
+        config.mempool.clone(),
+    )
+    .await
 }
 
 async fn spawn_sync_actor(

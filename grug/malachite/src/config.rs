@@ -2,9 +2,9 @@ use {
     bytesize::ByteSize,
     grug::{BlockInfo, GenesisState},
     malachitebft_app::config::{
-        ConsensusConfig, LoggingConfig, MempoolConfig, MetricsConfig, RuntimeConfig,
-        ValueSyncConfig,
+        ConsensusConfig, LoggingConfig, MetricsConfig, RuntimeConfig, ValueSyncConfig,
     },
+    malachitebft_config::P2pConfig,
     serde::{Deserialize, Serialize},
     std::time::Duration,
 };
@@ -40,14 +40,30 @@ pub struct ActorsConfig {
 pub struct HostConfig {
     #[serde(with = "humantime_serde")]
     pub block_time: Duration,
-    pub max_tx_bytes: ByteSize,
 }
 
 impl Default for HostConfig {
     fn default() -> Self {
         Self {
             block_time: Duration::from_millis(500),
-            max_tx_bytes: ByteSize::mb(4),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MempoolConfig {
+    /// P2P configuration options
+    pub p2p: P2pConfig,
+    pub max_txs_bytes: ByteSize,
+    pub avg_tx_bytes: ByteSize,
+}
+
+impl Default for MempoolConfig {
+    fn default() -> Self {
+        Self {
+            p2p: P2pConfig::default(),
+            max_txs_bytes: ByteSize::mb(4),
+            avg_tx_bytes: ByteSize::kb(100),
         }
     }
 }

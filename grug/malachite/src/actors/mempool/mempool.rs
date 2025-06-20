@@ -1,6 +1,6 @@
 use {
     crate::{
-        ActorResult,
+        ActorResult, MempoolConfig,
         actors::mempool::network::{GossipNetworkMsg, MempoolNetworkActorRef, MempoolNetworkMsg},
         app::MempoolAppRef,
         types::RawTx,
@@ -41,7 +41,6 @@ pub enum Msg {
         reply: RpcReplyPort<Result<CheckTxOutcome, MempoolError>>,
     },
     Take {
-        max_tx_bytes: usize,
         reply: RpcReplyPort<Vec<RawTx>>,
     },
     Remove(Vec<RawTx>),
@@ -57,6 +56,9 @@ pub struct Mempool {
     mempool_network: MempoolNetworkActorRef,
     app: MempoolAppRef,
     span: Span,
+    config: MempoolConfig,
+    /// The maximum average number of transactions that can be taken from the mempool.
+    max_avg_txs: usize,
 }
 
 impl Mempool {
@@ -64,11 +66,15 @@ impl Mempool {
         mempool_network: MempoolNetworkActorRef,
         app: MempoolAppRef,
         span: Span,
+        config: MempoolConfig,
     ) -> Result<MempoolActorRef, ractor::SpawnErr> {
         let node = Self {
             mempool_network,
             app,
             span,
+            max_avg_txs: config.max_txs_bytes.as_u64() as usize
+                / config.avg_tx_bytes.as_u64() as usize,
+            config,
         };
 
         let (actor_ref, _) = Actor::spawn(None, node, ()).await?;
@@ -79,10 +85,7 @@ impl Mempool {
         match msg {
             Msg::NetworkEvent(event) => self.handle_network_event(&event, state)?,
             Msg::Add { tx, reply } => self.add_tx(tx, Some(reply), state)?,
-            Msg::Take {
-                max_tx_bytes,
-                reply,
-            } => self.take(state, max_tx_bytes, reply)?,
+            Msg::Take { reply } => self.take(state, reply)?,
             Msg::Remove(tx_hashes) => self.remove(tx_hashes, state)?,
         }
 
@@ -107,7 +110,7 @@ impl Mempool {
                 // TODO: Actually MempoolTransactionBatch is in prost format
                 let tx = batch.transaction_batch.value.deserialize_borsh::<RawTx>()?;
 
-                self.add_tx(txs, None, state)
+                self.add_tx(tx, None, state)
             },
         }
     }
@@ -147,13 +150,10 @@ impl Mempool {
         Ok(())
     }
 
-    fn take(
-        &self,
-        state: &mut State,
-        mut max_tx_bytes: usize,
-        reply: RpcReplyPort<Vec<RawTx>>,
-    ) -> ActorResult<()> {
-        let mut txs = Vec::with_capacity(min(max_tx_bytes, state.txs.len()));
+    fn take(&self, state: &mut State, reply: RpcReplyPort<Vec<RawTx>>) -> ActorResult<()> {
+        let mut txs = Vec::with_capacity(min(self.max_avg_txs, state.txs.len()));
+
+        let mut max_tx_bytes = self.config.max_txs_bytes.as_u64() as usize;
 
         for tx in state.txs.iter() {
             // we are not removing the tx from the mempool, here because prepare proposal could not

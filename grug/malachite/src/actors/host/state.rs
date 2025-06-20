@@ -1,6 +1,6 @@
 use {
     crate::{
-        ActorResult, HostConfig, RawTx,
+        ActorResult, HostConfig, MempoolConfig, RawTx,
         app::HostAppRef,
         context::Context,
         ctx,
@@ -24,6 +24,7 @@ pub struct State {
     pub role: Role,
     pub round: Round,
     pub config: HostConfig,
+    pub mempool_config: MempoolConfig,
     pub db_storage: Box<dyn ConsensusStorage>,
     consensus: Option<ConsensusRef<Context>>,
     started_round: Instant,
@@ -35,6 +36,7 @@ impl State {
     pub fn new<S: ConsensusStorage + 'static>(
         storage: S,
         config: HostConfig,
+        mempool_config: MempoolConfig,
         app: HostAppRef,
     ) -> Self {
         Self {
@@ -45,6 +47,7 @@ impl State {
             proposer: None,
             role: Role::None,
             config,
+            mempool_config,
             started_round: Instant::now(),
             app,
             pending_commit_block_hash: None,
@@ -94,7 +97,7 @@ impl State {
 
     pub fn prepare_proposal(&self, txs: Vec<RawTx>) -> Vec<RawTx> {
         self.app
-            .prepare_proposal(txs, self.config.max_tx_bytes.as_u64() as usize)
+            .prepare_proposal(txs, self.mempool_config.max_txs_bytes.as_u64() as usize)
     }
 
     pub fn finalize_block<T>(&mut self, block: &Block<T>) -> AppResult<BlockHash> {

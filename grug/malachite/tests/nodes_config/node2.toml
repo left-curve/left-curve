@@ -36,8 +36,8 @@ mesh_outbound_min = 2
 type              = "gossipsub"
 
 [mempool]
-gossip_batch_size = 0
-max_tx_count      = 10000
+avg_tx_bytes  = "100 KB"
+max_txs_bytes = "4 MB"
 
 [mempool.p2p]
 listen_addr      = "/ip4/127.0.0.1/tcp/28001"
@@ -59,12 +59,6 @@ mesh_n_high       = 12
 mesh_n_low        = 4
 mesh_outbound_min = 2
 type              = "gossipsub"
-
-[mempool.load]
-count     = 1000
-interval  = "1s"
-load_type = "uniform_load"
-size      = "256 B"
 
 [value_sync]
 enabled                = true
@@ -91,5 +85,4 @@ enabled = false
 size    = "0 B"
 
 [host]
-block_time   = "5s"
-max_tx_bytes = "4 MB"
+block_time = "5s"

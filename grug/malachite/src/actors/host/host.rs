@@ -1,6 +1,6 @@
 use {
     crate::{
-        ActorResult, HostConfig, PreBlock, ProposalData,
+        ActorResult, HostConfig, MempoolConfig, PreBlock, ProposalData,
         app::HostApp,
         context::Context,
         ctx,
@@ -76,12 +76,13 @@ impl Host {
         validator_set: ctx!(ValidatorSet),
         span: Span,
         config: HostConfig,
+        mempool_config: MempoolConfig,
     ) -> HostRef
     where
         DB: Db,
         App<DB, VM, PP, ID>: HostApp,
     {
-        let args = State::new(app.db.state_consensus(), config, app);
+        let args = State::new(app.db.state_consensus(), config, mempool_config, app);
 
         let host = Host {
             mempool,
@@ -318,13 +319,7 @@ impl Host {
             info!("Taking txs from mempool");
             let txs = self
                 .mempool
-                .call(
-                    |reply| MempoolMsg::Take {
-                        max_tx_bytes: state.config.max_tx_bytes.as_u64() as usize,
-                        reply,
-                    },
-                    None,
-                )
+                .call(|reply| MempoolMsg::Take { reply }, None)
                 .await?
                 .success_or(anyhow::anyhow!("Failed to take txs from mempool"))?;
 
