@@ -120,13 +120,13 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
         let price_unchecked = value.get_price_unchecked();
         let price = Udec128::checked_from_atomics::<u128>(
             price_unchecked.price.try_into()?,
-            price_unchecked.expo.try_into()?,
+            (-price_unchecked.expo).try_into()?,
         )?;
 
         let ema_unchecked = value.get_ema_price_unchecked();
         let ema = Udec128::checked_from_atomics::<u128>(
             ema_unchecked.price.try_into()?,
-            ema_unchecked.expo.try_into()?,
+            (-ema_unchecked.expo).try_into()?,
         )?;
 
         let timestamp = Timestamp::from_seconds(price_unchecked.publish_time.try_into()?);
