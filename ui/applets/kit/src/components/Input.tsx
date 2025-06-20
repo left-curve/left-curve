@@ -46,6 +46,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       label,
       name,
       placeholder,
+      onFocus,
+      onBlur,
       ...props
     },
     ref,
@@ -57,6 +59,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       isDisabled,
       isInvalid,
     });
+
     return (
       <div className={base({ className: classNames?.base })}>
         {label ? (
@@ -88,8 +91,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               ) : (
                 <input
                   type={type}
-                  onFocus={() => setIsFocus(true)}
-                  onBlur={() => setIsFocus(false)}
+                  onFocus={(e) => {
+                    setIsFocus(true);
+                    onFocus?.(e);
+                  }}
+                  onBlur={(e) => {
+                    setIsFocus(false);
+                    onBlur?.(e);
+                  }}
                   disabled={isDisabled}
                   className={input({ startText, className: classNames?.input })}
                   ref={ref}

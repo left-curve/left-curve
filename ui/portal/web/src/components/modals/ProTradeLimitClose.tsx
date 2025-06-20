@@ -3,7 +3,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { forwardRef } from "react";
 
-export const ProSwapLimitClose = forwardRef(() => {
+export const ProTradeLimitClose = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (

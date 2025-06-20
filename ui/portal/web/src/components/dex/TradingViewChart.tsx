@@ -12,24 +12,22 @@ export const TradingViewChart: React.FC = () => {
       script.src = "https://s3.tradingview.com/tv.js";
       script.async = true;
 
-      script.onload = () => {
+      script.onload = async () => {
         if (window.TradingView) {
           new window.TradingView.widget({
             container_id: "tv_chart_container",
             autosize: true,
             symbol: "BINANCE:ETHUSDT",
             interval: "15",
-            timezone: "Etc/UTC",
+            timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
+            backgroundColor: "#FFF9F0",
             theme: "light",
-            style: "1",
-            locale: "es",
-            toolbar_bg: "#FFF9F0",
             enable_publishing: false,
             allow_symbol_change: false,
             withdateranges: true,
             details: false,
             hide_side_toolbar: false,
-
+            save_image: false,
             overrides: {
               "mainSeriesProperties.candleStyle.upColor": "#27AE60",
               "mainSeriesProperties.candleStyle.downColor": "#EB5757",
@@ -38,14 +36,12 @@ export const TradingViewChart: React.FC = () => {
               "mainSeriesProperties.candleStyle.wickUpColor": "#27AE60",
               "mainSeriesProperties.candleStyle.wickDownColor": "#EB5757",
 
-              //Background
-              "paneProperties.backgroundType": "solid",
-              "paneProperties.background": "rgba(0, 0, 0, 0)",
-              "paneProperties.vertGridProperties.color": "rgba(0, 0, 0, 0)",
-              "paneProperties.horzGridProperties.color": "rgba(0, 0, 0, 0)",
+              "paneProperties.vertGridProperties.color": "#E5E0D8",
+              "paneProperties.horzGridProperties.color": "#E5E0D8",
 
-              "scalesProperties.textColor": "#6E6865",
-              "mainSeriesProperties.priceLine.color": "#6E6865",
+              "mainSeriesProperties.areaStyle.color1": "#606090",
+
+              "paneProperties.crossHairProperties.color": "#000000",
             },
 
             studies_overrides: {
@@ -65,7 +61,7 @@ export const TradingViewChart: React.FC = () => {
     <div
       id="tv_chart_container"
       ref={chartContainerRef}
-      className="w-full min-h-[40.5rem] h-full"
+      className="w-full lg:min-h-[52vh] h-full"
     />
   );
 };

@@ -1,8 +1,6 @@
 import {
   Button,
   IconBell,
-  IconButton,
-  IconChevronRight,
   IconGear,
   IconUser,
   twMerge,
@@ -14,13 +12,12 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { TradeButtons } from "../dex/TradeButtons";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
-import { TradeMenu } from "./TradeMenu";
-import { TradeButtons } from "../pro-swap/TradeButtons";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -31,7 +28,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
 
   const {
     setSidebarVisibility,
-    setTradeBarVisibility,
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
     isSidebarVisible,
@@ -42,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
-  const isProSwap = location.pathname.includes("pro-swap");
+  const isProSwap = location.pathname.includes("trade");
 
   return (
     <header
@@ -116,7 +112,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
       {isLg ? <AccountMenu.Desktop /> : <AccountMenu.Mobile />}
-      {isLg ? null : <TradeMenu.Mobile />}
     </header>
   );
 };

@@ -1,4 +1,4 @@
-import JsonView from "react-json-view";
+import JsonView from "@microlink/react-json-view";
 
 import type React from "react";
 

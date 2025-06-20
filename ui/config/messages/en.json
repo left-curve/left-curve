@@ -12,6 +12,7 @@
     "continue": "Continue",
     "back": "Back",
     "cancel": "Cancel",
+    "cancelAll": "Cancel All",
     "delete": "Delete",
     "available": "Available",
     "username": "Username",
@@ -134,12 +135,12 @@
       "keywords": "account,create,register"
     },
     "5": {
-      "id": "pro-swap",
+      "id": "trade",
       "img": "/images/emojis/simple/spot.svg",
-      "title": "Pro Swap",
+      "title": "Trade",
       "description": "Real-Time Charts, Data & Trading",
-      "path": "/pro-swap",
-      "keywords": "swap,trade,pro,charts,data,trading"
+      "path": "/trade",
+      "keywords": "swap,dex,trade,pro,charts,data,trading"
     }
   },
   "explorer": {
@@ -251,6 +252,11 @@
       "title": "Session expired",
       "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
       "stayLogout": "Stay logged out"
+    },
+    "protradeCloseAllOrders": {
+      "title": "Close All Orders",
+      "description": "This will close all your positions and cancel their associated TP/SL orders.",
+      "action": "Confirm Close Orders"
     }
   },
   "signin": {
@@ -419,7 +425,7 @@
   "notifications": {
     "title": "Notifications",
     "noNotifications": {
-      "title": "No Notifications yet",
+      "title": "No notifications yet",
       "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
     },
     "notification": {
@@ -580,7 +586,10 @@
     "apy": "APY",
     "tvl": "TVL",
     "24h": "24h",
+    "searchFor": "Search for",
+    "tokens": "Tokens",
     "swapping": "Swapping",
+    "contract": "Contract",
     "convert": {
       "swap": "Swap",
       "title": "Convert",
@@ -590,6 +599,47 @@
       "rate": "Rate",
       "errors": {
         "failure": "Swap failed"
+      }
+    },
+    "protrade": {
+      "allOrdersCancelled": "All orders cancelled",
+      "spot": {
+        "noOpenOrders": "No open orders yet",
+        "price": "Price",
+        "ordersTable": {
+          "coin": "Coin",
+          "size": "Size",
+          "type": "Type",
+          "originalSize": "Original Size",
+          "direction": "Direction"
+        },
+        "24hChange": "24h Change",
+        "volume": "Volume",
+        "fees": "Fees",
+        "orderValue": "Order Value",
+        "availableToTrade": "Available to trade",
+        "slippage": "Slippage",
+        "enableTrading": "Enable Trading",
+        "triggerAction": [
+          {
+            "declarations": ["input action"],
+            "selectors": ["action"],
+            "match": {
+              "action=buy": "Buy",
+              "action=sell": "Sell"
+            }
+          }
+        ],
+        "direction": [
+          {
+            "declarations": ["input direction"],
+            "selectors": ["direction"],
+            "match": {
+              "direction=bid": "Buy",
+              "direction=ask": "Sell"
+            }
+          }
+        ]
       }
     }
   },

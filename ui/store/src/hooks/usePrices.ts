@@ -1,7 +1,14 @@
 import type { Denom, Funds, Price } from "@left-curve/dango/types";
-import { type FormatNumberOptions, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import {
+  type FormatNumberOptions,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+} from "@left-curve/dango/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
+
+import { Big } from "big.js";
 
 import type { AnyCoin } from "../types/coin.js";
 import { usePublicClient } from "./usePublicClient.js";
@@ -52,6 +59,23 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     ) as T extends true ? string : number;
   }
 
+  function convertAmount<T extends boolean = false>(
+    fromAmount: string | number,
+    fromDenom: string,
+    targetDenom: string,
+    parse?: T,
+  ): T extends false ? number : string {
+    const fromPrice = getPrice(fromAmount, fromDenom);
+    const targetPrice = getPrice(1, targetDenom);
+
+    const targetAmount = Big(fromPrice).div(targetPrice).toNumber();
+    return (
+      parse
+        ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals).toString()
+        : targetAmount
+    ) as T extends false ? number : string;
+  }
+
   function calculateBalance<T extends boolean = false>(
     balances: Funds,
     options?: FormatOptions<T>,
@@ -77,5 +101,5 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     refetchInterval,
   });
 
-  return { prices, ...rest, calculateBalance, getPrice };
+  return { prices, ...rest, calculateBalance, getPrice, convertAmount };
 }

@@ -1,4 +1,12 @@
-import type { Address, Coin, Denom, Option, Timestamp } from "@left-curve/sdk/types";
+import type {
+  Address,
+  Coin,
+  Denom,
+  ExtractFromUnion,
+  KeyOfUnion,
+  Option,
+  Timestamp,
+} from "@left-curve/sdk/types";
 import type { Username } from "./account.js";
 
 export type SwapRoute = PairId[];
@@ -146,6 +154,15 @@ export type DexExecuteMsg =
       swapExactAmountIn: { route: SwapRoute; minimumOutput: Option<string> };
     }
   /**
+   * Create or cancel multiple limit orders in one batch. */
+  | {
+      batchUpdateOrders: {
+        createsMarket: CreateMarketOrderRequest[];
+        createsLimit: CreateLimitOrderRequest[];
+        cancels: Option<CancelOrderRequest>;
+      };
+    }
+  /**
    * Withdraw passive liquidity from a pair. Withdrawal is always performed at
    * the pool ratio.
    */
@@ -167,6 +184,13 @@ export type DexExecuteMsg =
       };
     };
 
+export type GetDexExecuteMsg<K extends KeyOfUnion<DexExecuteMsg>> = ExtractFromUnion<
+  DexExecuteMsg,
+  K
+>;
+
+export type GetDexQueryMsg<K extends KeyOfUnion<DexQueryMsg>> = ExtractFromUnion<DexQueryMsg, K>;
+
 export type PairId = {
   baseDenom: string;
   quoteDenom: string;
@@ -182,9 +206,11 @@ export type ReservesResponse = {
 };
 
 export const Direction = {
-  Bid: 0,
-  Ask: 1,
-};
+  /** Give away the quote asset, get the base asset; a.k.a. a BUY order. */
+  Buy: "bid",
+  /** Give away the base asset, get the quote asset; a.k.a. a SELL order. */
+  Sell: "ask",
+} as const;
 
 export type Directions = (typeof Direction)[keyof typeof Direction];
 
@@ -234,4 +260,64 @@ export type PairUpdate = {
   baseDenom: Denom;
   quoteDenom: Denom;
   params: PairParams;
+};
+
+export type CancelOrderRequest = "all" | { some: OrderId[] };
+
+export type CreateLimitOrderRequest = {
+  baseDenom: Denom;
+  quoteDenom: Denom;
+  direction: Directions;
+  /** The amount of _base asset_ to trade.
+   *
+   * The frontend UI may allow user to choose the amount in terms of the
+   * quote asset, and convert it to the base asset amount behind the scene:
+   *
+   * ```plain
+   * base_asset_amount = floor(quote_asset_amount / price)
+   * ```
+   */
+  amount: string;
+  /** The limit price measured _in the quote asset_, i.e. how many units of
+   * quote asset is equal in value to 1 unit of base asset.
+   */
+  price: string;
+};
+
+export type CreateMarketOrderRequest = {
+  baseDenom: Denom;
+  quoteDenom: Denom;
+  direction: Directions;
+  /**
+   * For BUY orders, the amount of quote asset; for SELL orders, that of the
+   * base asset.
+   */
+  amount: string;
+  /**
+   * The maximum slippage percentage.
+   *
+   * This parameter works as follow:
+   *
+   * - For a market BUY order, suppose the best (lowest) SELL price in the
+   *   resting order book is `p_best`, then the market order's _average
+   *   execution price_ can't be worse than:
+   *
+   *   ```math
+   *   p_best * (1 + max_slippage)
+   *   ```
+   *
+   * - For a market SELL order, suppose the best (highest) BUY price in the
+   *   resting order book is `p_best`, then the market order's _average
+   *   execution price_ can't be worse than:
+   *
+   *   ```math
+   *   p_best * (1 - max_slippage)
+   *   ```
+   *
+   * Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
+   * enough liquidity in the resting order book to fully fill the market
+   * order under its max slippage, it's filled as much as possible, with the
+   * unfilled portion is canceled.
+   */
+  maxSlippage: string;
 };

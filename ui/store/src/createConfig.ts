@@ -111,11 +111,11 @@ export function createConfig<
   }
 
   let _appConfig:
-    | {
+    | ({
         addresses: AppConfig["addresses"] & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
         pairs: Record<Denom, PairUpdate>;
-      }
+      } & Omit<AppConfig, "addresses">)
     | undefined;
 
   async function getAppConfig() {
@@ -128,6 +128,7 @@ export function createConfig<
     ]);
 
     _appConfig = {
+      ...appConfig,
       addresses: {
         ...appConfig.addresses,
         ...invertObject(appConfig.addresses),

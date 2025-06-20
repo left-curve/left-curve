@@ -168,7 +168,7 @@ const SimpleSwapHeader: React.FC = () => {
   );
 };
 
-export const SimpleSwapForm: React.FC = () => {
+const SimpleSwapForm: React.FC = () => {
   const { settings } = useApp();
   const { coins } = useConfig();
   const { account, isConnected } = useAccount();
