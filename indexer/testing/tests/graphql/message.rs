@@ -1,6 +1,5 @@
 use {
     assertor::*,
-    grug_testing::setup_tracing_subscriber,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
     indexer_sql::entity::{self},
     indexer_testing::{
@@ -84,8 +83,6 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_messages() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::DEBUG);
-
     let (httpd_context, _client, _) = create_blocks(10).await?;
 
     let graphql_query = r#"

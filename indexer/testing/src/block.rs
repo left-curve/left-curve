@@ -29,6 +29,7 @@ pub async fn create_blocks(
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
+        .with_database_max_connections(1)
         .with_keep_blocks(true)
         .build()?;
 
