@@ -28,7 +28,7 @@ impl BlockToIndex {
     }
 
     /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save(&self, db: DatabaseConnection, indexer_id: u64) -> error::Result<()> {
+    pub async fn save(&self, db: DatabaseConnection) -> error::Result<()> {
         #[cfg(feature = "tracing")]
         tracing::info!(
             block_height = self.block.info.height,
