@@ -214,7 +214,7 @@ type Query {
 	"""
 	block(height: Int): Block
 	"""
-	Get a block
+	Get paginated blocks
 	"""
 	blocks(
 		"""
@@ -235,7 +235,7 @@ type Query {
 		last: Int,		sortBy: BlockSortBy
 	): BlockConnection!
 	"""
-	Get transactions
+	Get paginated transactions
 	"""
 	transactions(
 		"""
@@ -256,7 +256,7 @@ type Query {
 		last: Int,		sortBy: TransactionSortBy,		hash: String,		blockHeight: Int,		senderAddress: String
 	): TransactionConnection!
 	"""
-	Get messages
+	Get paginated messages
 	"""
 	messages(
 		"""
@@ -277,7 +277,7 @@ type Query {
 		last: Int,		sortBy: MessageSortBy,		blockHeight: Int,		methodName: String,		contractAddr: String,		senderAddr: String
 	): MessageConnection!
 	"""
-	Get events
+	Get paginated events
 	"""
 	events(
 		"""
