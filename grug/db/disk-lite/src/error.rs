@@ -1,5 +1,4 @@
 use {
-    crate::PendingData,
     grug_app::AppError,
     std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
     thiserror::Error,
@@ -29,14 +28,14 @@ pub enum DbError {
     ProofUnsupported,
 }
 
-impl<'a> From<PoisonError<RwLockReadGuard<'a, Option<PendingData>>>> for DbError {
-    fn from(_: PoisonError<RwLockReadGuard<'a, Option<PendingData>>>) -> Self {
+impl<'a, T> From<PoisonError<RwLockReadGuard<'a, T>>> for DbError {
+    fn from(_: PoisonError<RwLockReadGuard<'a, T>>) -> Self {
         Self::PendingDataPoisoned
     }
 }
 
-impl<'a> From<PoisonError<RwLockWriteGuard<'a, Option<PendingData>>>> for DbError {
-    fn from(_: PoisonError<RwLockWriteGuard<'a, Option<PendingData>>>) -> Self {
+impl<'a, T> From<PoisonError<RwLockWriteGuard<'a, T>>> for DbError {
+    fn from(_: PoisonError<RwLockWriteGuard<'a, T>>) -> Self {
         Self::PendingDataPoisoned
     }
 }

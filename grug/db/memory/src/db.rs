@@ -1,10 +1,12 @@
 use {
     crate::{DbError, DbResult, VersionedMap},
-    grug_app::Db,
+    grug_app::{ConsensusStorage, Db},
     grug_jmt::MerkleTree,
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_types::{
+        Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage, range_bounds,
+    },
     std::{
-        collections::HashMap,
+        collections::{BTreeMap, HashMap},
         ops::Bound,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     },
@@ -12,7 +14,7 @@ use {
 
 const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 
-struct ChangeSet {
+struct AppChangeSet {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
@@ -30,8 +32,12 @@ struct MemDbInner {
     state_commitment: HashMap<Vec<u8>, Vec<u8>>,
     /// A versioned key-value storage: key => (version => value)
     state_storage: VersionedMap<Vec<u8>, Vec<u8>>,
-    /// Uncommitted changes
-    changeset: Option<ChangeSet>,
+    /// A key-value store backing the consensus.
+    state_consensus: BTreeMap<Vec<u8>, Vec<u8>>,
+    /// Uncommitted changes of App.
+    app_changeset: Option<AppChangeSet>,
+    /// Uncommitted changes of Consensus.
+    consensus_changeset: Option<Batch>,
 }
 
 pub struct MemDb {
@@ -45,7 +51,9 @@ impl MemDb {
                 latest_version: None,
                 state_commitment: HashMap::new(),
                 state_storage: VersionedMap::new(),
-                changeset: None,
+                state_consensus: BTreeMap::new(),
+                app_changeset: None,
+                consensus_changeset: None,
             })),
         }
     }
@@ -89,6 +97,7 @@ impl Db for MemDb {
     type Error = DbError;
     type Proof = Proof;
     type StateCommitment = StateCommitment;
+    type StateConsensus = Consensus;
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> StateCommitment {
@@ -100,6 +109,10 @@ impl Db for MemDb {
             db: self.clone(),
             version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),
         })
+    }
+
+    fn state_consensus(&self) -> Self::StateConsensus {
+        Consensus { db: self.clone() }
     }
 
     fn latest_version(&self) -> Option<u64> {
@@ -125,9 +138,9 @@ impl Db for MemDb {
     // The best way to avoid this is to do everything that requires a read lock
     // first (using a `with_read` callback) and do everything that requires a
     // write lock in the end (using a `with_write` callback).
-    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+    fn flush_storage_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         let (new_version, root_hash, changeset) = self.with_read(|inner| {
-            if inner.changeset.is_some() {
+            if inner.app_changeset.is_some() {
                 return Err(DbError::ChangeSetAlreadySet);
             }
 
@@ -144,7 +157,7 @@ impl Db for MemDb {
         })?;
 
         self.with_write(|mut inner| {
-            inner.changeset = Some(ChangeSet {
+            inner.app_changeset = Some(AppChangeSet {
                 version: new_version,
                 state_commitment: changeset,
                 state_storage: batch,
@@ -154,15 +167,30 @@ impl Db for MemDb {
         Ok((new_version, root_hash))
     }
 
+    fn flush_consensus_but_not_commit(&self, batch: Batch) -> Result<(), Self::Error> {
+        self.with_write(|mut inner| {
+            if inner.consensus_changeset.is_some() {
+                return Err(DbError::ChangeSetAlreadySet);
+            }
+
+            inner.consensus_changeset = Some(batch);
+            Ok(())
+        })?;
+
+        Ok(())
+    }
+
     fn commit(&self) -> DbResult<()> {
         self.with_write(|mut inner| {
-            let changeset = inner.changeset.take().ok_or(DbError::ChangeSetNotSet)?;
+            let app_changeset = inner.app_changeset.take().ok_or(DbError::ChangeSetNotSet)?;
+
+            let consensus_changeset = inner.consensus_changeset.take().unwrap_or_default();
 
             // Update the version
-            inner.latest_version = Some(changeset.version);
+            inner.latest_version = Some(app_changeset.version);
 
-            // Write changes to state commitment
-            for (key, op) in changeset.state_commitment {
+            // Write app changes to state commitment
+            for (key, op) in app_changeset.state_commitment {
                 if let Op::Insert(value) = op {
                     inner.state_commitment.insert(key, value);
                 } else {
@@ -171,9 +199,24 @@ impl Db for MemDb {
             }
 
             // Write changes to state storage
-            inner.state_storage.write_batch(changeset.state_storage);
+            inner.state_storage.write_batch(app_changeset.state_storage);
+
+            // Write consensus changes to state consensus
+            for (key, op) in consensus_changeset {
+                if let Op::Insert(value) = op {
+                    inner.state_consensus.insert(key, value);
+                } else {
+                    inner.state_consensus.remove(&key);
+                }
+            }
 
             Ok(())
+        })
+    }
+
+    fn discard_changeset(&self) {
+        self.with_write(|mut inner| {
+            inner.app_changeset = None;
         })
     }
 }
@@ -255,7 +298,7 @@ impl Storage for StateStorage {
         let max = max.map_or(Bound::Unbounded, Bound::Excluded);
         let vec = self.db.with_read(|inner| {
             // Here we must collect the iterator into a `Vec`, because the
-            // iterator only lives as longa as the read lock, which goes out of
+            // iterator only lives as long as the read lock, which goes out of
             // scope at the end of the function.
             inner
                 .state_storage
@@ -305,3 +348,118 @@ impl Storage for StateStorage {
         unreachable!("write function called on read-only storage");
     }
 }
+
+// ------------------------------ consensus storage ----------------------------
+
+#[derive(Clone)]
+pub struct Consensus {
+    db: MemDb,
+}
+
+impl Storage for Consensus {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.db
+            .with_read(|inner| inner.state_consensus.get(key).cloned())
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let bounds = range_bounds!(min, max);
+        let vec = self.db.with_read(|inner| {
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as long as the read lock, which goes out of
+            // scope at the end of the function.
+            inner
+                .state_consensus
+                .range(bounds)
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let bounds = range_bounds!(min, max);
+        let vec = self.db.with_read(|inner| {
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as long as the read lock, which goes out of
+            // scope at the end of the function.
+            inner
+                .state_consensus
+                .range(bounds)
+                .map(|(k, _)| k.clone())
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let bounds = range_bounds!(min, max);
+        let vec = self.db.with_read(|inner| {
+            // Here we must collect the iterator into a `Vec`, because the
+            // iterator only lives as long as the read lock, which goes out of
+            // scope at the end of the function.
+            inner
+                .state_consensus
+                .range(bounds)
+                .map(|(_, v)| v.clone())
+                .collect::<Vec<_>>()
+        });
+        match order {
+            Order::Ascending => Box::new(vec.into_iter()),
+            Order::Descending => Box::new(vec.into_iter().rev()),
+        }
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.db
+            .with_write(|mut inner| inner.state_consensus.insert(key.to_vec(), value.to_vec()));
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.db
+            .with_write(|mut inner| inner.state_consensus.remove(key));
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        self.db.with_write(|mut inner| {
+            inner.state_consensus.retain(|k, _| {
+                if let Some(min) = min {
+                    if k.as_slice() < min {
+                        return true;
+                    }
+                }
+
+                if let Some(max) = max {
+                    if max <= k.as_slice() {
+                        return true;
+                    }
+                }
+
+                false
+            })
+        });
+    }
+}
+
+impl ConsensusStorage for Consensus {}

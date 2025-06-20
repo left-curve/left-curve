@@ -1,0 +1,50 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-malachite"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow          = { workspace = true }
+borsh           = { workspace = true }
+bytesize        = { workspace = true }
+grug            = { workspace = true }
+grug-app        = { workspace = true }
+grug-crypto     = { workspace = true }
+humantime-serde = { workspace = true }
+k256            = { workspace = true }
+libp2p-identity = { workspace = true, features = ["secp256k1"] }
+prost           = { workspace = true }
+prost-types     = { workspace = true }
+ractor          = { workspace = true }
+serde           = { workspace = true }
+thiserror       = { workspace = true }
+tokio           = { workspace = true }
+tracing         = { workspace = true }
+
+malachitebft-app          = { workspace = true, features = ["borsh"] }
+malachitebft-config       = { workspace = true }
+malachitebft-core-types   = { workspace = true, features = ["borsh"] }
+malachitebft-engine       = { workspace = true, features = ["borsh"] }
+malachitebft-metrics      = { workspace = true }
+malachitebft-network      = { workspace = true }
+malachitebft-sync         = { workspace = true, features = ["borsh"] }
+malachitebft-test-mempool = { workspace = true }
+
+[dev-dependencies]
+config                  = { workspace = true }
+dango-genesis           = { workspace = true }
+dango-proposal-preparer = { workspace = true }
+dango-testing           = { workspace = true }
+dango-types             = { workspace = true }
+grug-db-disk-lite       = { workspace = true }
+grug-db-memory          = { workspace = true }
+grug-vm-rust            = { workspace = true }
+rand                    = { workspace = true }
+tempfile                = { workspace = true }
+tracing-subscriber      = { workspace = true }

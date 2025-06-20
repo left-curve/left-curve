@@ -1,6 +1,6 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{Db, PrunableDb},
+    grug_app::{ConsensusStorage, Db, PrunableDb},
     grug_jmt::MerkleTree,
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
     rocksdb::{
@@ -38,6 +38,8 @@ const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 /// we have to add it in. Our fork is here, under the `0.21.0-cw` branch:
 /// https://github.com/left-curve/rust-rocksdb/tree/v0.21.0-cw
 const CF_NAME_STATE_STORAGE: &str = "state_storage";
+
+const CF_NAME_CONSENSUS: &str = "consensus";
 
 /// Storage key for the latest version.
 const LATEST_VERSION_KEY: &[u8] = b"latest_version";
@@ -84,10 +86,11 @@ pub(crate) struct DiskDbInner {
     // Data that are ready to be persisted to the physical database.
     // Ideally we want to just use a `rocksdb::WriteBatch` here, but it's not
     // thread-safe.
-    pending_data: RwLock<Option<PendingData>>,
+    app_pending_data: RwLock<Option<AppPendingData>>,
+    consensus_pending_data: RwLock<Option<Batch>>,
 }
 
-pub(crate) struct PendingData {
+pub(crate) struct AppPendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
@@ -106,12 +109,14 @@ impl DiskDb {
             (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
             (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
             (CF_NAME_STATE_COMMITMENT, Options::default()),
+            (CF_NAME_CONSENSUS, Options::default()),
         ])?;
 
         Ok(Self {
             inner: Arc::new(DiskDbInner {
                 db,
-                pending_data: RwLock::new(None),
+                app_pending_data: RwLock::new(None),
+                consensus_pending_data: RwLock::new(None),
             }),
         })
     }
@@ -129,6 +134,7 @@ impl Db for DiskDb {
     type Error = DbError;
     type Proof = Proof;
     type StateCommitment = StateCommitment;
+    type StateConsensus = StateConsensus;
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> StateCommitment {
@@ -176,6 +182,12 @@ impl Db for DiskDb {
         })
     }
 
+    fn state_consensus(&self) -> Self::StateConsensus {
+        StateConsensus {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+
     fn latest_version(&self) -> Option<u64> {
         let cf = cf_default(&self.inner.db);
         let bytes = self
@@ -204,11 +216,11 @@ impl Db for DiskDb {
         Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
-    fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+    fn flush_storage_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
-        if self.inner.pending_data.read()?.is_some() {
+        if self.inner.app_pending_data.read()?.is_some() {
             return Err(DbError::PendingDataAlreadySet);
         }
 
@@ -229,7 +241,7 @@ impl Db for DiskDb {
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
-        *(self.inner.pending_data.write()?) = Some(PendingData {
+        *(self.inner.app_pending_data.write()?) = Some(AppPendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
@@ -238,23 +250,36 @@ impl Db for DiskDb {
         Ok((new_version, root_hash))
     }
 
+    fn flush_consensus_but_not_commit(&self, batch: Batch) -> Result<(), Self::Error> {
+        *(self.inner.consensus_pending_data.write()?) = Some(batch);
+        Ok(())
+    }
+
     fn commit(&self) -> DbResult<()> {
-        let pending = self
+        let app_pending = self
             .inner
-            .pending_data
+            .app_pending_data
             .write()?
             .take()
             .ok_or(DbError::PendingDataNotSet)?;
+
+        let consensus_pending = self
+            .inner
+            .consensus_pending_data
+            .write()?
+            .take()
+            .unwrap_or_default();
+
         let mut batch = WriteBatch::default();
-        let ts = U64Timestamp::from(pending.version);
+        let ts = U64Timestamp::from(app_pending.version);
 
         // Set the new version (note: use little endian)
         let cf = cf_default(&self.inner.db);
-        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+        batch.put_cf(&cf, LATEST_VERSION_KEY, app_pending.version.to_le_bytes());
 
         // Writes in state commitment
         let cf = cf_state_commitment(&self.inner.db);
-        for (key, op) in pending.state_commitment {
+        for (key, op) in app_pending.state_commitment {
             if let Op::Insert(value) = op {
                 batch.put_cf(&cf, key, value);
             } else {
@@ -265,7 +290,7 @@ impl Db for DiskDb {
         // Writes in preimages (note: don't forget timestamping, and deleting
         // key hashes that are deleted in state storage - see Zellic audut).
         let cf = cf_preimages(&self.inner.db);
-        for (key, op) in &pending.state_storage {
+        for (key, op) in &app_pending.state_storage {
             if let Op::Insert(_) = op {
                 batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
             } else {
@@ -275,7 +300,7 @@ impl Db for DiskDb {
 
         // Writes in state storage (note: don't forget timestamping)
         let cf = cf_state_storage(&self.inner.db);
-        for (key, op) in pending.state_storage {
+        for (key, op) in app_pending.state_storage {
             if let Op::Insert(value) = op {
                 batch.put_cf_with_ts(&cf, key, ts, value);
             } else {
@@ -283,7 +308,21 @@ impl Db for DiskDb {
             }
         }
 
+        // Writes in consensus
+        let cf = cf_consensus(&self.inner.db);
+        for (key, op) in consensus_pending {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+
         Ok(self.inner.db.write(batch)?)
+    }
+
+    fn discard_changeset(&self) {
+        *(self.inner.app_pending_data.write().unwrap()) = None;
     }
 }
 
@@ -543,6 +582,119 @@ impl Storage for StateStorage {
     }
 }
 
+// -------------------------------- state consensus -------------------------------
+
+/// Unlike [`StateStorage`], we allow write operations as it is not always necessary to use a [`grug_types::Buffer`]
+#[derive(Clone)]
+pub struct StateConsensus {
+    inner: Arc<DiskDbInner>,
+}
+
+impl ConsensusStorage for StateConsensus {}
+
+impl Storage for StateConsensus {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.inner
+            .db
+            .get_cf(&cf_consensus(&self.inner.db), key)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from state consensus: {err}");
+            })
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let opts = new_read_options(None, min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_consensus(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state consensus: {err}");
+                });
+                (k.to_vec(), v.to_vec())
+            });
+        Box::new(iter)
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let opts = new_read_options(None, min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_consensus(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (k, _) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state consensus: {err}");
+                });
+                k.to_vec()
+            });
+        Box::new(iter)
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let opts = new_read_options(None, min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_consensus(&self.inner.db), opts, mode)
+            .map(|item| {
+                let (_, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state consensus: {err}");
+                });
+                v.to_vec()
+            });
+        Box::new(iter)
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.inner
+            .db
+            .put_cf(&cf_consensus(&self.inner.db), key, value)
+            .unwrap_or_else(|err| {
+                panic!("failed to write to state consensus: {err}");
+            });
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.inner
+            .db
+            .delete_cf(&cf_consensus(&self.inner.db), key)
+            .unwrap_or_else(|err| {
+                panic!("failed to delete from state consensus: {err}");
+            });
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        for k in self.scan_keys(min, max, Order::Ascending) {
+            self.inner
+                .db
+                .delete_cf(&cf_consensus(&self.inner.db), &k)
+                .unwrap_or_else(|err| {
+                    panic!("failed to delete from state consensus: {err}");
+                });
+        }
+    }
+}
+
 // ---------------------------------- helpers ----------------------------------
 
 #[inline]
@@ -615,6 +767,12 @@ fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFami
 fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
+    })
+}
+
+fn cf_consensus(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+    db.cf_handle(CF_NAME_CONSENSUS).unwrap_or_else(|| {
+        panic!("failed to find consensus column family");
     })
 }
 
