@@ -1,5 +1,4 @@
 use {
-    anyhow::anyhow,
     grug::{
         Defined, MaybeDefined, MultiplyFraction, Number, StdResult, Timestamp, Udec128, Uint128,
         Undefined,
@@ -119,25 +118,23 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
 
     fn try_from(value: PriceFeed) -> Result<Self, Self::Error> {
         let price_unchecked = value.get_price_unchecked();
-        let price = Udec128::checked_from_atomics(
-            price_unchecked.price.unsigned_abs() as u128,
-            price_unchecked.expo.unsigned_abs(),
+        let price = Udec128::checked_from_atomics::<u128>(
+            price_unchecked.price.try_into()?,
+            price_unchecked.expo.try_into()?,
         )?;
 
         let ema_unchecked = value.get_ema_price_unchecked();
-        let ema = Udec128::checked_from_atomics(
-            ema_unchecked.price.unsigned_abs() as u128,
-            ema_unchecked.expo.unsigned_abs(),
+        let ema = Udec128::checked_from_atomics::<u128>(
+            ema_unchecked.price.try_into()?,
+            ema_unchecked.expo.try_into()?,
         )?;
 
-        let timestamp = price_unchecked.publish_time.try_into().map_err(|err| {
-            anyhow!("price feed publish time is not a valid `u128` number: {err}")
-        })?;
+        let timestamp = Timestamp::from_seconds(price_unchecked.publish_time.try_into()?);
 
         Ok(Price {
             humanized_price: price,
             humanized_ema: ema,
-            timestamp: Timestamp::from_seconds(timestamp),
+            timestamp,
             precision: Undefined::new(),
         })
     }
