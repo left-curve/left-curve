@@ -498,7 +498,7 @@ impl Preset for GatewayOption {
                 WithdrawalFee {
                     denom: btc::DENOM.clone(),
                     remote: Remote::Bitcoin {},
-                    fee: Uint128::new(1000), // ~$1, assume BTC $150k
+                    fee: Uint128::new(1000), // ~$1, assume BTC $100k
                 },
             ],
             rate_limits: btree_map! {
