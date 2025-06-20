@@ -29,7 +29,7 @@ export type ToastController = {
 const success =
   (toast: (props: ToastProps) => JSX.Element) => (toastMsg?: ToastMsg, options?: ToastOptions) =>
     hotToast.custom((t) => {
-      const msg = Object.assign({ title: "Operation Sucessful" }, toastMsg);
+      const msg = Object.assign({ title: "Operation Successful" }, toastMsg);
       return toast({
         close: () => hotToast.dismiss(t.id),
         title: msg.title,

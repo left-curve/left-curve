@@ -31,6 +31,7 @@ export const Toast: React.FC<ToastProps> = ({ title, description, type, close })
         {description && <p className="text-gray-500 diatype-xs-medium break-all">{description}</p>}
       </div>
       <button
+        aria-label="Close Notification"
         className="absolute top-4 right-4 transition-all duration-200"
         onClick={close}
         type="button"
