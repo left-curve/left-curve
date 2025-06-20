@@ -34,7 +34,6 @@ import {
   XCircleIcon,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { toast } from "../foundation/Toast";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
@@ -161,6 +160,7 @@ const Mobile: React.FC = () => {
 };
 
 const Credential: React.FC = () => {
+  const { toast } = useApp();
   const { nextStep, setData } = useWizard();
   const connectors = useConnectors();
 
@@ -236,6 +236,8 @@ const Username: React.FC = () => {
     seed: number;
     username: string;
   }>();
+
+  const { toast } = useApp();
 
   const { register, inputs } = useInputs();
 
@@ -370,7 +372,7 @@ const Username: React.FC = () => {
 const Signin: React.FC = () => {
   const navigate = useNavigate();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
-  const { settings, changeSettings } = useApp();
+  const { toast, settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
 
   const { username, connectorId } = data;

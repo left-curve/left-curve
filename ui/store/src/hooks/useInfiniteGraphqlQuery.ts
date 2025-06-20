@@ -6,7 +6,7 @@ import { withPagination } from "../handlers/pagination.js";
 import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/dango/types";
 import type { DefinedInitialDataInfiniteOptions, InfiniteData } from "@tanstack/react-query";
 
-type UseInfiniteGraphqlQueryParameters<T> = {
+export type UseInfiniteGraphqlQueryParameters<T> = {
   limit?: number;
   sortBy?: string;
   initialPage?: number;
