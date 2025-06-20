@@ -82,16 +82,7 @@ async fn multiple() {
 #[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn disk_db() {
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            .with_file(false)
-            .with_line_number(false)
-            .with_target(false)
-            .without_time()
-            .with_max_level(tracing::Level::INFO)
-            .finish(),
-    )
-    .unwrap();
+    setup_tracing();
 
     let (actors, _accounts) = launch_nodes([
         (
