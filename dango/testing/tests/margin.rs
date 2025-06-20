@@ -463,9 +463,13 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .should_succeed();
 
     // Query account's health
-    suite
-        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
-        .should_succeed_and(|health| health.utilization_rate < Udec128::ONE);
+    let health = suite
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+            skip_if_no_debt: false,
+        })
+        .unwrap()
+        .unwrap();
+    assert!(health.utilization_rate < Udec128::ONE);
 
     // Update the oracle price of ETH to go from $71k to $96k, making the account undercollateralised
     register_fixed_price(
@@ -479,9 +483,13 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Query account's health
     let health = suite
-        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+            skip_if_no_debt: false,
+        })
+        .unwrap()
         .unwrap();
     assert!(health.utilization_rate > Udec128::ONE);
+
     let debts_before = health.debts;
     // Add one microunit as debt may have increased by the time we liquidate due to interest
     let usdc_repay_amount = debts_before.amount_of(&usdc::DENOM).into_inner() + 1;
@@ -565,7 +573,10 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Query account's health
     let health = suite
-        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+            skip_if_no_debt: false,
+        })
+        .unwrap()
         .unwrap();
     let app_config: AppConfig = suite.query_app_config().unwrap();
 
@@ -737,7 +748,10 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
 
     // Query account's health and ensure the limit order is counted as collateral
     let health = suite
-        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+            skip_if_no_debt: false,
+        })
+        .unwrap()
         .unwrap();
     assert_eq!(
         health.total_adjusted_collateral_value,
@@ -777,7 +791,10 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
 
     // Query account's health to ensure it is undercollateralised
     let health = suite
-        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+            skip_if_no_debt: false,
+        })
+        .unwrap()
         .unwrap();
     assert!(health.utilization_rate > Udec128::ONE);
 
@@ -825,7 +842,10 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
 
     // Query account's health to ensure it has been liquidated
     let health = suite
-        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+            skip_if_no_debt: false,
+        })
+        .unwrap()
         .unwrap();
     assert!(health.limit_order_collaterals.is_empty());
     assert!(health.limit_order_outputs.is_empty());
@@ -1250,7 +1270,10 @@ proptest! {
 
         // Check margin accounts health
         let margin_account_health = suite
-            .query_wasm_smart(margin_account.address(), QueryHealthRequest { })
+            .query_wasm_smart(margin_account.address(), QueryHealthRequest {
+                skip_if_no_debt: false,
+            })
+            .unwrap()
             .unwrap();
 
         // Get liquidators total account value before liquidation

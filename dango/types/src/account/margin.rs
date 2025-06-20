@@ -57,8 +57,13 @@ pub enum QueryMsg {
     #[returns(HealthData)]
     HealthData {},
     /// Compute the health of the margin account.
-    #[returns(HealthResponse)]
-    Health {},
+    #[returns(Option<HealthResponse>)]
+    Health {
+        /// If the account has zero debt, then skip the rest of the computation
+        /// involving collateral value and utilization rate, since the account
+        /// is necessarily healthy if there is no debt.
+        skip_if_no_debt: bool,
+    },
 }
 
 #[grug::derive(Serde)]
