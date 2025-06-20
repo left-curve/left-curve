@@ -5056,9 +5056,9 @@ fn market_order_clearing(
     for (user, (limit_orders, limit_order_funds)) in
         accounts.users_mut().zip(limit_orders_and_funds)
     {
-        println!("user: {:?}", user.address());
-        println!("limit orders: {:?}", limit_orders);
-        println!("limit order funds: {:?}", limit_order_funds);
+        // println!("user: {:?}", user.address());
+        // println!("limit orders: {:?}", limit_orders);
+        // println!("limit order funds: {:?}", limit_order_funds);
         let msg = Message::execute(
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
@@ -5137,8 +5137,8 @@ fn market_order_clearing(
     let users = accounts.users().collect::<Vec<_>>();
     for (index, expected_change) in expected_balance_changes {
         let user = users[index];
-        println!("user: {:?}", user.address());
-        println!("balance changes: {:?}", suite.balances().changes(user));
+        // println!("user: {:?}", user.address());
+        // println!("balance changes: {:?}", suite.balances().changes(user));
         suite.balances().should_change(user, expected_change);
     }
 
@@ -5151,17 +5151,17 @@ fn market_order_clearing(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            println!("orders: {:?}", orders);
+            // println!("orders: {:?}", orders);
             assert_eq!(orders.len(), expected_limit_orders_after.len());
             expected_limit_orders_after.iter().all(
                 |(order_id, (direction, price, amount, remaining, user_index))| {
                     let queried_order = orders.get(order_id).unwrap();
-                    println!("order user: {:?}", queried_order.user);
-                    println!("expected user: {:?}", users[*user_index].address());
-                    println!("expected direction: {:?}", direction);
-                    println!("expected price: {:?}", price);
-                    println!("expected amount: {:?}", amount);
-                    println!("expected remaining: {:?}", remaining);
+                    // println!("order user: {:?}", queried_order.user);
+                    // println!("expected user: {:?}", users[*user_index].address());
+                    // println!("expected direction: {:?}", direction);
+                    // println!("expected price: {:?}", price);
+                    // println!("expected amount: {:?}", amount);
+                    // println!("expected remaining: {:?}", remaining);
                     queried_order.direction == *direction
                         && queried_order.price == *price
                         && queried_order.amount == *amount

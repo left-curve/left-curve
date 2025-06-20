@@ -31,7 +31,7 @@ where
     <E as EntityTrait>::Model: async_graphql::OutputType,
     Select<E>: OrderByBlocks<E> + CursorFilter<C>,
     C: std::convert::From<<E as EntityTrait>::Model>,
-    S: Default + Send + Sync + Copy,
+    S: Default,
     sea_orm::Order: std::convert::From<S>,
 {
     query_with::<OpaqueCursor<C>, _, _, _, _>(

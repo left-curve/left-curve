@@ -4,7 +4,10 @@ use std::sync::Once;
 static TRACING: Once = Once::new();
 
 pub fn setup_tracing_subscriber(level: tracing::Level) {
-    println!("Setting up tracing subscriber with level: {:?}", level);
+    // If you need to know where this function was called from, you can uncomment the following lines.
+    // let backtrace = std::backtrace::Backtrace::capture();
+    // println!("Setting up tracing subscriber with level: {:?}", level);
+    // println!("Called from:\n{}", backtrace);
 
     TRACING.call_once(|| {
         let subscriber = tracing_subscriber::FmtSubscriber::builder()

@@ -1091,7 +1091,7 @@ fn interest_rate_model_works(
     let owner_lp_balance = suite
         .query_balance(&accounts.owner.address(), lp_denom.clone())
         .should_succeed();
-    dbg!(owner_lp_balance);
+    // dbg!(owner_lp_balance);
     suite
         .execute(
             &mut accounts.owner,
