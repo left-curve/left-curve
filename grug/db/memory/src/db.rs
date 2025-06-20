@@ -2,7 +2,9 @@ use {
     crate::{DbError, DbResult, VersionedMap},
     grug_app::{ConsensusStorage, Db},
     grug_jmt::MerkleTree,
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_types::{
+        Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage, range_bounds,
+    },
     std::{
         collections::{BTreeMap, HashMap},
         ops::Bound,
@@ -296,7 +298,7 @@ impl Storage for StateStorage {
         let max = max.map_or(Bound::Unbounded, Bound::Excluded);
         let vec = self.db.with_read(|inner| {
             // Here we must collect the iterator into a `Vec`, because the
-            // iterator only lives as longa as the read lock, which goes out of
+            // iterator only lives as long as the read lock, which goes out of
             // scope at the end of the function.
             inner
                 .state_storage
@@ -354,28 +356,6 @@ pub struct Consensus {
     db: MemDb,
 }
 
-macro_rules! range_bounds {
-    ($min:ident, $max:ident) => {{
-        // `BTreeMap::range` panics if
-        // 1. start > end, or
-        // 2. start == end and both are exclusive
-        // For us, since we interpret min as inclusive and max as exclusive,
-        // only the 1st case apply. However, we don't want to panic, we just
-        // return an empty iterator.
-        if let (Some(min), Some(max)) = ($min, $max) {
-            if min > max {
-                return Box::new(std::iter::empty());
-            }
-        }
-
-        // Min is inclusive, max is exclusive.
-        let min = $min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
-        let max = $max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
-
-        (min, max)
-    }};
-}
-
 impl Storage for Consensus {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.db
@@ -391,7 +371,7 @@ impl Storage for Consensus {
         let bounds = range_bounds!(min, max);
         let vec = self.db.with_read(|inner| {
             // Here we must collect the iterator into a `Vec`, because the
-            // iterator only lives as longa as the read lock, which goes out of
+            // iterator only lives as long as the read lock, which goes out of
             // scope at the end of the function.
             inner
                 .state_consensus
@@ -414,7 +394,7 @@ impl Storage for Consensus {
         let bounds = range_bounds!(min, max);
         let vec = self.db.with_read(|inner| {
             // Here we must collect the iterator into a `Vec`, because the
-            // iterator only lives as longa as the read lock, which goes out of
+            // iterator only lives as long as the read lock, which goes out of
             // scope at the end of the function.
             inner
                 .state_consensus
@@ -437,7 +417,7 @@ impl Storage for Consensus {
         let bounds = range_bounds!(min, max);
         let vec = self.db.with_read(|inner| {
             // Here we must collect the iterator into a `Vec`, because the
-            // iterator only lives as longa as the read lock, which goes out of
+            // iterator only lives as long as the read lock, which goes out of
             // scope at the end of the function.
             inner
                 .state_consensus

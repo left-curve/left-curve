@@ -1,6 +1,6 @@
 use {
     crate::{Order, Record, Storage},
-    std::{collections::BTreeMap, iter, ops::Bound},
+    std::{collections::BTreeMap, ops::Bound},
 };
 
 /// An in-memory, mock implementatiion of the [`Storage`](crate::Storage) trait
@@ -16,6 +16,7 @@ impl MockStorage {
     }
 }
 
+#[macro_export]
 macro_rules! range_bounds {
     ($min:ident, $max:ident) => {{
         // `BTreeMap::range` panics if
@@ -26,7 +27,7 @@ macro_rules! range_bounds {
         // return an empty iterator.
         if let (Some(min), Some(max)) = ($min, $max) {
             if min > max {
-                return Box::new(iter::empty());
+                return Box::new(std::iter::empty());
             }
         }
 
