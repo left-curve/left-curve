@@ -68,13 +68,13 @@ impl Clone for DiskDbLite {
 }
 
 impl Db for DiskDbLite {
-    type Consensus = ReadState;
     type Error = DbError;
     // The lite DB doesn't support Merkle proofs, as it doesn't Merklize the chain state.
     type Proof = Empty;
     // The lite DB doesn't utilize a state commitment storage.
-    type StateCommitment = ReadState;
-    type StateStorage = ReadState;
+    type StateCommitment = StateStorage;
+    type StateConsensus = StateConsensus;
+    type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> Self::StateCommitment {
         unimplemented!("`DiskDbLite` does not support state commitment");
@@ -92,10 +92,17 @@ impl Db for DiskDbLite {
             }
         }
 
-        Ok(ReadState {
+        Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             cf_name: CF_NAME_STORAGE,
         })
+    }
+
+    fn state_consensus(&self) -> Self::StateConsensus {
+        StateConsensus {
+            inner: Arc::clone(&self.inner),
+            cf_name: CF_NAME_CONSENSUS,
+        }
     }
 
     fn latest_version(&self) -> Option<u64> {
@@ -228,27 +235,20 @@ impl Db for DiskDbLite {
         Ok(self.inner.db.write(batch)?)
     }
 
-    fn consensus(&self) -> Self::Consensus {
-        ReadState {
-            inner: Arc::clone(&self.inner),
-            cf_name: CF_NAME_CONSENSUS,
-        }
-    }
-
     fn discard_changeset(&self) {
         *(self.inner.storage_pending_data.write().unwrap()) = None;
     }
 }
 
-// ------------------------------- read state -------------------------------
+// ------------------------------- state storage -------------------------------
 
 #[derive(Clone)]
-pub struct ReadState {
+pub struct StateStorage {
     inner: Arc<DiskDbLiteInner>,
     cf_name: &'static str,
 }
 
-impl Storage for ReadState {
+impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.inner
             .db
@@ -346,7 +346,131 @@ impl Storage for ReadState {
     }
 }
 
-impl ConsensusStorage for ReadState {}
+// ------------------------------- state consensus -------------------------------
+
+/// Unlike [`StateStorage`], we allow write operations as it is not always necessary to use a [`grug_types::Buffer`]
+#[derive(Clone)]
+pub struct StateConsensus {
+    inner: Arc<DiskDbLiteInner>,
+    cf_name: &'static str,
+}
+
+impl ConsensusStorage for StateConsensus {}
+
+impl Storage for StateConsensus {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.inner
+            .db
+            .get_cf(&cf_handle(&self.inner.db, self.cf_name), key)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from DB! cf: {}, err: {}", self.cf_name, err);
+            })
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+        let opts = new_read_options(min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!(
+                        "failed to iterate in DB! cf: {}, err: {}",
+                        self.cf_name, err
+                    );
+                });
+                (k.to_vec(), v.to_vec())
+            });
+
+        Box::new(iter)
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let opts = new_read_options(min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .map(|item| {
+                let (k, _) = item.unwrap_or_else(|err| {
+                    panic!(
+                        "failed to iterate in DB! cf: {}, err: {}",
+                        self.cf_name, err
+                    );
+                });
+                k.to_vec()
+            });
+
+        Box::new(iter)
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let opts = new_read_options(min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .map(|item| {
+                let (_, v) = item.unwrap_or_else(|err| {
+                    panic!(
+                        "failed to iterate in DB! cf: {}, err: {}",
+                        self.cf_name, err
+                    );
+                });
+                v.to_vec()
+            });
+
+        Box::new(iter)
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.inner
+            .db
+            .put_cf(&cf_handle(&self.inner.db, self.cf_name), key, value)
+            .unwrap_or_else(|err| {
+                panic!("failed to write to state consensus: {err}");
+            });
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.inner
+            .db
+            .delete_cf(&cf_handle(&self.inner.db, self.cf_name), key)
+            .unwrap_or_else(|err| {
+                panic!("failed to delete from state consensus: {err}");
+            });
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        for k in self.scan_keys(min, max, Order::Ascending) {
+            self.inner
+                .db
+                .delete_cf(&cf_handle(&self.inner.db, self.cf_name), &k)
+                .unwrap_or_else(|err| {
+                    panic!("failed to delete from state consensus: {err}");
+                });
+        }
+    }
+}
 
 // ---------------------------------- helpers ----------------------------------
 

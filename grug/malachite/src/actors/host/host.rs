@@ -81,7 +81,7 @@ impl Host {
         DB: Db,
         App<DB, VM, PP, ID>: HostApp,
     {
-        let args = State::new(app.db.consensus(), config, app);
+        let args = State::new(app.db.state_consensus(), config, app);
 
         let host = Host {
             mempool,

@@ -39,7 +39,7 @@ pub trait Db {
     /// A _Merklized_ KV store that stores _hashed_ keys and _hashed_ values.
     type StateCommitment: Storage + Clone + 'static;
 
-    type Consensus: ConsensusStorage;
+    type StateConsensus: ConsensusStorage;
 
     /// Type of the Merkle proof. The DB can choose any Merkle tree scheme.
     type Proof: BorshSerialize + BorshDeserialize;
@@ -53,7 +53,7 @@ pub trait Db {
     fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
 
     /// Return the state consensus.
-    fn consensus(&self) -> Self::Consensus;
+    fn state_consensus(&self) -> Self::StateConsensus;
 
     /// Return the most recent version that has been committed.
     ///
@@ -145,6 +145,9 @@ pub trait IbcDb: Db {
     ) -> Result<CommitmentProof, Self::Error>;
 }
 
+/// Rappresent the Storage of the Consensus.
+/// It doens' bring any new method, it's just a marker trait to restrict the
+/// type of the storage to the one used by the consensus.
 pub trait ConsensusStorage: Storage {}
 
 impl Storage for Box<dyn ConsensusStorage> {

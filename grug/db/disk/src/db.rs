@@ -131,10 +131,10 @@ impl Clone for DiskDb {
 }
 
 impl Db for DiskDb {
-    type Consensus = Consensus;
     type Error = DbError;
     type Proof = Proof;
     type StateCommitment = StateCommitment;
+    type StateConsensus = StateConsensus;
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> StateCommitment {
@@ -182,8 +182,8 @@ impl Db for DiskDb {
         })
     }
 
-    fn consensus(&self) -> Self::Consensus {
-        Consensus {
+    fn state_consensus(&self) -> Self::StateConsensus {
+        StateConsensus {
             inner: Arc::clone(&self.inner),
         }
     }
@@ -584,14 +584,15 @@ impl Storage for StateStorage {
 
 // -------------------------------- state consensus -------------------------------
 
+/// Unlike [`StateStorage`], we allow write operations as it is not always necessary to use a [`grug_types::Buffer`]
 #[derive(Clone)]
-pub struct Consensus {
+pub struct StateConsensus {
     inner: Arc<DiskDbInner>,
 }
 
-impl ConsensusStorage for Consensus {}
+impl ConsensusStorage for StateConsensus {}
 
-impl Storage for Consensus {
+impl Storage for StateConsensus {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         self.inner
             .db

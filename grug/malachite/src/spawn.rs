@@ -58,7 +58,7 @@ where
 {
     let start_height = {
         let app_storage = app.db.state_storage(None).unwrap();
-        let consensus_storage = app.db.consensus();
+        let consensus_storage = app.db.state_consensus();
         let consensus_height = latest_height(&consensus_storage).unwrap_or(0);
 
         match LAST_FINALIZED_BLOCK.may_load(&app_storage).unwrap() {

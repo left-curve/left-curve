@@ -92,10 +92,10 @@ impl Clone for MemDb {
 }
 
 impl Db for MemDb {
-    type Consensus = Consensus;
     type Error = DbError;
     type Proof = Proof;
     type StateCommitment = StateCommitment;
+    type StateConsensus = Consensus;
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> StateCommitment {
@@ -109,7 +109,7 @@ impl Db for MemDb {
         })
     }
 
-    fn consensus(&self) -> Self::Consensus {
+    fn state_consensus(&self) -> Self::StateConsensus {
         Consensus { db: self.clone() }
     }
 
