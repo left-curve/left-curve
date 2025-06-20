@@ -1,15 +1,18 @@
 use {
-    crate::{LIMIT_ORDERS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
+    crate::{LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
+    dango_oracle::OracleQuerier,
     dango_types::{
+        DangoQuerier,
         account_factory::Username,
         dex::{
             OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
-            PairUpdate, QueryMsg, ReservesResponse,
+            PairUpdate, QueryMsg, ReservesResponse, SwapRoute,
         },
     },
     grug::{
-        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
-        Number, NumberConst, Order as IterationOrder, StdResult, Timestamp, Uint128,
+        Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
+        JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, StdResult, Timestamp,
+        Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -65,13 +68,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountIn { route, input } => {
-            let (_, output) =
-                core::swap_exact_amount_in(ctx.storage, ctx.querier, route.into_inner(), input)?;
-            output.to_json_value()
+            let res = query_simulate_swap_exact_amount_in(ctx, route, input)?;
+            res.to_json_value()
         },
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {
-            let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
-            input.to_json_value()
+            let res = query_simulate_swap_exact_amount_out(ctx, route, output)?;
+            res.to_json_value()
         },
         QueryMsg::Volume { user, since } => {
             let res = query_volume(ctx, user, since)?;
@@ -260,6 +262,29 @@ fn query_orders_by_user(
             }))
         })
         .collect()
+}
+
+#[inline]
+fn query_simulate_swap_exact_amount_in(
+    ctx: ImmutableCtx,
+    route: SwapRoute,
+    input: Coin,
+) -> anyhow::Result<Coin> {
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route.into_inner(), input)
+        .map(|(_updated_reserve, output)| output)
+}
+
+#[inline]
+fn query_simulate_swap_exact_amount_out(
+    ctx: ImmutableCtx,
+    route: SwapRoute,
+    output: NonZero<Coin>,
+) -> anyhow::Result<Coin> {
+    core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)
+        .map(|(_updated_reserve, input)| input)
 }
 
 #[inline]
