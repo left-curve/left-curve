@@ -105,7 +105,7 @@ impl Mempool {
         match msg {
             GossipNetworkMsg::TransactionBatch(batch) => {
                 // TODO: Actually MempoolTransactionBatch is in prost format
-                let txs = batch.transaction_batch.value.deserialize_borsh::<RawTx>()?;
+                let tx = batch.transaction_batch.value.deserialize_borsh::<RawTx>()?;
 
                 self.add_tx(txs, None, state)
             },
