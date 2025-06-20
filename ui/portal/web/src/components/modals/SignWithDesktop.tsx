@@ -1,5 +1,4 @@
 import { useSigninWithDesktop } from "@left-curve/store";
-import { captureException } from "@sentry/react";
 import { forwardRef, useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -14,18 +13,17 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,
+    toast: {
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSignInWithDesktop"](),
+        }),
+    },
     mutation: {
       onSuccess: () => {
         router.navigate({ to: "/" });
         hideModal();
-      },
-      onError: (err) => {
-        toast.error({
-          title: m["common.error"](),
-          description: m["signin.errors.failedSignInWithDesktop"](),
-        });
-        console.error(err);
-        captureException(err);
       },
     },
   });

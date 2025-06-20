@@ -111,15 +111,10 @@ export function session(parameters: SessionConnectorParameters = {}) {
         return await signer.signArbitrary(payload);
       },
       async signTx(signDoc) {
-        try {
-          const provider = await this.getProvider();
-          const signer = createSessionSigner(provider);
+        const provider = await this.getProvider();
+        const signer = createSessionSigner(provider);
 
-          return await signer.signTx(signDoc);
-        } catch (error) {
-          console.error(error);
-          throw error;
-        }
+        return await signer.signTx(signDoc);
       },
     };
   });
