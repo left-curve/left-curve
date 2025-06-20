@@ -37,7 +37,7 @@ impl Context {
         match Database::connect(opt).await {
             Ok(db) => {
                 #[cfg(feature = "tracing")]
-                tracing::info!(database_url, "Connected to database");
+                tracing::info!(database_url, max_connections, "Connected to database");
 
                 // NOTE: not doing all but this is what we should do based on Claude Code:
                 // In-memory + single connection: Skip all pragmas
@@ -59,7 +59,7 @@ impl Context {
             },
             Err(error) => {
                 #[cfg(feature = "tracing")]
-                tracing::error!(database_url, %error, "Failed to connect to database");
+                tracing::error!(database_url, max_connections, %error, "Failed to connect to database");
 
                 Err(error)
             },

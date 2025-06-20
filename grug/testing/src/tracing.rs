@@ -4,6 +4,8 @@ use std::sync::Once;
 static TRACING: Once = Once::new();
 
 pub fn setup_tracing_subscriber(level: tracing::Level) {
+    println!("Setting up tracing subscriber with level: {:?}", level);
+
     TRACING.call_once(|| {
         let subscriber = tracing_subscriber::FmtSubscriber::builder()
             .with_max_level(level)
