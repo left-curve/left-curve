@@ -24,6 +24,7 @@ import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
+import { PairAssets } from "./PairAssets";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -67,19 +68,7 @@ type CellAssetsProps = {
 const Assets: React.FC<CellAssetsProps> = ({ assets, noImage }) => {
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
-      {!noImage && (
-        <div className="flex">
-          {assets.map((asset, i) => (
-            <img
-              key={`asset-logo-${asset.symbol}-${i}`}
-              src={asset.logoURI}
-              alt={asset.symbol}
-              className={`min-w-8 min-h-8 w-8 h-8 rounded-full object-cover -ml-${i + 3}`}
-              loading="lazy"
-            />
-          ))}
-        </div>
-      )}
+      {!noImage && <PairAssets assets={assets} />}
       <p className="min-w-fit">
         {assets.map((asset, i) => (
           <span key={`text-${asset.symbol}-${i}`}>

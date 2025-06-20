@@ -127,6 +127,10 @@ export {
 export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
 
 export { type UseProTradeParameters, useProTrade } from "./hooks/useProTrade.js";
+export {
+  type UsePoolLiquidityParameters,
+  usePoolLiquidity,
+} from "./hooks/usePoolLiquidity.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 

@@ -459,6 +459,12 @@ export const mock_BTC_COIN: NativeCoin = {
 
 export const mockPoolsInfo: PoolInfo[] = [
   {
+    pairs: [mock_BTC_COIN, mock_USDT_COIN],
+    apr: "11.80%",
+    tvl: 250120000,
+    userPosition: 15500,
+  },
+  {
     pairs: [mock_ETH_COIN, mock_USDT_COIN],
     apr: "14.32%",
     tvl: 174580000,
