@@ -113,11 +113,16 @@ export {
   useAppConfig,
 } from "./hooks/useAppConfig.js";
 
+export {
+  type UseInfiniteGraphqlQueryParameters,
+  useInfiniteGraphqlQuery,
+} from "./hooks/useInfiniteGraphqlQuery.js";
+
+export { type UseSubmitTxParameters, useSubmitTx } from "./hooks/useSubmitTx.js";
+
 export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
 
 export { type UseProTradeParameters, useProTrade } from "./hooks/useProTrade.js";
-
-export { useInfiniteGraphqlQuery } from "./hooks/useInfiniteGraphqlQuery.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
