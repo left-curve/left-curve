@@ -68,7 +68,7 @@ impl EventQuery {
             last,
             sort_by,
             100,
-            |query| query,
+            |query| Box::pin(async move { Ok(query) }),
         )
         .await
     }

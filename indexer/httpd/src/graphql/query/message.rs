@@ -73,26 +73,28 @@ impl MessageQuery {
             sort_by,
             100,
             |query| {
-                let mut query = query;
+                Box::pin(async move {
+                    let mut query = query;
 
-                if let Some(block_height) = block_height {
-                    query =
-                        query.filter(entity::messages::Column::BlockHeight.eq(block_height as i64));
-                }
+                    if let Some(block_height) = block_height {
+                        query = query
+                            .filter(entity::messages::Column::BlockHeight.eq(block_height as i64));
+                    }
 
-                if let Some(method_name) = method_name {
-                    query = query.filter(entity::messages::Column::MethodName.eq(method_name));
-                }
+                    if let Some(method_name) = method_name {
+                        query = query.filter(entity::messages::Column::MethodName.eq(method_name));
+                    }
 
-                if let Some(contract_addr) = contract_addr {
-                    query = query.filter(entity::messages::Column::ContractAddr.eq(contract_addr));
-                }
+                    if let Some(contract_addr) = contract_addr {
+                        query =
+                            query.filter(entity::messages::Column::ContractAddr.eq(contract_addr));
+                    }
 
-                if let Some(sender_addr) = sender_addr {
-                    query = query.filter(entity::messages::Column::SenderAddr.eq(sender_addr));
-                }
-
-                query
+                    if let Some(sender_addr) = sender_addr {
+                        query = query.filter(entity::messages::Column::SenderAddr.eq(sender_addr));
+                    }
+                    Ok(query)
+                })
             },
         )
         .await

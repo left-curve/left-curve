@@ -77,22 +77,26 @@ impl TransactionQuery {
             sort_by,
             100,
             |query| {
-                let mut query = query;
+                Box::pin(async move {
+                    let mut query = query;
 
-                if let Some(block_height) = block_height {
-                    query = query
-                        .filter(entity::transactions::Column::BlockHeight.eq(block_height as i64));
-                }
+                    if let Some(block_height) = block_height {
+                        query = query.filter(
+                            entity::transactions::Column::BlockHeight.eq(block_height as i64),
+                        );
+                    }
 
-                if let Some(hash) = hash {
-                    query = query.filter(entity::transactions::Column::Hash.eq(&hash));
-                }
+                    if let Some(hash) = hash {
+                        query = query.filter(entity::transactions::Column::Hash.eq(&hash));
+                    }
 
-                if let Some(sender_address) = sender_address {
-                    query = query.filter(entity::transactions::Column::Sender.eq(&sender_address));
-                }
+                    if let Some(sender_address) = sender_address {
+                        query =
+                            query.filter(entity::transactions::Column::Sender.eq(&sender_address));
+                    }
 
-                query
+                    Ok(query)
+                })
             },
         )
         .await

@@ -4,7 +4,7 @@ use {
     indexer_sql::entity::OrderByBlocks,
     sea_orm::{EntityTrait, QuerySelect, Select},
     serde::Serialize,
-    std::cmp,
+    std::{cmp, future::Future, pin::Pin},
 };
 
 pub trait CursorFilter<C> {
@@ -25,13 +25,17 @@ pub async fn paginate_models<C, E, S>(
     last: Option<i32>,
     sort_by: Option<S>,
     max_items: u64,
-    update_query: impl FnOnce(Select<E>) -> Select<E>,
+    update_query: impl FnOnce(
+        Select<E>,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Select<E>, async_graphql::Error>> + Send>,
+    >,
 ) -> Result<Connection<OpaqueCursor<C>, E::Model, EmptyFields, EmptyFields>>
 where
     C: Send + Sync + Serialize + serde::de::DeserializeOwned,
     E: EntityTrait + Send + Sync,
     <E as EntityTrait>::Model: async_graphql::OutputType,
-    Select<E>: OrderByBlocks + CursorFilter<C>,
+    Select<E>: OrderByBlocks<E> + CursorFilter<C>,
     C: std::convert::From<<E as EntityTrait>::Model>,
     S: Default + Send + Sync + Copy,
     SortByEnum: std::convert::From<S>,
@@ -51,10 +55,10 @@ where
 
                 match (last, sort_by) {
                     (None, SortByEnum::BlockHeightAsc) | (Some(_), SortByEnum::BlockHeightDesc) => {
-                        query = query.order_by_blocks_asc()
+                        query = query.order_by_blocks_asc(std::marker::PhantomData::<E>)
                     },
                     (None, SortByEnum::BlockHeightDesc) | (Some(_), SortByEnum::BlockHeightAsc) => {
-                        query = query.order_by_blocks_desc()
+                        query = query.order_by_blocks_desc(std::marker::PhantomData::<E>)
                     },
                 }
 
@@ -101,7 +105,7 @@ where
                     },
                 }
 
-                let query = update_query(query);
+                let query = update_query(query).await?;
 
                 let mut models = query.all(&app_ctx.db).await?;
 

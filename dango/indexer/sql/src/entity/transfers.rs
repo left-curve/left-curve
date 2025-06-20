@@ -2,7 +2,6 @@
 use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
 
 use {
-    crate::entity::OrderByBlocks,
     sea_orm::{Order, QueryOrder, entity::prelude::*},
     serde::{Deserialize, Serialize},
 };
@@ -75,16 +74,14 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl OrderByBlocks for Select<Entity> {
-    fn order_by_blocks_desc(&self) -> Self {
-        self.clone()
-            .order_by(Column::BlockHeight, Order::Desc)
+impl indexer_sql::entity::OrderByBlocks<Entity> for Select<Entity> {
+    fn order_by_blocks_desc(self, _phantom: std::marker::PhantomData<Entity>) -> Self {
+        self.order_by(Column::BlockHeight, Order::Desc)
             .order_by(Column::Idx, Order::Desc)
     }
 
-    fn order_by_blocks_asc(&self) -> Self {
-        self.clone()
-            .order_by(Column::BlockHeight, Order::Asc)
+    fn order_by_blocks_asc(self, _phantom: std::marker::PhantomData<Entity>) -> Self {
+        self.order_by(Column::BlockHeight, Order::Asc)
             .order_by(Column::Idx, Order::Asc)
     }
 }
