@@ -3,7 +3,7 @@ use {
     async_graphql::{types::connection::*, *},
     indexer_sql::entity::OrderByBlocks,
     sea_orm::{EntityTrait, Order, QuerySelect, Select},
-    serde::Serialize,
+    serde::{Serialize, de::DeserializeOwned},
     std::{cmp, future::Future, pin::Pin},
 };
 
@@ -26,8 +26,8 @@ pub async fn paginate_models<C, E, S>(
     >,
 ) -> Result<Connection<OpaqueCursor<C>, E::Model, EmptyFields, EmptyFields>>
 where
-    C: Send + Sync + Serialize + serde::de::DeserializeOwned,
-    E: EntityTrait + Send + Sync,
+    C: Send + Sync + Serialize + DeserializeOwned,
+    E: EntityTrait,
     <E as EntityTrait>::Model: async_graphql::OutputType,
     Select<E>: OrderByBlocks<E> + CursorFilter<C>,
     C: std::convert::From<<E as EntityTrait>::Model>,
