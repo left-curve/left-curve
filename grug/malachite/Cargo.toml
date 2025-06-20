@@ -42,6 +42,7 @@ dango-genesis           = { workspace = true }
 dango-proposal-preparer = { workspace = true }
 dango-testing           = { workspace = true }
 dango-types             = { workspace = true }
+grug-db-disk-lite       = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 rand                    = { workspace = true }

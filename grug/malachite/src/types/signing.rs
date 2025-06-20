@@ -38,7 +38,7 @@ impl malachitebft_core_types::SigningScheme for SigningScheme {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PrivateKey(k256::ecdsa::SigningKey);
 
 impl PrivateKey {

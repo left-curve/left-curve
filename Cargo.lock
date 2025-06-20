@@ -5018,6 +5018,7 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-crypto",
+ "grug-db-disk-lite",
  "grug-db-memory",
  "grug-vm-rust",
  "humantime-serde",

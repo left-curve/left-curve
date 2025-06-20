@@ -1,4 +1,4 @@
-moniker = "actor-app-with-parts-2"
+moniker = "actor-app-with-parts-0"
 
 [logging]
 log_format = "plaintext"
@@ -15,8 +15,8 @@ timeout_rebroadcast     = "5s"
 value_payload           = "proposal-and-parts"
 
 [consensus.p2p]
-listen_addr      = "/ip4/127.0.0.1/tcp/27002"
-persistent_peers = ["/ip4/127.0.0.1/tcp/27000", "/ip4/127.0.0.1/tcp/27001"]
+listen_addr      = "/ip4/127.0.0.1/tcp/27000"
+persistent_peers = ["/ip4/127.0.0.1/tcp/27001", "/ip4/127.0.0.1/tcp/27002"]
 pubsub_max_size  = "4.2 MB"
 rpc_max_size     = "10.5 MB"
 
@@ -40,8 +40,8 @@ avg_tx_bytes  = "100 KB"
 max_txs_bytes = "4 MB"
 
 [mempool.p2p]
-listen_addr      = "/ip4/127.0.0.1/tcp/28002"
-persistent_peers = ["/ip4/127.0.0.1/tcp/28000", "/ip4/127.0.0.1/tcp/28001"]
+listen_addr      = "/ip4/127.0.0.1/tcp/28000"
+persistent_peers = ["/ip4/127.0.0.1/tcp/28001", "/ip4/127.0.0.1/tcp/28002"]
 pubsub_max_size  = "4.2 MB"
 rpc_max_size     = "10.5 MB"
 
@@ -67,22 +67,10 @@ status_update_interval = "10s"
 
 [metrics]
 enabled     = true
-listen_addr = "127.0.0.1:29002"
+listen_addr = "127.0.0.1:29000"
 
 [runtime]
 flavor = "single_threaded"
-
-[test]
-exec_time_per_tx      = "1ms"
-max_block_size        = "1048.6 KB"
-max_retain_blocks     = 1000
-stable_block_times    = false
-time_allowance_factor = 0.5
-txs_per_part          = 256
-
-[test.vote_extensions]
-enabled = false
-size    = "0 B"
 
 [host]
 block_time = "5s"

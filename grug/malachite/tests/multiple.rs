@@ -1,16 +1,12 @@
 use {
-    crate::utils::load_config,
-    dango_genesis::{GenesisCodes, GenesisOption},
-    dango_testing::{Preset, TestOption, setup_suite_with_db_and_vm},
+    crate::utils::{launch_nodes, setup_tracing},
+    dango_testing::{Preset, TestOption},
     dango_types::constants::usdc,
     grug::{Coins, Message, NonEmpty, ResultExt, Signer},
-    grug_app::{NaiveProposalPreparer, NullIndexer},
+    grug_db_disk_lite::DiskDbLite,
     grug_db_memory::MemDb,
-    grug_malachite::{
-        PrivateKey, RawTx, Validator, ValidatorSet, mempool::MempoolMsg, spawn_actors,
-    },
-    grug_vm_rust::RustVm,
-    std::{sync::Arc, time::Duration},
+    grug_malachite::{RawTx, mempool::MempoolMsg},
+    std::time::Duration,
 };
 
 pub mod utils;
@@ -18,59 +14,14 @@ pub mod utils;
 #[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn multiple() {
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            .with_file(false)
-            .with_line_number(false)
-            .with_target(false)
-            .without_time()
-            .with_max_level(tracing::Level::INFO)
-            .finish(),
-    )
-    .unwrap();
+    setup_tracing();
 
-    let (validator_set, priv_keys) = mock_validator_set();
-
-    let codes = RustVm::genesis_codes();
-
-    let mut actors = Vec::new();
-    let mut accounts = Vec::new();
-
-    for (i, name) in [
-        (1, tracing::span!(tracing::Level::INFO, "node-1")),
-        (2, tracing::span!(tracing::Level::INFO, "node-2")),
-        (3, tracing::span!(tracing::Level::INFO, "node-3")),
-    ] {
-        let (suite, acc, ..) = setup_suite_with_db_and_vm(
-            MemDb::new(),
-            RustVm::new(),
-            NaiveProposalPreparer,
-            NullIndexer,
-            codes,
-            TestOption::preset_test(),
-            GenesisOption::preset_test(),
-        );
-
-        let app = Arc::new(suite.app);
-
-        let temp_dir = tempfile::tempdir().unwrap();
-
-        let wal_path = temp_dir.path().join(format!("wal-{}", i));
-
-        let actor = spawn_actors(
-            Some(wal_path),
-            load_config(format!("tests/nodes_config/node{}.toml", i), None).unwrap(),
-            validator_set.clone(),
-            priv_keys[i - 1].clone(),
-            app.clone(),
-            None,
-            Some(name),
-        )
-        .await;
-
-        actors.push(actor);
-        accounts.push(acc);
-    }
+    let (actors, mut accounts) = launch_nodes([
+        (tracing::span!(tracing::Level::INFO, "node-1"), MemDb::new()),
+        (tracing::span!(tracing::Level::INFO, "node-2"), MemDb::new()),
+        (tracing::span!(tracing::Level::INFO, "node-3"), MemDb::new()),
+    ])
+    .await;
 
     tokio::time::sleep(Duration::from_secs(15)).await;
 
@@ -128,23 +79,44 @@ async fn multiple() {
     tokio::signal::ctrl_c().await.unwrap();
 }
 
-fn mock_validator_set() -> (ValidatorSet, Vec<PrivateKey>) {
-    let mut validators = Vec::new();
-    let priv_keys = (1..=3)
-        .map(|_| {
-            let priv_key =
-                PrivateKey::from_inner(k256::ecdsa::SigningKey::random(&mut rand::thread_rng()));
+#[ignore]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn disk_db() {
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::FmtSubscriber::builder()
+            .with_file(false)
+            .with_line_number(false)
+            .with_target(false)
+            .without_time()
+            .with_max_level(tracing::Level::INFO)
+            .finish(),
+    )
+    .unwrap();
 
-            let validator = Validator {
-                address: priv_key.derive_address(),
-                public_key: priv_key.public_key(),
-                voting_power: 1,
-            };
+    let (actors, _accounts) = launch_nodes([
+        (
+            tracing::span!(tracing::Level::INFO, "node-1"),
+            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-1")).unwrap(),
+        ),
+        (
+            tracing::span!(tracing::Level::INFO, "node-2"),
+            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-2")).unwrap(),
+        ),
+        (
+            tracing::span!(tracing::Level::INFO, "node-3"),
+            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-3")).unwrap(),
+        ),
+        (
+            tracing::span!(tracing::Level::INFO, "node-4"),
+            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-3")).unwrap(),
+        ),
+    ])
+    .await;
 
-            validators.push(validator);
-            priv_key
-        })
-        .collect();
+    tokio::time::sleep(Duration::from_secs(15)).await;
 
-    (ValidatorSet::new(validators), priv_keys)
+    tracing::warn!("killing node-1");
+    actors[0].node.kill();
+
+    tokio::signal::ctrl_c().await.unwrap();
 }

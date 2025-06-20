@@ -31,6 +31,7 @@ use {
     tracing::Span,
 };
 
+#[derive(Debug)]
 pub struct Actors {
     pub mempool: MempoolActorRef,
     pub node: NodeRef,

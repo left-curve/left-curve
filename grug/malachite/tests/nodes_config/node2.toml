@@ -1,4 +1,4 @@
-moniker = "actor-app-with-parts-1"
+moniker = "actor-app-with-parts-2"
 
 [logging]
 log_format = "plaintext"
@@ -15,8 +15,8 @@ timeout_rebroadcast     = "5s"
 value_payload           = "proposal-and-parts"
 
 [consensus.p2p]
-listen_addr      = "/ip4/127.0.0.1/tcp/27001"
-persistent_peers = ["/ip4/127.0.0.1/tcp/27000", "/ip4/127.0.0.1/tcp/27002"]
+listen_addr      = "/ip4/127.0.0.1/tcp/27002"
+persistent_peers = ["/ip4/127.0.0.1/tcp/27000", "/ip4/127.0.0.1/tcp/27001"]
 pubsub_max_size  = "4.2 MB"
 rpc_max_size     = "10.5 MB"
 
@@ -40,8 +40,8 @@ avg_tx_bytes  = "100 KB"
 max_txs_bytes = "4 MB"
 
 [mempool.p2p]
-listen_addr      = "/ip4/127.0.0.1/tcp/28001"
-persistent_peers = ["/ip4/127.0.0.1/tcp/28000", "/ip4/127.0.0.1/tcp/28002"]
+listen_addr      = "/ip4/127.0.0.1/tcp/28002"
+persistent_peers = ["/ip4/127.0.0.1/tcp/28000", "/ip4/127.0.0.1/tcp/28001"]
 pubsub_max_size  = "4.2 MB"
 rpc_max_size     = "10.5 MB"
 
@@ -67,7 +67,7 @@ status_update_interval = "10s"
 
 [metrics]
 enabled     = true
-listen_addr = "127.0.0.1:29001"
+listen_addr = "127.0.0.1:29002"
 
 [runtime]
 flavor = "single_threaded"
