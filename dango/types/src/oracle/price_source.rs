@@ -1,4 +1,7 @@
-use {grug::Udec128, pyth_types::PythId};
+use {
+    grug::{Timestamp, Udec128},
+    pyth_types::PythId,
+};
 
 #[grug::derive(Serde, Borsh)]
 pub enum PriceSource {
@@ -11,7 +14,7 @@ pub enum PriceSource {
         /// is 10^6 uatom, so the precision is 6.
         precision: u8,
         /// The timestamp of the price.
-        timestamp: u64,
+        timestamp: Timestamp,
     },
     /// A price source that uses price feeds from Pyth.
     Pyth {

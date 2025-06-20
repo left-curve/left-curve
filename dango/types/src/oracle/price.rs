@@ -1,9 +1,11 @@
 use {
-    grug::{Defined, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined},
+    anyhow::anyhow,
+    grug::{Defined, MultiplyFraction, Number, StdResult, Timestamp, Udec128, Uint128, Undefined},
     pyth_types::PriceFeed,
 };
 
 pub type PrecisionlessPrice = Price<Undefined<u8>>;
+
 pub type PrecisionedPrice = Price<Defined<u8>>;
 
 #[grug::derive(Serde, Borsh)]
@@ -15,7 +17,7 @@ pub struct Price<P = Defined<u8>> {
     /// humanized form.
     pub humanized_ema: Udec128,
     /// The UNIX timestamp of the price (seconds since UNIX epoch).
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
     /// The number of decimal places of the token that is used to convert
     /// the price from its smallest unit to a humanized form. E.g. 1 ATOM
     /// is 10^6 uatom, so the precision is 6.
@@ -24,7 +26,7 @@ pub struct Price<P = Defined<u8>> {
 
 impl PrecisionlessPrice {
     /// Creates a new PrecisionlessPrice with the given humanized price.
-    pub fn new(humanized_price: Udec128, humanized_ema: Udec128, timestamp: u64) -> Self {
+    pub fn new(humanized_price: Udec128, humanized_ema: Udec128, timestamp: Timestamp) -> Self {
         Self {
             humanized_price,
             humanized_ema,
@@ -47,7 +49,7 @@ impl PrecisionedPrice {
     pub fn new(
         humanized_price: Udec128,
         humanized_ema: Udec128,
-        timestamp: u64,
+        timestamp: Timestamp,
         precision: u8,
     ) -> Self {
         Self {
@@ -120,10 +122,14 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
             ema_unchecked.expo.unsigned_abs(),
         )?;
 
+        let timestamp = price_unchecked.publish_time.try_into().map_err(|err| {
+            anyhow!("price feed publish time is not a valid `u128` number: {err}")
+        })?;
+
         Ok(Price {
             humanized_price: price,
             humanized_ema: ema,
-            timestamp: price_unchecked.publish_time.unsigned_abs(),
+            timestamp: Timestamp::from_seconds(timestamp),
             precision: Undefined::new(),
         })
     }
@@ -141,7 +147,7 @@ mod tests {
         let price = PrecisionedPrice {
             humanized_price: Udec128::new(100_000_000u128),
             humanized_ema: Udec128::ONE,
-            timestamp: 0,
+            timestamp: Timestamp::from_seconds(0),
             precision: Defined::new(18),
         };
 
@@ -158,7 +164,7 @@ mod tests {
         let price = PrecisionedPrice {
             humanized_price: Udec128::new(100_000_000u128),
             humanized_ema: Udec128::ONE,
-            timestamp: 0,
+            timestamp: Timestamp::from_seconds(0),
             precision: Defined::new(18),
         };
 
