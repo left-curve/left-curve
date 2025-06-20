@@ -1,10 +1,19 @@
 use {
     dango_genesis::{GenesisCodes, GenesisOption},
     dango_testing::{Preset, TestAccounts, TestOption, setup_suite_with_db_and_vm},
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
-    grug_malachite::{Actors, ActorsConfig, PrivateKey, Validator, ValidatorSet, spawn_actors},
+    grug_app::{
+        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm,
+    },
+    grug_db_disk_lite::DiskDbLite,
+    grug_malachite::{
+        Actors, ActorsConfig, HostApp, MempoolApp, PrivateKey, Validator, ValidatorSet,
+        spawn_actors,
+    },
     grug_vm_rust::RustVm,
-    std::{path::Path, sync::Arc},
+    std::{
+        path::{Path, PathBuf},
+        sync::Arc,
+    },
     tracing::Span,
 };
 
@@ -32,9 +41,56 @@ pub fn load_config(path: impl AsRef<Path>, prefix: Option<&str>) -> anyhow::Resu
         .map_err(Into::into)
 }
 
+pub struct Nodes<const N: usize, DB, VM, PP, ID> {
+    pub actors: [Actors; N],
+    pub accounts: [TestAccounts; N],
+    validator_set: ValidatorSet,
+    priv_keys: [PrivateKey; N],
+    wal_paths: [PathBuf; N],
+    apps: [Arc<App<DB, VM, PP, ID>>; N],
+    spans: [Span; N],
+}
+
+impl<const N: usize, DB, VM, PP, ID> Nodes<N, DB, VM, PP, ID> {
+    pub fn stop_actor(&self, i: usize) {
+        self.actors[i].node.stop(None);
+    }
+}
+
+impl<const N: usize, DB, VM, PP, ID> Nodes<N, DB, VM, PP, ID>
+where
+    VM: Vm + Clone + Send + Sync,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    DB: Db + RelaunchableDb,
+    DB::Error: std::fmt::Debug,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    App<DB, VM, PP, ID>: MempoolApp,
+    App<DB, VM, PP, ID>: HostApp,
+{
+    pub async fn relaunch_actor(&mut self, i: usize) {
+        let actor = spawn_actors(
+            Some(self.wal_paths[i].clone()),
+            create_config(i, N),
+            self.validator_set.clone(),
+            self.priv_keys[i].clone(),
+            self.apps[i].clone(),
+            None,
+            Some(self.spans[i].clone()),
+        )
+        .await;
+
+        self.actors[i] = actor;
+    }
+}
+
+pub trait RelaunchableDb: Db {}
+
+impl RelaunchableDb for DiskDbLite {}
+
 pub async fn launch_nodes<const N: usize, DB>(
     spans: [(Span, DB); N],
-) -> ([Actors; N], [TestAccounts; N])
+) -> Nodes<N, DB, RustVm, NaiveProposalPreparer, NullIndexer>
 where
     DB: Db + Send + Sync + 'static,
     DB::Error: std::fmt::Debug,
@@ -45,9 +101,12 @@ where
 {
     let (validator_set, priv_keys) = mock_validator_set::<N>();
 
-    let mut actors = Vec::new();
-    let mut accounts = Vec::new();
+    let mut actors = Vec::with_capacity(N);
+    let mut accounts = Vec::with_capacity(N);
     let codes = RustVm::genesis_codes();
+    let mut wal_paths = Vec::with_capacity(N);
+    let mut apps = Vec::with_capacity(N);
+    let mut spanss = Vec::with_capacity(N);
 
     for (i, (span, db)) in spans.into_iter().enumerate() {
         let (suite, acc, ..) = setup_suite_with_db_and_vm(
@@ -62,9 +121,9 @@ where
 
         let app = Arc::new(suite.app);
 
-        let temp_dir = tempfile::tempdir().unwrap();
+        let wal_path = temp_dir(format!("wal-{}", i));
 
-        let wal_path = temp_dir.path().join(format!("wal-{}", i));
+        wal_paths.push(wal_path.clone());
 
         let actor = spawn_actors(
             Some(wal_path),
@@ -74,19 +133,39 @@ where
             priv_keys[i].clone(),
             app.clone(),
             None,
-            Some(span),
+            Some(span.clone()),
         )
         .await;
 
         actors.push(actor);
         accounts.push(acc);
+        apps.push(app);
+        spanss.push(span);
     }
 
-    (actors.try_into().unwrap(), accounts.try_into().unwrap())
+    Nodes {
+        actors: actors.try_into().unwrap(),
+        accounts: accounts.try_into().unwrap(),
+        validator_set,
+        priv_keys,
+        wal_paths: wal_paths.try_into().unwrap(),
+        apps: apps
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("Failed to convert apps to array"))
+            .unwrap(),
+        spans: spanss.try_into().unwrap(),
+    }
+}
+
+pub fn temp_dir<P>(prefix: P) -> PathBuf
+where
+    P: AsRef<Path>,
+{
+    tempfile::tempdir().unwrap().path().join(prefix.as_ref())
 }
 
 fn mock_validator_set<const N: usize>() -> (ValidatorSet, [PrivateKey; N]) {
-    let mut validators = Vec::new();
+    let mut validators = Vec::with_capacity(N);
     let priv_keys = (0..N)
         .map(|_| {
             let priv_key =

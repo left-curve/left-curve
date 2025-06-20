@@ -511,6 +511,7 @@ impl Host {
         Ok(())
     }
 
+    #[tracing::instrument("process_synced_value", skip_all, fields(height = %height, round = %round))]
     fn process_synced_value(
         &self,
         state: &mut State,
@@ -537,6 +538,8 @@ impl Host {
         };
 
         if proposed_value.validity == Validity::Valid {
+            info!(block_hash = %block_hash, "Block hash matches");
+
             // Store undecided block
             UNDECIDED_BLOCK.save(state, block_hash, &block)?;
 
@@ -546,6 +549,8 @@ impl Host {
                 (*height, round.as_i64(), block_hash),
                 &proposed_value,
             )?;
+        } else {
+            warn!(block_hash = %block_hash, proposal_block_hash = %block.block_hash(), "Block hash mismatch");
         }
 
         reply_to.send(proposed_value)?;

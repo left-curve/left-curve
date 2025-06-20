@@ -1,5 +1,5 @@
 use {
-    crate::utils::{launch_nodes, setup_tracing},
+    crate::utils::{Nodes, launch_nodes, setup_tracing, temp_dir},
     dango_testing::{Preset, TestOption},
     dango_types::constants::usdc,
     grug::{Coins, Message, NonEmpty, ResultExt, Signer},
@@ -16,7 +16,11 @@ pub mod utils;
 async fn multiple() {
     setup_tracing();
 
-    let (actors, mut accounts) = launch_nodes([
+    let Nodes {
+        actors,
+        mut accounts,
+        ..
+    } = launch_nodes([
         (tracing::span!(tracing::Level::INFO, "node-1"), MemDb::new()),
         (tracing::span!(tracing::Level::INFO, "node-2"), MemDb::new()),
         (tracing::span!(tracing::Level::INFO, "node-3"), MemDb::new()),
@@ -84,22 +88,22 @@ async fn multiple() {
 async fn disk_db() {
     setup_tracing();
 
-    let (actors, _accounts) = launch_nodes([
+    let mut nodes = launch_nodes([
         (
             tracing::span!(tracing::Level::INFO, "node-1"),
-            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-1")).unwrap(),
+            DiskDbLite::open(temp_dir("node-1")).unwrap(),
         ),
         (
             tracing::span!(tracing::Level::INFO, "node-2"),
-            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-2")).unwrap(),
+            DiskDbLite::open(temp_dir("node-2")).unwrap(),
         ),
         (
             tracing::span!(tracing::Level::INFO, "node-3"),
-            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-3")).unwrap(),
+            DiskDbLite::open(temp_dir("node-3")).unwrap(),
         ),
         (
             tracing::span!(tracing::Level::INFO, "node-4"),
-            DiskDbLite::open(tempfile::tempdir().unwrap().path().join("node-3")).unwrap(),
+            DiskDbLite::open(temp_dir("node-4")).unwrap(),
         ),
     ])
     .await;
@@ -107,7 +111,12 @@ async fn disk_db() {
     tokio::time::sleep(Duration::from_secs(15)).await;
 
     tracing::warn!("killing node-1");
-    actors[0].node.kill();
+    nodes.stop_actor(0);
 
-    tokio::signal::ctrl_c().await.unwrap();
+    tokio::time::sleep(Duration::from_secs(15)).await;
+
+    tracing::warn!("relaunching node-1");
+    nodes.relaunch_actor(0).await;
+
+    tokio::time::sleep(Duration::from_secs(20)).await;
 }
