@@ -1,15 +1,20 @@
 use {
     anyhow::anyhow,
-    grug::{Defined, MultiplyFraction, Number, StdResult, Timestamp, Udec128, Uint128, Undefined},
+    grug::{
+        Defined, MaybeDefined, MultiplyFraction, Number, StdResult, Timestamp, Udec128, Uint128,
+        Undefined,
+    },
     pyth_types::PriceFeed,
 };
 
-pub type PrecisionlessPrice = Price<Undefined<u8>>;
+pub type Precision = u8;
 
-pub type PrecisionedPrice = Price<Defined<u8>>;
+pub type PrecisionlessPrice = Price<Undefined<Precision>>;
+
+pub type PrecisionedPrice = Price<Defined<Precision>>;
 
 #[grug::derive(Serde, Borsh)]
-pub struct Price<P = Defined<u8>> {
+pub struct Price<P: MaybeDefined<Precision> = Defined<Precision>> {
     /// The price of the token in its humanized form. I.e. the price of 1 ATOM,
     /// rather than 1 uatom.
     pub humanized_price: Udec128,
@@ -35,7 +40,7 @@ impl PrecisionlessPrice {
         }
     }
 
-    pub fn with_precision(self, precision: u8) -> Price<Defined<u8>> {
+    pub fn with_precision(self, precision: Precision) -> PrecisionedPrice {
         Price {
             humanized_price: self.humanized_price,
             humanized_ema: self.humanized_ema,
@@ -50,7 +55,7 @@ impl PrecisionedPrice {
         humanized_price: Udec128,
         humanized_ema: Udec128,
         timestamp: Timestamp,
-        precision: u8,
+        precision: Precision,
     ) -> Self {
         Self {
             humanized_price,
@@ -63,7 +68,7 @@ impl PrecisionedPrice {
     /// Returns the number of decimal places of the token that is used to
     /// convert the price from its smallest unit to a humanized form. E.g.
     /// 1 ATOM is 10^6 uatom, so the precision is 6.
-    pub fn precision(&self) -> u8 {
+    pub fn precision(&self) -> Precision {
         self.precision.into_inner()
     }
 
