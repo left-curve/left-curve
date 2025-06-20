@@ -252,6 +252,11 @@
       "title": "Session expired",
       "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
       "stayLogout": "Stay logged out"
+    },
+    "protradeCloseAllOrders": {
+      "title": "Close All Orders",
+      "description": "This will close all your positions and cancel their associated TP/SL orders.",
+      "action": "Confirm Close Orders"
     }
   },
   "signin": {
@@ -597,6 +602,7 @@
       }
     },
     "protrade": {
+      "allOrdersCancelled": "All orders cancelled",
       "spot": {
         "noOpenOrders": "No open orders yet",
         "price": "Price",
@@ -629,8 +635,8 @@
             "declarations": ["input direction"],
             "selectors": ["direction"],
             "match": {
-              "direction=0": "Buy",
-              "direction=1": "Sell"
+              "direction=bid": "Buy",
+              "direction=ask": "Sell"
             }
           }
         ]

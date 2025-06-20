@@ -197,7 +197,7 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{eth, usdc},
-        grug::{ResultExt, hash_map},
+        grug::{ResultExt, Timestamp, hash_map},
         test_case::test_case,
     };
 
@@ -206,7 +206,7 @@ mod tests {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(2000),
                 Udec128::new_percent(2000),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
         };
@@ -217,13 +217,13 @@ mod tests {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(2000),
                 Udec128::new_percent(2000),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(1000),
                 Udec128::new_percent(1000),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
         };
