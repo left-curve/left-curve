@@ -17,6 +17,7 @@ export const router = createRouter({
   defaultPreload: "intent",
   defaultStaleTime: 5000,
   scrollRestoration: true,
+  context: {} as RouterContext,
   defaultPendingComponent: () => (
     <div className="flex-1 w-full flex justify-center items-center h-screen">
       <Spinner size="lg" color="pink" />
@@ -31,9 +32,9 @@ declare module "@tanstack/react-router" {
 }
 
 export interface RouterContext {
-  client?: UsePublicClientReturnType;
-  account?: UseAccountReturnType;
-  config?: UseConfigReturnType;
+  client: UsePublicClientReturnType;
+  account: UseAccountReturnType;
+  config: UseConfigReturnType;
 }
 
 export const AppRouter: React.FC = () => {

@@ -135,9 +135,9 @@ export {
 } from "./hooks/useProTradeState.js";
 
 export {
-  type UsePoolLiquidityParameters,
-  usePoolLiquidity,
-} from "./hooks/usePoolLiquidity.js";
+  type UsePoolLiquidityStateParameters,
+  usePoolLiquidityState,
+} from "./hooks/usePoolLiquidityState.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
