@@ -201,15 +201,6 @@ pub enum QueryMsg {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
-    /// Simulate a swap with exact input.
-    #[returns(Coin)]
-    SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
-    /// Simulate a swap with exact output.
-    #[returns(Coin)]
-    SimulateSwapExactAmountOut {
-        route: SwapRoute,
-        output: NonZero<Coin>,
-    },
     /// Returns the trading volume of a user address since the specified timestamp.
     #[returns(Uint128)]
     Volume {
@@ -227,6 +218,31 @@ pub enum QueryMsg {
         /// The start timestamp to query trading volume for. If not provided,
         /// username's total trading volume will be returned.
         since: Option<Timestamp>,
+    },
+    /// Simulate a liquidity provision.
+    /// Returns the amount of LP tokens to be minted.
+    #[returns(Coin)]
+    SimulateProvideLiquidity {
+        base_denom: Denom,
+        quote_denom: Denom,
+        deposit: CoinPair,
+    },
+    /// Simulate a liquidity withdrawal.
+    /// Returns the amount of the two underlying assets to be refunded.
+    #[returns(CoinPair)]
+    SimulateWithdrawLiquidity {
+        base_denom: Denom,
+        quote_denom: Denom,
+        lp_burn_amount: Uint128,
+    },
+    /// Simulate a swap with exact input.
+    #[returns(Coin)]
+    SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
+    /// Simulate a swap with exact output.
+    #[returns(Coin)]
+    SimulateSwapExactAmountOut {
+        route: SwapRoute,
+        output: NonZero<Coin>,
     },
 }
 
