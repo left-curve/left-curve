@@ -214,7 +214,6 @@ fn provide_liquidity(
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
 /// The underlying assets will be returned to the sender.
-
 fn withdraw_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
