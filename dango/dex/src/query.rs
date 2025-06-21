@@ -64,6 +64,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_orders_by_user(ctx, user, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::Volume { user, since } => {
+            let res = query_volume(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
+        },
         QueryMsg::SimulateSwapExactAmountIn { route, input } => {
             let (_, output) =
                 core::swap_exact_amount_in(ctx.storage, ctx.querier, route.into_inner(), input)?;
@@ -72,14 +80,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {
             let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
             input.to_json_value()
-        },
-        QueryMsg::Volume { user, since } => {
-            let res = query_volume(ctx, user, since)?;
-            res.to_json_value()
-        },
-        QueryMsg::VolumeByUser { user, since } => {
-            let res = query_volume_by_user(ctx, user, since)?;
-            res.to_json_value()
         },
     }
     .map_err(Into::into)
