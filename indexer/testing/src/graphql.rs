@@ -89,7 +89,7 @@ where
                     break;
                 }
                 // If we are paginating with `first`, we use the end cursor for the next request
-                after = Some(response.page_info.end_cursor);
+                after = response.page_info.end_cursor;
             },
             (None, Some(_)) => {
                 for edge in response.edges.into_iter().rev() {
@@ -100,7 +100,7 @@ where
                     break;
                 }
                 // If we are paginating with `last`, we use the start cursor for the next request
-                before = Some(response.page_info.start_cursor);
+                before = response.page_info.start_cursor;
             },
             _ => {
                 return Err(anyhow::anyhow!(

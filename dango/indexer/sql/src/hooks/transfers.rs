@@ -59,6 +59,9 @@ impl Hooks {
             "Looked at transfer events",
         );
 
+        // #[cfg(feature = "tracing")]
+        // tracing::debug!("{:#?}", transfer_events);
+
         let mut idx = 0;
 
         // 2. create a transfer for each event
@@ -69,6 +72,13 @@ impl Hooks {
                     .transfers
                     .iter()
                     .flat_map(|(recipient, coins)| {
+                        #[cfg(feature = "tracing")]
+                        if coins.is_empty() {
+                            tracing::warn!(
+                                "Transfer detected but coins is empty, won't create transfers",
+                            );
+                        }
+
                         coins
                             .into_iter()
                             .map(|coin| {

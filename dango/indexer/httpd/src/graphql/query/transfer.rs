@@ -5,7 +5,10 @@ use {
         context::Context,
         graphql::query::pagination::{CursorFilter, paginate_models},
     },
-    sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, Select},
+    sea_orm::{
+        ColumnTrait, Condition, EntityTrait, JoinType, Order, QueryFilter, QuerySelect, QueryTrait,
+        RelationTrait, Select,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -80,7 +83,7 @@ impl TransferQuery {
             last,
             sort_by,
             100,
-            |query, txn| {
+            |query, _| {
                 Box::pin(async move {
                     let mut query = query;
 
@@ -91,30 +94,56 @@ impl TransferQuery {
 
                     if let Some(from_address) = from_address {
                         query =
-                            query.filter(entity::transfers::Column::FromAddress.eq(from_address));
+                            query.filter(entity::transfers::Column::FromAddress.eq(&from_address));
                     }
 
                     if let Some(to_address) = to_address {
-                        query = query.filter(entity::transfers::Column::ToAddress.eq(to_address));
+                        query = query.filter(entity::transfers::Column::ToAddress.eq(&to_address));
                     }
 
                     if let Some(username) = username {
-                        let accounts = entity::accounts::Entity::find()
-                            .find_also_related(entity::users::Entity)
-                            .filter(entity::users::Column::Username.eq(username))
-                            .all(txn)
-                            .await?;
+                        // NOTE: keeping the "safe" version for now, until I confirm in production the subquery code works correctly.
+                        // let accounts = entity::accounts::Entity::find()
+                        //     .find_also_related(entity::users::Entity)
+                        //     .filter(entity::users::Column::Username.eq(&username))
+                        //     .all(txn)
+                        //     .await?;
 
-                        let addresses = accounts
-                            .into_iter()
-                            .map(|(account, _)| account.address)
-                            .collect::<Vec<_>>();
+                        // let addresses = accounts
+                        //     .into_iter()
+                        //     .map(|(account, _)| account.address)
+                        //     .collect::<Vec<_>>();
 
-                        query = query.filter(
-                            entity::transfers::Column::FromAddress
-                                .is_in(&addresses)
-                                .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
-                        );
+                        // query = query.filter(
+                        //     entity::transfers::Column::FromAddress
+                        //         .is_in(&addresses)
+                        //         .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+                        // );
+
+                        // Use subquery to check if transfer involves any account owned by the user
+                        let account_addresses_subquery = entity::accounts::Entity::find()
+                            .select_only()
+                            .column(entity::accounts::Column::Address)
+                            .join(
+                                JoinType::InnerJoin,
+                                entity::accounts::Relation::AccountUser.def(),
+                            )
+                            .join(
+                                JoinType::InnerJoin,
+                                entity::accounts_users::Relation::User.def(),
+                            )
+                            .filter(entity::users::Column::Username.eq(&username));
+
+                        query =
+                            query.filter(
+                                Condition::any()
+                                    .add(entity::transfers::Column::FromAddress.in_subquery(
+                                        account_addresses_subquery.clone().as_query().to_owned(),
+                                    ))
+                                    .add(entity::transfers::Column::ToAddress.in_subquery(
+                                        account_addresses_subquery.as_query().to_owned(),
+                                    )),
+                            );
                     }
 
                     Ok(query)

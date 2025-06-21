@@ -3,7 +3,7 @@ use {
     crate::paginate_models,
     assertor::*,
     dango_indexer_sql::entity,
-    dango_testing::setup_test_with_indexer,
+    dango_testing::{HyperlaneTestSuite, create_user_and_account, setup_test_with_indexer},
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
@@ -114,6 +114,199 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
                         "Transaction hash should not be empty."
                     );
                 });
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_transfers_with_username() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo2");
+
+    suite
+        .transfer(
+            &mut user1,
+            user2.address(),
+            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    suite.app.indexer.wait_for_finish();
+
+    let graphql_query = r#"
+      query Transfers($username: String) {
+        transfers(username: $username) {
+          nodes {
+            id
+            idx
+            blockHeight
+            txHash
+            fromAddress
+            toAddress
+            amount
+            denom
+            createdAt
+            accounts { address users { username }}
+            fromAccount { address users { username }}
+            toAccount { address users { username }}
+          }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let variables = serde_json::json!({
+        "username": user1.username,
+    })
+    .as_object()
+    .unwrap()
+    .to_owned();
+
+    let request_body = GraphQLCustomRequest {
+        name: "transfers",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(httpd_context);
+
+                let response: PaginatedResponse<serde_json::Value> =
+                    call_paginated_graphql(app, request_body).await?;
+
+                assert_that!(response.edges).has_length(1);
+
+                assert_that!(
+                    response
+                        .edges
+                        .iter()
+                        .flat_map(|t| t.node.get("amount").unwrap().as_str())
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec!["100"]);
+
+                assert_that!(
+                    response
+                        .edges
+                        .iter()
+                        .flat_map(|t| t
+                            .node
+                            .get("fromAccount")
+                            .unwrap()
+                            .as_object()
+                            .and_then(|o| o.get("users"))
+                            .and_then(|u| u.as_array())
+                            .and_then(|a| a.first())
+                            .and_then(|u| u.get("username"))
+                            .and_then(|u| u.as_str()))
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec!["foo"]);
+
+                assert_that!(
+                    response
+                        .edges
+                        .iter()
+                        .flat_map(|t| t
+                            .node
+                            .get("toAccount")
+                            .unwrap()
+                            .as_object()
+                            .and_then(|o| o.get("users"))
+                            .and_then(|u| u.as_array())
+                            .and_then(|a| a.first())
+                            .and_then(|u| u.get("username"))
+                            .and_then(|u| u.as_str()))
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec!["foo2"]);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let mut user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
+    let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo2");
+
+    suite
+        .transfer(
+            &mut user1,
+            user2.address(),
+            Coins::one(usdc::DENOM.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    let graphql_query = r#"
+      query Transfers($username: String) {
+        transfers(username: $username) {
+          nodes {
+            id
+            idx
+            blockHeight
+            txHash
+            fromAddress
+            toAddress
+            amount
+            denom
+            createdAt
+            accounts { address users { username }}
+            fromAccount { address users { username }}
+            toAccount { address users { username }}
+          }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let variables = serde_json::json!({
+        "username": "wrong_username",
+    })
+    .as_object()
+    .unwrap()
+    .to_owned();
+
+    let request_body = GraphQLCustomRequest {
+        name: "transfers",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(httpd_context);
+
+                let response: PaginatedResponse<serde_json::Value> =
+                    call_paginated_graphql(app, request_body).await?;
+
+                assert_that!(response.edges).is_empty();
 
                 Ok::<(), anyhow::Error>(())
             })

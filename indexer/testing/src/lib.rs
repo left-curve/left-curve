@@ -89,8 +89,8 @@ pub struct Edge<X> {
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
-    pub start_cursor: String,
-    pub end_cursor: String,
+    pub start_cursor: Option<String>,
+    pub end_cursor: Option<String>,
     pub has_next_page: bool,
     pub has_previous_page: bool,
 }
