@@ -491,6 +491,8 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         )
         .should_succeed();
 
+    suite.app.indexer.wait_for_finish();
+
     let graphql_query = r#"
       subscription Transfer {
         transfers {
