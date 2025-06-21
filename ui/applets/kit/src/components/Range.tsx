@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useControlledState } from "#hooks/useControlledState.js";
 
 import { Input } from "./Input";
@@ -6,7 +6,6 @@ import { Input } from "./Input";
 import { twMerge } from "#utils/twMerge.js";
 
 import type React from "react";
-import { set } from "date-fns";
 
 const clampValueToStep = (value: number, min: number, max: number, step: number): number => {
   const valueRelativeToMin = value - min;

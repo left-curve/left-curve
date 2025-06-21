@@ -54,7 +54,7 @@ const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = 
         layout="position"
         className={twMerge(
           "w-full mx-auto flex flex-col pt-6 mb-16 gap-8 p-4",
-          state.userLiquidity ? "md:max-w-[50.1875rem]" : "md:max-w-[25rem]",
+          state.userHasLiquidity ? "md:max-w-[50.1875rem]" : "md:max-w-[25rem]",
         )}
       >
         {children}
@@ -65,7 +65,7 @@ const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = 
 
 const PoolLiquidityHeader: React.FC = () => {
   const { state } = usePoolLiquidity();
-  const { coins, userLiquidity } = state;
+  const { coins, userHasLiquidity } = state;
 
   const { base, quote } = coins;
 
@@ -73,7 +73,7 @@ const PoolLiquidityHeader: React.FC = () => {
     <div
       className={twMerge(
         "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-rice-50 relative w-full overflow-hidden",
-        { "lg:flex-row": userLiquidity },
+        { "lg:flex-row": userHasLiquidity },
       )}
     >
       <div className="flex gap-2 items-center">
@@ -85,12 +85,12 @@ const PoolLiquidityHeader: React.FC = () => {
       </div>
       <div
         className={twMerge("flex flex-row justify-between items-center", {
-          "lg:justify-center lg:gap-8": userLiquidity,
+          "lg:justify-center lg:gap-8": userHasLiquidity,
         })}
       >
         <div
           className={twMerge("flex flex-col items-start gap-0 ", {
-            "lg:flex-row lg:gap-1 lg:items-center": userLiquidity,
+            "lg:flex-row lg:gap-1 lg:items-center": userHasLiquidity,
           })}
         >
           <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
@@ -98,7 +98,7 @@ const PoolLiquidityHeader: React.FC = () => {
         </div>
         <div
           className={twMerge("flex flex-col items-center gap-0 ", {
-            "lg:flex-row lg:gap-1": userLiquidity,
+            "lg:flex-row lg:gap-1": userHasLiquidity,
           })}
         >
           <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
@@ -106,7 +106,7 @@ const PoolLiquidityHeader: React.FC = () => {
         </div>
         <div
           className={twMerge("flex flex-col items-end gap-0 ", {
-            "lg:flex-row lg:gap-1 lg:items-center": userLiquidity,
+            "lg:flex-row lg:gap-1 lg:items-center": userHasLiquidity,
           })}
         >
           <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
@@ -122,13 +122,13 @@ const PoolLiquidityHeader: React.FC = () => {
   );
 };
 
-const UserPoolLiquidity: React.FC = () => {
+const PoolLiquidityUserLiquidity: React.FC = () => {
   const { state } = usePoolLiquidity();
-  const { coins, userLiquidity } = state;
+  const { coins, userHasLiquidity } = state;
 
   const { base, quote } = coins;
 
-  if (!userLiquidity) return null;
+  if (!userHasLiquidity) return null;
 
   return (
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card w-full h-fit">
@@ -160,7 +160,7 @@ const UserPoolLiquidity: React.FC = () => {
   );
 };
 
-const PoolDeposit: React.FC = () => {
+const PoolLiquidityDeposit: React.FC = () => {
   const { settings } = useApp();
   const { state, controllers } = usePoolLiquidity();
   const { formatNumberOptions } = settings;
@@ -280,12 +280,12 @@ const PoolDeposit: React.FC = () => {
   );
 };
 
-const PoolWithdraw: React.FC = () => {
-  const { state } = usePoolLiquidity();
-  const { coins, action } = state;
+const PoolLiquidityWithdraw: React.FC = () => {
+  const { state, controllers } = usePoolLiquidity();
+  const { coins, action, withdrawPercent, withdraw } = state;
+  const { setValue } = controllers;
 
   const { base, quote } = coins;
-  const [range, setRange] = useState(50);
 
   if (action !== "withdraw") return null;
 
@@ -295,20 +295,46 @@ const PoolWithdraw: React.FC = () => {
         <div className="flex flex-col gap-2">
           <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
           <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
-            <p className="h1-regular text-gray-700">{range}%</p>
-            <Range minValue={0} maxValue={100} value={range} onChange={(val) => setRange(val)} />
+            <p className="h1-regular text-gray-700">{withdrawPercent}%</p>
+            <Range
+              isDisabled={withdraw.isPending}
+              minValue={0}
+              maxValue={100}
+              value={+withdrawPercent}
+              onChange={(v) => setValue("withdrawPercent", v.toString())}
+            />
             <div className="flex gap-2 items-center justify-center mt-2">
-              <Button size="xs" variant="secondary" onClick={() => setRange(25)}>
+              <Button
+                isDisabled={withdraw.isPending}
+                size="xs"
+                variant="secondary"
+                onClick={() => setValue("withdrawPercent", "25")}
+              >
                 25%
               </Button>
-              <Button size="xs" variant="secondary" onClick={() => setRange(50)}>
+              <Button
+                isDisabled={withdraw.isPending}
+                size="xs"
+                variant="secondary"
+                onClick={() => setValue("withdrawPercent", "50")}
+              >
                 50%
               </Button>
-              <Button size="xs" variant="secondary" onClick={() => setRange(75)}>
+              <Button
+                isDisabled={withdraw.isPending}
+                size="xs"
+                variant="secondary"
+                onClick={() => setValue("withdrawPercent", "75")}
+              >
                 75%
               </Button>
-              <Button size="xs" variant="secondary" onClick={() => setRange(100)}>
-                Max
+              <Button
+                isDisabled={withdraw.isPending}
+                size="xs"
+                variant="secondary"
+                onClick={() => setValue("withdrawPercent", "100")}
+              >
+                {m["common.max"]()}
               </Button>
             </div>
           </div>
@@ -319,8 +345,8 @@ const PoolWithdraw: React.FC = () => {
               {base.symbol} {m["poolLiquidity.amount"]()}
             </p>
             <div className="flex items-center gap-1 text-gray-700">
-              <img src={base.logoURI} alt={base.symbol} className="w-4 h-4 rounded-full" />
-              <p>120.00 {base.symbol}</p>
+              <img src={base.logoURI} alt={base.symbol} className="w-4 h-4" />
+              <p>- {base.symbol}</p>
             </div>
           </div>
           <div className="flex items-center justify-between gap-2">
@@ -328,35 +354,33 @@ const PoolWithdraw: React.FC = () => {
               {quote.symbol} {m["poolLiquidity.amount"]()}
             </p>
             <div className="flex items-center gap-1 text-gray-700">
-              <img src={quote.logoURI} alt={quote.symbol} className="w-4 h-4 rounded-full" />
-              <p>120.00 {quote.symbol}</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-gray-500">{m["poolLiquidity.networkFee"]()}</p>
-            <div className="flex items-center gap-1 text-gray-700">
-              <img src={base.logoURI} alt={base.symbol} className="w-4 h-4 rounded-full" />
-              <p>$0.02</p>
+              <img src={quote.logoURI} alt={quote.symbol} className="w-4 h-4" />
+              <p>- {quote.symbol}</p>
             </div>
           </div>
         </div>
       </div>
-      <Button size="md" fullWidth>
+      <Button
+        size="md"
+        fullWidth
+        isLoading={withdraw.isPending}
+        onClick={() => withdraw.mutateAsync()}
+      >
         {m["common.withdraw"]()}
       </Button>
     </>
   );
 };
 
-const PoolHeaderTabs: React.FC = () => {
+const PoolLiquidityHeaderTabs: React.FC = () => {
   const { state } = usePoolLiquidity();
-  const { action, onChangeAction, userLiquidity } = state;
+  const { action, onChangeAction, userHasLiquidity } = state;
 
   return (
     <Tabs
       layoutId="tabs-send-and-receive"
       selectedTab={action}
-      keys={userLiquidity ? ["deposit", "withdraw"] : ["deposit"]}
+      keys={userHasLiquidity ? ["deposit", "withdraw"] : ["deposit"]}
       fullWidth
       onTabChange={(tab) => onChangeAction(tab as "deposit" | "withdraw")}
     />
@@ -365,8 +389,8 @@ const PoolHeaderTabs: React.FC = () => {
 
 export const PoolLiquidity = Object.assign(PoolLiquidityContainer, {
   Header: PoolLiquidityHeader,
-  HeaderTabs: PoolHeaderTabs,
-  UserLiquidity: UserPoolLiquidity,
-  Deposit: PoolDeposit,
-  Withdraw: PoolWithdraw,
+  HeaderTabs: PoolLiquidityHeaderTabs,
+  UserLiquidity: PoolLiquidityUserLiquidity,
+  Deposit: PoolLiquidityDeposit,
+  Withdraw: PoolLiquidityWithdraw,
 });

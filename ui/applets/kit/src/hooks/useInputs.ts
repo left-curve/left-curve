@@ -50,7 +50,7 @@ export function useInputs(options: UseInputsOptions = {}) {
 
     setError(name, undefined);
     const validate = inputOptions.current[name]?.validate;
-    const strategy = inputOptions.current[name].strategy;
+    const strategy = inputOptions.current[name]?.strategy || defaultStrategy;
     if (validate && strategy === "onChange") {
       const validationResult = validate(newValue);
       setError(
