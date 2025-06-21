@@ -29,7 +29,6 @@ async fn graphql_returns_events() -> anyhow::Result<()> {
             messageId
             blockHeight
             createdAt
-            eventIdx
             type
             method
             eventStatus
@@ -181,7 +180,6 @@ async fn graphql_paginate_events() -> anyhow::Result<()> {
             messageId
             blockHeight
             createdAt
-            eventIdx
             type
             method
             eventStatus
