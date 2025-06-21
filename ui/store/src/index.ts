@@ -124,9 +124,16 @@ export {
   useSubmitTx,
 } from "./hooks/useSubmitTx.js";
 
-export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
+export {
+  type UseSimpleSwapStateParameters,
+  useSimpleSwapState,
+} from "./hooks/useSimpleSwapState.js";
 
-export { type UseProTradeParameters, useProTrade } from "./hooks/useProTrade.js";
+export {
+  type UseProTradeStateParameters,
+  useProTradeState,
+} from "./hooks/useProTradeState.js";
+
 export {
   type UsePoolLiquidityParameters,
   usePoolLiquidity,
