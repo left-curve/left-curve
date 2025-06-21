@@ -5,7 +5,7 @@ import {
   useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAppConfig, usePrices, useProTrade } from "@left-curve/store";
+import { useAppConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -25,8 +25,8 @@ import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 
-const [ProTradeProvider, useProTradeState] = createContext<{
-  state: ReturnType<typeof useProTrade>;
+const [ProTradeProvider, useProTrade] = createContext<{
+  state: ReturnType<typeof useProTradeState>;
   controllers: ReturnType<typeof useInputs>;
 }>({
   name: "ProTradeContext",
@@ -47,7 +47,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   children,
 }) => {
   const controllers = useInputs();
-  const state = useProTrade({
+  const state = useProTradeState({
     controllers,
     pairId,
     onChangePairId,
@@ -61,7 +61,7 @@ const ProTradeHeader: React.FC = () => {
   const { data: config } = useAppConfig();
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
-  const { state } = useProTradeState();
+  const { state } = useProTrade();
   const { pairId, onChangePairId } = state;
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
@@ -153,7 +153,7 @@ const ProTradeChart: React.FC = () => {
 };
 
 const ProTradeMenu: React.FC = () => {
-  const { state, controllers } = useProTradeState();
+  const { state, controllers } = useProTrade();
   return <TradeMenu state={state} controllers={controllers} />;
 };
 
@@ -163,7 +163,7 @@ const ProTradeOrders: React.FC = () => {
   const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
-  const { state } = useProTradeState();
+  const { state } = useProTrade();
   const { orders, quoteCoin, baseCoin } = state;
 
   const columns: TableColumn<OrdersByUserResponse & { id: number }> = [

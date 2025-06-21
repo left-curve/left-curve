@@ -10,6 +10,10 @@ export type WithAmount<T> = T & {
   readonly amount: string;
 };
 
+export type WithBalance<T> = T & {
+  readonly balance: string;
+};
+
 export type WithGasPriceStep<T> = T & {
   readonly gasPriceStep: {
     readonly low: number;

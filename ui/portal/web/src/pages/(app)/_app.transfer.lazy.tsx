@@ -7,7 +7,7 @@ import {
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";

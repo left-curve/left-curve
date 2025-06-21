@@ -118,6 +118,7 @@ export type {
   OrdersByPairResponse,
   OrdersByUserResponse,
   PairId,
+  PairSymbols,
   ReservesResponse,
   SwapRoute,
   PairParams,

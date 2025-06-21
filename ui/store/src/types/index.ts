@@ -58,6 +58,7 @@ export type {
   WithGasPriceStep,
   WithPrice,
   WithAmount,
+  WithBalance,
 } from "./coin.js";
 
 export { ConnectionStatus } from "./store.js";
