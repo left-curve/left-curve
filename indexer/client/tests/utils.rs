@@ -2,13 +2,11 @@ use {
     dango_genesis::GenesisOption,
     dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
     dango_testing::{Preset, TestAccounts, TestOption},
-    grug::{BlockCreation, setup_tracing_subscriber},
+    grug::BlockCreation,
     indexer_client::HttpClient,
 };
 
 pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
-    setup_tracing_subscriber(tracing::Level::INFO);
-
     let port = get_mock_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();

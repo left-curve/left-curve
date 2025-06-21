@@ -59,7 +59,9 @@ where
     let indexer = if let Some(url) = database_url {
         indexer.with_database_url(url)
     } else {
-        indexer.with_memory_database()
+        indexer
+            .with_memory_database()
+            .with_database_max_connections(1)
     };
 
     let indexer = indexer

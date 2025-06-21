@@ -15,10 +15,21 @@ pub async fn create_block() -> anyhow::Result<(
     Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
     TestAccounts,
 )> {
+    create_blocks(1).await
+}
+
+pub async fn create_blocks(
+    count: usize,
+) -> anyhow::Result<(
+    Context,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
+    TestAccounts,
+)> {
     let denom = Denom::from_str("ugrug")?;
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
+        .with_database_max_connections(1)
         .with_keep_blocks(true)
         .build()?;
 
@@ -40,14 +51,16 @@ pub async fn create_block() -> anyhow::Result<(
 
     let sender = accounts["sender"].address;
 
-    mock_client
-        .send_message(
-            &mut accounts["sender"],
-            grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?,
-            grug_types::GasOption::Predefined { gas_limit: 2000 },
-            &chain_id,
-        )
-        .await?;
+    for _ in 0..count {
+        mock_client
+            .send_message(
+                &mut accounts["sender"],
+                grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?,
+                grug_types::GasOption::Predefined { gas_limit: 2000 },
+                &chain_id,
+            )
+            .await?;
+    }
 
     suite.lock().await.app.indexer.wait_for_finish();
 

@@ -82,7 +82,7 @@ macro_rules! rootberg_test {
             for test in tests {
                 assert_eq!(test.$key_type.len(), $len);
 
-                eprintln!("Test case ID: {}", test.tc_id);
+                // eprintln!("Test case ID: {}", test.tc_id);
 
                 let message_hash = $hash_fn(&test.msg);
                 let signature = combine_signature(&test.sig);

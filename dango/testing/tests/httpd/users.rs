@@ -15,6 +15,8 @@ async fn query_user() -> anyhow::Result<()> {
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
+    suite.app.indexer.wait_for_finish();
+
     let graphql_query = r#"
       query Users {
       users {
@@ -41,8 +43,11 @@ async fn query_user() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let expected_data = serde_json::json!({
                     "username": user.username.to_string(),
@@ -102,8 +107,11 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let expected_data = serde_json::json!({
                     "username": test_account.username.to_string(),

@@ -7,6 +7,7 @@ pub mod block;
 pub mod event;
 pub mod grug;
 pub mod message;
+pub mod pagination;
 pub mod transaction;
 
 #[derive(MergedObject, Default)]
