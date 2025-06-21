@@ -1,11 +1,11 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, paginate_models},
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{connection::*, *},
     indexer_sql::entity,
-    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, Select},
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -15,6 +15,15 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
 }
 
 impl From<SortBy> for Order {
@@ -101,10 +110,10 @@ impl MessageQuery {
     }
 }
 
-impl CursorFilter<MessageCursor> for Select<entity::messages::Entity> {
-    fn cursor_filter(self, order: Order, cursor: &MessageCursor) -> Self {
-        match order {
-            Order::Asc => self.filter(
+impl CursorFilter<SortBy, MessageCursor> for Select<entity::messages::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &MessageCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
                 Condition::any()
                     .add(entity::messages::Column::BlockHeight.gt(cursor.block_height))
                     .add(
@@ -113,7 +122,7 @@ impl CursorFilter<MessageCursor> for Select<entity::messages::Entity> {
                             .and(entity::messages::Column::OrderIdx.gt(cursor.order_idx)),
                     ),
             ),
-            Order::Desc => self.filter(
+            SortBy::BlockHeightDesc => self.filter(
                 Condition::any()
                     .add(entity::messages::Column::BlockHeight.lt(cursor.block_height))
                     .add(
@@ -122,7 +131,14 @@ impl CursorFilter<MessageCursor> for Select<entity::messages::Entity> {
                             .and(entity::messages::Column::OrderIdx.lt(cursor.order_idx)),
                     ),
             ),
-            Order::Field(_) => self,
         }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::messages::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+        self.order_by(entity::messages::Column::BlockHeight, order.clone())
+            .order_by(entity::messages::Column::OrderIdx, order)
     }
 }

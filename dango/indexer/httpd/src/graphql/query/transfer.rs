@@ -3,11 +3,11 @@ use {
     dango_indexer_sql::entity,
     indexer_httpd::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, paginate_models},
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     sea_orm::{
-        ColumnTrait, Condition, EntityTrait, JoinType, Order, QueryFilter, QuerySelect, QueryTrait,
-        RelationTrait, Select,
+        ColumnTrait, Condition, EntityTrait, JoinType, Order, QueryFilter, QueryOrder, QuerySelect,
+        QueryTrait, RelationTrait, Select,
     },
     serde::{Deserialize, Serialize},
 };
@@ -18,6 +18,15 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
 }
 
 impl From<SortBy> for Order {
@@ -154,10 +163,10 @@ impl TransferQuery {
     }
 }
 
-impl CursorFilter<TransferCursor> for Select<entity::transfers::Entity> {
-    fn cursor_filter(self, order: Order, cursor: &TransferCursor) -> Self {
-        match order {
-            Order::Asc => self.filter(
+impl CursorFilter<SortBy, TransferCursor> for Select<entity::transfers::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &TransferCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
                 Condition::any()
                     .add(entity::transfers::Column::BlockHeight.gt(cursor.block_height as i64))
                     .add(
@@ -166,7 +175,7 @@ impl CursorFilter<TransferCursor> for Select<entity::transfers::Entity> {
                             .and(entity::transfers::Column::Idx.gt(cursor.idx)),
                     ),
             ),
-            Order::Desc => self.filter(
+            SortBy::BlockHeightDesc => self.filter(
                 Condition::any()
                     .add(entity::transfers::Column::BlockHeight.lt(cursor.block_height as i64))
                     .add(
@@ -175,7 +184,14 @@ impl CursorFilter<TransferCursor> for Select<entity::transfers::Entity> {
                             .and(entity::transfers::Column::Idx.lt(cursor.idx)),
                     ),
             ),
-            Order::Field(_) => self,
         }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::transfers::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+        self.order_by(entity::transfers::Column::BlockHeight, order.clone())
+            .order_by(entity::transfers::Column::Idx, order)
     }
 }

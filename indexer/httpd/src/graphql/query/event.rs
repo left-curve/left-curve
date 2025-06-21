@@ -1,11 +1,11 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, paginate_models},
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{types::connection::*, *},
     indexer_sql::entity,
-    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, Select},
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -15,6 +15,15 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
 }
 
 impl From<SortBy> for Order {
@@ -74,10 +83,10 @@ impl EventQuery {
     }
 }
 
-impl CursorFilter<EventCursor> for Select<entity::events::Entity> {
-    fn cursor_filter(self, order: Order, cursor: &EventCursor) -> Self {
-        match order {
-            Order::Asc => self.filter(
+impl CursorFilter<SortBy, EventCursor> for Select<entity::events::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &EventCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
                 Condition::any()
                     .add(entity::events::Column::BlockHeight.gt(cursor.block_height))
                     .add(
@@ -86,7 +95,7 @@ impl CursorFilter<EventCursor> for Select<entity::events::Entity> {
                             .and(entity::events::Column::EventIdx.gt(cursor.event_idx)),
                     ),
             ),
-            Order::Desc => self.filter(
+            SortBy::BlockHeightDesc => self.filter(
                 Condition::any()
                     .add(entity::events::Column::BlockHeight.lt(cursor.block_height))
                     .add(
@@ -95,7 +104,15 @@ impl CursorFilter<EventCursor> for Select<entity::events::Entity> {
                             .and(entity::events::Column::EventIdx.lt(cursor.event_idx)),
                     ),
             ),
-            Order::Field(_) => self,
         }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::events::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+
+        self.order_by(entity::events::Column::BlockHeight, order.clone())
+            .order_by(entity::events::Column::EventIdx, order)
     }
 }

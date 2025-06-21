@@ -3,10 +3,11 @@ use {
     dango_indexer_sql::entity,
     indexer_httpd::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, paginate_models},
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     sea_orm::{
-        ColumnTrait, Condition, JoinType, Order, QueryFilter, QuerySelect, RelationTrait, Select,
+        ColumnTrait, Condition, JoinType, Order, QueryFilter, QueryOrder, QuerySelect,
+        RelationTrait, Select,
     },
     serde::{Deserialize, Serialize},
 };
@@ -17,6 +18,15 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
 }
 
 impl From<SortBy> for Order {
@@ -109,10 +119,10 @@ impl AccountQuery {
     }
 }
 
-impl CursorFilter<AccountCursor> for Select<entity::accounts::Entity> {
-    fn cursor_filter(self, order: Order, cursor: &AccountCursor) -> Self {
-        match order {
-            Order::Asc => self.filter(
+impl CursorFilter<SortBy, AccountCursor> for Select<entity::accounts::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &AccountCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
                 Condition::any()
                     .add(
                         entity::accounts::Column::CreatedBlockHeight
@@ -124,7 +134,7 @@ impl CursorFilter<AccountCursor> for Select<entity::accounts::Entity> {
                             .and(entity::accounts::Column::Address.gt(&cursor.address)),
                     ),
             ),
-            Order::Desc => self.filter(
+            SortBy::BlockHeightDesc => self.filter(
                 Condition::any()
                     .add(
                         entity::accounts::Column::CreatedBlockHeight
@@ -136,7 +146,15 @@ impl CursorFilter<AccountCursor> for Select<entity::accounts::Entity> {
                             .and(entity::accounts::Column::Address.lt(&cursor.address)),
                     ),
             ),
-            Order::Field(_) => self,
         }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::accounts::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+
+        self.order_by(entity::accounts::Column::CreatedBlockHeight, order.clone())
+            .order_by(entity::accounts::Column::Address, order)
     }
 }

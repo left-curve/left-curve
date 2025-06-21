@@ -1,7 +1,7 @@
 use {
     crate::{
         context::Context,
-        graphql::query::pagination::{CursorFilter, paginate_models},
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
     async_graphql::{types::connection::*, *},
     indexer_sql::entity,
@@ -15,6 +15,15 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
 }
 
 impl From<SortBy> for Order {
@@ -94,12 +103,22 @@ impl BlockQuery {
     }
 }
 
-impl CursorFilter<BlockCursor> for Select<entity::blocks::Entity> {
-    fn cursor_filter(self, order: Order, cursor: &BlockCursor) -> Self {
-        match order {
-            Order::Asc => self.filter(entity::blocks::Column::BlockHeight.gt(cursor.block_height)),
-            Order::Desc => self.filter(entity::blocks::Column::BlockHeight.lt(cursor.block_height)),
-            Order::Field(_) => self,
+impl CursorFilter<SortBy, BlockCursor> for Select<entity::blocks::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &BlockCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => {
+                self.filter(entity::blocks::Column::BlockHeight.gt(cursor.block_height))
+            },
+            SortBy::BlockHeightDesc => {
+                self.filter(entity::blocks::Column::BlockHeight.lt(cursor.block_height))
+            },
         }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::blocks::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+        self.order_by(entity::blocks::Column::BlockHeight, order)
     }
 }
