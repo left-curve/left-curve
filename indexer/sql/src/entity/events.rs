@@ -4,9 +4,8 @@ use {
     async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader},
 };
 use {
-    crate::entity::OrderByBlocks,
     grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
-    sea_orm::{Order, QueryOrder, entity::prelude::*},
+    sea_orm::entity::prelude::*,
     serde::Deserialize,
 };
 
@@ -131,10 +130,3 @@ impl Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks(self, order: Order) -> Self {
-        self.order_by(Column::BlockHeight, order.clone())
-            .order_by(Column::EventIdx, order)
-    }
-}

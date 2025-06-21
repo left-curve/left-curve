@@ -8,12 +8,7 @@ use {
     async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
     grug_types::{JsonSerExt, Tx, TxOutcome},
 };
-use {
-    crate::entity::OrderByBlocks,
-    grug_types::FlatCategory,
-    sea_orm::{Order, QueryOrder, entity::prelude::*},
-    serde::Deserialize,
-};
+use {grug_types::FlatCategory, sea_orm::entity::prelude::*, serde::Deserialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, Deserialize)]
 #[sea_orm(table_name = "transactions")]
@@ -80,10 +75,3 @@ async fn load_tx_from_file(tx: &Model, ctx: &Context<'_>) -> Result<(Tx, TxOutco
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks(self, order: Order) -> Self {
-        self.order_by(Column::BlockHeight, order.clone())
-            .order_by(Column::TransactionIdx, order)
-    }
-}

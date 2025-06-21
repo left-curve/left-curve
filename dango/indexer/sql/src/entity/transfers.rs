@@ -2,7 +2,7 @@
 use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
 
 use {
-    sea_orm::{Order, QueryOrder, entity::prelude::*},
+    sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
 };
 
@@ -73,10 +73,3 @@ impl Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl indexer_sql::entity::OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks(self, order: Order) -> Self {
-        self.order_by(Column::BlockHeight, order.clone())
-            .order_by(Column::Idx, order)
-    }
-}

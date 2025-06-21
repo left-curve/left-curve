@@ -6,8 +6,7 @@ use {
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
 };
 use {
-    crate::entity::OrderByBlocks,
-    sea_orm::{Order, QueryOrder, entity::prelude::*},
+    sea_orm::{QueryOrder, entity::prelude::*},
     serde::{Deserialize, Serialize},
 };
 
@@ -65,10 +64,4 @@ where
         .one(db)
         .await?
         .map(|block| block.block_height))
-}
-
-impl OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks(self, order: Order) -> Self {
-        self.order_by(Column::BlockHeight, order)
-    }
 }

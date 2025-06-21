@@ -1,9 +1,6 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::{ComplexObject, Context, Result, SimpleObject};
-use {
-    dango_types::account_factory,
-    sea_orm::{Order, QueryOrder, entity::prelude::*},
-};
+use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
     Clone, Debug, PartialEq, DeriveEntityModel, Eq, Hash, serde::Serialize, serde::Deserialize,
@@ -102,10 +99,3 @@ impl Related<super::accounts_users::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl indexer_sql::entity::OrderByBlocks<Entity> for Select<Entity> {
-    fn order_by_blocks(self, order: Order) -> Self {
-        self.order_by(Column::CreatedBlockHeight, order.clone())
-            .order_by(Column::Address, order)
-    }
-}
