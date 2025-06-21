@@ -23,6 +23,8 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     pub block_height: i64,
     pub transaction_type: FlatCategory,
@@ -42,6 +44,14 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the creation timestamp in ISO8601 format with timezone
+    async fn created_at(&self) -> String {
+        let ts = grug_types::Timestamp::from_nanos(
+            self.created_at.and_utc().timestamp_nanos_opt().unwrap_or(0) as u128,
+        );
+        ts.to_rfc3339_string()
+    }
+
     /// Nested Events from this transaction, from block on-disk caching
     async fn nested_events(&self, ctx: &Context<'_>) -> Result<Option<String>> {
         let (_, outcome) = load_tx_from_file(self, ctx).await?;

@@ -27,5 +27,6 @@ tokio          = { workspace = true }
 [dev-dependencies]
 assert-json-diff = { workspace = true }
 assertor         = { workspace = true }
+chrono           = { workspace = true }
 grug-storage     = { workspace = true }
 tracing          = { workspace = true }

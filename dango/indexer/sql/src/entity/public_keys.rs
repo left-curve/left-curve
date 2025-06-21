@@ -23,6 +23,7 @@ pub struct Model {
     pub key_hash: String,
     pub public_key: String,
     pub key_type: auth::KeyType,
+    #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
     pub created_block_height: i64,
 }

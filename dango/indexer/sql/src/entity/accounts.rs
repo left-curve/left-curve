@@ -21,6 +21,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub address: String,
     pub account_type: account_factory::AccountType,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
     pub created_block_height: i64,
 }
@@ -28,6 +30,14 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the creation timestamp in ISO8601 format with timezone
+    async fn created_at(&self) -> String {
+        let ts = grug_types::Timestamp::from_nanos(
+            self.created_at.and_utc().timestamp_nanos_opt().unwrap_or(0) as u128,
+        );
+        ts.to_rfc3339_string()
+    }
+
     pub async fn users(&self, ctx: &Context<'_>) -> Result<Vec<crate::entity::users::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
 
