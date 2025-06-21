@@ -105,12 +105,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     .map_err(Into::into)
 }
 
-#[inline]
 fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<PairParams> {
     PAIRS.load(ctx.storage, (&base_denom, &quote_denom))
 }
 
-#[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
@@ -135,12 +133,10 @@ fn query_pairs(
         .collect()
 }
 
-#[inline]
 fn query_reserve(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<CoinPair> {
     RESERVES.load(ctx.storage, (&base_denom, &quote_denom))
 }
 
-#[inline]
 fn query_reserves(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
@@ -167,7 +163,6 @@ fn query_reserves(
         .collect()
 }
 
-#[inline]
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
     let (((base_denom, quote_denom), direction, price, _), order) =
         LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
@@ -183,7 +178,6 @@ fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse>
     })
 }
 
-#[inline]
 fn query_orders(
     ctx: ImmutableCtx,
     start_after: Option<OrderId>,
@@ -212,7 +206,6 @@ fn query_orders(
         .collect()
 }
 
-#[inline]
 fn query_orders_by_pair(
     ctx: ImmutableCtx,
     base_denom: Denom,
@@ -246,7 +239,6 @@ fn query_orders_by_pair(
         .collect()
 }
 
-#[inline]
 fn query_orders_by_user(
     ctx: ImmutableCtx,
     user: Addr,
@@ -282,7 +274,6 @@ fn query_orders_by_user(
         .collect()
 }
 
-#[inline]
 fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Uint128> {
     let volume_now = VOLUMES
         .prefix(&user)
@@ -310,7 +301,6 @@ fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdR
     Ok(volume_now.checked_sub(volume_since)?)
 }
 
-#[inline]
 fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
@@ -342,7 +332,6 @@ fn query_volume_by_user(
     Ok(volume_now.checked_sub(volume_since)?)
 }
 
-#[inline]
 fn query_simulate_provide_liquidity(
     ctx: ImmutableCtx,
     base_denom: Denom,
@@ -361,7 +350,6 @@ fn query_simulate_provide_liquidity(
         })
 }
 
-#[inline]
 fn query_simulate_withdraw_liquidity(
     ctx: ImmutableCtx,
     base_denom: Denom,
