@@ -20,6 +20,7 @@ pub struct Model {
     pub id: Uuid,
     #[sea_orm(unique)]
     pub username: String,
+    #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
     pub created_block_height: i64,
 }

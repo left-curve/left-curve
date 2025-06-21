@@ -103,6 +103,8 @@ pub struct Model {
         graphql(skip)
     )]
     pub message_id: Option<Uuid>,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     pub r#type: String,
     pub method: Option<String>,
@@ -120,6 +122,14 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the creation timestamp in ISO8601 format with timezone
+    async fn created_at(&self) -> String {
+        let ts = grug_types::Timestamp::from_nanos(
+            self.created_at.and_utc().timestamp_nanos_opt().unwrap_or(0) as u128,
+        );
+        ts.to_rfc3339_string()
+    }
+
     async fn transaction(&self, ctx: &Context<'_>) -> Result<Option<super::transactions::Model>> {
         let loader = ctx.data_unchecked::<DataLoader<EventTransactionDataLoader>>();
         Ok(loader.load_one(self.clone()).await?)
