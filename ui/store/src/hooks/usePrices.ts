@@ -82,10 +82,13 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   ): T extends true ? string : number {
     const { formatOptions = defaultFormatOptions, format = false } = options || {};
     const totalValue = Object.entries(balances).reduce((total, [denom, amount]) => {
-      const price = getPrice(formatUnits(amount, coins[denom].decimals), denom, {
-        formatOptions,
-        format: false,
-      });
+      const coin = coins[denom];
+      const price = coin
+        ? getPrice(formatUnits(amount, coin.decimals), denom, {
+            formatOptions,
+            format: false,
+          })
+        : 0;
       total += price;
       return total;
     }, 0);

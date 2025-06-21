@@ -1,43 +1,55 @@
+import { numberMask, useInputs } from "@left-curve/applets-kit";
+import { usePoolLiquidityState, usePrices } from "@left-curve/store";
+import { useState } from "react";
+
 import {
   Badge,
   Button,
-  createContext,
   Input,
   PairAssets,
   Range,
   Tabs,
+  createContext,
   twMerge,
 } from "@left-curve/applets-kit";
-import type { PairId } from "@left-curve/dango/types";
-import { usePoolLiquidity } from "@left-curve/store";
-import { useEffect, useState, type PropsWithChildren } from "react";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
 
-const [PoolLiquidityProvider, usePoolLiquidityState] = createContext<{
-  state: ReturnType<typeof usePoolLiquidity>;
+import type { PairUpdate } from "@left-curve/dango/types";
+import type { PropsWithChildren } from "react";
+import { useApp } from "~/hooks/useApp";
+
+const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{
+  state: ReturnType<typeof usePoolLiquidityState>;
+  controllers: ReturnType<typeof useInputs>;
 }>({
   name: "PoolLiquidityContext",
 });
 
 type PoolLiquidityProps = {
-  pairId: PairId;
+  pair: PairUpdate;
+  action: "deposit" | "withdraw";
+  onChangeAction: (action: "deposit" | "withdraw") => void;
 };
 
 const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = ({
   children,
-  pairId,
+  pair,
+  action,
+  onChangeAction,
 }) => {
-  const [action, setAction] = useState<"deposit" | "withdraw">("deposit");
-  const state = usePoolLiquidity({ pairId, action, onChangeAction: (v) => setAction(v) });
+  const controllers = useInputs({ strategy: "onChange" });
 
-  useEffect(() => {
-    setAction("deposit");
-  }, [state.userLiquidity]);
+  const state = usePoolLiquidityState({
+    pair,
+    action,
+    onChangeAction,
+    controllers,
+  });
 
   return (
-    <PoolLiquidityProvider value={{ state }}>
+    <PoolLiquidityProvider value={{ state, controllers }}>
       <motion.div
         layout="position"
         className={twMerge(
@@ -52,10 +64,10 @@ const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = 
 };
 
 const PoolLiquidityHeader: React.FC = () => {
-  const { state } = usePoolLiquidityState();
+  const { state } = usePoolLiquidity();
   const { coins, userLiquidity } = state;
 
-  const { baseCoin, quoteCoin } = coins;
+  const { base, quote } = coins;
 
   return (
     <div
@@ -65,9 +77,9 @@ const PoolLiquidityHeader: React.FC = () => {
       )}
     >
       <div className="flex gap-2 items-center">
-        <PairAssets assets={[baseCoin, quoteCoin]} />
+        <PairAssets assets={[base, quote]} />
         <p className="text-gray-700 h4-bold">
-          {baseCoin.symbol}/{quoteCoin.symbol}
+          {base.symbol}/{quote.symbol}
         </p>
         <Badge color="green" size="s" text="Stable Strategy" />
       </div>
@@ -82,7 +94,7 @@ const PoolLiquidityHeader: React.FC = () => {
           })}
         >
           <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">TBD</p>
+          <p className="text-gray-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-center gap-0 ", {
@@ -98,7 +110,7 @@ const PoolLiquidityHeader: React.FC = () => {
           })}
         >
           <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">$15.63M</p>
+          <p className="text-gray-700 diatype-sm-bold">-</p>
         </div>
       </div>
       <img
@@ -111,10 +123,10 @@ const PoolLiquidityHeader: React.FC = () => {
 };
 
 const UserPoolLiquidity: React.FC = () => {
-  const { state } = usePoolLiquidityState();
+  const { state } = usePoolLiquidity();
   const { coins, userLiquidity } = state;
 
-  const { baseCoin, quoteCoin } = coins;
+  const { base, quote } = coins;
 
   if (!userLiquidity) return null;
 
@@ -127,8 +139,8 @@ const UserPoolLiquidity: React.FC = () => {
       <div className="flex flex-col w-full gap-2">
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
-            <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5 rounded-full" />
-            <p className="text-gray-500 diatype-m-regular">{baseCoin.symbol}</p>
+            <img src={base.logoURI} alt={base.symbol} className="w-5 h-5 rounded-full" />
+            <p className="text-gray-500 diatype-m-regular">{base.symbol}</p>
           </div>
           <p className="text-gray-700 diatype-m-regular">
             500.25 <span className="text-gray-500">($500.25)</span>
@@ -136,8 +148,8 @@ const UserPoolLiquidity: React.FC = () => {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
-            <img src={quoteCoin.logoURI} alt={quoteCoin.symbol} className="w-5 h-5 rounded-full" />
-            <p className="text-gray-500 diatype-m-regular">{quoteCoin.symbol}</p>
+            <img src={quote.logoURI} alt={quote.symbol} className="w-5 h-5 rounded-full" />
+            <p className="text-gray-500 diatype-m-regular">{quote.symbol}</p>
           </div>
           <p className="text-gray-700 diatype-m-regular">
             500.25 <span className="text-gray-500">($500.25)</span>
@@ -149,176 +161,212 @@ const UserPoolLiquidity: React.FC = () => {
 };
 
 const PoolDeposit: React.FC = () => {
-  const [amountToken0, setAmountToken0] = useState(0);
-  const [amountToken1, setAmountToken1] = useState(0);
-  const { state } = usePoolLiquidityState();
-  const { coins, userLiquidity } = state;
+  const { settings } = useApp();
+  const { state, controllers } = usePoolLiquidity();
+  const { formatNumberOptions } = settings;
+  const { coins, action, deposit } = state;
+  const { base, quote } = coins;
+  const { register, setValue } = controllers;
 
-  const { baseCoin, quoteCoin } = coins;
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
+  if (action !== "deposit") return null;
+
   return (
-    <div className="flex flex-col gap-2">
-      <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.deposit"]()}</p>
-      <div className="flex flex-col rounded-xl bg-rice-25 shadow-account-card">
-        <Input
-          value={amountToken0}
-          startText="right"
-          startContent={
-            <div className="flex items-center gap-2 pl-4">
-              <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-8 h-8 rounded-full" />
-              <p className="text-gray-500 diatype-lg-medium">{baseCoin.symbol}</p>
-            </div>
-          }
-          classNames={{
-            inputWrapper:
-              "pl-0 py-3 flex-col h-auto gap-[6px] bg-transparent shadow-none rounded-b-none",
-            input: "!h3-medium",
-          }}
-          insideBottomComponent={
-            <div className="w-full flex justify-between pl-4 h-[22px]">
-              <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
-                <span>160.00 {baseCoin.symbol}</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                  onClick={() => setAmountToken0(160)}
-                >
-                  {m["common.max"]()}
-                </Button>
+    <>
+      <div className="flex flex-col gap-2">
+        <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.deposit"]()}</p>
+        <div className="flex flex-col rounded-xl bg-rice-25 shadow-account-card">
+          <Input
+            {...register("baseAmount", {
+              validate: (v) => {
+                if (Number(v) > Number(base.balance))
+                  return m["errors.validations.insufficientFunds"]();
+                return true;
+              },
+              mask: numberMask,
+            })}
+            placeholder="0"
+            startText="right"
+            startContent={
+              <div className="flex items-center gap-2 pl-4">
+                <img src={base.logoURI} alt={base.symbol} className="w-8 h-8 rounded-full" />
+                <p className="text-gray-500 diatype-lg-medium">{base.symbol}</p>
               </div>
-              <p className="text-gray-500 diatype-sm-regular">$0.00</p>
-            </div>
-          }
-        />
-        <span className="w-full h-[1px] bg-gray-100" />
-        <Input
-          value={amountToken1}
-          startText="right"
-          startContent={
-            <div className="flex items-center gap-2 pl-4">
-              <img
-                src={quoteCoin.logoURI}
-                alt={quoteCoin.symbol}
-                className="w-8 h-8 rounded-full"
-              />
-              <p className="text-gray-500 diatype-lg-medium">{quoteCoin.symbol}</p>
-            </div>
-          }
-          classNames={{
-            inputWrapper:
-              "pl-0 py-3 flex-col h-auto gap-[6px] bg-transparent shadow-none rounded-t-none",
-            input: "!h3-medium",
-          }}
-          insideBottomComponent={
-            <div className="w-full flex justify-between pl-4 h-[22px]">
-              <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
-                <span>160.00 {quoteCoin.symbol}</span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                  onClick={() => setAmountToken1(160)}
-                >
-                  {m["common.max"]()}
-                </Button>
+            }
+            classNames={{
+              inputWrapper:
+                "pl-0 py-3 flex-col h-auto gap-[6px] bg-transparent shadow-none rounded-b-none",
+              input: "!h3-medium",
+            }}
+            insideBottomComponent={
+              <div className="w-full flex justify-between pl-4 h-[22px]">
+                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
+                  <span>
+                    {base.balance} {base.symbol}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => setValue("baseAmount", base.balance)}
+                  >
+                    {m["common.max"]()}
+                  </Button>
+                </div>
+                <p className="text-gray-500 diatype-sm-regular">
+                  {getPrice(base.amount, base.denom, { format: true })}
+                </p>
               </div>
-              <p className="text-gray-500 diatype-sm-regular">$0.00</p>
-            </div>
-          }
-        />
+            }
+          />
+          <span className="w-full h-[1px] bg-gray-100" />
+          <Input
+            {...register("quoteAmount", {
+              mask: numberMask,
+              validate: (v) => {
+                if (Number(v) > Number(quote.balance))
+                  return m["errors.validations.insufficientFunds"]();
+                return true;
+              },
+            })}
+            placeholder="0"
+            startText="right"
+            startContent={
+              <div className="flex items-center gap-2 pl-4">
+                <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8 rounded-full" />
+                <p className="text-gray-500 diatype-lg-medium">{quote.symbol}</p>
+              </div>
+            }
+            classNames={{
+              inputWrapper:
+                "pl-0 py-3 flex-col h-auto gap-[6px] bg-transparent shadow-none rounded-t-none",
+              input: "!h3-medium",
+            }}
+            insideBottomComponent={
+              <div className="w-full flex justify-between pl-4 h-[22px]">
+                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
+                  <span>
+                    {quote.balance} {quote.symbol}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => setValue("quoteAmount", quote.balance)}
+                  >
+                    {m["common.max"]()}
+                  </Button>
+                </div>
+                <p className="text-gray-500 diatype-sm-regular">
+                  {getPrice(quote.amount, quote.denom, { format: true })}
+                </p>
+              </div>
+            }
+          />
+        </div>
       </div>
-    </div>
+      <Button
+        size="md"
+        fullWidth
+        isLoading={deposit.isPending}
+        onClick={() => deposit.mutateAsync()}
+      >
+        {m["common.deposit"]()}
+      </Button>
+    </>
   );
 };
 
 const PoolWithdraw: React.FC = () => {
-  const { state } = usePoolLiquidityState();
-  const { coins } = state;
+  const { state } = usePoolLiquidity();
+  const { coins, action } = state;
 
-  const { baseCoin, quoteCoin } = coins;
+  const { base, quote } = coins;
   const [range, setRange] = useState(50);
 
+  if (action !== "withdraw") return null;
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
-        <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
-          <p className="h1-regular text-gray-700">{range}%</p>
-          <Range minValue={0} maxValue={100} value={range} onChange={(val) => setRange(val)} />
-          <div className="flex gap-2 items-center justify-center mt-2">
-            <Button size="xs" variant="secondary" onClick={() => setRange(25)}>
-              25%
-            </Button>
-            <Button size="xs" variant="secondary" onClick={() => setRange(50)}>
-              50%
-            </Button>
-            <Button size="xs" variant="secondary" onClick={() => setRange(75)}>
-              75%
-            </Button>
-            <Button size="xs" variant="secondary" onClick={() => setRange(100)}>
-              Max
-            </Button>
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
+          <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
+            <p className="h1-regular text-gray-700">{range}%</p>
+            <Range minValue={0} maxValue={100} value={range} onChange={(val) => setRange(val)} />
+            <div className="flex gap-2 items-center justify-center mt-2">
+              <Button size="xs" variant="secondary" onClick={() => setRange(25)}>
+                25%
+              </Button>
+              <Button size="xs" variant="secondary" onClick={() => setRange(50)}>
+                50%
+              </Button>
+              <Button size="xs" variant="secondary" onClick={() => setRange(75)}>
+                75%
+              </Button>
+              <Button size="xs" variant="secondary" onClick={() => setRange(100)}>
+                Max
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="w-full flex flex-col gap-1 diatype-sm-regular">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-gray-500">
+              {base.symbol} {m["poolLiquidity.amount"]()}
+            </p>
+            <div className="flex items-center gap-1 text-gray-700">
+              <img src={base.logoURI} alt={base.symbol} className="w-4 h-4 rounded-full" />
+              <p>120.00 {base.symbol}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-gray-500">
+              {quote.symbol} {m["poolLiquidity.amount"]()}
+            </p>
+            <div className="flex items-center gap-1 text-gray-700">
+              <img src={quote.logoURI} alt={quote.symbol} className="w-4 h-4 rounded-full" />
+              <p>120.00 {quote.symbol}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-gray-500">{m["poolLiquidity.networkFee"]()}</p>
+            <div className="flex items-center gap-1 text-gray-700">
+              <img src={base.logoURI} alt={base.symbol} className="w-4 h-4 rounded-full" />
+              <p>$0.02</p>
+            </div>
           </div>
         </div>
       </div>
-      <div className="w-full flex flex-col gap-1 diatype-sm-regular">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-500">
-            {baseCoin.symbol} {m["poolLiquidity.amount"]()}
-          </p>
-          <div className="flex items-center gap-1 text-gray-700">
-            <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-4 h-4 rounded-full" />
-            <p>120.00 {baseCoin.symbol}</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-500">
-            {quoteCoin.symbol} {m["poolLiquidity.amount"]()}
-          </p>
-          <div className="flex items-center gap-1 text-gray-700">
-            <img src={quoteCoin.logoURI} alt={quoteCoin.symbol} className="w-4 h-4 rounded-full" />
-            <p>120.00 {quoteCoin.symbol}</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-gray-500">{m["poolLiquidity.networkFee"]()}</p>
-          <div className="flex items-center gap-1 text-gray-700">
-            <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-4 h-4 rounded-full" />
-            <p>$0.02</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Button size="md" fullWidth>
+        {m["common.withdraw"]()}
+      </Button>
+    </>
   );
 };
 
-const PoolDepositWithdraw: React.FC = () => {
-  const { state } = usePoolLiquidityState();
+const PoolHeaderTabs: React.FC = () => {
+  const { state } = usePoolLiquidity();
   const { action, onChangeAction, userLiquidity } = state;
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      <Tabs
-        layoutId="tabs-send-and-receive"
-        selectedTab={action}
-        keys={userLiquidity ? ["deposit", "withdraw"] : ["deposit"]}
-        fullWidth
-        onTabChange={(tab) => onChangeAction(tab as "deposit" | "withdraw")}
-      />
-      {action === "deposit" ? <PoolDeposit /> : <PoolWithdraw />}
-      <Button size="md" fullWidth>
-        {action === "deposit" ? m["common.deposit"]() : m["common.withdraw"]()}
-      </Button>
-    </div>
+    <Tabs
+      layoutId="tabs-send-and-receive"
+      selectedTab={action}
+      keys={userLiquidity ? ["deposit", "withdraw"] : ["deposit"]}
+      fullWidth
+      onTabChange={(tab) => onChangeAction(tab as "deposit" | "withdraw")}
+    />
   );
 };
 
 export const PoolLiquidity = Object.assign(PoolLiquidityContainer, {
   Header: PoolLiquidityHeader,
+  HeaderTabs: PoolHeaderTabs,
   UserLiquidity: UserPoolLiquidity,
   Deposit: PoolDeposit,
   Withdraw: PoolWithdraw,
-  DepositWithdraw: PoolDepositWithdraw,
 });

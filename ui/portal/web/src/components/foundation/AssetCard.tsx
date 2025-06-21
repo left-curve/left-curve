@@ -12,7 +12,12 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const { coins } = useConfig();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const coinInfo = coins[coin.denom];
+  const coinInfo = coins[coin.denom] || {
+    decimals: 0,
+    logoURI: "",
+    denom: coin.denom,
+    symbol: coin.denom,
+  };
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });

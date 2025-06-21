@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Earn } from "~/components/earn/Earn";
 
-export const Route = createFileRoute("/(app)/_app/earn/")({
+export const Route = createLazyFileRoute("/(app)/_app/earn/")({
   component: EarnApplet,
 });
 
