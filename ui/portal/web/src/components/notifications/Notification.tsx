@@ -64,7 +64,10 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   const { formatNumberOptions } = settings;
   const isSent = type === "sent";
 
-  const formattedAmount = formatNumber(formatUnits(amount, coin.decimals), formatNumberOptions);
+  const formattedAmount = formatNumber(
+    formatUnits(amount, coin?.decimals || 0),
+    formatNumberOptions,
+  );
 
   const originAddress = isSent ? fromAddress : toAddress;
   const targetAddress = isSent ? toAddress : fromAddress;
@@ -98,7 +101,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
                 "text-status-success": type === "received",
                 "text-status-fail": type === "sent",
               })}
-            >{`${isSent ? "−" : "+"}${formattedAmount}  ${coin.symbol}`}</span>
+            >{`${isSent ? "−" : "+"}${formattedAmount}  ${coin?.symbol || "LP"}`}</span>
           </div>
           <div className="flex diatype-m-medium text-gray-500 flex-wrap items-center gap-1">
             <div className="flex flex-wrap items-center gap-1">
