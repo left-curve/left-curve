@@ -1,8 +1,11 @@
 type Block {
-	createdAt: NaiveDateTime!
 	blockHeight: Int!
 	hash: String!
 	appHash: String!
+	"""
+	Returns the creation timestamp in ISO8601 format with timezone
+	"""
+	createdAt: String!
 	"""
 	Transactions order isn't guaranteed, check `transactionIdx`
 	"""
@@ -51,7 +54,6 @@ enum BlockSortBy {
 }
 
 type Event {
-	createdAt: NaiveDateTime!
 	type: String!
 	method: String
 	eventStatus: EventStatus!
@@ -62,6 +64,10 @@ type Event {
 	eventIdx: Int!
 	data: JSON!
 	blockHeight: Int!
+	"""
+	Returns the creation timestamp in ISO8601 format with timezone
+	"""
+	createdAt: String!
 	transaction: Transaction
 }
 
@@ -126,12 +132,15 @@ scalar JSON
 
 type Message {
 	orderIdx: Int!
-	createdAt: NaiveDateTime!
 	data: JSON!
 	methodName: String!
 	blockHeight: Int!
 	contractAddr: String
 	senderAddr: String!
+	"""
+	Returns the creation timestamp in ISO8601 format with timezone
+	"""
+	createdAt: String!
 }
 
 type MessageConnection {
@@ -274,7 +283,6 @@ type Subscription {
 }
 
 type Transaction {
-	createdAt: NaiveDateTime!
 	blockHeight: Int!
 	transactionType: FlatCategory!
 	transactionIdx: Int!
@@ -286,6 +294,10 @@ type Transaction {
 	errorMessage: String
 	gasWanted: Int!
 	gasUsed: Int!
+	"""
+	Returns the creation timestamp in ISO8601 format with timezone
+	"""
+	createdAt: String!
 	"""
 	Nested Events from this transaction, from block on-disk caching
 	"""
