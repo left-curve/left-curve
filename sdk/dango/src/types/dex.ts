@@ -196,6 +196,11 @@ export type PairId = {
   quoteDenom: string;
 };
 
+export type PairSymbols = {
+  baseSymbol: string;
+  quoteSymbol: string;
+};
+
 export type OrderId = number;
 
 export type CoinPair = [Coin, Coin];

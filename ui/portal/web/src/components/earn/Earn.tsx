@@ -2,14 +2,26 @@ import type { PropsWithChildren } from "react";
 
 import { m } from "~/paraglide/messages";
 
-import { mockPoolsInfo, type PoolInfo } from "~/mock";
 import type { TableColumn } from "@left-curve/applets-kit";
+import { uid } from "@left-curve/dango/utils";
+import { type PoolInfo, mockPoolsInfo } from "~/mock";
 
-import { StrategyCard } from "@left-curve/applets-kit";
+import { StrategyCard, createContext } from "@left-curve/applets-kit";
 import { Cell, Table } from "@left-curve/applets-kit";
+import { useAppConfig } from "@left-curve/store";
 
-const EarnContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  return <>{children}</>;
+import type { PairSymbols } from "@left-curve/dango/types";
+
+type EarnProps = {
+  navigate: (pair: PairSymbols) => void;
+};
+
+const [EarnProvider, useEarn] = createContext<EarnProps>({
+  name: "EarnContext",
+});
+
+const EarnContainer: React.FC<PropsWithChildren<EarnProps>> = ({ children, navigate }) => {
+  return <EarnProvider value={{ navigate }}>{children}</EarnProvider>;
 };
 
 const EarnHeader: React.FC = () => {
@@ -27,12 +39,28 @@ const EarnHeader: React.FC = () => {
 };
 
 const EarnPoolsCards: React.FC = () => {
+  const { navigate } = useEarn();
+  const { data: appConfig } = useAppConfig();
+
   return (
     <div className="flex gap-4 scrollbar-none justify-start lg:justify-between p-4 overflow-x-auto overflow-y-visible">
-      <StrategyCard />
-      <StrategyCard />
-      <StrategyCard />
-      <StrategyCard />
+      {Object.values(appConfig?.pairs || {})
+        .slice(0, 4)
+        .map((pair) => (
+          <StrategyCard
+            key={uid()}
+            pair={pair}
+            onSelect={navigate}
+            labels={{
+              party: m["earn.party"](),
+              earn: m["earn.earn"](),
+              deposit: m["earn.deposit"](),
+              select: m["earn.select"](),
+              apy: m["earn.apy"](),
+              tvl: m["earn.tvl"](),
+            }}
+          />
+        ))}
     </div>
   );
 };
