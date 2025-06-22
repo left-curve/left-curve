@@ -11,7 +11,7 @@ pub struct Iso8601DateTime(pub chrono::NaiveDateTime);
 
 #[Scalar(name = "DateTime")]
 impl ScalarType for Iso8601DateTime {
-    /// Convert `NaiveDateTime` to `Timestamp` and use its RFC3339 formatting.
+    /// Convert `NaiveDateTime` to `Timestamp` and use its RFC 3339 formatting.
     fn to_value(&self) -> Value {
         let s = Timestamp::from(self.0).to_rfc3339_string();
 

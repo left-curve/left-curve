@@ -26,7 +26,7 @@ where
 }
 
 pub fn deserialize_date_time(s: &str) -> Result<DateTime, String> {
-    // Try parsing as RFC3339 first (with timezone).
+    // Try parsing as RFC 3339 first (with timezone).
     if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
         return Ok(dt.naive_utc());
     }
