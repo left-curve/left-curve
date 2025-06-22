@@ -596,23 +596,21 @@ where
         // The block would then not be indexed.
 
         let hooks = self.hooks.clone();
-
         let id = self.id;
+
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, indexer_id=id, "`post_indexing` started");
+            tracing::debug!(block_height, indexer_id = id, "`post_indexing` started");
 
             let block_height = block_to_index.block.info.height;
 
             #[allow(clippy::map_identity)]
             block_to_index.save(context.db.clone(), id).await.map_err(|err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, indexer_id=id, block_height, "Can't save to db in `post_indexing`");
+                tracing::error!(err = %err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
 
                 err
             })?;
-
-
 
             hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
@@ -645,7 +643,7 @@ where
             context.pubsub.publish_block_minted(block_height).await?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, indexer_id=id, "`post_indexing` finished");
+            tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
 
             Ok::<_, error::IndexerError>(())
         });

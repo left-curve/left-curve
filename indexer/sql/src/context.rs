@@ -34,8 +34,9 @@ impl Context {
         {
             #[cfg(feature = "tracing")]
             tracing::warn!(
-                "SQLite in-memory doesn't support multiple writers, forcing to 1 connection to avoid deadlocks"
+                "SQLite in-memory doesn't support multiple writers; forcing to 1 connection to avoid deadlocks"
             );
+
             max_connections = 1;
         }
 

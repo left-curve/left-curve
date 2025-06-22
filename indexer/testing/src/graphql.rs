@@ -4,6 +4,7 @@ use {
         body::MessageBody,
         dev::{AppConfig, ServiceFactory, ServiceResponse},
     },
+    anyhow::bail,
     indexer_httpd::context::Context,
     serde_json::json,
 };
@@ -88,6 +89,7 @@ where
                 if !response.page_info.has_next_page {
                     break;
                 }
+
                 // If we are paginating with `first`, we use the end cursor for the next request
                 after = response.page_info.end_cursor;
             },
@@ -99,13 +101,12 @@ where
                 if !response.page_info.has_previous_page {
                     break;
                 }
+
                 // If we are paginating with `last`, we use the start cursor for the next request
                 before = response.page_info.start_cursor;
             },
             _ => {
-                return Err(anyhow::anyhow!(
-                    "Pagination requires either `first` or `last` to be provided."
-                ));
+                bail!("pagination requires either `first` or `last` to be provided");
             },
         }
     }

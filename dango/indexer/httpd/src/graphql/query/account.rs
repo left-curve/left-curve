@@ -58,7 +58,7 @@ pub struct AccountQuery {}
 
 #[Object]
 impl AccountQuery {
-    /// Get paginated accounts
+    /// Get paginated accounts.
     async fn accounts(
         &self,
         ctx: &async_graphql::Context<'_>,

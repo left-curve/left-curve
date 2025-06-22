@@ -55,7 +55,7 @@ pub struct EventQuery {}
 
 #[Object]
 impl EventQuery {
-    /// Get paginated events
+    /// Get paginated events.
     async fn events(
         &self,
         ctx: &async_graphql::Context<'_>,

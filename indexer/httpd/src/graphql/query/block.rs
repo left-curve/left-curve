@@ -53,7 +53,7 @@ pub struct BlockQuery {}
 
 #[Object]
 impl BlockQuery {
-    /// Get a block
+    /// Get a block.
     async fn block(
         &self,
         ctx: &async_graphql::Context<'_>,
@@ -75,7 +75,7 @@ impl BlockQuery {
         Ok(query.one(&app_ctx.db).await?)
     }
 
-    /// Get paginated blocks
+    /// Get paginated blocks.
     async fn blocks(
         &self,
         ctx: &async_graphql::Context<'_>,

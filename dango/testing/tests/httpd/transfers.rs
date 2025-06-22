@@ -1,6 +1,5 @@
 use {
-    super::build_actix_app,
-    crate::paginate_models,
+    crate::{build_actix_app, paginate_models},
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{HyperlaneTestSuite, create_user_and_account, setup_test_with_indexer},

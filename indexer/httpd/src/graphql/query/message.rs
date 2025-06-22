@@ -55,7 +55,7 @@ pub struct MessageQuery {}
 
 #[Object]
 impl MessageQuery {
-    /// Get paginated messages
+    /// Get paginated messages.
     async fn messages(
         &self,
         ctx: &async_graphql::Context<'_>,

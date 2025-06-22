@@ -291,6 +291,7 @@ where
     let name = request_body.name;
     let (_srv, _ws, framed) = call_ws_graphql_stream(context, app_builder, request_body).await?;
     let (_, response) = parse_graphql_subscription_response(framed, name).await?;
+
     Ok(response)
 }
 
@@ -402,5 +403,6 @@ where
 {
     let response: GraphQLCustomResponse<PaginatedResponse<R>> =
         call_graphql(app, request_body).await?;
+
     Ok(response.data)
 }

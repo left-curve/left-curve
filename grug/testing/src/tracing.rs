@@ -5,6 +5,7 @@ static TRACING: Once = Once::new();
 
 pub fn setup_tracing_subscriber(level: tracing::Level) {
     // If you need to know where this function was called from, you can uncomment the following lines.
+
     // let backtrace = std::backtrace::Backtrace::capture();
     // println!("Setting up tracing subscriber with level: {:?}", level);
     // println!("Called from:\n{}", backtrace);

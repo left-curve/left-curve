@@ -55,7 +55,7 @@ pub struct TransactionQuery {}
 
 #[Object]
 impl TransactionQuery {
-    /// Get paginated transactions
+    /// Get paginated transactions.
     async fn transactions(
         &self,
         ctx: &async_graphql::Context<'_>,

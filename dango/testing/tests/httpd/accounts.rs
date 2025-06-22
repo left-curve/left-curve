@@ -1,6 +1,5 @@
 use {
-    super::build_actix_app,
-    crate::paginate_models,
+    crate::{build_actix_app, paginate_models},
     assert_json_diff::*,
     assertor::*,
     dango_indexer_sql::entity,

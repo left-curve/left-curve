@@ -1,6 +1,5 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
-
 use {
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},

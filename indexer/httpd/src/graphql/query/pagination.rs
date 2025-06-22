@@ -70,11 +70,10 @@ pub async fn paginate_models<C, E, S>(
     >,
 ) -> Result<Connection<OpaqueCursor<C>, E::Model, EmptyFields, EmptyFields>>
 where
-    C: Send + Sync + Serialize + DeserializeOwned,
+    C: Send + Sync + Serialize + DeserializeOwned + From<<E as EntityTrait>::Model>,
     E: EntityTrait,
     <E as EntityTrait>::Model: async_graphql::OutputType,
     Select<E>: CursorFilter<S, C> + CursorOrder<S>,
-    C: std::convert::From<<E as EntityTrait>::Model>,
     S: Default + Copy + Reversible,
 {
     query_with::<OpaqueCursor<C>, _, _, _, _>(
@@ -83,13 +82,11 @@ where
             first,
             last,
             |after, before, first, last| async move {
-                let mut query = E::find();
                 let sort_by = sort_by.unwrap_or_default();
-
                 let limit;
-
                 let mut has_next_page = false;
                 let mut has_previous_page = false;
+                let mut query = E::find();
 
                 match last {
                     Some(_) => {
@@ -105,7 +102,6 @@ where
                         limit = cmp::min(first as u64, max_items);
                         query = query.limit(limit + 1);
                     },
-
                     (first, Some(after), None, None) => {
                         query = query.cursor_filter(&sort_by, &after);
 
@@ -114,12 +110,10 @@ where
 
                         has_previous_page = true;
                     },
-
                     (None, None, Some(last), None) => {
                         limit = cmp::min(last as u64, max_items);
                         query = query.limit(limit + 1);
                     },
-
                     (None, None, last, Some(before)) => {
                         query = query.cursor_filter_rev(&sort_by, &before);
 
@@ -128,15 +122,13 @@ where
 
                         has_next_page = true;
                     },
-
                     (None, None, None, None) => {
                         limit = max_items;
                         query = query.limit(max_items + 1);
                     }
-
                     _ => {
                         return Err(async_graphql::Error::new(
-                            "unexpected combination of pagination parameters, should use `first` with `after` or `last` with `before`",
+                            "unexpected combination of pagination parameters; should use `first` with `after`, or `last` with `before`",
                         ));
                     },
                 }

@@ -59,9 +59,6 @@ impl Hooks {
             "Looked at transfer events",
         );
 
-        // #[cfg(feature = "tracing")]
-        // tracing::debug!("{:#?}", transfer_events);
-
         let mut idx = 0;
 
         // 2. create a transfer for each event

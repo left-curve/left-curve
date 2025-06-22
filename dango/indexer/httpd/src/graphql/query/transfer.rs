@@ -112,6 +112,7 @@ impl TransferQuery {
 
                     if let Some(username) = username {
                         // NOTE: keeping the "safe" version for now, until I confirm in production the subquery code works correctly.
+
                         // let accounts = entity::accounts::Entity::find()
                         //     .find_also_related(entity::users::Entity)
                         //     .filter(entity::users::Column::Username.eq(&username))
@@ -191,6 +192,7 @@ impl CursorFilter<SortBy, TransferCursor> for Select<entity::transfers::Entity> 
 impl CursorOrder<SortBy> for Select<entity::transfers::Entity> {
     fn cursor_order(self, sort: SortBy) -> Self {
         let order: Order = sort.into();
+
         self.order_by(entity::transfers::Column::BlockHeight, order.clone())
             .order_by(entity::transfers::Column::Idx, order)
     }
