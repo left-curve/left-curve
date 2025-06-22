@@ -52,6 +52,7 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
       equalityFn?: (a: state, b: state) => boolean;
     },
   ): () => void;
+  getCoinInfo(denom: Denom): AnyCoin;
   getAppConfig(): Promise<
     {
       addresses: AppConfig["addresses"] & Record<Address, string>;

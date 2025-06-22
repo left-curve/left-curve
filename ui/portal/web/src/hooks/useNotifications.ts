@@ -42,7 +42,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
 
   const { username = "", accounts, account } = useAccount();
-  const { coins, subscriptions } = useConfig();
+  const { getCoinInfo, subscriptions } = useConfig();
 
   const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notification[]>>(
     "app.notifications",
@@ -155,7 +155,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
           const { id, fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
             transfer;
 
-          const coin = coins[denom];
+          const coin = getCoinInfo(denom);
 
           const notification = {
             createdAt,

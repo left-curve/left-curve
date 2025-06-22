@@ -1,16 +1,15 @@
 import type { PropsWithChildren } from "react";
 
-import { m } from "~/paraglide/messages";
-
-import type { TableColumn } from "@left-curve/applets-kit";
 import { uid } from "@left-curve/dango/utils";
-import { type PoolInfo, mockPoolsInfo } from "~/mock";
+import { m } from "~/paraglide/messages";
 
 import { StrategyCard, createContext } from "@left-curve/applets-kit";
 import { Cell, Table } from "@left-curve/applets-kit";
-import { useAppConfig } from "@left-curve/store";
+import { useAccount, useAppConfig, useBalances, useConfig } from "@left-curve/store";
 
+import type { TableColumn } from "@left-curve/applets-kit";
 import type { PairSymbols } from "@left-curve/dango/types";
+import type { LpCoin, WithAmount } from "@left-curve/store/types";
 
 type EarnProps = {
   navigate: (pair: PairSymbols) => void;
@@ -66,32 +65,54 @@ const EarnPoolsCards: React.FC = () => {
 };
 
 const EarnUserPoolsTable: React.FC = () => {
-  const columns: TableColumn<PoolInfo> = [
+  const { getCoinInfo } = useConfig();
+  const { account } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
+
+  const userPools = Object.entries(balances)
+    .filter(([denom]) => denom.includes("dex"))
+    .map(([denom, amount]) => {
+      const coin = getCoinInfo(denom);
+      return { ...coin, amount } as WithAmount<LpCoin>;
+    });
+
+  const columns: TableColumn<WithAmount<LpCoin>> = [
     {
       header: m["earn.vault"](),
-      cell: ({ row }) => <Cell.Assets assets={row.original.pairs} />,
-    },
-    {
-      header: m["earn.apr"](),
-      cell: () => <Cell.Text text="TBD" />,
+      cell: ({ row }) => {
+        return <Cell.Assets assets={[row.original.base, row.original.quote]} />;
+      },
     },
     {
       header: m["earn.myPosition"](),
-      cell: ({ row }) => <Cell.Text text={row.original.userPosition} />,
+      cell: ({ row }) => <Cell.Text text={row.original.amount} />,
+    },
+    {
+      header: m["earn.apr"](),
+      cell: () => <Cell.Text text="-" />,
     },
     {
       header: m["earn.tvl"](),
-      cell: ({ row }) => <Cell.Text text={row.original.tvl} />,
+      cell: ({ row }) => <Cell.Text text="-" />,
     },
     {
-      header: m["earn.manage"](),
-      cell: () => <Cell.Action action={() => console.log("Manage Pool")} label="Manage" />,
+      id: "manage",
+      header: () => {
+        return <Cell.Text text={m["earn.manage"]()} className="text-right px-1" />;
+      },
+      cell: () => (
+        <Cell.Action
+          classNames={{ cell: "items-end", button: "m-0 px-1" }}
+          action={() => console.log("Manage Pool")}
+          label="Manage"
+        />
+      ),
     },
   ];
 
   return (
     <div className="flex w-full p-4">
-      <Table data={mockPoolsInfo} columns={columns} />
+      <Table data={userPools} columns={columns} />
     </div>
   );
 };

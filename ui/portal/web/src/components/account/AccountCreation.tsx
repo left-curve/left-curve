@@ -260,7 +260,7 @@ export const Deposit: React.FC = () => {
         })}
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
-            <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.name} />
+            <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
             <span className="diatype-m-regular text-gray-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }
