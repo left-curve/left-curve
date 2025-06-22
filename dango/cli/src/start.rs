@@ -16,7 +16,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    metrics_exporter_prometheus::PrometheusHandle,
+    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::{fmt::Debug, sync::Arc, time},
     tokio::signal::unix::{SignalKind, signal},
     tower::ServiceBuilder,
@@ -27,12 +27,11 @@ use {
 pub struct StartCmd;
 
 impl StartCmd {
-    pub async fn run(
-        self,
-        app_dir: HomeDirectory,
-        metrics_handler: PrometheusHandle,
-    ) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         tracing::info!("Using git commit: {GIT_COMMIT}");
+        // Initialize metrics handler.
+        // This should be done as soon as possible to capture all events.
+        let metrics_handler = PrometheusBuilder::new().install_recorder()?;
 
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;

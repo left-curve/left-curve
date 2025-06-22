@@ -3,7 +3,7 @@ use {
     clap::{Parser, Subcommand},
     config_parser::parse_config,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
-    metrics_exporter_prometheus::PrometheusHandle,
+    metrics_exporter_prometheus::PrometheusBuilder,
     tokio::task::JoinSet,
 };
 
@@ -39,11 +39,7 @@ enum SubCmd {
 }
 
 impl IndexerCmd {
-    pub async fn run(
-        self,
-        app_dir: HomeDirectory,
-        metrics_handler: PrometheusHandle,
-    ) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         match self.subcmd {
             SubCmd::Block { height } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
@@ -124,8 +120,11 @@ impl IndexerCmd {
                     }
                 }
             },
-
             SubCmd::MetricsHttpd => {
+                // Initialize metrics handler.
+                // This should be done as soon as possible to capture all events.
+                let metrics_handler = PrometheusBuilder::new().install_recorder()?;
+
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
                 tracing::info!(
