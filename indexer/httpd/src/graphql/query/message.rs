@@ -1,10 +1,11 @@
 use {
-    crate::context::Context,
-    async_graphql::{connection::*, *},
-    indexer_sql::entity::{self, prelude::Messages},
-    sea_orm::{
-        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+    crate::{
+        context::Context,
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
+    async_graphql::{connection::*, *},
+    indexer_sql::entity,
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -14,6 +15,24 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
+}
+
+impl From<SortBy> for Order {
+    fn from(sort_by: SortBy) -> Self {
+        match sort_by {
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,146 +50,95 @@ impl From<entity::messages::Model> for MessageCursor {
     }
 }
 
-pub type MessageCursorType = OpaqueCursor<MessageCursor>;
-
-const MAX_MESSAGES: u64 = 100;
-
 #[derive(Default, Debug)]
 pub struct MessageQuery {}
 
 #[Object]
 impl MessageQuery {
-    /// Get messages
+    /// Get paginated messages.
     async fn messages(
         &self,
         ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Cursor based pagination")] after: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] before: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] last: Option<i32>,
+        sort_by: Option<SortBy>,
         block_height: Option<u64>,
         method_name: Option<String>,
         contract_addr: Option<String>,
         sender_addr: Option<String>,
-        after: Option<String>,
-        before: Option<String>,
-        first: Option<i32>,
-        last: Option<i32>,
-        sort_by: Option<SortBy>,
-    ) -> Result<Connection<MessageCursorType, entity::messages::Model, EmptyFields, EmptyFields>>
-    {
+    ) -> Result<
+        Connection<OpaqueCursor<MessageCursor>, entity::messages::Model, EmptyFields, EmptyFields>,
+    > {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with::<MessageCursorType, _, _, _, _>(
+        paginate_models::<MessageCursor, entity::messages::Entity, SortBy>(
+            app_ctx,
             after,
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let mut query = entity::messages::Entity::find();
-                let sort_by = sort_by.unwrap_or_default();
-                let limit;
-                let has_before = before.is_some();
+            sort_by,
+            100,
+            |query, _| {
+                Box::pin(async move {
+                    let mut query = query;
 
-                match (after, before, first, last) {
-                    (after, None, first, None) => {
-                        if let Some(after) = after {
-                            query = apply_filter(query, sort_by, &after);
-                        }
-
-                        limit = first.map(|x| x as u64).unwrap_or(MAX_MESSAGES);
-
-                        query = query.limit(limit + 1);
-                    },
-                    (None, before, None, last) => {
-                        if let Some(before) = before {
-                            query = apply_filter(query, sort_by, &before);
-                        }
-
-                        limit = last.map(|x| x as u64).unwrap_or(MAX_MESSAGES);
-
-                        query = query.limit(limit + 1);
-                    },
-                    _ => unreachable!(),
-                }
-
-                if let Some(block_height) = block_height {
-                    query =
-                        query.filter(entity::messages::Column::BlockHeight.eq(block_height as i64));
-                }
-
-                if let Some(method_name) = method_name {
-                    query = query.filter(entity::messages::Column::MethodName.eq(method_name));
-                }
-
-                if let Some(contract_addr) = contract_addr {
-                    query = query.filter(entity::messages::Column::ContractAddr.eq(contract_addr));
-                }
-
-                if let Some(sender_addr) = sender_addr {
-                    query = query.filter(entity::messages::Column::SenderAddr.eq(sender_addr));
-                }
-
-                match sort_by {
-                    SortBy::BlockHeightAsc => {
+                    if let Some(block_height) = block_height {
                         query = query
-                            .order_by(entity::messages::Column::BlockHeight, Order::Asc)
-                            .order_by(entity::messages::Column::OrderIdx, Order::Asc)
-                    },
-                    SortBy::BlockHeightDesc => {
-                        query = query
-                            .order_by(entity::messages::Column::BlockHeight, Order::Desc)
-                            .order_by(entity::messages::Column::OrderIdx, Order::Desc)
-                    },
-                }
+                            .filter(entity::messages::Column::BlockHeight.eq(block_height as i64));
+                    }
 
-                let mut messages = query.all(&app_ctx.db).await?;
+                    if let Some(method_name) = method_name {
+                        query = query.filter(entity::messages::Column::MethodName.eq(method_name));
+                    }
 
-                if has_before {
-                    messages.reverse();
-                }
+                    if let Some(contract_addr) = contract_addr {
+                        query =
+                            query.filter(entity::messages::Column::ContractAddr.eq(contract_addr));
+                    }
 
-                let mut has_more = false;
-                if messages.len() > limit as usize {
-                    messages.pop();
-                    has_more = true;
-                }
-
-                let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection.edges.extend(messages.into_iter().map(|message| {
-                    Edge::with_additional_fields(
-                        OpaqueCursor(message.clone().into()),
-                        message,
-                        EmptyFields,
-                    )
-                }));
-
-                Ok::<_, async_graphql::Error>(connection)
+                    if let Some(sender_addr) = sender_addr {
+                        query = query.filter(entity::messages::Column::SenderAddr.eq(sender_addr));
+                    }
+                    Ok(query)
+                })
             },
         )
         .await
     }
 }
 
-fn apply_filter(
-    query: Select<Messages>,
-    sort_by: SortBy,
-    after: &MessageCursor,
-) -> Select<Messages> {
-    match sort_by {
-        SortBy::BlockHeightAsc => query.filter(
-            Condition::any()
-                .add(entity::messages::Column::BlockHeight.lt(after.block_height))
-                .add(
-                    entity::messages::Column::BlockHeight
-                        .eq(after.block_height)
-                        .and(entity::messages::Column::OrderIdx.lt(after.order_idx)),
-                ),
-        ),
-        SortBy::BlockHeightDesc => query.filter(
-            Condition::any()
-                .add(entity::messages::Column::BlockHeight.gt(after.block_height))
-                .add(
-                    entity::messages::Column::BlockHeight
-                        .eq(after.block_height)
-                        .and(entity::messages::Column::OrderIdx.gt(after.order_idx)),
-                ),
-        ),
+impl CursorFilter<SortBy, MessageCursor> for Select<entity::messages::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &MessageCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
+                Condition::any()
+                    .add(entity::messages::Column::BlockHeight.gt(cursor.block_height))
+                    .add(
+                        entity::messages::Column::BlockHeight
+                            .gte(cursor.block_height)
+                            .and(entity::messages::Column::OrderIdx.gt(cursor.order_idx)),
+                    ),
+            ),
+            SortBy::BlockHeightDesc => self.filter(
+                Condition::any()
+                    .add(entity::messages::Column::BlockHeight.lt(cursor.block_height))
+                    .add(
+                        entity::messages::Column::BlockHeight
+                            .lte(cursor.block_height)
+                            .and(entity::messages::Column::OrderIdx.lt(cursor.order_idx)),
+                    ),
+            ),
+        }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::messages::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+        self.order_by(entity::messages::Column::BlockHeight, order.clone())
+            .order_by(entity::messages::Column::OrderIdx, order)
     }
 }

@@ -1,9 +1,13 @@
 use {
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity,
-    indexer_httpd::context::Context,
+    indexer_httpd::{
+        context::Context,
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
+    },
     sea_orm::{
-        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+        ColumnTrait, Condition, JoinType, Order, QueryFilter, QueryOrder, QuerySelect,
+        RelationTrait, Select,
     },
     serde::{Deserialize, Serialize},
 };
@@ -14,6 +18,24 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
+}
+
+impl From<SortBy> for Order {
+    fn from(sort_by: SortBy) -> Self {
+        match sort_by {
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,147 +53,108 @@ impl From<entity::accounts::Model> for AccountCursor {
     }
 }
 
-pub type AccountCursorType = OpaqueCursor<AccountCursor>;
-
-const MAX_ACCOUNTS: u64 = 100;
-
 #[derive(Default, Debug)]
 pub struct AccountQuery {}
 
 #[Object]
 impl AccountQuery {
+    /// Get paginated accounts.
     async fn accounts(
         &self,
         ctx: &async_graphql::Context<'_>,
-        after: Option<String>,
-        before: Option<String>,
-        first: Option<i32>,
-        last: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] after: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] before: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] last: Option<i32>,
         sort_by: Option<SortBy>,
         // The block height at which the account was created
         block_height: Option<u64>,
         username: Option<String>,
         address: Option<String>,
-    ) -> Result<Connection<AccountCursorType, entity::accounts::Model, EmptyFields, EmptyFields>>
-    {
+    ) -> Result<
+        Connection<OpaqueCursor<AccountCursor>, entity::accounts::Model, EmptyFields, EmptyFields>,
+    > {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with::<AccountCursorType, _, _, _, _>(
+        paginate_models::<AccountCursor, entity::accounts::Entity, SortBy>(
+            app_ctx,
             after,
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let mut query = entity::accounts::Entity::find();
-                let sort_by = sort_by.unwrap_or_default();
-                let limit;
-                let has_before = before.is_some();
+            sort_by,
+            100,
+            |query, _| {
+                Box::pin(async move {
+                    let mut query = query;
 
-                match (after, before, first, last) {
-                    (after, None, first, None) => {
-                        if let Some(after) = after {
-                            query = apply_filter(query, sort_by, &after);
-                        }
+                    if let Some(block_height) = block_height {
+                        query = query.filter(
+                            entity::accounts::Column::CreatedBlockHeight.eq(block_height as i64),
+                        );
+                    }
 
-                        limit = first.map(|x| x as u64).unwrap_or(MAX_ACCOUNTS);
+                    if let Some(address) = address {
+                        query = query.filter(entity::accounts::Column::Address.eq(&address));
+                    }
 
-                        query = query.limit(limit + 1);
-                    },
-                    (None, before, None, last) => {
-                        if let Some(before) = before {
-                            query = apply_filter(query, sort_by, &before);
-                        }
-
-                        limit = last.map(|x| x as u64).unwrap_or(MAX_ACCOUNTS);
-
-                        query = query.limit(limit + 1);
-                    },
-                    _ => unreachable!(),
-                }
-
-                if let Some(block_height) = block_height {
-                    query = query.filter(
-                        entity::accounts::Column::CreatedBlockHeight.eq(block_height as i64),
-                    );
-                }
-
-                if let Some(address) = address {
-                    query = query.filter(entity::accounts::Column::Address.eq(&address));
-                }
-
-                // see https://github.com/SeaQL/sea-orm/issues/2220
-                // order *must* be before `find_with_related`
-                match sort_by {
-                    SortBy::BlockHeightAsc => {
+                    if let Some(username) = username {
                         query = query
-                            .order_by(entity::accounts::Column::CreatedBlockHeight, Order::Asc)
-                            .order_by(entity::accounts::Column::Address, Order::Asc)
-                    },
-                    SortBy::BlockHeightDesc => {
-                        query = query
-                            .order_by(entity::accounts::Column::CreatedBlockHeight, Order::Desc)
-                            .order_by(entity::accounts::Column::Address, Order::Desc)
-                    },
-                }
+                            .join(
+                                JoinType::InnerJoin,
+                                entity::accounts::Relation::AccountUser.def(),
+                            )
+                            .join(
+                                JoinType::InnerJoin,
+                                entity::accounts_users::Relation::User.def(),
+                            )
+                            .filter(entity::users::Column::Username.eq(&username));
+                    }
 
-                let mut query = query.find_with_related(entity::users::Entity);
-
-                if let Some(username) = username {
-                    query = query.filter(entity::users::Column::Username.eq(&username));
-                }
-
-                let mut accounts = query
-                    .all(&app_ctx.db)
-                    .await?
-                    .into_iter()
-                    .map(|(account, _)| account)
-                    .collect::<Vec<_>>();
-
-                if has_before {
-                    accounts.reverse();
-                }
-
-                let mut has_more = false;
-                if accounts.len() > limit as usize {
-                    accounts.pop();
-                    has_more = true;
-                }
-
-                let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection.edges.extend(accounts.into_iter().map(|account| {
-                    Edge::with_additional_fields(
-                        OpaqueCursor(account.clone().into()),
-                        account,
-                        EmptyFields,
-                    )
-                }));
-
-                Ok::<_, async_graphql::Error>(connection)
+                    Ok(query)
+                })
             },
         )
         .await
     }
 }
 
-fn apply_filter(
-    query: Select<entity::accounts::Entity>,
-    sort_by: SortBy,
-    after: &AccountCursor,
-) -> Select<entity::accounts::Entity> {
-    query.filter(match sort_by {
-        SortBy::BlockHeightAsc => Condition::any()
-            .add(entity::accounts::Column::CreatedBlockHeight.lt(after.created_block_height as i64))
-            .add(
-                entity::accounts::Column::CreatedBlockHeight
-                    .eq(after.created_block_height as i64)
-                    .and(entity::accounts::Column::Address.lt(&after.address)),
+impl CursorFilter<SortBy, AccountCursor> for Select<entity::accounts::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &AccountCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
+                Condition::any()
+                    .add(
+                        entity::accounts::Column::CreatedBlockHeight
+                            .gt(cursor.created_block_height as i64),
+                    )
+                    .add(
+                        entity::accounts::Column::CreatedBlockHeight
+                            .gte(cursor.created_block_height as i64)
+                            .and(entity::accounts::Column::Address.gt(&cursor.address)),
+                    ),
             ),
-        SortBy::BlockHeightDesc => Condition::any()
-            .add(entity::accounts::Column::CreatedBlockHeight.gt(after.created_block_height as i64))
-            .add(
-                entity::accounts::Column::CreatedBlockHeight
-                    .eq(after.created_block_height as i64)
-                    .and(entity::accounts::Column::Address.gt(&after.address)),
+            SortBy::BlockHeightDesc => self.filter(
+                Condition::any()
+                    .add(
+                        entity::accounts::Column::CreatedBlockHeight
+                            .lt(cursor.created_block_height as i64),
+                    )
+                    .add(
+                        entity::accounts::Column::CreatedBlockHeight
+                            .lte(cursor.created_block_height as i64)
+                            .and(entity::accounts::Column::Address.lt(&cursor.address)),
+                    ),
             ),
-    })
+        }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::accounts::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+
+        self.order_by(entity::accounts::Column::CreatedBlockHeight, order.clone())
+            .order_by(entity::accounts::Column::Address, order)
+    }
 }
