@@ -54,14 +54,14 @@ async fn graphql_returns_iso_8601() -> anyhow::Result<()> {
                 // Verify that it ends with Z (UTC time zone indicator).
                 assert!(
                     created_at.ends_with('Z'),
-                    "`DateTime` should end with Z for UTC time zone: {}",
+                    "`createdAt` should end with Z for UTC time zone: {}",
                     created_at
                 );
 
                 // Verify that it can be parsed as a valid RFC 3339 datetime.
                 assert!(
                     chrono::DateTime::parse_from_rfc3339(created_at).is_ok(),
-                    "`DateTime` should be valid RFC 3339 format: {}",
+                    "`createdAt` should be valid RFC 3339 format: {}",
                     created_at
                 );
 
