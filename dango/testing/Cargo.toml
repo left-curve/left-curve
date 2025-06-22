@@ -41,6 +41,7 @@ sha2                    = { workspace = true }
 temp-rocksdb            = { workspace = true }
 
 [dev-dependencies]
+actix-service               = { workspace = true }
 anyhow                      = { workspace = true }
 assert-json-diff            = { workspace = true }
 assertor                    = { workspace = true }

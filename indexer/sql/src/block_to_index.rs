@@ -30,9 +30,17 @@ impl BlockToIndex {
     }
 
     /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save(&self, db: DatabaseConnection) -> error::Result<()> {
+    pub async fn save(
+        &self,
+        db: DatabaseConnection,
+        #[allow(unused_variables)] indexer_id: u64,
+    ) -> error::Result<()> {
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = self.block.info.height, "Indexing block");
+        tracing::info!(
+            block_height = self.block.info.height,
+            indexer_id,
+            "Indexing block"
+        );
 
         let models = Models::build(&self.block, &self.block_outcome)?;
 

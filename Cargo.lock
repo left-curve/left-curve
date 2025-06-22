@@ -3558,6 +3558,7 @@ dependencies = [
 name = "dango-testing"
 version = "0.0.0"
 dependencies = [
+ "actix-service",
  "actix-web",
  "anyhow",
  "assert-json-diff",
@@ -5739,12 +5740,14 @@ version = "0.1.0"
 dependencies = [
  "actix-codec",
  "actix-http",
+ "actix-service",
  "actix-test",
  "actix-web",
  "anyhow",
  "assert-json-diff",
  "assertor",
  "awc",
+ "base64 0.22.1",
  "chrono",
  "futures-util",
  "grug-app",
@@ -5755,6 +5758,7 @@ dependencies = [
  "grug-vm-rust",
  "indexer-httpd",
  "indexer-sql",
+ "itertools 0.14.0",
  "sea-orm",
  "serde",
  "serde_json",

@@ -16,7 +16,10 @@ use {
         future::Future,
         ops::Deref,
         path::PathBuf,
-        sync::{Arc, Mutex},
+        sync::{
+            Arc, Mutex,
+            atomic::{AtomicU64, Ordering},
+        },
         thread::sleep,
         time::Duration,
     },
@@ -198,11 +201,15 @@ where
             None => self.handle.block_on(async { Context::connect_db().await }),
         }?;
 
+        // Generate unique ID
+        let id = INDEXER_COUNTER.fetch_add(1, Ordering::SeqCst);
+
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
         indexer_path.create_dirs_if_needed()?;
 
         #[cfg(feature = "tracing")]
         tracing::info!(
+            indexer_id = id,
             indexer_path = %indexer_path.blocks_path().display(),
             "Created indexer path"
         );
@@ -234,11 +241,15 @@ where
             indexing: false,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            id,
         })
     }
 }
 
 // ----------------------------- NonBlockingIndexer ----------------------------
+
+// Add a global counter for unique IDs
+static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
 /// data to live as long as the spawned task.
@@ -264,6 +275,8 @@ where
     pub indexing: bool,
     keep_blocks: bool,
     hooks: H,
+    // Add unique ID field, used for debugging and tracing
+    id: u64,
 }
 
 impl<H> NonBlockingIndexer<H>
@@ -403,10 +416,16 @@ where
             });
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "`index_previous_unindexed_blocks` started");
+            tracing::info!(
+                block_height,
+                indexer_id = self.id,
+                "`index_previous_unindexed_blocks` started"
+            );
 
             self.handle.block_on(async {
-                block_to_index.save(self.context.db.clone()).await?;
+                block_to_index
+                    .save(self.context.db.clone(), self.id)
+                    .await?;
 
                 Ok::<(), error::IndexerError>(())
             })?;
@@ -419,7 +438,11 @@ where
             }
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "`index_previous_unindexed_blocks` ended");
+            tracing::info!(
+                block_height,
+                indexer_id = self.id,
+                "`index_previous_unindexed_blocks` ended"
+            );
         }
 
         Ok(())
@@ -503,6 +526,7 @@ where
             let blocks = self.blocks.lock().expect("can't lock blocks");
             if !blocks.is_empty() {
                 tracing::warn!(
+                    indexer_id = self.id,
                     "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
                 );
             }
@@ -525,7 +549,11 @@ where
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.info.height, "`index_block` called");
+        tracing::debug!(
+            block_height = block.info.height,
+            indexer_id = self.id,
+            "`index_block` called"
+        );
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
@@ -536,7 +564,11 @@ where
             block_to_index.save_to_disk()?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.info.height, "`index_block` finished");
+            tracing::info!(
+                block_height = block.info.height,
+                indexer_id = self.id,
+                "`index_block` finished"
+            );
 
             Ok(())
         })
@@ -567,17 +599,18 @@ where
         // The block would then not be indexed.
 
         let hooks = self.hooks.clone();
+        let id = self.id;
 
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, "`post_indexing` started");
+            tracing::debug!(block_height, indexer_id = id, "`post_indexing` started");
 
             let block_height = block_to_index.block.info.height;
 
             #[allow(clippy::map_identity)]
-            block_to_index.save(context.db.clone()).await.map_err(|err| {
+            block_to_index.save(context.db.clone(), id).await.map_err(|err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, "Can't save to db in `post_indexing`");
+                tracing::error!(err = %err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
 
                 err
             })?;
@@ -613,7 +646,7 @@ where
             context.pubsub.publish_block_minted(block_height).await?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "`post_indexing` finished");
+            tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
 
             Ok::<_, error::IndexerError>(())
         });
