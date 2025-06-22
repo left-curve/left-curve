@@ -5,7 +5,7 @@ use {
     sqlx::types::chrono,
 };
 
-/// Serialize a NaiveDateTime as ISO8601 with timezone (UTC).
+/// Serialize a NaiveDateTime as ISO 8601 with timezone (UTC).
 pub fn serialize<S>(date: &DateTime, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -15,7 +15,7 @@ where
     serializer.serialize_str(&s)
 }
 
-/// Deserialize an ISO8601 string to NaiveDateTime.
+/// Deserialize an ISO 8601 string to NaiveDateTime.
 pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime, D::Error>
 where
     D: Deserializer<'de>,

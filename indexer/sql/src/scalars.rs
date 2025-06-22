@@ -5,7 +5,7 @@ use {
     sqlx::types::chrono,
 };
 
-/// A custom DateTime scalar that ensures ISO8601 compliance with timezone information
+/// A custom DateTime scalar that ensures ISO 8601 compliance with timezone information.
 #[derive(Clone, Debug)]
 pub struct Iso8601DateTime(pub chrono::NaiveDateTime);
 
