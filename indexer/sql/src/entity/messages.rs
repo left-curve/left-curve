@@ -1,5 +1,8 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Result, SimpleObject};
+use {
+    async_graphql::{ComplexObject, Result, SimpleObject},
+    grug_types::Timestamp,
+};
 use {sea_orm::entity::prelude::*, serde::Deserialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
@@ -35,12 +38,9 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
-    /// Returns the creation timestamp in ISO8601 format with timezone
+    /// Returns the creation timestamp in ISO8601 format with timezone.
     async fn created_at(&self) -> String {
-        let ts = grug_types::Timestamp::from_nanos(
-            self.created_at.and_utc().timestamp_nanos_opt().unwrap_or(0) as u128,
-        );
-        ts.to_rfc3339_string()
+        Timestamp::from(self.created_at).to_rfc3339_string()
     }
 }
 

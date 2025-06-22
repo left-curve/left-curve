@@ -2,6 +2,7 @@
 use {
     crate::dataloaders::event_transaction::EventTransactionDataLoader,
     async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::Timestamp,
 };
 use {
     grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
@@ -122,12 +123,9 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
-    /// Returns the creation timestamp in ISO8601 format with timezone
+    /// Returns the event timestamp in ISO8601 format with timezone.
     async fn created_at(&self) -> String {
-        let ts = grug_types::Timestamp::from_nanos(
-            self.created_at.and_utc().timestamp_nanos_opt().unwrap_or(0) as u128,
-        );
-        ts.to_rfc3339_string()
+        Timestamp::from(self.created_at).to_rfc3339_string()
     }
 
     async fn transaction(&self, ctx: &Context<'_>) -> Result<Option<super::transactions::Model>> {
