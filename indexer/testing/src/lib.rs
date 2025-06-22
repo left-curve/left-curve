@@ -19,6 +19,7 @@ use {
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
     std::collections::HashMap,
+    tokio::time::{Duration, timeout},
 };
 
 pub mod block;
@@ -231,17 +232,20 @@ where
         ))
         .await?;
 
+    let res = timeout(Duration::from_secs(2), framed.next()).await;
+
     // Wait for connection_ack
-    match framed.next().await {
-        Some(Ok(ws::Frame::Text(text))) => {
+    match res {
+        Ok(Some(Ok(ws::Frame::Text(text)))) => {
             ensure!(
                 text == json!({ "type": "connection_ack" }).to_string(),
                 "unexpected connection response: {text:?}"
             );
         },
-        Some(Err(e)) => return Err(e.into()),
-        None => bail!("connection closed unexpectedly"),
-        _ => bail!("unexpected message type"),
+        Ok(Some(Err(e))) => return Err(e.into()),
+        Ok(None) => bail!("connection closed unexpectedly"),
+        Ok(_) => bail!("unexpected message type"),
+        Err(_) => bail!("connection timed out"),
     }
 
     let request_id = uuid::Uuid::new_v4();

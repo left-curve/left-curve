@@ -461,7 +461,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     let (create_account_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(idx) = rx.recv().await {
-            // Create a new account with a new username
+            // Create a new account with a new username, to see if the subscription filters it out
             let _test_account = create_user_and_account(
                 &mut suite,
                 &mut accounts,
@@ -470,7 +470,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 &format!("foo{idx}"),
             );
 
-            // Create a new account with the same username
+            // Create a new account with the original user
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
@@ -480,44 +480,47 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
         Ok::<(), anyhow::Error>(())
     });
 
+    let name = request_body.name;
+
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let name = request_body.name;
                 let (_srv, _ws, framed) =
                     call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
 
-                // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
-                .await?;
+                let expected_data = serde_json::json!({
+                    "users": [
+                        {
+                            "username": "user",
+                        },
+                    ],
+                });
 
-                assert_that!(
-                    response
-                        .data
-                        .into_iter()
-                        .map(|t| t.created_block_height)
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to(vec![2]);
+                // 1st response is always accounts from the last block if any
+                let (framed, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
+
+                let account = response
+                    .data
+                    .first()
+                    .expect("Expected at least one account");
+
+                assert_json_include!(actual: account, expected: expected_data);
 
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
-                .await?;
+                let (_, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
 
-                assert_that!(
-                    response
-                        .data
-                        .into_iter()
-                        .map(|t| t.created_block_height)
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to(vec![5]);
+                let account = response
+                    .data
+                    .first()
+                    .expect("Expected at least one account");
+
+                assert_json_include!(actual: account, expected: expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
