@@ -22,6 +22,10 @@ where
 {
     let s = String::deserialize(deserializer)?;
 
+    deserialize_date_time(&s).map_err(serde::de::Error::custom)
+}
+
+pub fn deserialize_date_time(s: &str) -> Result<DateTime, String> {
     // Try parsing as RFC3339 first (with timezone).
     if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s) {
         return Ok(dt.naive_utc());
@@ -37,5 +41,65 @@ where
         return Ok(dt);
     }
 
-    Err(serde::de::Error::custom(format!("invalid datetime: {s}")))
+    Err(format!("invalid datetime format: {s}"))
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {super::*, test_case::test_case};
+
+    #[test_case(
+        "2023-01-01T12:00:00Z" => Some(1672574400);
+        "RFC 3339 with Z timezone"
+    )]
+    #[test_case(
+        "2023-01-01T12:00:00+00:00" => Some(1672574400);
+        "RFC 3339 with +00:00 timezone"
+    )]
+    #[test_case(
+        "2023-01-01T12:00:00-05:00" => Some(1672592400);
+        "RFC 3339 with negative timezone offset"
+    )]
+    #[test_case("2023-01-01T12:00:00" => Some(1672574400);
+        "ISO format without timezone"
+    )]
+    #[test_case(
+        "2023-01-01T12:00:00.123456" => Some(1672574400);
+        "ISO format with microseconds"
+    )]
+    #[test_case(
+        "2023-01-01T12:00:00.123" => Some(1672574400);
+        "ISO format with milliseconds"
+    )]
+    #[test_case(
+        "invalid-date" => None;
+        "invalid date format"
+    )]
+    #[test_case(
+        "2023-13-01T12:00:00Z" => None;
+        "invalid month"
+    )]
+    #[test_case(
+        "2023-01-01T25:00:00Z" => None;
+        "invalid hour"
+    )]
+    #[test_case(
+        "2023-01-01T12:60:00Z" => None;
+        "invalid minute"
+    )]
+    #[test_case(
+        "2023-01-01T12:00:61Z" => None;
+        "invalid second"
+    )]
+    #[test_case(
+        "not-a-date-at-all" => None;
+        "completely invalid string"
+    )]
+    fn deserializing_date_time(s: &str) -> Option<i64> {
+        deserialize_date_time(s)
+            .map(|datetime| datetime.and_utc().timestamp())
+            .ok()
+    }
 }

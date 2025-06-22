@@ -5659,6 +5659,7 @@ dependencies = [
  "strum 0.27.1",
  "strum_macros 0.27.1",
  "tempfile",
+ "test-case",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
