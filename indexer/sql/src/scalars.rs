@@ -1,5 +1,5 @@
 use {
-    async_graphql::{Scalar, ScalarType, Value},
+    async_graphql::{InputValueError, InputValueResult, Scalar, ScalarType, Value},
     grug_types::Timestamp,
     sqlx::types::chrono::{DateTime as ChronoDateTime, NaiveDateTime},
 };
@@ -10,32 +10,34 @@ pub struct Iso8601DateTime(pub NaiveDateTime);
 
 #[Scalar(name = "DateTime")]
 impl ScalarType for Iso8601DateTime {
-    fn parse(value: Value) -> async_graphql::InputValueResult<Self> {
-        match value {
-            Value::String(s) => {
-                // Try parsing as RFC3339 first (with timezone)
-                if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(&s) {
-                    Ok(Self(dt.naive_utc()))
-                } else if let Ok(dt) = NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S") {
-                    // Parse basic ISO format without timezone, assume UTC
-                    Ok(Self(dt))
-                } else if let Ok(dt) = NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f") {
-                    // Parse ISO format with microseconds but no timezone, assume UTC
-                    Ok(Self(dt))
-                } else {
-                    Err(async_graphql::InputValueError::custom(
-                        "Invalid datetime format",
-                    ))
-                }
-            },
-            _ => Err(async_graphql::InputValueError::custom("Expected string")),
+    fn parse(value: Value) -> InputValueResult<Self> {
+        let Value::String(s) = value else {
+            return Err(InputValueError::custom("expected string"));
+        };
+
+        // Try parsing as RFC3339 first (with timezone).
+        if let Ok(dt) = ChronoDateTime::parse_from_rfc3339(&s) {
+            return Ok(Self(dt.naive_utc()));
         }
+
+        // Try parsing as basic ISO format without timezone, assume UTC.
+        if let Ok(dt) = NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S") {
+            return Ok(Self(dt));
+        }
+
+        // Parse ISO format with microseconds but no timezone, assume UTC.
+        if let Ok(dt) = NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f") {
+            return Ok(Self(dt));
+        }
+
+        Err(InputValueError::custom(format!("invalid datetime: {s}")))
     }
 
+    /// Convert NaiveDateTime to Timestamp and use its RFC3339 formatting.
     fn to_value(&self) -> Value {
-        // Convert NaiveDateTime to Timestamp and use its RFC3339 formatting
-        let ts = Timestamp::from_nanos(self.0.and_utc().timestamp_nanos_opt().unwrap_or(0) as u128);
-        Value::String(ts.to_rfc3339_string())
+        let s = Timestamp::from(self.0).to_rfc3339_string();
+
+        Value::String(s)
     }
 }
 
