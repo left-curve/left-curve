@@ -65,6 +65,7 @@ const EarnPoolsCards: React.FC = () => {
 };
 
 const EarnUserPoolsTable: React.FC = () => {
+  const { navigate } = useEarn();
   const { getCoinInfo } = useConfig();
   const { account } = useAccount();
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -100,10 +101,15 @@ const EarnUserPoolsTable: React.FC = () => {
       header: () => {
         return <Cell.Text text={m["earn.manage"]()} className="text-right px-1" />;
       },
-      cell: () => (
+      cell: ({ row }) => (
         <Cell.Action
           classNames={{ cell: "items-end", button: "m-0 px-1" }}
-          action={() => console.log("Manage Pool")}
+          action={() =>
+            navigate({
+              baseSymbol: row.original.base.symbol,
+              quoteSymbol: row.original.quote.symbol,
+            })
+          }
           label="Manage"
         />
       ),
