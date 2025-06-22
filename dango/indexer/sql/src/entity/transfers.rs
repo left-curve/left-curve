@@ -20,6 +20,7 @@ pub struct Model {
     )]
     pub id: Uuid,
     pub idx: i32,
+    #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
     pub block_height: i64,
     pub tx_hash: String,

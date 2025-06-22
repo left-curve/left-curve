@@ -2,6 +2,7 @@
 use {
     crate::dataloaders::event_transaction::EventTransactionDataLoader,
     async_graphql::{ComplexObject, Context, Enum, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::Timestamp,
 };
 use {
     grug_types::{FlatCategory, FlatCommitmentStatus, FlatEventStatus},
@@ -103,6 +104,8 @@ pub struct Model {
         graphql(skip)
     )]
     pub message_id: Option<Uuid>,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     pub r#type: String,
     pub method: Option<String>,
@@ -120,6 +123,11 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the event timestamp in ISO 8601 format with time zone.
+    async fn created_at(&self) -> String {
+        Timestamp::from(self.created_at).to_rfc3339_string()
+    }
+
     async fn transaction(&self, ctx: &Context<'_>) -> Result<Option<super::transactions::Model>> {
         let loader = ctx.data_unchecked::<DataLoader<EventTransactionDataLoader>>();
         Ok(loader.load_one(self.clone()).await?)

@@ -116,6 +116,7 @@ export type {
   AllLeafKeys,
   KeyOfUnion,
   ExtractFromUnion,
+  NestedOmit,
 } from "./utils.js";
 
 export type {

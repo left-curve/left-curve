@@ -1,4 +1,5 @@
 import type { IndexedTrade } from "@left-curve/dango/types";
+import type { AnyCoin, ContractCoin, NativeCoin } from "@left-curve/store/types";
 
 export const mockTrades: IndexedTrade[] = [
   {
@@ -373,3 +374,124 @@ export const mockOrderBookData: OrderBookData = {
     { price: 1917.11, amount: 1.022, total: 1959.2864, cumulativeTotal: 121277.364 },
   ],
 };
+
+export const mockSearchPair = [
+  {
+    name: "BTC-USD",
+    isFavorite: true,
+    lastPrice: 45000,
+    change: 2.5,
+    "8hourChange": "-0.0100%",
+    volume: "$2,227,275,754",
+    openInterest: "$2,227,275,754",
+  },
+  {
+    name: "ETH-USD",
+    isFavorite: false,
+    lastPrice: 45000,
+    change: -0.2,
+    "8hourChange": "-0.0100%",
+    volume: "$2,227,275,754",
+    openInterest: "$2,227,275,754",
+  },
+  {
+    name: "FARTCOIN-USD",
+    lastPrice: 45000,
+    change: 2.5,
+    "8hourChange": "-0.0100%",
+    volume: "$2,227,275,754",
+    openInterest: "$2,227,275,754",
+  },
+];
+
+export type activeFilterType =
+  | "All"
+  | "Spot"
+  | "Trending"
+  | "DEX only"
+  | "Pre-launch"
+  | "AI"
+  | "Defi"
+  | "Gaming"
+  | "Layer 1"
+  | "Layer 2"
+  | "Meme";
+
+export interface PoolInfo {
+  pairs: AnyCoin[];
+  apr: string;
+  tvl: number;
+  userPosition: number;
+}
+
+export const mock_ETH_COIN: NativeCoin = {
+  type: "native",
+  symbol: "ETH",
+  name: "Ethereum",
+  denom: "eth",
+  decimals: 18,
+  logoURI:
+    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+  coingeckoId: "ethereum",
+};
+
+export const mock_USDT_COIN: ContractCoin = {
+  type: "contract",
+  symbol: "USDT",
+  name: "Tether",
+  denom: "usdt",
+  decimals: 6,
+  contractAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+  logoURI: "https://cdn.worldvectorlogo.com/logos/tether.svg",
+  coingeckoId: "tether",
+};
+
+export const mock_BTC_COIN: NativeCoin = {
+  type: "native",
+  symbol: "BTC",
+  name: "Bitcoin",
+  denom: "btc",
+  decimals: 8,
+  logoURI:
+    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/bitcoin/info/logo.png",
+  coingeckoId: "bitcoin",
+};
+
+export const mockPoolsInfo: PoolInfo[] = [
+  {
+    pairs: [mock_BTC_COIN, mock_USDT_COIN],
+    apr: "11.80%",
+    tvl: 250120000,
+    userPosition: 15500,
+  },
+  {
+    pairs: [mock_ETH_COIN, mock_USDT_COIN],
+    apr: "14.32%",
+    tvl: 174580000,
+    userPosition: 230000,
+  },
+  {
+    pairs: [mock_ETH_COIN, mock_USDT_COIN],
+    apr: "14.32%",
+    tvl: 174580000,
+    userPosition: 0,
+  },
+  {
+    pairs: [mock_BTC_COIN, mock_USDT_COIN],
+    apr: "11.80%",
+    tvl: 250120000,
+    userPosition: 15500,
+  },
+  {
+    pairs: [mock_BTC_COIN, mock_ETH_COIN],
+    apr: "9.55%",
+    tvl: 95400000,
+    userPosition: 0,
+  },
+  {
+    pairs: [mock_ETH_COIN, mock_USDT_COIN],
+    apr: "14.32%",
+    tvl: 174580000,
+    userPosition: 0,
+  },
+];

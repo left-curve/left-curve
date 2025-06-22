@@ -112,7 +112,12 @@ export const Hamburger: React.FC = () => {
           </IconButton>
         </div>
 
-        <TxIndicator as={IconButton} variant="utility" size="lg">
+        <TxIndicator
+          as={IconButton}
+          variant="utility"
+          size="lg"
+          onClick={() => setShowOptions(!showOptions)}
+        >
           <HamburgerButton isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
         </TxIndicator>
       </div>

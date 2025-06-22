@@ -2,11 +2,7 @@ import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
-  safelist: [
-    {
-      pattern: /grid-cols-.+/,
-    },
-  ],
+  safelist: [{ pattern: /grid-cols-.+/ }],
   theme: {
     extend: {
       colors: {

@@ -5,9 +5,9 @@ export const StrategyCard: React.FC = () => {
   return (
     <div className="relative p-4  min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
       <img
-        src="/images/strategy-card/cocodrile.svg"
+        src="/images/characters/cocodrile.svg"
         alt=""
-        className="absolute z-0 bottom-0 right-0 "
+        className="absolute z-0 top-[7rem] right-4 w-[15,7rem] opacity-10 pointer-events-none select-none"
       />
       <div className="flex flex-col gap-2 justify-between z-10 w-full h-full relative">
         <div className="flex flex-col gap-6 items-center justify-center text-center">
@@ -20,7 +20,7 @@ export const StrategyCard: React.FC = () => {
             <img
               src="https://w7.pngwing.com/pngs/268/1013/png-transparent-ethereum-eth-hd-logo-thumbnail.png"
               alt=""
-              className="h-12 w-12 -ml-1 rounded-full"
+              className="h-12 w-12 rounded-full -ml-6"
             />
           </div>
           <div className="flex flex-col gap-1">
