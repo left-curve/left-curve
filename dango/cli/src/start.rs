@@ -116,7 +116,7 @@ impl StartCmd {
     /// Run the indexer HTTP server
     async fn run_httpd_server(cfg: &HttpdConfig, context: Context) -> anyhow::Result<()> {
         if !cfg.enabled {
-            tracing::info!("HTTP server is disabled in the configuration.");
+            tracing::info!("HTTP server is disabled in the configuration");
             return Ok(());
         }
 
@@ -141,7 +141,7 @@ impl StartCmd {
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
         if !cfg.enabled {
-            tracing::info!("Metrics HTTP server is disabled in the configuration.");
+            tracing::info!("Metrics HTTP server is disabled in the configuration");
             return Ok(());
         }
 

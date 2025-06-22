@@ -108,14 +108,10 @@ async fn main() -> anyhow::Result<()> {
                 tracing_subscriber::EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
             )
-            .with(
-                tracing_subscriber::fmt::layer()
-                    // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
-            )
+            .with(tracing_subscriber::fmt::layer())
             .init();
     }
 
-    // Metrics should be initialized as soon as possible to capture all events.
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
         Command::Indexer(cmd) => cmd.run(app_dir).await,

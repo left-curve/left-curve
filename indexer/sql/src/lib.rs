@@ -8,13 +8,12 @@ pub mod entity;
 pub mod error;
 pub mod hooks;
 pub mod indexer_path;
+#[cfg(feature = "metrics")]
+pub mod metrics;
 pub mod non_blocking_indexer;
 pub mod pubsub;
 #[cfg(feature = "async-graphql")]
 pub mod scalars;
 pub mod serde_iso8601;
-
-#[cfg(feature = "metrics")]
-pub mod metrics;
 
 pub use context::Context;

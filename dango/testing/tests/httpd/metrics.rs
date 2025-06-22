@@ -49,10 +49,8 @@ async fn metrics_are_available() -> anyhow::Result<()> {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             tracing::info!("Starting metrics HTTP server on port {metrics_port}");
-            run_metrics_server("127.0.0.1", metrics_port, metrics_handler).await?;
-            Ok(())
-        })?;
-        Ok(())
+            run_metrics_server("127.0.0.1", metrics_port, metrics_handler).await
+        })
     });
 
     let client = HttpClient::new(&format!("http://localhost:{port}"));
@@ -67,6 +65,7 @@ async fn metrics_are_available() -> anyhow::Result<()> {
         .await?;
 
     let metrics_body = metrics_response.text().await?;
+
     // Uncomment the line below to print the metrics response for debugging
     // println!("Metrics response:\n{}", metrics_body);
 

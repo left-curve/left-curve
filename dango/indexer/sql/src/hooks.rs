@@ -29,6 +29,7 @@ impl HooksTrait for Hooks {
             accounts::init_metrics();
             init_metrics();
         }
+
         Ok(())
     }
 

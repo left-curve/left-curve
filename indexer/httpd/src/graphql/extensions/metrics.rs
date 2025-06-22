@@ -34,7 +34,6 @@ impl Extension for MetricsExtension {
         let duration = start.elapsed().as_secs_f64();
 
         let is_anonymous = operation_name.is_none();
-
         if is_anonymous {
             res.extensions.insert(
                 "warning".to_string(),
@@ -44,6 +43,7 @@ impl Extension for MetricsExtension {
                 ),
             );
         }
+
         let operation = operation_name.unwrap_or("anonymous");
 
         // Record metrics
