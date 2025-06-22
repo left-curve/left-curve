@@ -47,19 +47,23 @@ async fn graphql_returns_iso_8601() -> anyhow::Result<()> {
                 let block = &response.data;
                 let created_at = block
                     .get("createdAt")
-                    .expect("`createdAt` field should exist");
-                let created_at_str = created_at.as_str().expect("`createdAt` should be a string");
+                    .expect("`createdAt` field should exist")
+                    .as_str()
+                    .expect("`createdAt` should be a string");
 
-                // Verify that it ends with Z (UTC timezone indicator).
+                // Verify that it ends with Z (UTC time zone indicator).
                 assert!(
-                    created_at_str.ends_with('Z'),
-                    "`DateTime` should end with Z for UTC timezone: {}",
-                    created_at_str
+                    created_at.ends_with('Z'),
+                    "`DateTime` should end with Z for UTC time zone: {}",
+                    created_at
                 );
 
                 // Verify that it can be parsed as a valid RFC 3339 datetime.
-                let _parsed = chrono::DateTime::parse_from_rfc3339(created_at_str)
-                    .expect("`DateTime` should be valid RFC 3339 format");
+                assert!(
+                    chrono::DateTime::parse_from_rfc3339(created_at).is_ok(),
+                    "`DateTime` should be valid RFC 3339 format: {}",
+                    created_at
+                );
 
                 Ok::<(), anyhow::Error>(())
             })

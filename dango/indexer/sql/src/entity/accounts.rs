@@ -33,7 +33,7 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
-    /// Returns the account creation timestamp in ISO 8601 format with timezone.
+    /// Returns the account creation timestamp in ISO 8601 format with time zone.
     async fn created_at(&self) -> String {
         Timestamp::from(self.created_at).to_rfc3339_string()
     }
