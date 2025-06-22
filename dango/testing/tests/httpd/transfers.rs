@@ -693,15 +693,15 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 >(framed, name)
                 .await?;
 
-                // 1 transfer because we filter on one address
+                // 1st transfer because we filter on one address
                 assert_that!(
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height)
+                        .map(|t| t.amount)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![1]);
+                .is_equal_to(vec!["100000000".to_string()]);
 
                 create_block_tx.send(2).await.unwrap();
 
@@ -715,10 +715,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height)
+                        .map(|t| t.amount)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![2]);
+                .is_equal_to(vec!["100000000".to_string()]);
 
                 create_block_tx.send(3).await.unwrap();
 
@@ -732,10 +732,10 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                     response
                         .data
                         .into_iter()
-                        .map(|t| t.block_height)
+                        .map(|t| t.amount)
                         .collect::<Vec<_>>()
                 )
-                .is_equal_to(vec![3]);
+                .is_equal_to(vec!["100000000".to_string()]);
 
                 Ok::<(), anyhow::Error>(())
             })
