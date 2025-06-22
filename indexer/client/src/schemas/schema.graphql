@@ -65,7 +65,7 @@ type Event {
 	data: JSON!
 	blockHeight: Int!
 	"""
-	Returns the event's timestamp in ISO 8601 format with time zone.
+	Returns the event timestamp in ISO 8601 format with time zone.
 	"""
 	createdAt: String!
 	transaction: Transaction
