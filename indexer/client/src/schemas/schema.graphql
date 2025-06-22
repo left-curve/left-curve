@@ -3,7 +3,7 @@ type Block {
 	hash: String!
 	appHash: String!
 	"""
-	Returns the creation timestamp in ISO8601 format with timezone
+	Returns the block timestamp in ISO 8601 format with time zone.
 	"""
 	createdAt: String!
 	"""
@@ -65,7 +65,7 @@ type Event {
 	data: JSON!
 	blockHeight: Int!
 	"""
-	Returns the creation timestamp in ISO8601 format with timezone
+	Returns the event's timestamp in ISO 8601 format with time zone.
 	"""
 	createdAt: String!
 	transaction: Transaction
@@ -138,7 +138,7 @@ type Message {
 	contractAddr: String
 	senderAddr: String!
 	"""
-	Returns the creation timestamp in ISO8601 format with timezone
+	Returns the event's timestamp in ISO 8601 format with timezone.
 	"""
 	createdAt: String!
 }
@@ -295,7 +295,7 @@ type Transaction {
 	gasWanted: Int!
 	gasUsed: Int!
 	"""
-	Returns the creation timestamp in ISO8601 format with timezone
+	Returns the transaction's creation timestamp in ISO 8601 format with timezone.
 	"""
 	createdAt: String!
 	"""
