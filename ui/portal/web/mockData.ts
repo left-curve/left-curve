@@ -1,5 +1,5 @@
 import type { IndexedTrade } from "@left-curve/dango/types";
-import type { AnyCoin } from "@left-curve/store/types";
+import type { AnyCoin, ContractCoin, NativeCoin } from "@left-curve/store/types";
 
 export const mockTrades: IndexedTrade[] = [
   {
@@ -237,48 +237,22 @@ export const mockTrades: IndexedTrade[] = [
 
 export const mockOpenOrder = [
   {
-    time: new Date(),
-    type: "Limit",
-    coin: {
-      symbol: "USDC",
-      name: "USDC",
-      denom: "usdc",
-      decimals: 6,
-      type: "contract",
-      logoURI:
-        "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-    } as AnyCoin,
-    direction: "Long",
-    size: 0.063,
-    orderValue: 11.98,
-    price: 1.889,
-    reduceOnly: false,
-    triggerConditions: "N/A",
-    onCancel: () => {
-      console.log("Order cancelled");
-    },
+    id: 1,
+    baseDenom: "bridge/usdc",
+    quoteDenom: "dango",
+    direction: 1,
+    remaining: "0.063",
+    amount: "11.98",
+    price: "1.889",
   },
   {
-    time: new Date(),
-    type: "Limit",
-    coin: {
-      symbol: "USDC",
-      name: "USDC",
-      denom: "usdc",
-      decimals: 6,
-      type: "contract",
-      logoURI:
-        "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-    } as AnyCoin,
-    direction: "Long",
-    size: 0.063,
-    orderValue: 11.98,
-    price: 1.889,
-    reduceOnly: false,
-    triggerConditions: "N/A",
-    onCancel: () => {
-      console.log("Order cancelled");
-    },
+    id: 2,
+    baseDenom: "bridge/usdc",
+    quoteDenom: "dango",
+    direction: 0,
+    remaining: "0.063",
+    amount: "11.98",
+    price: "1.889",
   },
 ];
 
@@ -442,3 +416,82 @@ export type activeFilterType =
   | "Layer 1"
   | "Layer 2"
   | "Meme";
+
+export interface PoolInfo {
+  pairs: AnyCoin[];
+  apr: string;
+  tvl: number;
+  userPosition: number;
+}
+
+export const mock_ETH_COIN: NativeCoin = {
+  type: "native",
+  symbol: "ETH",
+  name: "Ethereum",
+  denom: "eth",
+  decimals: 18,
+  logoURI:
+    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+  coingeckoId: "ethereum",
+};
+
+export const mock_USDT_COIN: ContractCoin = {
+  type: "contract",
+  symbol: "USDT",
+  name: "Tether",
+  denom: "usdt",
+  decimals: 6,
+  contractAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+  logoURI: "https://cdn.worldvectorlogo.com/logos/tether.svg",
+  coingeckoId: "tether",
+};
+
+export const mock_BTC_COIN: NativeCoin = {
+  type: "native",
+  symbol: "BTC",
+  name: "Bitcoin",
+  denom: "btc",
+  decimals: 8,
+  logoURI:
+    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/bitcoin/info/logo.png",
+  coingeckoId: "bitcoin",
+};
+
+export const mockPoolsInfo: PoolInfo[] = [
+  {
+    pairs: [mock_BTC_COIN, mock_USDT_COIN],
+    apr: "11.80%",
+    tvl: 250120000,
+    userPosition: 15500,
+  },
+  {
+    pairs: [mock_ETH_COIN, mock_USDT_COIN],
+    apr: "14.32%",
+    tvl: 174580000,
+    userPosition: 230000,
+  },
+  {
+    pairs: [mock_ETH_COIN, mock_USDT_COIN],
+    apr: "14.32%",
+    tvl: 174580000,
+    userPosition: 0,
+  },
+  {
+    pairs: [mock_BTC_COIN, mock_USDT_COIN],
+    apr: "11.80%",
+    tvl: 250120000,
+    userPosition: 15500,
+  },
+  {
+    pairs: [mock_BTC_COIN, mock_ETH_COIN],
+    apr: "9.55%",
+    tvl: 95400000,
+    userPosition: 0,
+  },
+  {
+    pairs: [mock_ETH_COIN, mock_USDT_COIN],
+    apr: "14.32%",
+    tvl: 174580000,
+    userPosition: 0,
+  },
+];

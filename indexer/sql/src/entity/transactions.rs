@@ -6,7 +6,7 @@ use {
         transaction_messages::TransactionMessagesDataLoader,
     },
     async_graphql::{ComplexObject, Context, Error, Result, SimpleObject, dataloader::DataLoader},
-    grug_types::{JsonSerExt, Tx, TxOutcome},
+    grug_types::{JsonSerExt, Timestamp, Tx, TxOutcome},
 };
 use {grug_types::FlatCategory, sea_orm::entity::prelude::*, serde::Deserialize};
 
@@ -23,6 +23,8 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     pub block_height: i64,
     pub transaction_type: FlatCategory,
@@ -42,6 +44,11 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the transaction timestamp in ISO 8601 format with time zone.
+    async fn created_at(&self) -> String {
+        Timestamp::from(self.created_at).to_rfc3339_string()
+    }
+
     /// Nested Events from this transaction, from block on-disk caching
     async fn nested_events(&self, ctx: &Context<'_>) -> Result<Option<String>> {
         let (_, outcome) = load_tx_from_file(self, ctx).await?;

@@ -5,8 +5,8 @@ import {
   useConfig,
   usePrices,
   useSigningClient,
+  useSubmitTx,
 } from "@left-curve/store";
-import { useMutation } from "@tanstack/react-query";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -18,7 +18,6 @@ import {
   Skeleton,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { toast } from "../foundation/Toast";
 import { Modals } from "../modals/RootModal";
 
 import { m } from "~/paraglide/messages";
@@ -29,13 +28,12 @@ import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curv
 import { type PropsWithChildren, useEffect, useState } from "react";
 
 import type { Address } from "@left-curve/dango/types";
-import type { UseSimpleSwapParameters } from "@left-curve/store";
-import type { UseMutationResult } from "@tanstack/react-query";
+import type { UseSimpleSwapParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
 
 const [SimpleSwapProvider, useSimpleSwap] = createContext<{
   state: ReturnType<typeof state>;
-  submission: UseMutationResult<undefined, Error, void, unknown>;
+  submission: UseSubmitTxReturnType<void, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
 }>({
   name: "SimpleSwapContext",
@@ -47,23 +45,34 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
 }) => {
   const simpleSwapState = state(parameters);
   const controllers = useInputs();
-  const { subscriptions, settings, showModal } = useApp();
+  const { toast, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
   const { pair, simulation, fee, coins } = simpleSwapState;
   const { formatNumberOptions } = settings;
 
-  const submission = useMutation({
-    mutationFn: async () => {
-      if (!signingClient) throw new Error("error: no signing client");
-      if (!pair) throw new Error("error: no pair");
-      if (!simulation.data) throw new Error("error: no simulation data");
-      subscriptions.emit("submitTx", { isSubmitting: true });
+  const submission = useSubmitTx({
+    toast: {
+      success: () => toast.success({ title: m["dex.convert.convertSuccessfully"]() }),
+      error: () =>
+        toast.error(
+          { title: m["dex.convert.errors.failure"]() },
+          { duration: Number.POSITIVE_INFINITY },
+        ),
+    },
+    submission: {
+      success: m["dex.convert.convertSuccessfully"](),
+      error: m["dex.convert.errors.failure"](),
+    },
+    mutation: {
+      mutationFn: async (_, { abort }) => {
+        if (!signingClient) throw new Error("error: no signing client");
+        if (!pair) throw new Error("error: no pair");
+        if (!simulation.data) throw new Error("error: no simulation data");
 
-      const { input, output } = simulation.data;
+        const { input, output } = simulation.data;
 
-      try {
         const { promise, resolve: confirmSwap, reject: rejectSwap } = withResolvers();
 
         showModal(Modals.ConfirmSwap, {
@@ -80,17 +89,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
           rejectSwap,
         });
 
-        const response = await promise
-          .then(() => true)
-          .catch(() => {
-            subscriptions.emit("submitTx", {
-              isSubmitting: false,
-              txResult: { hasSucceeded: false, message: m["dex.convert.errors.failure"]() },
-            });
-            return false;
-          });
-
-        if (!response) return undefined;
+        await promise.catch(abort);
 
         await signingClient.swapExactAmountIn({
           sender: account!.address as Address,
@@ -100,30 +99,12 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
             amount: input.amount,
           },
         });
-
+      },
+      onSuccess: () => {
         controllers.reset();
         simulation.reset();
-        toast.success({ title: m["dex.convert.convertSuccessfully"]() });
-        subscriptions.emit("submitTx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["dex.convert.convertSuccessfully"]() },
-        });
         refreshBalances();
-      } catch (e) {
-        console.error(e);
-        subscriptions.emit("submitTx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["dex.convert.errors.failure"]() },
-        });
-        toast.error(
-          {
-            title: m["dex.convert.errors.failure"](),
-          },
-          {
-            duration: Number.POSITIVE_INFINITY,
-          },
-        );
-      }
+      },
     },
   });
 
@@ -168,7 +149,7 @@ const SimpleSwapHeader: React.FC = () => {
   );
 };
 
-export const SimpleSwapForm: React.FC = () => {
+const SimpleSwapForm: React.FC = () => {
   const { settings } = useApp();
   const { coins } = useConfig();
   const { account, isConnected } = useAccount();

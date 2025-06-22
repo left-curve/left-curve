@@ -9,7 +9,7 @@ export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
 export { Select } from "./Select";
 export { TruncateText } from "./TruncateText";
-export { Table, type TableColumn } from "./Table";
+export { Table, type TableColumn, type TableClassNames, type ColumnFiltersState } from "./Table";
 export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
@@ -27,13 +27,15 @@ export { ExpandOptions } from "./ExpandOptions";
 export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
-export { Popover } from "./Popover";
+export { Popover, type PopoverRef } from "./Popover";
 export { Pagination, CursorPagination } from "./Pagination";
 export { JsonVisualizer } from "./JsonVisualizer";
 export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
 export { Tooltip } from "./Tooltip";
 export { Radio } from "./RadioGroup";
+export { Toast } from "./Toast";
+export { PairAssets } from "./PairAssets";
 
 /* ---------------------------------- Icons --------------------------------- */
 

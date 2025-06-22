@@ -26,7 +26,7 @@ async-trait           = { workspace = true }
 borsh                 = { workspace = true }
 futures               = { workspace = true }
 grug-app              = { workspace = true }
-grug-types            = { workspace = true, features = ["sea-orm"] }
+grug-types            = { workspace = true, features = ["chrono", "sea-orm"] }
 indexer-disk-saver    = { workspace = true, features = ["tracing"] }
 indexer-sql-migration = { workspace = true }
 itertools             = { workspace = true }
@@ -45,4 +45,5 @@ tracing               = { workspace = true, optional = true }
 uuid                  = { workspace = true }
 
 [dev-dependencies]
-assertor = { workspace = true }
+assertor  = { workspace = true }
+test-case = { workspace = true }

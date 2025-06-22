@@ -1,15 +1,17 @@
 import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
-import * as Sentry from "@sentry/react";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
+import { useNotifications } from "./hooks/useNotifications";
 
+import * as Sentry from "@sentry/react";
 import { router } from "./app.router";
 import { Modals } from "./components/modals/RootModal";
 
+import type { ToastController } from "@left-curve/applets-kit";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { useNotifications } from "./hooks/useNotifications";
 
 type AppState = {
   router: typeof router;
+  toast: ToastController;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
   config: ReturnType<typeof useAppConfig>;
   isSidebarVisible: boolean;
@@ -36,7 +38,11 @@ type AppState = {
 
 export const AppContext = createContext<AppState | null>(null);
 
-export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
+type AppProviderProps = {
+  toast: ToastController;
+};
+
+export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ children, toast }) => {
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -139,6 +145,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
         showModal,
         hideModal,
         modal,
+        toast,
         settings,
         changeSettings,
       }}

@@ -124,7 +124,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .add_events(events)?)
 }
 
-#[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     current_block_height: u64,

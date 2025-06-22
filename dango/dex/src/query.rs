@@ -1,6 +1,8 @@
 use {
-    crate::{LIMIT_ORDERS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
+    crate::{LIMIT_ORDERS, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER, core},
+    dango_oracle::OracleQuerier,
     dango_types::{
+        DangoQuerier,
         account_factory::Username,
         dex::{
             OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
@@ -8,8 +10,9 @@ use {
         },
     },
     grug::{
-        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json, JsonSerExt,
-        Number, NumberConst, Order as IterationOrder, StdResult, Timestamp, Uint128,
+        Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
+        JsonSerExt, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult, Timestamp,
+        Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -64,6 +67,31 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_orders_by_user(ctx, user, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::Volume { user, since } => {
+            let res = query_volume(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::VolumeByUser { user, since } => {
+            let res = query_volume_by_user(ctx, user, since)?;
+            res.to_json_value()
+        },
+        QueryMsg::SimulateProvideLiquidity {
+            base_denom,
+            quote_denom,
+            deposit,
+        } => {
+            let res = query_simulate_provide_liquidity(ctx, base_denom, quote_denom, deposit)?;
+            res.to_json_value()
+        },
+        QueryMsg::SimulateWithdrawLiquidity {
+            base_denom,
+            quote_denom,
+            lp_burn_amount,
+        } => {
+            let res =
+                query_simulate_withdraw_liquidity(ctx, base_denom, quote_denom, lp_burn_amount)?;
+            res.to_json_value()
+        },
         QueryMsg::SimulateSwapExactAmountIn { route, input } => {
             let (_, output) =
                 core::swap_exact_amount_in(ctx.storage, ctx.querier, route.into_inner(), input)?;
@@ -73,24 +101,14 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let (_, input) = core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)?;
             input.to_json_value()
         },
-        QueryMsg::Volume { user, since } => {
-            let res = query_volume(ctx, user, since)?;
-            res.to_json_value()
-        },
-        QueryMsg::VolumeByUser { user, since } => {
-            let res = query_volume_by_user(ctx, user, since)?;
-            res.to_json_value()
-        },
     }
     .map_err(Into::into)
 }
 
-#[inline]
 fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<PairParams> {
     PAIRS.load(ctx.storage, (&base_denom, &quote_denom))
 }
 
-#[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
@@ -115,12 +133,10 @@ fn query_pairs(
         .collect()
 }
 
-#[inline]
 fn query_reserve(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<CoinPair> {
     RESERVES.load(ctx.storage, (&base_denom, &quote_denom))
 }
 
-#[inline]
 fn query_reserves(
     ctx: ImmutableCtx,
     start_after: Option<PairId>,
@@ -147,7 +163,6 @@ fn query_reserves(
         .collect()
 }
 
-#[inline]
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
     let (((base_denom, quote_denom), direction, price, _), order) =
         LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
@@ -163,7 +178,6 @@ fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse>
     })
 }
 
-#[inline]
 fn query_orders(
     ctx: ImmutableCtx,
     start_after: Option<OrderId>,
@@ -192,7 +206,6 @@ fn query_orders(
         .collect()
 }
 
-#[inline]
 fn query_orders_by_pair(
     ctx: ImmutableCtx,
     base_denom: Denom,
@@ -226,7 +239,6 @@ fn query_orders_by_pair(
         .collect()
 }
 
-#[inline]
 fn query_orders_by_user(
     ctx: ImmutableCtx,
     user: Addr,
@@ -262,7 +274,6 @@ fn query_orders_by_user(
         .collect()
 }
 
-#[inline]
 fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Uint128> {
     let volume_now = VOLUMES
         .prefix(&user)
@@ -290,7 +301,6 @@ fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdR
     Ok(volume_now.checked_sub(volume_since)?)
 }
 
-#[inline]
 fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
@@ -320,4 +330,36 @@ fn query_volume_by_user(
     };
 
     Ok(volume_now.checked_sub(volume_since)?)
+}
+
+fn query_simulate_provide_liquidity(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    deposit: CoinPair,
+) -> anyhow::Result<Coin> {
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+    let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)
+        .map(|(_, lp_mint_amount)| Coin {
+            denom: pair.lp_denom,
+            amount: lp_mint_amount,
+        })
+}
+
+fn query_simulate_withdraw_liquidity(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    lp_burn_amount: Uint128,
+) -> anyhow::Result<CoinPair> {
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+    let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)
+        .map(|(_, underlying_refund_amount)| underlying_refund_amount)
 }

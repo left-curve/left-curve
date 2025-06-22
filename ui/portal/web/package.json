@@ -21,6 +21,7 @@
     "@tanstack/router-plugin": "^1.102.1",
     "@tanstack/zod-adapter": "catalog:",
     "@yudiel/react-qr-scanner": "^2.2.1",
+    "big.js": "^7.0.1",
     "date-fns": "^4.1.0",
     "framer-motion": "catalog:",
     "fuzzysort": "^3.1.0",

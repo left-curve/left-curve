@@ -51,7 +51,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-#[inline]
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()? || ctx.sender == GENESIS_SENDER,
@@ -86,7 +85,6 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     Ok(Response::new().add_events(events)?)
 }
 
-#[inline]
 fn batch_update_orders(
     mut ctx: MutableCtx,
     creates_market: Vec<CreateMarketOrderRequest>,
@@ -159,7 +157,6 @@ fn batch_update_orders(
         .add_events(events)?)
 }
 
-#[inline]
 fn provide_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
@@ -217,7 +214,6 @@ fn provide_liquidity(
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
 /// The underlying assets will be returned to the sender.
-#[inline]
 fn withdraw_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
@@ -265,7 +261,6 @@ fn withdraw_liquidity(
     // TODO: add events
 }
 
-#[inline]
 fn swap_exact_amount_in(
     ctx: MutableCtx,
     route: UniqueVec<PairId>,
@@ -302,7 +297,6 @@ fn swap_exact_amount_in(
         })?)
 }
 
-#[inline]
 fn swap_exact_amount_out(
     mut ctx: MutableCtx,
     route: UniqueVec<PairId>,

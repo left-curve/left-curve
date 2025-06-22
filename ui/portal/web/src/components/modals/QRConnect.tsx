@@ -6,7 +6,6 @@ import { forwardRef, useId, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
-import { toast } from "../foundation/Toast";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "~/paraglide/messages";
@@ -21,6 +20,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
     key: id,
   });
 
+  const { toast } = useApp();
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
   const { hideModal } = useApp();
@@ -50,7 +50,6 @@ export const QRConnect = forwardRef((_props, _ref) => {
         title: m["common.error"](),
         description: m["signin.errors.mobileSessionAborted"](),
       });
-      captureException(error);
       hideModal();
       dataChannel.sendMessage({
         id,

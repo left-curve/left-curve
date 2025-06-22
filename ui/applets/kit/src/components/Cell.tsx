@@ -1,4 +1,4 @@
-import { usePrices } from "@left-curve/store";
+import { useConfig, usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
@@ -9,7 +9,14 @@ import { Badge } from "./Badge";
 import { TextCopy } from "./TextCopy";
 import { IconLink } from "./icons/IconLink";
 
-import type { Address, IndexedMessage } from "@left-curve/dango/types";
+import type {
+  Address,
+  Directions,
+  IndexedMessage,
+  OneRequired,
+  PairId,
+  Prettify,
+} from "@left-curve/dango/types";
 import { format } from "date-fns";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
@@ -17,29 +24,59 @@ import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
+import { PairAssets } from "./PairAssets";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
 };
 
-type CellAssetProps = {
-  className?: string;
-  asset: AnyCoin;
-  noImage?: boolean;
-};
+type CellAssetProps = Prettify<
+  {
+    className?: string;
+    noImage?: boolean;
+  } & OneRequired<{ asset: AnyCoin; denom: string }, "asset", "denom">
+>;
 
-const Asset: React.FC<CellAssetProps> = ({ asset, noImage }) => {
+const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
+  const { coins } = useConfig();
+
+  const coin = asset || coins[denom as keyof typeof coins];
+
+  if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
+
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
       {!noImage && (
         <img
-          src={asset.logoURI}
-          alt={asset.symbol}
+          src={coin.logoURI}
+          alt={coin.symbol}
           className="w-6 h-6 rounded-full object-cover"
           loading="lazy"
         />
       )}
-      <p className="min-w-fit">{asset.symbol}</p>
+      <p className="min-w-fit">{coin.symbol}</p>
+    </div>
+  );
+};
+
+type CellAssetsProps = {
+  className?: string;
+  assets: AnyCoin[];
+  noImage?: boolean;
+};
+
+const Assets: React.FC<CellAssetsProps> = ({ assets, noImage }) => {
+  return (
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+      {!noImage && <PairAssets assets={assets} />}
+      <p className="min-w-fit">
+        {assets.map((asset, i) => (
+          <span key={`text-${asset.symbol}-${i}`}>
+            {asset.symbol}
+            {i < assets.length - 1 ? "- " : ""}
+          </span>
+        ))}
+      </p>
     </div>
   );
 };
@@ -67,7 +104,27 @@ type CellTextProps = {
 
 const Text: React.FC<CellTextProps> = ({ text, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 text-gray-500", className)}>
+      <p>{text}</p>
+    </div>
+  );
+};
+
+type CellOrderDirectionProps = {
+  className?: string;
+  direction: Directions;
+  text: string;
+};
+
+const OrderDirection: React.FC<CellOrderDirectionProps> = ({ text, direction, className }) => {
+  return (
+    <div
+      className={twMerge(
+        "flex flex-col gap-1 diatype-xs-medium",
+        direction === "ask" ? "text-status-fail" : "text-status-success",
+        className,
+      )}
+    >
       <p>{text}</p>
     </div>
   );
@@ -186,15 +243,26 @@ const Time: React.FC<CellTimeProps> = ({ date, className }) => {
 };
 
 type CellActionProps = {
-  className?: string;
+  classNames?: {
+    cell?: string;
+    button?: string;
+  };
+  isDisabled?: boolean;
   action: () => void;
   label: string;
 };
 
-const Action: React.FC<CellActionProps> = ({ action, label, className }) => {
+const Action: React.FC<CellActionProps> = ({ action, label, classNames, isDisabled }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", className)}>
-      <Button variant="link" onClick={action} className="p-0 m-0">
+    <div
+      className={twMerge("flex flex-col gap-1 diatype-sm-medium text-gray-500", classNames?.cell)}
+    >
+      <Button
+        variant="link"
+        onClick={action}
+        className={twMerge(classNames?.button)}
+        isDisabled={isDisabled}
+      >
         {label}
       </Button>
     </div>
@@ -216,17 +284,39 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
   );
 };
 
+type CellPairNameProps = {
+  pairId: PairId;
+  type: string;
+};
+
+const PairName: React.FC<CellPairNameProps> = ({ pairId, type }) => {
+  const { coins } = useConfig();
+  const { baseDenom, quoteDenom } = pairId;
+  const baseCoin = coins[baseDenom];
+  const quoteCoin = coins[quoteDenom];
+
+  return (
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      <Badge text={type} color="blue" size="s" />
+    </div>
+  );
+};
+
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
+  Assets,
   Action,
   Amount,
   Time,
   Sender,
   Text,
   TxHash,
+  OrderDirection,
   TxMessages,
   TxResult,
   MarketPrice,
+  PairName,
   BlockHeight,
 });

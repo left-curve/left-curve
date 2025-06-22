@@ -4,14 +4,12 @@ use {
     dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
     dango_testing::Preset,
     dango_types::config::AppConfig,
-    grug::{QueryClientExt, setup_tracing_subscriber},
+    grug::QueryClientExt,
     indexer_client::HttpClient,
 };
 
 #[tokio::test]
 async fn graphql_returns_config() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::ERROR);
-
     let port = get_mock_socket_addr();
 
     // Spawn server in separate thread with its own runtime
