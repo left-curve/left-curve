@@ -50,13 +50,14 @@ pub fn deserialize_date_time(s: &str) -> Result<DateTime, String> {
 mod tests {
     use {super::*, test_case::test_case};
 
-    #[test_case("2023-01-01T12:00:00Z" => Some(1672574400); "RFC 3339 with Z timezone")]
-    #[test_case("2023-01-01T12:00:00+00:00" => Some(1672574400); "RFC 3339 with +00:00 timezone")]
-    #[test_case("2023-01-01T12:00:00-05:00" => Some(1672592400); "RFC 3339 with negative timezone offset")]
-    #[test_case("2023-01-01T12:00:00" => Some(1672574400); "ISO format without timezone")]
-    #[test_case("2023-01-01T12:00:00.123456" => Some(1672574400); "ISO format with microseconds")]
-    #[test_case("2023-01-01T12:00:00.123" => Some(1672574400); "ISO format with milliseconds")]
-    #[test_case("invalid-date" => None; "invalid date format")]
+    #[test_case("2023-01-01T12:00:00" => Some(1672574400000000000); "ISO format without timezone")]
+    #[test_case("2023-01-01T12:00:00Z" => Some(1672574400000000000); "RFC 3339 with Z timezone")]
+    #[test_case("2023-01-01T12:00:00+00:00" => Some(1672574400000000000); "RFC 3339 with +00:00 timezone")]
+    #[test_case("2023-01-01T12:00:00-05:00" => Some(1672592400000000000); "RFC 3339 with negative timezone offset")]
+    #[test_case("2023-01-01T12:00:00.123" => Some(1672574400123000000); "ISO format with milliseconds")]
+    #[test_case("2023-01-01T12:00:00.123456" => Some(1672574400123456000); "ISO format with microseconds")]
+    #[test_case("2023-01-01T12:00:00.123456789" => Some(1672574400123456789); "ISO format with nanoseconds")]
+    #[test_case("2023-01-01T12:00:00.123456789Z" => Some(1672574400123456789); "ISO format with nanoseconds and Z timezone")]
     #[test_case("2023-13-01T12:00:00Z" => None; "invalid month")]
     #[test_case("2023-01-01T25:00:00Z" => None; "invalid hour")]
     #[test_case("2023-01-01T12:60:00Z" => None; "invalid minute")]
@@ -64,7 +65,7 @@ mod tests {
     #[test_case("not-a-date-at-all" => None; "completely invalid string")]
     fn deserializing_date_time(s: &str) -> Option<i64> {
         deserialize_date_time(s)
-            .map(|datetime| datetime.and_utc().timestamp())
+            .map(|datetime| datetime.and_utc().timestamp_nanos_opt().unwrap())
             .ok()
     }
 }
