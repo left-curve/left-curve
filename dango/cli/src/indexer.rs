@@ -16,9 +16,7 @@ pub struct IndexerCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// View a block and results
-    Block {
-        height: u64,
-    },
+    Block { height: u64 },
     /// View a range of blocks and results
     Blocks {
         /// Start height (inclusive)
@@ -35,6 +33,7 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+    /// Start the metrics HTTP server
     MetricsHttpd,
 }
 
