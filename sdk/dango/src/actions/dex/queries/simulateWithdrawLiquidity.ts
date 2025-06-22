@@ -25,7 +25,7 @@ export type SimulateWithdrawLiquidityReturnType = Promise<CoinPair>;
  * @param parameters.height - The block height to query at (default is the latest block).
  * @returns The amount of base and quote tokens that would be received from the withdrawal.
  */
-export async function SimulateWithdrawLiquidity<
+export async function simulateWithdrawLiquidity<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(

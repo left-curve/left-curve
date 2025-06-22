@@ -1,5 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
-import { useQuery } from "../query.js";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
@@ -76,12 +76,24 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
   }, [quoteAmount]);
 
   const userLiquidity = useQuery({
+    enabled: userHasLiquidity,
     queryKey: ["userLiquidity", account?.address, pair.baseDenom, pair.quoteDenom],
     queryFn: async () => {
-      if (!signingClient) throw new Error("signingClient not available");
       if (!account) throw new Error("not account found");
+      const [{ amount: baseAmount }, { amount: quoteAmount }] =
+        await publicClient.simulateWithdrawLiquidity({
+          baseDenom: pair.baseDenom,
+          quoteDenom: pair.quoteDenom,
+          lpBurnAmount: lpBalance,
+        });
+      const baseParseAmount = formatUnits(baseAmount, baseCoin.decimals);
+      const quoteParseAmount = formatUnits(quoteAmount, quoteCoin.decimals);
+
+      return {
+        innerBase: baseParseAmount,
+        innerQuote: quoteParseAmount,
+      };
     },
-    enabled: !!account && !!pair.baseDenom && !!pair.quoteDenom,
   });
 
   const deposit = useSubmitTx({
@@ -129,12 +141,24 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
     },
   });
 
+  const withdrawAmount = useMemo(() => {
+    if (!userLiquidity.data) return { base: "0", quote: "0" };
+    const baseAmount = Big(userLiquidity.data.innerBase).mul(withdrawPercent).div(100).toNumber();
+    const quoteAmount = Big(userLiquidity.data.innerQuote).mul(withdrawPercent).div(100).toNumber();
+    return {
+      base: baseAmount,
+      quote: quoteAmount,
+    };
+  }, [withdrawPercent, userLiquidity.data]);
+
   return {
     pair,
     action,
     onChangeAction,
+    userLiquidity,
     userHasLiquidity,
     withdrawPercent,
+    withdrawAmount,
     deposit,
     withdraw,
     coins: {

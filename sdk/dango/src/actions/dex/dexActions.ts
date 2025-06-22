@@ -55,9 +55,9 @@ import {
 } from "./queries/ordersByUser.js";
 
 import {
-  SimulateWithdrawLiquidity,
   type SimulateWithdrawLiquidityParameters,
   type SimulateWithdrawLiquidityReturnType,
+  simulateWithdrawLiquidity,
 } from "./queries/simulateWithdrawLiquidity.js";
 
 export type DexQueryActions = {
@@ -82,7 +82,7 @@ export function dexQueryActions<transport extends Transport = Transport>(
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
     ordersByUser: (args) => ordersByUser(client, args),
-    simulateWithdrawLiquidity: (args) => SimulateWithdrawLiquidity(client, args),
+    simulateWithdrawLiquidity: (args) => simulateWithdrawLiquidity(client, args),
     simulateSwapExactAmountOut: (args) => simulateSwapExactAmountOut(client, args),
     simulateSwapExactAmountIn: (args) => simulateSwapExactAmountIn(client, args),
   };

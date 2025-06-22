@@ -1,6 +1,6 @@
 import { numberMask, useInputs } from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
-import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import {
   Badge,
@@ -14,11 +14,12 @@ import {
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
+import { formatNumber } from "@left-curve/dango/utils";
+import Big from "big.js";
 import { m } from "~/paraglide/messages";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
-import { useApp } from "~/hooks/useApp";
 
 const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{
   state: ReturnType<typeof usePoolLiquidityState>;
@@ -123,36 +124,55 @@ const PoolLiquidityHeader: React.FC = () => {
 };
 
 const PoolLiquidityUserLiquidity: React.FC = () => {
+  const { settings } = useApp();
   const { state } = usePoolLiquidity();
-  const { coins, userHasLiquidity } = state;
-
+  const { formatNumberOptions } = settings;
+  const { coins, userHasLiquidity, userLiquidity } = state;
   const { base, quote } = coins;
 
-  if (!userHasLiquidity) return null;
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
+  if (!userHasLiquidity || !userLiquidity.data) return null;
+
+  const { innerBase, innerQuote } = userLiquidity.data;
+
+  const basePrice = getPrice(innerBase, base.denom);
+  const quotePrice = getPrice(innerQuote, quote.denom);
+
+  const totalPrice = formatNumber(Big(basePrice).plus(quotePrice).toString(), {
+    ...formatNumberOptions,
+    currency: "USD",
+  });
 
   return (
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card w-full h-fit">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-gray-500">{m["poolLiquidity.liquidity"]()}</p>
-        <p className="h4-bold text-gray-900">$1000.50</p>
+        <p className="h4-bold text-gray-900">{totalPrice}</p>
       </div>
       <div className="flex flex-col w-full gap-2">
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
-            <img src={base.logoURI} alt={base.symbol} className="w-5 h-5 rounded-full" />
+            <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
             <p className="text-gray-500 diatype-m-regular">{base.symbol}</p>
           </div>
           <p className="text-gray-700 diatype-m-regular">
-            500.25 <span className="text-gray-500">($500.25)</span>
+            {formatNumber(innerBase, formatNumberOptions)}{" "}
+            <span className="text-gray-500">
+              ({formatNumber(basePrice, { ...formatNumberOptions, currency: "USD" })})
+            </span>
           </p>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
-            <img src={quote.logoURI} alt={quote.symbol} className="w-5 h-5 rounded-full" />
+            <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
             <p className="text-gray-500 diatype-m-regular">{quote.symbol}</p>
           </div>
           <p className="text-gray-700 diatype-m-regular">
-            500.25 <span className="text-gray-500">($500.25)</span>
+            {formatNumber(innerQuote, formatNumberOptions)}{" "}
+            <span className="text-gray-500">
+              ({formatNumber(quotePrice, { ...formatNumberOptions, currency: "USD" })})
+            </span>
           </p>
         </div>
       </div>
@@ -282,7 +302,7 @@ const PoolLiquidityDeposit: React.FC = () => {
 
 const PoolLiquidityWithdraw: React.FC = () => {
   const { state, controllers } = usePoolLiquidity();
-  const { coins, action, withdrawPercent, withdraw } = state;
+  const { coins, action, withdraw, withdrawPercent, withdrawAmount } = state;
   const { setValue } = controllers;
 
   const { base, quote } = coins;
@@ -341,22 +361,18 @@ const PoolLiquidityWithdraw: React.FC = () => {
         </div>
         <div className="w-full flex flex-col gap-1 diatype-sm-regular">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-gray-500">
-              {base.symbol} {m["poolLiquidity.amount"]()}
-            </p>
-            <div className="flex items-center gap-1 text-gray-700">
-              <img src={base.logoURI} alt={base.symbol} className="w-4 h-4" />
-              <p>- {base.symbol}</p>
+            <div className="flex items-center gap-2">
+              <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
+              <p>{base.symbol}</p>
             </div>
+            <p>{withdrawAmount.base}</p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-gray-500">
-              {quote.symbol} {m["poolLiquidity.amount"]()}
-            </p>
-            <div className="flex items-center gap-1 text-gray-700">
-              <img src={quote.logoURI} alt={quote.symbol} className="w-4 h-4" />
-              <p>- {quote.symbol}</p>
+            <div className="flex items-center gap-2">
+              <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
+              <p>{quote.symbol}</p>
             </div>
+            <p>{withdrawAmount.quote}</p>
           </div>
         </div>
       </div>
