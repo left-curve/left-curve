@@ -359,7 +359,7 @@ where
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
-        let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
+        let (version, app_hash) = self.db.flush_storage_but_not_commit(batch)?;
 
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version

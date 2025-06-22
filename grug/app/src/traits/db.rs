@@ -39,6 +39,8 @@ pub trait Db {
     /// A _Merklized_ KV store that stores _hashed_ keys and _hashed_ values.
     type StateCommitment: Storage + Clone + 'static;
 
+    type StateConsensus: ConsensusStorage;
+
     /// Type of the Merkle proof. The DB can choose any Merkle tree scheme.
     type Proof: BorshSerialize + BorshDeserialize;
 
@@ -49,6 +51,9 @@ pub trait Db {
     ///
     /// Error if the specified version has already been pruned.
     fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
+
+    /// Return the state consensus.
+    fn state_consensus(&self) -> Self::StateConsensus;
 
     /// Return the most recent version that has been committed.
     ///
@@ -76,7 +81,12 @@ pub trait Db {
     /// version.
     ///
     /// This is typically invoked in the ABCI `FinalizeBlock` call.
-    fn flush_but_not_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error>;
+    fn flush_storage_but_not_commit(
+        &self,
+        batch: Batch,
+    ) -> Result<(u64, Option<Hash256>), Self::Error>;
+
+    fn flush_consensus_but_not_commit(&self, batch: Batch) -> Result<(), Self::Error>;
 
     /// Persist pending data added in the `flush` method to disk.
     ///
@@ -87,10 +97,13 @@ pub trait Db {
     ///
     /// This is typically only invoked in the ABCI `InitChain` call.
     fn flush_and_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error> {
-        let (new_version, root_hash) = self.flush_but_not_commit(batch)?;
+        let (new_version, root_hash) = self.flush_storage_but_not_commit(batch)?;
         self.commit()?;
         Ok((new_version, root_hash))
     }
+
+    /// Discard the current changeset.
+    fn discard_changeset(&self);
 }
 
 /// Represents a database that can be pruned.
@@ -131,3 +144,58 @@ pub trait IbcDb: Db {
         version: Option<u64>,
     ) -> Result<CommitmentProof, Self::Error>;
 }
+
+/// Rappresent the Storage of the Consensus.
+/// It doens' bring any new method, it's just a marker trait to restrict the
+/// type of the storage to the one used by the consensus.
+pub trait ConsensusStorage: Storage {}
+
+impl Storage for Box<dyn ConsensusStorage> {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.as_ref().read(key)
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+        self.as_ref().scan(min, max, order)
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        self.as_ref().scan_keys(min, max, order)
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        self.as_ref().scan_values(min, max, order)
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        self.as_mut().write(key, value)
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        self.as_mut().remove(key)
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        self.as_mut().remove_range(min, max)
+    }
+}
+
+impl ConsensusStorage for Box<dyn ConsensusStorage> {}
+
+// derive std Clone trait for any type that implements ConsensusStorage
+dyn_clone::clone_trait_object!(ConsensusStorage);
