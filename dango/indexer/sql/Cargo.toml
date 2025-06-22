@@ -11,10 +11,10 @@ version       = { workspace = true }
 
 [features]
 async-graphql = [
-    "dep:actix-web",
-    "dep:async-graphql",
-    "grug-types/async-graphql",
-    "indexer-sql/async-graphql",
+  "dep:actix-web",
+  "dep:async-graphql",
+  "grug-types/async-graphql",
+  "indexer-sql/async-graphql",
 ]
 testing = []
 tracing = ["dep:tracing"]
