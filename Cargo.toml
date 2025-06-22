@@ -260,6 +260,7 @@ features = [
   "with-bigdecimal",
   "with-chrono",
   "with-json",
+  "with-time",
   "with-uuid",
 ]
 version = "1"
