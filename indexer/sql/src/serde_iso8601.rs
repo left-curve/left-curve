@@ -27,17 +27,17 @@ where
 
 pub fn deserialize_date_time(s: &str) -> Result<DateTime, String> {
     // Try parsing as RFC3339 first (with timezone).
-    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s) {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
         return Ok(dt.naive_utc());
     }
 
     // Try parsing as basic ISO format without timezone, assume UTC.
-    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S") {
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
         return Ok(dt);
     }
 
     // Parse ISO format with microseconds but no timezone, assume UTC.
-    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S%.f") {
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f") {
         return Ok(dt);
     }
 
