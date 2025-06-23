@@ -122,9 +122,9 @@ jobs:
           toolchain: stable
           components: clippy
 
-      - name: Create psql database
-        run: |
-          createdb -U postgres -h postgres "$PGDATABASE"
+      # - name: Create psql database
+      #   run: |
+      #     createdb -U postgres -h postgres "$PGDATABASE"
 
       # - uses: actions/cache@v4
       #   with:
