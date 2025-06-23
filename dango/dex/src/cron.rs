@@ -340,7 +340,7 @@ fn clear_orders_of_pair(
                     outflows.insert((quote_denom.clone(), net_outflow))?;
                 },
                 Direction::Ask => {
-                    inflows.insert((quote_denom.clone(), refund_quote))?;
+                    inflows.insert((quote_denom.clone(), refund_quote + fee_quote))?;
                     outflows.insert((base_denom.clone(), filled))?;
                 },
             }
