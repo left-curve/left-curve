@@ -152,7 +152,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       params: { username },
       listener: ({ transfers }) => {
         for (const transfer of transfers) {
-          const { id, fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
+          const { fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
             transfer;
 
           const coin = getCoinInfo(denom);
@@ -168,7 +168,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
           } as const;
 
           addNotification({
-            id,
+            id: uid(),
             type: "transfer",
             data: notification,
             blockHeight,
