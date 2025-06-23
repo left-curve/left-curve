@@ -120,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
     } else {
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(fmt_layer)
+            .with(fmt_layer.with_filter(filter))
             .init();
     }
 
