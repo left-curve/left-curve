@@ -76,7 +76,7 @@ impl AccountQuery {
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        paginate_models::<AccountCursor, entity::accounts::Entity, SortBy>(
+        paginate_models(
             app_ctx,
             after,
             before,

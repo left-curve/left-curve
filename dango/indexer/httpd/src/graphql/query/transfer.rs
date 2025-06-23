@@ -84,7 +84,7 @@ impl TransferQuery {
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        paginate_models::<TransferCursor, entity::transfers::Entity, SortBy>(
+        paginate_models(
             app_ctx,
             after,
             before,
@@ -155,7 +155,6 @@ impl TransferQuery {
                                     )),
                             );
                     }
-
                     Ok(query)
                 })
             },

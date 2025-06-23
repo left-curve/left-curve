@@ -3,7 +3,7 @@ use {
     async_graphql::{types::connection::*, *},
     sea_orm::{DatabaseTransaction, EntityTrait, QuerySelect, Select, TransactionTrait},
     serde::{Serialize, de::DeserializeOwned},
-    std::{cmp, future::Future, pin::Pin},
+    std::{cmp, future::Future},
 };
 
 pub trait Reversible {
@@ -54,7 +54,7 @@ pub trait CursorOrder<S> {
 /// - `first` + `after`: Forward pagination
 /// - `last` + `before`: Backward pagination
 /// - `sort_by`: Optional sorting configuration with reversible trait for bidirectional queries
-pub async fn paginate_models<C, E, S>(
+pub async fn paginate_models<C, E, S, F, Fut>(
     app_ctx: &Context,
     after: Option<String>,
     before: Option<String>,
@@ -62,12 +62,7 @@ pub async fn paginate_models<C, E, S>(
     last: Option<i32>,
     sort_by: Option<S>,
     max_items: u64,
-    update_query: impl for<'txn> FnOnce(
-        Select<E>,
-        &'txn DatabaseTransaction,
-    ) -> Pin<
-        Box<dyn Future<Output = Result<Select<E>, async_graphql::Error>> + Send + 'txn>,
-    >,
+    update_query: F,
 ) -> Result<Connection<OpaqueCursor<C>, E::Model, EmptyFields, EmptyFields>>
 where
     C: Send + Sync + Serialize + DeserializeOwned + From<<E as EntityTrait>::Model>,
@@ -75,6 +70,8 @@ where
     <E as EntityTrait>::Model: async_graphql::OutputType,
     Select<E>: CursorFilter<S, C> + CursorOrder<S>,
     S: Default + Copy + Reversible,
+    for<'txn> F: FnOnce(Select<E>, &'txn DatabaseTransaction) -> Fut,
+    Fut: Future<Output = Result<Select<E>, async_graphql::Error>> + Send,
 {
     query_with::<OpaqueCursor<C>, _, _, _, _>(
             after,
