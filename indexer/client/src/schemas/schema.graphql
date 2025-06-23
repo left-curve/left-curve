@@ -219,25 +219,93 @@ type PageInfo {
 
 type Query {
 	"""
-	Get a block
+	Get a block.
 	"""
 	block(height: Int): Block
 	"""
-	Get a block
+	Get paginated blocks.
 	"""
-	blocks(after: String, before: String, first: Int, last: Int, sortBy: BlockSortBy): BlockConnection!
+	blocks(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: BlockSortBy
+	): BlockConnection!
 	"""
-	Get transactions
+	Get paginated transactions.
 	"""
-	transactions(hash: String, blockHeight: Int, after: String, before: String, first: Int, last: Int, sortBy: TransactionSortBy, senderAddress: String): TransactionConnection!
+	transactions(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: TransactionSortBy,		hash: String,		blockHeight: Int,		senderAddress: String
+	): TransactionConnection!
 	"""
-	Get messages
+	Get paginated messages.
 	"""
-	messages(blockHeight: Int, methodName: String, contractAddr: String, senderAddr: String, after: String, before: String, first: Int, last: Int, sortBy: MessageSortBy): MessageConnection!
+	messages(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: MessageSortBy,		blockHeight: Int,		methodName: String,		contractAddr: String,		senderAddr: String
+	): MessageConnection!
 	"""
-	Get events
+	Get paginated events.
 	"""
-	events(after: String, before: String, first: Int, last: Int, sortBy: EventSortBy): EventConnection!
+	events(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: EventSortBy
+	): EventConnection!
 	queryApp(
 		"""
 		Request as JSON

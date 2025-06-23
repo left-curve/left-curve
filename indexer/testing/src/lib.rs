@@ -1,11 +1,12 @@
 use {
     actix_codec::Framed,
-    actix_http::ws,
+    actix_http::{Request, ws},
+    actix_service::IntoServiceFactory,
     actix_test::{Client, TestServer, read_body},
     actix_web::{
         App,
         body::MessageBody,
-        dev::{ServiceFactory, ServiceRequest, ServiceResponse},
+        dev::{AppConfig, ServiceFactory, ServiceRequest, ServiceResponse},
         middleware::{Compress, Logger},
         test::try_call_service,
         web::ServiceConfig,
@@ -23,6 +24,10 @@ use {
 };
 
 pub mod block;
+pub mod graphql;
+
+// Re-export the configurable pagination function for use by other crates
+pub use graphql::paginate_models_with_app_builder;
 
 #[derive(Clone, Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
@@ -85,26 +90,27 @@ pub struct Edge<X> {
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
-    pub start_cursor: String,
-    pub end_cursor: String,
+    pub start_cursor: Option<String>,
+    pub end_cursor: Option<String>,
     pub has_next_page: bool,
     pub has_previous_page: bool,
 }
 
-pub async fn call_batch_graphql<R>(
-    app: App<
-        impl ServiceFactory<
-            ServiceRequest,
-            Response = ServiceResponse<impl MessageBody>,
-            Config = (),
-            InitError = (),
-            Error = actix_web::Error,
-        > + 'static,
-    >,
+pub async fn call_batch_graphql<R, A, S, B>(
+    app: A,
     requests_body: Vec<GraphQLCustomRequest<'_>>,
 ) -> anyhow::Result<Vec<GraphQLCustomResponse<R>>>
 where
     R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
 {
     let app = actix_web::test::init_service(app).await;
 
@@ -121,7 +127,12 @@ where
     let graphql_responses: Vec<GraphQLResponse> = serde_json::from_slice(&graphql_response)
         .inspect_err(|err| {
             println!("Failed to parse GraphQL response: {err}");
-            println!("text response: \n{:#?}", graphql_response);
+
+            if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&graphql_response) {
+                println!("{json:#?}");
+            } else {
+                println!("{graphql_response:#?}");
+            }
         })?;
 
     // When I need to debug the response
@@ -143,22 +154,23 @@ where
         .collect::<Result<Vec<_>, _>>()
 }
 
-pub async fn call_graphql<R>(
-    app: App<
-        impl ServiceFactory<
-            ServiceRequest,
-            Response = ServiceResponse<impl MessageBody>,
-            Config = (),
-            InitError = (),
-            Error = actix_web::Error,
-        > + 'static,
-    >,
+pub async fn call_graphql<R, A, S, B>(
+    app: A,
     request_body: GraphQLCustomRequest<'_>,
 ) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
     R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
 {
-    call_batch_graphql::<R>(app, vec![request_body])
+    call_batch_graphql(app, vec![request_body])
         .await
         .and_then(|mut responses| responses.pop().ok_or_else(|| anyhow!("no response found")))
 }
@@ -283,6 +295,7 @@ where
     let name = request_body.name;
     let (_srv, _ws, framed) = call_ws_graphql_stream(context, app_builder, request_body).await?;
     let (_, response) = parse_graphql_subscription_response(framed, name).await?;
+
     Ok(response)
 }
 
@@ -373,4 +386,27 @@ where
     let app = App::new().wrap(Logger::default()).wrap(Compress::default());
 
     app.configure(config_app(app_ctx, graphql_schema))
+}
+
+/// Convenience function for paginated GraphQL calls
+pub async fn call_paginated_graphql<R, A, S, B>(
+    app: A,
+    request_body: GraphQLCustomRequest<'_>,
+) -> anyhow::Result<PaginatedResponse<R>>
+where
+    R: DeserializeOwned,
+    A: IntoServiceFactory<S, Request>,
+    S: ServiceFactory<
+            Request,
+            Config = AppConfig,
+            Response = ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    S::InitError: std::fmt::Debug,
+    B: MessageBody,
+{
+    let response: GraphQLCustomResponse<PaginatedResponse<R>> =
+        call_graphql(app, request_body).await?;
+
+    Ok(response.data)
 }

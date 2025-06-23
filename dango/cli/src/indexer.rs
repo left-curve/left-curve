@@ -1,7 +1,9 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
+    config_parser::parse_config,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
+    metrics_exporter_prometheus::PrometheusBuilder,
     tokio::task::JoinSet,
 };
 
@@ -31,6 +33,8 @@ enum SubCmd {
         /// End height (inclusive)
         end: u64,
     },
+    /// Start the metrics HTTP server
+    MetricsHttpd,
 }
 
 impl IndexerCmd {
@@ -114,6 +118,27 @@ impl IndexerCmd {
                         eprintln!("Task panicked: {e}");
                     }
                 }
+            },
+            SubCmd::MetricsHttpd => {
+                // Initialize metrics handler.
+                // This should be done as soon as possible to capture all events.
+                let metrics_handler = PrometheusBuilder::new().install_recorder()?;
+
+                let cfg: Config = parse_config(app_dir.config_file())?;
+
+                tracing::info!(
+                    "Starting metrics HTTP server at {}:{}",
+                    &cfg.indexer.metrics_httpd.ip,
+                    cfg.indexer.metrics_httpd.port
+                );
+
+                // Run the metrics HTTP server
+                indexer_httpd::server::run_metrics_server(
+                    &cfg.indexer.metrics_httpd.ip,
+                    cfg.indexer.metrics_httpd.port,
+                    metrics_handler,
+                )
+                .await?;
             },
         }
 

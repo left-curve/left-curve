@@ -8,6 +8,8 @@ pub mod entity;
 pub mod error;
 pub mod hooks;
 pub mod indexer_path;
+#[cfg(feature = "metrics")]
+pub mod metrics;
 pub mod non_blocking_indexer;
 pub mod pubsub;
 #[cfg(feature = "async-graphql")]

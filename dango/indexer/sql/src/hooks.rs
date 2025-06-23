@@ -4,6 +4,11 @@ use {
     grug_app::QuerierProvider,
     indexer_sql::{Context, block_to_index::BlockToIndex, hooks::Hooks as HooksTrait},
 };
+#[cfg(feature = "metrics")]
+use {
+    metrics::{describe_histogram, histogram},
+    std::time::Instant,
+};
 
 mod accounts;
 mod transfers;
@@ -18,6 +23,13 @@ impl HooksTrait for Hooks {
     async fn start(&self, context: Context) -> Result<(), Self::Error> {
         Migrator::up(&context.db, None).await?;
 
+        #[cfg(feature = "metrics")]
+        {
+            transfers::init_metrics();
+            accounts::init_metrics();
+            init_metrics();
+        }
+
         Ok(())
     }
 
@@ -27,11 +39,26 @@ impl HooksTrait for Hooks {
         block: BlockToIndex,
         querier: Box<dyn QuerierProvider>,
     ) -> Result<(), Self::Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         self.save_transfers(&context, &block).await?;
         self.save_accounts(&context, &block, &*querier).await?;
 
+        #[cfg(feature = "metrics")]
+        histogram!(
+            "indexer.dango.hooks.duration",
+            "block_height" => block.block.info.height.to_string()
+        )
+        .record(start.elapsed().as_secs_f64());
+
         Ok(())
     }
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!("indexer.dango.hooks.duration", "Hook duration in seconds");
 }
 
 // ----------------------------------- tests -----------------------------------

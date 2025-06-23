@@ -41,7 +41,8 @@ async fn graphql_returns_iso_8601() -> anyhow::Result<()> {
             tokio::task::spawn_local(async {
                 let app = build_app_service(httpd_context);
 
-                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
+                let response =
+                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
 
                 // Verify that `createdAt` is present and properly formatted as ISO 8601.
                 let block = &response.data;
