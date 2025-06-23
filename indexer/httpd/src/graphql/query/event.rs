@@ -69,7 +69,7 @@ impl EventQuery {
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        paginate_models::<EventCursor, entity::events::Entity, SortBy>(
+        paginate_models(
             app_ctx,
             after,
             before,
