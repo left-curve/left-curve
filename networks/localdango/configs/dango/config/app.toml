@@ -4,6 +4,9 @@
 # Logging verbosity: error|warn|info|debug|trace.
 log_level = "info"
 
+# Logging format: text|json.
+log_format = "text"
+
 ################################################################################
 ###                            Grug Configuration                            ###
 ################################################################################
@@ -31,7 +34,7 @@ keep_blocks = true
 [indexer.database]
 
 # URL to the SQL database to be used by the indexer.
-database_url = "postgres://postgres@db:5432/grug_dev"
+url = "postgres://postgres@db:5432/grug_dev"
 
 # How many connections to keep in the connection pool.
 max_connections = 10
