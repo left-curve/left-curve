@@ -119,6 +119,11 @@ export {
 } from "./hooks/useInfiniteGraphqlQuery.js";
 
 export {
+  type UseQueryWithPaginationParameters,
+  useQueryWithPagination,
+} from "./hooks/useQueryWithPagination.js";
+
+export {
   type UseSubmitTxParameters,
   type UseSubmitTxReturnType,
   useSubmitTx,

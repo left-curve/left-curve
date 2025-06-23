@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { withPagination } from "../handlers/pagination.js";
@@ -37,6 +37,7 @@ export function useInfiniteGraphqlQuery<T = unknown>(
   >({
     ...withPagination<T>({ limit, sortBy }),
     ...queryOptions,
+    placeholderData: keepPreviousData,
   });
 
   const pagination = {
