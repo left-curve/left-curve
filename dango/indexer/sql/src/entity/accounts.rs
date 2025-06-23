@@ -40,7 +40,6 @@ impl Model {
 
     pub async fn users(&self, ctx: &Context<'_>) -> Result<Vec<crate::entity::users::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
-
         Ok(self
             .find_related(crate::entity::users::Entity)
             .all(db)
@@ -48,21 +47,18 @@ impl Model {
 
         // TODO: keeping the old code for reference in case the join query doesn't work
 
-        // let user_ids = entity::accounts_users::Entity::find()
-        //     .filter(entity::accounts_users::Column::AccountId.eq(self.id))
-        //     .all(&app_ctx.db)
+        // let user_ids = crate::entity::accounts_users::Entity::find()
+        //     .filter(crate::entity::accounts_users::Column::AccountId.eq(self.id))
+        //     .all(db)
         //     .await?
         //     .into_iter()
         //     .map(|au| au.user_id)
         //     .collect::<Vec<_>>();
 
-        // let users = entity::users::Entity::find()
-        //     .filter(entity::users::Column::Id.is_in(user_ids))
-        //     .all(&app_ctx.db)
-        //     .await?
-        //     .into_iter()
-        //     .map(User::from)
-        //     .collect::<Vec<_>>();
+        // let users = crate::entity::users::Entity::find()
+        //     .filter(crate::entity::users::Column::Id.is_in(user_ids))
+        //     .all(db)
+        //     .await?;
 
         // Ok(users)
     }
