@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Create the base environment filter
     let env_filter =
-        tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()); // Default to info if RUST_LOG not set
+        tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| cfg.log_level.clone().into()); // Default to cfg.log_level if RUST_LOG not set
 
     // Create the fmt layer based on the configured format
     let fmt_layer = match cfg.log_format {
