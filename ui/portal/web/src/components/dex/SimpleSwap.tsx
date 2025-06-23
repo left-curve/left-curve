@@ -1,10 +1,10 @@
 import {
-  useSimpleSwap as state,
   useAccount,
   useBalances,
   useConfig,
   usePrices,
   useSigningClient,
+  useSimpleSwapState,
   useSubmitTx,
 } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
@@ -28,28 +28,28 @@ import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curv
 import { type PropsWithChildren, useEffect, useState } from "react";
 
 import type { Address } from "@left-curve/dango/types";
-import type { UseSimpleSwapParameters, UseSubmitTxReturnType } from "@left-curve/store";
+import type { UseSimpleSwapStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
 
 const [SimpleSwapProvider, useSimpleSwap] = createContext<{
-  state: ReturnType<typeof state>;
+  state: ReturnType<typeof useSimpleSwapState>;
   submission: UseSubmitTxReturnType<void, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
 }>({
   name: "SimpleSwapContext",
 });
 
-const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> = ({
+const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParameters>> = ({
   children,
   ...parameters
 }) => {
-  const simpleSwapState = state(parameters);
+  const state = useSimpleSwapState(parameters);
   const controllers = useInputs();
   const { toast, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
-  const { pair, simulation, fee, coins } = simpleSwapState;
+  const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
 
   const submission = useSubmitTx({
@@ -109,9 +109,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapParameters>> 
   });
 
   return (
-    <SimpleSwapProvider value={{ state: simpleSwapState, controllers, submission }}>
-      {children}
-    </SimpleSwapProvider>
+    <SimpleSwapProvider value={{ state, controllers, submission }}>{children}</SimpleSwapProvider>
   );
 };
 

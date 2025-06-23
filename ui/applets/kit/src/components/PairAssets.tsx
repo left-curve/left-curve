@@ -13,7 +13,7 @@ export const PairAssets: React.FC<PairAssetsProps> = ({ assets }) => {
           key={`asset-logo-${asset.symbol}-${i}`}
           src={asset.logoURI}
           alt={asset.symbol}
-          className="min-w-8 min-h-8 w-8 h-8 rounded-full object-cover"
+          className="min-w-8 min-h-8 w-8 h-8 object-fit"
           loading="lazy"
           style={{ marginLeft: `${-i}rem` }}
         />
