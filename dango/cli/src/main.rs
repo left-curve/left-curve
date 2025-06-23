@@ -77,12 +77,12 @@ async fn main() -> anyhow::Result<()> {
     // Parse the config file.
     let cfg: Config = parse_config(app_dir.config_file())?;
 
-    // Set up tracing, depending on whether Sentry is enabled or not.
+    // Set up custom tracing filter.
     let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
 
     // Create the base environment filter
-    let env_filter =
-        tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| cfg.log_level.clone().into()); // Default to cfg.log_level if RUST_LOG not set
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| cfg.log_level.clone().into()); // Default to `cfg.log_level` if `RUST_LOG` not set.
 
     // Create the fmt layer based on the configured format
     let fmt_layer = match cfg.log_format {
