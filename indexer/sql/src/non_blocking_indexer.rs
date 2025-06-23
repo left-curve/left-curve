@@ -459,6 +459,9 @@ where
     where
         S: Storage,
     {
+        #[cfg(feature = "metrics")]
+        crate::metrics::init_indexer_metrics();
+
         self.handle.block_on(async {
             self.context.migrate_db().await?;
             self.hooks

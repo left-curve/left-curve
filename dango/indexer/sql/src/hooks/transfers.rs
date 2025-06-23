@@ -2,9 +2,14 @@ use {
     crate::{entity, error::Error, hooks::Hooks},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{Context, block_to_index::BlockToIndex, entity as main_entity},
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
+    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
     std::collections::HashMap,
     uuid::Uuid,
+};
+#[cfg(feature = "metrics")]
+use {
+    metrics::{describe_histogram, histogram},
+    std::time::Instant,
 };
 
 impl Hooks {
@@ -16,6 +21,11 @@ impl Hooks {
         #[cfg(feature = "tracing")]
         tracing::debug!("About to look at transfer events");
 
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let txn = context.db.begin().await?;
+
         // 1. get all successful transfers events from the database for this block
         let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
             main_entity::events::Entity::find()
@@ -26,7 +36,7 @@ impl Hooks {
                         .eq(FlatCommitmentStatus::Committed.as_i16()),
                 )
                 .filter(main_entity::events::Column::BlockHeight.eq(block.block.info.height))
-                .all(&context.db)
+                .all(&txn)
                 .await?
                 .into_iter()
                 .flat_map(|te| {
@@ -47,7 +57,7 @@ impl Hooks {
 
         let transactions_by_id = main_entity::transactions::Entity::find()
             .filter(main_entity::transactions::Column::BlockHeight.eq(block.block.info.height))
-            .all(&context.db)
+            .all(&txn)
             .await?
             .into_iter()
             .map(|t| (t.id, t))
@@ -113,13 +123,30 @@ impl Hooks {
         if !new_transfers.is_empty() {
             // 3. insert the transfers into the database
             entity::transfers::Entity::insert_many(new_transfers)
-                .exec_without_returning(&context.db)
+                .exec_without_returning(&txn)
                 .await?;
         }
+
+        txn.commit().await?;
 
         #[cfg(feature = "tracing")]
         tracing::debug!("Injected new transfers");
 
+        #[cfg(feature = "metrics")]
+        histogram!(
+            "indexer.dango.hooks.transfers.duration",
+            "block_height" => block.block.info.height.to_string()
+        )
+        .record(start.elapsed().as_secs_f64());
+
         Ok(())
     }
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!(
+        "indexer.dango.hooks.transfers.duration",
+        "Transfer hook duration in seconds"
+    );
 }

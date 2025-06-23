@@ -93,6 +93,10 @@ async fn main() -> anyhow::Result<()> {
         });
 
         tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
+            )
             .with(tracing_subscriber::fmt::layer().with_filter(filter))
             .with(sentry_layer())
             .init();
@@ -100,7 +104,11 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Sentry initialized");
     } else {
         tracing_subscriber::registry()
-            .with(tracing_subscriber::fmt::layer().with_filter(filter))
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
+            )
+            .with(tracing_subscriber::fmt::layer())
             .init();
     }
 
