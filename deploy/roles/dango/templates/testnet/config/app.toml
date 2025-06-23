@@ -4,6 +4,9 @@
 # Logging verbosity: error|warn|info|debug|trace.
 log_level = "info"
 
+# Logging format: text|json.
+log_format = "text"
+
 ################################################################################
 ###                            Grug Configuration                            ###
 ################################################################################
