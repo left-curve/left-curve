@@ -20,6 +20,10 @@ pub struct Hooks;
 impl HooksTrait for Hooks {
     type Error = crate::error::Error;
 
+    fn name(&self) -> &'static str {
+        "DangoSqlHooks"
+    }
+
     async fn start(&self, context: Context) -> Result<(), Self::Error> {
         Migrator::up(&context.db, None).await?;
 
@@ -37,13 +41,13 @@ impl HooksTrait for Hooks {
         &self,
         context: Context,
         block: BlockToIndex,
-        querier: Box<dyn QuerierProvider>,
+        querier: &dyn QuerierProvider,
     ) -> Result<(), Self::Error> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
         self.save_transfers(&context, &block).await?;
-        self.save_accounts(&context, &block, &*querier).await?;
+        self.save_accounts(&context, &block, querier).await?;
 
         #[cfg(feature = "metrics")]
         histogram!(
@@ -75,7 +79,7 @@ mod tests {
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
-            .with_hooks(Hooks)
+            .with_hook(Hooks)
             .build()?;
 
         let storage = MockStorage::new();

@@ -19,7 +19,7 @@ just start
 To start LocalDango with analytics services (includes ClickHouse, Prometheus, Grafana):
 
 ```bash
-docker compose --profile analytics up
+docker compose --profile analytics --profile clickhouse up
 ```
 
 To stop it, simply do CTRL+C.

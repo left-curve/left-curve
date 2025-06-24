@@ -5,7 +5,7 @@ use {
     dango_mock_httpd::{BlockCreation, TestOption, get_mock_socket_addr, wait_for_server_ready},
     dango_testing::Preset,
     dango_types::config::AppConfig,
-    grug::{QueryClientExt, setup_tracing_subscriber},
+    grug::QueryClientExt,
     indexer_client::HttpClient,
     indexer_httpd::server::run_metrics_server,
     metrics_exporter_prometheus::PrometheusBuilder,
@@ -13,8 +13,6 @@ use {
 
 #[tokio::test]
 async fn metrics_are_available() -> anyhow::Result<()> {
-    setup_tracing_subscriber(tracing::Level::ERROR);
-
     let metrics_handler = PrometheusBuilder::new().install_recorder()?;
 
     let port = get_mock_socket_addr();
