@@ -1,6 +1,8 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { PoolLiquidity } from "~/components/earn/PoolLiquidity";
 
+import { motion } from "framer-motion";
+
 export const Route = createLazyFileRoute("/(app)/_app/earn/pool/$pairSymbols")({
   component: PoolApplet,
 });
@@ -24,14 +26,14 @@ function PoolApplet() {
   return (
     <PoolLiquidity pair={pair} action={action} onChangeAction={onChangeAction}>
       <PoolLiquidity.Header />
-      <div className="flex w-full gap-8 lg:gap-6 flex-col lg:flex-row">
-        <div className="flex flex-col w-full gap-4">
+      <motion.div layout="position" className="flex w-full gap-8 lg:gap-6 flex-col lg:flex-row">
+        <div className="flex flex-col flex-1 min-w-0 gap-4">
           <PoolLiquidity.HeaderTabs />
           <PoolLiquidity.Deposit />
           <PoolLiquidity.Withdraw />
         </div>
         <PoolLiquidity.UserLiquidity />
-      </div>
+      </motion.div>
     </PoolLiquidity>
   );
 }

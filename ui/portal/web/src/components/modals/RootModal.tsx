@@ -23,6 +23,8 @@ export const Modals = {
   ProSwapMarketClose: "pro-swap-market-close",
   ProSwapEditTPSL: "pro-edit-tpsl",
   ProSwapEditedSL: "pro-edited-sl",
+  PoolAddLiquidity: "pool-add-liquidity",
+  PoolWithdrawLiquidity: "pool-withdraw-liquidity",
 };
 
 export type ModalRef = {
@@ -111,6 +113,20 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("./ProSwapEditedSL").then(({ ProSwapEditedSL }) => ({
         default: ProSwapEditedSL,
+      })),
+    ),
+  },
+  [Modals.PoolAddLiquidity]: {
+    component: lazy(() =>
+      import("./PoolAddLiquidity").then(({ PoolAddLiquidity }) => ({
+        default: PoolAddLiquidity,
+      })),
+    ),
+  },
+  [Modals.PoolWithdrawLiquidity]: {
+    component: lazy(() =>
+      import("./PoolWithdrawLiquidity").then(({ PoolWithdrawLiquidity }) => ({
+        default: PoolWithdrawLiquidity,
       })),
     ),
   },
