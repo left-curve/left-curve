@@ -340,7 +340,10 @@ fn clear_orders_of_pair(
                     outflows.insert((quote_denom.clone(), net_outflow))?;
                 },
                 Direction::Ask => {
-                    inflows.insert((quote_denom.clone(), refund_quote))?;
+                    // The passive liquidity pool doesn't pay protocol fees, so
+                    // we need to include the fee as part of the inflow.
+                    let net_inflow = refund_quote.checked_add(fee_quote)?;
+                    inflows.insert((quote_denom.clone(), net_inflow))?;
                     outflows.insert((base_denom.clone(), filled))?;
                 },
             }
