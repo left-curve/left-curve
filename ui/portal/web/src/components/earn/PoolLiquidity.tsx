@@ -1,4 +1,4 @@
-import { numberMask, useInputs } from "@left-curve/applets-kit";
+import { numberMask, Skeleton, useInputs } from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
@@ -133,6 +133,9 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
+  if (userLiquidity.isLoading)
+    return <Skeleton className="h-[9rem] rounded-xl shadow-account-card flex-1" />;
+
   if (!userHasLiquidity || !userLiquidity.data) return null;
 
   const { innerBase, innerQuote } = userLiquidity.data;
@@ -146,7 +149,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   });
 
   return (
-    <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card w-full h-fit">
+    <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-gray-500">{m["poolLiquidity.liquidity"]()}</p>
         <p className="h4-bold text-gray-900">{totalPrice}</p>
