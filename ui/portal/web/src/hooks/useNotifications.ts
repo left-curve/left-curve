@@ -42,7 +42,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
 
   const { username = "", accounts, account } = useAccount();
-  const { coins, subscriptions } = useConfig();
+  const { getCoinInfo, subscriptions } = useConfig();
 
   const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notification[]>>(
     "app.notifications",
@@ -152,10 +152,10 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       params: { username },
       listener: ({ transfers }) => {
         for (const transfer of transfers) {
-          const { id, fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
+          const { fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
             transfer;
 
-          const coin = coins[denom];
+          const coin = getCoinInfo(denom);
 
           const notification = {
             createdAt,
@@ -168,7 +168,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
           } as const;
 
           addNotification({
-            id,
+            id: uid(),
             type: "transfer",
             data: notification,
             blockHeight,

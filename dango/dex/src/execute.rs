@@ -2,15 +2,14 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{MAX_ORACLE_STALENESS, PAIRS, PassiveLiquidityPool, RESERVES, core},
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, bank,
         dex::{
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, PairUpdated,
-            SwapExactAmountIn, SwapExactAmountOut,
+            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
         },
     },
     grug::{
@@ -57,8 +56,6 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
         "only the owner can update a trading pair parameters"
     );
 
-    let mut events = EventBuilder::with_capacity(updates.len());
-
     for update in updates {
         ensure!(
             update
@@ -75,14 +72,9 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
             (&update.base_denom, &update.quote_denom),
             &update.params,
         )?;
-
-        events.push(PairUpdated {
-            base_denom: update.base_denom,
-            quote_denom: update.quote_denom,
-        })?;
     }
 
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new())
 }
 
 fn batch_update_orders(
@@ -190,8 +182,11 @@ fn provide_liquidity(
     // Query the LP token supply.
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
 
+    // Create the oracle querier with max staleness.
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
     // Compute the amount of LP tokens to mint.
-    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
     let (reserve, lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
 
@@ -267,8 +262,14 @@ fn swap_exact_amount_in(
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
+
+    // Create the oracle querier with max staleness.
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    // Perform the swap.
     let (reserves, output) =
-        core::swap_exact_amount_in(ctx.storage, ctx.querier, route, input.clone())?;
+        core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route, input.clone())?;
 
     // Ensure the output is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
@@ -290,7 +291,7 @@ fn swap_exact_amount_in(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, output.clone())?)
-        .add_event(SwapExactAmountIn {
+        .add_event(Swapped {
             user: ctx.sender,
             input,
             output,
@@ -320,7 +321,7 @@ fn swap_exact_amount_out(
     // here, because we already ensure it's non-zero.
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_event(SwapExactAmountOut {
+        .add_event(Swapped {
             user: ctx.sender,
             input,
             output: output.into_inner(),

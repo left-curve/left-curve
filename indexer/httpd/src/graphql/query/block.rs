@@ -89,7 +89,7 @@ impl BlockQuery {
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        paginate_models::<BlockCursor, entity::blocks::Entity, SortBy>(
+        paginate_models(
             app_ctx,
             after,
             before,

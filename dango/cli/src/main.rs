@@ -23,7 +23,7 @@ use {
     config_parser::parse_config,
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
-    tracing_subscriber::prelude::*,
+    tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
 
 #[derive(Parser)]
@@ -77,8 +77,26 @@ async fn main() -> anyhow::Result<()> {
     // Parse the config file.
     let cfg: Config = parse_config(app_dir.config_file())?;
 
-    // Set up tracing, depending on whether Sentry is enabled or not.
+    // Set up custom tracing filter.
     let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
+
+    // Create the base environment filter
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| cfg.log_level.clone().into()); // Default to `cfg.log_level` if `RUST_LOG` not set.
+
+    // Create the fmt layer based on the configured format
+    let fmt_layer = match cfg.log_format {
+        config::LogFormat::Json => tracing_subscriber::fmt::layer()
+            .json()
+            .with_span_events(FmtSpan::CLOSE)
+            .with_target(true)
+            .with_thread_ids(true)
+            .with_file(true)
+            .with_line_number(true)
+            .boxed(),
+        config::LogFormat::Text => tracing_subscriber::fmt::layer().boxed(),
+    };
+
     if cfg.sentry.enabled {
         let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
             environment: Some(cfg.sentry.environment.into()),
@@ -93,22 +111,16 @@ async fn main() -> anyhow::Result<()> {
         });
 
         tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
-            )
-            .with(tracing_subscriber::fmt::layer().with_filter(filter))
+            .with(env_filter)
+            .with(fmt_layer.with_filter(filter))
             .with(sentry_layer())
             .init();
 
         tracing::info!("Sentry initialized");
     } else {
         tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info".into()), // Default to info if RUST_LOG not set
-            )
-            .with(tracing_subscriber::fmt::layer())
+            .with(env_filter)
+            .with(fmt_layer.with_filter(filter))
             .init();
     }
 

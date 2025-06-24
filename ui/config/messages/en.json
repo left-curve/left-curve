@@ -508,10 +508,15 @@
     }
   },
   "earn": {
+    "party": "Party",
+    "earn": "Earn",
+    "select": "Select",
+    "deposit": "Deposit",
     "title": "Select a strategy",
     "description": "Earn tokens by lending or providing liquidity",
     "vault": "Vault",
     "apr": "APR",
+    "apy": "APY",
     "myPosition": "My Position",
     "tvl": "TVL",
     "manage": "Manage"

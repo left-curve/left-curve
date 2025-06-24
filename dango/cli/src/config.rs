@@ -8,6 +8,15 @@ pub struct Config {
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
     pub log_level: String,
+    pub log_format: LogFormat,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum LogFormat {
+    #[default]
+    Text,
+    Json,
 }
 
 #[derive(Serialize, Deserialize)]

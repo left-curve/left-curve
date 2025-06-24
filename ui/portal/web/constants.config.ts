@@ -23,7 +23,7 @@ export const APPLETS = Array.from(
 ).filter(Boolean) as AppletMetadata[];
 
 export const DEFAULT_FAV_APPLETS = APPLETS.filter(({ id }) =>
-  ["transfer", "settings", "notifications", "simple-swap"].includes(id),
+  ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"].includes(id),
 ).reduce((acc, applet) => {
   acc[applet.id] = applet;
   return acc;

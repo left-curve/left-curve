@@ -77,7 +77,7 @@ impl TransactionQuery {
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        paginate_models::<TransactionCursor, entity::transactions::Entity, SortBy>(
+        paginate_models(
             app_ctx,
             after,
             before,

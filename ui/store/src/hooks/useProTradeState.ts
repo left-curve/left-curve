@@ -14,7 +14,7 @@ import { capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import type { PairId } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
 
-export type UseProTradeParameters = {
+export type UseProTradeStateParameters = {
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
@@ -26,7 +26,7 @@ export type UseProTradeParameters = {
   };
 };
 
-export function useProTrade(parameters: UseProTradeParameters) {
+export function useProTradeState(parameters: UseProTradeStateParameters) {
   const { controllers, pairId, onChangePairId, action, onChangeAction } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();

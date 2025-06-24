@@ -73,7 +73,7 @@ impl MessageQuery {
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        paginate_models::<MessageCursor, entity::messages::Entity, SortBy>(
+        paginate_models(
             app_ctx,
             after,
             before,

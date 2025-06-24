@@ -59,17 +59,17 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
 
 type SearchAssetProps = WithPrice<AnyCoin>;
 
-const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, name, symbol, price }) => {
+const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
   return (
     <motion.div
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
       variants={childVariants}
-      key={name}
+      key={symbol}
     >
       <div className="flex items-start gap-4">
-        <img src={logoURI} alt={name} className="w-8 h-8" />
+        <img src={logoURI} alt={symbol} className="w-8 h-8" />
         <div className="flex flex-col gap-1">
-          <p className="diatype-m-bold">{name}</p>
+          <p className="diatype-m-bold">{symbol}</p>
           <p className="diatype-m-regular text-gray-500">{symbol}</p>
           {/* <p className="diatype-m-regular text-gray-500">{link}</p> */}
         </div>
