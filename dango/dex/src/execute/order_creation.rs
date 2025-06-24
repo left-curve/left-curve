@@ -2,7 +2,7 @@ use {
     crate::{INCOMING_ORDERS, LimitOrder, MARKET_ORDERS, MarketOrder, NEXT_ORDER_ID, PAIRS},
     anyhow::ensure,
     dango_types::dex::{
-        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderKind, OrderSubmitted,
+        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderCreated, OrderKind,
     },
     grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
 };
@@ -41,7 +41,7 @@ pub(super) fn create_limit_order(
         order_id = !order_id;
     }
 
-    events.push(OrderSubmitted {
+    events.push(OrderCreated {
         user,
         id: order_id,
         kind: OrderKind::Limit,
@@ -104,7 +104,7 @@ pub(super) fn create_market_order(
 
     let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 
-    events.push(OrderSubmitted {
+    events.push(OrderCreated {
         user,
         id: order_id,
         kind: OrderKind::Market,

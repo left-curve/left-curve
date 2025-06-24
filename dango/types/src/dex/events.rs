@@ -10,8 +10,8 @@ pub enum OrderKind {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("order_submitted")]
-pub struct OrderSubmitted {
+#[grug::event("order_created")]
+pub struct OrderCreated {
     pub user: Addr,
     pub id: OrderId,
     pub kind: OrderKind,
