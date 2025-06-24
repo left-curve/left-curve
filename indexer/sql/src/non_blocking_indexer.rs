@@ -4,7 +4,7 @@ use {
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
-        hooks::{DynHooks, HookWrapper, Hooks},
+        hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
@@ -28,13 +28,13 @@ use {
 
 // ------------------------------- IndexerBuilder ------------------------------
 
-pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
+pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks> {
     handle: RuntimeHandler,
     db_url: DB,
     db_max_connections: u32,
     indexer_path: P,
     keep_blocks: bool,
-    hooks: Vec<Box<dyn DynHooks>>,
+    hooks: H,
     pubsub: PubSubType,
 }
 
@@ -46,7 +46,7 @@ impl Default for IndexerBuilder {
             db_max_connections: 10,
             indexer_path: Undefined::default(),
             keep_blocks: false,
-            hooks: Vec::new(),
+            hooks: NullHooks,
             pubsub: PubSubType::Memory,
         }
     }
@@ -113,16 +113,23 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
     }
 }
 
-impl<DB, P> IndexerBuilder<DB, P> {
-    pub fn with_hook<H>(mut self, hook: H) -> Self
+impl<DB, P, H> IndexerBuilder<DB, P, H> {
+    pub fn with_hooks<I>(self, hooks: I) -> IndexerBuilder<DB, P, I>
     where
-        H: Hooks + 'static,
+        I: Hooks + Clone + Send + 'static,
     {
-        self.hooks.push(Box::new(HookWrapper::new(hook)));
-        self
+        IndexerBuilder {
+            handle: self.handle,
+            db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            hooks,
+            pubsub: self.pubsub,
+        }
     }
 
-    pub fn with_sqlx_pubsub(self) -> Self {
+    pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
@@ -135,10 +142,11 @@ impl<DB, P> IndexerBuilder<DB, P> {
     }
 }
 
-impl<DB, P> IndexerBuilder<DB, P>
+impl<DB, P, H> IndexerBuilder<DB, P, H>
 where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     /// If true, the block/block_outcome used by the indexer will be kept on disk after being
     /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
@@ -185,7 +193,7 @@ where
         Ok(context)
     }
 
-    pub fn build(self) -> error::Result<NonBlockingIndexer> {
+    pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self.handle.block_on(async {
                 Context::connect_db_with_url(&url, self.db_max_connections).await
@@ -253,7 +261,10 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
-pub struct NonBlockingIndexer {
+pub struct NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
     pub indexer_path: IndexerPath,
     pub context: Context,
     pub handle: RuntimeHandler,
@@ -263,12 +274,15 @@ pub struct NonBlockingIndexer {
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
     keep_blocks: bool,
-    hooks: Vec<Box<dyn DynHooks>>,
+    hooks: H,
     // Add unique ID field, used for debugging and tracing
     id: u64,
 }
 
-impl NonBlockingIndexer {
+impl<H> NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
         &self,
@@ -349,100 +363,14 @@ impl NonBlockingIndexer {
             );
         }
     }
-
-    /// Execute all hooks for start, collecting any errors
-    async fn execute_hooks_start(&self, context: Context) -> error::Result<()> {
-        let mut errors = Vec::new();
-
-        for hook in &self.hooks {
-            let hook_name = hook.name();
-            match hook.start(context.clone()).await {
-                Ok(()) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::info!("Hook '{}' start completed successfully", hook_name);
-                },
-                Err(e) => {
-                    let error_msg = format!("Hook '{}' start failed: {}", hook_name, e);
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("{}", error_msg);
-                    errors.push(error_msg);
-                },
-            }
-        }
-
-        if !errors.is_empty() {
-            return Err(error::IndexerError::Hooks(errors.join("; ")));
-        }
-
-        Ok(())
-    }
-
-    /// Execute all hooks for post_indexing, collecting any errors
-    async fn execute_hooks_post_indexing(
-        hooks: &[Box<dyn DynHooks>],
-        context: Context,
-        block: BlockToIndex,
-        querier: &dyn QuerierProvider,
-    ) -> error::Result<()> {
-        let mut errors = Vec::new();
-
-        for hook in hooks {
-            let hook_name = hook.name();
-            match hook
-                .post_indexing(context.clone(), block.clone(), querier)
-                .await
-            {
-                Ok(()) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::info!("Hook '{}' post_indexing completed successfully", hook_name);
-                },
-                Err(e) => {
-                    let error_msg = format!("Hook '{}' post_indexing failed: {}", hook_name, e);
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("{}", error_msg);
-                    errors.push(error_msg);
-                },
-            }
-        }
-
-        if !errors.is_empty() {
-            return Err(error::IndexerError::Hooks(errors.join("; ")));
-        }
-
-        Ok(())
-    }
-
-    /// Execute all hooks for shutdown, collecting any errors
-    async fn execute_hooks_shutdown(&self) -> error::Result<()> {
-        let mut errors = Vec::new();
-
-        for hook in &self.hooks {
-            let hook_name = hook.name();
-            match hook.shutdown().await {
-                Ok(()) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::info!("Hook '{}' shutdown completed successfully", hook_name);
-                },
-                Err(e) => {
-                    let error_msg = format!("Hook '{}' shutdown failed: {}", hook_name, e);
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("{}", error_msg);
-                    errors.push(error_msg);
-                },
-            }
-        }
-
-        if !errors.is_empty() {
-            return Err(error::IndexerError::Hooks(errors.join("; ")));
-        }
-
-        Ok(())
-    }
 }
 
 // ------------------------------- DB Related ----------------------------------
 
-impl NonBlockingIndexer {
+impl<H> NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
     /// Delete a block and its related content from the database
     pub fn delete_block_from_db(&self, block_height: u64) -> error::Result<()> {
         self.handle.block_on(async move {
@@ -457,7 +385,10 @@ impl NonBlockingIndexer {
     }
 }
 
-impl NonBlockingIndexer {
+impl<H> NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
     /// Index all previous blocks not yet indexed.
     fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
@@ -518,7 +449,10 @@ impl NonBlockingIndexer {
     }
 }
 
-impl Indexer for NonBlockingIndexer {
+impl<H> Indexer for NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
     type Error = crate::error::IndexerError;
 
     fn start<S>(&mut self, storage: &S) -> error::Result<()>
@@ -528,20 +462,17 @@ impl Indexer for NonBlockingIndexer {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        let context = self.context.clone();
-        let last_block = LAST_FINALIZED_BLOCK.load(storage);
-
-        self.handle.block_on(async move {
-            context.migrate_db().await?;
-            Ok::<(), error::IndexerError>(())
-        })?;
-
         self.handle.block_on(async {
-            self.execute_hooks_start(self.context.clone()).await?;
+            self.context.migrate_db().await?;
+            self.hooks
+                .start(self.context.clone())
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+
             Ok::<(), error::IndexerError>(())
         })?;
 
-        match last_block {
+        match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
                 // This happens when the chain starts at genesis
                 #[cfg(feature = "tracing")]
@@ -582,21 +513,24 @@ impl Indexer for NonBlockingIndexer {
         }
 
         self.handle.block_on(async {
-            self.execute_hooks_shutdown().await?;
-
-            #[cfg(feature = "tracing")]
-            {
-                let blocks = self.blocks.lock().expect("can't lock blocks");
-                if !blocks.is_empty() {
-                    tracing::warn!(
-                        indexer_id = self.id,
-                        "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
-                    );
-                }
-            }
+            self.hooks
+                .shutdown()
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
 
             Ok::<(), error::IndexerError>(())
         })?;
+
+        #[cfg(feature = "tracing")]
+        {
+            let blocks = self.blocks.lock().expect("can't lock blocks");
+            if !blocks.is_empty() {
+                tracing::warn!(
+                    indexer_id = self.id,
+                    "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
+                );
+            }
+        }
 
         Ok(())
     }
@@ -664,18 +598,8 @@ impl Indexer for NonBlockingIndexer {
         // the shutdown method could be called and see no current block being indexed, and quit.
         // The block would then not be indexed.
 
+        let hooks = self.hooks.clone();
         let id = self.id;
-
-        // Execute hooks before spawning the async task
-        self.handle.block_on(async {
-            Self::execute_hooks_post_indexing(
-                &self.hooks,
-                context.clone(),
-                block_to_index.clone(),
-                &*querier,
-            )
-            .await
-        })?;
 
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
@@ -689,6 +613,14 @@ impl Indexer for NonBlockingIndexer {
                 tracing::error!(err = %err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
 
                 err
+            })?;
+
+            hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
+
+                // NOTE: any way to get a from Hooks::Error to IndexerError without using IndexerError<X>?
+                error::IndexerError::Hooks(e.to_string())
             })?;
 
             if !keep_blocks {
@@ -723,7 +655,10 @@ impl Indexer for NonBlockingIndexer {
     }
 }
 
-impl Drop for NonBlockingIndexer {
+impl<H> Drop for NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + Sync + 'static,
+{
     fn drop(&mut self) {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
@@ -793,14 +728,17 @@ impl RuntimeHandler {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, async_trait::async_trait, grug_types::MockStorage, std::convert::Infallible};
+    use {
+        super::*, crate::hooks::NullHooks, async_trait::async_trait, grug_types::MockStorage,
+        std::convert::Infallible,
+    };
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer: NonBlockingIndexer = IndexerBuilder::default()
+        let mut indexer: NonBlockingIndexer<NullHooks> = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;
@@ -818,7 +756,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn build_without_hooks() -> anyhow::Result<()> {
-        let mut indexer: NonBlockingIndexer = IndexerBuilder::default()
+        let mut indexer: NonBlockingIndexer<NullHooks> = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;
@@ -845,7 +783,7 @@ mod tests {
             &self,
             _context: Context,
             _block: BlockToIndex,
-            _querier: &dyn QuerierProvider,
+            _querier: Box<dyn QuerierProvider>,
         ) -> Result<(), Self::Error> {
             Ok(())
         }
@@ -856,7 +794,7 @@ mod tests {
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
-            .with_hook(MyHooks)
+            .with_hooks(MyHooks)
             .build()?;
 
         let storage = MockStorage::new();

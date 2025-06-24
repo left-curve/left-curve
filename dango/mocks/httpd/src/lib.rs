@@ -68,7 +68,7 @@ where
         .with_keep_blocks(keep_blocks)
         .with_sqlx_pubsub()
         .with_tmpdir()
-        .with_hook(dango_indexer_sql::hooks::Hooks)
+        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()?;
 
     let indexer_context = indexer.context.clone();

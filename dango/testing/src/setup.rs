@@ -11,7 +11,7 @@ use {
     },
     grug::{
         Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
-        Uint128, setup_tracing_subscriber,
+        Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk_lite::DiskDbLite,
@@ -26,7 +26,6 @@ use {
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
-    tracing::Level,
 };
 
 /// Configurable options for setting up a test.
@@ -65,7 +64,7 @@ pub type TestSuiteWithIndexer<
     PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
-    ID = NonBlockingIndexer,
+    ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
@@ -142,12 +141,10 @@ pub fn setup_test_with_indexer() -> (
     MockValidatorSets,
     Context,
 ) {
-    setup_tracing_subscriber(Level::INFO);
-
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
-        .with_hook(dango_indexer_sql::hooks::Hooks)
+        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()
         .unwrap();
 
