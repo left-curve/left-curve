@@ -12,7 +12,7 @@ import type { AnyCoin } from "../types/coin.js";
 
 const BASE_DENOM = "USDC";
 
-export type UseSimpleSwapParameters = {
+export type UseSimpleSwapStateParameters = {
   pair: { from: string; to: string };
   onChangePair: (pair: { from: string; to: string }) => void;
 };
@@ -24,7 +24,7 @@ export type SimpleSwapInfo = {
   fee: number;
 };
 
-export function useSimpleSwap(parameters: UseSimpleSwapParameters) {
+export function useSimpleSwapState(parameters: UseSimpleSwapStateParameters) {
   const { onChangePair } = parameters;
   const { from, to } = parameters.pair;
   const { coins } = useConfig();

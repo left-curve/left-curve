@@ -20,7 +20,6 @@ import { useApp } from "~/hooks/useApp";
 
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { toast } from "../foundation/Toast";
 import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
@@ -54,7 +53,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const CredentialStep: React.FC = () => {
-  const { settings, changeSettings, showModal } = useApp();
+  const { toast, settings, changeSettings, showModal } = useApp();
   const { createSessionKey } = useSessionKey();
   const { nextStep, setData } = useWizard();
   const { useSessionKey: session } = settings;
@@ -167,22 +166,22 @@ const UsernameStep: React.FC = () => {
     signingSession?: SigningSession;
     connectorId: string;
   }>();
+
+  const { toast } = useApp();
   const navigate = useNavigate();
   const { usernames, connectorId, keyHash, signingSession } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     session: signingSession,
-    mutation: {
-      onSuccess: () => {
-        navigate({ to: "/" });
-      },
-      onError: (err) => {
-        console.error(err);
+    toast: {
+      error: () =>
         toast.error({
           title: m["common.error"](),
           description: m["signin.errors.failedSigningIn"](),
-        });
-      },
+        }),
+    },
+    mutation: {
+      onSuccess: () => navigate({ to: "/" }),
     },
   });
 

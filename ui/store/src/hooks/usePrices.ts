@@ -1,7 +1,14 @@
 import type { Denom, Funds, Price } from "@left-curve/dango/types";
-import { type FormatNumberOptions, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import {
+  type FormatNumberOptions,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+} from "@left-curve/dango/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
+
+import { Big } from "big.js";
 
 import type { AnyCoin } from "../types/coin.js";
 import { usePublicClient } from "./usePublicClient.js";
@@ -52,16 +59,36 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     ) as T extends true ? string : number;
   }
 
+  function convertAmount<T extends boolean = false>(
+    fromAmount: string | number,
+    fromDenom: string,
+    targetDenom: string,
+    parse?: T,
+  ): T extends false ? number : string {
+    const fromPrice = getPrice(fromAmount, fromDenom);
+    const targetPrice = getPrice(1, targetDenom);
+
+    const targetAmount = Big(fromPrice).div(targetPrice).toNumber();
+    return (
+      parse
+        ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals).toString()
+        : targetAmount
+    ) as T extends false ? number : string;
+  }
+
   function calculateBalance<T extends boolean = false>(
     balances: Funds,
     options?: FormatOptions<T>,
   ): T extends true ? string : number {
     const { formatOptions = defaultFormatOptions, format = false } = options || {};
     const totalValue = Object.entries(balances).reduce((total, [denom, amount]) => {
-      const price = getPrice(formatUnits(amount, coins[denom].decimals), denom, {
-        formatOptions,
-        format: false,
-      });
+      const coin = coins[denom];
+      const price = coin
+        ? getPrice(formatUnits(amount, coin.decimals), denom, {
+            formatOptions,
+            format: false,
+          })
+        : 0;
       total += price;
       return total;
     }, 0);
@@ -77,5 +104,5 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     refetchInterval,
   });
 
-  return { prices, ...rest, calculateBalance, getPrice };
+  return { prices, ...rest, calculateBalance, getPrice, convertAmount };
 }

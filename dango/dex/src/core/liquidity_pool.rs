@@ -402,7 +402,7 @@ mod tests {
             constants::{eth, usdc},
             oracle::PrecisionedPrice,
         },
-        grug::{Bounded, Coins, Inner, coin_pair, coins, hash_map},
+        grug::{Bounded, Coins, Inner, Timestamp, coin_pair, coins, hash_map},
         std::collections::HashMap,
         test_case::test_case,
     };
@@ -608,13 +608,13 @@ mod tests {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
         });
@@ -674,13 +674,13 @@ mod tests {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
         });
@@ -724,13 +724,13 @@ mod tests {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
         },
@@ -756,13 +756,13 @@ mod tests {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
                 Udec128::new_percent(100),
-                1730802926,
+                Timestamp::from_seconds(1730802926),
                 6,
             ),
         },

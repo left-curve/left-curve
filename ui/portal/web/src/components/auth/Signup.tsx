@@ -5,8 +5,9 @@ import {
   useConnectors,
   usePublicClient,
   useSignin,
+  useSubmitTx,
 } from "@left-curve/store";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -18,7 +19,6 @@ import { createWebAuthnCredential } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 import { wait } from "@left-curve/dango/utils";
-import { captureException } from "@sentry/react";
 
 import {
   Button,
@@ -34,7 +34,6 @@ import {
   XCircleIcon,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { toast } from "../foundation/Toast";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 
@@ -161,12 +160,17 @@ const Mobile: React.FC = () => {
 };
 
 const Credential: React.FC = () => {
+  const { toast } = useApp();
   const { nextStep, setData } = useWizard();
   const connectors = useConnectors();
 
-  const { isPending, mutateAsync: createCredential } = useMutation({
-    mutationFn: async (connectorId: string) => {
-      try {
+  const { isPending, mutateAsync: createCredential } = useSubmitTx({
+    toast: {
+      error: (e) =>
+        toast.error({ title: m["errors.failureRequest"](), description: ensureErrorMessage(e) }),
+    },
+    mutation: {
+      mutationFn: async (connectorId: string) => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
         const challenge = "Please sign this message to confirm your identity.";
@@ -216,12 +220,7 @@ const Credential: React.FC = () => {
         })();
         setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
         nextStep();
-      } catch (e) {
-        const error = ensureErrorMessage(e);
-        toast.error({ title: m["errors.failureRequest"](), description: error });
-        console.log(e);
-        captureException(e);
-      }
+      },
     },
   });
 
@@ -236,6 +235,8 @@ const Username: React.FC = () => {
     seed: number;
     username: string;
   }>();
+
+  const { toast } = useApp();
 
   const { register, inputs } = useInputs();
 
@@ -267,9 +268,12 @@ const Username: React.FC = () => {
     },
   });
 
-  const { isPending, mutateAsync: createAccount } = useMutation({
-    mutationFn: async () => {
-      try {
+  const { isPending, mutateAsync: createAccount } = useSubmitTx({
+    toast: {
+      error: () => toast.error({ title: m["signup.errors.creatingAccount"]() }),
+    },
+    mutation: {
+      mutationFn: async () => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
 
@@ -313,11 +317,7 @@ const Username: React.FC = () => {
 
         setData({ ...data, username });
         nextStep();
-      } catch (err) {
-        toast.error({ title: m["signup.errors.creatingAccount"]() });
-        console.log(err);
-        captureException(err);
-      }
+      },
     },
   });
 
@@ -370,25 +370,24 @@ const Username: React.FC = () => {
 const Signin: React.FC = () => {
   const navigate = useNavigate();
   const { done, data } = useWizard<{ username: string; connectorId: string }>();
-  const { settings, changeSettings } = useApp();
+  const { toast, settings, changeSettings } = useApp();
   const { useSessionKey } = settings;
 
   const { username, connectorId } = data;
 
   const { mutateAsync: connectWithConnector, isPending } = useSignin({
     session: useSessionKey && { expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
+    toast: {
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigningIn"](),
+        }),
+    },
     mutation: {
       onSuccess: () => {
         navigate({ to: "/" });
         done();
-      },
-      onError: (err) => {
-        console.error(err);
-        toast.error({
-          title: m["common.error"](),
-          description: m["signin.errors.failedSigningIn"](),
-        });
-        captureException(err);
       },
     },
   });

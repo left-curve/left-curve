@@ -39,7 +39,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
           if (denom === "dango") return null;
           return (
             <div className="flex gap-2 items-center" key={`preview-asset-${denom}`}>
-              <img src={coin.logoURI} alt={coin.name} className="h-7 w-7 drag-none select-none" />
+              <img src={coin.logoURI} alt={coin.symbol} className="h-7 w-7 drag-none select-none" />
               <div className="flex flex-col text-xs">
                 <p>{coin.symbol}</p>
                 <p className="text-gray-500">

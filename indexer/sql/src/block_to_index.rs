@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use metrics::counter;
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -28,9 +30,17 @@ impl BlockToIndex {
     }
 
     /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save(&self, db: DatabaseConnection) -> error::Result<()> {
+    pub async fn save(
+        &self,
+        db: DatabaseConnection,
+        #[allow(unused_variables)] indexer_id: u64,
+    ) -> error::Result<()> {
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = self.block.info.height, "Indexing block");
+        tracing::info!(
+            block_height = self.block.info.height,
+            indexer_id,
+            "Indexing block"
+        );
 
         let models = Models::build(&self.block, &self.block_outcome)?;
 
@@ -53,6 +63,14 @@ impl BlockToIndex {
         entity::blocks::Entity::insert(models.block)
             .exec_without_returning(&db)
             .await?;
+
+        #[cfg(feature = "metrics")]
+        {
+            counter!("indexer.blocks.total").increment(1);
+            counter!("indexer.transactions.total").increment(models.transactions.len() as u64);
+            counter!("indexer.messages.total").increment(models.messages.len() as u64);
+            counter!("indexer.events.total").increment(models.events.len() as u64);
+        }
 
         if !models.transactions.is_empty() {
             entity::transactions::Entity::insert_many(models.transactions)

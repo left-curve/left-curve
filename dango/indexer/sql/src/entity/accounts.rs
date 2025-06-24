@@ -1,5 +1,8 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Result, SimpleObject};
+use {
+    async_graphql::{ComplexObject, Context, Result, SimpleObject},
+    grug_types::Timestamp,
+};
 use {dango_types::account_factory, sea_orm::entity::prelude::*};
 
 #[derive(
@@ -21,6 +24,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub address: String,
     pub account_type: account_factory::AccountType,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
     pub created_block_height: i64,
 }
@@ -28,9 +33,13 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the account creation timestamp in ISO 8601 format with time zone.
+    async fn created_at(&self) -> String {
+        Timestamp::from(self.created_at).to_rfc3339_string()
+    }
+
     pub async fn users(&self, ctx: &Context<'_>) -> Result<Vec<crate::entity::users::Model>> {
         let db = ctx.data::<DatabaseConnection>()?;
-
         Ok(self
             .find_related(crate::entity::users::Entity)
             .all(db)
@@ -38,21 +47,18 @@ impl Model {
 
         // TODO: keeping the old code for reference in case the join query doesn't work
 
-        // let user_ids = entity::accounts_users::Entity::find()
-        //     .filter(entity::accounts_users::Column::AccountId.eq(self.id))
-        //     .all(&app_ctx.db)
+        // let user_ids = crate::entity::accounts_users::Entity::find()
+        //     .filter(crate::entity::accounts_users::Column::AccountId.eq(self.id))
+        //     .all(db)
         //     .await?
         //     .into_iter()
         //     .map(|au| au.user_id)
         //     .collect::<Vec<_>>();
 
-        // let users = entity::users::Entity::find()
-        //     .filter(entity::users::Column::Id.is_in(user_ids))
-        //     .all(&app_ctx.db)
-        //     .await?
-        //     .into_iter()
-        //     .map(User::from)
-        //     .collect::<Vec<_>>();
+        // let users = crate::entity::users::Entity::find()
+        //     .filter(crate::entity::users::Column::Id.is_in(user_ids))
+        //     .all(db)
+        //     .await?;
 
         // Ok(users)
     }

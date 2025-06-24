@@ -5,7 +5,9 @@ use {
     indexer_httpd::graphql::subscription::MAX_PAST_BLOCKS,
     indexer_sql::entity::blocks::latest_block_height,
     itertools::Itertools,
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
+    sea_orm::{
+        ColumnTrait, EntityTrait, JoinType, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
+    },
     std::ops::RangeInclusive,
 };
 
@@ -18,25 +20,29 @@ impl AccountSubscription {
         block_heights: RangeInclusive<i64>,
         username: Option<String>,
     ) -> Vec<entity::accounts::Model> {
-        let mut filter = entity::accounts::Column::CreatedBlockHeight.is_in(block_heights);
+        let mut query = entity::accounts::Entity::find()
+            .filter(entity::accounts::Column::CreatedBlockHeight.is_in(block_heights));
 
         if let Some(username) = username {
-            filter = filter.and(entity::users::Column::Username.eq(&username));
+            query = query
+                .join(
+                    JoinType::InnerJoin,
+                    entity::accounts::Relation::AccountUser.def(),
+                )
+                .join(
+                    JoinType::InnerJoin,
+                    entity::accounts_users::Relation::User.def(),
+                )
+                .filter(entity::users::Column::Username.eq(&username));
         }
 
-        let query = entity::accounts::Entity::find()
-            .order_by_desc(entity::accounts::Column::CreatedBlockHeight)
-            .find_with_related(entity::users::Entity)
-            .filter(filter);
+        let query = query.order_by_desc(entity::accounts::Column::CreatedBlockHeight);
 
         query
             .all(&app_ctx.db)
             .await
             .inspect_err(|e| tracing::error!(%e, "`get_accounts` error"))
             .unwrap_or_default()
-            .into_iter()
-            .map(|(account, _)| account)
-            .collect::<Vec<_>>()
     }
 }
 
@@ -60,7 +66,7 @@ impl AccountSubscription {
         };
 
         if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
-            return Err(async_graphql::Error::new("since_block_height is too old"));
+            return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
         let u = username.clone();

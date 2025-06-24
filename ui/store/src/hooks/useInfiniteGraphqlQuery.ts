@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { withPagination } from "../handlers/pagination.js";
@@ -6,7 +6,7 @@ import { withPagination } from "../handlers/pagination.js";
 import type { GraphqlPagination, GraphqlQueryResult } from "@left-curve/dango/types";
 import type { DefinedInitialDataInfiniteOptions, InfiniteData } from "@tanstack/react-query";
 
-type UseInfiniteGraphqlQueryParameters<T> = {
+export type UseInfiniteGraphqlQueryParameters<T> = {
   limit?: number;
   sortBy?: string;
   initialPage?: number;
@@ -37,6 +37,7 @@ export function useInfiniteGraphqlQuery<T = unknown>(
   >({
     ...withPagination<T>({ limit, sortBy }),
     ...queryOptions,
+    placeholderData: keepPreviousData,
   });
 
   const pagination = {

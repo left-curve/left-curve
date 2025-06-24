@@ -113,11 +113,36 @@ export {
   useAppConfig,
 } from "./hooks/useAppConfig.js";
 
-export { type UseSimpleSwapParameters, useSimpleSwap } from "./hooks/useSimpleSwap.js";
+export {
+  type UseInfiniteGraphqlQueryParameters,
+  useInfiniteGraphqlQuery,
+} from "./hooks/useInfiniteGraphqlQuery.js";
 
-export { type UseProTradeParameters, useProTrade } from "./hooks/useProTrade.js";
+export {
+  type UseQueryWithPaginationParameters,
+  useQueryWithPagination,
+} from "./hooks/useQueryWithPagination.js";
 
-export { useInfiniteGraphqlQuery } from "./hooks/useInfiniteGraphqlQuery.js";
+export {
+  type UseSubmitTxParameters,
+  type UseSubmitTxReturnType,
+  useSubmitTx,
+} from "./hooks/useSubmitTx.js";
+
+export {
+  type UseSimpleSwapStateParameters,
+  useSimpleSwapState,
+} from "./hooks/useSimpleSwapState.js";
+
+export {
+  type UseProTradeStateParameters,
+  useProTradeState,
+} from "./hooks/useProTradeState.js";
+
+export {
+  type UsePoolLiquidityStateParameters,
+  usePoolLiquidityState,
+} from "./hooks/usePoolLiquidityState.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 

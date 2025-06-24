@@ -48,7 +48,7 @@ pub struct CreateLimitOrderRequest {
     /// ```plain
     /// base_asset_amount = floor(quote_asset_amount / price)
     /// ```
-    pub amount: Uint128,
+    pub amount: NonZero<Uint128>,
     /// The limit price measured _in the quote asset_, i.e. how many units of
     /// quote asset is equal in value to 1 unit of base asset.
     pub price: Udec128,
@@ -61,7 +61,7 @@ pub struct CreateMarketOrderRequest {
     pub direction: Direction,
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
     /// base asset.
-    pub amount: Uint128,
+    pub amount: NonZero<Uint128>,
     /// The maximum slippage percentage.
     ///
     /// This parameter works as follow:
@@ -201,15 +201,6 @@ pub enum QueryMsg {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
-    /// Simulate a swap with exact input.
-    #[returns(Coin)]
-    SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
-    /// Simulate a swap with exact output.
-    #[returns(Coin)]
-    SimulateSwapExactAmountOut {
-        route: SwapRoute,
-        output: NonZero<Coin>,
-    },
     /// Returns the trading volume of a user address since the specified timestamp.
     #[returns(Uint128)]
     Volume {
@@ -227,6 +218,31 @@ pub enum QueryMsg {
         /// The start timestamp to query trading volume for. If not provided,
         /// username's total trading volume will be returned.
         since: Option<Timestamp>,
+    },
+    /// Simulate a liquidity provision.
+    /// Returns the amount of LP tokens to be minted.
+    #[returns(Coin)]
+    SimulateProvideLiquidity {
+        base_denom: Denom,
+        quote_denom: Denom,
+        deposit: CoinPair,
+    },
+    /// Simulate a liquidity withdrawal.
+    /// Returns the amount of the two underlying assets to be refunded.
+    #[returns(CoinPair)]
+    SimulateWithdrawLiquidity {
+        base_denom: Denom,
+        quote_denom: Denom,
+        lp_burn_amount: Uint128,
+    },
+    /// Simulate a swap with exact input.
+    #[returns(Coin)]
+    SimulateSwapExactAmountIn { route: SwapRoute, input: Coin },
+    /// Simulate a swap with exact output.
+    #[returns(Coin)]
+    SimulateSwapExactAmountOut {
+        route: SwapRoute,
+        output: NonZero<Coin>,
     },
 }
 

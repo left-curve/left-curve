@@ -4,6 +4,7 @@ use {
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::Timestamp,
 };
 use {
     sea_orm::{QueryOrder, entity::prelude::*},
@@ -23,6 +24,8 @@ pub struct Model {
         graphql(skip)
     )]
     pub id: Uuid,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "crate::serde_iso8601")]
     pub created_at: DateTime,
     #[sea_orm(unique)]
     pub block_height: i64,
@@ -38,6 +41,11 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the block timestamp in ISO 8601 format with time zone.
+    async fn created_at(&self) -> String {
+        Timestamp::from(self.created_at).to_rfc3339_string()
+    }
+
     /// Transactions order isn't guaranteed, check `transactionIdx`
     async fn transactions(&self, ctx: &Context<'_>) -> Result<Vec<super::transactions::Model>> {
         let loader = ctx.data_unchecked::<DataLoader<BlockTransactionsDataLoader>>();

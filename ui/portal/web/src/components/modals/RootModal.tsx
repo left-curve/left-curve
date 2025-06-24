@@ -18,11 +18,13 @@ export const Modals = {
   SignWithDesktop: "sign-with-desktop",
   ConfirmSwap: "confirm-swap",
   RenewSession: "renew-session",
-  ProSwapCloseAll: "pro-swap-close-all",
-  ProSwapLimitClose: "pro-swap-limit-close",
+  ProTradeCloseAll: "pro-trade-close-all",
+  ProTradeLimitClose: "pro-trade-limit-close",
   ProSwapMarketClose: "pro-swap-market-close",
   ProSwapEditTPSL: "pro-edit-tpsl",
   ProSwapEditedSL: "pro-edited-sl",
+  PoolAddLiquidity: "pool-add-liquidity",
+  PoolWithdrawLiquidity: "pool-withdraw-liquidity",
 };
 
 export type ModalRef = {
@@ -81,15 +83,15 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       disableClosing: true,
     },
   },
-  [Modals.ProSwapCloseAll]: {
+  [Modals.ProTradeCloseAll]: {
     component: lazy(() =>
-      import("./ProSwapCloseAll").then(({ ProSwapCloseAll }) => ({ default: ProSwapCloseAll })),
+      import("./ProTradeCloseAll").then(({ ProTradeCloseAll }) => ({ default: ProTradeCloseAll })),
     ),
   },
-  [Modals.ProSwapLimitClose]: {
+  [Modals.ProTradeLimitClose]: {
     component: lazy(() =>
-      import("./ProSwapLimitClose").then(({ ProSwapLimitClose }) => ({
-        default: ProSwapLimitClose,
+      import("./ProTradeLimitClose").then(({ ProTradeLimitClose }) => ({
+        default: ProTradeLimitClose,
       })),
     ),
   },
@@ -111,6 +113,20 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     component: lazy(() =>
       import("./ProSwapEditedSL").then(({ ProSwapEditedSL }) => ({
         default: ProSwapEditedSL,
+      })),
+    ),
+  },
+  [Modals.PoolAddLiquidity]: {
+    component: lazy(() =>
+      import("./PoolAddLiquidity").then(({ PoolAddLiquidity }) => ({
+        default: PoolAddLiquidity,
+      })),
+    ),
+  },
+  [Modals.PoolWithdrawLiquidity]: {
+    component: lazy(() =>
+      import("./PoolWithdrawLiquidity").then(({ PoolWithdrawLiquidity }) => ({
+        default: PoolWithdrawLiquidity,
       })),
     ),
   },

@@ -1,13 +1,18 @@
 import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useAccount,
+  useBalances,
+  useConfig,
+  useSigningClient,
+  useSubmitTx,
+} from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
-import { toast } from "../foundation/Toast";
 
 import {
   Button,
@@ -153,7 +158,7 @@ export const Deposit: React.FC = () => {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { showModal, subscriptions } = useApp();
+  const { toast, showModal, subscriptions } = useApp();
   const { coins } = useConfig();
   const { username, account, refreshAccounts, changeAccount } = useAccount();
   const { settings } = useApp();
@@ -168,11 +173,25 @@ export const Deposit: React.FC = () => {
   const coinInfo = coins["bridge/usdc"];
   const humanBalance = formatUnits(balances["bridge/usdc"] || 0, coinInfo.decimals);
 
-  const { mutateAsync: send, isPending } = useMutation({
-    mutationFn: async () => {
-      if (!signingClient) throw new Error("error: no signing client");
-      subscriptions.emit("submitTx", { isSubmitting: true });
-      try {
+  const { mutateAsync: send, isPending } = useSubmitTx({
+    toast: {
+      error: (e) =>
+        toast.error(
+          {
+            title: m["signup.errors.couldntCompleteRequest"](),
+            description: ensureErrorMessage(e),
+          },
+          { duration: Number.POSITIVE_INFINITY },
+        ),
+    },
+    submission: {
+      success: m["accountCreation.accountCreated"](),
+      error: m["signup.errors.couldntCompleteRequest"](),
+    },
+    mutation: {
+      mutationFn: async () => {
+        if (!signingClient) throw new Error("error: no signing client");
+
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
         await signingClient.registerAccount({
@@ -184,32 +203,12 @@ export const Deposit: React.FC = () => {
         });
 
         await refreshAccounts?.();
-
-        subscriptions.emit("submitTx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["accountCreation.accountCreated"]() },
-        });
-
+      },
+      onSuccess: async () => {
         await refreshBalances();
         queryClient.invalidateQueries({ queryKey: ["quests", account] });
         navigate({ to: "/" });
-      } catch (e) {
-        console.error(e);
-        const error = ensureErrorMessage(e);
-        subscriptions.emit("submitTx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["signup.errors.couldntCompleteRequest"]() },
-        });
-        toast.error(
-          {
-            title: m["signup.errors.couldntCompleteRequest"]() as string,
-            description: error,
-          },
-          {
-            duration: Number.POSITIVE_INFINITY,
-          },
-        );
-      }
+      },
     },
   });
 
@@ -261,7 +260,7 @@ export const Deposit: React.FC = () => {
         })}
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
-            <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.name} />
+            <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
             <span className="diatype-m-regular text-gray-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }

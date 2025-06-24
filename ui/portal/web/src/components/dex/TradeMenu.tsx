@@ -19,10 +19,11 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { Big } from "big.js";
 import { m } from "~/paraglide/messages";
 
 import type React from "react";
+import { useMemo } from "react";
 
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
   const { isLg } = useMediaQuery();
@@ -41,18 +42,31 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   const { isLg } = useMediaQuery();
   const { isConnected } = useAccount();
   const { data: appConfig } = useAppConfig();
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const { operation, setOperation, action, coin, onChangeCoin, coins, submission } = state;
-  const { register, setValue, inputs } = controllers;
 
-  const [_, quoteDenom] = coins;
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
+  const {
+    operation,
+    setOperation,
+    action,
+    changeSizeCoin,
+    sizeCoin,
+    availableCoin,
+    maxSizeAmount,
+    baseCoin,
+    quoteCoin,
+    submission,
+  } = state;
+  const { register, setValue, inputs } = controllers;
 
   const navigate = useNavigate();
 
-  const balance = formatUnits(coin.balance, coin.decimals);
   const amount = inputs.size?.value || "0";
 
-  const percent = Math.round((+amount / +balance) * 100);
+  const rangeValue = useMemo(() => {
+    if (maxSizeAmount === 0) return 0;
+    return Math.min(100, (+amount / maxSizeAmount) * 100);
+  }, [maxSizeAmount, amount]);
 
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
@@ -72,7 +86,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
           <p className="diatype-xs-medium text-gray-700">
-            {balance} {coin.symbol}
+            {availableCoin.amount} {availableCoin.symbol}
           </p>
         </div>
         {operation === "limit" ? (
@@ -82,7 +96,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             label="Price"
             {...register("price", { mask: numberMask })}
             startText="right"
-            endContent={quoteDenom.symbol}
+            endContent={quoteCoin.symbol}
           />
         ) : null}
         <Input
@@ -92,10 +106,10 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           {...register("size", {
             strategy: "onChange",
             validate: (v) => {
-              if (Number(v) > Number(balance)) return m["errors.validations.insufficientFunds"]();
+              if (Number(v) > Number(maxSizeAmount))
+                return m["errors.validations.insufficientFunds"]();
               return true;
             },
-            mask: numberMask,
           })}
           classNames={{
             base: "z-20",
@@ -110,9 +124,9 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
                 trigger: "!diatype-lg-medium text-gray-500",
                 selectorIcon: "w-4 h-4",
               }}
-              onChange={(coin) => onChangeCoin(coin)}
-              value={coin.denom}
-              coins={coins}
+              onChange={changeSizeCoin}
+              value={sizeCoin.denom}
+              coins={[baseCoin, quoteCoin]}
             />
           }
         />
@@ -123,8 +137,10 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           defaultValue={0}
           withInput
           inputEndContent="%"
-          value={Number.isNaN(percent) ? 0 : percent > 100 ? 100 : percent}
-          onChange={(v) => setValue("size", Math.round(+balance * (v / 100)).toString())}
+          value={rangeValue}
+          onChange={(v) => {
+            setValue("size", Big(maxSizeAmount).mul(Big(v).div(100)).toString());
+          }}
         />
       </div>
       <div className="flex flex-col gap-4 pb-4 lg:pb-6">
@@ -156,7 +172,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               {m["dex.protrade.spot.orderValue"]()}
             </p>
             <p className="diatype-xs-medium text-gray-700">
-              {getPrice(amount, coin.denom, { format: true })}
+              {getPrice(amount, sizeCoin.denom, { format: true })}
             </p>
           </div>
           {operation === "market" ? (
@@ -303,7 +319,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
 const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const { action, onChangeAction, type, submission } = state;
+  const { action, changeAction, type, submission } = state;
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
@@ -323,7 +339,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           keys={["buy", "sell"]}
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
-          onTabChange={(tab) => onChangeAction(tab as "sell" | "buy")}
+          onTabChange={(tab) => changeAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "green"}
           isDisabled={submission.isPending}
         />

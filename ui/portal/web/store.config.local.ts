@@ -46,7 +46,7 @@ export const coins = {
     coingeckoId: "ripple",
   },
   "bridge/usdc": {
-    type: "alloyed",
+    type: "native",
     name: "Ethereum USD Circle",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",

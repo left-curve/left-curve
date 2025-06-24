@@ -2,7 +2,7 @@ use {
     crate::{INCOMING_ORDERS, LimitOrder, MARKET_ORDERS, MarketOrder, NEXT_ORDER_ID, PAIRS},
     anyhow::ensure,
     dango_types::dex::{
-        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderSubmitted,
+        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderCreated, OrderKind,
     },
     grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
 };
@@ -29,7 +29,7 @@ pub(super) fn create_limit_order(
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
-            amount: order.amount,
+            amount: *order.amount,
         },
     };
 
@@ -41,18 +41,19 @@ pub(super) fn create_limit_order(
         order_id = !order_id;
     }
 
-    deposits.insert(deposit.clone())?;
-
-    events.push(OrderSubmitted {
-        order_id,
+    events.push(OrderCreated {
         user,
+        id: order_id,
+        kind: OrderKind::Limit,
         base_denom: order.base_denom.clone(),
         quote_denom: order.quote_denom.clone(),
         direction: order.direction,
-        price: order.price,
-        amount: order.amount,
-        deposit,
+        price: Some(order.price),
+        amount: *order.amount,
+        deposit: deposit.clone(),
     })?;
+
+    deposits.insert(deposit)?;
 
     INCOMING_ORDERS.save(
         storage,
@@ -66,8 +67,8 @@ pub(super) fn create_limit_order(
             ),
             LimitOrder {
                 user,
-                amount: order.amount,
-                remaining: order.amount,
+                amount: *order.amount,
+                remaining: *order.amount,
                 created_at_block_height: current_block_height,
             },
         ),
@@ -80,7 +81,7 @@ pub(super) fn create_market_order(
     storage: &mut dyn Storage,
     user: Addr,
     order: CreateMarketOrderRequest,
-    _events: &mut EventBuilder,
+    events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
     ensure!(
@@ -93,17 +94,27 @@ pub(super) fn create_market_order(
     let deposit = match order.direction {
         Direction::Bid => Coin {
             denom: order.quote_denom.clone(),
-            amount: order.amount,
+            amount: *order.amount,
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
-            amount: order.amount,
+            amount: *order.amount,
         },
     };
 
     let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 
-    // TODO: add event
+    events.push(OrderCreated {
+        user,
+        id: order_id,
+        kind: OrderKind::Market,
+        base_denom: order.base_denom.clone(),
+        quote_denom: order.quote_denom.clone(),
+        direction: order.direction,
+        price: None,
+        amount: *order.amount,
+        deposit: deposit.clone(),
+    })?;
 
     deposits.insert(deposit)?;
 
@@ -116,7 +127,7 @@ pub(super) fn create_market_order(
         ),
         &MarketOrder {
             user,
-            amount: order.amount,
+            amount: *order.amount,
             max_slippage: order.max_slippage,
         },
     )?;

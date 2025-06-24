@@ -1,15 +1,15 @@
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MatchingOutcome,
-        MergedOrders, Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES, VOLUMES_BY_USER,
-        fill_orders, match_and_fill_market_orders, match_limit_orders,
+        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
+        MatchingOutcome, MergedOrders, Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES,
+        VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, OrderFilled, OrdersMatched},
+        dex::{Direction, LimitOrdersMatched, OrderFilled},
         taxman::{self, FeeType},
     },
     grug::{
@@ -32,7 +32,9 @@ const HALF: Udec128 = Udec128::new_percent(50);
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
-    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
+
+    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
@@ -124,7 +126,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .add_events(events)?)
 }
 
-#[inline]
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     current_block_height: u64,
@@ -253,7 +254,7 @@ fn clear_orders_of_pair(
         // Here we choose the midpoint.
         let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
-        events.push(OrdersMatched {
+        events.push(LimitOrdersMatched {
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
             clearing_price,
@@ -390,15 +391,16 @@ fn clear_orders_of_pair(
             // Emit event for filled user orders to be used by the frontend
             events.push(OrderFilled {
                 user: order.user(),
-                order_id,
+                id: order_id,
+                kind: order.kind(),
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                direction: order_direction,
                 clearing_price,
                 filled,
                 refund,
                 fee,
                 cleared,
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: order_direction,
             })?;
 
             if let Order::Limit(limit_order) = order {

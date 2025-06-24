@@ -4,7 +4,7 @@ use {
         MarketOrderKey,
     },
     anyhow::{bail, ensure},
-    dango_types::dex::{Direction, OrderCanceled, OrderId},
+    dango_types::dex::{Direction, OrderCanceled, OrderId, OrderKind},
     grug::{
         Addr, Coin, Coins, EventBuilder, MultiplyFraction, Order as IterationOrder, StdResult,
         Storage,
@@ -26,7 +26,7 @@ pub(super) fn cancel_all_orders_from_user(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order(order_key.clone(), order, events, refunds)?;
+        cancel_limit_order(user, order_key.clone(), order, events, refunds)?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
     }
@@ -37,7 +37,13 @@ pub(super) fn cancel_all_orders_from_user(
         .values(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order((pair, direction, price, order_id), order, events, refunds)?;
+        cancel_limit_order(
+            user,
+            (pair, direction, price, order_id),
+            order,
+            events,
+            refunds,
+        )?;
 
         INCOMING_ORDERS.remove(storage, (user, order_id));
     }
@@ -50,7 +56,7 @@ pub(super) fn cancel_all_orders_from_user(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_market_order(order_key.clone(), order, events, refunds)?;
+        cancel_market_order(user, order_key.clone(), order, events, refunds)?;
 
         MARKET_ORDERS.remove(storage, order_key)?;
     }
@@ -78,7 +84,7 @@ pub(super) fn cancel_order_from_user(
             "maker order `{order_id}` does not belong to the sender",
         );
 
-        cancel_limit_order(order_key.clone(), order, events, refunds)?;
+        cancel_limit_order(user, order_key.clone(), order, events, refunds)?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
 
@@ -92,7 +98,7 @@ pub(super) fn cancel_order_from_user(
             "incoming order `{order_id}` does not belong to the sender"
         );
 
-        cancel_limit_order(order_key, order, events, refunds)?;
+        cancel_limit_order(user, order_key, order, events, refunds)?;
 
         INCOMING_ORDERS.remove(storage, (user, order_id));
 
@@ -106,7 +112,7 @@ pub(super) fn cancel_order_from_user(
             "market order `{order_id}` does not belong to the sender"
         );
 
-        cancel_market_order(order_key.clone(), order, events, refunds)?;
+        cancel_market_order(user, order_key.clone(), order, events, refunds)?;
 
         MARKET_ORDERS.remove(storage, order_key)?;
 
@@ -117,6 +123,7 @@ pub(super) fn cancel_order_from_user(
 }
 
 fn cancel_limit_order(
+    user: Addr,
     order_key: LimitOrderKey,
     order: LimitOrder,
     events: &mut EventBuilder,
@@ -137,7 +144,9 @@ fn cancel_limit_order(
     };
 
     events.push(OrderCanceled {
-        order_id,
+        user,
+        id: order_id,
+        kind: OrderKind::Limit,
         remaining: order.remaining,
         refund: refund.clone(),
     })?;
@@ -148,12 +157,13 @@ fn cancel_limit_order(
 }
 
 fn cancel_market_order(
+    user: Addr,
     order_key: MarketOrderKey,
     order: MarketOrder,
-    _events: &mut EventBuilder,
+    events: &mut EventBuilder,
     refunds: &mut Coins,
 ) -> StdResult<()> {
-    let ((base_denom, quote_denom), direction, _order_id) = order_key;
+    let ((base_denom, quote_denom), direction, order_id) = order_key;
 
     // Compute the amount of tokens to be sent back to the user.
     let refund = match direction {
@@ -167,7 +177,13 @@ fn cancel_market_order(
         },
     };
 
-    // TODO: add event
+    events.push(OrderCanceled {
+        user,
+        id: order_id,
+        kind: OrderKind::Market,
+        remaining: order.amount,
+        refund: refund.clone(),
+    })?;
 
     refunds.insert(refund)?;
 

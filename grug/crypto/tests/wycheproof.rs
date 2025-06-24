@@ -105,7 +105,7 @@ macro_rules! wycheproof_test {
                 for tc in group.tests {
                     tested += 1;
                     assert_eq!(tc.tc_id as usize, tested);
-                    eprintln!("Test case ID: {}", tc.tc_id);
+
                     let message = hex::decode(tc.msg).unwrap();
                     let message_hash = $hash_fn(&message);
                     let der_signature = hex::decode(tc.sig).unwrap();

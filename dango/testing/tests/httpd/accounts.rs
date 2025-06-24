@@ -1,5 +1,5 @@
 use {
-    super::build_actix_app,
+    crate::{build_actix_app, paginate_models},
     assert_json_diff::*,
     assertor::*,
     dango_indexer_sql::entity,
@@ -8,8 +8,8 @@ use {
         setup_test_with_indexer,
     },
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response,
+        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_paginated_graphql,
+        call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     tokio::sync::mpsc,
 };
@@ -55,11 +55,10 @@ async fn query_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response: PaginatedResponse<serde_json::Value> =
+                    call_paginated_graphql(app, request_body).await?;
 
                 let received_accounts = response
-                    .data
                     .edges
                     .into_iter()
                     .map(|e| e.node)
@@ -140,8 +139,11 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let expected_data = serde_json::json!({
                     "accountType": "spot",
@@ -208,7 +210,8 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
+                let response =
+                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
 
                 let nodes = response
                     .data
@@ -278,8 +281,11 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let app = build_actix_app(httpd_context);
 
-                let response =
-                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+                let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                    app,
+                    request_body,
+                )
+                .await?;
 
                 let received_accounts = response
                     .data
@@ -312,6 +318,124 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                 ]);
 
                 assert_json_include!(actual: received_accounts, expected: expected_accounts);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_paginate_accounts() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
+        setup_test_with_indexer();
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    // Create 10 accounts to paginate through
+    for idx in 0..10 {
+        let _user = create_user_and_account(
+            &mut suite,
+            &mut accounts,
+            &contracts,
+            &codes,
+            &format!("foo{idx}"),
+        );
+    }
+
+    suite.app.indexer.wait_for_finish();
+
+    let graphql_query = r#"
+      query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
+        accounts(after: $after, before: $before, first: $first, last: $last, sortBy: $sortBy) {
+          nodes {
+            id
+            address
+            accountIndex
+            accountType
+            createdAt
+            createdBlockHeight
+          }
+          edges { node { id address accountIndex accountType createdAt createdBlockHeight } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let accounts_count = 2;
+
+                // 1. first with descending order
+                let block_heights = paginate_models::<entity::accounts::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "accounts",
+                    "BLOCK_HEIGHT_DESC",
+                    Some(accounts_count),
+                    None,
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.created_block_height as u64)
+                .collect::<Vec<_>>();
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
+
+                // 2. first with ascending order
+                let block_heights = paginate_models::<entity::accounts::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "accounts",
+                    "BLOCK_HEIGHT_ASC",
+                    Some(accounts_count),
+                    None,
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.created_block_height as u64)
+                .collect::<Vec<_>>();
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+
+                // 3. last with descending order
+                let block_heights = paginate_models::<entity::accounts::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "accounts",
+                    "BLOCK_HEIGHT_DESC",
+                    None,
+                    Some(accounts_count),
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.created_block_height as u64)
+                .collect::<Vec<_>>();
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).collect::<Vec<_>>());
+
+                // 4. last with ascending order
+                let block_heights = paginate_models::<entity::accounts::Model>(
+                    httpd_context.clone(),
+                    graphql_query,
+                    "accounts",
+                    "BLOCK_HEIGHT_ASC",
+                    None,
+                    Some(accounts_count),
+                )
+                .await?
+                .into_iter()
+                .map(|a| a.created_block_height as u64)
+                .collect::<Vec<_>>();
+
+                assert_that!(block_heights)
+                    .is_equal_to((1..=10).map(|x| x * 2).rev().collect::<Vec<_>>());
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -461,7 +585,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     let (create_account_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(idx) = rx.recv().await {
-            // Create a new account with a new username
+            // Create a new account with a new username, to see if the subscription filters it out
             let _test_account = create_user_and_account(
                 &mut suite,
                 &mut accounts,
@@ -470,7 +594,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 &format!("foo{idx}"),
             );
 
-            // Create a new account with the same username
+            // Create a new account with the original user
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
@@ -480,44 +604,47 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
         Ok::<(), anyhow::Error>(())
     });
 
+    let name = request_body.name;
+
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let name = request_body.name;
                 let (_srv, _ws, framed) =
                     call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
 
-                // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
-                .await?;
+                let expected_data = serde_json::json!({
+                    "users": [
+                        {
+                            "username": "user",
+                        },
+                    ],
+                });
 
-                assert_that!(
-                    response
-                        .data
-                        .into_iter()
-                        .map(|t| t.created_block_height)
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to(vec![2]);
+                // 1st response is always accounts from the last block if any
+                let (framed, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
+
+                let account = response
+                    .data
+                    .first()
+                    .expect("Expected at least one account");
+
+                assert_json_include!(actual: account, expected: expected_data);
 
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
-                .await?;
+                let (_, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
 
-                assert_that!(
-                    response
-                        .data
-                        .into_iter()
-                        .map(|t| t.created_block_height)
-                        .collect::<Vec<_>>()
-                )
-                .is_equal_to(vec![5]);
+                let account = response
+                    .data
+                    .first()
+                    .expect("Expected at least one account");
+
+                assert_json_include!(actual: account, expected: expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })

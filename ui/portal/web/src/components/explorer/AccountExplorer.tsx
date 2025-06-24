@@ -1,5 +1,5 @@
 import { AddressVisualizer } from "@left-curve/applets-kit";
-import { useInfiniteGraphqlQuery, usePrices, usePublicClient } from "@left-curve/store";
+import { usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
@@ -12,13 +12,7 @@ import { AccountCard } from "../foundation/AccountCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 
-import type {
-  Account,
-  Address,
-  Coins,
-  ContractInfo,
-  IndexedTransaction,
-} from "@left-curve/dango/types";
+import type { Account, Address, Coins, ContractInfo } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { TransactionsTable } from "./TransactionsTable";
@@ -164,22 +158,18 @@ const Transactions: React.FC = () => {
   const { isLoading, data: account } = useAccountExplorer();
   const client = usePublicClient();
 
-  const { data, pagination, ...transactions } = useInfiniteGraphqlQuery<IndexedTransaction>({
-    limit: 10,
-    sortBy: "BLOCK_HEIGHT_DESC",
-    query: {
-      enabled: !!account,
-      queryKey: ["account_transactions", account?.address],
-      queryFn: async ({ pageParam }) =>
-        client.searchTxs({ senderAddress: account?.address, ...pageParam }),
-    },
+  const { data, pagination, ...transactions } = useQueryWithPagination({
+    enabled: !!account,
+    queryKey: ["account_transactions", account?.address as string],
+    queryFn: async ({ pageParam }) =>
+      client.searchTxs({ senderAddress: account?.address, ...pageParam }),
   });
 
   if (isLoading || !account) return null;
 
   return (
     <TransactionsTable
-      transactions={data?.pages[pagination?.currentPage - 1]?.nodes || []}
+      transactions={data?.nodes || []}
       pagination={{ ...pagination, isLoading: transactions.isLoading }}
     />
   );

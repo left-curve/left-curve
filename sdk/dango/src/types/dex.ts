@@ -86,6 +86,17 @@ export type DexQueryMsg =
         limit: Option<number>;
       };
     }
+  /** Simulate a liquidity withdrawal. */
+  | {
+      simulateWithdrawLiquidity: {
+        /** The base denomination of the trading pair. */
+        baseDenom: Denom;
+        /** The quote denomination of the trading pair. */
+        quoteDenom: Denom;
+        /** The amount of liquidity to withdraw, in the liquidity token denom. */
+        lpBurnAmount: string;
+      };
+    }
   /** Query a single active order by ID. */
   | {
       order: {
@@ -196,6 +207,11 @@ export type PairId = {
   quoteDenom: string;
 };
 
+export type PairSymbols = {
+  baseSymbol: string;
+  quoteSymbol: string;
+};
+
 export type OrderId = number;
 
 export type CoinPair = [Coin, Coin];
@@ -206,7 +222,9 @@ export type ReservesResponse = {
 };
 
 export const Direction = {
+  /** Give away the quote asset, get the base asset; a.k.a. a BUY order. */
   Buy: "bid",
+  /** Give away the base asset, get the quote asset; a.k.a. a SELL order. */
   Sell: "ask",
 } as const;
 

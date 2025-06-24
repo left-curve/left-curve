@@ -1,32 +1,29 @@
 import { useSigninWithDesktop } from "@left-curve/store";
-import { captureException } from "@sentry/react";
 import { forwardRef, useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { Spinner } from "@left-curve/applets-kit";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { toast } from "../foundation/Toast";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "~/paraglide/messages";
 
 export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
-  const { router, hideModal } = useApp();
+  const { router, toast, hideModal } = useApp();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,
+    toast: {
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSignInWithDesktop"](),
+        }),
+    },
     mutation: {
       onSuccess: () => {
         router.navigate({ to: "/" });
         hideModal();
-      },
-      onError: (err) => {
-        toast.error({
-          title: m["common.error"](),
-          description: m["signin.errors.failedSignInWithDesktop"](),
-        });
-        console.error(err);
-        captureException(err);
       },
     },
   });

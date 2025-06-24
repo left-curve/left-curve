@@ -1,4 +1,5 @@
 import type { IndexedTrade } from "@left-curve/dango/types";
+import type { AnyCoin } from "@left-curve/store/types";
 
 export const mockTrades: IndexedTrade[] = [
   {
@@ -373,3 +374,45 @@ export const mockOrderBookData: OrderBookData = {
     { price: 1917.11, amount: 1.022, total: 1959.2864, cumulativeTotal: 121277.364 },
   ],
 };
+
+export const mockSearchPair = [
+  {
+    name: "BTC-USD",
+    isFavorite: true,
+    lastPrice: 45000,
+    change: 2.5,
+    "8hourChange": "-0.0100%",
+    volume: "$2,227,275,754",
+    openInterest: "$2,227,275,754",
+  },
+  {
+    name: "ETH-USD",
+    isFavorite: false,
+    lastPrice: 45000,
+    change: -0.2,
+    "8hourChange": "-0.0100%",
+    volume: "$2,227,275,754",
+    openInterest: "$2,227,275,754",
+  },
+  {
+    name: "FARTCOIN-USD",
+    lastPrice: 45000,
+    change: 2.5,
+    "8hourChange": "-0.0100%",
+    volume: "$2,227,275,754",
+    openInterest: "$2,227,275,754",
+  },
+];
+
+export type activeFilterType =
+  | "All"
+  | "Spot"
+  | "Trending"
+  | "DEX only"
+  | "Pre-launch"
+  | "AI"
+  | "Defi"
+  | "Gaming"
+  | "Layer 1"
+  | "Layer 2"
+  | "Meme";

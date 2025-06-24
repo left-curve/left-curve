@@ -6,6 +6,8 @@
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
+    "deposit": "Deposit",
+    "withdraw": "Withdraw",
     "signin": "Sign In",
     "signup": "Sign Up",
     "dismiss": "Dismiss",
@@ -141,6 +143,14 @@
       "description": "Real-Time Charts, Data & Trading",
       "path": "/trade",
       "keywords": "swap,dex,trade,pro,charts,data,trading"
+    },
+    "6": {
+      "id": "earn",
+      "img": "/images/emojis/simple/pig.svg",
+      "title": "Earn",
+      "description": "Earn tokens by lending or providing liquidity",
+      "path": "/earn",
+      "keywords": "earn,staking,liquidity,lending"
     }
   },
   "explorer": {
@@ -252,6 +262,11 @@
       "title": "Session expired",
       "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
       "stayLogout": "Stay logged out"
+    },
+    "protradeCloseAllOrders": {
+      "title": "Close All Orders",
+      "description": "This will close all your positions and cancel their associated TP/SL orders.",
+      "action": "Confirm Close Orders"
     }
   },
   "signin": {
@@ -420,7 +435,7 @@
   "notifications": {
     "title": "Notifications",
     "noNotifications": {
-      "title": "No Notifications yet",
+      "title": "No notifications yet",
       "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
     },
     "notification": {
@@ -490,6 +505,37 @@
     "error": {
       "title": "Transfer Error",
       "description": "We couldn’t complete your transfer. Please try again later."
+    }
+  },
+  "earn": {
+    "party": "Party",
+    "earn": "Earn",
+    "select": "Select",
+    "deposit": "Deposit",
+    "title": "Select a strategy",
+    "description": "Earn tokens by lending or providing liquidity",
+    "vault": "Vault",
+    "apr": "APR",
+    "apy": "APY",
+    "myPosition": "My Position",
+    "tvl": "TVL",
+    "manage": "Manage"
+  },
+  "poolLiquidity": {
+    "apy": "APY",
+    "networkFee": "Network fee",
+    "24hVol": "24h vol",
+    "tvl": "TVL",
+    "liquidity": "Liquidity",
+    "deposit": "You deposit",
+    "withdrawAmount": "Withdrawal amount",
+    "amount": "amount",
+    "modal": {
+      "addLiquidity": "Add Liquidity",
+      "depositing": "Depositing",
+      "withdrawalConfirmation": "Withdrawal Confirmation",
+      "withdrawPenaltyAdvice": "Are you sure you want to withdraw? If you withdraw now, you will have to pay a penalty.",
+      "continueWithdraw": "Continue Withdraw"
     }
   },
   "settings": {
@@ -597,6 +643,7 @@
       }
     },
     "protrade": {
+      "allOrdersCancelled": "All orders cancelled",
       "spot": {
         "noOpenOrders": "No open orders yet",
         "price": "Price",
@@ -629,8 +676,8 @@
             "declarations": ["input direction"],
             "selectors": ["direction"],
             "match": {
-              "direction=0": "Buy",
-              "direction=1": "Sell"
+              "direction=bid": "Buy",
+              "direction=ask": "Sell"
             }
           }
         ]

@@ -31,12 +31,12 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
 
   useEffect(() => {
     const unsubscribe = subscriptions.subscribe("submitTx", {
-      listener: ({ isSubmitting, txResult }) => {
+      listener: ({ isSubmitting, isSuccess }) => {
         if (isSubmitting) {
           setIndicator("spinner");
           setIsSubmittingTx(isSubmitting);
         } else {
-          setIndicator(txResult?.hasSucceeded ? "success" : "error");
+          setIndicator(isSuccess ? "success" : "error");
           setTimeout(() => {
             setIsSubmittingTx(false);
           }, 1500);

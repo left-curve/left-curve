@@ -24,8 +24,22 @@ impl Context {
 
     pub async fn connect_db_with_url(
         database_url: &str,
-        max_connections: u32,
+        mut max_connections: u32,
     ) -> Result<DatabaseConnection, sea_orm::DbErr> {
+        // SQLite in-memory databases do not support multiple writers and it will lead to deadlocks
+        // and random errors if we try to use more than one connection.
+        if database_url.contains("sqlite")
+            && database_url.contains(":memory:")
+            && max_connections > 1
+        {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                "SQLite in-memory doesn't support multiple writers; forcing to 1 connection to avoid deadlocks"
+            );
+
+            max_connections = 1;
+        }
+
         let mut opt = ConnectOptions::new(database_url.to_owned());
         opt.max_connections(max_connections)
         // .min_connections(5)
@@ -37,7 +51,7 @@ impl Context {
         match Database::connect(opt).await {
             Ok(db) => {
                 #[cfg(feature = "tracing")]
-                tracing::info!(database_url, "Connected to database");
+                tracing::info!(database_url, max_connections, "Connected to database");
 
                 // NOTE: not doing all but this is what we should do based on Claude Code:
                 // In-memory + single connection: Skip all pragmas
@@ -45,7 +59,7 @@ impl Context {
                 // Any database + multiple connections: Use all 3 pragmas
                 if database_url.contains("sqlite") && !database_url.contains(":memory:") {
                     #[cfg(feature = "tracing")]
-                    tracing::info!("SQLite database detected, enabling optimizations");
+                    tracing::info!("SQLite non-memory database detected, enabling optimizations");
 
                     db.execute_unprepared(
                         "PRAGMA journal_mode=WAL;
@@ -59,7 +73,7 @@ impl Context {
             },
             Err(error) => {
                 #[cfg(feature = "tracing")]
-                tracing::error!(database_url, %error, "Failed to connect to database");
+                tracing::error!(database_url, max_connections, %error, "Failed to connect to database");
 
                 Err(error)
             },

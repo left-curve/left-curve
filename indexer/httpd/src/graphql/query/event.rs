@@ -1,10 +1,11 @@
 use {
-    crate::context::Context,
-    async_graphql::{types::connection::*, *},
-    indexer_sql::entity::{self, prelude::Events},
-    sea_orm::{
-        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+    crate::{
+        context::Context,
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
+    async_graphql::{types::connection::*, *},
+    indexer_sql::entity,
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -14,6 +15,24 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
+}
+
+impl From<SortBy> for Order {
+    fn from(sort_by: SortBy) -> Self {
+        match sort_by {
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,119 +50,69 @@ impl From<entity::events::Model> for EventCursor {
     }
 }
 
-pub type EventCursorType = OpaqueCursor<EventCursor>;
-
-const MAX_EVENTS: u64 = 100;
-
 #[derive(Default, Debug)]
 pub struct EventQuery {}
 
 #[Object]
 impl EventQuery {
-    /// Get events
+    /// Get paginated events.
     async fn events(
         &self,
         ctx: &async_graphql::Context<'_>,
-        after: Option<String>,
-        before: Option<String>,
-        first: Option<i32>,
-        last: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] after: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] before: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] last: Option<i32>,
         sort_by: Option<SortBy>,
-    ) -> Result<Connection<EventCursorType, entity::events::Model, EmptyFields, EmptyFields>> {
+    ) -> Result<
+        Connection<OpaqueCursor<EventCursor>, entity::events::Model, EmptyFields, EmptyFields>,
+    > {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with::<EventCursorType, _, _, _, _>(
+        paginate_models(
+            app_ctx,
             after,
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let mut query = entity::events::Entity::find();
-                let sort_by = sort_by.unwrap_or_default();
-                let limit;
-                let has_before = before.is_some();
-
-                match (after, before, first, last) {
-                    (after, None, first, None) => {
-                        if let Some(after) = after {
-                            query = apply_filter(query, sort_by, &after);
-                        }
-
-                        limit = first.map(|x| x as u64).unwrap_or(MAX_EVENTS);
-
-                        query = query.limit(limit + 1);
-                    },
-                    (None, before, None, last) => {
-                        if let Some(before) = before {
-                            query = apply_filter(query, sort_by, &before);
-                        }
-
-                        limit = last.map(|x| x as u64).unwrap_or(MAX_EVENTS);
-
-                        query = query.limit(limit + 1);
-                    },
-                    _ => unreachable!(),
-                }
-
-                match sort_by {
-                    SortBy::BlockHeightAsc => {
-                        query = query
-                            .order_by(entity::events::Column::BlockHeight, Order::Asc)
-                            .order_by(entity::events::Column::EventIdx, Order::Asc)
-                    },
-                    SortBy::BlockHeightDesc => {
-                        query = query
-                            .order_by(entity::events::Column::BlockHeight, Order::Desc)
-                            .order_by(entity::events::Column::EventIdx, Order::Desc)
-                    },
-                }
-
-                let mut events = query.all(&app_ctx.db).await?;
-
-                if has_before {
-                    events.reverse();
-                }
-
-                let mut has_more = false;
-                if events.len() > limit as usize {
-                    events.pop();
-                    has_more = true;
-                }
-
-                let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection.edges.extend(events.into_iter().map(|event| {
-                    Edge::with_additional_fields(
-                        OpaqueCursor(event.clone().into()),
-                        event,
-                        EmptyFields,
-                    )
-                }));
-                Ok::<_, async_graphql::Error>(connection)
-            },
+            sort_by,
+            100,
+            |query, _| Box::pin(async move { Ok(query) }),
         )
         .await
     }
 }
 
-fn apply_filter(query: Select<Events>, sort_by: SortBy, after: &EventCursor) -> Select<Events> {
-    match sort_by {
-        SortBy::BlockHeightAsc => query.filter(
-            Condition::any()
-                .add(entity::events::Column::BlockHeight.lt(after.block_height))
-                .add(
-                    entity::events::Column::BlockHeight
-                        .eq(after.block_height)
-                        .and(entity::events::Column::EventIdx.lt(after.event_idx)),
-                ),
-        ),
-        SortBy::BlockHeightDesc => query.filter(
-            Condition::any()
-                .add(entity::events::Column::BlockHeight.gt(after.block_height))
-                .add(
-                    entity::events::Column::BlockHeight
-                        .eq(after.block_height)
-                        .and(entity::events::Column::EventIdx.gt(after.event_idx)),
-                ),
-        ),
+impl CursorFilter<SortBy, EventCursor> for Select<entity::events::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &EventCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
+                Condition::any()
+                    .add(entity::events::Column::BlockHeight.gt(cursor.block_height))
+                    .add(
+                        entity::events::Column::BlockHeight
+                            .gte(cursor.block_height)
+                            .and(entity::events::Column::EventIdx.gt(cursor.event_idx)),
+                    ),
+            ),
+            SortBy::BlockHeightDesc => self.filter(
+                Condition::any()
+                    .add(entity::events::Column::BlockHeight.lt(cursor.block_height))
+                    .add(
+                        entity::events::Column::BlockHeight
+                            .lte(cursor.block_height)
+                            .and(entity::events::Column::EventIdx.lt(cursor.event_idx)),
+                    ),
+            ),
+        }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::events::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+
+        self.order_by(entity::events::Column::BlockHeight, order.clone())
+            .order_by(entity::events::Column::EventIdx, order)
     }
 }
