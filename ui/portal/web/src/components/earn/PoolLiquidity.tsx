@@ -20,6 +20,7 @@ import { m } from "~/paraglide/messages";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
+import { Modals } from "../modals/RootModal";
 
 const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{
   state: ReturnType<typeof usePoolLiquidityState>;
@@ -181,7 +182,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
 };
 
 const PoolLiquidityDeposit: React.FC = () => {
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { state, controllers } = usePoolLiquidity();
   const { formatNumberOptions } = settings;
   const { coins, action, deposit } = state;
@@ -292,7 +293,13 @@ const PoolLiquidityDeposit: React.FC = () => {
         size="md"
         fullWidth
         isLoading={deposit.isPending}
-        onClick={() => deposit.mutateAsync()}
+        onClick={() =>
+          showModal(Modals.PoolAddLiquidity, {
+            coins,
+            confirmAddLiquidity: deposit.mutateAsync,
+            rejectAddLiquidity: deposit.reset,
+          })
+        }
       >
         {m["common.deposit"]()}
       </Button>
