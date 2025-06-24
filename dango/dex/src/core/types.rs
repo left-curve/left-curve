@@ -1,4 +1,7 @@
-use grug::{Addr, Udec128, Uint128};
+use {
+    dango_types::dex::OrderKind,
+    grug::{Addr, Udec128, Uint128},
+};
 
 #[grug::derive(Borsh, Serde)]
 pub enum Order {
@@ -11,6 +14,13 @@ impl Order {
         match self {
             Order::Market(order) => order.user,
             Order::Limit(order) => order.user,
+        }
+    }
+
+    pub fn kind(&self) -> OrderKind {
+        match self {
+            Order::Market(_) => OrderKind::Market,
+            Order::Limit(_) => OrderKind::Limit,
         }
     }
 }

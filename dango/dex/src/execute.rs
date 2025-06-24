@@ -9,8 +9,7 @@ use {
         DangoQuerier, bank,
         dex::{
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, PairUpdated,
-            SwapExactAmountIn, SwapExactAmountOut,
+            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
         },
     },
     grug::{
@@ -57,8 +56,6 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
         "only the owner can update a trading pair parameters"
     );
 
-    let mut events = EventBuilder::with_capacity(updates.len());
-
     for update in updates {
         ensure!(
             update
@@ -75,14 +72,9 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
             (&update.base_denom, &update.quote_denom),
             &update.params,
         )?;
-
-        events.push(PairUpdated {
-            base_denom: update.base_denom,
-            quote_denom: update.quote_denom,
-        })?;
     }
 
-    Ok(Response::new().add_events(events)?)
+    Ok(Response::new())
 }
 
 fn batch_update_orders(
@@ -299,7 +291,7 @@ fn swap_exact_amount_in(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, output.clone())?)
-        .add_event(SwapExactAmountIn {
+        .add_event(Swapped {
             user: ctx.sender,
             input,
             output,
@@ -329,7 +321,7 @@ fn swap_exact_amount_out(
     // here, because we already ensure it's non-zero.
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_event(SwapExactAmountOut {
+        .add_event(Swapped {
             user: ctx.sender,
             input,
             output: output.into_inner(),

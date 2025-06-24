@@ -9,7 +9,7 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, OrderFilled, OrdersMatched},
+        dex::{Direction, LimitOrdersMatched, OrderFilled},
         taxman::{self, FeeType},
     },
     grug::{
@@ -254,7 +254,7 @@ fn clear_orders_of_pair(
         // Here we choose the midpoint.
         let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
-        events.push(OrdersMatched {
+        events.push(LimitOrdersMatched {
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
             clearing_price,
@@ -388,15 +388,16 @@ fn clear_orders_of_pair(
             // Emit event for filled user orders to be used by the frontend
             events.push(OrderFilled {
                 user: order.user(),
-                order_id,
+                id: order_id,
+                kind: order.kind(),
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                direction: order_direction,
                 clearing_price,
                 filled,
                 refund,
                 fee,
                 cleared,
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: order_direction,
             })?;
 
             if let Order::Limit(limit_order) = order {
