@@ -1,6 +1,12 @@
+#[cfg(feature = "metrics")]
+use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
 use {
     crate::context::Context,
-    async_graphql::{Schema, dataloader::DataLoader, extensions},
+    async_graphql::{
+        Schema,
+        dataloader::DataLoader,
+        extensions::{self as AsyncGraphqlExtensions},
+    },
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
@@ -11,6 +17,7 @@ use {
     telemetry::SentryExtension,
 };
 
+pub mod extensions;
 pub mod mutation;
 pub mod query;
 pub mod subscription;
@@ -20,6 +27,9 @@ pub mod types;
 pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscription::Subscription>;
 
 pub fn build_schema(app_ctx: Context) -> AppSchema {
+    #[cfg(feature = "metrics")]
+    init_graphql_metrics();
+
     let block_transactions_loader = DataLoader::new(
         BlockTransactionsDataLoader {
             db: app_ctx.db.clone(),
@@ -62,20 +72,31 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         tokio::spawn,
     );
 
-    Schema::build(
+    #[allow(unused_mut)]
+    let mut schema_builder = Schema::build(
         query::Query::default(),
         mutation::Mutation::default(),
         subscription::Subscription::default(),
     )
-    .extension(extensions::Logger)
-    .extension(SentryExtension)
-    .data(app_ctx.db.clone())
-    .data(app_ctx)
-    .data(block_transactions_loader)
-    .data(block_events_loader)
-    .data(transaction_messages_loader)
-    .data(transaction_events_loader)
-    .data(file_transaction_loader)
-    .data(event_transaction_loader)
-    .finish()
+    .extension(AsyncGraphqlExtensions::Logger)
+    // .extension(AsyncGraphqlExtensions::Tracing)
+    .extension(SentryExtension);
+
+    #[cfg(feature = "metrics")]
+    {
+        schema_builder = schema_builder.extension(MetricsExtension);
+    }
+
+    schema_builder
+        .data(app_ctx.db.clone())
+        .data(app_ctx)
+        .data(block_transactions_loader)
+        .data(block_events_loader)
+        .data(transaction_messages_loader)
+        .data(transaction_events_loader)
+        .data(file_transaction_loader)
+        .data(event_transaction_loader)
+        .limit_complexity(200)
+        .limit_depth(10)
+        .finish()
 }

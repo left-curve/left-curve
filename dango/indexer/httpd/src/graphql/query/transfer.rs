@@ -1,9 +1,13 @@
 use {
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity,
-    indexer_httpd::context::Context,
+    indexer_httpd::{
+        context::Context,
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
+    },
     sea_orm::{
-        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+        ColumnTrait, Condition, EntityTrait, JoinType, Order, QueryFilter, QueryOrder, QuerySelect,
+        QueryTrait, RelationTrait, Select,
     },
     serde::{Deserialize, Serialize},
 };
@@ -14,6 +18,24 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
+}
+
+impl From<SortBy> for Order {
+    fn from(sort_by: SortBy) -> Self {
+        match sort_by {
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,22 +53,19 @@ impl From<entity::transfers::Model> for TransferCursor {
     }
 }
 
-pub type TransferCursorType = OpaqueCursor<TransferCursor>;
-
-static MAX_TRANSFERS: u64 = 100;
-
 #[derive(Default, Debug)]
 pub struct TransferQuery {}
 
 #[Object]
 impl TransferQuery {
+    /// Get paginated transfers
     async fn transfers(
         &self,
         ctx: &async_graphql::Context<'_>,
-        after: Option<String>,
-        before: Option<String>,
-        first: Option<i32>,
-        last: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] after: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] before: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] last: Option<i32>,
         sort_by: Option<SortBy>,
         // The block height of the transfer
         block_height: Option<u64>,
@@ -55,133 +74,125 @@ impl TransferQuery {
         // The to address of the transfer
         to_address: Option<String>,
         username: Option<String>,
-    ) -> Result<Connection<TransferCursorType, entity::transfers::Model, EmptyFields, EmptyFields>>
-    {
+    ) -> Result<
+        Connection<
+            OpaqueCursor<TransferCursor>,
+            entity::transfers::Model,
+            EmptyFields,
+            EmptyFields,
+        >,
+    > {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with::<TransferCursorType, _, _, _, _>(
+        paginate_models(
+            app_ctx,
             after,
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let mut query = entity::transfers::Entity::find();
-                let sort_by = sort_by.unwrap_or_default();
-                let limit;
-                let has_before = before.is_some();
+            sort_by,
+            100,
+            |query, _| {
+                Box::pin(async move {
+                    let mut query = query;
 
-                match (after, before, first, last) {
-                    (after, None, first, None) => {
-                        if let Some(after) = after {
-                            query = apply_filter(query, sort_by, &after);
-                        }
+                    if let Some(block_height) = block_height {
+                        query = query
+                            .filter(entity::transfers::Column::BlockHeight.eq(block_height as i64));
+                    }
 
-                        limit = first.map(|x| x as u64).unwrap_or(MAX_TRANSFERS);
+                    if let Some(from_address) = from_address {
+                        query =
+                            query.filter(entity::transfers::Column::FromAddress.eq(&from_address));
+                    }
 
-                        query = query.limit(limit + 1);
-                    },
-                    (None, before, None, last) => {
-                        if let Some(before) = before {
-                            query = apply_filter(query, sort_by, &before);
-                        }
+                    if let Some(to_address) = to_address {
+                        query = query.filter(entity::transfers::Column::ToAddress.eq(&to_address));
+                    }
 
-                        limit = last.map(|x| x as u64).unwrap_or(MAX_TRANSFERS);
+                    if let Some(username) = username {
+                        // NOTE: keeping the "safe" version for now, until I confirm in production the subquery code works correctly.
 
-                        query = query.limit(limit + 1);
-                    },
-                    _ => unreachable!(),
-                }
+                        // let accounts = entity::accounts::Entity::find()
+                        //     .find_also_related(entity::users::Entity)
+                        //     .filter(entity::users::Column::Username.eq(&username))
+                        //     .all(txn)
+                        //     .await?;
 
-                if let Some(block_height) = block_height {
-                    query = query
-                        .filter(entity::transfers::Column::BlockHeight.eq(block_height as i64));
-                }
+                        // let addresses = accounts
+                        //     .into_iter()
+                        //     .map(|(account, _)| account.address)
+                        //     .collect::<Vec<_>>();
 
-                if let Some(from_address) = from_address {
-                    query = query.filter(entity::transfers::Column::FromAddress.eq(from_address));
-                }
+                        // query = query.filter(
+                        //     entity::transfers::Column::FromAddress
+                        //         .is_in(&addresses)
+                        //         .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+                        // );
 
-                if let Some(to_address) = to_address {
-                    query = query.filter(entity::transfers::Column::ToAddress.eq(to_address));
-                }
+                        // Use subquery to check if transfer involves any account owned by the user
+                        let account_addresses_subquery = entity::accounts::Entity::find()
+                            .select_only()
+                            .column(entity::accounts::Column::Address)
+                            .join(
+                                JoinType::InnerJoin,
+                                entity::accounts::Relation::AccountUser.def(),
+                            )
+                            .join(
+                                JoinType::InnerJoin,
+                                entity::accounts_users::Relation::User.def(),
+                            )
+                            .filter(entity::users::Column::Username.eq(&username));
 
-                if let Some(username) = username {
-                    let accounts = entity::accounts::Entity::find()
-                        .find_also_related(entity::users::Entity)
-                        .filter(entity::users::Column::Username.eq(username))
-                        .all(&app_ctx.db)
-                        .await?;
-
-                    let addresses = accounts
-                        .into_iter()
-                        .map(|(account, _)| account.address)
-                        .collect::<Vec<_>>();
-
-                    query = query.filter(
-                        entity::transfers::Column::FromAddress
-                            .is_in(&addresses)
-                            .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
-                    );
-                }
-
-                match sort_by {
-                    SortBy::BlockHeightAsc => {
-                        query = query.order_by(entity::transfers::Column::BlockHeight, Order::Asc)
-                    },
-                    SortBy::BlockHeightDesc => {
-                        query = query.order_by(entity::transfers::Column::BlockHeight, Order::Desc)
-                    },
-                }
-
-                let mut transfers = query.all(&app_ctx.db).await?;
-
-                if has_before {
-                    transfers.reverse();
-                }
-
-                let mut has_more = false;
-                if transfers.len() > limit as usize {
-                    transfers.pop();
-                    has_more = true;
-                }
-
-                let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection
-                    .edges
-                    .extend(transfers.into_iter().map(|transfer| {
-                        Edge::with_additional_fields(
-                            OpaqueCursor(transfer.clone().into()),
-                            transfer,
-                            EmptyFields,
-                        )
-                    }));
-
-                Ok::<_, async_graphql::Error>(connection)
+                        query =
+                            query.filter(
+                                Condition::any()
+                                    .add(entity::transfers::Column::FromAddress.in_subquery(
+                                        account_addresses_subquery.clone().as_query().to_owned(),
+                                    ))
+                                    .add(entity::transfers::Column::ToAddress.in_subquery(
+                                        account_addresses_subquery.as_query().to_owned(),
+                                    )),
+                            );
+                    }
+                    Ok(query)
+                })
             },
         )
         .await
     }
 }
 
-fn apply_filter(
-    query: Select<entity::transfers::Entity>,
-    sort_by: SortBy,
-    after: &TransferCursor,
-) -> Select<entity::transfers::Entity> {
-    query.filter(match sort_by {
-        SortBy::BlockHeightAsc => Condition::any()
-            .add(entity::transfers::Column::BlockHeight.lt(after.block_height as i64))
-            .add(
-                entity::transfers::Column::BlockHeight
-                    .eq(after.block_height as i64)
-                    .and(entity::transfers::Column::Idx.lt(after.idx)),
+impl CursorFilter<SortBy, TransferCursor> for Select<entity::transfers::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &TransferCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
+                Condition::any()
+                    .add(entity::transfers::Column::BlockHeight.gt(cursor.block_height as i64))
+                    .add(
+                        entity::transfers::Column::BlockHeight
+                            .gte(cursor.block_height as i64)
+                            .and(entity::transfers::Column::Idx.gt(cursor.idx)),
+                    ),
             ),
-        SortBy::BlockHeightDesc => Condition::any()
-            .add(entity::transfers::Column::BlockHeight.gt(after.block_height as i64))
-            .add(
-                entity::transfers::Column::BlockHeight
-                    .eq(after.block_height as i64)
-                    .and(entity::transfers::Column::Idx.gt(after.idx)),
+            SortBy::BlockHeightDesc => self.filter(
+                Condition::any()
+                    .add(entity::transfers::Column::BlockHeight.lt(cursor.block_height as i64))
+                    .add(
+                        entity::transfers::Column::BlockHeight
+                            .lte(cursor.block_height as i64)
+                            .and(entity::transfers::Column::Idx.lt(cursor.idx)),
+                    ),
             ),
-    })
+        }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::transfers::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+
+        self.order_by(entity::transfers::Column::BlockHeight, order.clone())
+            .order_by(entity::transfers::Column::Idx, order)
+    }
 }

@@ -30,13 +30,17 @@ use {
 ///   Used when liquidating the account as the liquidator has sent additional
 ///   funds to the account that should not be included in the total collateral
 ///   value.
+///
+/// - `skip_if_no_debt`: If the account has zero debt, then skip the rest of the
+///   computation and return early with a `None`.
 pub fn query_and_compute_health(
     querier: QuerierWrapper,
     oracle_querier: &mut OracleQuerier,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
-) -> anyhow::Result<HealthResponse> {
+    skip_if_no_debt: bool,
+) -> anyhow::Result<Option<HealthResponse>> {
     let cfg = querier.query_dango_config()?;
     let data = query_health(querier, account, &cfg)?;
 
@@ -78,6 +82,7 @@ pub fn query_and_compute_health(
         prices,
         cfg.collateral_powers,
         discount_collateral,
+        skip_if_no_debt,
     )
 }
 
@@ -129,9 +134,12 @@ pub fn query_health(
 ///   account as the liquidator has sent additional funds to the account
 ///   that should not be included in the total collateral value.
 ///
+/// - `skip_if_no_debt`: If the account has zero debt, then skip the rest of the
+///   computation and return early with a `None`.
+///
 /// ## Outputs
 ///
-/// - a `HealthResponse` struct containing the health of the margin account.
+/// - an `Option<HealthResponse>` containing the health info of the margin account.
 pub fn compute_health(
     HealthData {
         scaled_debts,
@@ -142,7 +150,8 @@ pub fn compute_health(
     prices: BTreeMap<Denom, PrecisionedPrice>,
     collateral_powers: BTreeMap<Denom, CollateralPower>,
     discount_collateral: Option<Coins>,
-) -> anyhow::Result<HealthResponse> {
+    skip_if_no_debt: bool,
+) -> anyhow::Result<Option<HealthResponse>> {
     // ------------------------------- 1. Debts --------------------------------
 
     let mut debts = Coins::new();
@@ -165,6 +174,12 @@ pub fn compute_health(
         let value = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
+    }
+
+    // If the account has no debt, then it must be healthy. We can return early
+    // if the caller has requested so.
+    if total_debt_value.is_zero() && skip_if_no_debt {
+        return Ok(None);
     }
 
     // ---------------------------- 2. Collaterals -----------------------------
@@ -273,7 +288,7 @@ pub fn compute_health(
         total_debt_value / total_adjusted_collateral_value
     };
 
-    Ok(HealthResponse {
+    Ok(Some(HealthResponse {
         utilization_rate,
         total_debt_value,
         total_collateral_value,
@@ -282,5 +297,5 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
-    })
+    }))
 }

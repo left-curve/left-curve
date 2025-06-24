@@ -86,6 +86,17 @@ export type DexQueryMsg =
         limit: Option<number>;
       };
     }
+  /** Simulate a liquidity withdrawal. */
+  | {
+      simulateWithdrawLiquidity: {
+        /** The base denomination of the trading pair. */
+        baseDenom: Denom;
+        /** The quote denomination of the trading pair. */
+        quoteDenom: Denom;
+        /** The amount of liquidity to withdraw, in the liquidity token denom. */
+        lpBurnAmount: string;
+      };
+    }
   /** Query a single active order by ID. */
   | {
       order: {
@@ -194,6 +205,11 @@ export type GetDexQueryMsg<K extends KeyOfUnion<DexQueryMsg>> = ExtractFromUnion
 export type PairId = {
   baseDenom: string;
   quoteDenom: string;
+};
+
+export type PairSymbols = {
+  baseSymbol: string;
+  quoteSymbol: string;
 };
 
 export type OrderId = number;

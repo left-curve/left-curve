@@ -1,3 +1,5 @@
+#[cfg(feature = "chrono")]
+use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use {
     crate::Inner,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -118,19 +120,41 @@ impl Duration {
 
 #[cfg(feature = "chrono")]
 impl Timestamp {
-    pub fn to_utc_date_time(&self) -> chrono::DateTime<chrono::Utc> {
+    pub fn to_utc_date_time(&self) -> DateTime<Utc> {
         // This panics if the timestamp (as nanoseconds) overflows `i64` range.
         // But that'd be 500 years or so from now...
-        chrono::DateTime::from_timestamp_nanos(self.into_nanos() as i64)
+        DateTime::from_timestamp_nanos(self.into_nanos() as i64)
     }
 
-    pub fn to_naive_date_time(&self) -> chrono::NaiveDateTime {
+    pub fn to_naive_date_time(&self) -> NaiveDateTime {
         self.to_utc_date_time().naive_utc()
     }
 
     pub fn to_rfc3339_string(&self) -> String {
         self.to_utc_date_time()
-            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true)
+            .to_rfc3339_opts(SecondsFormat::AutoSi, true)
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl From<DateTime<Utc>> for Timestamp {
+    /// ## Panics
+    ///
+    /// This method panics after April 11, 2262 when the UNIX timestamp, denoted
+    /// in nanoseconds, goes out of the `i64` range.
+    fn from(datetime: DateTime<Utc>) -> Self {
+        let Some(nanos) = datetime.timestamp_nanos_opt() else {
+            panic!("UNIX timestamp is out of `i64` range: {datetime}");
+        };
+
+        Self::from_nanos(nanos as u128)
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl From<NaiveDateTime> for Timestamp {
+    fn from(datetime: NaiveDateTime) -> Self {
+        datetime.and_utc().into()
     }
 }
 

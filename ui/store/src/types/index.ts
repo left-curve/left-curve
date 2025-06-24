@@ -48,16 +48,15 @@ export type {
 } from "./store.js";
 
 export type {
-  AlloyCoin,
+  LpCoin,
   AnyCoin,
   BaseCoin,
   CoinFee,
-  CoinGeckoId,
-  ContractCoin,
   NativeCoin,
   WithGasPriceStep,
   WithPrice,
   WithAmount,
+  WithBalance,
 } from "./coin.js";
 
 export { ConnectionStatus } from "./store.js";

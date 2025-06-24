@@ -101,3 +101,9 @@ export type AllLeafKeys<T> = {
 }[keyof T];
 
 export type ExtractFromUnion<T, K extends KeyOfUnion<T>> = Extract<T, { [P in K]: unknown }>;
+
+export type NestedOmit<T, TPath extends string> = TPath extends `${infer TKey}.${infer TRest}`
+  ? TKey extends keyof T
+    ? Omit<T, TKey> & { [K in TKey]: NestedOmit<T[K], TRest> }
+    : T
+  : Omit<T, TPath & keyof T>;

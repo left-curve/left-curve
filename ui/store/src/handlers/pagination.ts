@@ -29,7 +29,7 @@ export function withPagination<T = unknown>(parameters: WithPaginationParameters
   }
 
   const initialPageParam = {
-    last: limit,
+    first: limit,
     sortBy,
   };
 

@@ -325,6 +325,24 @@ export function createConfig<
     });
   }
 
+  function getCoinInfo(denom: Denom): AnyCoin {
+    const allCoins = coins.getState()!;
+    if (!denom.includes("dex")) return allCoins[denom];
+    const [_, __, baseDenom, quoteDenom] = denom.split("/");
+    const coinsArray = Object.values(allCoins);
+    const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
+    const quoteCoin = coinsArray.find((x) => x.denom.includes(quoteDenom))!;
+
+    return {
+      type: "lp",
+      symbol: `${baseCoin.symbol}-${quoteCoin.symbol}`,
+      denom,
+      decimals: 0,
+      base: baseCoin,
+      quote: quoteCoin,
+    };
+  }
+
   return {
     get coins() {
       return coins.getState() ?? {};
@@ -339,6 +357,7 @@ export function createConfig<
       return connectors.getState();
     },
     storage,
+    getCoinInfo,
     getAppConfig,
     getClient,
     get state() {

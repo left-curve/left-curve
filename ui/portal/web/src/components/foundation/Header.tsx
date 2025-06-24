@@ -79,7 +79,13 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           </Button>
 
           {isConnected ? (
-            <TxIndicator as={Button} variant="utility" size="lg">
+            <TxIndicator
+              as={Button}
+              variant="utility"
+              size="lg"
+              data-status={linkStatus("/notifications")}
+              onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
+            >
               <Button
                 ref={buttonNotificationsRef}
                 variant="utility"

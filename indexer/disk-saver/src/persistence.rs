@@ -301,7 +301,7 @@ impl DiskPersistence {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, assertor::*, grug::setup_tracing_subscriber};
+    use {super::*, assertor::*};
 
     #[derive(Debug, BorshSerialize, BorshDeserialize, Default, PartialEq, Eq)]
     struct Block {
@@ -311,8 +311,6 @@ mod tests {
 
     #[test]
     fn test_disk_automatic_compression() {
-        setup_tracing_subscriber(tracing::Level::INFO);
-
         let temp_file = NamedTempFile::new().expect("failed to create a temp file");
         let mut temp_filename = temp_file.path().to_path_buf();
         let temp_filename2 = temp_file.path().to_path_buf();
@@ -339,8 +337,6 @@ mod tests {
 
     #[test]
     fn test_disk_later_compression() {
-        setup_tracing_subscriber(tracing::Level::DEBUG);
-
         let temp_file = NamedTempFile::new().expect("failed to create a temp file");
         let mut temp_filename = temp_file.path().to_path_buf();
         let temp_filename2 = temp_file.path().to_path_buf();
@@ -400,8 +396,6 @@ mod tests {
 
     #[test]
     fn test_compression_then_read() {
-        setup_tracing_subscriber(tracing::Level::DEBUG);
-
         let temp_file = NamedTempFile::new().expect("failed to create a temp file");
         let mut temp_filename1 = temp_file.path().to_path_buf();
         let temp_filename2 = temp_filename1.clone();
@@ -431,8 +425,6 @@ mod tests {
 
     #[test]
     fn test_decompression_then_read() {
-        setup_tracing_subscriber(tracing::Level::DEBUG);
-
         let temp_file = NamedTempFile::new().expect("failed to create a temp file");
         let mut temp_filename1 = temp_file.path().to_path_buf();
         let temp_filename2 = temp_filename1.clone();

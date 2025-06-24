@@ -1,10 +1,11 @@
 use {
-    crate::context::Context,
-    async_graphql::{connection::*, *},
-    indexer_sql::entity::{self, prelude::Transactions},
-    sea_orm::{
-        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+    crate::{
+        context::Context,
+        graphql::query::pagination::{CursorFilter, CursorOrder, Reversible, paginate_models},
     },
+    async_graphql::{connection::*, *},
+    indexer_sql::entity,
+    sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, Select},
     serde::{Deserialize, Serialize},
 };
 
@@ -14,6 +15,24 @@ pub enum SortBy {
     BlockHeightAsc,
     #[default]
     BlockHeightDesc,
+}
+
+impl Reversible for SortBy {
+    fn rev(&self) -> Self {
+        match self {
+            SortBy::BlockHeightAsc => SortBy::BlockHeightDesc,
+            SortBy::BlockHeightDesc => SortBy::BlockHeightAsc,
+        }
+    }
+}
+
+impl From<SortBy> for Order {
+    fn from(sort_by: SortBy) -> Self {
+        match sort_by {
+            SortBy::BlockHeightAsc => Order::Asc,
+            SortBy::BlockHeightDesc => Order::Desc,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,148 +50,103 @@ impl From<entity::transactions::Model> for TransactionCursor {
     }
 }
 
-pub type TransactionCursorType = OpaqueCursor<TransactionCursor>;
-
-const MAX_TRANSACTIONS: u64 = 100;
-
 #[derive(Default, Debug)]
 pub struct TransactionQuery {}
 
 #[Object]
 impl TransactionQuery {
-    /// Get transactions
+    /// Get paginated transactions.
     async fn transactions(
         &self,
         ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Cursor based pagination")] after: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] before: Option<String>,
+        #[graphql(desc = "Cursor based pagination")] first: Option<i32>,
+        #[graphql(desc = "Cursor based pagination")] last: Option<i32>,
+        sort_by: Option<SortBy>,
         hash: Option<String>,
         block_height: Option<u64>,
-        after: Option<String>,
-        before: Option<String>,
-        first: Option<i32>,
-        last: Option<i32>,
-        sort_by: Option<SortBy>,
         sender_address: Option<String>,
     ) -> Result<
-        Connection<TransactionCursorType, entity::transactions::Model, EmptyFields, EmptyFields>,
+        Connection<
+            OpaqueCursor<TransactionCursor>,
+            entity::transactions::Model,
+            EmptyFields,
+            EmptyFields,
+        >,
     > {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with::<TransactionCursorType, _, _, _, _>(
+        paginate_models(
+            app_ctx,
             after,
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let mut query = entity::transactions::Entity::find();
-                let sort_by = sort_by.unwrap_or_default();
-                let limit;
-                let has_before = before.is_some();
+            sort_by,
+            100,
+            |query, _| {
+                Box::pin(async move {
+                    let mut query = query;
 
-                match (after, before, first, last) {
-                    (after, None, first, None) => {
-                        if let Some(after) = after {
-                            query = apply_filter(query, sort_by, &after);
-                        }
+                    if let Some(block_height) = block_height {
+                        query = query.filter(
+                            entity::transactions::Column::BlockHeight.eq(block_height as i64),
+                        );
+                    }
 
-                        limit = first.map(|x| x as u64).unwrap_or(MAX_TRANSACTIONS);
+                    if let Some(hash) = hash {
+                        query = query.filter(entity::transactions::Column::Hash.eq(&hash));
+                    }
 
-                        query = query.limit(limit + 1);
-                    },
-                    (None, before, None, last) => {
-                        if let Some(before) = before {
-                            query = apply_filter(query, sort_by, &before);
-                        }
+                    if let Some(sender_address) = sender_address {
+                        query =
+                            query.filter(entity::transactions::Column::Sender.eq(&sender_address));
+                    }
 
-                        limit = last.map(|x| x as u64).unwrap_or(MAX_TRANSACTIONS);
-
-                        query = query.limit(limit + 1);
-                    },
-                    _ => unreachable!(),
-                }
-
-                if let Some(block_height) = block_height {
-                    query = query
-                        .filter(entity::transactions::Column::BlockHeight.eq(block_height as i64));
-                }
-
-                if let Some(hash) = hash {
-                    query = query.filter(entity::transactions::Column::Hash.eq(&hash));
-                }
-
-                if let Some(sender_address) = sender_address {
-                    query = query.filter(entity::transactions::Column::Sender.eq(&sender_address));
-                }
-
-                match sort_by {
-                    SortBy::BlockHeightAsc => {
-                        query = query
-                            .order_by(entity::transactions::Column::BlockHeight, Order::Asc)
-                            .order_by(entity::transactions::Column::TransactionIdx, Order::Asc)
-                    },
-                    SortBy::BlockHeightDesc => {
-                        query = query
-                            .order_by(entity::transactions::Column::BlockHeight, Order::Desc)
-                            .order_by(entity::transactions::Column::TransactionIdx, Order::Desc)
-                    },
-                }
-
-                let mut transactions = query.all(&app_ctx.db).await?;
-
-                if has_before {
-                    transactions.reverse();
-                }
-
-                let mut has_more = false;
-                if transactions.len() > limit as usize {
-                    transactions.pop();
-                    has_more = true;
-                }
-
-                let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection
-                    .edges
-                    .extend(transactions.into_iter().map(|transaction| {
-                        Edge::with_additional_fields(
-                            OpaqueCursor(transaction.clone().into()),
-                            transaction,
-                            EmptyFields,
-                        )
-                    }));
-
-                Ok::<_, async_graphql::Error>(connection)
+                    Ok(query)
+                })
             },
         )
         .await
     }
 }
 
-fn apply_filter(
-    query: Select<Transactions>,
-    sort_by: SortBy,
-    after: &TransactionCursor,
-) -> Select<Transactions> {
-    match sort_by {
-        SortBy::BlockHeightAsc => query.filter(
-            Condition::any()
-                .add(entity::transactions::Column::BlockHeight.lt(after.block_height))
-                .add(
-                    Condition::all()
-                        .add(entity::transactions::Column::BlockHeight.lte(after.block_height))
-                        .add(
-                            entity::transactions::Column::TransactionIdx.lt(after.transaction_idx),
-                        ),
-                ),
-        ),
-        SortBy::BlockHeightDesc => query.filter(
-            Condition::any()
-                .add(entity::transactions::Column::BlockHeight.gt(after.block_height))
-                .add(
-                    Condition::all()
-                        .add(entity::transactions::Column::BlockHeight.gte(after.block_height))
-                        .add(
-                            entity::transactions::Column::TransactionIdx.gt(after.transaction_idx),
-                        ),
-                ),
-        ),
+impl CursorFilter<SortBy, TransactionCursor> for Select<entity::transactions::Entity> {
+    fn cursor_filter(self, sort: &SortBy, cursor: &TransactionCursor) -> Self {
+        match sort {
+            SortBy::BlockHeightAsc => self.filter(
+                Condition::any()
+                    .add(entity::transactions::Column::BlockHeight.gt(cursor.block_height))
+                    .add(
+                        Condition::all()
+                            .add(entity::transactions::Column::BlockHeight.gte(cursor.block_height))
+                            .add(
+                                entity::transactions::Column::TransactionIdx
+                                    .gt(cursor.transaction_idx),
+                            ),
+                    ),
+            ),
+            SortBy::BlockHeightDesc => self.filter(
+                Condition::any()
+                    .add(entity::transactions::Column::BlockHeight.lt(cursor.block_height))
+                    .add(
+                        Condition::all()
+                            .add(entity::transactions::Column::BlockHeight.lte(cursor.block_height))
+                            .add(
+                                entity::transactions::Column::TransactionIdx
+                                    .lt(cursor.transaction_idx),
+                            ),
+                    ),
+            ),
+        }
+    }
+}
+
+impl CursorOrder<SortBy> for Select<entity::transactions::Entity> {
+    fn cursor_order(self, sort: SortBy) -> Self {
+        let order: Order = sort.into();
+        self.order_by(entity::transactions::Column::BlockHeight, order.clone())
+            .order_by(entity::transactions::Column::TransactionIdx, order)
     }
 }

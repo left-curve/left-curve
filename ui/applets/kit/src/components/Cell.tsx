@@ -24,6 +24,7 @@ import type { AnyCoin } from "@left-curve/store/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
+import { PairAssets } from "./PairAssets";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -54,6 +55,28 @@ const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
         />
       )}
       <p className="min-w-fit">{coin.symbol}</p>
+    </div>
+  );
+};
+
+type CellAssetsProps = {
+  className?: string;
+  assets: AnyCoin[];
+  noImage?: boolean;
+};
+
+const Assets: React.FC<CellAssetsProps> = ({ assets, noImage }) => {
+  return (
+    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+      {!noImage && <PairAssets assets={assets} />}
+      <p className="min-w-fit">
+        {assets.map((asset, i) => (
+          <span key={`text-${asset.symbol}-${i}`}>
+            {asset.symbol}
+            {i < assets.length - 1 ? "- " : ""}
+          </span>
+        ))}
+      </p>
     </div>
   );
 };
@@ -283,6 +306,7 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type }) => {
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
+  Assets,
   Action,
   Amount,
   Time,

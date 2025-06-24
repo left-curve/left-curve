@@ -1,5 +1,8 @@
 #[cfg(feature = "async-graphql")]
-use async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject};
+use {
+    async_graphql::{ComplexObject, Context, Result as GraphQLResult, SimpleObject},
+    grug::Timestamp,
+};
 use {
     sea_orm::entity::prelude::*,
     serde::{Deserialize, Serialize},
@@ -19,6 +22,8 @@ pub struct Model {
     )]
     pub id: Uuid,
     pub idx: i32,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    #[serde(with = "indexer_sql::serde_iso8601")]
     pub created_at: DateTime,
     pub block_height: i64,
     pub tx_hash: String,
@@ -31,6 +36,11 @@ pub struct Model {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Model {
+    /// Returns the account creation timestamp in ISO 8601 format with time zone.
+    async fn created_at(&self) -> String {
+        Timestamp::from(self.created_at).to_rfc3339_string()
+    }
+
     pub async fn accounts(
         &self,
         ctx: &Context<'_>,
