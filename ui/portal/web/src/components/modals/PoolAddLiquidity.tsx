@@ -9,7 +9,7 @@ import { m } from "~/paraglide/messages";
 
 type PoolAddLiquidityProps = {
   confirmAddLiquidity: () => void;
-  rejectAddLiquidity: () => void;
+  rejectAddLiquidity?: () => void;
   coins: {
     base: WithAmount<AnyCoin>;
     quote: WithAmount<AnyCoin>;
@@ -25,7 +25,9 @@ export const PoolAddLiquidity = forwardRef(
     const { base, quote } = coins;
 
     useImperativeHandle(ref, () => ({
-      triggerOnClose: () => rejectAddLiquidity(),
+      triggerOnClose: () => {
+        if (rejectAddLiquidity) rejectAddLiquidity();
+      },
     }));
 
     return (
@@ -72,7 +74,10 @@ export const PoolAddLiquidity = forwardRef(
         <IconButton
           className="hidden md:block absolute right-4 top-4"
           variant="link"
-          onClick={() => [rejectAddLiquidity(), hideModal()]}
+          onClick={() => {
+            if (rejectAddLiquidity) rejectAddLiquidity();
+            hideModal();
+          }}
         >
           <IconClose />
         </IconButton>

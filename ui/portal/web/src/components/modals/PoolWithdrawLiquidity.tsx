@@ -7,7 +7,7 @@ import { m } from "~/paraglide/messages";
 
 type PoolWithdrawLiquidityProps = {
   confirmWithdrawal: () => void;
-  rejectWithdrawal: () => void;
+  rejectWithdrawal?: () => void;
 };
 
 export const PoolWithdrawLiquidity = forwardRef(
@@ -15,7 +15,9 @@ export const PoolWithdrawLiquidity = forwardRef(
     const { hideModal, settings } = useApp();
 
     useImperativeHandle(ref, () => ({
-      triggerOnClose: () => rejectWithdrawal(),
+      triggerOnClose: () => {
+        if (rejectWithdrawal) rejectWithdrawal();
+      },
     }));
 
     return (
@@ -34,7 +36,10 @@ export const PoolWithdrawLiquidity = forwardRef(
         <IconButton
           className="hidden md:block absolute right-4 top-4"
           variant="link"
-          onClick={() => [rejectWithdrawal(), hideModal()]}
+          onClick={() => {
+            if (rejectWithdrawal) rejectWithdrawal();
+            hideModal();
+          }}
         >
           <IconClose />
         </IconButton>

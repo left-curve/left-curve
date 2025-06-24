@@ -300,7 +300,6 @@ const PoolLiquidityDeposit: React.FC = () => {
           showModal(Modals.PoolAddLiquidity, {
             coins,
             confirmAddLiquidity: deposit.mutateAsync,
-            rejectAddLiquidity: deposit.reset,
           })
         }
       >
@@ -394,7 +393,6 @@ const PoolLiquidityWithdraw: React.FC = () => {
         onClick={() =>
           showModal(Modals.PoolWithdrawLiquidity, {
             confirmWithdrawal: withdraw.mutateAsync,
-            rejectWithdrawal: withdraw.reset,
           })
         }
       >
