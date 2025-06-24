@@ -1,7 +1,14 @@
+# Common labels for all services
+x-common-labels: &common-labels
+  environment: "development"
+  project: "localdango"
+
 services:
   db:
     image: postgres:17
     shm_size: 1gb
+    labels:
+      <<: *common-labels
     ports:
       # For security reasons, postgres should only accept connections from localhost.
       - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
@@ -22,6 +29,8 @@ services:
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
+    labels:
+      <<: *common-labels
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +55,8 @@ services:
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    labels:
+      <<: *common-labels
     depends_on:
       - dango
     ports:
@@ -70,7 +81,8 @@ services:
   prometheus:
     image: prom/prometheus:latest
     profiles: ["analytics"]
-    container_name: prometheus
+    labels:
+      <<: *common-labels
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
@@ -78,12 +90,13 @@ services:
       - ./monitoring/prometheus/alerts:/etc/prometheus/alerts
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - "--config.file=/etc/prometheus/prometheus.yml"
 
   grafana:
     image: grafana/grafana:latest
     profiles: ["analytics"]
-    container_name: grafana
+    labels:
+      <<: *common-labels
     restart: always
     ports:
       - "127.0.0.1:3000:3000"
@@ -98,6 +111,8 @@ services:
   alertmanager:
     image: prom/alertmanager:latest
     profiles: ["analytics"]
+    labels:
+      <<: *common-labels
     container_name: alertmanager
     ports:
       - "127.0.0.1:9093:9093"
@@ -106,17 +121,21 @@ services:
       - alertmanager_data:/alertmanager
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
-      - '--storage.path=/alertmanager'
+      - "--storage.path=/alertmanager"
 
   push_gateway:
     image: prom/pushgateway:latest
     profiles: ["analytics"]
+    labels:
+      <<: *common-labels
     restart: always
     ports:
       - "127.0.0.1:9091:9091"
 
   node-exporter:
     image: prom/node-exporter:latest
+    labels:
+      <<: *common-labels
     container_name: node-exporter
     restart: unless-stopped
     volumes:
@@ -124,17 +143,46 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
       - "9100:9100"
+
+  loki:
+    image: grafana/loki:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./monitoring/loki:/etc/loki
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+
+  promtail:
+    image: grafana/promtail:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./monitoring/promtail:/etc/promtail
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
 
 volumes:
   prometheus_data:
   grafana_data:
   alertmanager_data:
+  loki_data:
   db_data:
   dango_data:
   dango_indexer:
