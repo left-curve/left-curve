@@ -3,6 +3,8 @@ import { useApp } from "~/hooks/useApp";
 
 import { forwardRef, useImperativeHandle } from "react";
 
+import { m } from "~/paraglide/messages";
+
 type PoolWithdrawLiquidityProps = {
   confirmWithdrawal: () => void;
   rejectWithdrawal: () => void;
@@ -23,10 +25,9 @@ export const PoolWithdrawLiquidity = forwardRef(
             <IconAlert />
           </div>
           <div className="flex flex-col gap-2">
-            <h3 className="h4-bold">Withdrawal Confirmation</h3>
+            <h3 className="h4-bold">{m["poolLiquidity.modal.withdrawalConfirmation"]()}</h3>
             <p className="text-gray-500 diatype-m-regular">
-              Are you sure you want to withdraw? If you withdraw now, you will have to pay a
-              penalty.
+              {m["poolLiquidity.modal.withdrawPenaltyAdvice"]()}
             </p>
           </div>
         </div>
@@ -38,7 +39,7 @@ export const PoolWithdrawLiquidity = forwardRef(
           <IconClose />
         </IconButton>
         <Button fullWidth onClick={() => [confirmWithdrawal(), hideModal()]}>
-          Continue Withdraw
+          {m["poolLiquidity.modal.continueWithdraw"]()}
         </Button>
       </div>
     );

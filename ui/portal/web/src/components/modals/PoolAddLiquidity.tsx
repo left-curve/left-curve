@@ -5,6 +5,8 @@ import { forwardRef, useImperativeHandle } from "react";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import { usePrices } from "@left-curve/store";
 
+import { m } from "~/paraglide/messages";
+
 type PoolAddLiquidityProps = {
   confirmAddLiquidity: () => void;
   rejectAddLiquidity: () => void;
@@ -28,7 +30,9 @@ export const PoolAddLiquidity = forwardRef(
 
     return (
       <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-        <p className="text-gray-900 diatype-lg-medium w-full text-center">Add Liquidity</p>
+        <p className="text-gray-900 diatype-lg-medium w-full text-center">
+          {m["poolLiquidity.modal.addLiquidity"]()}
+        </p>
         <div className=" flex flex-col gap-8">
           <div className="flex gap-2 items-center">
             <PairAssets assets={[base, quote]} />
@@ -38,7 +42,9 @@ export const PoolAddLiquidity = forwardRef(
             <Badge color="green" size="s" text="Stable Strategy" />
           </div>
           <div className="flex flex-col gap-4">
-            <p className="exposure-sm-italic text-gray-300 font-normal">Depositing</p>
+            <p className="exposure-sm-italic text-gray-300 font-normal">
+              {m["poolLiquidity.modal.depositing"]()}
+            </p>
             <div className="flex flex-col">
               <div className="w-full flex items-center justify-between">
                 <p className="text-gray-700 h3-bold">
@@ -71,7 +77,7 @@ export const PoolAddLiquidity = forwardRef(
           <IconClose />
         </IconButton>
         <Button fullWidth onClick={() => [confirmAddLiquidity(), hideModal()]}>
-          Confirm
+          {m["common.confirm"]()}
         </Button>
       </div>
     );

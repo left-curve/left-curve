@@ -529,7 +529,14 @@
     "liquidity": "Liquidity",
     "deposit": "You deposit",
     "withdrawAmount": "Withdrawal amount",
-    "amount": "amount"
+    "amount": "amount",
+    "modal": {
+      "addLiquidity": "Add Liquidity",
+      "depositing": "Depositing",
+      "withdrawalConfirmation": "Withdrawal Confirmation",
+      "withdrawPenaltyAdvice": "Are you sure you want to withdraw? If you withdraw now, you will have to pay a penalty.",
+      "continueWithdraw": "Continue Withdraw"
+    }
   },
   "settings": {
     "title": "Settings",
