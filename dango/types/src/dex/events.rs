@@ -54,16 +54,8 @@ pub struct OrderFilled {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("swap_exact_amount_in")]
-pub struct SwapExactAmountIn {
-    pub user: Addr,
-    pub input: Coin,
-    pub output: Coin,
-}
-
-#[grug::derive(Serde)]
-#[grug::event("swap_exact_amount_out")]
-pub struct SwapExactAmountOut {
+#[grug::event("swapped")]
+pub struct Swapped {
     pub user: Addr,
     pub input: Coin,
     pub output: Coin,

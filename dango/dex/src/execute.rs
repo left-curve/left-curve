@@ -9,8 +9,7 @@ use {
         DangoQuerier, bank,
         dex::{
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, SwapExactAmountIn,
-            SwapExactAmountOut,
+            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
         },
     },
     grug::{
@@ -260,6 +259,7 @@ fn swap_exact_amount_in(
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
+
     let (reserves, output) =
         core::swap_exact_amount_in(ctx.storage, ctx.querier, route, input.clone())?;
 
@@ -283,7 +283,7 @@ fn swap_exact_amount_in(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, output.clone())?)
-        .add_event(SwapExactAmountIn {
+        .add_event(Swapped {
             user: ctx.sender,
             input,
             output,
@@ -313,7 +313,7 @@ fn swap_exact_amount_out(
     // here, because we already ensure it's non-zero.
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_event(SwapExactAmountOut {
+        .add_event(Swapped {
             user: ctx.sender,
             input,
             output: output.into_inner(),
