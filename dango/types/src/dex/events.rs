@@ -41,7 +41,7 @@ pub struct OrderCanceled {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("orders_matched")]
+#[grug::event("limit_orders_matched")]
 pub struct LimitOrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
