@@ -253,7 +253,7 @@ mod tests {
         };
         "mock with two prices"
     )]
-    fn test_mock(prices: HashMap<Denom, PrecisionedPrice>) {
+    fn mock(prices: HashMap<Denom, PrecisionedPrice>) {
         let mut oracle_querier = OracleQuerier::new_mock(prices.clone());
 
         for (denom, expected_price) in prices {
@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_querier_with_no_prices() {
+    fn mock_querier_with_no_prices() {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         oracle_querier
@@ -273,5 +273,41 @@ mod tests {
                 "price not provided to oracle querier for denom `{}`",
                 eth::DENOM.clone()
             ));
+    }
+
+    #[test_case(
+        Timestamp::from_seconds(1730802926), None => true;
+        "`no_older_than` is unspecified; should succeed"
+    )]
+    #[test_case(
+        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802925)) => true;
+        "`no_older_than` is older than the price timestamp; should succeed"
+    )]
+    #[test_case(
+        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802926)) => true;
+        "`no_older_than` equals the price timestamp; should succeed"
+    )]
+    #[test_case(
+        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802927)) => false;
+        "`no_older_than` is newer than the price timestamp; should fail"
+    )]
+    fn querier_staleness_assertion_works(
+        publish_time: Timestamp,
+        no_older_than: Option<Timestamp>,
+    ) -> bool {
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(2000),
+                Udec128::new_percent(2000),
+                publish_time,
+                6,
+            ),
+        });
+
+        if let Some(no_older_than) = no_older_than {
+            oracle_querier = oracle_querier.with_no_older_than(no_older_than);
+        }
+
+        oracle_querier.query_price(&eth::DENOM, None).is_ok()
     }
 }
