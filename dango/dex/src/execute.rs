@@ -2,7 +2,7 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{MAX_ORACLE_STALENESS, PAIRS, PassiveLiquidityPool, RESERVES, core},
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -182,8 +182,11 @@ fn provide_liquidity(
     // Query the LP token supply.
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
 
+    // Create the oracle querier with max staleness.
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
     // Compute the amount of LP tokens to mint.
-    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
     let (reserve, lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
 
@@ -260,8 +263,13 @@ fn swap_exact_amount_in(
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
 
+    // Create the oracle querier with max staleness.
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    // Perform the swap.
     let (reserves, output) =
-        core::swap_exact_amount_in(ctx.storage, ctx.querier, route, input.clone())?;
+        core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route, input.clone())?;
 
     // Ensure the output is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.

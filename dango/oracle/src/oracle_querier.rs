@@ -1,13 +1,14 @@
 use {
     crate::{PRICE_SOURCES, PRICES},
-    anyhow::anyhow,
+    anyhow::{anyhow, ensure},
     dango_types::{
         DangoQuerier,
         lending::{NAMESPACE, SUBNAMESPACE},
         oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
-        Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Udec128,
+        Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
+        Udec128,
     },
     pyth_types::PythId,
     std::{cell::OnceCell, collections::HashMap},
@@ -15,6 +16,7 @@ use {
 
 pub struct OracleQuerier<'a> {
     cache: Cache<'a, Denom, PrecisionedPrice, anyhow::Error, PriceSource>,
+    no_older_than: Option<Timestamp>,
 }
 
 impl<'a> OracleQuerier<'a> {
@@ -27,6 +29,7 @@ impl<'a> OracleQuerier<'a> {
             cache: Cache::new(move |denom, price_source| {
                 no_cache_querier.query_price(denom, price_source)
             }),
+            no_older_than: None,
         }
     }
 
@@ -39,7 +42,13 @@ impl<'a> OracleQuerier<'a> {
                     anyhow!("[mock]: price not provided to oracle querier for denom `{denom}`")
                 })
             }),
+            no_older_than: None,
         }
+    }
+
+    pub fn with_no_older_than(mut self, no_older_than: Timestamp) -> Self {
+        self.no_older_than = Some(no_older_than);
+        self
     }
 
     pub fn query_price(
@@ -47,7 +56,22 @@ impl<'a> OracleQuerier<'a> {
         denom: &Denom,
         price_source: Option<PriceSource>,
     ) -> anyhow::Result<PrecisionedPrice> {
-        self.cache.get_or_fetch(denom, price_source).cloned()
+        self.cache
+            .get_or_fetch(denom, price_source)
+            .and_then(|price| {
+                if let Some(no_older_than) = self.no_older_than {
+                    ensure!(
+                        price.timestamp >= no_older_than,
+                        "price is too old! denom: {}, timestamp: {}, must be no older than: {}",
+                        denom,
+                        price.timestamp.into_nanos(),
+                        no_older_than.into_nanos()
+                    );
+                }
+
+                Ok(price)
+            })
+            .cloned()
     }
 }
 
@@ -229,7 +253,7 @@ mod tests {
         };
         "mock with two prices"
     )]
-    fn test_mock(prices: HashMap<Denom, PrecisionedPrice>) {
+    fn mock(prices: HashMap<Denom, PrecisionedPrice>) {
         let mut oracle_querier = OracleQuerier::new_mock(prices.clone());
 
         for (denom, expected_price) in prices {
@@ -240,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_querier_with_no_prices() {
+    fn mock_querier_with_no_prices() {
         let mut oracle_querier = OracleQuerier::new_mock(HashMap::new());
 
         oracle_querier
@@ -249,5 +273,41 @@ mod tests {
                 "price not provided to oracle querier for denom `{}`",
                 eth::DENOM.clone()
             ));
+    }
+
+    #[test_case(
+        Timestamp::from_seconds(1730802926), None => true;
+        "`no_older_than` is unspecified; should succeed"
+    )]
+    #[test_case(
+        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802925)) => true;
+        "`no_older_than` is older than the price timestamp; should succeed"
+    )]
+    #[test_case(
+        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802926)) => true;
+        "`no_older_than` equals the price timestamp; should succeed"
+    )]
+    #[test_case(
+        Timestamp::from_seconds(1730802926), Some(Timestamp::from_seconds(1730802927)) => false;
+        "`no_older_than` is newer than the price timestamp; should fail"
+    )]
+    fn querier_staleness_assertion_works(
+        publish_time: Timestamp,
+        no_older_than: Option<Timestamp>,
+    ) -> bool {
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(2000),
+                Udec128::new_percent(2000),
+                publish_time,
+                6,
+            ),
+        });
+
+        if let Some(no_older_than) = no_older_than {
+            oracle_querier = oracle_querier.with_no_older_than(no_older_than);
+        }
+
+        oracle_querier.query_price(&eth::DENOM, None).is_ok()
     }
 }
