@@ -4,13 +4,6 @@ use {
 };
 
 #[grug::derive(Serde)]
-#[grug::event("pair_updated")]
-pub struct PairUpdated {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-}
-
-#[grug::derive(Serde)]
 #[grug::event("order_submitted")]
 pub struct OrderSubmitted {
     pub order_id: OrderId,
