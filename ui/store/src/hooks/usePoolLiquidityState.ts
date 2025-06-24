@@ -77,7 +77,7 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
 
   const userLiquidity = useQuery({
     enabled: userHasLiquidity,
-    queryKey: ["userLiquidity", account?.address, pair.baseDenom, pair.quoteDenom],
+    queryKey: ["userLiquidity", account?.address, pair.baseDenom, pair.quoteDenom, lpBalance],
     queryFn: async () => {
       if (!account) throw new Error("not account found");
       const [{ amount: baseAmount }, { amount: quoteAmount }] =
