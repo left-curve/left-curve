@@ -1,5 +1,5 @@
 use {
-    dango_oracle::PRICES,
+    dango_oracle::{OracleQuerier, PRICES},
     dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         constants::{atom, bnb, btc, doge, eth, sol, usdc, xrp},
@@ -330,4 +330,42 @@ fn sequence() {
     assert_eq!(new_price.timestamp, price.timestamp);
     assert_eq!(new_price.humanized_price, price.humanized_price);
     assert_eq!(new_pyth_vaa.wormhole_vaa.sequence, sequence);
+}
+
+/// Ensure that the `with_no_older_than` method of `OracleQuerier` works as expected.
+#[test]
+fn querier_staleness_assertion() {
+    const VAA_1_PUBLISH_TIME: u128 = 1730804420;
+
+    let (mut suite, mut accounts, oracle) = setup_oracle_test();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                Binary::from_str(VAA_1).unwrap(),
+            ])),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Query without a max staleness. should succeed.
+    OracleQuerier::new_remote(oracle, suite.querier())
+        .query_price(&btc::DENOM, None)
+        .should_succeed();
+
+    // Query with a max staleness that is older tha publish time of `VAA_1`.
+    // Should succeed.
+    OracleQuerier::new_remote(oracle, suite.querier())
+        .with_no_older_than(Timestamp::from_seconds(VAA_1_PUBLISH_TIME - 1))
+        .query_price(&btc::DENOM, None)
+        .should_succeed();
+
+    // Query with a max staleness that is newer than publish time of `VAA_1`.
+    // Should fail.
+    OracleQuerier::new_remote(oracle, suite.querier())
+        .with_no_older_than(Timestamp::from_seconds(VAA_1_PUBLISH_TIME + 1))
+        .query_price(&btc::DENOM, None)
+        .should_fail_with_error("price is too old!");
 }
