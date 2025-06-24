@@ -308,6 +308,7 @@ const PoolLiquidityDeposit: React.FC = () => {
 };
 
 const PoolLiquidityWithdraw: React.FC = () => {
+  const { showModal } = useApp();
   const { state, controllers } = usePoolLiquidity();
   const { coins, action, withdraw, withdrawPercent, withdrawAmount } = state;
   const { setValue } = controllers;
@@ -387,7 +388,12 @@ const PoolLiquidityWithdraw: React.FC = () => {
         size="md"
         fullWidth
         isLoading={withdraw.isPending}
-        onClick={() => withdraw.mutateAsync()}
+        onClick={() =>
+          showModal(Modals.PoolWithdrawLiquidity, {
+            confirmWithdrawal: withdraw.mutateAsync,
+            rejectWithdrawal: withdraw.reset,
+          })
+        }
       >
         {m["common.withdraw"]()}
       </Button>

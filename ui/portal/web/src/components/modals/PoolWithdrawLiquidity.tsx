@@ -1,0 +1,46 @@
+import { Button, IconAlert, IconButton, IconClose } from "@left-curve/applets-kit";
+import { useApp } from "~/hooks/useApp";
+
+import { forwardRef, useImperativeHandle } from "react";
+
+type PoolWithdrawLiquidityProps = {
+  confirmWithdrawal: () => void;
+  rejectWithdrawal: () => void;
+};
+
+export const PoolWithdrawLiquidity = forwardRef(
+  ({ confirmWithdrawal, rejectWithdrawal }: PoolWithdrawLiquidityProps, ref) => {
+    const { hideModal, settings } = useApp();
+
+    useImperativeHandle(ref, () => ({
+      triggerOnClose: () => rejectWithdrawal(),
+    }));
+
+    return (
+      <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+        <div className="p-4 flex flex-col gap-4">
+          <div className="w-12 h-12 rounded-full bg-red-bean-100 flex items-center justify-center text-red-bean-600">
+            <IconAlert />
+          </div>
+          <div className="flex flex-col gap-2">
+            <h3 className="h4-bold">Withdrawal Confirmation</h3>
+            <p className="text-gray-500 diatype-m-regular">
+              Are you sure you want to withdraw? If you withdraw now, you will have to pay a
+              penalty.
+            </p>
+          </div>
+        </div>
+        <IconButton
+          className="hidden md:block absolute right-4 top-4"
+          variant="link"
+          onClick={() => [rejectWithdrawal(), hideModal()]}
+        >
+          <IconClose />
+        </IconButton>
+        <Button fullWidth onClick={() => [confirmWithdrawal(), hideModal()]}>
+          Continue Withdraw
+        </Button>
+      </div>
+    );
+  },
+);
