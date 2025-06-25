@@ -106,7 +106,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
         controllers.reset();
         simulation.reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });

@@ -32,7 +32,7 @@ export const QuestBanner: React.FC = () => {
   const { isQuestBannerVisible, setQuestBannerVisibility } = useApp();
 
   const { data: quests } = useQuery({
-    queryKey: ["quests", account],
+    queryKey: ["quests", account?.username],
     enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
       fetch(`https://devnet.dango.exchange/quests/check_username/${account?.username}`).then(

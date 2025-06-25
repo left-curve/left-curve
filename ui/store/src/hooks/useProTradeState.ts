@@ -224,7 +224,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         orders.refetch();
         updateBalance();
         controllers.reset();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });
