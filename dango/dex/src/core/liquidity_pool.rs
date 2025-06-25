@@ -819,4 +819,164 @@ mod tests {
         assert_eq!(output, expected_output);
         assert_eq!(reserve, expected_reserve_after_swap);
     }
+
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            order_spacing: Udec128::new_percent(50),
+        },
+        coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        },
+        Udec128::new_percent(1),
+        Coin::new(usdc::DENOM.clone(), 4900500).unwrap(),
+        Coin::new(eth::DENOM.clone(), 5000000).unwrap(),
+        coin_pair! {
+            usdc::DENOM.clone() => 10000000 - 4900500,
+            eth::DENOM.clone() => 10000000 + 5000000,
+        };
+        "geometric pool 1:1 price swap out quote denom amount matches first order"
+    )]
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            order_spacing: Udec128::new_percent(50),
+        },
+        coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        },
+        Udec128::new_percent(1),
+        Coin::new(eth::DENOM.clone(), 4900500).unwrap(),
+        Coin::new(usdc::DENOM.clone(), 4999500).unwrap(),
+        coin_pair! {
+            eth::DENOM.clone() => 10000000 - 4900500,
+            usdc::DENOM.clone() => 10000000 + 4999500,
+        };
+        "geometric pool 1:1 price swap out base denom amount matches first order"
+    )]
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            order_spacing: Udec128::new_percent(50),
+        },
+        coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        },
+        Udec128::new_percent(1),
+        Coin::new(usdc::DENOM.clone(), 5050505 + 100000).unwrap(),
+        Coin::new(eth::DENOM.clone(), 5463836).unwrap(),
+        coin_pair! {
+            usdc::DENOM.clone() => 10000000 - 5050505 - 100000,
+            eth::DENOM.clone() => 10000000 + 5463836,
+        };
+        "geometric pool 1:1 price swap out quote denom amount matches first order part of second order"
+    )]
+    #[test_case(
+        PassiveLiquidity::Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            order_spacing: Udec128::new_percent(50),
+        },
+        coin_pair! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        },
+        hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Udec128::new_percent(100),
+                1730802926,
+                6,
+            ),
+        },
+        Udec128::new_percent(1),
+        Coin::new(eth::DENOM.clone(), 5100000).unwrap(),
+        Coin::new(usdc::DENOM.clone(), 5050000 + 228790).unwrap(),
+        coin_pair! {
+            eth::DENOM.clone() => 10000000 - 5100000,
+            usdc::DENOM.clone() => 10000000 + 5050000 + 228790,
+        };
+        "geometric pool 1:1 price swap out base denom amount matches first order part of second order"
+    )]
+    fn swap_exact_amount_out(
+        pool_type: PassiveLiquidity,
+        reserve: CoinPair,
+        oracle_prices: HashMap<Denom, PrecisionedPrice>,
+        fee_rate: Udec128,
+        output: Coin,
+        expected_input: Coin,
+        expected_reserve_after_swap: CoinPair,
+    ) {
+        let pair = PairParams {
+            pool_type,
+            swap_fee_rate: Bounded::new(fee_rate).unwrap(),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+        };
+
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
+
+        let (reserve, input) = pair
+            .swap_exact_amount_out(
+                &mut oracle_querier,
+                &eth::DENOM.clone(),
+                &usdc::DENOM.clone(),
+                reserve,
+                output,
+            )
+            .unwrap();
+
+        assert_eq!(input, expected_input);
+        assert_eq!(reserve, expected_reserve_after_swap);
+    }
 }
