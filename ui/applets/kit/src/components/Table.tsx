@@ -12,6 +12,8 @@ import { twMerge } from "#utils/twMerge.js";
 import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
+import { Skeleton } from "./Skeleton";
+import { uid } from "@left-curve/dango/utils";
 
 export type TableColumn<T> = ColumnDef<T>[];
 export type { ColumnFiltersState };
@@ -32,6 +34,8 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
   classNames?: TableClassNames;
+  isLoading?: boolean;
+  emptyState?: React.ReactNode;
 }
 
 export const Table = <T,>({
@@ -44,6 +48,8 @@ export const Table = <T,>({
   columnFilters,
   onColumnFiltersChange,
   onRowClick,
+  isLoading = false,
+  emptyState,
 }: TableProps<T>) => {
   const table = useReactTable<T>({
     data,
@@ -62,8 +68,19 @@ export const Table = <T,>({
 
   const { rows } = table.getRowModel();
 
+  const showEmptyState = !isLoading && rows.length === 0 && emptyState;
+  const showTableRows = !isLoading && rows.length > 0;
+  const showSkeleton = isLoading;
+
   return (
-    <div className={twMerge(styles.base(), rows.length ? "pb-2" : "pb-4", classNames?.base)}>
+    <div
+      className={twMerge(
+        styles.base(),
+        rows.length ? "pb-2" : "pb-4",
+        showEmptyState ? "gap-0" : "gap-4",
+        classNames?.base,
+      )}
+    >
       {topContent}
       <table
         className={twMerge(
@@ -85,26 +102,41 @@ export const Table = <T,>({
         </thead>
 
         <tbody>
-          {rows.map((row) => {
-            const cells = row.getVisibleCells();
-            return (
-              <tr
-                key={row.id}
-                className={twMerge(styles.row(), classNames?.row, { "cursor-pointer": onRowClick })}
-                onClick={() => onRowClick?.(row)}
-              >
-                {cells.map((cell) => {
-                  return (
-                    <td key={cell.id} className={twMerge(styles.cell(), classNames?.cell)}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  );
-                })}
+          {showSkeleton &&
+            Array.from({ length: 3 }).map((_) => (
+              <tr key={uid()} className={twMerge(styles.row(), classNames?.row)}>
+                {columns.map((_) => (
+                  <td key={uid()} className={twMerge(styles.cell(), classNames?.cell)}>
+                    <Skeleton className="h-8 w-full" />
+                  </td>
+                ))}
               </tr>
-            );
-          })}
+            ))}
+
+          {showTableRows &&
+            rows.map((row) => {
+              const cells = row.getVisibleCells();
+              return (
+                <tr
+                  key={row.id}
+                  className={twMerge(styles.row(), classNames?.row, {
+                    "cursor-pointer": onRowClick,
+                  })}
+                  onClick={() => onRowClick?.(row)}
+                >
+                  {cells.map((cell) => {
+                    return (
+                      <td key={cell.id} className={twMerge(styles.cell(), classNames?.cell)}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
         </tbody>
       </table>
+      {showEmptyState && <div className="w-full text-center">{emptyState}</div>}
       {bottomContent}
     </div>
   );
@@ -112,7 +144,7 @@ export const Table = <T,>({
 
 const tabsVariants = tv({
   slots: {
-    base: "grid rounded-xl w-full gap-4 max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
+    base: "grid rounded-xl w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
     cell: "",
     row: "",
