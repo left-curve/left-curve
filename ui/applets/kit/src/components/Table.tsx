@@ -35,7 +35,7 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   onRowClick?: (row: Row<T>) => void;
   classNames?: TableClassNames;
   isLoading?: boolean;
-  emptyState?: React.ReactNode;
+  emptyComponent?: React.ReactNode;
 }
 
 export const Table = <T,>({
@@ -49,7 +49,7 @@ export const Table = <T,>({
   onColumnFiltersChange,
   onRowClick,
   isLoading = false,
-  emptyState,
+  emptyComponent,
 }: TableProps<T>) => {
   const table = useReactTable<T>({
     data,
@@ -68,7 +68,7 @@ export const Table = <T,>({
 
   const { rows } = table.getRowModel();
 
-  const showEmptyState = !isLoading && rows.length === 0 && emptyState;
+  const showemptyComponent = !isLoading && rows.length === 0 && emptyComponent;
   const showTableRows = !isLoading && rows.length > 0;
   const showSkeleton = isLoading;
 
@@ -77,7 +77,7 @@ export const Table = <T,>({
       className={twMerge(
         styles.base(),
         rows.length ? "pb-2" : "pb-4",
-        showEmptyState ? "gap-0" : "gap-4",
+        showemptyComponent ? "gap-0" : "gap-4",
         classNames?.base,
       )}
     >
@@ -136,7 +136,7 @@ export const Table = <T,>({
             })}
         </tbody>
       </table>
-      {showEmptyState && <div className="w-full text-center">{emptyState}</div>}
+      {showemptyComponent && <div className="w-full text-center">{emptyComponent}</div>}
       {bottomContent}
     </div>
   );
