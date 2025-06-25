@@ -8,6 +8,7 @@ import { twMerge } from "#utils/twMerge.js";
 type StrategyCardProps = {
   pair: PairUpdate;
   onSelect: (pairSymbols: PairSymbols) => void;
+  index?: number;
   labels: {
     party: string;
     earn: string;
@@ -16,13 +17,6 @@ type StrategyCardProps = {
     apy: string;
     tvl: string;
   };
-};
-
-const PAIR_IMAGE_IDS: Record<string, number> = {
-  "ETH-USDC": 0,
-  "SOL-USDC": 1,
-  "BTC-USDC": 2,
-  "DGX-USDC": 3,
 };
 
 const images = [
@@ -44,7 +38,7 @@ const images = [
   {
     character: "/images/characters/hippo.svg",
     alt: "Hippo",
-    className: "w-[23.5rem] top-[6rem] left-0",
+    className: "w-[23.5rem] top-[4rem] right-[-2rem]",
   },
   {
     character: "/images/characters/monkeys.svg",
@@ -63,32 +57,26 @@ const images = [
   },
 ];
 
-function getPairImageId(baseSymbol: string, quoteSymbol: string): number {
-  const key = `${baseSymbol}-${quoteSymbol}`;
-  if (PAIR_IMAGE_IDS[key] !== undefined) return PAIR_IMAGE_IDS[key];
-  // Fallback to a hash function if the pair is not predefined
-  const hash = Array.from(key).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return hash % images.length;
-}
-
-export const StrategyCard: React.FC<StrategyCardProps> = ({ pair, onSelect, labels }) => {
+export const StrategyCard: React.FC<StrategyCardProps> = ({
+  pair,
+  onSelect,
+  labels,
+  index = 0,
+}) => {
   const { baseDenom, quoteDenom } = pair;
   const { coins } = useConfig();
 
   const baseCoin = coins[baseDenom];
   const quoteCoin = coins[quoteDenom];
 
-  const imageId = getPairImageId(baseCoin.symbol, quoteCoin.symbol);
-  const image = images[imageId];
-
   return (
-    <div className="relative p-4  min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
+    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
       <img
-        src={image.character}
-        alt={image.alt}
+        src={images[index].character}
+        alt={images[index].alt}
         className={twMerge(
           "absolute z-0 opacity-10 pointer-events-none select-none",
-          image.className,
+          images[index].className,
         )}
       />
       <div className="flex flex-col gap-2 justify-between z-10 w-full h-full relative">
