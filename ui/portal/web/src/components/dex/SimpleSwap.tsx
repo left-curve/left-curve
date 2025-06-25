@@ -7,6 +7,7 @@ import {
   useSimpleSwapState,
   useSubmitTx,
 } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -48,6 +49,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
   const { toast, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
+  const queryClient = useQueryClient();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
@@ -104,6 +106,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
         controllers.reset();
         simulation.reset();
         refreshBalances();
+        queryClient.invalidateQueries({ queryKey: ["quests", account] });
       },
     },
   });
