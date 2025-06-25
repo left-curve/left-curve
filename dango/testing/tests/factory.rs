@@ -1,10 +1,8 @@
 use {
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-
-        Factory, HyperlaneTestSuite, Preset, TestAccount, constants::GENESIS_USER_COUNT, setup_test_naive,
-    ,
-        setup_test_naive_with_custom_genesis,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, constants::GENESIS_USER_COUNT,
+        setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         account::single,
