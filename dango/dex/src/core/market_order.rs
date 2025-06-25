@@ -237,8 +237,6 @@ where
             price,
             taker_fee_rate, // A market order is always a taker.
         )?;
-
-        dbg!(&filling_outcomes);
     }
 
     Ok(filling_outcomes)
