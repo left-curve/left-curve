@@ -254,7 +254,7 @@ fn update_filling_outcome(
         .entry(order.id())
         .or_insert(FillingOutcome {
             order_direction,
-            order: order.clone(),
+            order,
             filled: Uint128::ZERO,
             clearing_price: price,
             cleared: false,
