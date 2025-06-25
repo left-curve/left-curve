@@ -303,7 +303,8 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
-    let (reserves, input) = core::swap_exact_amount_out(ctx.storage, route, output.clone())?;
+    let (reserves, input) =
+        core::swap_exact_amount_out(ctx.storage, ctx.querier, route, output.clone())?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.

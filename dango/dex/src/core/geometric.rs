@@ -2,8 +2,8 @@ use {
     anyhow::bail,
     dango_oracle::OracleQuerier,
     grug::{
-        Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, StdResult,
-        Udec128, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
+        Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
     std::{cmp, iter},
 };
@@ -118,9 +118,112 @@ fn ask_exact_amount_in(
     bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_ask}")
 }
 
-pub fn swap_exact_amount_out() -> StdResult<Uint128> {
-    // FIXME
-    todo!();
+pub fn swap_exact_amount_out(
+    oracle_querier: &mut OracleQuerier,
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    output: &Coin,
+    reserve: &CoinPair,
+    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
+    order_spacing: Udec128,
+    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+) -> anyhow::Result<Uint128> {
+    // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
+    // offer amount after fees. So in this case we need to divide ask by (1 - fee)
+    // to get the ask amount after fees.
+    // Round so that user takes the loss.
+    let output_amount_before_fee = output
+        .amount
+        .checked_div_dec_ceil(Udec128::ONE - *swap_fee_rate)?;
+
+    let (passive_bids, passive_asks) = reflect_curve(
+        oracle_querier,
+        base_denom,
+        quote_denom,
+        reserve.amount_of(base_denom)?,
+        reserve.amount_of(quote_denom)?,
+        ratio,
+        order_spacing,
+        swap_fee_rate,
+    )?;
+
+    println!("output_amount_before_fee: {output_amount_before_fee}");
+
+    let input_amount = if output.denom == *base_denom {
+        println!("bid_exact_amount_out");
+        bid_exact_amount_out(output_amount_before_fee, passive_asks)?
+    } else if output.denom == *quote_denom {
+        println!("ask_exact_amount_out");
+        ask_exact_amount_out(output_amount_before_fee, passive_bids)?
+    } else {
+        unreachable!(
+            "output denom (`{}`) is neither the base (`{}`) nor the quote (`{}`). this should have been caught earlier.",
+            output.denom, base_denom, quote_denom
+        );
+    };
+
+    Ok(input_amount)
+}
+
+fn bid_exact_amount_out(
+    bid_amount_base: Uint128,
+    passive_asks: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+) -> anyhow::Result<Uint128> {
+    let mut remaining_bid = bid_amount_base;
+    let mut input_amount = Uint128::ZERO;
+
+    for (price, size) in passive_asks {
+        println!("remaining_bid: {remaining_bid}");
+        println!("size: {size}");
+        println!("price: {price}");
+
+        let matched_amount = cmp::min(size, remaining_bid);
+        println!("matched_amount: {matched_amount}");
+        remaining_bid.checked_sub_assign(matched_amount)?;
+
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
+        println!("matched_amount_in_quote: {matched_amount_in_quote}");
+        input_amount.checked_add_assign(matched_amount_in_quote)?;
+
+        println!("input_amount: {input_amount}");
+
+        if remaining_bid.is_zero() {
+            return Ok(input_amount);
+        }
+    }
+
+    bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_bid}")
+}
+
+fn ask_exact_amount_out(
+    ask_amount_in_quote: Uint128,
+    passive_bids: Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+) -> anyhow::Result<Uint128> {
+    let mut remaining_ask_in_quote = ask_amount_in_quote;
+    let mut input_amount = Uint128::ZERO;
+
+    for (price, size) in passive_bids {
+        println!("remaining_ask_in_quote: {remaining_ask_in_quote}");
+        println!("size: {size}");
+        println!("price: {price}");
+
+        let bid_size_in_quote = size.checked_mul_dec(price)?;
+        println!("bid_size_in_quote: {bid_size_in_quote}");
+        let matched_amount_in_quote = cmp::min(bid_size_in_quote, remaining_ask_in_quote);
+        println!("matched_amount_in_quote: {matched_amount_in_quote}");
+        remaining_ask_in_quote.checked_sub_assign(matched_amount_in_quote)?;
+
+        let matched_amount_in_base = matched_amount_in_quote.checked_div_dec_ceil(price)?;
+        println!("matched_amount_in_base: {matched_amount_in_base}");
+        input_amount.checked_add_assign(matched_amount_in_base)?;
+        println!("input_amount: {input_amount}");
+
+        if remaining_ask_in_quote.is_zero() {
+            return Ok(input_amount);
+        }
+    }
+
+    bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_ask_in_quote}")
 }
 
 pub fn reflect_curve(

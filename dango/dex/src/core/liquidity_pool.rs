@@ -98,6 +98,9 @@ pub trait PassiveLiquidityPool {
     /// The output asset must be one of the reserve assets, otherwise error.
     fn swap_exact_amount_out(
         &self,
+        oracle_querier: &mut OracleQuerier,
+        base_denom: &Denom,
+        quote_denom: &Denom,
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
@@ -299,6 +302,9 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap_exact_amount_out(
         &self,
+        oracle_querier: &mut OracleQuerier,
+        base_denom: &Denom,
+        quote_denom: &Denom,
         mut reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)> {
@@ -325,7 +331,19 @@ impl PassiveLiquidityPool for PairParams {
                 output_reserve,
                 self.swap_fee_rate,
             )?,
-            PassiveLiquidity::Geometric { .. } => geometric::swap_exact_amount_out()?,
+            PassiveLiquidity::Geometric {
+                ratio,
+                order_spacing,
+            } => geometric::swap_exact_amount_out(
+                oracle_querier,
+                base_denom,
+                quote_denom,
+                &output,
+                &reserve,
+                ratio,
+                order_spacing,
+                self.swap_fee_rate,
+            )?,
         };
 
         let input = Coin {
