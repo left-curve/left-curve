@@ -7,8 +7,7 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { formatUnits, parseUnits } from "@left-curve/dango/utils";
-import Big from "big.js";
+import { formatUnits, parseUnits, Decimal } from "@left-curve/dango/utils";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 
@@ -29,8 +28,6 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
   const publicClient = usePublicClient();
   const { account } = useAccount();
   const { coins } = useConfig();
-
-  const poolRate = 1;
 
   const { data: signingClient } = useSigningClient();
 
@@ -64,13 +61,13 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
   );
 
   useEffect(() => {
-    const amount = String(+baseAmount * poolRate);
+    const amount = Decimal(baseAmount).mul(ratio.data).toString()
     if (amount === quoteAmount) return;
     controllers.setValue("quoteAmount", amount);
   }, [baseAmount]);
 
   useEffect(() => {
-    const amount = String(+quoteAmount * poolRate);
+    const amount = Decimal(quoteAmount).div(ratio.data).toString();
     if (amount === baseAmount) return;
     controllers.setValue("baseAmount", amount);
   }, [quoteAmount]);
@@ -79,7 +76,6 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
     enabled: userHasLiquidity,
     queryKey: ["userLiquidity", account?.address, pair.baseDenom, pair.quoteDenom, lpBalance],
     queryFn: async () => {
-      if (!account) throw new Error("not account found");
       const [{ amount: baseAmount }, { amount: quoteAmount }] =
         await publicClient.simulateWithdrawLiquidity({
           baseDenom: pair.baseDenom,
@@ -94,6 +90,23 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
         innerQuote: quoteParseAmount,
       };
     },
+  });
+
+  const ratio = useQuery({
+    queryKey: ["poolRatio", pair.baseDenom, pair.quoteDenom],
+    queryFn: async () => {
+      const [{ amount: baseAmount }, { amount: quoteAmount }] =
+        await publicClient.simulateWithdrawLiquidity({
+          baseDenom: pair.baseDenom,
+          quoteDenom: pair.quoteDenom,
+          lpBurnAmount: "10000000000000000",
+        });
+        const baseParseAmount = formatUnits(baseAmount, baseCoin.decimals);
+        const quoteParseAmount = formatUnits(quoteAmount, quoteCoin.decimals);
+
+      return Decimal(quoteParseAmount).div(baseParseAmount).toNumber();
+    },
+    initialData: 1,
   });
 
   const deposit = useSubmitTx({
@@ -130,7 +143,7 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
           baseDenom: pair.baseDenom,
           quoteDenom: pair.quoteDenom,
           funds: {
-            [lpDenom]: Big(lpBalance).mul(withdrawPercent).div(100).toFixed(0),
+            [lpDenom]: Decimal(lpBalance).mul(withdrawPercent).div(100).toFixed(0),
           },
         });
       },
@@ -143,8 +156,8 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
 
   const withdrawAmount = useMemo(() => {
     if (!userLiquidity.data) return { base: "0", quote: "0" };
-    const baseAmount = Big(userLiquidity.data.innerBase).mul(withdrawPercent).div(100).toNumber();
-    const quoteAmount = Big(userLiquidity.data.innerQuote).mul(withdrawPercent).div(100).toNumber();
+    const baseAmount = Decimal(userLiquidity.data.innerBase).mul(withdrawPercent).div(100).toNumber();
+    const quoteAmount = Decimal(userLiquidity.data.innerQuote).mul(withdrawPercent).div(100).toNumber();
     return {
       base: baseAmount,
       quote: quoteAmount,

@@ -41,3 +41,5 @@ export { createBatchScheduler } from "./scheduler.js";
 export { debounce } from "./frequency.js";
 
 export { uid } from "./uid.js";
+
+export { default as Decimal } from "./decimal.js";
