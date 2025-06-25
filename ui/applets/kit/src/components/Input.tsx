@@ -15,6 +15,7 @@ export interface InputProps
   bottomComponent?: React.ReactNode;
   insideBottomComponent?: React.ReactNode;
   errorMessage?: string;
+  hideErrorMessage?: boolean;
   hintMessage?: string;
   isLoading?: boolean;
   classNames?: {
@@ -46,6 +47,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       label,
       name,
       placeholder,
+      hideErrorMessage,
       onFocus,
       onBlur,
       ...props
@@ -115,7 +117,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
         <div
           className={twMerge("hidden text-left", {
-            block: errorMessage,
+            block: errorMessage && !hideErrorMessage,
           })}
         >
           <span className="diatype-sm-regular text-error-500">{errorMessage}</span>

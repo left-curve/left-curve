@@ -190,7 +190,7 @@ const PoolLiquidityDeposit: React.FC = () => {
   const { formatNumberOptions } = settings;
   const { coins, action, deposit } = state;
   const { base, quote } = coins;
-  const { register, setValue } = controllers;
+  const { register, setValue, errors } = controllers;
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
@@ -210,6 +210,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               },
               mask: numberMask,
             })}
+            hideErrorMessage
             placeholder="0"
             startText="right"
             startContent={
@@ -255,6 +256,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                 return true;
               },
             })}
+            hideErrorMessage
             placeholder="0"
             startText="right"
             startContent={
@@ -290,6 +292,22 @@ const PoolLiquidityDeposit: React.FC = () => {
               </div>
             }
           />
+        </div>
+        <div className="diatype-sm-regular text-error-500">
+          {errors && (
+            <p>
+              {errors.baseAmount && (
+                <span>
+                  {base.symbol}: {errors.baseAmount}
+                </span>
+              )}{" "}
+              {errors.quoteAmount && (
+                <span>
+                  {quote.symbol}: {errors.quoteAmount}
+                </span>
+              )}
+            </p>
+          )}
         </div>
       </div>
       <Button
