@@ -18,7 +18,7 @@ pub trait OrderTrait {
     fn kind(&self) -> OrderKind;
 
     /// Return the order's _extended_ identifier.
-    fn id(&self) -> ExtendedOrderId;
+    fn extended_id(&self) -> ExtendedOrderId;
 
     /// Return order's ID the user who created it. `None` for passive orders.
     fn id_and_user(&self) -> Option<(OrderId, Addr)>;
@@ -70,11 +70,11 @@ impl OrderTrait for Order {
         }
     }
 
-    fn id(&self) -> ExtendedOrderId {
+    fn extended_id(&self) -> ExtendedOrderId {
         match self {
-            Order::Limit(limit_order) => limit_order.id(),
-            Order::Market(market_order) => market_order.id(),
-            Order::Passive(passive_order) => passive_order.id(),
+            Order::Limit(limit_order) => limit_order.extended_id(),
+            Order::Market(market_order) => market_order.extended_id(),
+            Order::Passive(passive_order) => passive_order.extended_id(),
         }
     }
 
@@ -132,7 +132,7 @@ impl OrderTrait for LimitOrder {
         OrderKind::Limit
     }
 
-    fn id(&self) -> ExtendedOrderId {
+    fn extended_id(&self) -> ExtendedOrderId {
         ExtendedOrderId::User(self.id)
     }
 
@@ -174,7 +174,7 @@ impl OrderTrait for MarketOrder {
         OrderKind::Market
     }
 
-    fn id(&self) -> ExtendedOrderId {
+    fn extended_id(&self) -> ExtendedOrderId {
         ExtendedOrderId::User(self.id)
     }
 
@@ -209,7 +209,7 @@ impl OrderTrait for PassiveOrder {
         OrderKind::Passive
     }
 
-    fn id(&self) -> ExtendedOrderId {
+    fn extended_id(&self) -> ExtendedOrderId {
         ExtendedOrderId::Passive(self.id)
     }
 

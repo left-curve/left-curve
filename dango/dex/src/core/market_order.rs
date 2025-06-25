@@ -251,7 +251,7 @@ fn update_filling_outcome(
     fee_rate: Udec128,
 ) -> StdResult<()> {
     let filling_outcome = filling_outcomes
-        .entry(order.id())
+        .entry(order.extended_id())
         .or_insert(FillingOutcome {
             order_direction,
             order,
