@@ -9,11 +9,11 @@ import {
 import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/twMerge.js";
 
+import { Skeleton } from "./Skeleton";
 import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
+
 import React from "react";
 import type { VariantProps } from "tailwind-variants";
-import { Skeleton } from "./Skeleton";
-import { uid } from "@left-curve/dango/utils";
 
 export type TableColumn<T> = ColumnDef<T>[];
 export type { ColumnFiltersState };
@@ -99,7 +99,12 @@ export const Table = <T,>({
         <tbody>
           {showSkeleton &&
             Array.from({ length: 3 }).map((_, rowIndex) => (
-              <React.Fragment key={uid()}>
+              <React.Fragment
+                key={`row-skeleton-${
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Skeleton are not dynamic
+                  rowIndex
+                }`}
+              >
                 {skeletonType === "row" ? (
                   <tr className={twMerge(styles.row(), classNames?.row)}>
                     <td colSpan={columns.length} className={twMerge(styles.cell(), "pt-2")}>
@@ -108,8 +113,14 @@ export const Table = <T,>({
                   </tr>
                 ) : (
                   <tr className={twMerge(styles.row(), classNames?.row)}>
-                    {columns.map((_) => (
-                      <td key={uid()} className={twMerge(styles.cell(), classNames?.cell)}>
+                    {columns.map((_, columnIndex) => (
+                      <td
+                        key={`column-skeleton-${
+                          // biome-ignore lint/suspicious/noArrayIndexKey: Skeleton are not dynamic
+                          columnIndex
+                        }`}
+                        className={twMerge(styles.cell(), classNames?.cell)}
+                      >
                         <Skeleton className="h-8 w-full" />
                       </td>
                     ))}
@@ -123,7 +134,7 @@ export const Table = <T,>({
               const cells = row.getVisibleCells();
               return (
                 <tr
-                  key={row.id}
+                  key={`td-${row.id}`}
                   className={twMerge(styles.row(), classNames?.row, {
                     "cursor-pointer": onRowClick,
                   })}
