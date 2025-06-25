@@ -44,7 +44,7 @@ pub trait OrderTrait {
     }
 
     /// Set the order's remaining amount to zero.
-    /// Return the remaing amount prior to clearning.
+    /// Return the remaining amount prior to clearing.
     fn clear(&mut self) -> Uint128 {
         let remaining = *self.remaining();
         *self.remaining_mut() = Uint128::ZERO;
