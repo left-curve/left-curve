@@ -1,6 +1,6 @@
 use {
-    crate::{LimitOrder, Order},
-    dango_types::dex::{Direction, OrderId},
+    crate::{Order, OrderTrait},
+    dango_types::dex::Direction,
     grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
 
@@ -8,7 +8,6 @@ use {
 pub struct FillingOutcome {
     pub order_direction: Direction,
     pub order_price: Udec128,
-    pub order_id: OrderId,
     /// The order with the `filled` amount updated.
     pub order: Order,
     /// The amount, measured in the base asset, that has been filled.
@@ -29,8 +28,8 @@ pub struct FillingOutcome {
 
 /// Clear the orders given a clearing price and volume.
 pub fn fill_orders(
-    bids: Vec<((Udec128, OrderId), LimitOrder)>,
-    asks: Vec<((Udec128, OrderId), LimitOrder)>,
+    bids: Vec<(Udec128, Order)>,
+    asks: Vec<(Udec128, Order)>,
     clearing_price: Udec128,
     volume: Uint128,
     current_block_height: u64,
@@ -62,7 +61,7 @@ pub fn fill_orders(
 
 /// Fill the BUY orders given a clearing price and volume.
 fn fill_bids(
-    bids: Vec<((Udec128, OrderId), LimitOrder)>,
+    bids: Vec<(Udec128, Order)>,
     clearing_price: Udec128,
     mut volume: Uint128,
     current_block_height: u64,
@@ -71,21 +70,20 @@ fn fill_bids(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len());
 
-    for ((order_price, order_id), mut order) in bids {
-        let filled = order.remaining.min(volume);
+    for (order_price, mut order) in bids {
+        let filled = *order.remaining().min(&volume);
 
-        order.remaining -= filled;
+        order.fill(filled)?;
         volume -= filled;
 
-        // Calculate fee based on whether the order is a maker or taker.
-        //
-        // An order is considered a maker, if it was created in an earlier block.
-        // In other words, the liquidity already existed in the book at the
-        // beginning of the current block.
-        let fee_rate = if order.created_at_block_height < current_block_height {
-            maker_fee_rate
-        } else {
-            taker_fee_rate
+        // Determine the fee rate for the limit order:
+        // - if it's a passive order, it's not charged any fee;
+        // - if it was created at a previous block height, then it's charged the maker fee rate;
+        // - otherwise, it's charged the taker fee rate.
+        let fee_rate = match order.created_at_block_height() {
+            None => Udec128::ZERO,
+            Some(block_height) if block_height < current_block_height => maker_fee_rate,
+            Some(_) => taker_fee_rate,
         };
 
         // For bids, the fee is paid in base asset.
@@ -94,11 +92,10 @@ fn fill_bids(
         outcome.push(FillingOutcome {
             order_direction: Direction::Bid,
             order_price,
-            order_id,
-            order: Order::Limit(order),
+            order,
             filled,
             clearing_price,
-            cleared: order.remaining.is_zero(),
+            cleared: order.remaining().is_zero(),
             // Reduce the base refund by the fee amount.
             refund_base: filled.checked_sub(fee_base)?,
             // If the order is filled at a price better than the limit price,
@@ -118,26 +115,29 @@ fn fill_bids(
 
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
-    asks: Vec<((Udec128, OrderId), LimitOrder)>,
+    asks: Vec<(Udec128, Order)>,
     clearing_price: Udec128,
     mut volume: Uint128,
     current_block_height: u64,
-    maker_fee: Udec128,
-    taker_fee: Udec128,
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
 
-    for ((order_price, order_id), mut order) in asks {
-        let filled = order.remaining.min(volume);
+    for (order_price, mut order) in asks {
+        let filled = *order.remaining().min(&volume);
 
-        order.remaining -= filled;
+        order.fill(filled)?;
         volume -= filled;
 
-        // Calculate fee based on whether the order is a maker or taker.
-        let fee_rate = if order.created_at_block_height < current_block_height {
-            maker_fee
-        } else {
-            taker_fee
+        // Determine the fee rate for the limit order:
+        // - if it's a passive order, it's not charged any fee;
+        // - if it was created at a previous block height, then it's charged the maker fee rate;
+        // - otherwise, it's charged the taker fee rate.
+        let fee_rate = match order.created_at_block_height() {
+            None => Udec128::ZERO,
+            Some(block_height) if block_height < current_block_height => maker_fee_rate,
+            Some(_) => taker_fee_rate,
         };
 
         // For asks, the fee is paid in quote asset.
@@ -147,11 +147,10 @@ fn fill_asks(
         outcome.push(FillingOutcome {
             order_direction: Direction::Ask,
             order_price,
-            order_id,
-            order: Order::Limit(order),
+            order,
             filled,
             clearing_price,
-            cleared: order.remaining.is_zero(),
+            cleared: order.remaining().is_zero(),
             refund_base: Uint128::ZERO,
             // Reduce the quote refund by the fee amount.
             refund_quote: quote_amount.checked_sub(fee_quote)?,

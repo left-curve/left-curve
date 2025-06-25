@@ -5062,6 +5062,7 @@ fn market_order_clearing(
     expected_balance_changes: BTreeMap<usize, BTreeMap<Denom, BalanceChange>>,
     expected_limit_orders_after: BTreeMap<OrderId, (Direction, Udec128, Uint128, Uint128, usize)>,
 ) {
+    setup_test_naive(Default::default());
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Set maker and taker fee rates to 0 for simplicity

@@ -7,6 +7,7 @@ use {
 pub enum OrderKind {
     Limit,
     Market,
+    Passive,
 }
 
 #[grug::derive(Serde)]

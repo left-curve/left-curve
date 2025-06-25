@@ -1,5 +1,8 @@
 use {
-    crate::core::{geometric, xyk},
+    crate::{
+        PassiveOrder,
+        core::{geometric, xyk},
+    },
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
@@ -129,8 +132,8 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128, Uint128)>>, // bids
-        Box<dyn Iterator<Item = (Udec128, Uint128)>>, // asks
+        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>, // bids
+        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>, // asks
     )>;
 }
 
@@ -350,8 +353,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128, Uint128)>>,
-        Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
@@ -639,14 +642,14 @@ mod tests {
         for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
             assert_eq!(ask.0, expected_ask.0);
             assert!(
-                ask.1.into_inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
+                ask.1.amount.inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
             );
         }
 
         for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
             assert_eq!(bid.0, expected_bid.0);
             assert!(
-                bid.1.into_inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
+                bid.1.amount.inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
             );
         }
     }
@@ -698,12 +701,12 @@ mod tests {
 
         assert_eq!(bids_collected.len(), 2);
 
-        for (bid, expected_bid) in bids_collected.into_iter().zip(vec![
+        for (bid, expected_bid) in bids_collected.into_iter().zip([
             (Udec128::new_percent(99), Uint128::from(5050505)),
             (Udec128::new_percent(49), Uint128::from(5102040)),
         ]) {
             assert_eq!(bid.0, expected_bid.0);
-            assert_eq!(bid.1, expected_bid.1);
+            assert_eq!(bid.1.amount, expected_bid.1);
         }
 
         // Check that ask iterator keeps going after bid iterator is exhausted

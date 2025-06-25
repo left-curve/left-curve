@@ -11,8 +11,8 @@ use {
     },
     grug::{
         Addressable, Bounded, Coin, Coins, Dec128, Denom, Duration, Inner, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
-        Udec128, Uint128, UniqueVec, btree_map, coins,
+        MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
+        Signer, Timestamp, Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -80,8 +80,8 @@ fn register_fixed_price(
                 denom => dango_types::oracle::PriceSource::Fixed {
                     humanized_price,
                     precision,
-                    timestamp: Duration::from_seconds(0),
-                }
+                    timestamp: Timestamp::from_seconds(0),
+                },
             }),
             Coins::default(),
         )

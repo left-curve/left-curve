@@ -1,4 +1,5 @@
 use {
+    crate::PassiveOrder,
     grug::{
         Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
         NumberConst, Udec128, Uint128, ZeroExclusiveOneExclusive,
@@ -70,8 +71,8 @@ pub fn reflect_curve(
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
-    Box<dyn Iterator<Item = (Udec128, Uint128)>>,
-    Box<dyn Iterator<Item = (Udec128, Uint128)>>,
+    Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
 )> {
     // Compute the marginal price. We will place orders above and below this price.
     let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
@@ -79,6 +80,7 @@ pub fn reflect_curve(
     // Construct the bid order iterator.
     // Start from the marginal price minus the swap fee rate.
     let bids = {
+        let mut id = 0;
         let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
         let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
         let mut prev_size = Uint128::ZERO;
@@ -121,16 +123,22 @@ pub fn reflect_curve(
             }
 
             // Update the iterator state.
+            id += 1;
             prev_size = size;
             prev_size_quote = size_quote;
             maybe_price = price.checked_sub(order_spacing).ok();
 
-            Some((price, amount))
+            Some((price, PassiveOrder {
+                id,
+                amount,
+                remaining: amount,
+            }))
         })
     };
 
     // Construct the ask order iterator.
     let asks = {
+        let mut id = u64::MAX;
         let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
         let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
         let mut prev_size = Uint128::ZERO;
@@ -159,10 +167,15 @@ pub fn reflect_curve(
             }
 
             // Update the iterator state.
+            id -= 1;
             prev_size = size;
             maybe_price = price.checked_add(order_spacing).ok();
 
-            Some((price, amount))
+            Some((price, PassiveOrder {
+                id,
+                amount,
+                remaining: amount,
+            }))
         })
     };
 
