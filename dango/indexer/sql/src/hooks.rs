@@ -11,6 +11,7 @@ use {
 };
 
 mod accounts;
+mod candles;
 mod transfers;
 
 #[derive(Clone)]
