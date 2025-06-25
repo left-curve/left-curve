@@ -97,12 +97,12 @@
   },
   "applets": {
     "0": {
-      "id": "transfer",
-      "img": "/images/applets/send-and-receive.svg",
-      "title": "Transfer",
-      "description": "Send and receive crypto.",
-      "path": "/transfer",
-      "keywords": "transfer,send,receive"
+      "id": "trade",
+      "img": "/images/emojis/simple/protrading.svg",
+      "title": "Trade",
+      "description": "Real-Time Charts, Data & Trading",
+      "path": "/trade",
+      "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
     "1": {
       "id": "simple-swap",
@@ -113,6 +113,30 @@
       "keywords": "swap,trade,convert,exchange"
     },
     "2": {
+      "id": "earn",
+      "img": "/images/emojis/simple/pig.svg",
+      "title": "Earn",
+      "description": "Earn tokens by lending or providing liquidity",
+      "path": "/earn",
+      "keywords": "earn,staking,liquidity,lending"
+    },
+    "3": {
+      "id": "transfer",
+      "img": "/images/emojis/simple/money.svg",
+      "title": "Transfer",
+      "description": "Send and receive crypto.",
+      "path": "/transfer",
+      "keywords": "transfer,send,receive"
+    },
+    "4": {
+      "id": "create-account",
+      "img": "/images/emojis/simple/wizard.svg",
+      "title": "Subaccount creation",
+      "description": "Create subaccounts.",
+      "path": "/account/create",
+      "keywords": "account,create,register"
+    },
+    "5": {
       "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
       "title": "Settings",
@@ -120,37 +144,13 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "3": {
+    "6": {
       "id": "notifications",
       "img": "/images/emojis/simple/notifications.svg",
       "title": "Notifications",
       "description": "View recent transactions.",
       "path": "/notifications",
       "keywords": "notifications,alerts"
-    },
-    "4": {
-      "id": "create-account",
-      "img": "/images/applets/account-creation.svg",
-      "title": "Subaccount creation",
-      "description": "Create subaccounts.",
-      "path": "/account/create",
-      "keywords": "account,create,register"
-    },
-    "5": {
-      "id": "trade",
-      "img": "/images/emojis/simple/spot.svg",
-      "title": "Trade",
-      "description": "Real-Time Charts, Data & Trading",
-      "path": "/trade",
-      "keywords": "swap,dex,trade,pro,charts,data,trading"
-    },
-    "6": {
-      "id": "earn",
-      "img": "/images/emojis/simple/pig.svg",
-      "title": "Earn",
-      "description": "Earn tokens by lending or providing liquidity",
-      "path": "/earn",
-      "keywords": "earn,staking,liquidity,lending"
     }
   },
   "explorer": {
