@@ -98,7 +98,7 @@
   "applets": {
     "0": {
       "id": "transfer",
-      "img": "/images/applets/send-and-receive.svg",
+      "img": "/images/emojis/simple/money.svg",
       "title": "Transfer",
       "description": "Send and receive crypto.",
       "path": "/transfer",
@@ -130,7 +130,7 @@
     },
     "4": {
       "id": "create-account",
-      "img": "/images/applets/account-creation.svg",
+      "img": "/images/emojis/simple/wizard.svg",
       "title": "Subaccount creation",
       "description": "Create subaccounts.",
       "path": "/account/create",
