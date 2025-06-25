@@ -117,6 +117,8 @@ pub struct LimitOrder {
     pub user: Addr,
     /// The order's identifier.
     pub id: OrderId,
+    /// The order's limit price, measured in quote asset per base asset.
+    pub price: Udec128,
     /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.
@@ -197,6 +199,7 @@ impl OrderTrait for MarketOrder {
 #[derive(Copy)]
 pub struct PassiveOrder {
     pub id: OrderId,
+    pub price: Udec128,
     pub amount: Uint128,
     pub remaining: Uint128,
 }

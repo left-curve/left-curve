@@ -307,7 +307,6 @@ fn clear_orders_of_pair(
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
-        order_price,
         order,
         filled,
         clearing_price,
@@ -358,7 +357,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            order_price,
+                            limit_order.price,
                             order_id,
                         ),
                     )?;
@@ -368,7 +367,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            order_price,
+                            limit_order.price,
                             order_id,
                         ),
                         &limit_order,

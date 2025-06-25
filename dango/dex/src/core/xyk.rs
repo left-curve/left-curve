@@ -130,6 +130,7 @@ pub fn reflect_curve(
 
             Some((price, PassiveOrder {
                 id,
+                price,
                 amount,
                 remaining: amount,
             }))
@@ -173,6 +174,7 @@ pub fn reflect_curve(
 
             Some((price, PassiveOrder {
                 id,
+                price,
                 amount,
                 remaining: amount,
             }))

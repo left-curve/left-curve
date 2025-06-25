@@ -68,6 +68,7 @@ pub(super) fn create_limit_order(
             LimitOrder {
                 user,
                 id: order_id,
+                price: order.price,
                 amount: *order.amount,
                 remaining: *order.amount,
                 created_at_block_height: current_block_height,

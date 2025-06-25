@@ -95,7 +95,7 @@ where
             let filling_outcome = filling_outcomes
                 .get_mut(&ExtendedOrderId::User(*market_order_id))
                 .unwrap();
-            let current_avg_price = filling_outcome.order_price;
+            let current_avg_price = filling_outcome.clearing_price;
             let filled = filling_outcome.filled;
             let price_ratio = current_avg_price
                 .checked_into_signed()?
@@ -256,7 +256,6 @@ fn update_filling_outcome(
         .entry(order.id())
         .or_insert(FillingOutcome {
             order_direction,
-            order_price: price, // TODO: this should be the limit price for limit orders, or None for market orders
             order: order.clone(),
             filled: Uint128::ZERO,
             clearing_price: price,

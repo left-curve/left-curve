@@ -7,7 +7,6 @@ use {
 #[derive(Debug)]
 pub struct FillingOutcome {
     pub order_direction: Direction,
-    pub order_price: Udec128,
     /// The order with the `filled` amount updated.
     pub order: Order,
     /// The amount, measured in the base asset, that has been filled.
@@ -91,7 +90,6 @@ fn fill_bids(
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Bid,
-            order_price,
             order,
             filled,
             clearing_price,
@@ -124,7 +122,7 @@ fn fill_asks(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
 
-    for (order_price, mut order) in asks {
+    for (_, mut order) in asks {
         let filled = *order.remaining().min(&volume);
 
         order.fill(filled)?;
@@ -146,7 +144,6 @@ fn fill_asks(
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Ask,
-            order_price,
             order,
             filled,
             clearing_price,
