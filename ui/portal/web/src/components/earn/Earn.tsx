@@ -45,10 +45,11 @@ const EarnPoolsCards: React.FC = () => {
     <div className="flex gap-4 scrollbar-none justify-start lg:justify-between p-4 overflow-x-auto overflow-y-visible">
       {Object.values(appConfig?.pairs || {})
         .slice(0, 4)
-        .map((pair) => (
+        .map((pair, index) => (
           <StrategyCard
             key={uid()}
             pair={pair}
+            index={index}
             onSelect={navigate}
             labels={{
               party: m["earn.party"](),
