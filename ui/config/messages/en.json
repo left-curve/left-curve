@@ -508,6 +508,7 @@
     }
   },
   "earn": {
+    "noLiquidity": "You don’t have any liquidity positions yet",
     "party": "Party",
     "earn": "Earn",
     "select": "Select",
