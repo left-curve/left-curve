@@ -23,7 +23,7 @@ const images = [
   {
     character: "/images/characters/cocodrile.svg",
     alt: "cocodrile",
-    className: "top-[7rem] right-4 w-[15,7rem]",
+    className: "w-[15.7rem] top-[7rem] right-4 ",
   },
   {
     character: "/images/characters/cobra.svg",
