@@ -144,7 +144,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
         setSearchBarVisibility,
         isTradeBarVisible,
         setTradeBarVisibility,
-        isQuestBannerVisible: false,
+        isQuestBannerVisible,
         setQuestBannerVisibility,
         showModal,
         hideModal,
