@@ -8,7 +8,7 @@ use {
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_app::{Indexer, LAST_FINALIZED_BLOCK, QuerierProvider},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
     sea_orm::{DatabaseConnection, TransactionTrait},
     std::{
@@ -16,7 +16,10 @@ use {
         future::Future,
         ops::Deref,
         path::PathBuf,
-        sync::{Arc, Mutex},
+        sync::{
+            Arc, Mutex,
+            atomic::{AtomicU64, Ordering},
+        },
         thread::sleep,
         time::Duration,
     },
@@ -28,6 +31,7 @@ use {
 pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks> {
     handle: RuntimeHandler,
     db_url: DB,
+    db_max_connections: u32,
     indexer_path: P,
     keep_blocks: bool,
     hooks: H,
@@ -39,10 +43,25 @@ impl Default for IndexerBuilder {
         Self {
             handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
+            db_max_connections: 10,
             indexer_path: Undefined::default(),
             keep_blocks: false,
             hooks: NullHooks,
             pubsub: PubSubType::Memory,
+        }
+    }
+}
+
+impl IndexerBuilder<Defined<String>> {
+    pub fn with_database_max_connections(self, db_max_connections: u32) -> Self {
+        IndexerBuilder {
+            handle: self.handle,
+            indexer_path: self.indexer_path,
+            db_url: self.db_url,
+            db_max_connections,
+            keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 }
@@ -56,6 +75,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             handle: self.handle,
             indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
+            db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -73,6 +93,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::default()),
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -84,6 +105,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::Dir(dir)),
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
@@ -99,19 +121,19 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks,
             pubsub: self.pubsub,
         }
     }
-}
 
-impl<DB, P, H> IndexerBuilder<DB, P, H> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
@@ -133,6 +155,7 @@ where
         Self {
             handle: self.handle,
             db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
             indexer_path: self.indexer_path,
             keep_blocks,
             hooks: self.hooks,
@@ -142,9 +165,9 @@ where
 
     pub fn build_context(self) -> error::Result<Context> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self
-                .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
+            Some(url) => self.handle.block_on(async {
+                Context::connect_db_with_url(&url, self.db_max_connections).await
+            }),
             None => self.handle.block_on(async { Context::connect_db().await }),
         }?;
 
@@ -172,14 +195,24 @@ where
 
     pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self
-                .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
+            Some(url) => self.handle.block_on(async {
+                Context::connect_db_with_url(&url, self.db_max_connections).await
+            }),
             None => self.handle.block_on(async { Context::connect_db().await }),
         }?;
 
+        // Generate unique ID
+        let id = INDEXER_COUNTER.fetch_add(1, Ordering::SeqCst);
+
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
         indexer_path.create_dirs_if_needed()?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            indexer_id = id,
+            indexer_path = %indexer_path.blocks_path().display(),
+            "Created indexer path"
+        );
 
         let mut context = Context {
             db: db.clone(),
@@ -208,11 +241,15 @@ where
             indexing: false,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            id,
         })
     }
 }
 
 // ----------------------------- NonBlockingIndexer ----------------------------
+
+// Add a global counter for unique IDs
+static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
 /// data to live as long as the spawned task.
@@ -238,6 +275,8 @@ where
     pub indexing: bool,
     keep_blocks: bool,
     hooks: H,
+    // Add unique ID field, used for debugging and tracing
+    id: u64,
 }
 
 impl<H> NonBlockingIndexer<H>
@@ -255,7 +294,7 @@ where
     where
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
-        let mut blocks = self.blocks.lock().expect("Can't lock blocks");
+        let mut blocks = self.blocks.lock().expect("can't lock blocks");
         let block_to_index = blocks.entry(block.info.height).or_insert(BlockToIndex::new(
             block_filename,
             block.clone(),
@@ -269,7 +308,7 @@ where
 
     /// Look in memory for a block to be indexed, or fail if not found
     fn find_or_fail(&self, block_height: u64) -> error::Result<BlockToIndex> {
-        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        let blocks = self.blocks.lock().expect("can't lock blocks");
 
         let block_to_index = match blocks.get(&block_height) {
             Some(block_to_index) => block_to_index,
@@ -286,11 +325,11 @@ where
         blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
         block_height: &u64,
     ) -> error::Result<BlockToIndex> {
-        let mut blocks = blocks.lock().expect("Can't lock blocks");
+        let mut blocks = blocks.lock().expect("can't lock blocks");
         let block_to_index = match blocks.remove_entry(block_height) {
             Some(block) => block,
             None => {
-                bail!("Block {} not found", block_height);
+                bail!("block {block_height} not found");
             },
         };
 
@@ -298,7 +337,7 @@ where
         tracing::debug!(
             block_height = block_height,
             blocks_len = blocks.len(),
-            "remove_or_fail called"
+            "`remove_or_fail` called"
         );
 
         Ok(block_to_index.1)
@@ -307,18 +346,18 @@ where
     /// Wait for all blocks to be indexed
     pub fn wait_for_finish(&self) {
         for _ in 0..100 {
-            if self.blocks.lock().expect("Can't lock blocks").is_empty() {
+            if self.blocks.lock().expect("can't lock blocks").is_empty() {
                 break;
             }
 
             sleep(Duration::from_millis(100));
         }
 
-        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        let blocks = self.blocks.lock().expect("can't lock blocks");
         if !blocks.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::warn!(
-                "indexer wait_for_finish ended, still has {} blocks: {:?}",
+                "Indexer `wait_for_finish` ended, still has {} blocks: {:?}",
                 blocks.len(),
                 blocks.keys()
             );
@@ -341,6 +380,7 @@ where
 
             Ok::<(), sea_orm::error::DbErr>(())
         })?;
+
         Ok(())
     }
 }
@@ -370,34 +410,38 @@ where
 
             let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, "can't load block from disk");
+                    tracing::error!(error = %_err, block_height, "Can't load block from disk");
+
                     panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
             });
 
             #[cfg(feature = "tracing")]
             tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks started"
+                block_height,
+                indexer_id = self.id,
+                "`index_previous_unindexed_blocks` started"
             );
 
             self.handle.block_on(async {
-                let db = self.context.db.begin().await?;
-                block_to_index.save(&db).await?;
-                db.commit().await?;
+                block_to_index
+                    .save(self.context.db.clone(), self.id)
+                    .await?;
+
                 Ok::<(), error::IndexerError>(())
             })?;
 
             if !self.keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "Can't delete block from disk");
                 }
             }
 
             #[cfg(feature = "tracing")]
             tracing::info!(
-                block_height = block_height,
-                "index_previous_unindexed_blocks ended"
+                block_height,
+                indexer_id = self.id,
+                "`index_previous_unindexed_blocks` ended"
             );
         }
 
@@ -415,6 +459,9 @@ where
     where
         S: Storage,
     {
+        #[cfg(feature = "metrics")]
+        crate::metrics::init_indexer_metrics();
+
         self.handle.block_on(async {
             self.context.migrate_db().await?;
             self.hooks
@@ -429,14 +476,15 @@ where
             Err(_err) => {
                 // This happens when the chain starts at genesis
                 #[cfg(feature = "tracing")]
-                tracing::warn!(error = %_err, "No LAST_FINALIZED_BLOCK found");
+                tracing::warn!(error = %_err, "No `LAST_FINALIZED_BLOCK` found");
             },
             Ok(block) => {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(
                     block_height = block.height,
-                    "start called, found a previous block"
+                    "Start called, found a previous block"
                 );
+
                 self.index_previous_unindexed_blocks(block.height)?;
             },
         }
@@ -457,7 +505,7 @@ where
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
         // async. It just loops quickly making sure no indexing blocks are remaining.
         for _ in 0..10 {
-            if self.blocks.lock().expect("Can't lock blocks").is_empty() {
+            if self.blocks.lock().expect("can't lock blocks").is_empty() {
                 break;
             }
 
@@ -475,9 +523,10 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            let blocks = self.blocks.lock().expect("Can't lock blocks");
+            let blocks = self.blocks.lock().expect("can't lock blocks");
             if !blocks.is_empty() {
                 tracing::warn!(
+                    indexer_id = self.id,
                     "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
                 );
             }
@@ -488,7 +537,7 @@ where
 
     fn pre_indexing(&self, _block_height: u64) -> error::Result<()> {
         if !self.indexing {
-            bail!("Can't index after shutdown");
+            bail!("can't index after shutdown");
         }
 
         Ok(())
@@ -496,33 +545,46 @@ where
 
     fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> error::Result<()> {
         if !self.indexing {
-            bail!("Can't index after shutdown");
+            bail!("can't index after shutdown");
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.info.height, "index_block called");
+        tracing::debug!(
+            block_height = block.info.height,
+            indexer_id = self.id,
+            "`index_block` called"
+        );
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
         self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block.info.height, "index_block started");
+            tracing::debug!(block_height = block.info.height, "`index_block` started");
 
             block_to_index.save_to_disk()?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.info.height, "index_block finished");
+            tracing::info!(
+                block_height = block.info.height,
+                indexer_id = self.id,
+                "`index_block` finished"
+            );
+
             Ok(())
         })
     }
 
-    fn post_indexing(&self, block_height: u64) -> error::Result<()> {
+    fn post_indexing(
+        &self,
+        block_height: u64,
+        querier: Box<dyn QuerierProvider>,
+    ) -> error::Result<()> {
         if !self.indexing {
-            bail!("Can't index after shutdown");
+            bail!("can't index after shutdown");
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block_height, "post_indexing called");
+        tracing::debug!(block_height, "`post_indexing` called");
 
         let context = self.context.clone();
         let block_to_index = self.find_or_fail(block_height)?;
@@ -537,35 +599,25 @@ where
         // The block would then not be indexed.
 
         let hooks = self.hooks.clone();
+        let id = self.id;
 
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block_height, "post_indexing started");
+            tracing::debug!(block_height, indexer_id = id, "`post_indexing` started");
 
             let block_height = block_to_index.block.info.height;
 
-            // NOTE: sqlite in-memory sometimes returns `database is deadlocked` which seems to be
-            // more likely when we have multiple tasks or thread.
-            //
-            // I'm trying a few extra times if error occurs.
-            for _ in 1..=5 {
-                let db = context.db.begin().await?;
-
-                if let Err(_err) = block_to_index.save(&db).await {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "can't save to db in post_indexing");
-
-                    continue;
-                }
-
-                db.commit().await?;
-
-                break;
-            }
-
-            hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
+            #[allow(clippy::map_identity)]
+            block_to_index.save(context.db.clone(), id).await.map_err(|err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
+                tracing::error!(err = %err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
+
+                err
+            })?;
+
+            hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
 
                 // NOTE: any way to get a from Hooks::Error to IndexerError without using IndexerError<X>?
                 error::IndexerError::Hooks(e.to_string())
@@ -578,12 +630,15 @@ where
                 }
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
-                tokio::task::spawn_blocking(|| async move {
+                if let Err(_err) = tokio::task::spawn_blocking(move || {
                     if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
                         tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
                     }
-                });
+                }).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %_err, "spawn_blocking error compressing block file");
+                }
             }
 
             Self::remove_or_fail(blocks, &block_height)?;
@@ -591,7 +646,7 @@ where
             context.pubsub.publish_block_minted(block_height).await?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block_height, "post_indexing finished");
+            tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
 
             Ok::<_, error::IndexerError>(())
         });
@@ -608,7 +663,7 @@ where
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
         // context.
-        self.shutdown().expect("Can't shutdown indexer");
+        self.shutdown().expect("can't shutdown indexer");
     }
 }
 
@@ -632,6 +687,7 @@ impl Default for RuntimeHandler {
                 (Some(runtime), handle)
             },
         };
+
         Self { runtime, handle }
     }
 }
@@ -689,10 +745,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("Can't start Indexer");
+        indexer.start(&storage).expect("can't start indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("Can't shutdown Indexer");
+        indexer.shutdown().expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
@@ -707,10 +763,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("Can't start Indexer");
+        indexer.start(&storage).expect("can't start Indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("Can't shutdown Indexer");
+        indexer.shutdown().expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())
@@ -727,6 +783,7 @@ mod tests {
             &self,
             _context: Context,
             _block: BlockToIndex,
+            _querier: Box<dyn QuerierProvider>,
         ) -> Result<(), Self::Error> {
             Ok(())
         }
@@ -743,10 +800,10 @@ mod tests {
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
-        indexer.start(&storage).expect("Can't start Indexer");
+        indexer.start(&storage).expect("can't start Indexer");
         assert!(indexer.indexing);
 
-        indexer.shutdown().expect("Can't shutdown Indexer");
+        indexer.shutdown().expect("can't shutdown Indexer");
         assert!(!indexer.indexing);
 
         Ok(())

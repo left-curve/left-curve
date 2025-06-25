@@ -1,6 +1,7 @@
-import { useAccount, useSigningClient } from "@left-curve/store";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
+
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
@@ -18,19 +19,21 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   const queryClient = useQueryClient();
   const { hideModal } = useApp();
 
-  const { mutateAsync: removeKey, isPending } = useMutation({
-    mutationFn: async () => {
-      if (!account || !signingClient) throw new Error("We couldn't process the request");
+  const { mutateAsync: removeKey, isPending } = useSubmitTx({
+    mutation: {
+      mutationFn: async () => {
+        if (!account || !signingClient) throw new Error("We couldn't process the request");
 
-      await signingClient.updateKey({
-        keyHash,
-        sender: account.address,
-        action: "delete",
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user_keys"] });
-      hideModal();
+        await signingClient.updateKey({
+          keyHash,
+          sender: account.address,
+          action: "delete",
+        });
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["user_keys"] });
+        hideModal();
+      },
     },
   });
 

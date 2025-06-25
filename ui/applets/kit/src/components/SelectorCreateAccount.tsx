@@ -22,7 +22,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
   return (
     <div
       className={twMerge(
-        "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-card-shadow items-start justify-start",
+        "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-account-card items-start justify-start",
         { "cursor-pointer": onClick },
         { " border border-red-bean-400": isSelected },
         {
@@ -37,7 +37,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
       onClick={onClick}
     >
       <p className="capitalize exposure-m-italic">{accountType} Account</p>
-      <p className="diatype-sm-medium text-gray-500 relative max-w-[15.5rem] z-10">
+      <p className="diatype-sm-medium text-gray-500 relative max-w-[15.5rem] z-10 ">
         {subtext[accountType]}
       </p>
       <img
@@ -46,7 +46,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
         className={twMerge("absolute right-0 bottom-0", { "right-2": accountType === "margin" })}
       />
       <IconCheckedCircle
-        className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all", {
+        className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {
           "opacity-1": isSelected,
         })}
       />

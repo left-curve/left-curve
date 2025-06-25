@@ -12,10 +12,11 @@ mod providers;
 mod query;
 mod state;
 mod submessage;
+mod tracing;
 mod traits;
 mod vm;
 
 pub use crate::{
     app::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*, providers::*,
-    query::*, state::*, submessage::*, traits::*, vm::*,
+    query::*, state::*, submessage::*, tracing::*, traits::*, vm::*,
 };

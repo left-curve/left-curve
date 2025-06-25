@@ -1,4 +1,5 @@
 import { twMerge } from "@left-curve/applets-kit";
+import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "~/components/foundation/Header";
@@ -8,9 +9,13 @@ import { WelcomeModal } from "~/components/modals/WelcomeModal";
 
 export const Route = createFileRoute("/(app)/_app")({
   component: LayoutApp,
-  errorComponent: () => {
+  errorComponent: ({ error }) => {
+    useEffect(() => {
+      captureException(error);
+    }, []);
+
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none bg-white-100">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-white-100">
         <img
           src="/images/union.png"
           alt="bg-image"
@@ -41,7 +46,7 @@ function LayoutApp() {
   }, []);
 
   return (
-    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen">
+    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen ">
       <img
         src="/images/union.png"
         alt="bg-image"

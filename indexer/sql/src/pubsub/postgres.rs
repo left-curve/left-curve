@@ -32,7 +32,7 @@ impl PostgresPubSub {
             loop {
                 if let Err(_e) = listener.listen("blocks").await {
                     #[cfg(feature = "tracing")]
-                    tracing::error!("Listen error: {_e:?}");
+                    tracing::error!(error = %_e, "Listen error");
 
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
@@ -58,7 +58,7 @@ impl PostgresPubSub {
                         },
                         Err(_e) => {
                             #[cfg(feature = "tracing")]
-                            tracing::error!("Notification error: {_e:?}");
+                            tracing::error!(error = %_e, "Notification error");
 
                             break;
                         },

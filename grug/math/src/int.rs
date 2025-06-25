@@ -22,7 +22,7 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Int<U>(pub(crate) U);
+pub struct Int<U>(pub U);
 
 impl<U> Int<U> {
     pub const fn new(value: U) -> Self {

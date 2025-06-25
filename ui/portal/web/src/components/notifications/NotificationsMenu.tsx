@@ -4,7 +4,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { useNavigate } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
-import { NotificationsList } from "./NotificationsList";
+import { Notifications } from "./Notifications";
 
 import type React from "react";
 
@@ -27,7 +27,7 @@ export const NotificationsMenu: React.FC<Props> = ({ buttonRef }) => {
     <div
       ref={menuRef}
       className={twMerge(
-        "hidden lg:block transition-all absolute top-[75px] bg-rice-50 shadow-card-shadow z-50 right-0 rounded-xl w-[27rem] duration-200",
+        "hidden lg:block transition-all absolute top-[75px] bg-rice-50 shadow-account-card z-50 right-0 rounded-xl w-[27rem] duration-200",
         isNotificationMenuVisible
           ? "scale-1 translate-y-0 translate-x-0"
           : "scale-0 -translate-y-1/2 translate-x-16",
@@ -43,7 +43,7 @@ export const NotificationsMenu: React.FC<Props> = ({ buttonRef }) => {
           {m["common.viewAll"]()}
         </Button>
       </div>
-      <NotificationsList
+      <Notifications
         className="max-h-[41rem] overflow-y-scroll scrollbar-none"
         maxNotifications={5}
       />

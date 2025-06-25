@@ -18,6 +18,13 @@ export const Modals = {
   SignWithDesktop: "sign-with-desktop",
   ConfirmSwap: "confirm-swap",
   RenewSession: "renew-session",
+  ProTradeCloseAll: "pro-trade-close-all",
+  ProTradeLimitClose: "pro-trade-limit-close",
+  ProSwapMarketClose: "pro-swap-market-close",
+  ProSwapEditTPSL: "pro-edit-tpsl",
+  ProSwapEditedSL: "pro-edited-sl",
+  PoolAddLiquidity: "pool-add-liquidity",
+  PoolWithdrawLiquidity: "pool-withdraw-liquidity",
 };
 
 export type ModalRef = {
@@ -63,7 +70,7 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
     options: {
-      header: m["dex.swap"](),
+      header: m["dex.convert.swap"](),
     },
   },
   [Modals.RenewSession]: {
@@ -75,6 +82,53 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
     options: {
       disableClosing: true,
     },
+  },
+  [Modals.ProTradeCloseAll]: {
+    component: lazy(() =>
+      import("./ProTradeCloseAll").then(({ ProTradeCloseAll }) => ({ default: ProTradeCloseAll })),
+    ),
+  },
+  [Modals.ProTradeLimitClose]: {
+    component: lazy(() =>
+      import("./ProTradeLimitClose").then(({ ProTradeLimitClose }) => ({
+        default: ProTradeLimitClose,
+      })),
+    ),
+  },
+  [Modals.ProSwapMarketClose]: {
+    component: lazy(() =>
+      import("./ProSwapMarketClose").then(({ ProSwapMarketClose }) => ({
+        default: ProSwapMarketClose,
+      })),
+    ),
+  },
+  [Modals.ProSwapEditTPSL]: {
+    component: lazy(() =>
+      import("./ProSwapEditTPSL").then(({ ProSwapEditTPSL }) => ({
+        default: ProSwapEditTPSL,
+      })),
+    ),
+  },
+  [Modals.ProSwapEditedSL]: {
+    component: lazy(() =>
+      import("./ProSwapEditedSL").then(({ ProSwapEditedSL }) => ({
+        default: ProSwapEditedSL,
+      })),
+    ),
+  },
+  [Modals.PoolAddLiquidity]: {
+    component: lazy(() =>
+      import("./PoolAddLiquidity").then(({ PoolAddLiquidity }) => ({
+        default: PoolAddLiquidity,
+      })),
+    ),
+  },
+  [Modals.PoolWithdrawLiquidity]: {
+    component: lazy(() =>
+      import("./PoolWithdrawLiquidity").then(({ PoolWithdrawLiquidity }) => ({
+        default: PoolWithdrawLiquidity,
+      })),
+    ),
   },
 };
 

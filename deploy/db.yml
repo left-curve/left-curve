@@ -1,5 +1,5 @@
 - hosts: db
   become: true
+  become_user: "{{ deploy_user }}"
   roles:
-    - docker
     - postgres

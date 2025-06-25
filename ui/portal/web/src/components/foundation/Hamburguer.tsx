@@ -6,24 +6,22 @@ import { useApp } from "~/hooks/useApp";
 
 import { capitalize } from "@left-curve/dango/utils";
 
-import {
-  IconBell,
-  IconButton,
-  IconDangoDots,
-  IconGear,
-  IconProfile,
-} from "@left-curve/applets-kit";
+import { IconBell, IconButton, IconDangoDots, IconGear, IconUser } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 import { TxIndicator } from "./TxIndicator";
 
 export const Hamburger: React.FC = () => {
   const { isConnected, account } = useAccount();
-  const { setSidebarVisibility } = useApp();
+  const { setSidebarVisibility, isSearchBarVisible } = useApp();
   const [showOptions, setShowOptions] = useState(false);
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useClickAway(menuRef, () => setShowOptions(false));
+
+  if (isSearchBarVisible) {
+    return null;
+  }
 
   return (
     <>
@@ -52,7 +50,7 @@ export const Hamburger: React.FC = () => {
             type="button"
             className={twMerge("shadow-btn-shadow-gradient", { "shadow-none": !showOptions })}
           >
-            <IconProfile className="h-6 w-6 " />
+            <IconUser className="h-6 w-6 " />
           </IconButton>
         </div>
 
@@ -114,7 +112,12 @@ export const Hamburger: React.FC = () => {
           </IconButton>
         </div>
 
-        <TxIndicator as={IconButton} variant="utility" size="lg">
+        <TxIndicator
+          as={IconButton}
+          variant="utility"
+          size="lg"
+          onClick={() => setShowOptions(!showOptions)}
+        >
           <HamburgerButton isOpen={showOptions} onClick={() => setShowOptions(!showOptions)} />
         </TxIndicator>
       </div>

@@ -1,0 +1,15 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+description   = "A temporary RocksDB directory for testing purpose"
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "temp-rocksdb"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+rocksdb  = { workspace = true }
+tempfile = { workspace = true }

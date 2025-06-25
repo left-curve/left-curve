@@ -18,7 +18,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = core::query_health(ctx.querier, ctx.contract, &app_cfg)?;
             res.to_json_value()
         },
-        QueryMsg::Health {} => {
+        QueryMsg::Health { skip_if_no_debt } => {
             let oracle = ctx.querier.query_oracle()?;
             let mut oracle_querier = OracleQuerier::new_remote(oracle, ctx.querier);
             let res = core::query_and_compute_health(
@@ -27,6 +27,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
                 ctx.contract,
                 ctx.block.timestamp,
                 None,
+                skip_if_no_debt,
             )?;
             res.to_json_value()
         },

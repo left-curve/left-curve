@@ -23,17 +23,30 @@ pub struct Account {
 
 /// Types of accounts the protocol supports.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy, PartialOrd, Ord)]
+#[derive(Copy, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
+#[cfg_attr(
+    feature = "sea-orm",
+    derive(sea_orm::EnumIter, sea_orm::DeriveActiveEnum)
+)]
+#[cfg_attr(
+    feature = "sea-orm",
+    sea_orm(rs_type = "i16", db_type = "SmallInteger")
+)]
 pub enum AccountType {
     /// A single-signature account that cannot borrow margin loans.
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
     Spot,
     /// A single-signature account that can borrow margin loans.
     ///
     /// The loans are collateralized by assets held in the account. The account
     /// is capable of rejecting transactions that may cause it to become
     /// insolvent, and carrying out liquidations if necessary.
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
     Margin,
     /// A multi-signature account. Cannot borrow margin loans.
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
     Multi,
 }
 

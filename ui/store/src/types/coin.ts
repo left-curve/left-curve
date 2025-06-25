@@ -1,13 +1,15 @@
 import type { Denom, Prettify } from "@left-curve/dango/types";
 
-export type CoinGeckoId = string;
-
 export type WithPrice<T> = T & {
   readonly price: string;
 };
 
 export type WithAmount<T> = T & {
   readonly amount: string;
+};
+
+export type WithBalance<T> = T & {
+  readonly balance: string;
 };
 
 export type WithGasPriceStep<T> = T & {
@@ -20,11 +22,9 @@ export type WithGasPriceStep<T> = T & {
 
 export type BaseCoin = {
   readonly symbol: string;
-  readonly name: string;
   readonly denom: Denom;
   readonly decimals: number;
   readonly logoURI?: string;
-  readonly coingeckoId?: CoinGeckoId;
 };
 
 export type NativeCoin = Prettify<
@@ -33,19 +33,14 @@ export type NativeCoin = Prettify<
   }
 >;
 
-export type ContractCoin = Prettify<
+export type LpCoin = Prettify<
   BaseCoin & {
-    readonly type: "contract";
-    readonly contractAddress: string;
-  }
->;
-
-export type AlloyCoin = Prettify<
-  BaseCoin & {
-    readonly type: "alloyed";
+    readonly type: "lp";
+    readonly base: AnyCoin;
+    readonly quote: AnyCoin;
   }
 >;
 
 export type CoinFee = WithGasPriceStep<NativeCoin>;
 
-export type AnyCoin = NativeCoin | AlloyCoin | ContractCoin;
+export type AnyCoin = NativeCoin | LpCoin;

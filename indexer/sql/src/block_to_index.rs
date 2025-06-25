@@ -1,9 +1,11 @@
+#[cfg(feature = "metrics")]
+use metrics::counter;
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
-    sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter},
+    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
     serde::{Deserialize, Serialize},
     std::path::PathBuf,
 };
@@ -28,11 +30,21 @@ impl BlockToIndex {
     }
 
     /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save<C: ConnectionTrait>(&self, db: &C) -> error::Result<()> {
+    pub async fn save(
+        &self,
+        db: DatabaseConnection,
+        #[allow(unused_variables)] indexer_id: u64,
+    ) -> error::Result<()> {
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = self.block.info.height, "Indexing block");
+        tracing::info!(
+            block_height = self.block.info.height,
+            indexer_id,
+            "Indexing block"
+        );
 
         let models = Models::build(&self.block, &self.block_outcome)?;
+
+        let db = db.begin().await?;
 
         // I check if the block already exists, if so it means we can skip the
         // whole block, transactions, messages and events since those are created
@@ -41,7 +53,7 @@ impl BlockToIndex {
         // indexed but before the tmp_file was removed.
         let existing_block = entity::blocks::Entity::find()
             .filter(entity::blocks::Column::BlockHeight.eq(self.block.info.height))
-            .one(db)
+            .one(&db)
             .await?;
 
         if existing_block.is_some() {
@@ -49,26 +61,36 @@ impl BlockToIndex {
         }
 
         entity::blocks::Entity::insert(models.block)
-            .exec_without_returning(db)
+            .exec_without_returning(&db)
             .await?;
+
+        #[cfg(feature = "metrics")]
+        {
+            counter!("indexer.blocks.total").increment(1);
+            counter!("indexer.transactions.total").increment(models.transactions.len() as u64);
+            counter!("indexer.messages.total").increment(models.messages.len() as u64);
+            counter!("indexer.events.total").increment(models.events.len() as u64);
+        }
 
         if !models.transactions.is_empty() {
             entity::transactions::Entity::insert_many(models.transactions)
-                .exec_without_returning(db)
+                .exec_without_returning(&db)
                 .await?;
         }
 
         if !models.messages.is_empty() {
             entity::messages::Entity::insert_many(models.messages)
-                .exec_without_returning(db)
+                .exec_without_returning(&db)
                 .await?;
         }
 
         if !models.events.is_empty() {
             entity::events::Entity::insert_many(models.events)
-                .exec_without_returning(db)
+                .exec_without_returning(&db)
                 .await?;
         }
+
+        db.commit().await?;
 
         Ok(())
     }
@@ -80,7 +102,21 @@ impl BlockToIndex {
     }
 
     pub fn compress_file(file_path: PathBuf) -> error::Result<()> {
-        DiskPersistence::new(file_path, false).compress()?;
+        #[cfg(feature = "tracing")]
+        tracing::debug!(?file_path, "Compressing block file");
+
+        let mut file = DiskPersistence::new(file_path.clone(), false);
+
+        #[allow(unused_variables)]
+        let compressed = file.compress()?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            ?file.file_path,
+            ?compressed,
+            "Compressed block file"
+        );
+
         Ok(())
     }
 

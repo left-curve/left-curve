@@ -40,7 +40,7 @@ impl PubSub for PostgresPubSub {
                     },
                     Err(_e) => {
                         #[cfg(feature = "tracing")]
-                        tracing::error!("Error receiving notification: {_e:?}");
+                        tracing::error!(error = %_e, "Error receiving notification");
 
                         break;
                     },

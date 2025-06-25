@@ -1,7 +1,6 @@
 use {
-    crate::{Lengthy, StdError, StdResult},
+    crate::{Inner, Lengthy, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Inner,
     serde::{Deserialize, Deserializer, Serialize, Serializer},
     std::{io, ops::Deref},
 };
@@ -24,7 +23,7 @@ pub type FixedLength<T, const LEN: usize> = LengthBounded<T, LEN, LEN>;
 
 /// A wrapper that enforces the value to be within a bound of length.
 ///
-/// The minumum and maximum lengths are both _inclusive_.
+/// The minimum and maximum lengths are both _inclusive_.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LengthBounded<T, const MIN: usize, const MAX: usize>(T)
 where

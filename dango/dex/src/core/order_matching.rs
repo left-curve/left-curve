@@ -1,5 +1,5 @@
 use {
-    crate::Order,
+    crate::LimitOrder,
     dango_types::dex::OrderId,
     grug::{Number, NumberConst, StdResult, Udec128, Uint128},
 };
@@ -14,9 +14,9 @@ pub struct MatchingOutcome {
     /// The amount of trading volume, measured as the amount of the base asset.
     pub volume: Uint128,
     /// The BUY orders that have found a match.
-    pub bids: Vec<((Udec128, OrderId), Order)>,
+    pub bids: Vec<((Udec128, OrderId), LimitOrder)>,
     /// The SELL orders that have found a match.
-    pub asks: Vec<((Udec128, OrderId), Order)>,
+    pub asks: Vec<((Udec128, OrderId), LimitOrder)>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -30,10 +30,10 @@ pub struct MatchingOutcome {
 ///   for orders the same price, the oldest one first.
 /// - `ask_iter`: An iterator over the SELL orders in the book that similarly
 ///   follows the price-time priority.
-pub fn match_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
+pub fn match_limit_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<((Udec128, OrderId), Order)>>,
-    A: Iterator<Item = StdResult<((Udec128, OrderId), Order)>>,
+    B: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
+    A: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();

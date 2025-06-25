@@ -4,3 +4,25 @@ ssh_users:
   - larry
   - zexsor
 deploy_user: deploy
+ports:
+  testnet:
+    dango_port: 8080
+    faucet_port: 8082
+    cometbft_p2p_port: 26656
+    cometbft_rpc_port: 26657
+    chain_id: "dev-6"
+    # cometbft_abci_port: 26658
+  devnet:
+    dango_port: 8080
+    faucet_port: 8082
+    cometbft_p2p_port: 26656
+    cometbft_rpc_port: 26657
+    chain_id: "dev-9"
+    # cometbft_abci_port: 26658
+
+# in summary cometbft needs to expose:
+# 26656, to anyone
+# 26657, to tailscale
+# dango needs to expose:
+# 8080, to anyone
+# 26658, to cometbft container only

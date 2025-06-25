@@ -4,7 +4,7 @@ use {
         account::single,
         account_factory::{
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
-            QueryNextAccountIndexRequest, Salt, Username,
+            QueryNextAccountIndexRequest, RegisterUserData, Salt, Username,
         },
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
@@ -14,13 +14,14 @@ use {
         MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdError,
         StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
-    grug_app::{AppError, ProposalPreparer},
+    grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
     sha2::Sha256,
     std::{array, collections::BTreeMap},
 };
 
 /// Accounts available for testing purposes.
+#[derive(Debug, Clone)]
 pub struct TestAccounts {
     pub owner: TestAccount,
     pub user1: TestAccount,
@@ -237,18 +238,57 @@ where
     T: MaybeDefined<Addr>,
     Self: Signer,
 {
+    /// Register the user
+    pub fn register_user<PP, DB, VM, ID>(
+        &mut self,
+        test_suite: &mut TestSuite<PP, DB, VM, ID>,
+        factory: Addr,
+        funds: Coins,
+    ) where
+        PP: ProposalPreparer,
+        DB: Db,
+        VM: Vm + Clone + Send + Sync + 'static,
+        ID: Indexer,
+        AppError: From<PP::Error> + From<DB::Error> + From<VM::Error> + From<ID::Error>,
+    {
+        let chain_id = test_suite.chain_id.clone();
+
+        test_suite
+            .execute(
+                &mut Factory::new(factory),
+                factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    seed: 0,
+                    username: self.username.clone(),
+                    key: self.first_key(),
+                    key_hash: self.first_key_hash(),
+                    signature: self
+                        .sign_arbitrary(RegisterUserData {
+                            username: self.username.clone(),
+                            chain_id,
+                        })
+                        .unwrap(),
+                },
+                funds,
+            )
+            .should_succeed();
+    }
+
     /// Register a new account with the username and key of this account and returns a new
     /// `TestAccount` with the new account's address.
-    pub fn register_new_account<PP>(
+    pub fn register_new_account<PP, DB, VM, ID>(
         &mut self,
-        test_suite: &mut TestSuite<PP>,
+        test_suite: &mut TestSuite<PP, DB, VM, ID>,
         factory: Addr,
         params: AccountParams,
         funds: Coins,
     ) -> StdResult<TestAccount>
     where
         PP: ProposalPreparer,
-        AppError: From<PP::Error>,
+        DB: Db,
+        VM: Vm + Clone + Send + Sync + 'static,
+        ID: Indexer,
+        AppError: From<PP::Error> + From<DB::Error> + From<VM::Error> + From<ID::Error>,
     {
         // If registering a single account, ensure the supplied username matches this account's username.
         let account_type = match &params {

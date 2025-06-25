@@ -8,6 +8,11 @@ use {
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };
+#[cfg(feature = "metrics")]
+use {
+    metrics::{describe_histogram, histogram},
+    std::time::Instant,
+};
 
 const GAS_LIMIT: u64 = 50_000_000;
 
@@ -24,6 +29,9 @@ impl<P> Clone for ProposalPreparer<P> {
 
 impl ProposalPreparer<PythClient> {
     pub fn new() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
         let client = PythHandler::new(PYTH_URL);
 
         Self {
@@ -40,6 +48,9 @@ impl Default for ProposalPreparer<PythClient> {
 
 impl ProposalPreparer<PythClientCache> {
     pub fn new_with_cache() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
         let client = PythHandler::new_with_cache(PYTH_URL);
 
         Self {
@@ -61,6 +72,9 @@ where
         mut txs: Vec<Bytes>,
         _max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         let cfg: AppConfig = querier.query_app_config()?;
 
         // Should we find a way to start and connect the PythClientPPHandler at startup?
@@ -95,8 +109,20 @@ where
 
         txs.insert(0, tx.to_json_vec()?.into());
 
+        #[cfg(feature = "metrics")]
+        histogram!("proposal_preparer.prepare_proposal.duration",)
+            .record(start.elapsed().as_secs_f64());
+
         Ok(txs)
     }
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!(
+        "proposal_preparer.prepare_proposal.duration",
+        "Duration of the prepare_proposal method in seconds",
+    );
 }
 
 // ----------------------------------- tests -----------------------------------

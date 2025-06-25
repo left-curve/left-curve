@@ -1,13 +1,13 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 
 type UseInputsOptions = {
   initialValues?: Record<string, string>;
   strategy?: ValidateStrategy;
 };
 
-type ValidateStrategy = "onChange" | "onSubmit";
+type ValidateStrategy = "onChange" | "onSubmit" | "onBlur";
 
 type InputOptions = {
   strategy?: ValidateStrategy;
@@ -29,6 +29,13 @@ export function useInputs(options: UseInputsOptions = {}) {
       : {},
   );
 
+  const errors = useMemo(() => {
+    return Object.entries(inputs).reduce((acc, [key, input]) => {
+      if (input.error) acc[key] = input.error;
+      return acc;
+    }, Object.create({}));
+  }, [inputs]);
+
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const inputOptions = useRef<Record<string, InputOptions>>({});
 
@@ -43,7 +50,7 @@ export function useInputs(options: UseInputsOptions = {}) {
 
     setError(name, undefined);
     const validate = inputOptions.current[name]?.validate;
-    const strategy = inputOptions.current[name].strategy;
+    const strategy = inputOptions.current[name]?.strategy || defaultStrategy;
     if (validate && strategy === "onChange") {
       const validationResult = validate(newValue);
       setError(
@@ -89,6 +96,17 @@ export function useInputs(options: UseInputsOptions = {}) {
         errorMessage: inputs[name]?.error,
         onChange: (event: ChangeEvent<HTMLInputElement> | string) =>
           setValue(name, typeof event === "string" ? event : event.target.value),
+        onBlur: (_: FocusEvent<HTMLInputElement>) => {
+          const value = inputs[name]?.value || "";
+          const { validate, strategy } = inputOptions.current[name];
+          if (validate && strategy === "onBlur") {
+            const validationResult = validate(value);
+            setError(
+              name,
+              validationResult === true ? undefined : validationResult || "Value is not valid",
+            );
+          }
+        },
       };
     },
     [setValue, inputs],
@@ -134,5 +152,7 @@ export function useInputs(options: UseInputsOptions = {}) {
     };
   }, []);
 
-  return { register, setValue, setError, inputs, reset, handleSubmit, revalidate };
+  const isValid = !Object.keys(errors).length;
+
+  return { register, setValue, setError, inputs, errors, isValid, reset, handleSubmit, revalidate };
 }

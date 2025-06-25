@@ -68,3 +68,27 @@ export function sortObject<T extends Json | JsonValue>(obj: T): T {
 
   return sorted;
 }
+
+/**
+ * Invert the keys and values of an object.
+ * @param obj The object to invert.
+ * @returns The inverted object.
+ */
+export function invertObject(obj: object): object {
+  if (typeof obj !== "object" || obj === null) {
+    return obj;
+  }
+
+  function invert(obj: object) {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+      if (typeof value === "object") {
+        invert(acc);
+      } else {
+        acc[value] = key;
+      }
+      return acc;
+    }, Object.create({}));
+  }
+
+  return invert(obj);
+}

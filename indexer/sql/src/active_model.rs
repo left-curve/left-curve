@@ -1,18 +1,10 @@
 use {
-    crate::{
-        entity::{self, events::TransactionType},
-        error::Result,
-    },
-    grug_math::Inner,
+    crate::{entity, error::Result},
     grug_types::{
         Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
-        JsonSerExt, flatten_commitment_status,
+        Inner, JsonSerExt, flatten_commitment_status,
     },
-    sea_orm::{
-        Set,
-        prelude::*,
-        sqlx::types::chrono::{NaiveDateTime, TimeZone},
-    },
+    sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
     std::collections::HashMap,
 };
 
@@ -26,15 +18,7 @@ pub struct Models {
 
 impl Models {
     pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
-        let epoch_millis = block.info.timestamp.into_millis();
-        let seconds = (epoch_millis / 1_000) as i64;
-        let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
-
-        let created_at = sea_orm::sqlx::types::chrono::Utc
-            .timestamp_opt(seconds, nanoseconds)
-            .single()
-            .unwrap_or_default()
-            .naive_utc();
+        let created_at = block.info.timestamp.to_naive_date_time();
 
         let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
 
@@ -76,7 +60,7 @@ impl Models {
                 let new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
-                    transaction_type: Set(TransactionType::Tx),
+                    transaction_type: Set(FlatCategory::Tx),
                     has_succeeded: Set(tx_outcome.result.is_ok()),
                     error_message: Set(tx_outcome.clone().result.err()),
                     gas_wanted: Set(tx.gas_limit.try_into()?),
@@ -292,7 +276,7 @@ fn build_event_active_model(
         method: Set(method),
         data: Set(data),
         event_status: Set(index_event.event_status.clone().into()),
-        commitment_status: Set(index_event.commitment_status.clone().into()),
+        commitment_status: Set(index_event.commitment_status),
         transaction_idx: Set(index_event.id.category_index as i32),
         transaction_type: Set(index_event.id.category as i32),
         message_idx: Set(index_event.id.message_index.map(|i| i as i32)),

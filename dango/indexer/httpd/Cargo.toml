@@ -1,0 +1,32 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-httpd"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+metrics = ["dep:metrics", "indexer-httpd/metrics", "indexer-sql/metrics"]
+
+[dependencies]
+actix-web               = { workspace = true }
+async-graphql           = { workspace = true }
+async-graphql-actix-web = { workspace = true }
+chrono                  = { workspace = true }
+clap                    = { workspace = true }
+dango-indexer-sql       = { workspace = true, features = ["async-graphql"] }
+dango-types             = { workspace = true, features = ["async-graphql"] }
+indexer-httpd           = { workspace = true, features = ["tracing"] }
+indexer-sql             = { workspace = true, features = ["async-graphql"] }
+itertools               = { workspace = true }
+metrics                 = { workspace = true, optional = true }
+sea-orm                 = { workspace = true }
+serde                   = { workspace = true }
+thiserror               = { workspace = true }
+tokio                   = { workspace = true }
+tracing                 = { workspace = true }
+tracing-subscriber      = { workspace = true }

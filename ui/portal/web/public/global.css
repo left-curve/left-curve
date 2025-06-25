@@ -4,10 +4,10 @@
 
 body {
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: scroll;
   min-height: 100svh;
   scrollbar-gutter: stable;
-  background: black;
+  background: theme("colors.white.100");
 }
 
 #root {
@@ -53,4 +53,8 @@ body {
 [cmdk-group-heading] {
   @apply diatype-sm-medium text-gray-500;
   padding: 0 11px;
+}
+
+.react-json-view .variable-value div {
+  color: theme("colors.white.100") !important;
 }

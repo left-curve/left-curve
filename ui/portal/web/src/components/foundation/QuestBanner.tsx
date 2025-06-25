@@ -32,7 +32,7 @@ export const QuestBanner: React.FC = () => {
 
   const { data: quests } = useQuery({
     queryKey: ["quests", account],
-    enabled: isConnected,
+    enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
       fetch(`https://devnet.dango.exchange/quests/check_username/${account?.username}`).then(
         (res) => res.json(),
@@ -49,7 +49,7 @@ export const QuestBanner: React.FC = () => {
   if (!isQuestBannerVisible) return null;
 
   return (
-    <div className="z-10 w-full shadow-card-shadow p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
+    <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
         href="https://app.galxe.com/quest/dango/GCpYut1Qnq"

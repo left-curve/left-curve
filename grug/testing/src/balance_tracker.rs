@@ -1,8 +1,7 @@
 use {
     crate::TestSuite,
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
-    grug_math::Inner,
-    grug_types::{Addressable, Denom},
+    grug_types::{Addressable, Denom, Inner},
     std::{
         cmp::Ordering,
         collections::{BTreeMap, BTreeSet},
@@ -29,7 +28,7 @@ where
 impl<DB, VM, PP, ID> BalanceTracker<'_, DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,

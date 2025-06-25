@@ -18,8 +18,8 @@ use {
     },
     grug::{
         Addressable, Binary, Coins, Denom, Duration, JsonSerExt, Message, MsgConfigure,
-        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Sign, Udec128, Udec256,
-        Uint128, btree_map, coins,
+        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Sign, Timestamp, Udec128,
+        Udec256, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -87,7 +87,7 @@ fn feed_oracle_usdc_price(
 
         assert_eq!(current_price.precision(), precision);
 
-        assert_eq!(current_price.timestamp, 1730802926);
+        assert_eq!(current_price.timestamp, Timestamp::from_seconds(1730802926));
     }
 }
 
@@ -196,7 +196,7 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
                     precision: 6,
-                    timestamp: 1730802926,
+                    timestamp: Timestamp::from_seconds(1730802926),
                 },
             }),
             Coins::new(),
@@ -1088,10 +1088,11 @@ fn interest_rate_model_works(
             Coins::new(),
         )
         .should_succeed();
+
     let owner_lp_balance = suite
         .query_balance(&accounts.owner.address(), lp_denom.clone())
         .should_succeed();
-    dbg!(owner_lp_balance);
+
     suite
         .execute(
             &mut accounts.owner,

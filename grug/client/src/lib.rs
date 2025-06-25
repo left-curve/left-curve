@@ -1,10 +1,9 @@
 use {
     anyhow::{bail, ensure},
     async_trait::async_trait,
-    grug_math::Inner,
     grug_types::{
         Binary, Block, BlockClient, BlockInfo, BlockOutcome, BroadcastClient, BroadcastTxOutcome,
-        CronOutcome, Hash256, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse,
+        CronOutcome, Hash256, Inner, JsonDeExt, JsonSerExt, Query, QueryClient, QueryResponse,
         SearchTxClient, SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     std::any::type_name,

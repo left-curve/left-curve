@@ -1,6 +1,7 @@
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { formatNumber, formatUnits, uid } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";
 
+import { PairAssets } from "@left-curve/applets-kit";
 import type { Coin } from "@left-curve/dango/types";
 import { useApp } from "~/hooks/useApp";
 
@@ -9,10 +10,12 @@ interface Props {
 }
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
-  const { coins } = useConfig();
+  const { getCoinInfo } = useConfig();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const coinInfo = coins[coin.denom];
+
+  const coinInfo = getCoinInfo(coin.denom);
+
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
@@ -21,10 +24,10 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   return (
     <div className="flex items-center justify-between p-4 hover:bg-rice-50">
       <div className="flex gap-2 items-center">
-        {coinInfo.logoURI ? (
+        {coinInfo.type === "native" ? (
           <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-gray-200" />
+          <PairAssets assets={[coinInfo.base, coinInfo.quote]} />
         )}
         <div className="flex flex-col text-base">
           <p className="text-gray-500">{coinInfo.symbol}</p>

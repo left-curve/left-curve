@@ -98,7 +98,16 @@ export type {
   SignatureOutcome,
 } from "./signature.js";
 
-export type { IndexedBlock, IndexedTransaction, IndexedTransactionType } from "./indexer.js";
+export type {
+  IndexedBlock,
+  IndexedTransaction,
+  IndexedMessage,
+  IndexedTransactionType,
+  IndexedTransferEvent,
+  IndexedTrade,
+  IndexedTradeSideType,
+  IndexedAccountEvent,
+} from "./indexer.js";
 
 export type {
   DexExecuteMsg,
@@ -109,11 +118,20 @@ export type {
   OrdersByPairResponse,
   OrdersByUserResponse,
   PairId,
+  PairSymbols,
   ReservesResponse,
   SwapRoute,
   PairParams,
   PairUpdate,
+  CancelOrderRequest,
+  CreateLimitOrderRequest,
+  CreateMarketOrderRequest,
+  GetDexExecuteMsg,
+  GetDexQueryMsg,
+  OrderId,
 } from "./dex.js";
+
+export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
 
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 
@@ -124,3 +142,5 @@ export { AccountType } from "./account.js";
 export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
+
+export { Direction } from "./dex.js";

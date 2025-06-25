@@ -10,7 +10,7 @@ import type { RouterContext } from "~/app.router";
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context }) => {
     const { config } = context;
-    if (!config?.state.isMipdLoaded) {
+    if (!config.state.isMipdLoaded) {
       await new Promise((resolve) => {
         config?.subscribe(
           (x) => x.isMipdLoaded,
@@ -20,7 +20,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     }
   },
   errorComponent: () => (
-    <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none bg-white-100">
+    <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-white-100">
       <img
         src="/images/union.png"
         alt="bg-image"

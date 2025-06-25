@@ -2,7 +2,7 @@ import {
   Button,
   IconBell,
   IconGear,
-  IconProfile,
+  IconUser,
   twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -12,6 +12,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { TradeButtons } from "../dex/TradeButtons";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
@@ -29,7 +30,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     setSidebarVisibility,
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
-    isSearchBarVisible,
     isSidebarVisible,
   } = useApp();
   const { location } = useRouterState();
@@ -38,23 +38,21 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
+  const isProSwap = location.pathname.includes("trade");
 
   return (
     <header
       className={twMerge(
         "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full transition-all",
-        isScrolled ? "lg:bg-white-100 lg:shadow-card-shadow" : "bg-transparent shadow-none",
+        isScrolled ? "lg:bg-white-100 lg:shadow-account-card" : "bg-transparent shadow-none",
       )}
     >
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
-            src={isScrolled ? "/images/dango.svg" : "/favicon.svg"}
+            src="/favicon.svg"
             alt="dango logo"
-            className={twMerge(
-              "h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient",
-              { "h-8 shadow-none rounded-none pl-3": isScrolled },
-            )}
+            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient"
           />
         </Link>
         <div
@@ -65,8 +63,8 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          <SearchMenu />
-          {!isSearchBarVisible ? <Hamburger /> : null}
+          {isProSwap && !isLg ? <TradeButtons /> : <SearchMenu />}
+          <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
           <Button
@@ -81,7 +79,13 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           </Button>
 
           {isConnected ? (
-            <TxIndicator as={Button} variant="utility" size="lg">
+            <TxIndicator
+              as={Button}
+              variant="utility"
+              size="lg"
+              data-status={linkStatus("/notifications")}
+              onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
+            >
               <Button
                 ref={buttonNotificationsRef}
                 variant="utility"
@@ -103,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           >
             {isConnected ? (
               <>
-                <IconProfile className="w-6 h-6" />
+                <IconUser className="w-6 h-6" />
                 <span className="italic font-exposure font-bold">{account?.username}</span>
               </>
             ) : (

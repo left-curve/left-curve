@@ -1,28 +1,19 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  Skeleton,
-  Table,
-  type TableColumn,
-  TextCopy,
-  TruncateText,
-  twMerge,
-  useCountdown,
-  useMediaQuery,
-  useWatchEffect,
-} from "@left-curve/applets-kit";
+import { Skeleton, TextCopy, twMerge, useCountdown, useWatchEffect } from "@left-curve/applets-kit";
+import { HeaderExplorer } from "./HeaderExplorer";
+import { TransactionsTable } from "./TransactionsTable";
 
 import { m } from "~/paraglide/messages";
 
-import type { IndexedBlock, IndexedTransaction } from "@left-curve/dango/types";
+import type { IndexedBlock } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { HeaderExplorer } from "./HeaderExplorer";
 
 type BlockExplorerProps = {
   height: string;
@@ -87,8 +78,8 @@ const BlockSkeleton: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
-      <div className="flex flex-col gap-4 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[147.22px] min-h-[208.5px]">
-        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card text-gray-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
+        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]({ height: "#" })}</h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
         <img
           src="/images/emojis/detailed/map-explorer.svg"
@@ -128,7 +119,7 @@ const FutureBlock: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[76rem] p-4 flex flex-col gap-6">
-      <div className="flex flex-col gap-6 rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow relative overflow-hidden text-gray-700">
+      <div className="flex flex-col gap-6 rounded-md p-4 bg-rice-25 shadow-account-card relative overflow-hidden text-gray-700">
         <div className="flex flex-col gap-1">
           <h3 className="h4-heavy text-gray-900">
             {m["explorer.block.futureBlock.targetBlock"]()} {height}
@@ -227,7 +218,6 @@ const FutureBlock: React.FC = () => {
 };
 
 const BlockDetails: React.FC = () => {
-  const { isMd } = useMediaQuery();
   const { data } = useBlockExplorer();
 
   if (!data?.searchBlock) return null;
@@ -235,49 +225,48 @@ const BlockDetails: React.FC = () => {
   const { transactions, createdAt, blockHeight, hash } = data.searchBlock;
 
   return (
-    <div className="flex flex-col rounded-md px-4 py-3 bg-rice-25 shadow-card-shadow text-gray-700 diatype-m-bold relative overflow-hidden">
+    <div className="flex flex-col rounded-md p-4 bg-rice-25 shadow-account-card text-gray-700 relative overflow-hidden diatype-sm-medium">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
-        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]()}</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="col-span-1 md:col-span-2 flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+        <h1 className="h4-bold">
+          {m["explorer.block.details.blockDetails"]({ height: `#${blockHeight}` })}
+        </h1>
+        <div className="grid grid-cols-1 gap-3 md:gap-2">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockHash"]()}
             </p>
-            {isMd ? <p>{hash}</p> : <TruncateText text={hash} />}
-            <TextCopy className="w-4 h-4 cursor-pointer" copyText={hash} />
-          </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
-              {m["explorer.block.details.blockHeight"]()}
+            <p className="break-all whitespace-normal diatype-mono-sm-medium">
+              {hash}
+              <TextCopy
+                className="inline-block align-middle ml-1 w-4 h-4 cursor-pointer"
+                copyText={hash}
+              />
             </p>
-            <p>{blockHeight}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.proposer"]()}
             </p>
             <p>Leftcurve Validator</p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.numberOfTx"]()}
             </p>
             <p>{transactions.length}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <p className="diatype-md-medium text-gray-500">
+          <div className="flex md:items-center gap-1 flex-col md:flex-row">
+            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
               {m["explorer.block.details.blockTime"]()}
             </p>
-            <p>{new Date(createdAt).toISOString()}</p>
+            <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
           </div>
         </div>
-        {isMd ? (
-          <img
-            src="/images/emojis/detailed/map-explorer.svg"
-            alt="map-emoji"
-            className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply"
-          />
-        ) : null}
+        <img
+          src="/images/emojis/detailed/map-explorer.svg"
+          alt="map-emoji"
+          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply hidden md:flex"
+        />
       </div>
     </div>
   );
@@ -305,51 +294,13 @@ const BlockNotFound: React.FC = () => {
 };
 
 const BlockTable: React.FC = () => {
-  const navigate = useNavigate();
   const { data } = useBlockExplorer();
 
   if (!data?.searchBlock) return null;
 
   const { transactions } = data.searchBlock;
 
-  const columns: TableColumn<IndexedTransaction> = [
-    {
-      header: "Type",
-      cell: ({ row }) => <p>{row.original.transactionType}</p>,
-    },
-    {
-      header: "Hash",
-      cell: ({ row }) => (
-        <TruncateText
-          className="cursor-pointer"
-          text={row.original.hash}
-          onClick={() => navigate({ to: `/tx/${row.original.hash}` })}
-        />
-      ),
-    },
-    {
-      header: "Account",
-      cell: ({ row }) => <p>{row.original.sender}</p>,
-    },
-    {
-      header: "Result",
-      cell: ({ row }) => {
-        const { hasSucceeded } = row.original;
-        return (
-          <p
-            className={twMerge(
-              hasSucceeded ? "text-status-success" : "text-status-fail",
-              "text-end",
-            )}
-          >
-            {hasSucceeded ? "Success" : "Fail"}
-          </p>
-        );
-      },
-    },
-  ];
-
-  return transactions.length ? <Table data={transactions} columns={columns} /> : null;
+  return <TransactionsTable transactions={transactions} />;
 };
 
 export const BlockExplorer = Object.assign(BlockContainer, {

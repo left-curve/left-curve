@@ -20,8 +20,8 @@ function SigninApplet() {
 
   return (
     <WizardProvider wrapper={<Signin />}>
-      <Signin.Username />
       <Signin.Credential />
+      <Signin.Username />
     </WizardProvider>
   );
 }

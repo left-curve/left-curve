@@ -58,6 +58,8 @@ export type {
   DerivedTransportSchema,
   RequestFn,
   RequestFnParameters,
+  SubscribeFn,
+  SubscriptionCallbacks,
   RequestOptions,
   TransportSchema,
   TransportSchemaOverride,
@@ -111,6 +113,10 @@ export type {
   Success,
   Result,
   Option,
+  AllLeafKeys,
+  KeyOfUnion,
+  ExtractFromUnion,
+  NestedOmit,
 } from "./utils.js";
 
 export type {
@@ -138,7 +144,7 @@ export type {
 
 export type {
   HttpRequestParameters,
-  HttpRpcClientOptions,
+  HttpClientOptions,
 } from "./http.js";
 
 export {

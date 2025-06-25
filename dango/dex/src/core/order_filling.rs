@@ -1,5 +1,5 @@
 use {
-    crate::Order,
+    crate::{LimitOrder, Order},
     dango_types::dex::{Direction, OrderId},
     grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
@@ -13,6 +13,8 @@ pub struct FillingOutcome {
     pub order: Order,
     /// The amount, measured in the base asset, that has been filled.
     pub filled: Uint128,
+    /// The clearing price at which the order was filled.
+    pub clearing_price: Udec128,
     /// Whether the order has been fully filled.
     pub cleared: bool,
     /// Amount of base asset that should be refunded to the trader.
@@ -27,8 +29,8 @@ pub struct FillingOutcome {
 
 /// Clear the orders given a clearing price and volume.
 pub fn fill_orders(
-    bids: Vec<((Udec128, OrderId), Order)>,
-    asks: Vec<((Udec128, OrderId), Order)>,
+    bids: Vec<((Udec128, OrderId), LimitOrder)>,
+    asks: Vec<((Udec128, OrderId), LimitOrder)>,
     clearing_price: Udec128,
     volume: Uint128,
     current_block_height: u64,
@@ -60,7 +62,7 @@ pub fn fill_orders(
 
 /// Fill the BUY orders given a clearing price and volume.
 fn fill_bids(
-    bids: Vec<((Udec128, OrderId), Order)>,
+    bids: Vec<((Udec128, OrderId), LimitOrder)>,
     clearing_price: Udec128,
     mut volume: Uint128,
     current_block_height: u64,
@@ -93,8 +95,9 @@ fn fill_bids(
             order_direction: Direction::Bid,
             order_price,
             order_id,
-            order,
+            order: Order::Limit(order),
             filled,
+            clearing_price,
             cleared: order.remaining.is_zero(),
             // Reduce the base refund by the fee amount.
             refund_base: filled.checked_sub(fee_base)?,
@@ -115,7 +118,7 @@ fn fill_bids(
 
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
-    asks: Vec<((Udec128, OrderId), Order)>,
+    asks: Vec<((Udec128, OrderId), LimitOrder)>,
     clearing_price: Udec128,
     mut volume: Uint128,
     current_block_height: u64,
@@ -145,8 +148,9 @@ fn fill_asks(
             order_direction: Direction::Ask,
             order_price,
             order_id,
-            order,
+            order: Order::Limit(order),
             filled,
+            clearing_price,
             cleared: order.remaining.is_zero(),
             refund_base: Uint128::ZERO,
             // Reduce the quote refund by the fee amount.

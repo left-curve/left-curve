@@ -1,12 +1,19 @@
+# Common labels for all services
+x-common-labels: &common-labels
+  environment: "development"
+  project: "localdango"
+
 services:
   db:
     image: postgres:17
     shm_size: 1gb
+    labels:
+      <<: *common-labels
     ports:
       # For security reasons, postgres should only accept connections from localhost.
-      - 127.0.0.1:5432:5432
+      - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
       # For when we'll need an init script ran at initialization
       # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
@@ -14,32 +21,169 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=grug_dev
     tty: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
 
   dango:
-    image: ghcr.io/left-curve/left-curve/dango:latest
+    image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
+    labels:
+      <<: *common-labels
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
-      - 127.0.0.1:8080:8080
+      - 127.0.0.1:${DANGO_PORT:-8080}:8080
     volumes:
-      - ./configs/dango/config:/home/dango/.dango/config
-      - ./data/dango/data:/home/dango/.dango/data
-      - ./data/dango/indexer:/home/dango/.dango/indexer
+      - ./configs/dango/config:/root/.dango/config
+      - dango_data:/root/.dango/data
+      - dango_indexer:/root/.dango/indexer
     environment:
       - DB_HOST=db
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_NAME=grug_dev
-      - INDEXER__DATABASE_URL=postgres://postgres@db:5432/grug_dev
+      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    labels:
+      <<: *common-labels
     depends_on:
       - dango
     ports:
-      - 127.0.0.1:26657:26657
+      - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
-      - ./configs/cometbft/config:/home/cometbft/.cometbft/config
-      - ./data/cometbft/data:/home/cometbft/.cometbft/data
+      - ./configs/cometbft/config:/root/.cometbft/config
+      - cometbft_data:/root/.cometbft/data
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    entrypoint: >
+      sh -c "
+      mkdir -p /root/.cometbft/data &&
+      [ -f /root/.cometbft/data/priv_validator_state.json ] ||
+      printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
+      exec cometbft start
+      "
+
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  grafana:
+    image: grafana/grafana:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    container_name: alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+
+  push_gateway:
+    image: prom/pushgateway:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    restart: always
+    ports:
+      - "127.0.0.1:9091:9091"
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    labels:
+      <<: *common-labels
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    ports:
+      - "9100:9100"
+
+  loki:
+    image: grafana/loki:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./monitoring/loki:/etc/loki
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+
+  promtail:
+    image: grafana/promtail:latest
+    profiles: ["analytics"]
+    labels:
+      <<: *common-labels
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./monitoring/promtail:/etc/promtail
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  loki_data:
+  db_data:
+  dango_data:
+  dango_indexer:
+  cometbft_data:

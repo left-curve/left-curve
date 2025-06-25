@@ -4,12 +4,30 @@ use {
         Addr, Binary, ByteArray, Hash256, JsonSerExt, Message, NonEmpty, SignData, StdError,
         Timestamp,
     },
+    serde::{Deserialize, Serialize},
     sha2::Sha256,
+    std::fmt::Display,
 };
 
 /// A number that included in each transaction's sign doc for the purpose of
 /// replay protection.
 pub type Nonce = u32;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(
+    feature = "sea-orm",
+    derive(sea_orm::EnumIter, sea_orm::DeriveActiveEnum)
+)]
+#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i32", db_type = "Integer"))]
+pub enum KeyType {
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
+    Secp256r1,
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 1))]
+    Secp256k1,
+    #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 2))]
+    Ethereum,
+}
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
 #[grug::derive(Serde, Borsh)]
@@ -30,6 +48,26 @@ pub enum Key {
     /// sign a message, and extracting the pubkey from the signature. This would
     /// however be a bad UX, and deter the more security-minded users.
     Ethereum(Addr),
+}
+
+impl Key {
+    pub fn ty(&self) -> KeyType {
+        match self {
+            Key::Secp256r1(_) => KeyType::Secp256r1,
+            Key::Secp256k1(_) => KeyType::Secp256k1,
+            Key::Ethereum(_) => KeyType::Ethereum,
+        }
+    }
+}
+
+impl Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Key::Secp256r1(key) => write!(f, "{key}"),
+            Key::Secp256k1(key) => write!(f, "{key}"),
+            Key::Ethereum(addr) => write!(f, "{addr}"),
+        }
+    }
 }
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)

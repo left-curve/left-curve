@@ -2,9 +2,18 @@ import { Spinner } from "./Spinner";
 
 import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/index.js";
+import { forwardRefPolymorphic } from "#utils/polymorph.js";
 
 import type { VariantProps } from "tailwind-variants";
-import { forwardRefPolymorphic } from "#utils/polymorph.js";
+
+const SpinnerColor = {
+  link: "blue",
+  primary: "white",
+  secondary: "white",
+  tertiary: "white",
+  utility: "white",
+  current: "current",
+} as const;
 
 export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   /**
@@ -33,7 +42,7 @@ export const Button = forwardRefPolymorphic<"button", ButtonProps>(
 
     return (
       <Component className={twMerge(styles, className)} ref={ref} {...props} disabled={disabled}>
-        {isLoading ? <Spinner size={size} /> : children}
+        {isLoading ? <Spinner size={size} color={SpinnerColor[variant || "current"]} /> : children}
       </Component>
     );
   },
@@ -67,6 +76,8 @@ const buttonVariants = tv(
         primary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         secondary:
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+        tertiary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
         link: "rounded-xl transition-all duration-300 w-fit mx-1",
@@ -109,6 +120,11 @@ const buttonVariants = tv(
         variant: "secondary",
         class:
           "bg-blue-50 hover:bg-blue-100 text-blue-500 focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+      },
+      {
+        variant: "tertiary",
+        class:
+          "bg-green-bean-400 hover:bg-green-bean-500 text-white-100 focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "link",

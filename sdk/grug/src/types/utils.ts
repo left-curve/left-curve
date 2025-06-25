@@ -4,10 +4,10 @@ export type Prettify<T> = {
 
 export type OneOf<
   union extends object,
-  keys extends KeyofUnion<union> = KeyofUnion<union>,
+  keys extends KeyOfUnion<union> = KeyOfUnion<union>,
 > = union extends infer Item ? Item & { [K in Exclude<keys, keyof Item>]?: undefined } : never;
 
-type KeyofUnion<type> = type extends type ? keyof type : never;
+export type KeyOfUnion<type> = type extends type ? keyof type : never;
 
 export type RemoveUndefined<type> = {
   [key in keyof type]: NonNullable<type[key]>;
@@ -89,3 +89,21 @@ export type Failure<E> = {
 export type Result<T, E = Error> = Success<T> | Failure<E>;
 
 export type Option<T> = T | undefined;
+
+export type AllLeafKeys<T> = {
+  [K in keyof T]: T[K] extends object
+    ? T[K] extends Array<infer U>
+      ? U extends object
+        ? AllLeafKeys<U>
+        : K
+      : AllLeafKeys<T[K]>
+    : K;
+}[keyof T];
+
+export type ExtractFromUnion<T, K extends KeyOfUnion<T>> = Extract<T, { [P in K]: unknown }>;
+
+export type NestedOmit<T, TPath extends string> = TPath extends `${infer TKey}.${infer TRest}`
+  ? TKey extends keyof T
+    ? Omit<T, TKey> & { [K in TKey]: NestedOmit<T[K], TRest> }
+    : T
+  : Omit<T, TPath & keyof T>;

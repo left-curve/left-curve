@@ -1,13 +1,25 @@
-import type { Json, JsonValue, MaybePromise, TransportSchemaOverride } from "@left-curve/sdk/types";
+import type {
+  HttpRequestParameters,
+  JsonValue,
+  MaybePromise,
+  TransportSchemaOverride,
+} from "@left-curve/sdk/types";
 import type { GraphQLError } from "graphql";
 
-export type GraphqlClient = {
-  readonly request: <response = unknown, variables = Json>(
-    document: string,
-    variables?: variables,
-  ) => Promise<response>;
+export type GraphqlOperation<variables extends object | undefined = undefined> = {
+  query: string;
+  variables: variables;
 };
 
+export type GraphqlClient = {
+  readonly request: <
+    response,
+    variables extends object | undefined,
+    body extends GraphqlOperation<variables> | GraphqlOperation<variables>[],
+  >(
+    params: HttpRequestParameters<body>,
+  ) => Promise<body extends GraphqlOperation<variables> ? response : response[]>;
+};
 export interface GraphQLSchemaOverride<T = JsonValue> extends TransportSchemaOverride {
   Method: string;
   Parameters?: Record<string, unknown>;
@@ -34,4 +46,28 @@ export type GraphqlClientOptions = {
   onResponse?: (response: Response) => Promise<void> | void;
   /** The timeout (in ms) for the request. */
   timeout?: number | undefined;
+};
+
+export type PageInfo = {
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  startCursor?: string | null;
+  endCursor?: string | null;
+};
+
+export type GraphqlPagination = {
+  first?: number;
+  last?: number;
+  after?: string;
+  before?: string;
+  sortBy?: string;
+};
+
+export type GraphqlQueryResult<T> = {
+  pageInfo: PageInfo;
+  edge: {
+    cursor: string;
+    node: T;
+  }[];
+  nodes: T[];
 };

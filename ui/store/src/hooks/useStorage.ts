@@ -1,21 +1,28 @@
+import { useCallback } from "react";
+import { useQuery } from "../query.js";
 import { createStorage } from "../storages/createStorage.js";
 
-import { useQuery } from "../query.js";
-
-import { type Dispatch, type SetStateAction, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { Storage } from "../types/storage.js";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);
   storage?: Storage;
   version?: number;
+  enabled?: boolean;
+  migrations?: Record<number, (data: any) => T>;
 };
 export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
-  const dataRef = useRef<T | null>(null);
-  const { initialValue: _initialValue_, storage: _storage_, version: __version__ = 1 } = options;
+  const {
+    enabled = true,
+    initialValue: _initialValue_,
+    storage: _storage_,
+    version: __version__ = 1,
+    migrations = {},
+  } = options;
 
   const storage = (() => {
     if (_storage_) return _storage_;
@@ -32,42 +39,68 @@ export function useStorage<T = undefined>(
   })();
 
   const { data, refetch } = useQuery<T | null, Error, T, string[]>({
-    queryKey: ["dango", key],
+    enabled,
+    queryKey: ["dango", enabled.toString(), key],
     queryFn: () => {
+      const { value } = storage.getItem(key, { value: initialValue! }) as { value: T };
+
+      return value ?? null;
+    },
+    initialData: () => {
+      if (!enabled) return initialValue ?? null;
+
       const item = storage.getItem(key, {
-        version: __version__,
         value: initialValue!,
       });
 
       const { version, value } = item as { version: number; value: T };
 
-      if (__version__ > version) {
+      const returnValue = value ?? null;
+
+      if (version === __version__) return returnValue;
+
+      if (!version) {
         storage.setItem(key, {
           version: __version__,
           value: initialValue,
         });
-        return value as T;
+        return returnValue;
       }
 
-      const returnValue = value ?? null;
-      dataRef.current = returnValue;
-      return returnValue;
-    },
-    initialData: () => {
-      dataRef.current = initialValue as T;
-      return initialValue;
+      const migration = migrations[version];
+
+      if (!migration) {
+        storage.setItem(key, {
+          version: __version__,
+          value: initialValue,
+        });
+        return returnValue;
+      }
+
+      const migratedValue = migration(value);
+
+      storage.setItem(key, {
+        version: __version__,
+        value: migratedValue,
+      });
+
+      return migratedValue ?? null;
     },
   });
 
-  const setValue = (valOrFunc: T | ((t: T) => void)) => {
-    const newState = (() => {
-      if (typeof valOrFunc !== "function") return valOrFunc as T;
-      return (valOrFunc as (prevState: T) => T)(dataRef.current as T);
-    })();
+  const setValue = useCallback(
+    (valOrFunc: T | ((t: T) => void)) => {
+      const newState = (() => {
+        if (typeof valOrFunc !== "function") return valOrFunc as T;
+        const { value } = storage.getItem(key, { value: initialValue! }) as { value: T };
+        return (valOrFunc as (prevState: T) => T)(value);
+      })();
 
-    storage.setItem(key, { version: __version__, value: newState });
-    refetch();
-  };
+      storage.setItem(key, { version: __version__, value: newState });
+      refetch();
+    },
+    [storage, key, refetch, __version__],
+  );
 
   return [data as any, setValue];
 }

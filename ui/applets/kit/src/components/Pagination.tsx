@@ -1,6 +1,7 @@
 import { usePagination } from "#hooks/usePagination.js";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { Button } from "./Button";
 import { IconChevronLeft } from "./icons/IconChevronLeft";
 import { IconChevronRight } from "./icons/IconChevronRight";
 
@@ -130,6 +131,55 @@ export const Pagination: React.FC<PaginationProps> = ({
   );
 };
 
+type CursorPaginationProps = {
+  isLoading: boolean;
+  goNext: () => void;
+  goPrev: () => void;
+  className?: string;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  nextLabel?: string;
+  previousLabel?: string;
+};
+
+export const CursorPagination: React.FC<CursorPaginationProps> = ({
+  goNext,
+  goPrev,
+  hasNextPage,
+  nextLabel = "Next",
+  hasPreviousPage,
+  previousLabel = "Previous",
+  isLoading,
+  className,
+}) => {
+  return (
+    <div className={twMerge(className)}>
+      {hasPreviousPage ? (
+        <Button
+          variant="link"
+          onClick={goPrev}
+          isDisabled={!hasPreviousPage || isLoading}
+          aria-label={previousLabel}
+        >
+          <IconChevronLeft className="w-5 h-5" />
+          <span>{previousLabel}</span>
+        </Button>
+      ) : null}
+      {hasNextPage ? (
+        <Button
+          variant="link"
+          onClick={goNext}
+          isDisabled={!hasNextPage || isLoading}
+          aria-label={nextLabel}
+        >
+          <span>{nextLabel}</span>
+          <IconChevronRight className="w-5 h-5" />
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
 type PaginationItemProps = {
   page: number;
   isCurrent: boolean;
@@ -170,7 +220,7 @@ const paginationVariants = tv(
   {
     slots: {
       base: " text-blue-600  exposure-sm-italic",
-      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-blue-50 transition-all",
+      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-blue-50 transition-all exposure-sm-italic",
     },
     variants: {
       variant: {

@@ -4,6 +4,9 @@
 # Logging verbosity: error|warn|info|debug|trace.
 log_level = "info"
 
+# Logging format: text|json.
+log_format = "text"
+
 ################################################################################
 ###                            Grug Configuration                            ###
 ################################################################################
@@ -28,8 +31,13 @@ enabled = true
 # Whether to store block respnonses.
 keep_blocks = true
 
+[indexer.database]
+
 # URL to the SQL database to be used by the indexer.
-database_url = "postgres://postgres@db:5432/grug_dev"
+url = "postgres://postgres@db:5432/grug_dev"
+
+# How many connections to keep in the connection pool.
+max_connections = 10
 
 [indexer.httpd]
 
@@ -47,6 +55,17 @@ port = 8080
 # Wildcards are not supported here. To allow all origins, simply comment out
 # this line.
 #cors_allowed_origin = "*"
+
+[indexer.metrics_httpd]
+
+# Whether to enable the HTTP server.
+enabled = true
+
+# IP address to listen on. `0.0.0.0` means all interfaces.
+ip = "0.0.0.0"
+
+# Port to listen on.
+port = 9191
 
 ################################################################################
 ###                         Tendermint Configuration                         ###

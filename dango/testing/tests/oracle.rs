@@ -7,7 +7,7 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, StorageQuerier,
-        Udec128, btree_map,
+        Timestamp, Udec128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
     pyth_client::{PythClientCache, PythClientTrait},
@@ -83,7 +83,7 @@ fn oracle() {
 
         assert_eq!(current_price.precision(), 8);
 
-        assert_eq!(current_price.timestamp, 1730209108);
+        assert_eq!(current_price.timestamp, Timestamp::from_seconds(1730209108));
     }
 
     // Push an updated price
@@ -115,7 +115,7 @@ fn oracle() {
             Udec128::from_str("68739.90600000").unwrap()
         );
 
-        assert_eq!(current_price.timestamp, 1730804420);
+        assert_eq!(current_price.timestamp, Timestamp::from_seconds(1730804420));
     }
 
     // Push an outdated price. it should not be updated
@@ -147,7 +147,7 @@ fn oracle() {
             Udec128::from_str("68739.90600000").unwrap()
         );
 
-        assert_eq!(current_price.timestamp, 1730804420);
+        assert_eq!(current_price.timestamp, Timestamp::from_seconds(1730804420));
     }
 }
 

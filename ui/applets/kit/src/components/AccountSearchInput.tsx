@@ -64,15 +64,12 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
           onClick={() => setShowMenu(true)}
           onChange={(e) => [setInputValue(e.target.value), onChange?.(e)]}
           endContent={isFetching ? <Spinner size="sm" color="gray" /> : null}
-          classNames={{
-            inputWrapper: showMenu && options.length ? "rounded-b-none" : "",
-          }}
           {...props}
         />
         <div
           ref={menuRef}
           className={twMerge(
-            "absolute top-[4.8rem] shadow-card-shadow bg-rice-25 rounded-lg p-1 z-30 w-full overflow-y-scroll max-h-[20rem] transition-all duration-300 ease-in-out scrollbar-none",
+            "absolute top-[4.8rem] shadow-account-card bg-rice-25 rounded-lg p-1 z-30 w-full overflow-y-scroll max-h-[20rem] transition-all duration-300 ease-in-out scrollbar-none",
             showMenu ? "block" : "hidden",
             options.length
               ? "h-auto translate-x-0"
@@ -97,7 +94,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
                 <div className="w-fit flex flex-col gap-1 overflow-x-hidden">
                   <p className="diatype-lg-medium">{accountName}</p>
                   <TruncateText
-                    className="diatype-md-regular text-gray-500"
+                    className="diatype-m-regular text-gray-500"
                     text={address}
                     start={20}
                   />

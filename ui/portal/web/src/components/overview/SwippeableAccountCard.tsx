@@ -71,7 +71,7 @@ export const SwippeableAccountCard: React.FC<Props> = ({ cardVisible, setCardVis
         {cardVisible === 0 ? (
           <AccountCard account={account!} balance={totalBalance} />
         ) : (
-          <div className="flex lg:hidden w-full max-w-[20.5rem] h-[9.75rem]">
+          <div className="flex lg:hidden w-full max-w-[20.5rem] h-[10rem]">
             <AssetsSection
               balances={balances}
               showAllAssets={isConnected ? () => setSidebarVisibility(true) : undefined}

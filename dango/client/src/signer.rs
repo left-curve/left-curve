@@ -258,6 +258,7 @@ mod tests {
         authenticate_tx(mock_ctx.as_auth(), tx, None).should_succeed();
     }
 
+    #[ignore = "Disabling this since it doesn't test anything"]
     #[test]
     fn unsigned_tx() {
         let username = Username::from_str("owner").unwrap();

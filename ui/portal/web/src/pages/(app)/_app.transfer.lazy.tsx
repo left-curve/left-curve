@@ -1,11 +1,13 @@
+import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import {
-  capitalize,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-  withResolvers,
-} from "@left-curve/dango/utils";
-import { useAccount, useBalances, useConfig, usePrices, useSigningClient } from "@left-curve/store";
+  useAccount,
+  useBalances,
+  useConfig,
+  usePrices,
+  useSigningClient,
+  useSubmitTx,
+} from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -14,34 +16,37 @@ import {
   AccountSearchInput,
   Button,
   CoinSelector,
-  IconButton,
-  IconChevronDown,
   Input,
   QRCode,
   ResizerContainer,
   Tabs,
   TextCopy,
   TruncateText,
-  useInputs,
-  useMediaQuery,
-  useWatchEffect,
 } from "@left-curve/applets-kit";
-import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { toast } from "~/components/foundation/Toast";
+import { MobileTitle } from "~/components/foundation/MobileTitle";
 import { Modals } from "~/components/modals/RootModal";
+
 import { m } from "~/paraglide/messages";
+
+import { isValidAddress } from "@left-curve/dango";
+import {
+  capitalize,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+  withResolvers,
+} from "@left-curve/dango/utils";
 
 export const Route = createLazyFileRoute("/(app)/_app/transfer")({
   component: TransferApplet,
 });
 
 function TransferApplet() {
+  const { toast } = useApp();
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/transfer" });
-  const { settings, showModal, notifier } = useApp();
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
@@ -54,8 +59,6 @@ function TransferApplet() {
   const { account, isConnected } = useAccount();
   const { coins } = useConfig();
   const { data: signingClient } = useSigningClient();
-
-  const { isMd } = useMediaQuery();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
@@ -74,15 +77,27 @@ function TransferApplet() {
     formatOptions: { ...formatNumberOptions, currency: "USD" },
   });
 
-  const { mutateAsync: onSubmit, isPending } = useMutation<
+  const { mutateAsync: onSubmit, isPending } = useSubmitTx<
     void,
     Error,
     { amount: string; address: string }
   >({
-    mutationFn: async ({ address, amount }) => {
-      if (!signingClient) throw new Error("error: no signing client");
-      notifier.publish("submit_tx", { isSubmitting: true });
-      try {
+    toast: {
+      success: () => toast.success({ title: m["sendAndReceive.sendSuccessfully"]() }),
+      error: () =>
+        toast.error(
+          { title: m["transfer.error.title"](), description: m["transfer.error.description"]() },
+          { duration: Number.POSITIVE_INFINITY },
+        ),
+    },
+    submission: {
+      success: m["sendAndReceive.sendSuccessfully"](),
+      error: m["transfer.error.description"](),
+    },
+    mutation: {
+      mutationFn: async ({ address, amount }, { abort }) => {
+        if (!signingClient) throw new Error("error: no signing client");
+
         const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
 
         const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
@@ -95,17 +110,7 @@ function TransferApplet() {
           rejectSend,
         });
 
-        const response = await promise
-          .then(() => true)
-          .catch(() => {
-            notifier.publish("submit_tx", {
-              isSubmitting: false,
-              txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
-            });
-            return false;
-          });
-
-        if (!response) return undefined;
+        await promise.catch(abort);
 
         await signingClient.transfer({
           transfer: {
@@ -115,45 +120,18 @@ function TransferApplet() {
           },
           sender: account!.address as Address,
         });
-
+      },
+      onSuccess: () => {
         reset();
-        toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
-        notifier.publish("submit_tx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: true, message: m["sendAndReceive.sendSuccessfully"]() },
-        });
         refreshBalances();
         queryClient.invalidateQueries({ queryKey: ["quests", account] });
-      } catch (e) {
-        console.error(e);
-        notifier.publish("submit_tx", {
-          isSubmitting: false,
-          txResult: { hasSucceeded: false, message: m["transfer.error.description"]() },
-        });
-        toast.error(
-          {
-            title: m["transfer.error.title"](),
-            description: m["transfer.error.description"](),
-          },
-          {
-            duration: Number.POSITIVE_INFINITY,
-          },
-        );
-      }
+      },
     },
   });
 
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
-      {isMd ? null : (
-        <h2 className="flex gap-2 items-center" onClick={() => navigate({ to: "/" })}>
-          <IconButton variant="link">
-            <IconChevronDown className="rotate-90" />
-          </IconButton>
-
-          <span className="h3-bold text-gray-900">{m["sendAndReceive.title"]()}</span>
-        </h2>
-      )}
+      <MobileTitle title={m["sendAndReceive.title"]()} />
 
       <div className="w-full flex flex-col gap-4  md:pt-28 items-center justify-start ">
         <ResizerContainer
@@ -252,7 +230,7 @@ function TransferApplet() {
               </Button>
             </form>
           ) : (
-            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-xl shadow-card-shadow p-4">
+            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-xl shadow-account-card p-4">
               <div className="flex flex-col gap-1 items-center">
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">

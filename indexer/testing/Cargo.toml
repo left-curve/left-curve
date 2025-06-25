@@ -5,28 +5,31 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
-actix-codec   = { workspace = true }
-actix-http    = { workspace = true }
-actix-test    = { workspace = true }
-actix-web     = { workspace = true }
-anyhow        = { workspace = true }
-awc           = { workspace = true }
-futures-util  = { workspace = true }
-indexer-httpd = { workspace = true }
-sea-orm       = { workspace = true }
-serde         = { workspace = true }
-serde_json    = { workspace = true }
+actix-codec    = { workspace = true }
+actix-http     = { workspace = true }
+actix-service  = { workspace = true }
+actix-test     = { workspace = true }
+actix-web      = { workspace = true }
+anyhow         = { workspace = true }
+awc            = { workspace = true }
+futures-util   = { workspace = true }
+grug-app       = { workspace = true }
+grug-db-memory = { workspace = true }
+grug-testing   = { workspace = true }
+grug-types     = { workspace = true }
+grug-vm-rust   = { workspace = true }
+indexer-httpd  = { workspace = true, features = ["testing", "tracing"] }
+indexer-sql    = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
+sea-orm        = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+tokio          = { workspace = true }
 
 [dev-dependencies]
 assert-json-diff = { workspace = true }
 assertor         = { workspace = true }
-grug-app         = { workspace = true }
-grug-db-memory   = { workspace = true }
+base64           = { workspace = true }
+chrono           = { workspace = true }
 grug-storage     = { workspace = true }
-grug-testing     = { workspace = true }
-grug-types       = { workspace = true }
-grug-vm-rust     = { workspace = true }
-indexer-httpd    = { workspace = true, features = ["testing"] }
-indexer-sql      = { workspace = true, features = ["tracing"] }
-tokio            = { workspace = true }
+itertools        = { workspace = true }
 tracing          = { workspace = true }

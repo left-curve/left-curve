@@ -86,7 +86,7 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
                 )?.props.children
               }
             </span>
-            <IconChevronDown className={icon({ className: classNames?.icon })} />
+            <IconChevronDown className={twMerge(icon(), classNames?.icon)} />
           </button>
 
           <motion.div
@@ -163,7 +163,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   ) as { props: { children: ReactElement } };
 
   return (
-    <div className={twMerge(base({ className: classNames?.base }), "relative md:hidden block")}>
+    <div className={twMerge("relative md:hidden block", base({ className: classNames?.base }))}>
       <select
         id={selectId}
         className="absolute top-[-20px] right-0 opacity-0 h-full w-full"
@@ -195,9 +195,9 @@ const selectVariants = tv({
   slots: {
     base: "group inline-flex flex-col relative w-fit min-w-[9rem] transition-all  duration-500 leading-none",
     listboxWrapper:
-      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-card-shadow top-[3.375rem] bg-rice-25 absolute",
+      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-rice-25 absolute",
     trigger:
-      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-card-shadow diatype-m-regular h-[46px] rounded-md bg-rice-25",
+      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-rice-25",
     icon: "top-[10px] right-4 absolute pointer-events-none min-w-[20px] min-h-[20px] transition-all duration-300",
   },
   variants: {

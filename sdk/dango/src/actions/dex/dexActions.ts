@@ -42,9 +42,31 @@ import {
   swapExactAmountIn,
 } from "./mutations/swapExactAmountIn.js";
 
+import {
+  type BatchUpdateOrdersParameters,
+  type BatchUpdateOrdersReturnType,
+  batchUpdateOrders,
+} from "./mutations/batchUpdateOrders.js";
+
+import {
+  type OrdersByUserParameters,
+  type OrdersByUserReturnType,
+  ordersByUser,
+} from "./queries/ordersByUser.js";
+
+import {
+  type SimulateWithdrawLiquidityParameters,
+  type SimulateWithdrawLiquidityReturnType,
+  simulateWithdrawLiquidity,
+} from "./queries/simulateWithdrawLiquidity.js";
+
 export type DexQueryActions = {
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
+  ordersByUser: (args: OrdersByUserParameters) => OrdersByUserReturnType;
+  simulateWithdrawLiquidity: (
+    args: SimulateWithdrawLiquidityParameters,
+  ) => SimulateWithdrawLiquidityReturnType;
   simulateSwapExactAmountOut: (
     args: SimulateSwapExactAmountOutParameters,
   ) => SimulateSwapExactAmountOutReturnType;
@@ -59,12 +81,15 @@ export function dexQueryActions<transport extends Transport = Transport>(
   return {
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
+    ordersByUser: (args) => ordersByUser(client, args),
+    simulateWithdrawLiquidity: (args) => simulateWithdrawLiquidity(client, args),
     simulateSwapExactAmountOut: (args) => simulateSwapExactAmountOut(client, args),
     simulateSwapExactAmountIn: (args) => simulateSwapExactAmountIn(client, args),
   };
 }
 
 export type DexMutationActions = {
+  batchUpdateOrders: (args: BatchUpdateOrdersParameters) => BatchUpdateOrdersReturnType;
   swapExactAmountIn: (args: SwapExactAmountInParameters) => SwapExactAmountInReturnType;
   swapExactAmountOut: (args: SwapExactAmountOutParameters) => SwapExactAmountOutReturnType;
   provideLiquidity: (args: ProvideLiquidityParameters) => ProvideLiquidityReturnType;
@@ -75,6 +100,7 @@ export function dexMutationActions<transport extends Transport = Transport>(
   client: DangoClient<transport, Signer>,
 ): DexMutationActions {
   return {
+    batchUpdateOrders: (args) => batchUpdateOrders(client, args),
     swapExactAmountIn: (args) => swapExactAmountIn(client, args),
     swapExactAmountOut: (args) => swapExactAmountOut(client, args),
     provideLiquidity: (args) => provideLiquidity(client, args),

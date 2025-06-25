@@ -1969,8 +1969,8 @@ mod cosmwasm_tests {
     mod pk_multi_index {
         use {
             super::*,
-            grug_math::{Inner, Uint128},
-            grug_types::Addr,
+            grug_math::Uint128,
+            grug_types::{Addr, Inner},
         };
 
         struct Indexes<'a> {

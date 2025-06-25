@@ -1,4 +1,5 @@
 use {
+    crate::{LimitOrder, MarketOrder},
     dango_types::{
         account_factory::Username,
         dex::{Direction, OrderId, PairParams},
@@ -15,48 +16,55 @@ pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 // (base_denom, quote_denom) => coin_pair
 pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
-pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
+pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 1, 1);
 
-pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("order", OrderIndex {
-    order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
-    user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
-});
+pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderIndex> =
+    IndexedMap::new("market_order", MarketOrderIndex {
+        order_id: UniqueIndex::new(
+            |(_, _, order_id), _| *order_id,
+            "market_order",
+            "market_order__id",
+        ),
+        user: MultiIndex::new(|_, order| order.user, "market_order", "market_order__user"),
+    });
 
-/// Key is the user's address and the order id.
-pub const INCOMING_ORDERS: Map<(Addr, OrderId), (OrderKey, Order)> = Map::new("incoming_orders");
+pub const LIMIT_ORDERS: IndexedMap<LimitOrderKey, LimitOrder, LimitOrderIndex> =
+    IndexedMap::new("order", LimitOrderIndex {
+        order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
+        user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
+    });
 
-/// Type of the keys under which orders are stored in the contract storage.
-///
-/// This is nested tuple consisting of:
-///
-/// ```plain
-/// ((base_denom, quote_denom), direction, price, order_id)
-/// ```
-///
-/// TODO: ideally we use `&'a Denom` here, but handling lifetime is tricky.
-pub type OrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
-
-#[grug::derive(Borsh, Serde)]
-#[derive(Copy)]
-pub struct Order {
-    pub user: Addr,
-    /// The order's total size, measured in the _base asset_.
-    pub amount: Uint128,
-    /// Portion of the order that remains unfilled, measured in the _base asset_.
-    pub remaining: Uint128,
-    /// The block height at which the order was submitted.
-    pub created_at_block_height: u64,
-}
-
-#[grug::index_list(OrderKey, Order)]
-pub struct OrderIndex<'a> {
-    pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
-    pub user: MultiIndex<'a, OrderKey, Addr, Order>,
-    // TODO: also index orders by pair
-}
+pub const INCOMING_ORDERS: Map<(Addr, OrderId), (LimitOrderKey, LimitOrder)> =
+    Map::new("incoming_orders");
 
 /// Stores the total trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Uint128> = Map::new("volume");
 
 /// Stores the total trading volume in USD for each username and timestamp.
 pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Uint128> = Map::new("volume_by_user");
+
+/// Storage key for market orders.
+///
+/// ```plain
+/// ((base_denom, quote_denom), direction, order_id)
+/// ```
+pub type MarketOrderKey = ((Denom, Denom), Direction, OrderId);
+
+/// Storage key for limit orders.
+///
+/// ```plain
+/// ((base_denom, quote_denom), direction, price, order_id)
+/// ```
+pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
+
+#[grug::index_list(MarketOrderKey, MarketOrder)]
+pub struct MarketOrderIndex<'a> {
+    pub order_id: UniqueIndex<'a, MarketOrderKey, OrderId, MarketOrder>,
+    pub user: MultiIndex<'a, MarketOrderKey, Addr, MarketOrder>,
+}
+
+#[grug::index_list(LimitOrderKey, LimitOrder)]
+pub struct LimitOrderIndex<'a> {
+    pub order_id: UniqueIndex<'a, LimitOrderKey, OrderId, LimitOrder>,
+    pub user: MultiIndex<'a, LimitOrderKey, Addr, LimitOrder>,
+}

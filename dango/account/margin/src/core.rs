@@ -30,13 +30,17 @@ use {
 ///   Used when liquidating the account as the liquidator has sent additional
 ///   funds to the account that should not be included in the total collateral
 ///   value.
+///
+/// - `skip_if_no_debt`: If the account has zero debt, then skip the rest of the
+///   computation and return early with a `None`.
 pub fn query_and_compute_health(
     querier: QuerierWrapper,
     oracle_querier: &mut OracleQuerier,
     account: Addr,
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
-) -> anyhow::Result<HealthResponse> {
+    skip_if_no_debt: bool,
+) -> anyhow::Result<Option<HealthResponse>> {
     let cfg = querier.query_dango_config()?;
     let data = query_health(querier, account, &cfg)?;
 
@@ -78,6 +82,7 @@ pub fn query_and_compute_health(
         prices,
         cfg.collateral_powers,
         discount_collateral,
+        skip_if_no_debt,
     )
 }
 
@@ -129,9 +134,12 @@ pub fn query_health(
 ///   account as the liquidator has sent additional funds to the account
 ///   that should not be included in the total collateral value.
 ///
+/// - `skip_if_no_debt`: If the account has zero debt, then skip the rest of the
+///   computation and return early with a `None`.
+///
 /// ## Outputs
 ///
-/// - a `HealthResponse` struct containing the health of the margin account.
+/// - an `Option<HealthResponse>` containing the health info of the margin account.
 pub fn compute_health(
     HealthData {
         scaled_debts,
@@ -142,7 +150,8 @@ pub fn compute_health(
     prices: BTreeMap<Denom, PrecisionedPrice>,
     collateral_powers: BTreeMap<Denom, CollateralPower>,
     discount_collateral: Option<Coins>,
-) -> anyhow::Result<HealthResponse> {
+    skip_if_no_debt: bool,
+) -> anyhow::Result<Option<HealthResponse>> {
     // ------------------------------- 1. Debts --------------------------------
 
     let mut debts = Coins::new();
@@ -152,19 +161,25 @@ pub fn compute_health(
         // Get the market for the denom.
         let market = markets
             .get(denom)
-            .ok_or(anyhow!("market for denom {denom} not found"))?;
+            .ok_or_else(|| anyhow!("market for denom {denom} not found"))?;
 
         // Calculate the real debt.
         let debt = dango_lending::into_underlying_debt(*scaled_debt, market)?;
-        debts.insert(Coin::new(denom.clone(), debt)?)?;
+        debts.insert((denom.clone(), debt))?;
 
         // Calculate the value of the debt.
         let price = prices
             .get(denom)
-            .ok_or(anyhow!("price for denom {denom} not found"))?;
+            .ok_or_else(|| anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
+    }
+
+    // If the account has no debt, then it must be healthy. We can return early
+    // if the caller has requested so.
+    if total_debt_value.is_zero() && skip_if_no_debt {
+        return Ok(None);
     }
 
     // ---------------------------- 2. Collaterals -----------------------------
@@ -188,11 +203,11 @@ pub fn compute_health(
 
         let price = prices
             .get(denom)
-            .ok_or(anyhow!("price for denom {denom} not found"))?;
+            .ok_or_else(|| anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(**power)?;
 
-        collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
+        collaterals.insert((denom.clone(), collateral_balance))?;
         total_collateral_value.checked_add_assign(value)?;
         total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
     }
@@ -233,22 +248,20 @@ pub fn compute_health(
 
         let offer_price = prices
             .get(&offer.denom)
-            .ok_or(anyhow::anyhow!("price for denom {} not found", offer.denom))?;
+            .ok_or_else(|| anyhow!("price for denom {} not found", offer.denom))?;
+        let offer_collateral_power = collateral_powers
+            .get(&offer.denom)
+            .ok_or_else(|| anyhow!("collateral power for denom {} not found", offer.denom))?;
         let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
-        let offer_collateral_power = collateral_powers.get(&offer.denom).ok_or(anyhow!(
-            "collateral power for denom {} not found",
-            offer.denom
-        ))?;
         let offer_adjusted_value = offer_value.checked_mul(**offer_collateral_power)?;
 
         let ask_price = prices
             .get(&ask.denom)
-            .ok_or(anyhow::anyhow!("price for denom {} not found", ask.denom))?;
+            .ok_or_else(|| anyhow!("price for denom {} not found", ask.denom))?;
+        let ask_collateral_power = collateral_powers
+            .get(&ask.denom)
+            .ok_or_else(|| anyhow!("collateral power for denom {} not found", ask.denom))?;
         let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
-        let ask_collateral_power = collateral_powers.get(&ask.denom).ok_or(anyhow!(
-            "collateral power for denom {} not found",
-            ask.denom
-        ))?;
         let ask_adjusted_value = ask_value.checked_mul(**ask_collateral_power)?;
 
         let min_value = min(offer_value, ask_value);
@@ -275,7 +288,7 @@ pub fn compute_health(
         total_debt_value / total_adjusted_collateral_value
     };
 
-    Ok(HealthResponse {
+    Ok(Some(HealthResponse {
         utilization_rate,
         total_debt_value,
         total_collateral_value,
@@ -284,5 +297,5 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
-    })
+    }))
 }

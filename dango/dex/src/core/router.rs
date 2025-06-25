@@ -1,5 +1,6 @@
 use {
     crate::{PAIRS, PassiveLiquidityPool, RESERVES},
+    dango_oracle::OracleQuerier,
     dango_types::dex::PairId,
     grug::{Coin, CoinPair, Inner, NonZero, Storage, UniqueVec},
     std::collections::HashMap,
@@ -7,6 +8,7 @@ use {
 
 pub fn swap_exact_amount_in(
     storage: &dyn Storage,
+    oracle_querier: &mut OracleQuerier<'_>,
     route: UniqueVec<PairId>,
     input: Coin,
 ) -> anyhow::Result<(HashMap<PairId, CoinPair>, Coin)> {
@@ -22,7 +24,13 @@ pub fn swap_exact_amount_in(
 
         // Perform the swap.
         // The output of the previous step is the input of this step.
-        (reserve, output) = params.swap_exact_amount_in(reserve, output)?;
+        (reserve, output) = params.swap_exact_amount_in(
+            oracle_querier,
+            &pair.base_denom,
+            &pair.quote_denom,
+            reserve,
+            output,
+        )?;
 
         // Save the updated pool reserve.
         reserves.insert(pair.clone(), reserve);

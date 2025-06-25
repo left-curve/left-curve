@@ -1,8 +1,7 @@
-import { gql } from "graphql-request";
+import { queryIndexer } from "./queryIndexer.js";
 
 import type { Client, Transport } from "@left-curve/sdk/types";
-import type { IndexedBlock } from "../../types/indexer.js";
-import { queryIndexer } from "./queryIndexer.js";
+import type { IndexedBlock } from "#types/indexer.js";
 
 export type QueryBlockParameters = {
   height?: number;
@@ -14,18 +13,24 @@ export async function queryBlock<transport extends Transport>(
   client: Client<transport>,
   parameters: QueryBlockParameters = {},
 ): QueryBlockReturnType {
-  const document = gql`
-    query block($height: Int){
+  const document = /* GraphQL */ `
+    query block($height: Int) {
       block(height: $height) {
-        createdAt,
-        hash,
-        blockHeight,
-        appHash,
+        createdAt
+        hash
+        blockHeight
+        appHash
         transactions {
           hash
           sender
+          blockHeight
+          createdAt
           transactionType
           hasSucceeded
+          messages {
+            methodName
+            contractAddr
+          }
         }
       }
     }

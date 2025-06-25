@@ -14,8 +14,10 @@ use {
         auth::Key,
         bank::Metadata,
         bitcoin::{MultisigSettings, Network},
-        constants::{PYTH_PRICE_SOURCES, btc, dango, eth, sol, usdc},
-        dex::{CurveInvariant, PairParams, PairUpdate},
+        constants::{
+            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
+        },
+        dex::{PairParams, PairUpdate, PassiveLiquidity},
         gateway::{Remote, WarpRemote, WithdrawalFee},
         lending::InterestRateModel,
         taxman,
@@ -268,9 +270,69 @@ impl Preset for BankOption {
                 dango::DENOM.clone() => Metadata {
                     name: LengthBounded::new_unchecked("Dango".to_string()),
                     symbol: LengthBounded::new_unchecked("DGX".to_string()),
-                    decimals: 6,
-                    description: Some(LengthBounded::new_unchecked("Native token of Dango".to_string()))
-                }
+                    decimals: dango::DECIMAL,
+                    description: Some(LengthBounded::new_unchecked("Native token of Dango".to_string())),
+                },
+                atom::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Atom".to_string()),
+                    symbol: LengthBounded::new_unchecked("ATOM".to_string()),
+                    decimals: atom::DECIMAL,
+                    description: None,
+                },
+                bch::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Bitcoin Cash".to_string()),
+                    symbol: LengthBounded::new_unchecked("BCH".to_string()),
+                    decimals: bch::DECIMAL,
+                    description: None,
+                },
+                bnb::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Binance Coin".to_string()),
+                    symbol: LengthBounded::new_unchecked("BNB".to_string()),
+                    decimals: bnb::DECIMAL,
+                    description: None,
+                },
+                btc::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Bitcoin".to_string()),
+                    symbol: LengthBounded::new_unchecked("BTC".to_string()),
+                    decimals: btc::DECIMAL,
+                    description: None,
+                },
+                doge::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Dogecoin".to_string()),
+                    symbol: LengthBounded::new_unchecked("DOGE".to_string()),
+                    decimals: doge::DECIMAL,
+                    description: None,
+                },
+                eth::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Ether".to_string()),
+                    symbol: LengthBounded::new_unchecked("ETH".to_string()),
+                    decimals: eth::DECIMAL,
+                    description: None,
+                },
+                ltc::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Litecoin".to_string()),
+                    symbol: LengthBounded::new_unchecked("LTC".to_string()),
+                    decimals: ltc::DECIMAL,
+                    description: None,
+                },
+                sol::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("Solana".to_string()),
+                    symbol: LengthBounded::new_unchecked("SOL".to_string()),
+                    decimals: sol::DECIMAL,
+                    description: None,
+                },
+                usdc::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("USD Coin".to_string()),
+                    symbol: LengthBounded::new_unchecked("USDC".to_string()),
+                    decimals: usdc::DECIMAL,
+                    description: None,
+                },
+                xrp::DENOM.clone() => Metadata {
+                    name: LengthBounded::new_unchecked("XRP".to_string()),
+                    symbol: LengthBounded::new_unchecked("XRP".to_string()),
+                    decimals: xrp::DECIMAL,
+                    description: None,
+                },
             },
         }
     }
@@ -285,7 +347,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        pool_type: PassiveLiquidity::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -294,7 +358,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        pool_type: PassiveLiquidity::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -303,7 +369,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        pool_type: PassiveLiquidity::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -312,7 +380,9 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
-                        curve_invariant: CurveInvariant::Xyk,
+                        pool_type: PassiveLiquidity::Xyk {
+                            order_spacing: Udec128::ONE,
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },

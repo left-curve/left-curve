@@ -297,8 +297,12 @@
               {
                 "base_denom": "dango",
                 "params": {
-                  "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/dango/usdc",
+                  "pool_type": {
+                    "xyk": {
+                      "order_spacing": "1"
+                    }
+                  },
                   "swap_fee_rate": "0.003"
                 },
                 "quote_denom": "bridge/usdc"
@@ -306,8 +310,12 @@
               {
                 "base_denom": "bridge/btc",
                 "params": {
-                  "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/btc/usdc",
+                  "pool_type": {
+                    "xyk": {
+                      "order_spacing": "1"
+                    }
+                  },
                   "swap_fee_rate": "0.003"
                 },
                 "quote_denom": "bridge/usdc"
@@ -315,8 +323,12 @@
               {
                 "base_denom": "bridge/eth",
                 "params": {
-                  "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/eth/usdc",
+                  "pool_type": {
+                    "xyk": {
+                      "order_spacing": "1"
+                    }
+                  },
                   "swap_fee_rate": "0.003"
                 },
                 "quote_denom": "bridge/usdc"
@@ -324,8 +336,12 @@
               {
                 "base_denom": "bridge/sol",
                 "params": {
-                  "curve_invariant": "xyk",
                   "lp_denom": "dex/pool/sol/usdc",
+                  "pool_type": {
+                    "xyk": {
+                      "order_spacing": "1"
+                    }
+                  },
                   "swap_fee_rate": "0.003"
                 },
                 "quote_denom": "bridge/usdc"
@@ -619,6 +635,56 @@
               }
             },
             "metadatas": {
+              "bridge/atom": {
+                "decimals": 6,
+                "name": "Atom",
+                "symbol": "ATOM"
+              },
+              "bridge/bch": {
+                "decimals": 8,
+                "name": "Bitcoin Cash",
+                "symbol": "BCH"
+              },
+              "bridge/bnb": {
+                "decimals": 18,
+                "name": "Binance Coin",
+                "symbol": "BNB"
+              },
+              "bridge/btc": {
+                "decimals": 8,
+                "name": "Bitcoin",
+                "symbol": "BTC"
+              },
+              "bridge/doge": {
+                "decimals": 8,
+                "name": "Dogecoin",
+                "symbol": "DOGE"
+              },
+              "bridge/eth": {
+                "decimals": 18,
+                "name": "Ether",
+                "symbol": "ETH"
+              },
+              "bridge/ltc": {
+                "decimals": 8,
+                "name": "Litecoin",
+                "symbol": "LTC"
+              },
+              "bridge/sol": {
+                "decimals": 9,
+                "name": "Solana",
+                "symbol": "SOL"
+              },
+              "bridge/usdc": {
+                "decimals": 6,
+                "name": "USD Coin",
+                "symbol": "USDC"
+              },
+              "bridge/xrp": {
+                "decimals": 6,
+                "name": "XRP",
+                "symbol": "XRP"
+              },
               "dango": {
                 "decimals": 6,
                 "description": "Native token of Dango",

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
 import { AppletsSection } from "~/components/overview/AppletsSection";
@@ -51,11 +51,6 @@ const mockDataTable = [
 ];
 
 export const Route = createFileRoute("/(app)/_app/")({
-  beforeLoad: async () => {
-    const image = new Image();
-    image.src = "/images/characters/group.svg";
-    await image.decode();
-  },
   component: OverviewComponent,
 });
 
@@ -70,8 +65,8 @@ function OverviewComponent() {
   };
 
   return (
-    <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-8 p-4 pb-32">
-      <div className="w-full flex flex-col gap-8 min-h-[100dvh] lg:min-h-fit relative">
+    <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-6 p-4 pt-6 mb-16">
+      <div className="w-full flex flex-col gap-6 min-h-[100dvh] lg:min-h-fit relative">
         <WelcomeSection
           cardMobileVisible={cardMobileVisible}
           setCardMobileVisible={setCardMobileVisible}
@@ -90,10 +85,9 @@ function OverviewComponent() {
           <IconChevronDown />
         </IconButton>
       </div>
-
       {/*   <div
         ref={topYieldsRef}
-        className="bg-rice-25 shadow-card-shadow flex flex-col rounded-xl w-full pt-4"
+        className="bg-rice-25 shadow-account-card flex flex-col rounded-xl w-full pt-4"
       >
         <p className="h3-heavy font-extrabold px-4 py-3">Top Yields</p>
 
@@ -103,7 +97,6 @@ function OverviewComponent() {
           ))}
         </div>
       </div> */}
-
       {/*  <PoolTable data={mockDataTable} /> */}
     </div>
   );

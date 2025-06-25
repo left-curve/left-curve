@@ -20,7 +20,7 @@ use {
     tracing::Level,
 };
 
-pub const DEFAULT_TRACING_LEVEL: Level = Level::INFO;
+pub const DEFAULT_TRACING_LEVEL: Level = Level::ERROR;
 pub const DEFAULT_CHAIN_ID: &str = "dev-1";
 pub const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
 pub const DEFAULT_DEFAULT_GAS_LIMIT: u64 = 1_000_000;
@@ -538,7 +538,7 @@ where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    VM: TestVm + Clone + 'static,
+    VM: TestVm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<VM::Error> + From<PP::Error> + From<ID::Error> + From<DB::Error>,

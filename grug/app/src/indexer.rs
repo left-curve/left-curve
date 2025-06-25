@@ -1,5 +1,5 @@
 use {
-    crate::{AppError, Indexer},
+    crate::{AppError, Indexer, QuerierProvider},
     grug_types::{Block, BlockOutcome},
     std::{
         convert::Infallible,
@@ -34,7 +34,11 @@ impl Indexer for NullIndexer {
         Ok(())
     }
 
-    fn post_indexing(&self, _block_height: u64) -> Result<(), Self::Error> {
+    fn post_indexing(
+        &self,
+        _block_height: u64,
+        _querier: Box<dyn QuerierProvider>,
+    ) -> Result<(), Self::Error> {
         Ok(())
     }
 }

@@ -13,6 +13,7 @@ import { ConnectionStatus } from "./types/store.js";
 
 import type {
   AccountTypes,
+  Address,
   AppConfig,
   Client,
   Denom,
@@ -22,6 +23,9 @@ import type {
   Transport,
 } from "@left-curve/dango/types";
 
+import { invertObject } from "@left-curve/dango/utils";
+
+import { subscriptionsStore } from "./subscriptions.js";
 import type { AnyCoin } from "./types/coin.js";
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
@@ -33,6 +37,7 @@ export function createConfig<
 >(parameters: CreateConfigParameters<transport, coin>): Config<transport, coin> {
   const {
     multiInjectedProviderDiscovery = true,
+    version = 0,
     storage = createStorage({
       storage:
         typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
@@ -106,10 +111,11 @@ export function createConfig<
   }
 
   let _appConfig:
-    | (AppConfig & {
+    | ({
+        addresses: AppConfig["addresses"] & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
         pairs: Record<Denom, PairUpdate>;
-      })
+      } & Omit<AppConfig, "addresses">)
     | undefined;
 
   async function getAppConfig() {
@@ -123,6 +129,10 @@ export function createConfig<
 
     _appConfig = {
       ...appConfig,
+      addresses: {
+        ...appConfig.addresses,
+        ...invertObject(appConfig.addresses),
+      },
       accountFactory: { codeHashes },
       pairs: pairs.reduce((acc, pair) => {
         acc[pair.baseDenom] = pair;
@@ -151,7 +161,7 @@ export function createConfig<
   const stateCreator = storage
     ? persist(getInitialState, {
         name: "store",
-        version: 0.3,
+        version,
         storage,
         migrate(state, version) {
           const persistedState = state as State;
@@ -219,6 +229,8 @@ export function createConfig<
       store.setState((x) => ({ ...x, isMipdLoaded: true }));
     });
   }
+
+  const sbStore = subscriptionsStore(getClient() as PublicClient);
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
@@ -313,9 +325,30 @@ export function createConfig<
     });
   }
 
+  function getCoinInfo(denom: Denom): AnyCoin {
+    const allCoins = coins.getState()!;
+    if (!denom.includes("dex")) return allCoins[denom];
+    const [_, __, baseDenom, quoteDenom] = denom.split("/");
+    const coinsArray = Object.values(allCoins);
+    const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
+    const quoteCoin = coinsArray.find((x) => x.denom.includes(quoteDenom))!;
+
+    return {
+      type: "lp",
+      symbol: `${baseCoin.symbol}-${quoteCoin.symbol}`,
+      denom,
+      decimals: 0,
+      base: baseCoin,
+      quote: quoteCoin,
+    };
+  }
+
   return {
     get coins() {
       return coins.getState() ?? {};
+    },
+    get subscriptions() {
+      return sbStore;
     },
     get chain() {
       return rest.chain;
@@ -324,6 +357,7 @@ export function createConfig<
       return connectors.getState();
     },
     storage,
+    getCoinInfo,
     getAppConfig,
     getClient,
     get state() {

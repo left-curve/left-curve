@@ -9,7 +9,7 @@ export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
 export { Select } from "./Select";
 export { TruncateText } from "./TruncateText";
-export { Table, type TableColumn } from "./Table";
+export { Table, type TableColumn, type TableClassNames, type ColumnFiltersState } from "./Table";
 export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
@@ -27,8 +27,15 @@ export { ExpandOptions } from "./ExpandOptions";
 export { Checkbox } from "./Checkbox";
 export { StrategyCard } from "./StrategyCard";
 export { TextCopy } from "./TextCopy";
-export { Popover } from "./Popover";
-export { Pagination } from "./Pagination";
+export { Popover, type PopoverRef } from "./Popover";
+export { Pagination, CursorPagination } from "./Pagination";
+export { JsonVisualizer } from "./JsonVisualizer";
+export { AddressVisualizer } from "./AddressVisualizer";
+export { Range } from "./Range";
+export { Tooltip } from "./Tooltip";
+export { Radio } from "./RadioGroup";
+export { Toast } from "./Toast";
+export { PairAssets } from "./PairAssets";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -36,7 +43,6 @@ export { CheckCircleIcon } from "./icons/CheckCircle";
 export { XCircleIcon } from "./icons/XCircle";
 
 export { IconDangoDots } from "./icons/IconDangoDots";
-export { IconProfile } from "./icons/IconProfile";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconDoubleChevronRight } from "./icons/IconDoubleChevronRight";
 export { IconChevronRight } from "./icons/IconChevronRight";
@@ -66,3 +72,9 @@ export { IconLanguage } from "./icons/IconLanguage";
 export { IconSwitch } from "./icons/IconSwitch";
 export { IconArrowDown } from "./icons/IconArrowDown";
 export { IconInfo } from "./icons/IconInfo";
+export { IconUser } from "./icons/IconUser";
+export { IconUserCircle } from "./icons/IconUserCircle";
+export { IconTimer } from "./icons/IconTimer";
+export { IconLink } from "./icons/IconLink";
+export { IconNetwork } from "./icons/IconNetwork";
+export { IconChevronDownFill } from "./icons/IconChevronDownFill";

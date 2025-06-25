@@ -2,11 +2,7 @@ import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
-  safelist: [
-    {
-      pattern: /grid-cols-.+/,
-    },
-  ],
+  safelist: [{ pattern: /grid-cols-.+/ }],
   theme: {
     extend: {
       colors: {
@@ -125,7 +121,7 @@ export const tailwindConfig: Partial<Config> = {
         "account-card":
           "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5)",
         "btn-shadow-gradient":
-          "0px 4px 6px rgba(0, 0, 0, 0.04), 0px 4px 6px rgba(0, 0, 0, 0.04), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
+          "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
         "btn-shadow-disabled":
           "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
         "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",
@@ -162,6 +158,7 @@ export const tailwindConfig: Partial<Config> = {
       },
       fontFamily: {
         "diatype-rounded": "ABCDiatypeRounded",
+        "diatype-mono": "ABCDiatypeRoundedMono",
         exposure: "Exposure",
       },
       fontSize: {
@@ -402,11 +399,48 @@ export const tailwindConfig: Partial<Config> = {
           lineHeight: "16.8px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
+        ".diatype-xs-regular": {
+          fontWeight: "400",
+          fontSize: "12px",
+          lineHeight: "16.8px",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
         ".diatype-xs-bold": {
           fontWeight: "700",
           fontSize: "12px",
           lineHeight: "16.8px",
           fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        /* Diatype Mono */
+        ".diatype-mono-lg-bold": {
+          fontWeight: "600",
+          fontSize: "18px",
+          lineHeight: "25.2px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-m-bold": {
+          fontWeight: "600",
+          fontSize: "16px",
+          lineHeight: "22.4px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-sm-bold": {
+          fontWeight: "600",
+          fontSize: "14px",
+          lineHeight: "22.4px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-sm-medium": {
+          fontWeight: "500",
+          fontSize: "14px",
+          lineHeight: "22.4px",
+          fontFamily: theme("fontFamily.diatype-mono"),
+        },
+        ".diatype-mono-xs-medium": {
+          fontWeight: "500",
+          fontSize: "12px",
+          lineHeight: "16.8px",
+          fontFamily: theme("fontFamily.diatype-mono"),
         },
         /* Exposure */
         ".display-heading-4xs": {

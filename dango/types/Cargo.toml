@@ -9,12 +9,20 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+# Derive async-graphql traits for certain types.
+async-graphql = ["dep:async-graphql"]
+# Derive sea-orm traits for certain types.
+sea-orm = ["dep:sea-orm"]
+
 [dependencies]
 anyhow          = { workspace = true }
+async-graphql   = { workspace = true, optional = true }
 corepc-client   = { workspace = true }
 grug            = { workspace = true }
 hyperlane-types = { workspace = true }
 paste           = { workspace = true }
 pyth-types      = { workspace = true }
+sea-orm         = { workspace = true, optional = true }
 serde           = { workspace = true }
 sha2            = { workspace = true }

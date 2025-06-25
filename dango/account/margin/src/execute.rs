@@ -1,6 +1,6 @@
 use {
     crate::core,
-    anyhow::{anyhow, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -12,8 +12,8 @@ use {
         dex, lending,
     },
     grug::{
-        AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
-        Number, NumberConst, Response, StdResult, Tx, Udec128,
+        AuthCtx, AuthResponse, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx, Number,
+        NumberConst, Response, StdResult, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -47,24 +47,31 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
     let oracle = ctx.querier.query_oracle()?;
     let mut oracle_querier = OracleQuerier::new_remote(oracle, ctx.querier);
+
     let health = core::query_and_compute_health(
         ctx.querier,
         &mut oracle_querier,
         ctx.contract,
         ctx.block.timestamp,
         None,
+        true,
     )?;
 
     // After executing all messages in the transactions, the account must have
     // a utilization rate no greater than one. Otherwise, we throw an error to
     // revert the transaction.
-    ensure!(
-        health.utilization_rate <= Udec128::ONE,
-        "this action would make account undercollateralized! utilization rate: {}, total debt: {}, total adjusted collateral: {}",
-        health.utilization_rate,
-        health.total_debt_value,
-        health.total_adjusted_collateral_value
-    );
+    if let Some(HealthResponse {
+        utilization_rate,
+        total_debt_value,
+        total_adjusted_collateral_value,
+        ..
+    }) = health
+    {
+        ensure!(
+            utilization_rate <= Udec128::ONE,
+            "this action would make account undercollateralized! utilization rate: {utilization_rate}, total debt: {total_debt_value}, total adjusted collateral: {total_adjusted_collateral_value}"
+        );
+    }
 
     Ok(Response::new())
 }
@@ -80,7 +87,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier);
 
     // Query account health
-    let HealthResponse {
+    let Some(HealthResponse {
         total_debt_value,
         utilization_rate,
         total_adjusted_collateral_value,
@@ -88,13 +95,17 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         collaterals,
         limit_order_collaterals,
         ..
-    } = core::query_and_compute_health(
+    }) = core::query_and_compute_health(
         ctx.querier,
         &mut oracle_querier,
         ctx.contract,
         ctx.block.timestamp,
         Some(ctx.funds.clone()),
-    )?;
+        true,
+    )?
+    else {
+        bail!("can't liquidate because the account doesn't have any debt");
+    };
 
     // Ensure account is undercollateralized
     ensure!(
@@ -186,16 +197,13 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         };
 
         let repay_amount = if coin.amount > max_repay_for_denom {
-            refunds.insert(Coin::new(
-                coin.denom.clone(),
-                coin.amount - max_repay_for_denom,
-            )?)?;
+            refunds.insert((coin.denom.clone(), coin.amount - max_repay_for_denom))?;
             max_repay_for_denom
         } else {
             coin.amount
         };
 
-        repay_coins.insert(Coin::new(coin.denom.clone(), repay_amount)?)?;
+        repay_coins.insert((coin.denom.clone(), repay_amount))?;
         repaid_debt_value.checked_add_assign(price.value_of_unit_amount(repay_amount)?)?;
     }
 
@@ -215,10 +223,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     // Send the claimed collateral and any debt refunds to the liquidator.
     let mut send_coins = refunds.clone();
-    send_coins.insert(Coin::new(
-        collateral_denom.clone(),
-        claimed_collateral_amount,
-    )?)?;
+    send_coins.insert((collateral_denom.clone(), claimed_collateral_amount))?;
     let send_msg = Message::transfer(ctx.sender, send_coins)?;
 
     // Create message to repay debt
@@ -232,8 +237,9 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     let cancel_msg = Message::execute(
         app_cfg.addresses.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            creates: vec![],
-            cancels: Some(dex::OrderIds::All),
+            creates_market: vec![],
+            creates_limit: vec![],
+            cancels: Some(dex::CancelOrderRequest::All),
         },
         Coins::new(),
     )?;
