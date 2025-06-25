@@ -1,6 +1,5 @@
 use {
-    crate::LimitOrder,
-    dango_types::dex::OrderId,
+    crate::{Order, OrderTrait},
     grug::{Number, NumberConst, StdResult, Udec128, Uint128},
 };
 
@@ -14,9 +13,9 @@ pub struct MatchingOutcome {
     /// The amount of trading volume, measured as the amount of the base asset.
     pub volume: Uint128,
     /// The BUY orders that have found a match.
-    pub bids: Vec<((Udec128, OrderId), LimitOrder)>,
+    pub bids: Vec<(Udec128, Order)>,
     /// The SELL orders that have found a match.
-    pub asks: Vec<((Udec128, OrderId), LimitOrder)>,
+    pub asks: Vec<(Udec128, Order)>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -32,8 +31,8 @@ pub struct MatchingOutcome {
 ///   follows the price-time priority.
 pub fn match_limit_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
-    A: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
+    B: Iterator<Item = StdResult<(Udec128, Order)>>,
+    A: Iterator<Item = StdResult<(Udec128, Order)>>,
 {
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();
@@ -46,11 +45,11 @@ where
     let mut range = None;
 
     loop {
-        let Some(((bid_price, bid_order_id), bid_order)) = bid else {
+        let Some((bid_price, bid_order)) = bid else {
             break;
         };
 
-        let Some(((ask_price, ask_order_id), ask_order)) = ask else {
+        let Some((ask_price, ask_order)) = ask else {
             break;
         };
 
@@ -61,13 +60,13 @@ where
         range = Some((ask_price, bid_price));
 
         if bid_is_new {
-            bids.push(((bid_price, bid_order_id), bid_order));
-            bid_volume.checked_add_assign(bid_order.remaining)?;
+            bids.push((bid_price, bid_order));
+            bid_volume.checked_add_assign(*bid_order.remaining())?;
         }
 
         if ask_is_new {
-            asks.push(((ask_price, ask_order_id), ask_order));
-            ask_volume.checked_add_assign(ask_order.remaining)?;
+            asks.push((ask_price, ask_order));
+            ask_volume.checked_add_assign(*ask_order.remaining())?;
         }
 
         if bid_volume <= ask_volume {
