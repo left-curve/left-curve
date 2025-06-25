@@ -9,12 +9,12 @@ import {
 import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/twMerge.js";
 
+import { Fragment } from "react";
 import { Skeleton } from "./Skeleton";
+
+import type React from "react";
 import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
-
-import React from "react";
 import type { VariantProps } from "tailwind-variants";
-
 export type TableColumn<T> = ColumnDef<T>[];
 export type { ColumnFiltersState };
 
@@ -99,7 +99,7 @@ export const Table = <T,>({
         <tbody>
           {showSkeleton &&
             Array.from({ length: 3 }).map((_, rowIndex) => (
-              <React.Fragment
+              <Fragment
                 key={`row-skeleton-${
                   // biome-ignore lint/suspicious/noArrayIndexKey: Skeleton are not dynamic
                   rowIndex
@@ -126,7 +126,7 @@ export const Table = <T,>({
                     ))}
                   </tr>
                 )}
-              </React.Fragment>
+              </Fragment>
             ))}
 
           {showTableRows &&
