@@ -210,7 +210,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               },
               mask: numberMask,
             })}
-            hideErrorText
+            hideErrorMessage
             placeholder="0"
             startText="right"
             startContent={
@@ -256,7 +256,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                 return true;
               },
             })}
-            hideErrorText
+            hideErrorMessage
             placeholder="0"
             startText="right"
             startContent={
