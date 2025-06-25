@@ -2,6 +2,7 @@ import { Button, twMerge } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
+
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
@@ -39,12 +40,27 @@ export const QuestBanner: React.FC = () => {
       ),
     initialData: () => ({
       eth_address: null,
-      quest_account: false,
-      quest_transfer: false,
+      tx_count: null,
+      limit_orders: false,
+      market_orders: false,
+      trading_pairs: Number.MAX_SAFE_INTEGER,
+      trading_volumes: Number.MAX_SAFE_INTEGER,
     }),
   });
 
-  const { eth_address, quest_account, quest_transfer } = quests;
+  const isTxCountCompleted = quests.tx_count >= 10;
+  const isLimitOrdersCompleted = quests.limit_orders;
+  const isMarketOrdersCompleted = quests.market_orders;
+  const isTradingPairsCompleted = quests.trading_pairs === 0;
+  const isTradingVolumesCompleted = quests.trading_volumes === 0;
+
+  const areQuestsCompleted =
+    quests.eth_address &&
+    isTxCountCompleted &&
+    isLimitOrdersCompleted &&
+    isMarketOrdersCompleted &&
+    isTradingPairsCompleted &&
+    isTradingVolumesCompleted;
 
   if (!isQuestBannerVisible) return null;
 
@@ -61,13 +77,28 @@ export const QuestBanner: React.FC = () => {
       <div className="flex flex-col lg:flex-row w-full justify-between gap-2">
         <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
           <Quest
-            text={`${m["quests.galxeQuest.quest"]({ quest: 0 })} ${eth_address ? `(${quests.eth_address})` : ""}`}
-            completed={!!eth_address}
+            text={`${m["quests.galxeQuest.quest"]({ quest: 0 })} ${quests.eth_address ? `(${quests.eth_address})` : ""}`}
+            completed={!!quests.eth_address}
           />
-          <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
-          <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
+          <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={isTxCountCompleted} />
+          <Quest
+            text={m["quests.galxeQuest.quest"]({ quest: 2 })}
+            completed={isLimitOrdersCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest"]({ quest: 3 })}
+            completed={isMarketOrdersCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest"]({ quest: 4 })}
+            completed={isTradingPairsCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest"]({ quest: 5 })}
+            completed={isTradingVolumesCompleted}
+          />
         </div>
-        {eth_address?.length && quest_account && quest_transfer ? (
+        {areQuestsCompleted ? (
           <Button
             as="a"
             href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
