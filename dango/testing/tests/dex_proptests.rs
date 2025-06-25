@@ -1,6 +1,9 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
+    dango_testing::{
+        BridgeOp, TestAccounts, TestOption, TestSuite, constants::MOCK_GENESIS_TIMESTAMP,
+        setup_test_naive,
+    },
     dango_types::{
         constants::{dango, eth, sol, usdc},
         dex::{
@@ -10,9 +13,9 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128, Denom, Duration, Inner, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Timestamp, Udec128, Uint128, UniqueVec, btree_map, coins,
+        Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, MaxLength, Message,
+        MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
+        Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -80,7 +83,8 @@ fn register_fixed_price(
                 denom => dango_types::oracle::PriceSource::Fixed {
                     humanized_price,
                     precision,
-                    timestamp: Timestamp::from_seconds(0),
+                    // Use a very recent time to avoid the "price is too old" error.
+                    timestamp: MOCK_GENESIS_TIMESTAMP,
                 },
             }),
             Coins::default(),
