@@ -97,12 +97,12 @@
   },
   "applets": {
     "0": {
-      "id": "transfer",
-      "img": "/images/emojis/simple/money.svg",
-      "title": "Transfer",
-      "description": "Send and receive crypto.",
-      "path": "/transfer",
-      "keywords": "transfer,send,receive"
+      "id": "trade",
+      "img": "/images/emojis/simple/protrading.svg",
+      "title": "Trade",
+      "description": "Real-Time Charts, Data & Trading",
+      "path": "/trade",
+      "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
     "1": {
       "id": "simple-swap",
@@ -113,20 +113,20 @@
       "keywords": "swap,trade,convert,exchange"
     },
     "2": {
-      "id": "settings",
-      "img": "/images/emojis/simple/settings.svg",
-      "title": "Settings",
-      "description": "Optimize your display, security, and more.",
-      "path": "/settings",
-      "keywords": "settings,preferences,options"
+      "id": "earn",
+      "img": "/images/emojis/simple/pig.svg",
+      "title": "Earn",
+      "description": "Earn tokens by lending or providing liquidity",
+      "path": "/earn",
+      "keywords": "earn,staking,liquidity,lending"
     },
     "3": {
-      "id": "notifications",
-      "img": "/images/emojis/simple/notifications.svg",
-      "title": "Notifications",
-      "description": "View recent transactions.",
-      "path": "/notifications",
-      "keywords": "notifications,alerts"
+      "id": "transfer",
+      "img": "/images/emojis/simple/money.svg",
+      "title": "Transfer",
+      "description": "Send and receive crypto.",
+      "path": "/transfer",
+      "keywords": "transfer,send,receive"
     },
     "4": {
       "id": "create-account",
@@ -137,20 +137,20 @@
       "keywords": "account,create,register"
     },
     "5": {
-      "id": "trade",
-      "img": "/images/emojis/simple/spot.svg",
-      "title": "Trade",
-      "description": "Real-Time Charts, Data & Trading",
-      "path": "/trade",
-      "keywords": "swap,dex,trade,pro,charts,data,trading"
+      "id": "settings",
+      "img": "/images/emojis/simple/settings.svg",
+      "title": "Settings",
+      "description": "Optimize your display, security, and more.",
+      "path": "/settings",
+      "keywords": "settings,preferences,options"
     },
     "6": {
-      "id": "earn",
-      "img": "/images/emojis/simple/pig.svg",
-      "title": "Earn",
-      "description": "Earn tokens by lending or providing liquidity",
-      "path": "/earn",
-      "keywords": "earn,staking,liquidity,lending"
+      "id": "notifications",
+      "img": "/images/emojis/simple/notifications.svg",
+      "title": "Notifications",
+      "description": "View recent transactions.",
+      "path": "/notifications",
+      "keywords": "notifications,alerts"
     }
   },
   "explorer": {
