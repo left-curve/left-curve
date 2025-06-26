@@ -398,7 +398,6 @@
                   "02f0bbe8928ab8d703e2e85093ee84ddfa9a0fdf48c443333098bd6188386bdb35",
                   "03053780b7d8b3e7eb2771d7b9d43a946412e53fac90eadd46e214ccbea21eada6"
                 ],
-                "script": "5221029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f62102f0bbe8928ab8d703e2e85093ee84ddfa9a0fdf48c443333098bd6188386bdb352103053780b7d8b3e7eb2771d7b9d43a946412e53fac90eadd46e214ccbea21eada653ae",
                 "threshold": 2
               },
               "network": "regtest",

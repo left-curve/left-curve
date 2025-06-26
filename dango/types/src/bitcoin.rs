@@ -35,7 +35,7 @@ pub type BitcoinSignature = HexBinary;
 pub type Vout = u32;
 
 /// Multisig settings for the Bitcoin multisig wallet.
-#[grug::derive(Serde)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MultisigSettings {
     threshold: u8,
     pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
@@ -93,6 +93,37 @@ impl MultisigSettings {
     /// Returns the script of the multisig wallet.
     pub fn script(&self) -> &ScriptBuf {
         &self.script
+    }
+}
+
+#[grug::derive(Serde)]
+struct MultisigSerde {
+    threshold: u8,
+    pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
+}
+
+impl Serialize for MultisigSettings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let multisig_serde = MultisigSerde {
+            threshold: self.threshold,
+            pub_keys: self.pub_keys.clone(),
+        };
+
+        multisig_serde.serialize(serializer)
+    }
+}
+
+impl<'a> Deserialize<'a> for MultisigSettings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let multisig_serde: MultisigSerde = MultisigSerde::deserialize(deserializer)?;
+        MultisigSettings::new(multisig_serde.threshold, multisig_serde.pub_keys)
+            .map_err(serde::de::Error::custom)
     }
 }
 
