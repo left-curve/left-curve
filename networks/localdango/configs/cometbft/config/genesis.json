@@ -4,18 +4,18 @@
     "app_config": {
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-        "bitcoin": "0x8e83599d2d00168a386c719357cb538e58c3b3a7",
-        "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
-        "gateway": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
+        "bitcoin": "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251",
+        "dex": "0xa3b49d2e738ff86255b37cfa3f324216c8d39877",
+        "gateway": "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102",
         "hyperlane": {
-          "ism": "0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7",
+          "ism": "0x769a41ace921677cb3adce888cb4aa23c1036116",
           "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f",
-          "va": "0x0594aa774b588f9db00dfbdb1e2b0ef2a3b9329b"
+          "va": "0x938f2cab274baff29ed1515f205df1c58464afc9"
         },
-        "lending": "0x6750bf808e01c7a329826a3a1bec9e20cde6755c",
-        "oracle": "0xfd3de90306e28197f277096fad988f38af1586b8",
+        "lending": "0x53373c59e508bd6cb903e3c00b7b224d2180982f",
+        "oracle": "0x37e32bfe0cc6d70bea6d146f6ee10b29c307f68b",
         "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
-        "warp": "0xdf86ce97839bc44fabb32f67f1da8f76885131a2"
+        "warp": "0x00d4f0a556bfeaa12e1451d74830cf483153af91"
       },
       "collateral_powers": {},
       "maker_fee_rate": "0.0025",
@@ -27,9 +27,9 @@
     "config": {
       "bank": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
       "cronjobs": {
-        "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "0",
-        "0x8e83599d2d00168a386c719357cb538e58c3b3a7": "600",
-        "0xc6e03e2bca2f0e77c91908f2043c596349b08353": "86400"
+        "0xa3b49d2e738ff86255b37cfa3f324216c8d39877": "0",
+        "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251": "600",
+        "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102": "86400"
       },
       "max_orphan_age": "604800",
       "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
@@ -115,6 +115,11 @@
       {
         "upload": {
           "code": "DgAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "DwAAAAAAAAA="
         }
       },
       {
@@ -267,7 +272,7 @@
           "label": "hyperlane/mailbox",
           "msg": {
             "config": {
-              "default_ism": "0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7",
+              "default_ism": "0x769a41ace921677cb3adce888cb4aa23c1036116",
               "local_domain": 88888888
             }
           },
@@ -419,12 +424,12 @@
             "routes": [
               [
                 "btc",
-                "0x8e83599d2d00168a386c719357cb538e58c3b3a7",
+                "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251",
                 "bitcoin"
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -434,7 +439,7 @@
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -444,7 +449,7 @@
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -454,7 +459,7 @@
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -464,7 +469,7 @@
               ],
               [
                 "sol",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -474,7 +479,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -484,7 +489,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -494,7 +499,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -504,7 +509,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -514,7 +519,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -731,9 +736,9 @@
               }
             },
             "namespaces": {
-              "bridge": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
-              "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
-              "lending": "0x6750bf808e01c7a329826a3a1bec9e20cde6755c"
+              "bridge": "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102",
+              "dex": "0xa3b49d2e738ff86255b37cfa3f324216c8d39877",
+              "lending": "0x53373c59e508bd6cb903e3c00b7b224d2180982f"
             }
           },
           "salt": "ZGFuZ28vYmFuaw=="

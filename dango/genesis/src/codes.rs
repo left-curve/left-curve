@@ -55,6 +55,13 @@ impl GenesisCodes for RustVm {
             .with_bank_query(Box::new(dango_bank::bank_query))
             .build();
 
+        let bitcoin = ContractBuilder::new(Box::new(dango_bitcoin::instantiate))
+            .with_authenticate(Box::new(dango_bitcoin::authenticate))
+            .with_execute(Box::new(dango_bitcoin::execute))
+            .with_query(Box::new(dango_bitcoin::query))
+            .with_cron_execute(Box::new(dango_bitcoin::cron_execute))
+            .build();
+
         let dex = ContractBuilder::new(Box::new(dango_dex::instantiate))
             .with_execute(Box::new(dango_dex::execute))
             .with_cron_execute(Box::new(dango_dex::cron_execute))
@@ -110,19 +117,13 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_warp::query))
             .build();
 
-        let bitcoin = ContractBuilder::new(Box::new(dango_bitcoin::instantiate))
-            .with_authenticate(Box::new(dango_bitcoin::authenticate))
-            .with_execute(Box::new(dango_bitcoin::execute))
-            .with_query(Box::new(dango_bitcoin::query))
-            .with_cron_execute(Box::new(dango_bitcoin::cron_execute))
-            .build();
-
         Codes {
             account_factory,
             account_margin,
             account_multi,
             account_spot,
             bank,
+            bitcoin,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
@@ -131,7 +132,6 @@ impl GenesisCodes for RustVm {
             taxman,
             vesting,
             warp,
-            bitcoin,
         }
     }
 }
@@ -147,6 +147,7 @@ impl GenesisCodes for WasmVm {
         let account_multi = fs::read(artifacts_dir.join("dango_account_multi.wasm")).unwrap();
         let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm")).unwrap();
         let bank = fs::read(artifacts_dir.join("dango_bank.wasm")).unwrap();
+        let bitcoin = fs::read(artifacts_dir.join("dango_bitcoin.wasm")).unwrap();
         let dex = fs::read(artifacts_dir.join("dango_dex.wasm")).unwrap();
         let gateway = fs::read(artifacts_dir.join("dango_gateway.wasm")).unwrap();
         let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm")).unwrap();
@@ -157,7 +158,6 @@ impl GenesisCodes for WasmVm {
         let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm")).unwrap();
         let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm")).unwrap();
         let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm")).unwrap();
-        let bitcoin = fs::read(artifacts_dir.join("dango_bitcoin.wasm")).unwrap();
 
         Codes {
             account_factory,
@@ -165,6 +165,7 @@ impl GenesisCodes for WasmVm {
             account_multi,
             account_spot,
             bank,
+            bitcoin,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
@@ -173,7 +174,6 @@ impl GenesisCodes for WasmVm {
             taxman,
             vesting,
             warp,
-            bitcoin,
         }
     }
 }

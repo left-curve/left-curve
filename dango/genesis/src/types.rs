@@ -43,6 +43,7 @@ pub struct Codes<T> {
     pub account_multi: T,
     pub account_spot: T,
     pub bank: T,
+    pub bitcoin: T,
     pub dex: T,
     pub gateway: T,
     pub hyperlane: Hyperlane<T>,
@@ -51,7 +52,6 @@ pub struct Codes<T> {
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
-    pub bitcoin: T,
 }
 pub struct GenesisUser {
     pub key: Key,
