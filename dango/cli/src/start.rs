@@ -49,6 +49,7 @@ impl StartCmd {
             codes.account_multi.to_bytes().hash256(),
             codes.account_spot.to_bytes().hash256(),
             codes.bank.to_bytes().hash256(),
+            codes.bitcoin.to_bytes().hash256(),
             codes.dex.to_bytes().hash256(),
             codes.gateway.to_bytes().hash256(),
             codes.hyperlane.ism.to_bytes().hash256(),
