@@ -4,6 +4,7 @@
     "app_config": {
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
+        "bitcoin": "0x8e83599d2d00168a386c719357cb538e58c3b3a7",
         "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
         "gateway": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
         "hyperlane": {
@@ -27,6 +28,7 @@
       "bank": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
       "cronjobs": {
         "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "0",
+        "0x8e83599d2d00168a386c719357cb538e58c3b3a7": "600",
         "0xc6e03e2bca2f0e77c91908f2043c596349b08353": "86400"
       },
       "max_orphan_age": "604800",
@@ -379,6 +381,32 @@
       },
       {
         "instantiate": {
+          "code_hash": "A4BD89D0C3E16EC03C5436D0B9B8EB1A934BEEAC808447459E5EE2F9A23E97D7",
+          "funds": {},
+          "label": "dango/bitcoin",
+          "msg": {
+            "config": {
+              "minimum_deposit": "1000",
+              "multisig": {
+                "pub_keys": [
+                  "029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6",
+                  "02f0bbe8928ab8d703e2e85093ee84ddfa9a0fdf48c443333098bd6188386bdb35",
+                  "03053780b7d8b3e7eb2771d7b9d43a946412e53fac90eadd46e214ccbea21eada6"
+                ],
+                "script": "5221029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f62102f0bbe8928ab8d703e2e85093ee84ddfa9a0fdf48c443333098bd6188386bdb352103053780b7d8b3e7eb2771d7b9d43a946412e53fac90eadd46e214ccbea21eada653ae",
+                "threshold": 2
+              },
+              "network": "regtest",
+              "outbound_strategy": "Ascending",
+              "sats_per_vbyte": "10",
+              "vault": "bcrt1q4ga0r07vte2p638c8vh4fvpwjaln0qmxalffdkgeztl8l0act0xsvm7j9k"
+            }
+          },
+          "salt": "ZGFuZ28vYml0Y29pbg=="
+        }
+      },
+      {
+        "instantiate": {
           "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
           "funds": {},
           "label": "dango/gateway",
@@ -389,6 +417,11 @@
               "bridge/usdc": "0.1"
             },
             "routes": [
+              [
+                "btc",
+                "0x8e83599d2d00168a386c719357cb538e58c3b3a7",
+                "bitcoin"
+              ],
               [
                 "eth",
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
@@ -590,6 +623,11 @@
                     "domain": 1399811149
                   }
                 }
+              },
+              {
+                "denom": "bridge/btc",
+                "fee": "1000",
+                "remote": "bitcoin"
               }
             ]
           },
