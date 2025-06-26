@@ -25,6 +25,7 @@ pub type Addresses = BTreeMap<Username, Addr>;
 pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,
+    pub bitcoin: Addr,
     pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
@@ -33,7 +34,6 @@ pub struct Contracts {
     pub taxman: Addr,
     pub vesting: Addr,
     pub warp: Addr,
-    pub bitcoin: Addr,
 }
 
 #[derive(Clone, Copy)]

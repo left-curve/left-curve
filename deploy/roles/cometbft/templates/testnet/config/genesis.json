@@ -4,17 +4,18 @@
     "app_config": {
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
-        "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
-        "gateway": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
+        "bitcoin": "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251",
+        "dex": "0xa3b49d2e738ff86255b37cfa3f324216c8d39877",
+        "gateway": "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102",
         "hyperlane": {
-          "ism": "0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7",
-          "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f",
-          "va": "0x0594aa774b588f9db00dfbdb1e2b0ef2a3b9329b"
+          "ism": "0x769a41ace921677cb3adce888cb4aa23c1036116",
+          "mailbox": "0xff770c56e97059a106623f6f4e1eb98764eb9620",
+          "va": "0x938f2cab274baff29ed1515f205df1c58464afc9"
         },
-        "lending": "0x6750bf808e01c7a329826a3a1bec9e20cde6755c",
-        "oracle": "0xfd3de90306e28197f277096fad988f38af1586b8",
-        "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
-        "warp": "0xdf86ce97839bc44fabb32f67f1da8f76885131a2"
+        "lending": "0x53373c59e508bd6cb903e3c00b7b224d2180982f",
+        "oracle": "0x37e32bfe0cc6d70bea6d146f6ee10b29c307f68b",
+        "taxman": "0x29ddd3dbf76f09d8a9bc972a3004bf7c6da54176",
+        "warp": "0x00d4f0a556bfeaa12e1451d74830cf483153af91"
       },
       "collateral_powers": {},
       "maker_fee_rate": "0.0025",
@@ -26,18 +27,21 @@
     "config": {
       "bank": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
       "cronjobs": {
-        "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "0",
-        "0xc6e03e2bca2f0e77c91908f2043c596349b08353": "86400"
+        "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102": "86400",
+        "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251": "600",
+        "0xa3b49d2e738ff86255b37cfa3f324216c8d39877": "0"
       },
       "max_orphan_age": "604800",
       "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
       "permissions": {
         "instantiate": {
-          "somebodies": ["0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"]
+          "somebodies": [
+            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
+          ]
         },
         "upload": "nobody"
       },
-      "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03"
+      "taxman": "0x29ddd3dbf76f09d8a9bc972a3004bf7c6da54176"
     },
     "msgs": [
       {
@@ -92,11 +96,6 @@
       },
       {
         "upload": {
-          "code": "CwAAAAAAAAA="
-        }
-      },
-      {
-        "upload": {
           "code": "CgAAAAAAAAA="
         }
       },
@@ -107,12 +106,22 @@
       },
       {
         "upload": {
+          "code": "CwAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
           "code": "DQAAAAAAAAA="
         }
       },
       {
         "upload": {
           "code": "DgAAAAAAAAA="
+        }
+      },
+      {
+        "upload": {
+          "code": "DwAAAAAAAAA="
         }
       },
       {
@@ -197,7 +206,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "AAE89FC0F03E2959AE4D701A80CC3915918C950B159F6ABB6C92C1433B1A8534",
+          "code_hash": "6CC16ABD70EEFB90DC0BA0D14FB088630873B2C6AD943F7442356735984C35A3",
           "funds": {},
           "label": "hyperlane/ism/multisig",
           "msg": {
@@ -249,23 +258,23 @@
       },
       {
         "instantiate": {
-          "code_hash": "18D8D609947C6B82B9607704AE40D3317038E709238514DE750B5C7411BA4C20",
+          "code_hash": "A4BD89D0C3E16EC03C5436D0B9B8EB1A934BEEAC808447459E5EE2F9A23E97D7",
           "funds": {},
           "label": "dango/warp",
           "msg": {
-            "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f"
+            "mailbox": "0xff770c56e97059a106623f6f4e1eb98764eb9620"
           },
           "salt": "ZGFuZ28vd2FycA=="
         }
       },
       {
         "instantiate": {
-          "code_hash": "6CC16ABD70EEFB90DC0BA0D14FB088630873B2C6AD943F7442356735984C35A3",
+          "code_hash": "CBBD5F990C53684D7AE650B40FCB5656E02261B53DA5F6A7D8C819C92F2828F8",
           "funds": {},
           "label": "hyperlane/mailbox",
           "msg": {
             "config": {
-              "default_ism": "0xaea4d5d40d19601bb05a49412de6e1b4b403c5a7",
+              "default_ism": "0x769a41ace921677cb3adce888cb4aa23c1036116",
               "local_domain": 88888888
             }
           },
@@ -274,7 +283,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "CBBD5F990C53684D7AE650B40FCB5656E02261B53DA5F6A7D8C819C92F2828F8",
+          "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
           "funds": {},
           "label": "hyperlane/va",
           "msg": {
@@ -282,14 +291,14 @@
               "amount": "100",
               "denom": "bridge/usdc"
             },
-            "mailbox": "0x51e5de0593d0ea0647a93925c91dafb98c36738f"
+            "mailbox": "0xff770c56e97059a106623f6f4e1eb98764eb9620"
           },
           "salt": "aHlwZXJsYW5lL3Zh"
         }
       },
       {
         "instantiate": {
-          "code_hash": "F13EE6ED54EA2AAE9FC49A9FAEB5DA6E8DDEF0E12ED5D30D35A624AE813E0485",
+          "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
           "funds": {},
           "label": "dango/dex",
           "msg": {
@@ -353,7 +362,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
+          "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
           "funds": {},
           "label": "dango/lending",
           "msg": {
@@ -379,19 +388,50 @@
       },
       {
         "instantiate": {
-          "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
+          "code_hash": "F13EE6ED54EA2AAE9FC49A9FAEB5DA6E8DDEF0E12ED5D30D35A624AE813E0485",
+          "funds": {},
+          "label": "dango/bitcoin",
+          "msg": {
+            "config": {
+              "minimum_deposit": "1000",
+              "multisig": {
+                "pub_keys": [
+                  "029ba1aeddafb6ff65d403d50c0db0adbb8b5b3616c3bc75fb6fecd075327099f6",
+                  "02f0bbe8928ab8d703e2e85093ee84ddfa9a0fdf48c443333098bd6188386bdb35",
+                  "03053780b7d8b3e7eb2771d7b9d43a946412e53fac90eadd46e214ccbea21eada6"
+                ],
+                "threshold": 2
+              },
+              "network": "testnet",
+              "outbound_strategy": "Ascending",
+              "sats_per_vbyte": "10",
+              "vault": "tb1q4ga0r07vte2p638c8vh4fvpwjaln0qmxalffdkgeztl8l0act0xspz55sv"
+            }
+          },
+          "salt": "ZGFuZ28vYml0Y29pbg=="
+        }
+      },
+      {
+        "instantiate": {
+          "code_hash": "AAE89FC0F03E2959AE4D701A80CC3915918C950B159F6ABB6C92C1433B1A8534",
           "funds": {},
           "label": "dango/gateway",
           "msg": {
             "rate_limits": {
+              "bridge/btc": "0.1",
               "bridge/eth": "0.1",
               "bridge/sol": "0.1",
               "bridge/usdc": "0.1"
             },
             "routes": [
               [
+                "btc",
+                "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251",
+                "bitcoin"
+              ],
+              [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -401,7 +441,7 @@
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -411,7 +451,7 @@
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -421,7 +461,7 @@
               ],
               [
                 "eth",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -431,7 +471,7 @@
               ],
               [
                 "sol",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000001",
@@ -441,7 +481,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -451,7 +491,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -461,7 +501,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -471,7 +511,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -481,7 +521,7 @@
               ],
               [
                 "usdc",
-                "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
+                "0x00d4f0a556bfeaa12e1451d74830cf483153af91",
                 {
                   "warp": {
                     "contract": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -590,6 +630,11 @@
                     "domain": 1399811149
                   }
                 }
+              },
+              {
+                "denom": "bridge/btc",
+                "fee": "1000",
+                "remote": "bitcoin"
               }
             ]
           },
@@ -693,9 +738,9 @@
               }
             },
             "namespaces": {
-              "bridge": "0xc6e03e2bca2f0e77c91908f2043c596349b08353",
-              "dex": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
-              "lending": "0x6750bf808e01c7a329826a3a1bec9e20cde6755c"
+              "bridge": "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102",
+              "dex": "0xa3b49d2e738ff86255b37cfa3f324216c8d39877",
+              "lending": "0x53373c59e508bd6cb903e3c00b7b224d2180982f"
             }
           },
           "salt": "ZGFuZ28vYmFuaw=="
@@ -703,7 +748,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
+          "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
           "funds": {},
           "label": "dango/taxman",
           "msg": {
@@ -717,7 +762,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
+          "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
           "funds": {},
           "label": "dango/oracle",
           "msg": {
@@ -814,7 +859,7 @@
       },
       {
         "instantiate": {
-          "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
+          "code_hash": "18D8D609947C6B82B9607704AE40D3317038E709238514DE750B5C7411BA4C20",
           "funds": {},
           "label": "dango/vesting",
           "msg": {

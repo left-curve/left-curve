@@ -1,25 +1,6 @@
 {
   "app_hash": "",
   "app_state": {
-    "config": {
-      "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
-      "bank": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
-      "taxman": "0x29ddd3dbf76f09d8a9bc972a3004bf7c6da54176",
-      "cronjobs": {
-        "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102": "86400",
-        "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251": "600",
-        "0xa3b49d2e738ff86255b37cfa3f324216c8d39877": "0"
-      },
-      "permissions": {
-        "upload": "nobody",
-        "instantiate": {
-          "somebodies": [
-            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
-          ]
-        }
-      },
-      "max_orphan_age": "604800"
-    },
     "app_config": {
       "addresses": {
         "account_factory": "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b",
@@ -42,6 +23,25 @@
       "min_liquidation_bonus": "0.02",
       "taker_fee_rate": "0.004",
       "target_utilization_rate": "0.9"
+    },
+    "config": {
+      "bank": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+      "cronjobs": {
+        "0x4ede77b0ebe5e10daaae01d063d2964e8cf75102": "86400",
+        "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251": "600",
+        "0xa3b49d2e738ff86255b37cfa3f324216c8d39877": "0"
+      },
+      "max_orphan_age": "604800",
+      "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
+      "permissions": {
+        "instantiate": {
+          "somebodies": [
+            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
+          ]
+        },
+        "upload": "nobody"
+      },
+      "taxman": "0x29ddd3dbf76f09d8a9bc972a3004bf7c6da54176"
     },
     "msgs": [
       {
@@ -127,6 +127,8 @@
       {
         "instantiate": {
           "code_hash": "AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC",
+          "funds": {},
+          "label": "dango/account_factory",
           "msg": {
             "code_hashes": {
               "margin": "7C9FA136D4413FA6173637E883B6998D32E1D675F88CDDFF9DCBCF331820F4B8",
@@ -199,14 +201,14 @@
               ]
             }
           },
-          "salt": "ZGFuZ28vYWNjb3VudF9mYWN0b3J5",
-          "label": "dango/account_factory",
-          "funds": {}
+          "salt": "ZGFuZ28vYWNjb3VudF9mYWN0b3J5"
         }
       },
       {
         "instantiate": {
           "code_hash": "6CC16ABD70EEFB90DC0BA0D14FB088630873B2C6AD943F7442356735984C35A3",
+          "funds": {},
+          "label": "hyperlane/ism/multisig",
           "msg": {
             "validator_sets": {
               "1": {
@@ -251,39 +253,39 @@
               }
             }
           },
-          "salt": "aHlwZXJsYW5lL2lzbS9tdWx0aXNpZw==",
-          "label": "hyperlane/ism/multisig",
-          "funds": {}
+          "salt": "aHlwZXJsYW5lL2lzbS9tdWx0aXNpZw=="
         }
       },
       {
         "instantiate": {
           "code_hash": "A4BD89D0C3E16EC03C5436D0B9B8EB1A934BEEAC808447459E5EE2F9A23E97D7",
+          "funds": {},
+          "label": "dango/warp",
           "msg": {
             "mailbox": "0xff770c56e97059a106623f6f4e1eb98764eb9620"
           },
-          "salt": "ZGFuZ28vd2FycA==",
-          "label": "dango/warp",
-          "funds": {}
+          "salt": "ZGFuZ28vd2FycA=="
         }
       },
       {
         "instantiate": {
           "code_hash": "CBBD5F990C53684D7AE650B40FCB5656E02261B53DA5F6A7D8C819C92F2828F8",
+          "funds": {},
+          "label": "hyperlane/mailbox",
           "msg": {
             "config": {
               "default_ism": "0x769a41ace921677cb3adce888cb4aa23c1036116",
               "local_domain": 88888888
             }
           },
-          "salt": "aHlwZXJsYW5lL21haWxib3g=",
-          "label": "hyperlane/mailbox",
-          "funds": {}
+          "salt": "aHlwZXJsYW5lL21haWxib3g="
         }
       },
       {
         "instantiate": {
           "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
+          "funds": {},
+          "label": "hyperlane/va",
           "msg": {
             "announce_fee_per_byte": {
               "amount": "100",
@@ -291,14 +293,14 @@
             },
             "mailbox": "0xff770c56e97059a106623f6f4e1eb98764eb9620"
           },
-          "salt": "aHlwZXJsYW5lL3Zh",
-          "label": "hyperlane/va",
-          "funds": {}
+          "salt": "aHlwZXJsYW5lL3Zh"
         }
       },
       {
         "instantiate": {
           "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
+          "funds": {},
+          "label": "dango/dex",
           "msg": {
             "pairs": [
               {
@@ -355,14 +357,14 @@
               }
             ]
           },
-          "salt": "ZGFuZ28vZGV4",
-          "label": "dango/dex",
-          "funds": {}
+          "salt": "ZGFuZ28vZGV4"
         }
       },
       {
         "instantiate": {
           "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
+          "funds": {},
+          "label": "dango/lending",
           "msg": {
             "markets": {
               "bridge/eth": {
@@ -381,14 +383,14 @@
               }
             }
           },
-          "salt": "ZGFuZ28vbGVuZGluZw==",
-          "label": "dango/lending",
-          "funds": {}
+          "salt": "ZGFuZ28vbGVuZGluZw=="
         }
       },
       {
         "instantiate": {
           "code_hash": "F13EE6ED54EA2AAE9FC49A9FAEB5DA6E8DDEF0E12ED5D30D35A624AE813E0485",
+          "funds": {},
+          "label": "dango/bitcoin",
           "msg": {
             "config": {
               "minimum_deposit": "1000",
@@ -406,14 +408,14 @@
               "vault": "bcrt1q4ga0r07vte2p638c8vh4fvpwjaln0qmxalffdkgeztl8l0act0xsvm7j9k"
             }
           },
-          "salt": "ZGFuZ28vYml0Y29pbg==",
-          "label": "dango/bitcoin",
-          "funds": {}
+          "salt": "ZGFuZ28vYml0Y29pbg=="
         }
       },
       {
         "instantiate": {
           "code_hash": "AAE89FC0F03E2959AE4D701A80CC3915918C950B159F6ABB6C92C1433B1A8534",
+          "funds": {},
+          "label": "dango/gateway",
           "msg": {
             "rate_limits": {
               "bridge/btc": "0.1",
@@ -636,14 +638,14 @@
               }
             ]
           },
-          "salt": "ZGFuZ28vZ2F0ZXdheQ==",
-          "label": "dango/gateway",
-          "funds": {}
+          "salt": "ZGFuZ28vZ2F0ZXdheQ=="
         }
       },
       {
         "instantiate": {
           "code_hash": "F0A0278E4372459CCA6159CD5E71CFEE638302A7B9CA9B05C34181AC0A65AC5D",
+          "funds": {},
+          "label": "dango/bank",
           "msg": {
             "balances": {
               "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
@@ -741,28 +743,28 @@
               "lending": "0x53373c59e508bd6cb903e3c00b7b224d2180982f"
             }
           },
-          "salt": "ZGFuZ28vYmFuaw==",
-          "label": "dango/bank",
-          "funds": {}
+          "salt": "ZGFuZ28vYmFuaw=="
         }
       },
       {
         "instantiate": {
           "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
+          "funds": {},
+          "label": "dango/taxman",
           "msg": {
             "config": {
               "fee_denom": "bridge/usdc",
               "fee_rate": "0"
             }
           },
-          "salt": "ZGFuZ28vdGF4bWFu",
-          "label": "dango/taxman",
-          "funds": {}
+          "salt": "ZGFuZ28vdGF4bWFu"
         }
       },
       {
         "instantiate": {
           "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
+          "funds": {},
+          "label": "dango/oracle",
           "msg": {
             "guardian_sets": {
               "4": {
@@ -852,21 +854,19 @@
               }
             }
           },
-          "salt": "ZGFuZ28vb3JhY2xl",
-          "label": "dango/oracle",
-          "funds": {}
+          "salt": "ZGFuZ28vb3JhY2xl"
         }
       },
       {
         "instantiate": {
           "code_hash": "18D8D609947C6B82B9607704AE40D3317038E709238514DE750B5C7411BA4C20",
+          "funds": {},
+          "label": "dango/vesting",
           "msg": {
             "unlocking_cliff": "21772800",
             "unlocking_period": "65318400"
           },
-          "salt": "ZGFuZ28vdmVzdGluZw==",
-          "label": "dango/vesting",
-          "funds": {}
+          "salt": "ZGFuZ28vdmVzdGluZw=="
         }
       }
     ]
