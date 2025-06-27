@@ -455,10 +455,7 @@ where
 {
     type Error = crate::error::IndexerError;
 
-    fn start<S>(&mut self, storage: &S) -> error::Result<()>
-    where
-        S: Storage,
-    {
+    fn start(&mut self, storage: &dyn Storage) -> error::Result<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 

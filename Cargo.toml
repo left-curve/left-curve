@@ -50,6 +50,7 @@ members = [
   "hyperlane/va",
   "indexer/client",
   "indexer/disk-saver",
+  "indexer/hooked",
   "indexer/httpd",
   "indexer/sql",
   "indexer/sql-migration",
@@ -89,6 +90,7 @@ actix-web-metrics           = "0"
 aes-gcm                     = "0.10"
 alloy                       = "1"
 anyhow                      = "1"
+anymap                      = "0.12"
 assert-json-diff            = "2"
 assertor                    = { version = "0.0", git = "https://github.com/google/assertor" }
 async-graphql-actix-web     = "7.0"
@@ -233,6 +235,7 @@ hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
+indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }

@@ -14,6 +14,7 @@ use {
     grug_db_disk_lite::DiskDbLite,
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
+    indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
