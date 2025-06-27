@@ -14,8 +14,8 @@ use {
     grug_db_disk_lite::DiskDbLite,
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
-    indexer_hooked::HookedIndexer,
-    indexer_httpd::context::Context,
+    httpd::{context::Context as HttpdContext, server::run_server as run_httpd_server},
+    indexer_httpd::context::Context as IndexerContext,
     indexer_sql::non_blocking_indexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::{fmt::Debug, sync::Arc, time},
@@ -62,64 +62,132 @@ impl StartCmd {
             codes.warp.to_bytes().hash256(),
         ]);
 
+        // Create the base app instance for HTTP server
+        let app = App::new(
+            db.clone(),
+            vm.clone(),
+            NaiveProposalPreparer,
+            NullIndexer,
+            cfg.grug.query_gas_limit,
+        );
+
+        let indexer = non_blocking_indexer::IndexerBuilder::default()
+            .with_keep_blocks(cfg.indexer.keep_blocks)
+            .with_database_url(&cfg.indexer.database.url)
+            .with_database_max_connections(cfg.indexer.database.max_connections)
+            .with_dir(app_dir.indexer_dir())
+            .with_sqlx_pubsub()
+            .with_hooks(dango_indexer_sql::hooks::Hooks)
+            .build()
+            .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
+
         // Run ABCI server, optionally with indexer and httpd server.
-        if cfg.indexer.enabled {
-            let indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_keep_blocks(cfg.indexer.keep_blocks)
-                .with_database_url(&cfg.indexer.database.url)
-                .with_database_max_connections(cfg.indexer.database.max_connections)
-                .with_dir(app_dir.indexer_dir())
-                .with_sqlx_pubsub()
-                .with_hooks(dango_indexer_sql::hooks::Hooks)
-                .build()
-                .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
+        match (
+            cfg.indexer.enabled,
+            cfg.httpd.enabled,
+            cfg.metrics_httpd.enabled,
+        ) {
+            (true, true, true) => {
+                // Indexer, HTTP server, and metrics server all enabled
 
-            let indexer_path = indexer.indexer_path.clone();
-            let indexer_context = indexer.context.clone();
+                let indexer_path = indexer.indexer_path.clone();
+                let indexer_context = indexer.context.clone();
 
-            if cfg.indexer.httpd.enabled {
-                // This app instance allows the httpd daemon to interact with the chain
-                // but it doesn't need to have an indexer at all.
-                let app = App::new(
-                    db.clone(),
-                    vm.clone(),
-                    NaiveProposalPreparer,
-                    NullIndexer,
-                    cfg.grug.query_gas_limit,
-                );
-
-                let httpd_context = Context::new(
+                let httpd_context = IndexerContext::new(
                     indexer_context,
                     Arc::new(app),
                     Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
                     indexer_path,
                 );
 
-                // NOTE: If the httpd was heavily used, it would be better to
-                // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(&cfg.indexer.httpd, httpd_context),
-                    Self::run_metrics_httpd_server(&cfg.indexer.metrics_httpd, metrics_handler),
+                    Self::run_dango_httpd_server(&cfg.httpd, httpd_context),
+                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
                 )?;
+            },
+            (true, true, false) => {
+                // Indexer and HTTP server enabled, metrics disabled
 
-                Ok(())
-            } else {
+                let indexer_path = indexer.indexer_path.clone();
+                let indexer_context = indexer.context.clone();
+
+                let httpd_context = IndexerContext::new(
+                    indexer_context,
+                    Arc::new(app),
+                    Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
+                    indexer_path,
+                );
+
+                tokio::try_join!(
+                    Self::run_dango_httpd_server(&cfg.httpd, httpd_context),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                )?;
+            },
+            (true, false, true) => {
+                // Indexer and metrics enabled, HTTP server disabled
+
+                tokio::try_join!(
+                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                )?;
+            },
+            (true, false, false) => {
+                // Only indexer enabled
+
                 self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
-                    .await
-            }
-        } else {
-            self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
-                .await
+                    .await?;
+            },
+            (false, true, _) => {
+                // No indexer, but HTTP server enabled (minimal mode)
+                let httpd_context = HttpdContext::new(Arc::new(app));
+                tokio::try_join!(
+                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
+                )?;
+            },
+            (false, false, _) => {
+                // No indexer, no HTTP server
+                self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
+                    .await?;
+            },
         }
+
+        Ok(())
     }
 
-    /// Run the indexer HTTP server
-    async fn run_httpd_server(cfg: &HttpdConfig, context: Context) -> anyhow::Result<()> {
-        if !cfg.enabled {
-            tracing::info!("HTTP server is disabled in the configuration");
-            return Ok(());
-        }
+    /// Run the minimal HTTP server (without indexer features)
+    async fn run_minimal_httpd_server(
+        cfg: &HttpdConfig,
+        context: HttpdContext,
+    ) -> anyhow::Result<()> {
+        tracing::info!("Starting minimal HTTP server at {}:{}", &cfg.ip, cfg.port);
+
+        run_httpd_server(
+            &cfg.ip,
+            cfg.port,
+            cfg.cors_allowed_origin.clone(),
+            context,
+            httpd::server::config_app,
+            httpd::graphql::build_schema,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!("Failed to run minimal HTTP server: {err:?}");
+            anyhow!("HTTP server error: {err}")
+        })
+    }
+
+    /// Run the full-featured HTTP server (with indexer features)
+    async fn run_dango_httpd_server(
+        cfg: &HttpdConfig,
+        context: IndexerContext,
+    ) -> anyhow::Result<()> {
+        tracing::info!(
+            "Starting full-featured HTTP server at {}:{}",
+            &cfg.ip,
+            cfg.port
+        );
 
         indexer_httpd::server::run_server(
             &cfg.ip,
@@ -131,8 +199,8 @@ impl StartCmd {
         )
         .await
         .map_err(|err| {
-            tracing::error!("Failed to run HTTP server: {err:?}");
-            err.into()
+            tracing::error!("Failed to run full-featured HTTP server: {err:?}");
+            anyhow!("HTTP server error: {err}")
         })
     }
 
@@ -141,16 +209,11 @@ impl StartCmd {
         cfg: &HttpdConfig,
         metrics_handler: PrometheusHandle,
     ) -> anyhow::Result<()> {
-        if !cfg.enabled {
-            tracing::info!("Metrics HTTP server is disabled in the configuration");
-            return Ok(());
-        }
-
         indexer_httpd::server::run_metrics_server(&cfg.ip, cfg.port, metrics_handler)
             .await
             .map_err(|err| {
-                tracing::error!("Failed to run HTTP server: {err:?}");
-                err.into()
+                tracing::error!("Failed to run metrics HTTP server: {err:?}");
+                anyhow!("Metrics HTTP server error: {err}")
             })
     }
 

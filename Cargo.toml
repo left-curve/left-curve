@@ -44,6 +44,7 @@ members = [
   "grug/types",
   "grug/vm/rust",
   "grug/vm/wasm",
+  "httpd",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
   "hyperlane/testing",
@@ -107,7 +108,7 @@ bnum                        = "0.13"
 borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
-clap                        = "4"
+clap                        = { version = "4", features = ["derive"] }
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -228,6 +229,7 @@ grug-types                  = { path = "grug/types" }
 grug-vm-hybrid              = { path = "grug/vm/hybrid" }
 grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
+httpd                       = { path = "httpd" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }

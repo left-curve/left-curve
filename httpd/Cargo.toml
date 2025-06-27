@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "indexer-httpd"
+name          = "httpd"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -12,13 +12,17 @@ version       = { workspace = true }
 [lib]
 path = "src/lib.rs"
 
+[[bin]]
+name = "httpd"
+path = "src/bin/main.rs"
+
 [features]
 metrics = [
-  "dep:actix-web-metrics",
-  "dep:futures-util",
-  "dep:metrics",
-  "dep:metrics-exporter-prometheus",
-  "dep:prometheus",
+    "dep:actix-web-metrics",
+    "dep:futures-util",
+    "dep:metrics",
+    "dep:metrics-exporter-prometheus",
+    "dep:prometheus",
 ]
 testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
@@ -40,14 +44,10 @@ futures-util                = { workspace = true, optional = true }
 grug-app                    = { workspace = true, features = ["tracing"] }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
-httpd                       = { workspace = true }
-indexer-sql                 = { workspace = true, features = ["async-graphql", "tracing"] }
-itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
 num_cpus                    = { workspace = true }
 prometheus                  = { workspace = true, optional = true }
-sea-orm                     = { workspace = true }
 sentry                      = { workspace = true }
 sentry-actix                = { workspace = true }
 serde                       = { workspace = true }
