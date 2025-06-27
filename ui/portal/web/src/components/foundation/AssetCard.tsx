@@ -1,14 +1,15 @@
 import { useConfig, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import { PairAssets } from "@left-curve/applets-kit";
-import type { Coin } from "@left-curve/dango/types";
-
-import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill, twMerge } from "@left-curve/applets-kit";
+import { AnimatePresence, motion } from "framer-motion";
 
-import { formatNumber, formatUnits, uid } from "@left-curve/dango/utils";
+import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { m } from "~/paraglide/messages";
+
+import type { Coin } from "@left-curve/dango/types";
 interface Props {
   coin: Coin;
 }
@@ -39,10 +40,10 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
       >
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
-            {coinInfo.logoURI ? (
-              <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
+            {coinInfo.type === "lp" ? (
+              <PairAssets assets={[coinInfo.base, coinInfo.quote]} />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-gray-200" />
+              <img src={coinInfo.logoURI} className="h-8 w-8" alt={coinInfo.denom} />
             )}
           </div>
           <div className="flex flex-col">
@@ -72,16 +73,16 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             className="overflow-hidden flex flex-col gap-2 pl-14 w-full"
           >
             <div className="flex items-center justify-between text-gray-500 diatype-m-regular">
-              <p>Wallet</p>
-              <p>$123</p>
+              <p>{m["common.accountMenu.assets.wallet"]()}</p>
+              <p>$0</p>
             </div>
             <div className="flex items-center justify-between text-gray-500 diatype-m-regular">
-              <p>Lending Market</p>
-              <p>$123</p>
+              <p>{m["common.accountMenu.assets.lendingMarket"]()}</p>
+              <p>$0</p>
             </div>
             <div className="flex items-center justify-between text-gray-500 diatype-m-regular">
-              <p>DEX</p>
-              <p>$123</p>
+              <p>{m["common.accountMenu.assets.dex"]()}</p>
+              <p>{price}</p>
             </div>
           </motion.div>
         )}
