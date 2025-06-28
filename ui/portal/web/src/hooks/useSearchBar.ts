@@ -38,7 +38,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
     () => ({
       block: undefined,
       txs: [],
-      applets: Object.values(favApplets).slice(0, 5),
+      applets: Object.values(favApplets),
       contract: undefined,
       account: undefined,
     }),
