@@ -49,18 +49,10 @@ pub fn swap_exact_amount_in(
 }
 
 pub fn swap_exact_amount_out(
-    output_amount: Uint128,
+    output_amount_before_fee: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> MathResult<Uint128> {
-    // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
-    // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-    // to get the ask amount after fees.
-    // Round so that user takes the loss.
-    let output_amount_before_fee =
-        output_amount.checked_div_dec_ceil(Udec128::ONE - *swap_fee_rate)?;
-
     // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
     // => input_amount = (A * B) / (B - output_amount) - A
     // Round so that user takes the loss.
