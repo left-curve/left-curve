@@ -41,15 +41,12 @@ pub fn swap_exact_amount_in(
 
 pub fn swap_exact_amount_out(
     storage: &dyn Storage,
-    querier: QuerierWrapper,
+    oracle_querier: &mut OracleQuerier<'_>,
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<(HashMap<PairId, CoinPair>, Coin)> {
     let mut reserves = HashMap::new();
     let mut input = output.into_inner();
-
-    let oracle_address = querier.query_oracle()?;
-    let mut oracle_querier = OracleQuerier::new_remote(oracle_address, querier);
 
     for pair in route.into_iter().rev() {
         // Load the pair's parameters.
@@ -60,7 +57,7 @@ pub fn swap_exact_amount_out(
 
         // Perform the swap.
         (reserve, input) = params.swap_exact_amount_out(
-            &mut oracle_querier,
+            oracle_querier,
             &pair.base_denom,
             &pair.quote_denom,
             reserve,

@@ -303,8 +303,13 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    // Create the oracle querier with max staleness.
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    // Perform the swap.
     let (reserves, input) =
-        core::swap_exact_amount_out(ctx.storage, ctx.querier, route, output.clone())?;
+        core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route, output.clone())?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
