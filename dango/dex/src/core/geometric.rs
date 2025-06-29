@@ -147,13 +147,9 @@ pub fn swap_exact_amount_out(
         swap_fee_rate,
     )?;
 
-    println!("output_amount_before_fee: {output_amount_before_fee}");
-
     let input_amount = if output.denom == *base_denom {
-        println!("bid_exact_amount_out");
         bid_exact_amount_out(output_amount_before_fee, passive_asks)?
     } else if output.denom == *quote_denom {
-        println!("ask_exact_amount_out");
         ask_exact_amount_out(output_amount_before_fee, passive_bids)?
     } else {
         unreachable!(
@@ -173,19 +169,11 @@ fn bid_exact_amount_out(
     let mut input_amount = Uint128::ZERO;
 
     for (price, size) in passive_asks {
-        println!("remaining_bid: {remaining_bid}");
-        println!("size: {size}");
-        println!("price: {price}");
-
         let matched_amount = cmp::min(size, remaining_bid);
-        println!("matched_amount: {matched_amount}");
         remaining_bid.checked_sub_assign(matched_amount)?;
 
         let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
-        println!("matched_amount_in_quote: {matched_amount_in_quote}");
         input_amount.checked_add_assign(matched_amount_in_quote)?;
-
-        println!("input_amount: {input_amount}");
 
         if remaining_bid.is_zero() {
             return Ok(input_amount);
@@ -203,20 +191,12 @@ fn ask_exact_amount_out(
     let mut input_amount = Uint128::ZERO;
 
     for (price, size) in passive_bids {
-        println!("remaining_ask_in_quote: {remaining_ask_in_quote}");
-        println!("size: {size}");
-        println!("price: {price}");
-
         let bid_size_in_quote = size.checked_mul_dec(price)?;
-        println!("bid_size_in_quote: {bid_size_in_quote}");
         let matched_amount_in_quote = cmp::min(bid_size_in_quote, remaining_ask_in_quote);
-        println!("matched_amount_in_quote: {matched_amount_in_quote}");
         remaining_ask_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
         let matched_amount_in_base = matched_amount_in_quote.checked_div_dec_ceil(price)?;
-        println!("matched_amount_in_base: {matched_amount_in_base}");
         input_amount.checked_add_assign(matched_amount_in_base)?;
-        println!("input_amount: {input_amount}");
 
         if remaining_ask_in_quote.is_zero() {
             return Ok(input_amount);
