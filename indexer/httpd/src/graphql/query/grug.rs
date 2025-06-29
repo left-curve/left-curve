@@ -39,7 +39,7 @@ impl GrugQuery {
         let value = if let Some(value) = value {
             Binary::from(value).to_string()
         } else {
-            return Err(Error::new(format!("Key not found: {}", key)));
+            return Err(Error::new(format!("Key not found: {key}")));
         };
 
         Ok(Store {
