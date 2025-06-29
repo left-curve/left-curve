@@ -451,7 +451,7 @@ pub mod tests {
         }
         method = |_, samples| {
             for (number, str) in samples {
-                assert_eq!(format!("{}", number), str);
+                assert_eq!(format!("{number}"), str);
             }
         }
     );
@@ -484,7 +484,7 @@ pub mod tests {
         method = |_0, samples| {
             for (padded_str, compare) in samples {
                 let uint = bt(_0, Int::from_str(padded_str).unwrap());
-                assert_eq!(format!("{}", uint), compare);
+                assert_eq!(format!("{uint}"), compare);
             }
         }
     );
@@ -509,10 +509,10 @@ pub mod tests {
                 let original = bt(_0, Int::from_str(sample).unwrap());
 
                 let serialized_str = serde_json::to_string(&original).unwrap();
-                assert_eq!(serialized_str, format!("\"{}\"", sample));
+                assert_eq!(serialized_str, format!("\"{sample}\""));
 
                 let serialized_vec = serde_json::to_vec(&original).unwrap();
-                assert_eq!(serialized_vec, format!("\"{}\"", sample).as_bytes());
+                assert_eq!(serialized_vec, format!("\"{sample}\"").as_bytes());
 
                 let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
                 assert_eq!(parsed, original);

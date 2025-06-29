@@ -877,7 +877,7 @@ struct Debt {
 
 /// Proptest strategy for generating a single Denom
 fn denom(index: usize) -> impl Strategy<Value = Denom> {
-    Just(Denom::from_str(&format!("denom{}", index)).unwrap())
+    Just(Denom::from_str(&format!("denom{index}")).unwrap())
 }
 
 /// Proptest strategy for generating a single TestDenom

@@ -197,10 +197,10 @@ where
                     .enumerate()
                     .map(|(id, cron)| {
                         Ok(abci::Event {
-                            kind: format!("cron-{}", id),
+                            kind: format!("cron-{id}"),
                             attributes: vec![abci::EventAttribute::V037(
                                 abci::v0_37::EventAttribute {
-                                    key: format!("cron-{}", id),
+                                    key: format!("cron-{id}"),
                                     value: cron.to_json_string()?,
                                     index: false,
                                 },

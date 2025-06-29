@@ -585,7 +585,7 @@ mod test {
 
         // set some data, we care about "foo" prefix
         for i in 0..1000u32 {
-            storage.write(&concat(&[0, 3], format!("foo{}", i).as_bytes()), b"1");
+            storage.write(&concat(&[0, 3], format!("foo{i}").as_bytes()), b"1");
         }
 
         assert_eq!(
@@ -602,7 +602,7 @@ mod test {
 
         // set less data
         for i in 0..5u32 {
-            storage.write(&concat(&[0, 3], format!("foo{}", i).as_bytes()), b"1");
+            storage.write(&concat(&[0, 3], format!("foo{i}").as_bytes()), b"1");
         }
 
         assert_eq!(
