@@ -3503,6 +3503,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-genesis",
+ "dango-httpd",
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-testing",
@@ -3513,6 +3514,7 @@ dependencies = [
  "grug-vm-rust",
  "httpd",
  "hyperlane-testing",
+ "indexer-httpd",
  "indexer-sql",
  "tokio",
  "tracing",
