@@ -7,10 +7,7 @@ pub trait Indexer {
     type Error: ToString;
 
     /// Called when initializing the indexer, allowing for DB migration if needed
-    fn start<S>(&mut self, _storage: &S) -> Result<(), Self::Error>
-    where
-        S: Storage,
-    {
+    fn start(&mut self, _storage: &dyn Storage) -> Result<(), Self::Error> {
         Ok(())
     }
 

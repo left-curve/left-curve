@@ -39,7 +39,7 @@ url = "postgres://postgres@db:5432/grug_dev"
 # How many connections to keep in the connection pool.
 max_connections = 10
 
-[indexer.httpd]
+[httpd]
 
 # Whether to enable the HTTP server.
 enabled = true
@@ -56,7 +56,7 @@ port = 8080
 # this line.
 #cors_allowed_origin = "*"
 
-[indexer.metrics_httpd]
+[metrics_httpd]
 
 # Whether to enable the HTTP server.
 enabled = true

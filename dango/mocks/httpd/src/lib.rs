@@ -4,6 +4,7 @@ use {
     dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
+    grug_app::{Db, Indexer},
     grug_db_memory::MemDb,
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
@@ -88,9 +89,33 @@ where
 
     let suite = Arc::new(Mutex::new(suite));
 
+    // Start the indexer on the storage
+    {
+        let mut suite_guard = suite.lock().await;
+        let storage = suite_guard.app.db.state_storage(None).map_err(|e| {
+            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to get storage: {}",
+                e
+            )))
+        })?;
+        suite_guard.app.indexer.start(&storage).map_err(|e| {
+            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to start indexer: {}",
+                e
+            )))
+        })?;
+    }
+
     let mock_client = MockClient::new_shared(suite.clone(), block_creation);
 
-    let context = Context::new(indexer_context, suite, Arc::new(mock_client), indexer_path);
+    let app = suite.lock().await.app.clone_without_indexer();
+
+    let context = Context::new(
+        indexer_context,
+        Arc::new(Mutex::new(app)),
+        Arc::new(mock_client),
+        indexer_path,
+    );
 
     indexer_httpd::server::run_server(
         "127.0.0.1",

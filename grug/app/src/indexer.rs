@@ -14,7 +14,7 @@ pub struct NullIndexer;
 impl Indexer for NullIndexer {
     type Error = NullIndexerError;
 
-    fn start<S>(&mut self, _storage: &S) -> Result<(), Self::Error> {
+    fn start(&mut self, _storage: &dyn grug_types::Storage) -> Result<(), Self::Error> {
         Ok(())
     }
 

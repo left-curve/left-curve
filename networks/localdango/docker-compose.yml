@@ -148,7 +148,43 @@ services:
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
-      - "9100:9100"
+      - "127.0.0.1:9100:9100"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    profiles: ["clickhouse"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8123:8123" # HTTP interface
+      - "127.0.0.1:9000:9000" # Native TCP interface
+      - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
+      - "127.0.0.1:9004:9004" # MySQL compatibility interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
+      - ./configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
+    environment:
+      CLICKHOUSE_DB: grug_dev
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8123/ping",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   loki:
     image: grafana/loki:latest
@@ -187,3 +223,5 @@ volumes:
   dango_data:
   dango_indexer:
   cometbft_data:
+  clickhouse_data:
+  clickhouse_logs:

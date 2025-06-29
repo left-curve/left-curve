@@ -44,12 +44,14 @@ members = [
   "grug/types",
   "grug/vm/rust",
   "grug/vm/wasm",
+  "httpd",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
   "indexer/client",
   "indexer/disk-saver",
+  "indexer/hooked",
   "indexer/httpd",
   "indexer/sql",
   "indexer/sql-migration",
@@ -89,6 +91,7 @@ actix-web-metrics           = "0"
 aes-gcm                     = "0.10"
 alloy                       = "1"
 anyhow                      = "1"
+anymap                      = "0.12"
 assert-json-diff            = "2"
 assertor                    = { version = "0.0", git = "https://github.com/google/assertor" }
 async-graphql-actix-web     = "7.0"
@@ -105,7 +108,7 @@ bnum                        = "0.13"
 borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
-clap                        = "4"
+clap                        = { version = "4", features = ["derive"] }
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -226,6 +229,7 @@ grug-types                  = { path = "grug/types" }
 grug-vm-hybrid              = { path = "grug/vm/hybrid" }
 grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
+httpd                       = { path = "httpd" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
@@ -233,6 +237,7 @@ hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
+indexer-hooked              = { path = "indexer/hooked" }
 indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
