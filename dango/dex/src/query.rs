@@ -384,6 +384,9 @@ fn query_simulate_swap_exact_amount_out(
     route: SwapRoute,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Coin> {
-    core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route.into_inner(), output)
         .map(|(_updated_reserves, input)| input)
 }
