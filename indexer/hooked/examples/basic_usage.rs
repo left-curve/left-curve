@@ -60,7 +60,7 @@ impl Indexer for LoggingIndexer {
     }
 
     fn pre_indexing(&self, block_height: u64) -> std::result::Result<(), Self::Error> {
-        self.log(format!("Pre-indexing block {}", block_height));
+        self.log(format!("Pre-indexing block {block_height}"));
         Ok(())
     }
 
@@ -78,7 +78,7 @@ impl Indexer for LoggingIndexer {
         block_height: u64,
         _querier: Box<dyn grug_app::QuerierProvider>,
     ) -> std::result::Result<(), Self::Error> {
-        self.log(format!("Post-indexing block {}", block_height));
+        self.log(format!("Post-indexing block {block_height}"));
         Ok(())
     }
 }
@@ -179,7 +179,7 @@ impl Indexer for MetricsIndexer {
 
     fn shutdown(&mut self) -> std::result::Result<(), Self::Error> {
         if let Some(uptime) = self.get_uptime() {
-            println!("MetricsIndexer shutting down after {:?} uptime", uptime);
+            println!("MetricsIndexer shutting down after {uptime:?} uptime");
         }
         println!("Total blocks indexed: {}", self.get_total_blocks());
         Ok(())
@@ -264,7 +264,7 @@ fn main() -> Result<()> {
         let querier = MockQuerierProvider::new();
         hooked_indexer.post_indexing(height, Box::new(querier))?;
 
-        println!("📦 Indexed block {}", height);
+        println!("📦 Indexed block {height}");
     }
 
     // Check the context data

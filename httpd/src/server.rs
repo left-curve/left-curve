@@ -118,7 +118,7 @@ where
                     async move {
                         let metrics2 = metrics_handler2.render();
                         let metrics = metrics_handler.render();
-                        let combined = format!("{}\n{}", metrics, metrics2);
+                        let combined = format!("{metrics}\n{metrics2}");
 
                         HttpResponse::Ok()
                             .content_type("text/plain; version=0.0.4")

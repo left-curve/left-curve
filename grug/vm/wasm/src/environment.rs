@@ -483,7 +483,7 @@ mod test {
             (Err(result), Err(output)) => {
                 assert_eq!(result.to_string(), output.to_string());
             },
-            _ => panic!("Mismatched results: \n{:?}, \n{:?}", result, output),
+            _ => panic!("Mismatched results: \n{result:?}, \n{output:?}"),
         }
     }
 

@@ -106,8 +106,8 @@ impl IndexerCmd {
 
                             if block_text.contains(&text) || block_results.contains(&text) {
                                 println!("Found in block {block}:");
-                                println!("Block: {:#?}", block_text);
-                                println!("Block Outcome: {:#?}", block_results);
+                                println!("Block: {block_text:#?}");
+                                println!("Block Outcome: {block_results:#?}");
                             }
                         });
                     });

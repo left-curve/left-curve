@@ -28,7 +28,7 @@ fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
     if !BlockToIndex::exists(block_filename.clone()) {
-        println!("Block not found: {:?}", block_filename);
+        println!("Block not found: {block_filename:?}");
         return Ok(HttpResponse::NotFound().body("Block not found"));
     }
 

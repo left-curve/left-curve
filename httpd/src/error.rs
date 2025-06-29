@@ -17,6 +17,6 @@ pub enum Error {
 
 impl From<async_graphql::Error> for Error {
     fn from(e: async_graphql::Error) -> Self {
-        Error::GraphQL(format!("{:?}", e))
+        Error::GraphQL(format!("{e:?}"))
     }
 }

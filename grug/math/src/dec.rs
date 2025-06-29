@@ -846,10 +846,10 @@ mod tests {
                 let dec = bt(_0d, dec(base));
 
                 let serialized_str = serde_json::to_string(&dec).unwrap();
-                assert_eq!(serialized_str, format!("\"{}\"", base));
+                assert_eq!(serialized_str, format!("\"{base}\""));
 
                 let serialized_vec = serde_json::to_vec(&dec).unwrap();
-                assert_eq!(serialized_vec, format!("\"{}\"", base).as_bytes());
+                assert_eq!(serialized_vec, format!("\"{base}\"").as_bytes());
 
                 let parsed: Dec::<_, 18> = serde_json::from_str(&serialized_str).unwrap();
                 assert_eq!(parsed, dec);

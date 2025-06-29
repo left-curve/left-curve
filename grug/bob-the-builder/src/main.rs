@@ -113,7 +113,7 @@ fn main() {
 
     println!("contracts to build:");
     for member in &members {
-        println!("- {}", member);
+        println!("- {member}");
     }
 
     // Build the crates.
