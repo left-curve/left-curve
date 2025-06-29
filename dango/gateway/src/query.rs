@@ -1,5 +1,5 @@
 use {
-    crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES},
+    crate::{RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
     dango_types::gateway::{QueryMsg, RateLimit, Remote},
     grug::{Addr, Denom, ImmutableCtx, Json, JsonSerExt, StdResult, Uint128},
     std::collections::BTreeMap,
@@ -24,6 +24,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_reserve(ctx, bridge, remote)?;
             res.to_json_value()
         },
+        QueryMsg::WithdrawalFee { denom, remote } => {
+            let res = query_withdrawal_fee(ctx, denom, remote)?;
+            res.to_json_value()
+        },
     }
 }
 
@@ -41,4 +45,12 @@ fn query_rate_limits(ctx: ImmutableCtx) -> StdResult<BTreeMap<Denom, RateLimit>>
 
 fn query_reserve(ctx: ImmutableCtx, bridge: Addr, remote: Remote) -> StdResult<Uint128> {
     RESERVES.load(ctx.storage, (bridge, remote))
+}
+
+fn query_withdrawal_fee(
+    ctx: ImmutableCtx,
+    denom: Denom,
+    remote: Remote,
+) -> StdResult<Option<Uint128>> {
+    WITHDRAWAL_FEES.may_load(ctx.storage, (&denom, remote))
 }

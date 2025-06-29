@@ -14,6 +14,9 @@ pub const MOCK_BLOCK_TIME: Duration = Duration::from_millis(250);
 
 pub const DEFAULT_GAS_LIMIT: u64 = 1_000_000;
 
+/// Number of users in the genesis.
+pub const GENESIS_USER_COUNT: u32 = 10;
+
 macro_rules! mock_user {
     ($username:ident, $vk:literal, $sk:literal) => {
         pub mod $username {
@@ -84,5 +87,5 @@ mock_user! {
         user9,
         "0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52",
         "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
-    }
+    },
 }

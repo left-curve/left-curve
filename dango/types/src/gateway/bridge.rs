@@ -1,4 +1,8 @@
-use {super::Remote, grug::Uint128, hyperlane_types::Addr32};
+use {
+    super::{Remote, WarpRemote},
+    crate::bitcoin,
+    grug::Uint128,
+};
 
 /// Each bridge contract must implement this execute API.
 #[grug::derive(Serde)]
@@ -10,8 +14,27 @@ pub enum ExecuteMsg {
 #[grug::derive(Serde)]
 pub enum BridgeMsg {
     TransferRemote {
-        remote: Remote,
+        req: TransferRemoteRequest,
         amount: Uint128,
-        recipient: Addr32,
     },
+}
+
+#[grug::derive(Serde)]
+pub enum TransferRemoteRequest {
+    Warp {
+        warp_remote: WarpRemote,
+        recipient: hyperlane_types::Addr32,
+    },
+    Bitcoin {
+        recipient: bitcoin::BitcoinAddress,
+    },
+}
+
+impl TransferRemoteRequest {
+    pub fn to_remote(&self) -> Remote {
+        match self {
+            TransferRemoteRequest::Warp { warp_remote, .. } => Remote::Warp(*warp_remote),
+            TransferRemoteRequest::Bitcoin { .. } => Remote::Bitcoin,
+        }
+    }
 }

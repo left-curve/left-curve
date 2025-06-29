@@ -215,6 +215,7 @@ pub fn setup_benchmark_hybrid(
         codes.taxman.to_bytes().hash256(),
         codes.vesting.to_bytes().hash256(),
         codes.warp.to_bytes().hash256(),
+        codes.bitcoin.to_bytes().hash256(),
     ]);
 
     setup_suite_with_db_and_vm(
@@ -318,13 +319,13 @@ where
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {
-            Remote::Warp { domain, contract } => {
+            Remote::Warp(warp_remote) => {
                 genesis_state.msgs.push(build_genesis_warp_msg(
                     &contracts,
                     &validator_sets,
-                    domain,
+                    warp_remote.domain,
                     local_domain,
-                    contract,
+                    warp_remote.contract,
                     op.amount,
                     op.recipient,
                 ));

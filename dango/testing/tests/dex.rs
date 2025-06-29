@@ -10,7 +10,7 @@ use {
             OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
         },
-        gateway::Remote,
+        gateway::{Remote, WarpRemote},
         oracle::{self, PriceSource},
     },
     grug::{
@@ -1060,18 +1060,18 @@ fn query_orders_by_pair(
         bridge_ops: |accounts| {
             vec![
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
-                    },
+                    }),
                     amount: Uint128::new(100_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
-                    remote: Remote::Warp {
+                    remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
-                    },
+                    }),
                     amount: Uint128::new(100_000_000_000),
                     recipient: accounts.user1.address(),
                 },
