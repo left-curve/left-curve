@@ -204,8 +204,7 @@ impl CoinPair {
             self.second_mut().amount.checked_add_assign(other.amount)?;
         } else {
             return Err(StdError::invalid_coins(format!(
-                "can't add coin {} to coin pair {:?}",
-                other, self
+                "can't add coin {other} to coin pair {self:?}"
             )));
         }
 
@@ -223,8 +222,7 @@ impl CoinPair {
             self.second_mut().amount.checked_sub_assign(other.amount)?;
         } else {
             return Err(StdError::invalid_coins(format!(
-                "can't subtract coin {} from coin pair {:?}",
-                other, self
+                "can't subtract coin {other} from coin pair {self:?}"
             )));
         }
 

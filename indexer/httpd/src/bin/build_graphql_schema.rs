@@ -18,5 +18,5 @@ fn main() {
     let sdl = schema.sdl();
     std::fs::write(&filename, sdl).unwrap();
 
-    println!("Schema generated successfully at: {:?}", filename);
+    println!("Schema generated successfully at: {filename:?}");
 }
