@@ -45,10 +45,11 @@ const EarnPoolsCards: React.FC = () => {
     <div className="flex gap-4 scrollbar-none justify-start lg:justify-between p-4 overflow-x-auto overflow-y-visible">
       {Object.values(appConfig?.pairs || {})
         .slice(0, 4)
-        .map((pair) => (
+        .map((pair, index) => (
           <StrategyCard
             key={uid()}
             pair={pair}
+            index={index}
             onSelect={navigate}
             labels={{
               party: m["earn.party"](),
@@ -68,7 +69,7 @@ const EarnUserPoolsTable: React.FC = () => {
   const { navigate } = useEarn();
   const { getCoinInfo } = useConfig();
   const { account } = useAccount();
-  const { data: balances = {} } = useBalances({ address: account?.address });
+  const { data: balances = {}, isLoading } = useBalances({ address: account?.address });
 
   const userPools = Object.entries(balances)
     .filter(([denom]) => denom.includes("dex"))
@@ -118,7 +119,16 @@ const EarnUserPoolsTable: React.FC = () => {
 
   return (
     <div className="flex w-full p-4">
-      <Table data={userPools} columns={columns} />
+      <Table
+        data={userPools}
+        columns={columns}
+        isLoading={isLoading}
+        emptyComponent={
+          <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[7rem]">
+            <p className="diatype-sm-regular text-gray-700">{m["earn.noLiquidity"]()}</p>
+          </div>
+        }
+      />
     </div>
   );
 };

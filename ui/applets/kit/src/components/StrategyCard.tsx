@@ -3,10 +3,12 @@ import { Button } from "#components/Button.js";
 
 import type { PairSymbols, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
+import { twMerge } from "#utils/twMerge.js";
 
 type StrategyCardProps = {
   pair: PairUpdate;
   onSelect: (pairSymbols: PairSymbols) => void;
+  index?: number;
   labels: {
     party: string;
     earn: string;
@@ -17,7 +19,50 @@ type StrategyCardProps = {
   };
 };
 
-export const StrategyCard: React.FC<StrategyCardProps> = ({ pair, onSelect, labels }) => {
+const images = [
+  {
+    character: "/images/characters/cocodrile.svg",
+    alt: "cocodrile",
+    className: "w-[15.7rem] top-[7rem] right-4 ",
+  },
+  {
+    character: "/images/characters/cobra.svg",
+    alt: "Cobra",
+    className: "w-[14rem] top-[7rem] right-[-3rem]",
+  },
+  {
+    character: "/images/characters/bird.svg",
+    alt: "Bird",
+    className: "w-[19.56rem] top-[8rem] right-[-6rem]",
+  },
+  {
+    character: "/images/characters/hippo.svg",
+    alt: "Hippo",
+    className: "w-[23.5rem] top-[4rem] right-[-2rem]",
+  },
+  {
+    character: "/images/characters/monkeys.svg",
+    alt: "Monkeys",
+    className: "w-[13rem] top-[4rem] right-[-2rem] scale-x-[-1]",
+  },
+  {
+    character: "/images/characters/friends.svg",
+    alt: "Friends",
+    className: "w-[18.5rem] top-[5.5rem] right-[-5rem]",
+  },
+  {
+    character: "/images/characters/green-octopus.svg",
+    alt: "Green Octopus",
+    className: "w-[9.5rem] top-[4rem] right-[-2rem]",
+  },
+];
+
+export const StrategyCard: React.FC<StrategyCardProps> = ({
+  pair,
+  onSelect,
+  labels,
+  index = 0,
+}) => {
   const { baseDenom, quoteDenom } = pair;
   const { coins } = useConfig();
 
@@ -25,11 +70,14 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({ pair, onSelect, labe
   const quoteCoin = coins[quoteDenom];
 
   return (
-    <div className="relative p-4  min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
+    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
       <img
-        src="/images/characters/cocodrile.svg"
-        alt=""
-        className="absolute z-0 top-[7rem] right-4 w-[15,7rem] opacity-10 pointer-events-none select-none"
+        src={images[index].character}
+        alt={images[index].alt}
+        className={twMerge(
+          "absolute z-0 opacity-10 pointer-events-none select-none",
+          images[index].className,
+        )}
       />
       <div className="flex flex-col gap-2 justify-between z-10 w-full h-full relative">
         <div className="flex flex-col gap-6 items-center justify-center text-center">

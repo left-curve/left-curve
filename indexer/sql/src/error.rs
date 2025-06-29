@@ -59,7 +59,7 @@ impl From<IndexerError> for AppError {
 
 impl<T> From<std::sync::PoisonError<T>> for IndexerError {
     fn from(err: std::sync::PoisonError<T>) -> Self {
-        IndexerError::Poison(format!("Poisoned mutex: {err:?}"))
+        IndexerError::Poison(err.to_string())
     }
 }
 

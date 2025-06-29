@@ -32,6 +32,13 @@
       "title": "Message from the founder",
       "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
     },
+    "accountMenu": {
+      "assets": {
+        "dex": "DEX",
+        "lendingMarket": "Lending Market",
+        "wallet": "Wallet"
+      }
+    },
     "signWithWallet": [
       {
         "declarations": ["input action"],
@@ -97,12 +104,12 @@
   },
   "applets": {
     "0": {
-      "id": "transfer",
-      "img": "/images/applets/send-and-receive.svg",
-      "title": "Transfer",
-      "description": "Send and receive crypto.",
-      "path": "/transfer",
-      "keywords": "transfer,send,receive"
+      "id": "trade",
+      "img": "/images/emojis/simple/protrading.svg",
+      "title": "Trade",
+      "description": "Real-Time Charts, Data & Trading",
+      "path": "/trade",
+      "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
     "1": {
       "id": "simple-swap",
@@ -113,6 +120,30 @@
       "keywords": "swap,trade,convert,exchange"
     },
     "2": {
+      "id": "earn",
+      "img": "/images/emojis/simple/pig.svg",
+      "title": "Earn",
+      "description": "Earn tokens by lending or providing liquidity",
+      "path": "/earn",
+      "keywords": "earn,staking,liquidity,lending"
+    },
+    "3": {
+      "id": "transfer",
+      "img": "/images/emojis/simple/money.svg",
+      "title": "Transfer",
+      "description": "Send and receive crypto.",
+      "path": "/transfer",
+      "keywords": "transfer,send,receive"
+    },
+    "4": {
+      "id": "create-account",
+      "img": "/images/emojis/simple/wizard.svg",
+      "title": "Subaccount creation",
+      "description": "Create subaccounts.",
+      "path": "/account/create",
+      "keywords": "account,create,register"
+    },
+    "5": {
       "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
       "title": "Settings",
@@ -120,37 +151,13 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "3": {
+    "6": {
       "id": "notifications",
       "img": "/images/emojis/simple/notifications.svg",
       "title": "Notifications",
       "description": "View recent transactions.",
       "path": "/notifications",
       "keywords": "notifications,alerts"
-    },
-    "4": {
-      "id": "create-account",
-      "img": "/images/applets/account-creation.svg",
-      "title": "Subaccount creation",
-      "description": "Create subaccounts.",
-      "path": "/account/create",
-      "keywords": "account,create,register"
-    },
-    "5": {
-      "id": "trade",
-      "img": "/images/emojis/simple/spot.svg",
-      "title": "Trade",
-      "description": "Real-Time Charts, Data & Trading",
-      "path": "/trade",
-      "keywords": "swap,dex,trade,pro,charts,data,trading"
-    },
-    "6": {
-      "id": "earn",
-      "img": "/images/emojis/simple/pig.svg",
-      "title": "Earn",
-      "description": "Earn tokens by lending or providing liquidity",
-      "path": "/earn",
-      "keywords": "earn,staking,liquidity,lending"
     }
   },
   "explorer": {
@@ -508,6 +515,7 @@
     }
   },
   "earn": {
+    "noLiquidity": "You don’t have any liquidity positions yet",
     "party": "Party",
     "earn": "Earn",
     "select": "Select",
@@ -529,7 +537,14 @@
     "liquidity": "Liquidity",
     "deposit": "You deposit",
     "withdrawAmount": "Withdrawal amount",
-    "amount": "amount"
+    "amount": "amount",
+    "modal": {
+      "addLiquidity": "Add Liquidity",
+      "depositing": "Depositing",
+      "withdrawalConfirmation": "Withdrawal Confirmation",
+      "withdrawPenaltyAdvice": "Are you sure you want to withdraw? If you withdraw now, you will have to pay a penalty.",
+      "continueWithdraw": "Continue Withdraw"
+    }
   },
   "settings": {
     "title": "Settings",

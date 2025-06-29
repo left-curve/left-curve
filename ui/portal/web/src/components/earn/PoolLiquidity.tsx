@@ -1,4 +1,4 @@
-import { numberMask, useInputs } from "@left-curve/applets-kit";
+import { numberMask, Skeleton, useInputs } from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
@@ -20,6 +20,7 @@ import { m } from "~/paraglide/messages";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
+import { Modals } from "../modals/RootModal";
 
 const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{
   state: ReturnType<typeof usePoolLiquidityState>;
@@ -132,6 +133,9 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
+  if (userLiquidity.isLoading)
+    return <Skeleton className="h-[9rem] rounded-xl shadow-account-card flex-1" />;
+
   if (!userHasLiquidity || !userLiquidity.data) return null;
 
   const { innerBase, innerQuote } = userLiquidity.data;
@@ -145,7 +149,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   });
 
   return (
-    <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card w-full h-fit">
+    <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-gray-500">{m["poolLiquidity.liquidity"]()}</p>
         <p className="h4-bold text-gray-900">{totalPrice}</p>
@@ -181,12 +185,12 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
 };
 
 const PoolLiquidityDeposit: React.FC = () => {
-  const { settings } = useApp();
+  const { settings, showModal } = useApp();
   const { state, controllers } = usePoolLiquidity();
   const { formatNumberOptions } = settings;
   const { coins, action, deposit } = state;
   const { base, quote } = coins;
-  const { register, setValue } = controllers;
+  const { register, setValue, errors } = controllers;
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
@@ -206,6 +210,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               },
               mask: numberMask,
             })}
+            hideErrorMessage
             placeholder="0"
             startText="right"
             startContent={
@@ -251,6 +256,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                 return true;
               },
             })}
+            hideErrorMessage
             placeholder="0"
             startText="right"
             startContent={
@@ -287,12 +293,33 @@ const PoolLiquidityDeposit: React.FC = () => {
             }
           />
         </div>
+        <div className="diatype-sm-regular text-error-500">
+          {errors && (
+            <p>
+              {errors.baseAmount && (
+                <span>
+                  {base.symbol}: {errors.baseAmount}
+                </span>
+              )}{" "}
+              {errors.quoteAmount && (
+                <span>
+                  {quote.symbol}: {errors.quoteAmount}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
       </div>
       <Button
         size="md"
         fullWidth
         isLoading={deposit.isPending}
-        onClick={() => deposit.mutateAsync()}
+        onClick={() =>
+          showModal(Modals.PoolAddLiquidity, {
+            coins,
+            confirmAddLiquidity: deposit.mutateAsync,
+          })
+        }
       >
         {m["common.deposit"]()}
       </Button>
@@ -301,6 +328,7 @@ const PoolLiquidityDeposit: React.FC = () => {
 };
 
 const PoolLiquidityWithdraw: React.FC = () => {
+  const { showModal } = useApp();
   const { state, controllers } = usePoolLiquidity();
   const { coins, action, withdraw, withdrawPercent, withdrawAmount } = state;
   const { setValue } = controllers;
@@ -380,7 +408,11 @@ const PoolLiquidityWithdraw: React.FC = () => {
         size="md"
         fullWidth
         isLoading={withdraw.isPending}
-        onClick={() => withdraw.mutateAsync()}
+        onClick={() =>
+          showModal(Modals.PoolWithdrawLiquidity, {
+            confirmWithdrawal: withdraw.mutateAsync,
+          })
+        }
       >
         {m["common.withdraw"]()}
       </Button>
