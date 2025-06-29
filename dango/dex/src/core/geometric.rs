@@ -132,9 +132,8 @@ pub fn swap_exact_amount_out(
     // offer amount after fees. So in this case we need to divide ask by (1 - fee)
     // to get the ask amount after fees.
     // Round so that user takes the loss.
-    let output_amount_before_fee = output
-        .amount
-        .checked_div_dec_ceil(Udec128::ONE - *swap_fee_rate)?;
+    let one_sub_fee_rate = Udec128::ONE - *swap_fee_rate;
+    let output_amount_before_fee = output.amount.checked_div_dec_ceil(one_sub_fee_rate)?;
 
     let (passive_bids, passive_asks) = reflect_curve(
         oracle_querier,
