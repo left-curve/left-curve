@@ -200,7 +200,7 @@ impl StartCmd {
         .await
         .map_err(|err| {
             tracing::error!("Failed to run full-featured HTTP server: {err:?}");
-            anyhow!("HTTP server error: {err}")
+            err.into()
         })
     }
 
@@ -213,7 +213,7 @@ impl StartCmd {
             .await
             .map_err(|err| {
                 tracing::error!("Failed to run metrics HTTP server: {err:?}");
-                anyhow!("Metrics HTTP server error: {err}")
+                err.into()
             })
     }
 
