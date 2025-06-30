@@ -325,7 +325,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         let mut tx_output = BTreeMap::new();
         let mut withdraw_amount = Uint128::ZERO;
 
-        while let Some((k, v)) = iter.next() {
+        for (k, v) in iter.by_ref() {
             tx_output.insert(k, v);
             withdraw_amount += v;
 
