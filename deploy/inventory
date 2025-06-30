@@ -1,6 +1,9 @@
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
+[grafana]
+100.122.37.57 hostname=ovh3 ansible_user=debian
+
 [github_runners]
 100.96.253.40 hostname=ovh1 ansible_user=debian
 100.107.248.71 hostname=ovh2 ansible_user=debian
