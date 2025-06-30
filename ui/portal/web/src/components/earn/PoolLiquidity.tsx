@@ -1,4 +1,10 @@
-import { numberMask, Skeleton, useInputs } from "@left-curve/applets-kit";
+import {
+  IconArrowDown,
+  IconChevronRight,
+  numberMask,
+  Skeleton,
+  useInputs,
+} from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
@@ -21,6 +27,7 @@ import { m } from "~/paraglide/messages";
 import type { PairUpdate } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
 import { Modals } from "../modals/RootModal";
+import { MobileTitle } from "../foundation/MobileTitle";
 
 const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{
   state: ReturnType<typeof usePoolLiquidityState>;
@@ -59,6 +66,7 @@ const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = 
           state.userHasLiquidity ? "md:max-w-[50.1875rem]" : "md:max-w-[25rem]",
         )}
       >
+        <MobileTitle title={`Pool: ${state.coins.base.symbol}-${state.coins.quote.symbol}`} />
         {children}
       </motion.div>
     </PoolLiquidityProvider>
