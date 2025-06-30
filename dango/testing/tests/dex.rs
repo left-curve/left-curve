@@ -1560,7 +1560,10 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 497500,
+        usdc::DENOM.clone() => 495510,
+    },
+    coins! {
+        usdc::DENOM.clone() => 1990,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1589,7 +1592,10 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 331666,
+        usdc::DENOM.clone() => 330339,
+    },
+    coins! {
+        usdc::DENOM.clone() => 1327,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1618,7 +1624,10 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 247814,
+        usdc::DENOM.clone() => 246822,
+    },
+    coins! {
+        usdc::DENOM.clone() => 992,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1658,7 +1667,10 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     },
     None,
     coins! {
-        eth::DENOM.clone() => 247814,
+        eth::DENOM.clone() => 246822,
+    },
+    coins! {
+        eth::DENOM.clone() => 992,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1693,12 +1705,15 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     coins! {
         usdc::DENOM.clone() => 500000,
     },
+    coins! {
+        usdc::DENOM.clone() => 1990,
+    },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
             usdc::DENOM.clone() => 500000,
         },
-    } => panics "output amount is below the minimum: 497500 < 500000" ;
+    } => panics "output amount after fee is below the minimum: 495510 < 500000" ;
     "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
 )]
 #[test_case(
@@ -1718,9 +1733,12 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(5),
     },
-    Some(497500u128.into()),
+    Some(495510u128.into()),
     coins! {
-        usdc::DENOM.clone() => 497500,
+        usdc::DENOM.clone() => 495510,
+    },
+    coins! {
+        usdc::DENOM.clone() => 1990,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1749,7 +1767,10 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
     },
     None,
     coins! {
-        usdc::DENOM.clone() => 499950,
+        usdc::DENOM.clone() => 497950,
+    },
+    coins! {
+        usdc::DENOM.clone() => 2000,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
@@ -1766,6 +1787,7 @@ fn swap_exact_amount_in(
     swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
     minimum_output: Option<Uint128>,
     expected_out: Coins,
+    expected_protocol_fee: Coins,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
@@ -1816,7 +1838,7 @@ fn swap_exact_amount_in(
     // Record user and dex balances
     suite
         .balances()
-        .record_many([&accounts.user1.address(), &contracts.dex]);
+        .record_many([&accounts.user1.address(), &contracts.dex, &contracts.taxman]);
 
     // User swaps
     suite
@@ -1840,7 +1862,20 @@ fn swap_exact_amount_in(
     // Assert that the dex balance has changed by the expected amount.
     suite.balances().should_change(
         &contracts.dex,
-        balance_changes_from_coins(swap_funds.clone(), expected_out.clone()),
+        balance_changes_from_coins(
+            swap_funds.clone(),
+            expected_out
+                .clone()
+                .insert_many(expected_protocol_fee.clone())
+                .unwrap()
+                .clone(),
+        ),
+    );
+
+    // Assert that the expected protocol fee was transferred to the taxman.
+    suite.balances().should_change(
+        &contracts.taxman,
+        balance_changes_from_coins(expected_protocol_fee.clone(), Coins::new()),
     );
 
     // Query pools and assert that the reserves are updated correctly
