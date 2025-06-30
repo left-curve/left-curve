@@ -393,6 +393,7 @@
           "label": "dango/bitcoin",
           "msg": {
             "config": {
+              "max_output_per_tx": 30,
               "minimum_deposit": "1000",
               "multisig": {
                 "pub_keys": [

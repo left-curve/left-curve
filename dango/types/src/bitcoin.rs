@@ -147,6 +147,8 @@ pub struct Config {
     /// Minimum amount of Sats.
     /// All deposits lower than this amount will be ignored.
     pub minimum_deposit: Uint128,
+    /// The maximum number of outputs in a single transaction.
+    pub max_output_per_tx: usize,
 }
 
 #[grug::derive(Serde, Borsh)]

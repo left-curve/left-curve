@@ -35,9 +35,7 @@
       "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
       "permissions": {
         "instantiate": {
-          "somebodies": [
-            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
-          ]
+          "somebodies": ["0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"]
         },
         "upload": "nobody"
       },
@@ -393,6 +391,7 @@
           "label": "dango/bitcoin",
           "msg": {
             "config": {
+              "max_output_per_tx": 30,
               "minimum_deposit": "1000",
               "multisig": {
                 "pub_keys": [
@@ -424,11 +423,7 @@
               "bridge/usdc": "0.1"
             },
             "routes": [
-              [
-                "btc",
-                "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251",
-                "bitcoin"
-              ],
+              ["btc", "0x7ba4db4627fb2b95e27ef3de7f29cdbe619b8251", "bitcoin"],
               [
                 "eth",
                 "0x00d4f0a556bfeaa12e1451d74830cf483153af91",

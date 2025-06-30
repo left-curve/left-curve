@@ -3,16 +3,17 @@ use {
         Amount, EcdsaSighashType, Network, Script, Transaction as BtcTransaction, hashes::Hash,
         sighash::SighashCache,
     },
+    dango_genesis::{BitcoinOption, GenesisOption},
     dango_testing::{
-        MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestAccount, TestSuite,
-        setup_test_naive,
+        MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, Preset, TestAccount, TestSuite,
+        setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         bitcoin::{
             BitcoinSignature, Config, ExecuteMsg, InboundConfirmed, InboundCredential, InboundMsg,
-            InstantiateMsg, MultisigSettings, OutboundConfirmed, QueryConfigRequest,
-            QueryOutboundQueueRequest, QueryOutboundTransactionRequest, QueryUtxosRequest, Utxo,
-            Vout,
+            InstantiateMsg, MultisigSettings, OutboundConfirmed, OutboundRequested,
+            QueryConfigRequest, QueryOutboundQueueRequest, QueryOutboundTransactionRequest,
+            QueryUtxosRequest, Utxo, Vout,
         },
         constants::btc,
         gateway::{
@@ -21,9 +22,10 @@ use {
         },
     },
     grug::{
-        Addr, CheckedContractEvent, Coins, Duration, Hash256, HashExt, HexBinary, HexByteArray,
-        Inner, Json, JsonDeExt, JsonSerExt, MakeBlockOutcome, Message, NonEmpty, Order, PrimaryKey,
-        QuerierExt, ResultExt, SearchEvent, Tx, TxOutcome, Uint128, btree_map, btree_set, coins,
+        Addr, CheckedContractEvent, Coins, CommitmentStatus, Duration, EventStatus, Hash256,
+        HashExt, HexBinary, HexByteArray, Inner, Json, JsonDeExt, JsonSerExt, MakeBlockOutcome,
+        Message, NonEmpty, Order, PrimaryKey, QuerierExt, ResultExt, SearchEvent, Tx, TxOutcome,
+        Uint128, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     grug_crypto::Identity256,
@@ -189,6 +191,7 @@ fn instantiate() {
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
             minimum_deposit: Uint128::new(1000),
+            max_output_per_tx: 30,
         };
 
         suite
@@ -215,6 +218,7 @@ fn instantiate() {
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
             minimum_deposit: Uint128::new(1000),
+            max_output_per_tx: 30,
         };
 
         suite
@@ -239,6 +243,7 @@ fn instantiate() {
             sats_per_vbyte: Uint128::new(10),
             outbound_strategy: Order::Ascending,
             minimum_deposit: Uint128::new(1000),
+            max_output_per_tx: 30,
         };
 
         suite
@@ -838,7 +843,7 @@ fn cron_execute() {
         btree_map!(
             recipient1.clone() => net_withdraw1,
             recipient2.clone() => net_withdraw2,
-            vault => Uint128::new(100_000) - net_withdraw1 - net_withdraw2 -tx.fee
+            vault => Uint128::new(100_000) - net_withdraw1 - net_withdraw2 - tx.fee
         )
     );
 
@@ -1290,4 +1295,125 @@ fn fee() {
     let percentage = fee_estimation * Uint128::new(100) / fee;
     println!("Percentage: {percentage}");
     assert!(percentage < Uint128::new(105));
+}
+
+#[test]
+fn multiple_outbound_tx() {
+    let genesis_option = GenesisOption {
+        bitcoin: BitcoinOption {
+            max_output_per_tx: 1,
+            ..Preset::preset_test()
+        },
+        ..Preset::preset_test()
+    };
+
+    let (mut suite, mut accounts, _, contracts, ..) =
+        setup_test_naive_with_custom_genesis(Preset::preset_test(), genesis_option);
+
+    suite.block_time = Duration::ZERO;
+
+    let user1_address = *accounts.user1.address.inner();
+    let user2_address = *accounts.user2.address.inner();
+
+    let hash1 = Hash256::from_inner([0; 32]);
+    let hash2 = Hash256::from_inner([1; 32]);
+
+    // Deposit 100k sats do user1
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        hash1,
+        0,
+        Uint128::new(100_000),
+        Some(user1_address),
+    );
+
+    // Deposit 100k sats do user2
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        hash2,
+        0,
+        Uint128::new(100_000),
+        Some(user2_address),
+    );
+
+    // Create a withdrawal request for user1 and user2.
+    let recipient1 = "bcrt1q4e3mwznnr3chnytav5h4mhx52u447jv2kl55z9";
+    let recipient2 = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0";
+
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        Uint128::new(10_000),
+        recipient1,
+    );
+
+    withdraw(
+        &mut suite,
+        &mut accounts.user1,
+        contracts.gateway,
+        Uint128::new(10_000),
+        recipient2,
+    );
+
+    // Let cronjob execute the withdrawals and ensure there are 2 events.
+    let outcome = advance_ten_minutes(&mut suite);
+
+    let mut events = vec![];
+    for cron in outcome.block_outcome.cron_outcomes {
+        if let CommitmentStatus::Committed(EventStatus::Ok(cron_event)) = &cron.cron_event {
+            if cron_event.contract == contracts.bitcoin {
+                if let EventStatus::Ok(guest) = &cron_event.guest_event {
+                    events.extend(
+                        guest
+                            .contract_events
+                            .iter()
+                            .map(|e| {
+                                e.data
+                                    .clone()
+                                    .deserialize_json::<OutboundRequested>()
+                                    .unwrap()
+                            })
+                            .collect::<Vec<_>>(),
+                    );
+                }
+            }
+        }
+    }
+
+    assert_eq!(events.len(), 2);
+
+    assert_eq!(events[0].id, 0);
+
+    assert_eq!(events[1].id, 1);
+
+    // Ensure the outbound queue is empty.
+    suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundQueueRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map!());
+
+    let tx1 = suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 0 })
+        .should_succeed();
+
+    assert_eq!(tx1.inputs, btree_map! {
+        (hash1, 0) => Uint128::new(100_000),
+    });
+
+    assert!(tx1.outputs.contains_key(recipient1));
+
+    let tx2 = suite
+        .query_wasm_smart(contracts.bitcoin, QueryOutboundTransactionRequest { id: 1 })
+        .should_succeed();
+
+    assert_eq!(tx2.inputs, btree_map! {
+        (hash2, 0) => Uint128::new(100_000),
+    });
+
+    assert!(tx2.outputs.contains_key(recipient2));
 }

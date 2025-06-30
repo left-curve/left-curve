@@ -309,95 +309,113 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
     // Take the pending outbound transfers from the storage.
-    let mut outputs = OUTBOUND_QUEUE.drain(ctx.storage, None, None)?;
+    let outputs = OUTBOUND_QUEUE.drain(ctx.storage, None, None)?;
 
     // If there's no pending outbound transfers, nothing to do.
     if outputs.is_empty() {
         return Ok(Response::new());
     }
 
-    // Sum up the total outbound amount.
-    let withdraw_amount = outputs
-        .iter()
-        .try_fold(Uint128::ZERO, |total, (_, amount)| {
-            total.checked_add(*amount)
-        })?;
+    // Each transaction can have a maximum number of outputs.
+    let mut events = vec![];
+    let mut iter = outputs.into_iter();
 
-    // Choose the UTXOs as inputs for the outbound transaction.
-    let mut inputs = BTreeMap::new();
-    let mut sum = Uint128::ZERO;
+    // Keep creating transactions until there are no more outputs left.
+    while iter.len() > 0 {
+        let mut tx_output = BTreeMap::new();
+        let mut withdraw_amount = Uint128::ZERO;
 
-    let tx = Transaction {
-        inputs: inputs.clone(),
-        outputs: outputs.clone(),
-        fee: Uint128::ZERO,
-    };
+        while let Some((k, v)) = iter.next() {
+            tx_output.insert(k, v);
+            withdraw_amount += v;
 
-    let mut btc_transaction = tx.to_btc_transaction(cfg.network)?;
-
-    // The fee is calculated as tx_size * sats_per_vbyte.
-    // The function `vsize()` returns the size of the transaction in vbyte, but
-    // it doesn't include the size of the signatures.
-    let mut fee = Uint128::ZERO;
-
-    // For each input, we need a number of signatures equal to the threshold.
-    // So for each input, we calculate the size of the signatures in vbyte as
-    // INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * threshold.
-    let signature_size_per_input =
-        INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * Uint128::new(cfg.multisig.threshold() as u128);
-
-    // Keep adding UTXOs until we reach the withdraw amount + fee.
-    for res in UTXOS.range(ctx.storage, None, None, cfg.outbound_strategy) {
-        if sum >= withdraw_amount + fee {
-            break;
+            // Check if the maximum number of outputs is reached for this tx.
+            if tx_output.len() == cfg.max_output_per_tx {
+                break;
+            }
         }
 
-        let (amount, hash, vout) = res?;
+        // Prepare the transaction in order to estimate the size and so the fee.
+        let tx = Transaction {
+            inputs: BTreeMap::new(),
+            outputs: tx_output.clone(),
+            fee: Uint128::ZERO,
+        };
 
-        inputs.insert((hash, vout), amount);
-        sum.checked_add_assign(amount)?;
-        btc_transaction.input.push(create_tx_in(&hash, vout));
+        let mut btc_transaction = tx.to_btc_transaction(cfg.network)?;
 
-        // Size of signatures.
-        let signatures_size = Uint128::new(inputs.len() as u128) * signature_size_per_input;
+        // The fee is calculated as tx_size * sats_per_vbyte.
+        // The function `vsize()` returns the size of the transaction in vbyte, but
+        // it doesn't include the size of the signatures.
+        let mut fee = Uint128::ZERO;
 
-        // Adding 1 output for the vault.
-        fee = (Uint128::new(btc_transaction.vsize() as u128) + signatures_size + OUTPUT_SIZE)
-            * cfg.sats_per_vbyte;
+        // For each input, we need a number of signatures equal to the threshold.
+        // So for each input, we calculate the size of the signatures in vbyte as
+        // INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * threshold.
+        let signature_size_per_input = INPUT_SIGNATURES_OVERHEAD
+            + SIGNATURE_SIZE * Uint128::new(cfg.multisig.threshold() as u128);
+
+        // Choose the UTXOs as inputs for the outbound transaction.
+        let mut inputs = BTreeMap::new();
+        let mut inputs_amount = Uint128::ZERO;
+
+        // Keep adding UTXOs until we reach the withdraw amount + fee.
+        for res in UTXOS.range(ctx.storage, None, None, cfg.outbound_strategy) {
+            if inputs_amount >= withdraw_amount + fee {
+                break;
+            }
+
+            let (amount, hash, vout) = res?;
+
+            inputs.insert((hash, vout), amount);
+            inputs_amount += amount;
+
+            // Add the input to the transaction for fee estimation.
+            btc_transaction.input.push(create_tx_in(&hash, vout));
+
+            // Size of signatures.
+            let signatures_size = Uint128::new(inputs.len() as u128) * signature_size_per_input;
+
+            // Adding 1 OUTPUT_SIZE to address the output size for the vault.
+            fee = (Uint128::new(btc_transaction.vsize() as u128) + signatures_size + OUTPUT_SIZE)
+                * cfg.sats_per_vbyte;
+        }
+
+        // Ensure we have enough UTXOs to cover the withdraw amount + fee.
+        ensure!(
+            inputs_amount >= withdraw_amount + fee,
+            "not enough UTXOs to cover the withdraw amount + fee: {} < {}",
+            inputs_amount,
+            withdraw_amount + fee
+        );
+
+        // Total amount of BTC needed for this tx.
+        let total = withdraw_amount + fee;
+
+        // If there's excess input, send the excess back to the vault.
+        if inputs_amount > total {
+            tx_output.insert(cfg.vault.clone(), inputs_amount - total);
+        }
+
+        // Delete the chosen UTXOs.
+        for ((hash, vout), amount) in &inputs {
+            UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
+        }
+
+        let (id, _) = NEXT_OUTBOUND_ID.increment(ctx.storage)?;
+        let transaction = Transaction {
+            inputs,
+            outputs: tx_output,
+            fee,
+        };
+
+        // Save the outbound transaction.
+        OUTBOUNDS.save(ctx.storage, id, &transaction)?;
+
+        events.push(OutboundRequested { id, transaction });
     }
 
-    // Ensure we have enough UTXOs to cover the withdraw amount + fee.
-    ensure!(
-        sum >= withdraw_amount + fee,
-        "not enough UTXOs to cover the withdraw amount + fee: {} < {}",
-        sum,
-        withdraw_amount + fee
-    );
-
-    // Total amount of BTC needed for this tx.
-    let total = withdraw_amount + fee;
-
-    // If there's excess input, send the excess back to the vault.
-    if sum > total {
-        outputs.insert(cfg.vault, sum - total);
-    }
-
-    // Delete the chosen UTXOs.
-    for ((hash, vout), amount) in &inputs {
-        UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
-    }
-
-    let (id, _) = NEXT_OUTBOUND_ID.increment(ctx.storage)?;
-    let transaction = Transaction {
-        inputs,
-        outputs,
-        fee,
-    };
-
-    // Save the outbound transaction.
-    OUTBOUNDS.save(ctx.storage, id, &transaction)?;
-
-    Ok(Response::new().add_event(OutboundRequested { id, transaction })?)
+    Ok(Response::new().add_events(events)?)
 }
 
 fn authorize_outbound(

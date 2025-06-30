@@ -656,6 +656,7 @@ impl Preset for BitcoinOption {
             outbound_strategy: Order::Ascending,
             withdraw_timeout: Duration::from_minutes(10),
             minimum_deposit: Uint128::new(1000),
+            max_output_per_tx: 30,
         }
     }
 }

@@ -175,6 +175,7 @@ where
                 sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
                 outbound_strategy: opt.bitcoin.outbound_strategy,
                 minimum_deposit: opt.bitcoin.minimum_deposit,
+                max_output_per_tx: opt.bitcoin.max_output_per_tx,
             },
         },
         "dango/bitcoin",

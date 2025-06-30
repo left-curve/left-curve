@@ -147,4 +147,5 @@ pub struct BitcoinOption {
     /// Define how often the withdrawal requests are processed.
     pub withdraw_timeout: Duration,
     pub minimum_deposit: Uint128,
+    pub max_output_per_tx: usize,
 }
