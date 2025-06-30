@@ -1902,7 +1902,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 498000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1002006,
     },
@@ -1910,6 +1910,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 2000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 1002006,
@@ -1929,7 +1930,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 333333).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 331999).unwrap(),
     coins! {
         dango::DENOM.clone() => 500751,
     },
@@ -1937,6 +1938,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 500751).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 1334).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 500751,
@@ -1956,7 +1958,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 250000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 249000).unwrap(),
     coins! {
         dango::DENOM.clone() => 333779,
     },
@@ -1964,6 +1966,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 333779).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 1000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 333779,
@@ -1983,7 +1986,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 996000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
@@ -1991,6 +1994,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 4000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -2011,7 +2015,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 498000).unwrap(),
     coins! {
         dango::DENOM.clone() => 999999,
     },
@@ -2019,6 +2023,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 2000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -2039,7 +2044,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 500000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 498000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1100000,
     },
@@ -2047,6 +2052,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 2000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 1002006,
@@ -2076,7 +2082,7 @@ fn swap_exact_amount_in(
             quote_denom: usdc::DENOM.clone(),
         },
     ],
-    Coin::new(eth::DENOM.clone(), 250000).unwrap(),
+    Coin::new(eth::DENOM.clone(), 249000).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
@@ -2085,6 +2091,7 @@ fn swap_exact_amount_in(
         (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
     Coin::new(dango::DENOM.clone(), 501758).unwrap(),
+    Coin::new(eth::DENOM.clone(), 1000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 1000000 + 501758,
@@ -2108,7 +2115,7 @@ fn swap_exact_amount_in(
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
     }],
-    Coin::new(usdc::DENOM.clone(), 499950).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 497950).unwrap(),
     coins! {
         dango::DENOM.clone() => 1000000,
     },
@@ -2116,6 +2123,7 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_bps(1),
     },
     Coin::new(dango::DENOM.clone(), 1000000).unwrap(),
+    Coin::new(usdc::DENOM.clone(), 2000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             dango::DENOM.clone() => 2000000,
@@ -2131,6 +2139,7 @@ fn swap_exact_amount_out(
     swap_funds: Coins,
     swap_fee_rates: BTreeMap<(Denom, Denom), Udec128>,
     expected_in: Coin,
+    expected_protocol_fee: Coin,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
@@ -2180,7 +2189,7 @@ fn swap_exact_amount_out(
     // Record user and dex balances
     suite
         .balances()
-        .record_many([&accounts.user1.address(), &contracts.dex]);
+        .record_many([&accounts.user1.address(), &contracts.dex, &contracts.taxman]);
 
     // User swaps
     suite
@@ -2196,7 +2205,7 @@ fn swap_exact_amount_out(
         .should_succeed();
 
     // Assert that the user's balances have changed as expected.
-    let expected_out_coins: Coins = vec![exact_out].try_into().unwrap();
+    let mut expected_out_coins: Coins = vec![exact_out].try_into().unwrap();
     let expected_in_coins: Coins = vec![expected_in].try_into().unwrap();
     suite.balances().should_change(
         &accounts.user1,
@@ -2204,9 +2213,21 @@ fn swap_exact_amount_out(
     );
 
     // Assert that the dex balance has changed by the expected amount.
+    expected_out_coins
+        .insert(expected_protocol_fee.clone())
+        .unwrap();
     suite.balances().should_change(
         &contracts.dex,
         balance_changes_from_coins(expected_in_coins.clone(), expected_out_coins.clone()),
+    );
+
+    // Assert that the taxman balance has changed by the expected amount.
+    suite.balances().should_change(
+        &contracts.taxman,
+        balance_changes_from_coins(
+            vec![expected_protocol_fee].try_into().unwrap(),
+            Coins::new(),
+        ),
     );
 
     // Query pools and assert that the reserves are updated correctly
