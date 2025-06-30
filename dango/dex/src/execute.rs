@@ -339,9 +339,20 @@ fn swap_exact_amount_out(
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    // Perform the swap.
+    // Query app config to get the taker fee rate
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let taker_fee_rate = app_cfg.taker_fee_rate.into_inner();
+
+    // Calculate the protocol fee on the desired output amount
+    let protocol_fee_amount = output.amount.checked_mul_dec_ceil(taker_fee_rate)?;
+    let output_after_fee = NonZero::new(Coin {
+        denom: output.denom.clone(),
+        amount: output.amount.checked_add(protocol_fee_amount)?,
+    })?;
+
+    // Perform the swap for the total output needed (user's output + fee)
     let (reserves, input) =
-        core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route, output.clone())?;
+        core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route, output_after_fee)?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
@@ -355,13 +366,27 @@ fn swap_exact_amount_out(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    // Unlike `swap_exact_amount_in`, no need to check whether output is zero
-    // here, because we already ensure it's non-zero.
-    Ok(Response::new()
+    let mut response = Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
         .add_event(Swapped {
             user: ctx.sender,
             input,
-            output: output.into_inner(),
-        })?)
+            output: output.clone().into_inner(),
+        })?;
+
+    // If there's a fee to collect, add the taxman payment message
+    if protocol_fee_amount.is_non_zero() {
+        response = response.add_message(Message::execute(
+            app_cfg.addresses.taxman,
+            &taxman::ExecuteMsg::Pay {
+                ty: FeeType::Trade,
+                payments: btree_map! {
+                    ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
+                },
+            },
+            coins! { output.denom.clone() => protocol_fee_amount },
+        )?);
+    }
+
+    Ok(response)
 }
