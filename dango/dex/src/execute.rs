@@ -11,10 +11,12 @@ use {
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
             InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, coins,
+        MultiplyFraction, MutableCtx, NonZero, Number, QuerierExt, Response, Uint128, UniqueVec,
+        btree_map, coins,
     },
 };
 
@@ -271,17 +273,31 @@ fn swap_exact_amount_in(
     let (reserves, output) =
         core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route, input.clone())?;
 
-    // Ensure the output is above the minimum.
+    // Query app config to get the taker fee rate
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let taker_fee_rate = app_cfg.taker_fee_rate.into_inner();
+
+    // Calculate the protocol fee on the output amount
+    let protocol_fee_amount = output.amount.checked_mul_dec_ceil(taker_fee_rate)?;
+    let output_after_fee = Coin {
+        denom: output.denom.clone(),
+        amount: output.amount.checked_sub(protocol_fee_amount)?,
+    };
+
+    // Ensure the output after fee is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
     if let Some(minimum_output) = minimum_output {
         ensure!(
-            output.amount >= minimum_output,
-            "output amount is below the minimum: {} < {}",
-            output.amount,
+            output_after_fee.amount >= minimum_output,
+            "output amount after fee is below the minimum: {} < {}",
+            output_after_fee.amount,
             minimum_output
         );
     } else {
-        ensure!(output.amount.is_non_zero(), "output amount is zero");
+        ensure!(
+            output_after_fee.amount.is_non_zero(),
+            "output amount after fee is zero"
+        );
     }
 
     // Save the updated pool reserves.
@@ -289,13 +305,29 @@ fn swap_exact_amount_in(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, output.clone())?)
+    let mut response = Response::new()
+        .add_message(Message::transfer(ctx.sender, output_after_fee.clone())?)
         .add_event(Swapped {
             user: ctx.sender,
             input,
-            output,
-        })?)
+            output: output_after_fee.clone(),
+        })?;
+
+    // If there's a fee to collect, add the taxman payment message
+    if protocol_fee_amount.is_non_zero() {
+        response = response.add_message(Message::execute(
+            app_cfg.addresses.taxman,
+            &taxman::ExecuteMsg::Pay {
+                ty: FeeType::Trade,
+                payments: btree_map! {
+                    ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
+                },
+            },
+            coins! { output.denom => protocol_fee_amount },
+        )?);
+    }
+
+    Ok(response)
 }
 
 fn swap_exact_amount_out(
