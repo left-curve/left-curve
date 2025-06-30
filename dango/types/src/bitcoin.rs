@@ -171,7 +171,7 @@ where
 {
     let converted: BTreeMap<String, &Uint128> = inputs
         .iter()
-        .map(|((hash, vout), amount)| (format!("{}/{}", hash, vout), amount))
+        .map(|((hash, vout), amount)| (format!("{hash}/{vout}"), amount))
         .collect();
     converted.serialize(serializer)
 }
