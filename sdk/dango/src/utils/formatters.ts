@@ -147,43 +147,40 @@ export function formatUnits(value: bigint | number | string, decimals: number): 
  * @param decimals The number of decimals to divide the number by.
  * @returns The parsed number.
  */
-export function parseUnits(value: string, decimals: number) {
+export function parseUnits(value: string, decimals: number): string {
   if (!/^(-?)([0-9]*)\.?([0-9]*)$/.test(value)) {
     throw new Error(`Number \`${value}\` is not a valid decimal number.`);
   }
 
-  let [integer, fraction = "0"] = value.split(".");
+  if (decimals === 0) return Math.round(Number(value)).toString();
 
-  const negative = integer.startsWith("-");
-  if (negative) integer = integer.slice(1);
+  let isNegative = false;
 
-  // trim trailing zeros.
-  fraction = fraction.replace(/(0+)$/, "");
-
-  // round off if the fraction is larger than the number of decimals.
-  if (decimals === 0) {
-    if (Math.round(Number(`.${fraction}`)) === 1) integer = `${BigInt(integer) + BigInt(1)}`;
-    fraction = "";
-  } else if (fraction.length > decimals) {
-    const [left, unit, right] = [
-      fraction.slice(0, decimals - 1),
-      fraction.slice(decimals - 1, decimals),
-      fraction.slice(decimals),
-    ];
-
-    const rounded = Math.round(Number(`${unit}.${right}`));
-    if (rounded > 9) fraction = `${BigInt(left) + BigInt(1)}0`.padStart(left.length + 1, "0");
-    else fraction = `${left}${rounded}`;
-
-    if (fraction.length > decimals) {
-      fraction = fraction.slice(1);
-      integer = `${BigInt(integer) + BigInt(1)}`;
-    }
-
-    fraction = fraction.slice(0, decimals);
-  } else {
-    fraction = fraction.padEnd(decimals, "0");
+  if (value.startsWith("-")) {
+    isNegative = true;
+    value = value.slice(1);
   }
 
-  return BigInt(`${negative ? "-" : ""}${integer}${fraction}`);
+  const [integer, fraction = ""] = value.split(".");
+
+  const allDigits = integer + fraction;
+  const originalDecimalIndex = integer.length;
+
+  const newDecimalIndex = originalDecimalIndex + decimals;
+
+  let result: string;
+
+  if (newDecimalIndex <= 0) {
+    const leadingZeros = "0".repeat(Math.abs(newDecimalIndex));
+    result = `0.${leadingZeros}${allDigits}`;
+  } else if (newDecimalIndex >= allDigits.length) {
+    const trailingZeros = "0".repeat(newDecimalIndex - allDigits.length);
+    result = allDigits + trailingZeros;
+  } else {
+    const newIntegerPart = allDigits.slice(0, newDecimalIndex);
+    const newFractionPart = allDigits.slice(newDecimalIndex);
+    result = `${newIntegerPart}.${newFractionPart}`;
+  }
+
+  return isNegative ? `-${result}` : result;
 }
