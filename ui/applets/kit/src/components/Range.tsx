@@ -198,7 +198,7 @@ export const Range: React.FC<RangeProps> = ({
       {label && <div className="text-gray-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 px-[10px]">
           <div
             ref={sliderRef}
             className={twMerge(
