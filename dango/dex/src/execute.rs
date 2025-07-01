@@ -15,8 +15,7 @@ use {
     },
     grug::{
         Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, QuerierExt, Response, Udec128,
-        Uint128, UniqueVec, btree_map, coins,
+        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
     },
 };
 
@@ -264,38 +263,33 @@ fn swap_exact_amount_in(
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
+    let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Perform the swap.
-    let (reserves, output) =
-        core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route, input.clone())?;
-
-    // Query app config to get the taker fee rate
-    let app_cfg = ctx.querier.query_dango_config()?;
-    let taker_fee_rate = app_cfg.taker_fee_rate.into_inner();
-
-    // Calculate the protocol fee on the output amount
-    let protocol_fee_amount = output.amount.checked_mul_dec_ceil(taker_fee_rate)?;
-    let output_after_fee = Coin {
-        denom: output.denom.clone(),
-        amount: output.amount.checked_sub(protocol_fee_amount)?,
-    };
+    let (reserves, output, protocol_fee) = core::swap_exact_amount_in(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate,
+        route,
+        input.clone(),
+    )?;
 
     // Ensure the output after fee is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
     if let Some(minimum_output) = minimum_output {
         ensure!(
-            output_after_fee.amount >= minimum_output,
+            output.amount >= minimum_output,
             "output amount after fee is below the minimum: {} < {}",
-            output_after_fee.amount,
+            output.amount,
             minimum_output
         );
     } else {
         ensure!(
-            output_after_fee.amount.is_non_zero(),
+            output.amount.is_non_zero(),
             "output amount after fee is zero"
         );
     }
@@ -306,17 +300,17 @@ fn swap_exact_amount_in(
     }
 
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, output_after_fee.clone())?)
-        .may_add_message(if protocol_fee_amount.is_non_zero() {
+        .add_message(Message::transfer(ctx.sender, output.clone())?)
+        .may_add_message(if protocol_fee.is_non_zero() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
                     payments: btree_map! {
-                        ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
                     },
                 },
-                coins! { output.denom => protocol_fee_amount },
+                coins! { output.denom.clone() => protocol_fee },
             )?)
         } else {
             None
@@ -324,7 +318,7 @@ fn swap_exact_amount_in(
         .add_event(Swapped {
             user: ctx.sender,
             input,
-            output: output_after_fee,
+            output,
         })?)
 }
 
@@ -333,31 +327,19 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    // Query app config to get the taker fee rate
-    let app_cfg = ctx.querier.query_dango_config()?;
-    let taker_fee_rate = app_cfg.taker_fee_rate.into_inner();
-
-    // Calculate output before fee
-    let output_before_fee = Coin {
-        denom: output.denom.clone(),
-        amount: output
-            .amount
-            .checked_div_dec_ceil(Udec128::ONE.checked_sub(taker_fee_rate)?)?,
-    };
-
-    // Calculate the protocol fee on the desired output amount
-    let protocol_fee_amount = output_before_fee.amount.checked_sub(output.amount)?;
-
     // Perform the swap for the total output needed (user's output + fee)
-    let (reserves, input) = core::swap_exact_amount_out(
+    let (reserves, input, protocol_fee) = core::swap_exact_amount_out(
         ctx.storage,
         &mut oracle_querier,
+        *app_cfg.taker_fee_rate,
         route,
-        NonZero::new(output_before_fee)?,
+        output.clone(),
     )?;
 
     // The user must have sent no less than the required input amount.
@@ -374,16 +356,16 @@ fn swap_exact_amount_out(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .may_add_message(if protocol_fee_amount.is_non_zero() {
+        .may_add_message(if protocol_fee.is_non_zero() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
                     payments: btree_map! {
-                        ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
+                        ctx.sender => coins! { input.denom.clone() => protocol_fee },
                     },
                 },
-                coins! { output.denom.clone() => protocol_fee_amount },
+                coins! { input.denom.clone() => protocol_fee },
             )?)
         } else {
             None
