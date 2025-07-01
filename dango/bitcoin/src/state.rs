@@ -34,7 +34,7 @@ pub const PROCESSED_UTXOS: Set<(Hash256, Vout)> = Set::new("processed_utxo");
 /// ```
 pub const OUTBOUND_QUEUE: Map<BitcoinAddress, Uint128> = Map::new("outbound_queue");
 
-pub const NEXT_OUTBOUND_ID: Counter<u32> = Counter::new("next_outbound_id", 0, 1);
+pub const OUTBOUND_ID: Counter<u32> = Counter::new("outbound_id", 0, 1);
 
 pub const OUTBOUNDS: Map<u32, Transaction> = Map::new("outbound");
 

@@ -1,6 +1,6 @@
 use {
     crate::{
-        CONFIG, INBOUNDS, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
+        CONFIG, INBOUNDS, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
         UTXOS,
     },
     anyhow::{anyhow, bail, ensure},
@@ -402,7 +402,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
         }
 
-        let (id, _) = NEXT_OUTBOUND_ID.increment(ctx.storage)?;
+        let (id, _) = OUTBOUND_ID.increment(ctx.storage)?;
         let transaction = Transaction {
             inputs,
             outputs: tx_output,

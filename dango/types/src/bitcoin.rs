@@ -347,9 +347,9 @@ pub enum QueryMsg {
         start_after: Option<BitcoinAddress>,
         limit: Option<u32>,
     },
-    /// Query the last outbound transaction ID.
+    /// Query the number of outbound transactions.
     #[returns(u32)]
-    LastOutboundTransactionId {},
+    CountOutboundTransactions {},
     /// Query an outbound transaction by ID.
     #[returns(Transaction)]
     OutboundTransaction { id: u32 },

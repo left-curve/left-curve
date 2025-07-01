@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, NEXT_OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
+    crate::{CONFIG, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, QueryMsg, Transaction, Utxo},
     grug::{
         Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -27,8 +27,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_outbound_queue(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::LastOutboundTransactionId {} => {
-            let res = query_last_outbound_transaction_id(ctx.storage)?;
+        QueryMsg::CountOutboundTransactions {} => {
+            let res = query_count_outbound_transaction(ctx.storage)?;
             res.to_json_value()
         },
         QueryMsg::OutboundTransaction { id } => {
@@ -92,8 +92,8 @@ fn query_outbound_queue(
         .collect()
 }
 
-fn query_last_outbound_transaction_id(storage: &dyn Storage) -> StdResult<u32> {
-    NEXT_OUTBOUND_ID.current(storage)
+fn query_count_outbound_transaction(storage: &dyn Storage) -> StdResult<u32> {
+    OUTBOUND_ID.current(storage)
 }
 
 fn query_outbound_transaction(storage: &dyn Storage, id: u32) -> StdResult<Transaction> {
