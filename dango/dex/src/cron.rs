@@ -174,19 +174,23 @@ fn clear_orders_of_pair(
 
     // Create iterators over passive orders.
     //
-    // If the pool doesn't have passive liquidity (reserve is `None`), simply
-    // use empty iterators.
+    // If the pool doesn't have passive liquidity (reserve is `None`), or if
+    // the order book reflection fails, simply use empty iterators. I.e. place
+    // no passive liquidity orders.
     let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
     let (passive_bid_iter, passive_ask_iter) = match &reserve {
         Some(reserve) => {
             // Create the passive liquidity orders if the pair has a pool.
             let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            pair.reflect_curve(
+            match pair.reflect_curve(
                 oracle_querier,
                 base_denom.clone(),
                 quote_denom.clone(),
                 reserve,
-            )?
+            ) {
+                Ok((passive_bid_iter, passive_ask_iter)) => (passive_bid_iter, passive_ask_iter),
+                Err(_) => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
+            }
         },
         None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
     };
@@ -457,8 +461,13 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
-    // Calculate the vo lume in USD for the filled order
-    let base_asset_price = oracle_querier.query_price(base_denom, None)?;
+    // Calculate the vo lume in USD for the filled order. If the oracle query
+    // fails, we simply skip the volume update, since we want to make sure that
+    // the cron_execute function doesn't fail.
+    let base_asset_price = match oracle_querier.query_price(base_denom, None) {
+        Ok(base_asset_price) => base_asset_price,
+        Err(_) => return Ok(()),
+    };
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
 
     // Record trading volume for the user's address
