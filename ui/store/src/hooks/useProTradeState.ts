@@ -27,13 +27,12 @@ export type UseProTradeStateParameters = {
 };
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
-  const { controllers, pairId, onChangePairId, onChangeAction } = parameters;
+  const { controllers, pairId, onChangePairId, onChangeAction, action } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
   const { coins } = useConfig();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
-  const [action, setAction] = useState<"buy" | "sell">(parameters.action);
 
   const { convertAmount } = usePrices();
 
@@ -45,7 +44,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   });
 
   const changeAction = useCallback((action: "buy" | "sell") => {
-    setAction(action);
     onChangeAction(action);
     setValue("size", "0");
   }, []);
