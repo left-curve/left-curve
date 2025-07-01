@@ -209,14 +209,14 @@ fn clear_orders_of_pair(
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
-    let market_bid_filling_outcomes = match_market_bids_with_limit_asks(
+    let (market_bid_filling_outcomes, left_over_market_bids) = match_market_bids_with_limit_asks(
         &mut market_bids,
         &mut merged_ask_iter,
         maker_fee_rate,
         taker_fee_rate,
         current_block_height,
     )?;
-    let market_ask_filling_outcomes = match_market_asks_with_limit_bids(
+    let (market_ask_filling_outcomes, left_over_market_asks) = match_market_asks_with_limit_bids(
         &mut market_asks,
         &mut merged_bid_iter,
         maker_fee_rate,
@@ -279,23 +279,6 @@ fn clear_orders_of_pair(
     // - Emit events:
     //   - limit orders matched
     //   - order filled
-
-    // Loop over all unmatched market orders and refund the users
-    for (_, market_order) in market_bids {
-        refunds.insert(
-            market_order.user,
-            quote_denom.clone(),
-            market_order.remaining,
-        )?;
-    }
-
-    for (_, market_order) in market_asks {
-        refunds.insert(
-            market_order.user,
-            base_denom.clone(),
-            market_order.remaining,
-        )?;
-    }
 
     // Track the inflows and outflows of the dex.
     let mut inflows = Coins::new();
@@ -410,6 +393,23 @@ fn clear_orders_of_pair(
 
             Ok::<_, StdError>(reserve)
         })?;
+    }
+
+    // Loop over all unfully filled market orders and refund the users.
+    for (_, market_order) in left_over_market_bids {
+        refunds.insert(
+            market_order.user,
+            quote_denom.clone(),
+            market_order.remaining,
+        )?;
+    }
+
+    for (_, market_order) in left_over_market_asks {
+        refunds.insert(
+            market_order.user,
+            base_denom.clone(),
+            market_order.remaining,
+        )?;
     }
 
     Ok(())

@@ -15,14 +15,17 @@ use {
 /// ## Returns
 ///
 /// - Filling outcomes for the orders (market and limit).
-/// - If there's a limit order that has not been fully filled, returns this order.
+/// - A list of market orders that are not completed filled (to be refunded).
 pub fn match_market_bids_with_limit_asks<M, A, B>(
     market_orders: &mut M,
     limit_orders: &mut MergedOrders<A, B>,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
+) -> anyhow::Result<(
+    HashMap<ExtendedOrderId, FillingOutcome>,
+    Vec<(OrderId, MarketOrder)>,
+)>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
@@ -39,17 +42,20 @@ where
     let mut max_price;
     let mut outcomes = HashMap::new();
 
-    // Get the first market order.
-    match market_orders.next() {
-        Some(v) => (market_order_id, market_order) = v,
-        None => return Ok(outcomes),
-    }
-
     // Get the first limit order.
     match limit_orders.next() {
         Some(Ok(v)) => (limit_price, limit_order) = v,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok(outcomes),
+        None => return Ok((outcomes, market_orders.collect())),
+    }
+
+    // Get the first market order.
+    match market_orders.next() {
+        Some(v) => (market_order_id, market_order) = v,
+        None => {
+            limit_orders.prepend((limit_price, limit_order));
+            return Ok((outcomes, Vec::new()));
+        },
     }
 
     // Compute the maximum average execution price for the first market order.
@@ -170,7 +176,8 @@ where
         limit_orders.prepend((limit_price, limit_order));
     }
 
-    Ok(outcomes)
+    // Make sure to return all the market orders not visited.
+    Ok((outcomes, market_orders.collect()))
 }
 
 pub fn match_market_asks_with_limit_bids<M, A, B>(
@@ -179,7 +186,10 @@ pub fn match_market_asks_with_limit_bids<M, A, B>(
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
+) -> anyhow::Result<(
+    HashMap<ExtendedOrderId, FillingOutcome>,
+    Vec<(OrderId, MarketOrder)>,
+)>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
@@ -196,15 +206,18 @@ where
     let mut min_price;
     let mut outcomes = HashMap::new();
 
-    match market_orders.next() {
-        Some(v) => (market_order_id, market_order) = v,
-        None => return Ok(outcomes),
-    }
-
     match limit_orders.next() {
         Some(Ok(v)) => (limit_price, limit_order) = v,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok(outcomes),
+        None => return Ok((outcomes, market_orders.collect())),
+    }
+
+    match market_orders.next() {
+        Some(v) => (market_order_id, market_order) = v,
+        None => {
+            limit_orders.prepend((limit_price, limit_order));
+            return Ok((outcomes, Vec::new()));
+        },
     }
 
     let one_sub_max_slippage = Udec128::ONE.saturating_sub(market_order.max_slippage);
@@ -287,7 +300,7 @@ where
         limit_orders.prepend((limit_price, limit_order));
     }
 
-    Ok(outcomes)
+    Ok((outcomes, market_orders.collect()))
 }
 
 fn new_market_bid_filling_outcome(
@@ -329,7 +342,7 @@ fn new_market_ask_filling_outcome(
         filled: base_sold,
         clearing_price: Udec128::checked_from_ratio(quote_bought, base_sold)?,
         cleared: order.remaining.is_zero(),
-        refund_base: Uint128::ZERO,
+        refund_base: order.remaining,
         refund_quote,
         fee_base: Uint128::ZERO,
         fee_quote,
@@ -664,7 +677,7 @@ mod tests {
             IterationOrder::Ascending,
         );
 
-        let outcomes = match_market_bids_with_limit_asks(
+        let (outcomes, _left_over_market_orders) = match_market_bids_with_limit_asks(
             &mut market_orders,
             &mut limit_orders,
             Udec128::ZERO,
@@ -934,7 +947,7 @@ mod tests {
             IterationOrder::Descending,
         );
 
-        let outcomes = match_market_asks_with_limit_bids(
+        let (outcomes, _left_over_market_orders) = match_market_asks_with_limit_bids(
             &mut market_orders,
             &mut limit_orders,
             Udec128::ZERO,
