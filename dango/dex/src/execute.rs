@@ -15,8 +15,8 @@ use {
     },
     grug::{
         Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, QuerierExt, Response, Uint128, UniqueVec,
-        btree_map, coins,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, QuerierExt, Response, Udec128,
+        Uint128, UniqueVec, btree_map, coins,
     },
 };
 
@@ -343,16 +343,24 @@ fn swap_exact_amount_out(
     let app_cfg = ctx.querier.query_dango_config()?;
     let taker_fee_rate = app_cfg.taker_fee_rate.into_inner();
 
-    // Calculate the protocol fee on the desired output amount
-    let protocol_fee_amount = output.amount.checked_mul_dec_ceil(taker_fee_rate)?;
-    let output_after_fee = NonZero::new(Coin {
+    // Calculate output before fee
+    let output_before_fee = Coin {
         denom: output.denom.clone(),
-        amount: output.amount.checked_add(protocol_fee_amount)?,
-    })?;
+        amount: output
+            .amount
+            .checked_div_dec_ceil(Udec128::ONE.checked_sub(taker_fee_rate)?)?,
+    };
+
+    // Calculate the protocol fee on the desired output amount
+    let protocol_fee_amount = output_before_fee.amount.checked_sub(output.amount)?;
 
     // Perform the swap for the total output needed (user's output + fee)
-    let (reserves, input) =
-        core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route, output_after_fee)?;
+    let (reserves, input) = core::swap_exact_amount_out(
+        ctx.storage,
+        &mut oracle_querier,
+        route,
+        NonZero::new(output_before_fee)?,
+    )?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
