@@ -94,10 +94,7 @@ impl StartCmd {
                 // Indexer, HTTP server, and metrics server all enabled
 
                 let mut hooked_indexer = HookedIndexer::new();
-                hooked_indexer.add_indexer_with_context(indexer, |idx, ctx| {
-                    // Store the SQL context in the hooked indexer's context using Extensions
-                    ctx.data().lock().unwrap().insert(idx.context.clone());
-                });
+                hooked_indexer.add_indexer(indexer);
 
                 let httpd_context = IndexerContext::new(
                     indexer_context,

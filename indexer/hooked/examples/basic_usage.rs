@@ -374,7 +374,7 @@ mod tests {
             Some(&"test_value".to_string())
         );
         assert_eq!(
-            hooked_indexer.context().data().lock().unwrap().get::<i32>(),
+            hooked_indexer.context().data().read().unwrap().get::<i32>(),
             Some(&42)
         );
 

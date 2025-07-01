@@ -3,14 +3,77 @@ use {grug_app::Indexer, grug_types::Storage};
 // Re-export modules for easier access
 pub mod context;
 pub mod error;
-pub mod middleware;
 
 pub use {
     context::IndexerContext,
     error::{HookedIndexerError, Result},
 };
 
-// DynIndexer trait removed - we can now use Indexer directly since it's dyn-compatible
+/// Simple adapter that wraps an indexer with error conversion
+struct SimpleIndexerAdapter<I> {
+    indexer: std::sync::Mutex<I>,
+}
+
+impl<I> SimpleIndexerAdapter<I> {
+    fn new(indexer: I) -> Self {
+        Self {
+            indexer: std::sync::Mutex::new(indexer),
+        }
+    }
+}
+
+unsafe impl<I> Send for SimpleIndexerAdapter<I> where I: Send {}
+unsafe impl<I> Sync for SimpleIndexerAdapter<I> where I: Send + Sync {}
+
+impl<I> Indexer for SimpleIndexerAdapter<I>
+where
+    I: Indexer + Send + Sync,
+    I::Error: Into<HookedIndexerError>,
+{
+    type Error = HookedIndexerError;
+
+    fn start(&mut self, storage: &dyn Storage) -> Result<()> {
+        let mut indexer = self.indexer.lock().unwrap();
+        indexer.start(storage).map_err(|e| e.into())
+    }
+
+    fn shutdown(&mut self) -> Result<()> {
+        let mut indexer = self.indexer.lock().unwrap();
+        indexer.shutdown().map_err(|e| e.into())
+    }
+
+    fn pre_indexing(&self, block_height: u64) -> Result<()> {
+        let indexer = self.indexer.lock().unwrap();
+        indexer.pre_indexing(block_height).map_err(|e| e.into())
+    }
+
+    fn index_block(
+        &self,
+        block: &grug_types::Block,
+        block_outcome: &grug_types::BlockOutcome,
+    ) -> Result<()> {
+        let indexer = self.indexer.lock().unwrap();
+        indexer
+            .index_block(block, block_outcome)
+            .map_err(|e| e.into())
+    }
+
+    fn post_indexing(
+        &self,
+        block_height: u64,
+        querier: Box<dyn grug_app::QuerierProvider>,
+    ) -> Result<()> {
+        let indexer = self.indexer.lock().unwrap();
+        indexer
+            .post_indexing(block_height, querier)
+            .map_err(|e| e.into())
+    }
+
+    fn wait_for_finish(&self) {
+        let indexer = self.indexer.lock().unwrap();
+        indexer.wait_for_finish();
+    }
+}
 
 /// A composable indexer that can own multiple indexers and coordinate between them
 pub struct HookedIndexer {
@@ -23,7 +86,6 @@ pub struct HookedIndexer {
 }
 
 impl HookedIndexer {
-    /// Create a new HookedIndexer with empty indexers
     pub fn new() -> Self {
         Self {
             indexers: Vec::new(),
@@ -38,34 +100,8 @@ impl HookedIndexer {
         I: Indexer + Send + Sync + 'static,
         I::Error: Into<HookedIndexerError>,
     {
-        let adapter = middleware::IndexerAdapter::new(indexer);
+        let adapter = SimpleIndexerAdapter::new(indexer);
         self.indexers.push(Box::new(adapter));
-        self
-    }
-
-    /// Add an indexer and optionally store additional context data
-    /// This allows storing data from the indexer in the hooked indexer's context
-    pub fn add_indexer_with_context<I, F>(&mut self, indexer: I, store_context: F) -> &mut Self
-    where
-        I: Indexer + Send + Sync + 'static,
-        I::Error: Into<HookedIndexerError>,
-        F: FnOnce(&I, &mut IndexerContext),
-    {
-        // Allow caller to store additional context data
-        store_context(&indexer, &mut self.context);
-
-        // Add the indexer normally
-        let adapter = middleware::IndexerAdapter::new(indexer);
-        self.indexers.push(Box::new(adapter));
-        self
-    }
-
-    /// Add a boxed Indexer directly
-    pub fn add_boxed_indexer(
-        &mut self,
-        indexer: Box<dyn Indexer<Error = HookedIndexerError> + Send + Sync>,
-    ) -> &mut Self {
-        self.indexers.push(indexer);
         self
     }
 
@@ -180,14 +216,15 @@ impl Indexer for HookedIndexer {
         // This is a limitation when composing indexers that expect owned QuerierProvider
         for (i, indexer) in self.indexers.iter().enumerate() {
             // For the last indexer, we can pass the original querier
-            // For others, we need to create a clone/wrapper
+            // For others, we need to create a simple no-op wrapper since proper cloning
+            // is complex and the current QuerierProvider doesn't support it
             if i == self.indexers.len() - 1 {
                 indexer.post_indexing(block_height, querier)?;
                 break;
             } else {
-                // Create a wrapper that clones the querier functionality
-                let querier_clone = middleware::QuerierProviderClone::from_ref(querier.as_ref());
-                indexer.post_indexing(block_height, Box::new(querier_clone))?;
+                // Create a no-op querier for intermediate indexers
+                // TODO: This is a limitation that should be addressed in the Indexer trait
+                indexer.post_indexing(block_height, Box::new(NoOpQuerierProvider))?;
             }
         }
 
@@ -198,6 +235,21 @@ impl Indexer for HookedIndexer {
         for indexer in self.indexers.iter().rev() {
             indexer.wait_for_finish();
         }
+    }
+}
+
+/// Simple no-op QuerierProvider for intermediate indexers in post_indexing
+/// This is a workaround for the ownership limitation in post_indexing
+struct NoOpQuerierProvider;
+
+impl grug_app::QuerierProvider for NoOpQuerierProvider {
+    fn do_query_chain(
+        &self,
+        _req: grug_types::Query,
+        _query_depth: usize,
+    ) -> grug_types::GenericResult<grug_types::QueryResponse> {
+        // This is a limitation - intermediate indexers in the chain can't use the querier
+        Err("QuerierProvider not available for intermediate indexers".into())
     }
 }
 
@@ -344,14 +396,14 @@ mod tests {
         let context = IndexerContext::new();
 
         // Test Extensions API - much simpler than TypedMapKey!
-        context.data().lock().unwrap().insert(42i32);
-        context.data().lock().unwrap().insert("hello".to_string());
+        context.data().write().unwrap().insert(42i32);
+        context.data().write().unwrap().insert("hello".to_string());
 
-        assert_eq!(context.data().lock().unwrap().get::<i32>(), Some(&42));
+        assert_eq!(context.data().read().unwrap().get::<i32>(), Some(&42));
         assert_eq!(
-            context.data().lock().unwrap().get::<String>(),
+            context.data().read().unwrap().get::<String>(),
             Some(&"hello".to_string())
         );
-        assert_eq!(context.data().lock().unwrap().get::<u64>(), None);
+        assert_eq!(context.data().read().unwrap().get::<u64>(), None);
     }
 }
