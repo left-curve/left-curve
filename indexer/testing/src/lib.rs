@@ -25,6 +25,7 @@ use {
 
 pub mod block;
 pub mod graphql;
+pub mod setup;
 
 // Re-export the configurable pagination function for use by other crates
 pub use graphql::paginate_models_with_app_builder;

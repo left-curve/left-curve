@@ -10,7 +10,7 @@ use {
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK, QuerierProvider},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
-    sea_orm::{DatabaseConnection, TransactionTrait},
+    sea_orm::DatabaseConnection,
     std::{
         collections::HashMap,
         future::Future,
@@ -345,24 +345,6 @@ where
 }
 
 // ------------------------------- DB Related ----------------------------------
-
-impl<H> NonBlockingIndexer<H>
-where
-    H: Hooks + Clone + Send + Sync + 'static,
-{
-    /// Delete a block and its related content from the database
-    pub fn delete_block_from_db(&self, block_height: u64) -> error::Result<()> {
-        self.handle.block_on(async move {
-            let db = self.context.db.begin().await?;
-            entity::blocks::Entity::delete_block_and_data(&db, block_height).await?;
-            db.commit().await?;
-
-            Ok::<(), sea_orm::error::DbErr>(())
-        })?;
-
-        Ok(())
-    }
-}
 
 impl<H> NonBlockingIndexer<H>
 where

@@ -5838,6 +5838,7 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "httpd",
+ "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",

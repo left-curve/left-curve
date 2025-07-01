@@ -14,7 +14,7 @@ use {
 };
 
 #[test]
-fn index_block_with_nonblocking_indexer() {
+fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
@@ -82,8 +82,8 @@ fn index_block_with_nonblocking_indexer() {
 /// This test is to ensure the indexer will index previous block not yet indexed.
 /// This happens if the process crash after the block was saved on disk, and
 /// before it was indexed.
-#[test]
-fn parse_previous_block_after_restart() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
@@ -116,20 +116,16 @@ fn parse_previous_block_after_restart() {
         .expect("Can't shutdown indexer");
 
     // 1. Delete database block height 1
-    suite
-        .app
-        .indexer
-        .delete_block_from_db(1)
-        .expect("Can't delete block");
+    entity::blocks::Entity::delete_block_and_data(&suite.app.indexer.context.db, 1)
+        .await
+        .unwrap();
 
     // 1 bis. Verify the block height 1 is deleted
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_none();
-    });
+    let block = entity::blocks::Entity::find()
+        .one(&suite.app.indexer.context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_none();
 
     // 2. on disk block already exists (we keep blocks)
 
@@ -288,7 +284,7 @@ fn no_sql_index_error_after_restart() {
     });
 }
 
-mod replier {
+pub mod replier {
     use {
         grug_storage::Set,
         grug_types::{

@@ -13,7 +13,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_transfer_events() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, ..) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![
@@ -37,40 +37,27 @@ async fn index_transfer_events() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    {
-        let sql_context = suite
-            .app
-            .indexer
-            .context()
-            .data()
-            .lock()
-            .unwrap()
-            .get::<indexer_sql::Context>()
-            .expect("SQL context should be stored")
-            .clone();
+    // The 2 transfers should have been indexed.
 
-        // The 2 transfers should have been indexed.
+    let blocks = indexer_sql::entity::blocks::Entity::find()
+        .all(&context.db)
+        .await?;
 
-        let blocks = indexer_sql::entity::blocks::Entity::find()
-            .all(&sql_context.db)
-            .await?;
+    assert_that!(blocks).has_length(1);
 
-        assert_that!(blocks).has_length(1);
+    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+        .all(&context.db)
+        .await?;
 
-        let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-            .all(&sql_context.db)
-            .await?;
+    assert_that!(transfers).has_length(2);
 
-        assert_that!(transfers).has_length(2);
-
-        assert_that!(
-            transfers
-                .iter()
-                .map(|t| t.amount.as_str())
-                .collect::<Vec<_>>()
-        )
-        .is_equal_to(vec!["100000000", "100000000"]);
-    }
+    assert_that!(
+        transfers
+            .iter()
+            .map(|t| t.amount.as_str())
+            .collect::<Vec<_>>()
+    )
+    .is_equal_to(vec!["100000000", "100000000"]);
 
     let msg = Message::transfer(
         accounts.user1.address(),
@@ -89,27 +76,16 @@ async fn index_transfer_events() -> anyhow::Result<()> {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    let sql_context = suite
-        .app
-        .indexer
-        .context()
-        .data()
-        .lock()
-        .unwrap()
-        .get::<indexer_sql::Context>()
-        .expect("SQL context should be stored")
-        .clone();
-
     // The transfer should have been indexed.
     let blocks = indexer_sql::entity::blocks::Entity::find()
-        .all(&sql_context.db)
+        .all(&context.db)
         .await?;
 
     assert_that!(blocks).has_length(2);
 
     let transfers = dango_indexer_sql::entity::transfers::Entity::find()
         .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
-        .all(&sql_context.db)
+        .all(&context.db)
         .await?;
 
     assert_that!(transfers).has_length(1);

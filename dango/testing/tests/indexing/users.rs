@@ -10,7 +10,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _) = setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, context) =
+        setup_test_with_indexer();
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -20,21 +21,10 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    let sql_context = suite
-        .app
-        .indexer
-        .context()
-        .data()
-        .lock()
-        .unwrap()
-        .get::<indexer_sql::Context>()
-        .expect("SQL context should be stored")
-        .clone();
-
     let users_and_public_keys: Vec<(entity::users::Model, Vec<entity::public_keys::Model>)> =
         dango_indexer_sql::entity::users::Entity::find()
             .find_with_related(dango_indexer_sql::entity::public_keys::Entity)
-            .all(&sql_context.db)
+            .all(&context.db)
             .await?;
 
     assert_that!(users_and_public_keys).has_length(1);
