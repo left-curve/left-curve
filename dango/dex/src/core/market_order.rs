@@ -88,15 +88,15 @@ where
 
         let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
 
-        // Update the amounts bought/sold.
+        // Update the market order.
+        market_order.fill(fill_amount_in_quote)?;
         market_base_bought.checked_add_assign(fill_amount)?;
         market_quote_sold.checked_add_assign(fill_amount_in_quote)?;
+
+        // Update the limit order.
+        limit_order.fill(fill_amount)?;
         limit_base_sold.checked_add_assign(fill_amount)?;
         limit_quote_bought.checked_add_assign(fill_amount_in_quote)?;
-
-        // Update the order remaining amounts.
-        market_order.fill(fill_amount_in_quote)?;
-        limit_order.fill(fill_amount)?;
 
         // Update the market order's filling outcome.
         outcomes.insert(
@@ -125,7 +125,7 @@ where
             )?,
         );
 
-        // Determine whether to move on to the next market and/or limit order.
+        // Determine whether to move on to the next market order.
         // There are two situations:
         // 1. the market order is fully filled;
         // 2. the market order isn't fully filled, neither is the limit order.
@@ -144,6 +144,8 @@ where
             }
 
             // Compute the maximum average execution price for this market order.
+            // If the current limit order isn't fully filled, then use its price
+            // as the best price; otherwise, use the next limit order's price.
             let one_add_max_slippage = Udec128::ONE.saturating_add(market_order.max_slippage);
             if limit_order.remaining().is_non_zero() {
                 max_price = limit_price.saturating_mul(one_add_max_slippage);
@@ -174,11 +176,30 @@ where
         }
     }
 
+    // If a limit order is left over partially filled, return it. It will be
+    // then matched against other limit orders. See `cron_execute` function.
     if limit_order.remaining().is_non_zero() {
         Ok((outcomes, Some((limit_price, limit_order))))
     } else {
         Ok((outcomes, None))
     }
+}
+
+pub fn match_market_asks_with_limit_bids<M, L>(
+    market_orders: &mut M,
+    limit_orders: &mut Peekable<L>,
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
+    current_block_height: u64,
+) -> anyhow::Result<(
+    HashMap<ExtendedOrderId, FillingOutcome>,
+    Option<(Udec128, Order)>,
+)>
+where
+    M: Iterator<Item = (OrderId, MarketOrder)>,
+    L: Iterator<Item = StdResult<(Udec128, Order)>>,
+{
+    todo!();
 }
 
 fn new_market_bid_filling_outcome(
@@ -205,6 +226,51 @@ fn new_market_bid_filling_outcome(
     })
 }
 
+fn new_market_ask_filling_outcome(
+    market_order: MarketOrder,
+    market_base_sold: Uint128,
+    market_quote_bought: Uint128,
+    fee_rate: Udec128,
+) -> MathResult<FillingOutcome> {
+    let fee_quote = market_quote_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_quote = market_quote_bought.checked_sub(fee_quote)?;
+
+    Ok(FillingOutcome {
+        order_direction: Direction::Ask,
+        order: Order::Market(market_order),
+        filled: market_base_sold,
+        clearing_price: Udec128::checked_from_ratio(market_quote_bought, market_base_sold)?,
+        cleared: market_order.remaining.is_zero(),
+        refund_base: Uint128::ZERO,
+        refund_quote,
+        fee_base: Uint128::ZERO,
+        fee_quote,
+    })
+}
+
+fn new_limit_bid_filling_outcome(
+    limit_order: Order,
+    limit_base_bought: Uint128,
+    limit_quote_sold: Uint128,
+    fee_rate: Udec128,
+) -> MathResult<FillingOutcome> {
+    let fee_base = limit_base_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_base = limit_base_bought.checked_sub(fee_base)?;
+
+    Ok(FillingOutcome {
+        order_direction: Direction::Bid,
+        order: limit_order,
+        filled: limit_quote_sold,
+        clearing_price: Udec128::checked_from_ratio(limit_quote_sold, limit_base_bought)?,
+        cleared: limit_order.remaining().is_zero(),
+        refund_base,
+        // Note: limit orders are good-until-cancel, so do NOT refund the remaining.
+        refund_quote: Uint128::ZERO,
+        fee_base,
+        fee_quote: Uint128::ZERO,
+    })
+}
+
 fn new_limit_ask_filling_outcome(
     limit_order: Order,
     limit_base_sold: Uint128,
@@ -220,7 +286,6 @@ fn new_limit_ask_filling_outcome(
         filled: limit_base_sold,
         clearing_price: Udec128::checked_from_ratio(limit_quote_bought, limit_base_sold)?,
         cleared: limit_order.remaining().is_zero(),
-        // Note: limit orders are good-until-cancel, so do NOT refund the remaining.
         refund_base: Uint128::ZERO,
         refund_quote,
         fee_base: Uint128::ZERO,
