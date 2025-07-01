@@ -203,44 +203,44 @@ where
 }
 
 fn new_market_bid_filling_outcome(
-    market_order: MarketOrder,
-    market_base_bought: Uint128,
-    market_quote_sold: Uint128,
+    order: MarketOrder,
+    base_bought: Uint128,
+    quote_sold: Uint128,
     fee_rate: Udec128,
 ) -> MathResult<FillingOutcome> {
-    let fee_base = market_base_bought.checked_mul_dec_ceil(fee_rate)?;
-    let refund_base = market_base_bought.checked_sub(fee_base)?;
+    let fee_base = base_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_base = base_bought.checked_sub(fee_base)?;
 
     Ok(FillingOutcome {
         order_direction: Direction::Bid,
-        order: Order::Market(market_order),
+        order: Order::Market(order),
         // Note: for market bids, amounts are denoted in the quote asset.
-        filled: market_quote_sold,
-        clearing_price: Udec128::checked_from_ratio(market_quote_sold, market_base_bought)?,
-        cleared: market_order.remaining.is_zero(),
+        filled: quote_sold,
+        clearing_price: Udec128::checked_from_ratio(quote_sold, base_bought)?,
+        cleared: order.remaining.is_zero(),
         refund_base,
         // Note: market orders are immediate-or-cancel, so refund the remaining.
-        refund_quote: market_order.remaining,
+        refund_quote: order.remaining,
         fee_base,
         fee_quote: Uint128::ZERO,
     })
 }
 
 fn new_market_ask_filling_outcome(
-    market_order: MarketOrder,
-    market_base_sold: Uint128,
-    market_quote_bought: Uint128,
+    order: MarketOrder,
+    base_sold: Uint128,
+    quote_bought: Uint128,
     fee_rate: Udec128,
 ) -> MathResult<FillingOutcome> {
-    let fee_quote = market_quote_bought.checked_mul_dec_ceil(fee_rate)?;
-    let refund_quote = market_quote_bought.checked_sub(fee_quote)?;
+    let fee_quote = quote_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_quote = quote_bought.checked_sub(fee_quote)?;
 
     Ok(FillingOutcome {
         order_direction: Direction::Ask,
-        order: Order::Market(market_order),
-        filled: market_base_sold,
-        clearing_price: Udec128::checked_from_ratio(market_quote_bought, market_base_sold)?,
-        cleared: market_order.remaining.is_zero(),
+        order: Order::Market(order),
+        filled: base_sold,
+        clearing_price: Udec128::checked_from_ratio(quote_bought, base_sold)?,
+        cleared: order.remaining.is_zero(),
         refund_base: Uint128::ZERO,
         refund_quote,
         fee_base: Uint128::ZERO,
@@ -249,20 +249,20 @@ fn new_market_ask_filling_outcome(
 }
 
 fn new_limit_bid_filling_outcome(
-    limit_order: Order,
-    limit_base_bought: Uint128,
-    limit_quote_sold: Uint128,
+    order: Order,
+    base_bought: Uint128,
+    quote_sold: Uint128,
     fee_rate: Udec128,
 ) -> MathResult<FillingOutcome> {
-    let fee_base = limit_base_bought.checked_mul_dec_ceil(fee_rate)?;
-    let refund_base = limit_base_bought.checked_sub(fee_base)?;
+    let fee_base = base_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_base = base_bought.checked_sub(fee_base)?;
 
     Ok(FillingOutcome {
         order_direction: Direction::Bid,
-        order: limit_order,
-        filled: limit_quote_sold,
-        clearing_price: Udec128::checked_from_ratio(limit_quote_sold, limit_base_bought)?,
-        cleared: limit_order.remaining().is_zero(),
+        order,
+        filled: quote_sold,
+        clearing_price: Udec128::checked_from_ratio(quote_sold, base_bought)?,
+        cleared: order.remaining().is_zero(),
         refund_base,
         // Note: limit orders are good-until-cancel, so do NOT refund the remaining.
         refund_quote: Uint128::ZERO,
@@ -272,20 +272,20 @@ fn new_limit_bid_filling_outcome(
 }
 
 fn new_limit_ask_filling_outcome(
-    limit_order: Order,
-    limit_base_sold: Uint128,
-    limit_quote_bought: Uint128,
+    order: Order,
+    base_sold: Uint128,
+    quote_bought: Uint128,
     fee_rate: Udec128,
 ) -> MathResult<FillingOutcome> {
-    let fee_quote = limit_quote_bought.checked_mul_dec_ceil(fee_rate)?;
-    let refund_quote = limit_quote_bought.checked_sub(fee_quote)?;
+    let fee_quote = quote_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_quote = quote_bought.checked_sub(fee_quote)?;
 
     Ok(FillingOutcome {
         order_direction: Direction::Ask,
-        order: limit_order,
-        filled: limit_base_sold,
-        clearing_price: Udec128::checked_from_ratio(limit_quote_bought, limit_base_sold)?,
-        cleared: limit_order.remaining().is_zero(),
+        order,
+        filled: base_sold,
+        clearing_price: Udec128::checked_from_ratio(quote_bought, base_sold)?,
+        cleared: order.remaining().is_zero(),
         refund_base: Uint128::ZERO,
         refund_quote,
         fee_base: Uint128::ZERO,
