@@ -7,14 +7,13 @@ use {
     clap::Parser,
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
-    dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk_lite::DiskDbLite,
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
-    httpd::{context::Context as HttpdContext, server::run_server as run_httpd_server},
+    httpd::context::Context as HttpdContext,
     indexer_httpd::context::Context as IndexerContext,
     indexer_sql::non_blocking_indexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -163,7 +162,7 @@ impl StartCmd {
     ) -> anyhow::Result<()> {
         tracing::info!("Starting minimal HTTP server at {}:{}", &cfg.ip, cfg.port);
 
-        run_httpd_server(
+        httpd::server::run_server(
             &cfg.ip,
             cfg.port,
             cfg.cors_allowed_origin.clone(),
@@ -174,7 +173,7 @@ impl StartCmd {
         .await
         .map_err(|err| {
             tracing::error!("Failed to run minimal HTTP server: {err:?}");
-            anyhow!("HTTP server error: {err}")
+            err.into()
         })
     }
 
@@ -194,8 +193,8 @@ impl StartCmd {
             cfg.port,
             cfg.cors_allowed_origin.clone(),
             context,
-            config_app,
-            build_schema,
+            dango_httpd::server::config_app,
+            dango_httpd::graphql::build_schema,
         )
         .await
         .map_err(|err| {
