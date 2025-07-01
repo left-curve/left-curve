@@ -182,15 +182,13 @@ fn clear_orders_of_pair(
         Some(reserve) => {
             // Create the passive liquidity orders if the pair has a pool.
             let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            match pair.reflect_curve(
+            pair.reflect_curve(
                 oracle_querier,
                 base_denom.clone(),
                 quote_denom.clone(),
                 reserve,
-            ) {
-                Ok((passive_bid_iter, passive_ask_iter)) => (passive_bid_iter, passive_ask_iter),
-                Err(_) => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
-            }
+            )
+            .unwrap_or_else(|_err| (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _))
         },
         None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
     };
@@ -461,13 +459,14 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
-    // Calculate the volume in USD for the filled order. If the oracle query
-    // fails, we simply skip the volume update, since we want to make sure that
-    // the cron_execute function doesn't fail.
-    let base_asset_price = match oracle_querier.query_price(base_denom, None) {
-        Ok(base_asset_price) => base_asset_price,
-        Err(_) => return Ok(()),
+    // Query the base asset's oracle price.
+    let Ok(base_asset_price) = oracle_querier.query_price(base_denom, None) else {
+        // If the query fails, simply do nothing and return, since we want to
+        // ensure that `cron_execute` function doesn't fail.
+        return Ok(());
     };
+
+    // Calculate the volume in USD for the filled order.
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
 
     // Record trading volume for the user's address
