@@ -46,7 +46,7 @@ where
             None => break,
         };
 
-        let Some((market_order_id, market_order)) = market_orders.peek_mut() else {
+        let Some((ref market_order_id, market_order)) = market_orders.peek_mut() else {
             break;
         };
 
@@ -234,7 +234,7 @@ where
             market_order_direction,
             filled_base,
             price,
-            taker_fee_rate,
+            taker_fee_rate, // A market order is always a taker.
         )?;
     }
 

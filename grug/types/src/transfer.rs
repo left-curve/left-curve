@@ -4,7 +4,7 @@ use {
     std::collections::BTreeMap,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TransferBuilder {
     batch: BTreeMap<Addr, Coins>,
 }

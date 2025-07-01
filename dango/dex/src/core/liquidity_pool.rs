@@ -719,7 +719,7 @@ mod tests {
 
         assert_eq!(bids_collected.len(), 2);
 
-        for (bid, expected_bid) in bids_collected.into_iter().zip(vec![
+        for (bid, expected_bid) in bids_collected.into_iter().zip([
             (Udec128::new_percent(99), Uint128::from(5050505)),
             (Udec128::new_percent(49), Uint128::from(5102040)),
         ]) {
