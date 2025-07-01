@@ -52,8 +52,8 @@ fn receiving_remote() {
         .should_succeed_and_equal(Uint128::new(MOCK_RECEIVE_AMOUNT));
 }
 
-#[test]
-fn sending_remote() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sending_remote() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_with_indexer();
 
     const RECIPIENT: Addr32 =
@@ -131,36 +131,44 @@ fn sending_remote() {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
+    let binding = suite
+        .app
+        .indexer
+        .context()
+        .data()
+        .get(&indexer_sql::ContextKey)
+        .expect("SQL context should be stored");
+
+    let sql_context = binding.value();
+
     // The transfers should have been indexed.
-    suite.app.indexer.handle.block_on(async {
-        let blocks = indexer_sql::entity::blocks::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
+    let blocks = indexer_sql::entity::blocks::Entity::find()
+        .all(&sql_context.db)
+        .await
+        .expect("Can't fetch blocks");
 
-        assert_that!(blocks).has_length(1);
+    assert_that!(blocks).has_length(1);
 
-        let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch transfers");
+    let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+        .all(&sql_context.db)
+        .await
+        .expect("Can't fetch transfers");
 
-        // There should have been two transfers:
-        // 1. Before fee amount from user to Gateway;
-        // 2. Withdrawal fee from Gateway to taxman.
-        assert_that!(transfers).has_length(2);
+    // There should have been two transfers:
+    // 1. Before fee amount from user to Gateway;
+    // 2. Withdrawal fee from Gateway to taxman.
+    assert_that!(transfers).has_length(2);
 
-        assert_that!(
-            transfers
-                .iter()
-                .map(|t| t.amount.as_str())
-                .collect::<Vec<_>>()
-        )
-        .is_equal_to(vec![
-            SEND_AMOUNT.to_string().as_str(),
-            ETHEREUM_USDC_WITHDRAWAL_FEE.to_string().as_str(),
-        ]);
-    });
+    assert_that!(
+        transfers
+            .iter()
+            .map(|t| t.amount.as_str())
+            .collect::<Vec<_>>()
+    )
+    .is_equal_to(vec![
+        SEND_AMOUNT.to_string().as_str(),
+        ETHEREUM_USDC_WITHDRAWAL_FEE.to_string().as_str(),
+    ]);
 }
 
 #[test]
