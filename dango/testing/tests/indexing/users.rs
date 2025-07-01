@@ -20,15 +20,15 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    let binding = suite
+    let sql_context = suite
         .app
         .indexer
         .context()
         .data()
         .get(&indexer_sql::ContextKey)
-        .expect("SQL context should be stored");
-
-    let sql_context = binding.value();
+        .expect("SQL context should be stored")
+        .value()
+        .clone();
 
     let users_and_public_keys: Vec<(entity::users::Model, Vec<entity::public_keys::Model>)> =
         dango_indexer_sql::entity::users::Entity::find()

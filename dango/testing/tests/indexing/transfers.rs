@@ -38,15 +38,15 @@ async fn index_transfer_events() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish();
 
     {
-        let binding = suite
+        let sql_context = suite
             .app
             .indexer
             .context()
             .data()
             .get(&indexer_sql::ContextKey)
-            .expect("SQL context should be stored");
-
-        let sql_context = binding.value();
+            .expect("SQL context should be stored")
+            .value()
+            .clone();
 
         // The 2 transfers should have been indexed.
 
@@ -88,15 +88,15 @@ async fn index_transfer_events() -> anyhow::Result<()> {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    let binding = suite
+    let sql_context = suite
         .app
         .indexer
         .context()
         .data()
         .get(&indexer_sql::ContextKey)
-        .expect("SQL context should be stored");
-
-    let sql_context = binding.value();
+        .expect("SQL context should be stored")
+        .value()
+        .clone();
 
     // The transfer should have been indexed.
     let blocks = indexer_sql::entity::blocks::Entity::find()

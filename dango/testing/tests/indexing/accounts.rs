@@ -20,15 +20,15 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    let binding = suite
+    let sql_context = suite
         .app
         .indexer
         .context()
         .data()
         .get(&indexer_sql::ContextKey)
-        .expect("SQL context should be stored");
-
-    let sql_context = binding.value();
+        .expect("SQL context should be stored")
+        .value()
+        .clone();
 
     let users = dango_indexer_sql::entity::users::Entity::find()
         .all(&sql_context.db)
@@ -77,15 +77,15 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    let binding = suite
+    let sql_context = suite
         .app
         .indexer
         .context()
         .data()
         .get(&indexer_sql::ContextKey)
-        .expect("SQL context should be stored");
-
-    let sql_context = binding.value();
+        .expect("SQL context should be stored")
+        .value()
+        .clone();
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
         dango_indexer_sql::entity::accounts::Entity::find()
@@ -119,15 +119,15 @@ async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    let binding = suite
+    let sql_context = suite
         .app
         .indexer
         .context()
         .data()
         .get(&indexer_sql::ContextKey)
-        .expect("SQL context should be stored");
-
-    let sql_context = binding.value();
+        .expect("SQL context should be stored")
+        .value()
+        .clone();
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
         dango_indexer_sql::entity::accounts::Entity::find()
