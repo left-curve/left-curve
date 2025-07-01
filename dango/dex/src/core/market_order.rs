@@ -120,6 +120,22 @@ where
             )?,
         );
 
+        // Determine whether to move on to the next limit order.
+        // We do this if the limit order is fully filled.
+        let limit_order_cleared = limit_order.remaining().is_zero();
+        if limit_order_cleared {
+            // Advance to the next limit order.
+            match limit_orders.next() {
+                Some(Ok(v)) => {
+                    (limit_price, limit_order) = v;
+                    limit_base_sold = Uint128::ZERO;
+                    limit_quote_bought = Uint128::ZERO;
+                },
+                Some(Err(e)) => return Err(e.clone().into()),
+                None => break,
+            }
+        }
+
         // Determine whether to move on to the next market order.
         // There are two situations:
         // 1. the market order is fully filled;
@@ -127,7 +143,7 @@ where
         //    This happens when we can't fill the market order any further
         //    without exceeding the maximum average execution price.
         // Also, compute the max price for this new order.
-        if market_order.remaining.is_zero() || limit_order.remaining().is_non_zero() {
+        if market_order.remaining.is_zero() || !limit_order_cleared {
             // Advance to the next market order.
             match market_orders.next() {
                 Some(v) => {
@@ -142,35 +158,7 @@ where
             // If the current limit order isn't fully filled, then use its price
             // as the best price; otherwise, use the next limit order's price.
             let one_add_max_slippage = Udec128::ONE.saturating_add(market_order.max_slippage);
-            if limit_order.remaining().is_non_zero() {
-                max_price = limit_price.saturating_mul(one_add_max_slippage);
-            } else {
-                match limit_orders.next() {
-                    Some(Ok(v)) => {
-                        (limit_price, limit_order) = v;
-                        limit_base_sold = Uint128::ZERO;
-                        limit_quote_bought = Uint128::ZERO;
-                        max_price = limit_price.saturating_mul(one_add_max_slippage);
-                    },
-                    Some(Err(e)) => return Err(e.clone().into()),
-                    None => break,
-                }
-            }
-        }
-
-        // Determine whether to move on to the next limit order.
-        // We do this if the limit order is fully filled.
-        if limit_order.remaining().is_zero() {
-            // Advance to the next limit order.
-            match limit_orders.next() {
-                Some(Ok(v)) => {
-                    (limit_price, limit_order) = v;
-                    limit_base_sold = Uint128::ZERO;
-                    limit_quote_bought = Uint128::ZERO;
-                },
-                Some(Err(e)) => return Err(e.clone().into()),
-                None => break,
-            }
+            max_price = limit_price.saturating_mul(one_add_max_slippage);
         }
     }
 
@@ -267,7 +255,20 @@ where
             )?,
         );
 
-        if market_order.remaining.is_zero() || limit_order.remaining().is_non_zero() {
+        let limit_order_cleared = limit_order.remaining().is_zero();
+        if limit_order_cleared {
+            match limit_orders.next() {
+                Some(Ok(v)) => {
+                    (limit_price, limit_order) = v;
+                    limit_base_bought = Uint128::ZERO;
+                    limit_quote_sold = Uint128::ZERO;
+                },
+                Some(Err(e)) => return Err(e.clone().into()),
+                None => break,
+            }
+        }
+
+        if market_order.remaining.is_zero() || !limit_order_cleared {
             match market_orders.next() {
                 Some(v) => {
                     (market_order_id, market_order) = v;
@@ -278,32 +279,7 @@ where
             }
 
             let one_sub_max_slippage = Udec128::ONE.saturating_sub(market_order.max_slippage);
-            if limit_order.remaining().is_non_zero() {
-                min_price = limit_price.saturating_mul(one_sub_max_slippage);
-            } else {
-                match limit_orders.next() {
-                    Some(Ok(v)) => {
-                        (limit_price, limit_order) = v;
-                        limit_base_bought = Uint128::ZERO;
-                        limit_quote_sold = Uint128::ZERO;
-                        min_price = limit_price.saturating_mul(one_sub_max_slippage);
-                    },
-                    Some(Err(e)) => return Err(e.clone().into()),
-                    None => break,
-                }
-            }
-        }
-
-        if limit_order.remaining().is_zero() {
-            match limit_orders.next() {
-                Some(Ok(v)) => {
-                    (limit_price, limit_order) = v;
-                    limit_base_bought = Uint128::ZERO;
-                    limit_quote_sold = Uint128::ZERO;
-                },
-                Some(Err(e)) => return Err(e.clone().into()),
-                None => break,
-            }
+            min_price = limit_price.saturating_mul(one_sub_max_slippage);
         }
     }
 
