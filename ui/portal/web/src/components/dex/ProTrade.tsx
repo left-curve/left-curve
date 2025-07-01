@@ -5,7 +5,7 @@ import {
   useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAppConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -159,12 +159,13 @@ const ProTradeMenu: React.FC = () => {
 
 const ProTradeOrders: React.FC = () => {
   const { showModal: _ } = useApp();
+  const { coins } = useConfig();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
-  const { orders, quoteCoin, baseCoin } = state;
+  const { orders } = state;
 
   const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
     /*  {
@@ -193,17 +194,28 @@ const ProTradeOrders: React.FC = () => {
     {
       header: m["dex.protrade.spot.ordersTable.size"](),
       cell: ({ row }) => (
-        <Cell.Text text={formatUnits(row.original.remaining, baseCoin.decimals)} />
+        <Cell.Text
+          text={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
+        />
       ),
     },
     {
       header: m["dex.protrade.spot.ordersTable.originalSize"](),
-      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.amount, baseCoin.decimals)} />,
+      cell: ({ row }) => (
+        <Cell.Text
+          text={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
+        />
+      ),
     },
     {
       header: m["dex.protrade.spot.price"](),
       cell: ({ row }) => (
-        <Cell.Text text={parseUnits(row.original.price, baseCoin.decimals - quoteCoin.decimals)} />
+        <Cell.Text
+          text={parseUnits(
+            row.original.price,
+            coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
+          )}
+        />
       ),
     },
     {
