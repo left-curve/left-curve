@@ -1,8 +1,8 @@
 use {
     dango_genesis::{AccountOption, GenesisOption},
     dango_testing::{
-        Factory, HyperlaneTestSuite, Preset, TestAccount, setup_test_naive,
-        setup_test_naive_with_custom_genesis,
+        Factory, HyperlaneTestSuite, Preset, TestAccount, constants::GENESIS_USER_COUNT,
+        setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         account::single,
@@ -106,9 +106,9 @@ fn user_onboarding() {
         )
         .should_succeed_and_equal(btree_map! {
             user.address() => Account {
-                // We have 10 genesis accounts (owner + users 1-9), indexed from
-                // zero, so this one should have the index of 10.
-                index: 10,
+                // We have GENESIS_USER_COUNT genesis accounts, indexed from
+                // zero, so this one should have the index of GENESIS_USER_COUNT.
+                index: GENESIS_USER_COUNT,
                 params: AccountParams::Spot(single::Params::new(user.username.clone() )),
             },
         });

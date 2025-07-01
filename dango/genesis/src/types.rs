@@ -3,6 +3,7 @@ use {
         account_factory::Username,
         auth::Key,
         bank,
+        bitcoin::{BitcoinAddress, MultisigSettings, Network},
         config::Hyperlane,
         dex::PairUpdate,
         gateway::{RateLimit, Remote, WithdrawalFee},
@@ -10,7 +11,7 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
+    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Order, Part, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
@@ -24,6 +25,7 @@ pub type Addresses = BTreeMap<Username, Addr>;
 pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,
+    pub bitcoin: Addr,
     pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
@@ -41,6 +43,7 @@ pub struct Codes<T> {
     pub account_multi: T,
     pub account_spot: T,
     pub bank: T,
+    pub bitcoin: T,
     pub dex: T,
     pub gateway: T,
     pub hyperlane: Hyperlane<T>,
@@ -66,6 +69,7 @@ pub struct GenesisOption {
     pub lending: LendingOption,
     pub oracle: OracleOption,
     pub vesting: VestingOption,
+    pub bitcoin: BitcoinOption,
 }
 
 pub struct GrugOption {
@@ -99,9 +103,7 @@ pub struct DexOption {
 }
 
 pub struct GatewayOption {
-    // Note: these are only the Hyperlane Warp routes. No need to specify the
-    // bitcoin bridge route here.
-    pub warp_routes: BTreeSet<(Part, Remote)>,
+    pub routes: BTreeSet<(Part, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub rate_limit_refresh_period: Duration,
     pub withdrawal_fees: Vec<WithdrawalFee>,
@@ -133,4 +135,17 @@ pub struct VestingOption {
     pub unlocking_cliff: Duration,
     /// Period for Dango token unlocking.
     pub unlocking_period: Duration,
+}
+
+pub struct BitcoinOption {
+    pub network: Network,
+    pub vault: BitcoinAddress,
+    pub multisig: MultisigSettings,
+    pub sats_per_vbyte: Uint128,
+    pub outbound_fee: Uint128,
+    pub outbound_strategy: Order,
+    /// Define how often the withdrawal requests are processed.
+    pub withdraw_timeout: Duration,
+    pub minimum_deposit: Uint128,
+    pub max_output_per_tx: usize,
 }
