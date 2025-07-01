@@ -88,44 +88,46 @@ where
             fill_amount = cmp::min(fill_amount, max_fillable_amount);
         }
 
-        let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
+        if fill_amount.is_non_zero() {
+            let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
 
-        // Update the market order.
-        market_order.fill(fill_amount_in_quote)?;
-        market_base_bought.checked_add_assign(fill_amount)?;
-        market_quote_sold.checked_add_assign(fill_amount_in_quote)?;
+            // Update the market order.
+            market_order.fill(fill_amount_in_quote)?;
+            market_base_bought.checked_add_assign(fill_amount)?;
+            market_quote_sold.checked_add_assign(fill_amount_in_quote)?;
 
-        // Update the limit order.
-        limit_order.fill(fill_amount)?;
-        limit_base_sold.checked_add_assign(fill_amount)?;
-        limit_quote_bought.checked_add_assign(fill_amount_in_quote)?;
+            // Update the limit order.
+            limit_order.fill(fill_amount)?;
+            limit_base_sold.checked_add_assign(fill_amount)?;
+            limit_quote_bought.checked_add_assign(fill_amount_in_quote)?;
 
-        // Update the market order's filling outcome.
-        outcomes.insert(
-            ExtendedOrderId::User(market_order_id),
-            new_market_bid_filling_outcome(
-                market_order,
-                market_base_bought,
-                market_quote_sold,
-                taker_fee_rate, // Market orders are always takers.
-            )?,
-        );
+            // Update the market order's filling outcome.
+            outcomes.insert(
+                ExtendedOrderId::User(market_order_id),
+                new_market_bid_filling_outcome(
+                    market_order,
+                    market_base_bought,
+                    market_quote_sold,
+                    taker_fee_rate, // Market orders are always takers.
+                )?,
+            );
 
-        // Update the limit order's filling outcome.
-        outcomes.insert(
-            limit_order.extended_id(),
-            new_limit_ask_filling_outcome(
-                limit_order,
-                limit_base_sold,
-                limit_quote_bought,
-                limit_order_fee_rate(
-                    &limit_order,
-                    current_block_height,
-                    maker_fee_rate,
-                    taker_fee_rate,
-                ),
-            )?,
-        );
+            // Update the limit order's filling outcome.
+            outcomes.insert(
+                limit_order.extended_id(),
+                new_limit_ask_filling_outcome(
+                    limit_order,
+                    limit_base_sold,
+                    limit_quote_bought,
+                    limit_order_fee_rate(
+                        &limit_order,
+                        current_block_height,
+                        maker_fee_rate,
+                        taker_fee_rate,
+                    ),
+                )?,
+            );
+        }
 
         // Determine whether to move on to the next limit order.
         // We do this if the limit order is fully filled.
@@ -233,40 +235,42 @@ where
             fill_amount = cmp::min(fill_amount, max_fillable_amount);
         }
 
-        let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
+        if fill_amount.is_non_zero() {
+            let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
 
-        market_order.fill(fill_amount)?;
-        market_base_sold.checked_add_assign(fill_amount)?;
-        market_quote_bought.checked_add_assign(fill_amount_in_quote)?;
+            market_order.fill(fill_amount)?;
+            market_base_sold.checked_add_assign(fill_amount)?;
+            market_quote_bought.checked_add_assign(fill_amount_in_quote)?;
 
-        limit_order.fill(fill_amount)?;
-        limit_base_bought.checked_add_assign(fill_amount)?;
-        limit_quote_sold.checked_add_assign(fill_amount_in_quote)?;
+            limit_order.fill(fill_amount)?;
+            limit_base_bought.checked_add_assign(fill_amount)?;
+            limit_quote_sold.checked_add_assign(fill_amount_in_quote)?;
 
-        outcomes.insert(
-            ExtendedOrderId::User(market_order_id),
-            new_market_ask_filling_outcome(
-                market_order,
-                market_base_sold,
-                market_quote_bought,
-                taker_fee_rate, // Market orders are always takers.
-            )?,
-        );
+            outcomes.insert(
+                ExtendedOrderId::User(market_order_id),
+                new_market_ask_filling_outcome(
+                    market_order,
+                    market_base_sold,
+                    market_quote_bought,
+                    taker_fee_rate, // Market orders are always takers.
+                )?,
+            );
 
-        outcomes.insert(
-            limit_order.extended_id(),
-            new_limit_bid_filling_outcome(
-                limit_order,
-                limit_base_bought,
-                limit_quote_sold,
-                limit_order_fee_rate(
-                    &limit_order,
-                    current_block_height,
-                    maker_fee_rate,
-                    taker_fee_rate,
-                ),
-            )?,
-        );
+            outcomes.insert(
+                limit_order.extended_id(),
+                new_limit_bid_filling_outcome(
+                    limit_order,
+                    limit_base_bought,
+                    limit_quote_sold,
+                    limit_order_fee_rate(
+                        &limit_order,
+                        current_block_height,
+                        maker_fee_rate,
+                        taker_fee_rate,
+                    ),
+                )?,
+            );
+        }
 
         let limit_order_cleared = limit_order.remaining().is_zero();
         if limit_order_cleared {
