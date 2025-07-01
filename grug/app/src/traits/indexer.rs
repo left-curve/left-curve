@@ -26,4 +26,7 @@ pub trait Indexer {
         block_height: u64,
         querier: Box<dyn QuerierProvider>,
     ) -> Result<(), Self::Error>;
+
+    /// Wait for the indexer to finish indexing
+    fn wait_for_finish(&self);
 }

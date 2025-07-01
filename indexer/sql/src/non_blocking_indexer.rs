@@ -342,27 +342,6 @@ where
 
         Ok(block_to_index.1)
     }
-
-    /// Wait for all blocks to be indexed
-    pub fn wait_for_finish(&self) {
-        for _ in 0..100 {
-            if self.blocks.lock().expect("can't lock blocks").is_empty() {
-                break;
-            }
-
-            sleep(Duration::from_millis(100));
-        }
-
-        let blocks = self.blocks.lock().expect("can't lock blocks");
-        if !blocks.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                "Indexer `wait_for_finish` ended, still has {} blocks: {:?}",
-                blocks.len(),
-                blocks.keys()
-            );
-        }
-    }
 }
 
 // ------------------------------- DB Related ----------------------------------
@@ -649,6 +628,27 @@ where
         });
 
         Ok(())
+    }
+
+    /// Wait for all blocks to be indexed
+    fn wait_for_finish(&self) {
+        for _ in 0..100 {
+            if self.blocks.lock().expect("can't lock blocks").is_empty() {
+                break;
+            }
+
+            sleep(Duration::from_millis(100));
+        }
+
+        let blocks = self.blocks.lock().expect("can't lock blocks");
+        if !blocks.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                "Indexer `wait_for_finish` ended, still has {} blocks: {:?}",
+                blocks.len(),
+                blocks.keys()
+            );
+        }
     }
 }
 

@@ -81,6 +81,8 @@ impl Indexer for LoggingIndexer {
         self.log(format!("Post-indexing block {block_height}"));
         Ok(())
     }
+
+    fn wait_for_finish(&self) {}
 }
 
 // Example of a data processing indexer that counts blocks
@@ -134,6 +136,8 @@ impl Indexer for DataProcessorIndexer {
 
         Ok(())
     }
+
+    fn wait_for_finish(&self) {}
 
     fn post_indexing(
         &self,
@@ -205,6 +209,8 @@ impl Indexer for MetricsIndexer {
     ) -> std::result::Result<(), Self::Error> {
         Ok(())
     }
+
+    fn wait_for_finish(&self) {}
 }
 
 fn main() -> Result<()> {

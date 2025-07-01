@@ -6,6 +6,7 @@ use {
         setup_test_with_indexer,
     },
     grug::Inner,
+    grug_app::Indexer,
     itertools::Itertools,
     sea_orm::EntityTrait,
 };

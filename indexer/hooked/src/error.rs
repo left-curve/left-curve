@@ -72,3 +72,9 @@ impl<E: ToString + std::fmt::Debug> IntoHookedIndexerError for E {
         HookedIndexerError::Generic(self.to_string())
     }
 }
+
+impl From<HookedIndexerError> for grug_app::AppError {
+    fn from(err: HookedIndexerError) -> Self {
+        grug_app::AppError::Indexer(err.to_string())
+    }
+}

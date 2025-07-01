@@ -16,7 +16,7 @@ pub use {
 /// A composable indexer that can own multiple indexers and coordinate between them
 pub struct HookedIndexer {
     /// List of registered indexers with error conversion
-    indexers: Vec<Box<dyn Indexer<Error = HookedIndexerError>>>,
+    indexers: Vec<Box<dyn Indexer<Error = HookedIndexerError> + Send + Sync>>,
     /// Shared context that gets passed to middleware (not directly to indexers)
     context: IndexerContext,
     /// Whether the indexer is currently running
@@ -47,7 +47,7 @@ impl HookedIndexer {
     /// Add a boxed Indexer directly
     pub fn add_boxed_indexer(
         &mut self,
-        indexer: Box<dyn Indexer<Error = HookedIndexerError>>,
+        indexer: Box<dyn Indexer<Error = HookedIndexerError> + Send + Sync>,
     ) -> &mut Self {
         self.indexers.push(indexer);
         self
@@ -177,6 +177,12 @@ impl Indexer for HookedIndexer {
 
         Ok(())
     }
+
+    fn wait_for_finish(&self) {
+        for indexer in self.indexers.iter().rev() {
+            indexer.wait_for_finish();
+        }
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -264,6 +270,10 @@ mod tests {
         ) -> std::result::Result<(), Self::Error> {
             self.record_call("post_indexing");
             Ok(())
+        }
+
+        fn wait_for_finish(&self) {
+            self.record_call("wait_for_finish");
         }
     }
 

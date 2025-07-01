@@ -21,8 +21,8 @@ use {
     grug_vm_wasm::WasmVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
+    indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context,
-    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -64,7 +64,7 @@ pub type TestSuiteWithIndexer<
     PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
-    ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
+    ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
@@ -151,6 +151,9 @@ pub fn setup_test_with_indexer() -> (
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
+    let mut hooked_indexer = HookedIndexer::new();
+    hooked_indexer.add_indexer(indexer);
+
     let db = MemDb::new();
     let vm = RustVm::new();
 
@@ -158,7 +161,7 @@ pub fn setup_test_with_indexer() -> (
         db.clone(),
         vm.clone(),
         ProposalPreparer::new_with_cache(),
-        indexer,
+        hooked_indexer,
         RustVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),

@@ -1,4 +1,6 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {
+    grug_app::AppError, grug_types::StdError, indexer_hooked::HookedIndexerError, thiserror::Error,
+};
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -60,6 +62,29 @@ impl From<IndexerError> for AppError {
 impl<T> From<std::sync::PoisonError<T>> for IndexerError {
     fn from(err: std::sync::PoisonError<T>) -> Self {
         IndexerError::Poison(err.to_string())
+    }
+}
+
+impl From<IndexerError> for HookedIndexerError {
+    fn from(err: IndexerError) -> Self {
+        match err {
+            IndexerError::SeaOrm(e) => HookedIndexerError::Storage(e.to_string()),
+            IndexerError::Anyhow(e) => HookedIndexerError::Generic(e.to_string()),
+            IndexerError::Join(e) => HookedIndexerError::Generic(e.to_string()),
+            IndexerError::Indexing(msg) => HookedIndexerError::Generic(msg),
+            IndexerError::Poison(msg) => HookedIndexerError::Generic(msg),
+            IndexerError::Runtime(msg) => HookedIndexerError::Generic(msg),
+            IndexerError::TryFromInt(e) => HookedIndexerError::Generic(e.to_string()),
+            IndexerError::App(e) => HookedIndexerError::Generic(e.to_string()),
+            IndexerError::Std(e) => HookedIndexerError::Generic(e.to_string()),
+            IndexerError::Io(e) => HookedIndexerError::Io(e.to_string()),
+            IndexerError::Persist(e) => HookedIndexerError::Io(e.to_string()),
+            IndexerError::Persistence(e) => HookedIndexerError::Storage(e.to_string()),
+            IndexerError::Hooks(msg) => HookedIndexerError::Hook(msg),
+            IndexerError::SerdeJson(e) => HookedIndexerError::Serialization(e.to_string()),
+            IndexerError::Parse(e) => HookedIndexerError::Generic(e.to_string()),
+            IndexerError::Sqlx(e) => HookedIndexerError::Storage(e.to_string()),
+        }
     }
 }
 

@@ -13,18 +13,14 @@ use {
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
+    indexer_hooked::HookedIndexer,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
     std::{ops::DerefMut, str::FromStr},
 };
 
 pub fn create_user_account(
-    suite: &mut HyperlaneTestSuite<
-        MemDb,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) {
@@ -79,12 +75,7 @@ pub fn add_account_with_existing_user(
 }
 
 pub fn create_user_and_account(
-    suite: &mut HyperlaneTestSuite<
-        MemDb,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     codes: &Codes<ContractWrapper>,

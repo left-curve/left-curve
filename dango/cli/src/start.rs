@@ -14,6 +14,7 @@ use {
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
     httpd::context::Context as HttpdContext,
+    indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context as IndexerContext,
     indexer_sql::non_blocking_indexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -80,6 +81,9 @@ impl StartCmd {
             .build()
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
+        let indexer_path = indexer.indexer_path.clone();
+        let indexer_context = indexer.context.clone();
+
         // Run ABCI server, optionally with indexer and httpd server.
         match (
             cfg.indexer.enabled,
@@ -89,8 +93,8 @@ impl StartCmd {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
 
-                let indexer_path = indexer.indexer_path.clone();
-                let indexer_context = indexer.context.clone();
+                let mut hooked_indexer = HookedIndexer::new();
+                hooked_indexer.add_indexer(indexer);
 
                 let httpd_context = IndexerContext::new(
                     indexer_context,
@@ -102,14 +106,11 @@ impl StartCmd {
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, httpd_context),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
                 )?;
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
-
-                let indexer_path = indexer.indexer_path.clone();
-                let indexer_context = indexer.context.clone();
 
                 let httpd_context = IndexerContext::new(
                     indexer_context,
@@ -137,12 +138,21 @@ impl StartCmd {
                 self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
                     .await?;
             },
-            (false, true, _) => {
-                // No indexer, but HTTP server enabled (minimal mode)
+            (false, true, false) => {
+                // No indexer, but HTTP server enabled (minimal mode), metrics disabled
                 let httpd_context = HttpdContext::new(Arc::new(app));
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
+                )?;
+            },
+            (false, true, true) => {
+                // No indexer, but HTTP server enabled (minimal mode), metrics enabled
+                let httpd_context = HttpdContext::new(Arc::new(app));
+                tokio::try_join!(
+                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer),
+                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
                 )?;
             },
             (false, false, _) => {

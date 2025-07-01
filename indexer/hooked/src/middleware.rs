@@ -45,6 +45,10 @@ impl<I> IndexerAdapter<I> {
     }
 }
 
+// Explicitly implement Send and Sync for IndexerAdapter
+unsafe impl<I> Send for IndexerAdapter<I> where I: Send {}
+unsafe impl<I> Sync for IndexerAdapter<I> where I: Send + Sync {}
+
 impl<I> Indexer for IndexerAdapter<I>
 where
     I: Indexer + Send + Sync,
@@ -84,6 +88,11 @@ where
         indexer
             .post_indexing(block_height, querier)
             .map_err(|e| e.into())
+    }
+
+    fn wait_for_finish(&self) {
+        let indexer = self.indexer.lock().unwrap();
+        indexer.wait_for_finish();
     }
 }
 
@@ -200,6 +209,8 @@ where
 
         result
     }
+
+    fn wait_for_finish(&self) {}
 }
 
 /// A middleware that records metrics for indexer operations
@@ -287,6 +298,8 @@ where
 
         result
     }
+
+    fn wait_for_finish(&self) {}
 }
 
 /// A no-op indexer for testing purposes
@@ -322,6 +335,8 @@ impl Indexer for NoOpIndexer {
     ) -> std::result::Result<(), Self::Error> {
         Ok(())
     }
+
+    fn wait_for_finish(&self) {}
 }
 
 #[cfg(test)]
@@ -381,6 +396,10 @@ mod tests {
         ) -> std::result::Result<(), Self::Error> {
             self.record_call("post_indexing");
             Ok(())
+        }
+
+        fn wait_for_finish(&self) {
+            self.record_call("wait_for_finish");
         }
     }
 

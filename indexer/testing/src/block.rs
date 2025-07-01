@@ -1,5 +1,5 @@
 use {
-    grug_app::NaiveProposalPreparer,
+    grug_app::{Indexer, NaiveProposalPreparer},
     grug_db_memory::MemDb,
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom},
