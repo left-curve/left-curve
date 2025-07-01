@@ -5220,7 +5220,7 @@ fn market_order_clearing(
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(9307)),
         price: Udec128::new(1000000),
-    }, 
+    },
     coins! {
         eth::DENOM.clone() => 9307,
     },
@@ -5230,7 +5230,7 @@ fn market_order_clearing(
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
         max_slippage: Udec128::new_percent(8),
-    }, 
+    },
     coins! {
         usdc::DENOM.clone() => 500000,
     }
@@ -5253,7 +5253,7 @@ fn market_order_clearing(
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(9999)),
         max_slippage: Udec128::new_percent(8),
-    }, 
+    },
     coins! {
         eth::DENOM.clone() => 9999,
     }
@@ -5276,7 +5276,7 @@ fn market_order_clearing(
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
         max_slippage: Udec128::new_percent(8),
-    }, 
+    },
     coins! {
         eth::DENOM.clone() => 500000,
     }
