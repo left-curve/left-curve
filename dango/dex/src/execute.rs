@@ -305,29 +305,27 @@ fn swap_exact_amount_in(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    let mut response = Response::new()
+    Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, output_after_fee.clone())?)
+        .may_add_message(if protocol_fee_amount.is_non_zero() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
+                    },
+                },
+                coins! { output.denom => protocol_fee_amount },
+            )?)
+        } else {
+            None
+        })
         .add_event(Swapped {
             user: ctx.sender,
             input,
-            output: output_after_fee.clone(),
-        })?;
-
-    // If there's a fee to collect, add the taxman payment message
-    if protocol_fee_amount.is_non_zero() {
-        response = response.add_message(Message::execute(
-            app_cfg.addresses.taxman,
-            &taxman::ExecuteMsg::Pay {
-                ty: FeeType::Trade,
-                payments: btree_map! {
-                    ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
-                },
-            },
-            coins! { output.denom => protocol_fee_amount },
-        )?);
-    }
-
-    Ok(response)
+            output: output_after_fee,
+        })?)
 }
 
 fn swap_exact_amount_out(
@@ -374,27 +372,25 @@ fn swap_exact_amount_out(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    let mut response = Response::new()
+    Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .may_add_message(if protocol_fee_amount.is_non_zero() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
+                    },
+                },
+                coins! { output.denom.clone() => protocol_fee_amount },
+            )?)
+        } else {
+            None
+        })
         .add_event(Swapped {
             user: ctx.sender,
             input,
-            output: output.clone().into_inner(),
-        })?;
-
-    // If there's a fee to collect, add the taxman payment message
-    if protocol_fee_amount.is_non_zero() {
-        response = response.add_message(Message::execute(
-            app_cfg.addresses.taxman,
-            &taxman::ExecuteMsg::Pay {
-                ty: FeeType::Trade,
-                payments: btree_map! {
-                    ctx.sender => coins! { output.denom.clone() => protocol_fee_amount },
-                },
-            },
-            coins! { output.denom.clone() => protocol_fee_amount },
-        )?);
-    }
-
-    Ok(response)
+            output: output.into_inner(),
+        })?)
 }
