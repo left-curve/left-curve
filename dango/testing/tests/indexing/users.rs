@@ -25,9 +25,10 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
         .indexer
         .context()
         .data()
-        .get(&indexer_sql::ContextKey)
+        .lock()
+        .unwrap()
+        .get::<indexer_sql::Context>()
         .expect("SQL context should be stored")
-        .value()
         .clone();
 
     let users_and_public_keys: Vec<(entity::users::Model, Vec<entity::public_keys::Model>)> =

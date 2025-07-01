@@ -275,10 +275,8 @@ fn main() -> Result<()> {
 
     // Check the context data
     let context = hooked_indexer.context();
-    let data_count = context.data().len();
     println!(
-        "Context has {} data items and {} metadata properties",
-        data_count,
+        "Context has {} metadata properties",
         context.metadata().properties.len()
     );
 
@@ -357,36 +355,27 @@ mod tests {
 
     #[test]
     fn test_context_usage() -> Result<()> {
-        use typedmap::TypedMapKey;
-
-        // Define a test key type for typed storage
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-        struct TestCounter;
-
-        impl TypedMapKey for TestCounter {
-            type Value = i32;
-        }
-
         let mut hooked_indexer = HookedIndexer::new();
 
-        // Add some data to the context
+        // Add some data to the context using Extensions
         hooked_indexer
             .context_mut()
             .set_property("test_key".to_string(), "test_value".to_string());
-        hooked_indexer.context().data().insert(TestCounter, 42);
+        hooked_indexer
+            .context()
+            .data()
+            .lock()
+            .unwrap()
+            .insert(42i32);
 
         // Check that the context works
         assert_eq!(
             hooked_indexer.context().get_property("test_key"),
-            Some("test_value")
+            Some(&"test_value".to_string())
         );
         assert_eq!(
-            hooked_indexer
-                .context()
-                .data()
-                .get(&TestCounter)
-                .map(|v| *v.value()),
-            Some(42)
+            hooked_indexer.context().data().lock().unwrap().get::<i32>(),
+            Some(&42)
         );
 
         Ok(())

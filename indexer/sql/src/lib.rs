@@ -17,7 +17,7 @@ pub mod scalars;
 pub mod serde_iso8601;
 
 pub use {
-    context::{Context, ContextKey},
+    context::Context,
     error::{IndexerError, Result},
     non_blocking_indexer::{IndexerBuilder, NonBlockingIndexer},
 };

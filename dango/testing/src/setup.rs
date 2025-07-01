@@ -23,7 +23,6 @@ use {
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context,
-    indexer_sql::ContextKey,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -153,11 +152,13 @@ pub fn setup_test_with_indexer() -> (
     let indexer_path = indexer.indexer_path.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
-    // Store the SQL context using SqlContextKey
+    // Store the SQL context using Extensions API
     hooked_indexer
         .context_mut()
         .data()
-        .insert(ContextKey, indexer.context.clone());
+        .lock()
+        .unwrap()
+        .insert(indexer.context.clone());
     hooked_indexer.add_indexer(indexer);
 
     let db = MemDb::new();

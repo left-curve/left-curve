@@ -21,26 +21,6 @@ impl std::fmt::Debug for Context {
     }
 }
 
-// Implement Hash and Eq traits needed for TypedMapKey
-// We'll use the database connection URL as the basis for hashing and equality
-impl std::hash::Hash for Context {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // Use the connection string from the database connection for hashing
-        // This is a reasonable way to identify different contexts
-        std::ptr::addr_of!(self.db).hash(state);
-    }
-}
-
-impl PartialEq for Context {
-    fn eq(&self, other: &Self) -> bool {
-        // Compare database connections by their pointer addresses
-        // This ensures that the same context instance is considered equal
-        std::ptr::addr_of!(self.db) == std::ptr::addr_of!(other.db)
-    }
-}
-
-impl Eq for Context {}
-
 impl Context {
     pub async fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
         Migrator::up(&self.db, None).await
@@ -109,12 +89,4 @@ impl Context {
             },
         }
     }
-}
-
-// Simple key type for storing SQL Context in typed maps
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ContextKey;
-
-impl typedmap::TypedMapKey for ContextKey {
-    type Value = Context;
 }

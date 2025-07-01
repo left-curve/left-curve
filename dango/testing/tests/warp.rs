@@ -136,9 +136,10 @@ async fn sending_remote() {
         .indexer
         .context()
         .data()
-        .get(&indexer_sql::ContextKey)
+        .lock()
+        .unwrap()
+        .get::<indexer_sql::Context>()
         .expect("SQL context should be stored")
-        .value()
         .clone();
 
     // The transfers should have been indexed.

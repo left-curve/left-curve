@@ -5710,6 +5710,7 @@ dependencies = [
  "futures",
  "grug-app",
  "grug-types",
+ "http 1.3.1",
  "indexer-disk-saver",
  "indexer-sql-migration",
  "itertools 0.14.0",
@@ -5726,7 +5727,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "typedmap",
  "uuid",
 ]
 
@@ -5804,7 +5804,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "typedmap",
  "uuid",
 ]
 
@@ -10278,15 +10277,6 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "static_assertions",
-]
-
-[[package]]
-name = "typedmap"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63278e72ed4f207eb3216c944cbafb35bdb656d2eab97ef73c0c165a1cd3e319"
-dependencies = [
- "dashmap",
 ]
 
 [[package]]

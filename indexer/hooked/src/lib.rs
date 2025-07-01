@@ -1,4 +1,3 @@
-pub use typedmap::TypedDashMap as TypeMap;
 use {grug_app::Indexer, grug_types::Storage};
 
 // Re-export modules for easier access
@@ -208,28 +207,13 @@ impl Indexer for HookedIndexer {
 mod tests {
     use {
         super::*,
-        grug_types::MockStorage,
+        grug_app::{Indexer, QuerierProvider},
+        grug_types::{Block, BlockOutcome, MockStorage, Storage},
         std::{
             convert::Infallible,
             sync::{Arc, RwLock},
         },
-        typedmap::TypedMapKey,
     };
-
-    // Test types for TypedMapKey
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-    struct TestKey(String);
-
-    impl TypedMapKey for TestKey {
-        type Value = i32;
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-    struct TestStringKey(String);
-
-    impl TypedMapKey for TestStringKey {
-        type Value = String;
-    }
 
     #[derive(Debug, Clone)]
     struct TestIndexer {
@@ -273,8 +257,8 @@ mod tests {
 
         fn index_block(
             &self,
-            _block: &grug_types::Block,
-            _block_outcome: &grug_types::BlockOutcome,
+            _block: &Block,
+            _block_outcome: &BlockOutcome,
         ) -> std::result::Result<(), Self::Error> {
             self.record_call("index_block");
             Ok(())
@@ -283,7 +267,7 @@ mod tests {
         fn post_indexing(
             &self,
             _block_height: u64,
-            _querier: Box<dyn grug_app::QuerierProvider>,
+            _querier: Box<dyn QuerierProvider>,
         ) -> std::result::Result<(), Self::Error> {
             self.record_call("post_indexing");
             Ok(())
@@ -356,67 +340,18 @@ mod tests {
     }
 
     #[test]
-    fn test_typemap() {
-        let typemap = TypeMap::new();
-
-        // Test insert and get - much cleaner with TypedMapKey!
-        typemap.insert(TestKey("number".to_string()), 42);
-        typemap.insert(TestStringKey("message".to_string()), "hello".to_string());
-
-        assert_eq!(
-            typemap
-                .get(&TestKey("number".to_string()))
-                .map(|v| *v.value()),
-            Some(42)
-        );
-        assert_eq!(
-            typemap
-                .get(&TestStringKey("message".to_string()))
-                .map(|v| v.value().clone()),
-            Some("hello".to_string())
-        );
-        assert!(typemap.get(&TestKey("missing".to_string())).is_none());
-
-        // Test contains
-        assert!(typemap.contains_key(&TestKey("number".to_string())));
-        assert!(typemap.contains_key(&TestStringKey("message".to_string())));
-        assert!(!typemap.contains_key(&TestKey("missing".to_string())));
-
-        // Test remove
-        let removed = typemap.remove(&TestKey("number".to_string()));
-        assert!(removed.is_some());
-        assert!(!typemap.contains_key(&TestKey("number".to_string())));
-    }
-
-    #[test]
-    fn test_context_data_sharing() {
+    fn test_extensions_api() {
         let context = IndexerContext::new();
 
-        // Test data insertion and retrieval - much cleaner!
-        context.data().insert(TestKey("count".to_string()), 123);
-        context
-            .data()
-            .insert(TestStringKey("name".to_string()), "test".to_string());
+        // Test Extensions API - much simpler than TypedMapKey!
+        context.data().lock().unwrap().insert(42i32);
+        context.data().lock().unwrap().insert("hello".to_string());
 
+        assert_eq!(context.data().lock().unwrap().get::<i32>(), Some(&42));
         assert_eq!(
-            context
-                .data()
-                .get(&TestKey("count".to_string()))
-                .map(|v| *v.value()),
-            Some(123)
+            context.data().lock().unwrap().get::<String>(),
+            Some(&"hello".to_string())
         );
-        assert_eq!(
-            context
-                .data()
-                .get(&TestStringKey("name".to_string()))
-                .map(|v| v.value().clone()),
-            Some("test".to_string())
-        );
-        assert!(
-            context
-                .data()
-                .get(&TestKey("missing".to_string()))
-                .is_none()
-        );
+        assert_eq!(context.data().lock().unwrap().get::<u64>(), None);
     }
 }

@@ -43,9 +43,10 @@ async fn index_transfer_events() -> anyhow::Result<()> {
             .indexer
             .context()
             .data()
-            .get(&indexer_sql::ContextKey)
+            .lock()
+            .unwrap()
+            .get::<indexer_sql::Context>()
             .expect("SQL context should be stored")
-            .value()
             .clone();
 
         // The 2 transfers should have been indexed.
@@ -93,9 +94,10 @@ async fn index_transfer_events() -> anyhow::Result<()> {
         .indexer
         .context()
         .data()
-        .get(&indexer_sql::ContextKey)
+        .lock()
+        .unwrap()
+        .get::<indexer_sql::Context>()
         .expect("SQL context should be stored")
-        .value()
         .clone();
 
     // The transfer should have been indexed.
