@@ -43,6 +43,12 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     address: account?.address,
   });
 
+  const changePairId = useCallback((pairId: PairId) => {
+    onChangePairId(pairId);
+    setSizeCoin(coins[pairId.quoteDenom]);
+    setValue("size", "0");
+  }, []);
+
   const changeAction = useCallback((action: "buy" | "sell") => {
     onChangeAction(action);
     setValue("size", "0");
@@ -73,6 +79,9 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const needsConversion = sizeCoin.denom !== availableCoin.denom;
 
+  const sizeValue = inputs.size?.value || "0";
+  const priceValue = inputs.price?.value || "0";
+
   const maxSizeAmount = useMemo(() => {
     if (availableCoin.amount === "0") return 0;
     if (!needsConversion) return +availableCoin.amount;
@@ -80,11 +89,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     return operation === "limit"
       ? (() => {
           return action === "buy"
-            ? Decimal(availableCoin.amount).div(inputs.price.value).toNumber()
-            : Decimal(availableCoin.amount).mul(inputs.price.value).toNumber();
+            ? Decimal(availableCoin.amount).div(priceValue).toNumber()
+            : Decimal(availableCoin.amount).mul(priceValue).toNumber();
         })()
       : convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom);
-  }, [sizeCoin, availableCoin, needsConversion, inputs]);
+  }, [sizeCoin, availableCoin, needsConversion, priceValue]);
 
   const orders = useQuery({
     enabled: !!account,
@@ -101,6 +110,31 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     refetchInterval: 1000 * 10,
   });
 
+  const orderAmount = useMemo(() => {
+    if (sizeValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+
+    const isBaseSize = sizeCoin.denom === pairId.baseDenom;
+    const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
+
+    if (operation === "market") {
+      return {
+        baseAmount: isBaseSize
+          ? sizeValue
+          : convertAmount(sizeValue, sizeCoin.denom, pairId.baseDenom).toString(),
+        quoteAmount: isQuoteSize
+          ? sizeValue
+          : convertAmount(sizeValue, sizeCoin.denom, pairId.quoteDenom).toString(),
+      };
+    }
+
+    if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+
+    return {
+      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).div(priceValue).toString(),
+      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toString(),
+    };
+  }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
+
   const submission = useSubmitTx({
     mutation: {
       mutationFn: async () => {
@@ -110,20 +144,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const direction = Direction[capitalize(action) as keyof typeof Direction];
         const { baseDenom, quoteDenom } = pairId;
 
-        const amount = (() => {
-          if (operation === "market") {
-            return needsConversion
-              ? convertAmount(inputs.size.value, sizeCoin.denom, availableCoin.denom, true)
-              : parseUnits(inputs.size.value, availableCoin.decimals);
-          }
-
-          const amount =
-            action === "buy"
-              ? Decimal(inputs.size.value).mul(inputs.price.value).toNumber()
-              : Decimal(inputs.size.value).div(inputs.price.value).toNumber();
-
-          return parseUnits(amount.toString(), availableCoin.decimals);
-        })();
+        const amount =
+          baseCoin.denom === availableCoin.denom
+            ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
+            : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals);
 
         const order =
           operation === "market"
@@ -165,7 +189,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   return {
     pairId,
-    onChangePairId,
+    onChangePairId: changePairId,
+    orderAmount,
     maxSizeAmount,
     availableCoin,
     baseCoin,

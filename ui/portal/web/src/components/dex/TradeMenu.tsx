@@ -1,5 +1,6 @@
-import { useAccount, useAppConfig, usePrices, type useProTrade } from "@left-curve/store";
+import { useAccount, useAppConfig, usePrices } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -22,8 +23,8 @@ import { Sheet } from "react-modal-sheet";
 import { Big } from "big.js";
 import { m } from "~/paraglide/messages";
 
+import type { useProTradeState } from "@left-curve/store";
 import type React from "react";
-import { useMemo } from "react";
 
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
   const { isLg } = useMediaQuery();
@@ -32,7 +33,7 @@ export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
 
 type TradeMenuProps = {
   className?: string;
-  state: ReturnType<typeof useProTrade>;
+  state: ReturnType<typeof useProTradeState>;
   controllers: ReturnType<typeof useInputs>;
 };
 
@@ -52,6 +53,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
     changeSizeCoin,
     sizeCoin,
     availableCoin,
+    orderAmount,
     maxSizeAmount,
     baseCoin,
     quoteCoin,
@@ -173,6 +175,20 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             </p>
             <p className="diatype-xs-medium text-gray-700">
               {getPrice(amount, sizeCoin.denom, { format: true })}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex gap-1 diatype-xs-regular text-gray-500">
+              <span>{m["dex.protrade.spot.orderSize"]()}</span>
+            </p>
+            <p className="diatype-xs-medium text-gray-700">
+              {orderAmount.quoteAmount} {quoteCoin.symbol}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="diatype-xs-regular text-gray-500" />
+            <p className="diatype-xs-medium text-gray-700">
+              {orderAmount.baseAmount} {baseCoin.symbol}
             </p>
           </div>
           {operation === "market" ? (
