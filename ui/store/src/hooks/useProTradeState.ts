@@ -88,6 +88,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
     return operation === "limit"
       ? (() => {
+          if (priceValue === "0") return 0;
           return action === "buy"
             ? Decimal(availableCoin.amount).div(priceValue).toNumber()
             : Decimal(availableCoin.amount).mul(priceValue).toNumber();
