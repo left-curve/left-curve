@@ -2,310 +2,528 @@ use {
     crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
     dango_types::dex::{Direction, OrderId},
     grug::{
-        IsZero, MultiplyFraction, Number, NumberConst, Signed, StdResult, Udec128, Uint128,
-        Unsigned,
+        IsZero, MathResult, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128,
     },
-    std::{cmp::Ordering, collections::HashMap, iter::Peekable},
+    std::{
+        cmp::{self},
+        collections::HashMap,
+        iter::Peekable,
+    },
 };
 
-pub fn match_and_fill_market_orders<M, L>(
-    market_orders: &mut Peekable<M>,
+/// Match a series of market BUY orders against a series of limit SELL orders.
+///
+/// ## Returns
+///
+/// - Filling outcomes for the orders (market and limit).
+/// - If there's a limit order that has not been fully filled, returns this order.
+pub fn match_market_bids_with_limit_asks<M, L>(
+    market_orders: &mut M,
     limit_orders: &mut Peekable<L>,
-    market_order_direction: Direction,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
+) -> anyhow::Result<(
+    HashMap<ExtendedOrderId, FillingOutcome>,
+    Option<(Udec128, Order)>,
+)>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<(Udec128, Order)>>,
 {
-    let mut filling_outcomes = HashMap::new();
+    let mut market_order_id;
+    let mut market_order;
+    let mut market_base_bought = Uint128::ZERO;
+    let mut market_quote_sold = Uint128::ZERO;
+    let mut limit_price;
+    let mut limit_order;
+    let mut limit_base_sold = Uint128::ZERO;
+    let mut limit_quote_bought = Uint128::ZERO;
+    let mut max_price;
+    let mut outcomes = HashMap::new();
 
-    // Match the market order to the opposite side of the resting limit order book.
-    let limit_order_direction = -market_order_direction;
+    // Get the first market order.
+    match market_orders.next() {
+        Some(v) => (market_order_id, market_order) = v,
+        None => return Ok((outcomes, None)),
+    }
 
-    // Find the best offer price in the resting limit order book.
-    // This will be used to compute the market order's worst average execution
-    // price, based on its max slippage.
-    let best_price = match limit_orders.peek_mut() {
-        Some(Ok((price, _))) => *price,
+    // Get the first limit order.
+    match limit_orders.next() {
+        Some(Ok(v)) => (limit_price, limit_order) = v,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok(filling_outcomes), // Return early if there are no limit orders.
-    };
+        None => return Ok((outcomes, None)),
+    }
 
-    // Iterate over the limit orders and market orders until one of them is exhausted.
-    // Since a market order can partially fill a limit order, and that limit order should
-    // remain in the book partially filled, we mutably peek the limit orders iterator and
-    // only advance it when the market order amount is greater than or equal to the remaining
-    // amount of the limit order.
-    //
-    // This is not the case for the market orders. They are matched in the order they were
-    // received, and do not remain after matching is completed.
+    // Compute the maximum average execution price for the first market order.
+    let one_add_max_slippage = Udec128::ONE.saturating_add(market_order.max_slippage);
+    max_price = limit_price.saturating_mul(one_add_max_slippage);
+
+    // Loop through the market and limit order iterators simultaneously.
     loop {
-        let (price, limit_order) = match limit_orders.peek_mut() {
-            Some(Ok((price, limit_order))) => (price, limit_order),
-            Some(Err(e)) => return Err(e.clone().into()),
-            None => break,
-        };
+        // Without considering the max slippage, the amount we can fill now is
+        // either:
+        // - the remaining amount in the market order; or
+        // - the amount the market order's remaining budget can affort to buy,
+        //   given the limit order's price;
+        // whichever is smaller.
+        let mut fill_amount = cmp::min(
+            *limit_order.remaining(),
+            market_order.remaining.checked_div_dec_floor(limit_price)?,
+        );
 
-        let Some((ref market_order_id, market_order)) = market_orders.peek_mut() else {
-            break;
-        };
+        // Now consider the max slippage:
+        // - If the limit order's price is better (lower) or equal to the max
+        //   price, then do nothing; we fill as much as possible.
+        // - Otherwise, compute the maximum amount we can fill such that the
+        //   market order's average execution price doesn't exceed the max price.
+        if limit_price > max_price {
+            let max_fillable_amount = market_base_bought
+                .checked_mul_dec_floor(max_price)?
+                .checked_sub(market_quote_sold)?
+                .checked_div_dec_floor(limit_price - max_price)?;
 
-        // Calculate the cutoff price for the current market order
-        let cutoff_price = match market_order_direction {
-            Direction::Bid => Udec128::ONE
-                .saturating_add(market_order.max_slippage)
-                .saturating_mul(best_price),
-            Direction::Ask => Udec128::ONE
-                .saturating_sub(market_order.max_slippage)
-                .saturating_mul(best_price),
-        };
+            fill_amount = cmp::min(fill_amount, max_fillable_amount);
+        }
 
-        // The direction of the comparison depends on whether the market order
-        // is a BUY or a SELL.
-        let price_is_worse_than_cutoff = match market_order_direction {
-            Direction::Bid => *price > cutoff_price,
-            Direction::Ask => *price < cutoff_price,
-        };
+        let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
 
-        let market_order_amount_in_base = match market_order_direction {
-            Direction::Bid => market_order.remaining.checked_div_dec_floor(*price)?,
-            Direction::Ask => market_order.remaining,
-        };
+        // Update the amounts bought/sold.
+        market_base_bought.checked_add_assign(fill_amount)?;
+        market_quote_sold.checked_add_assign(fill_amount_in_quote)?;
+        limit_base_sold.checked_add_assign(fill_amount)?;
+        limit_quote_bought.checked_add_assign(fill_amount_in_quote)?;
 
-        // If the price is not worse than the cutoff price, we can match the market order
-        // against the limit order in full. Otherwise, we need to calculate the amount of the
-        // market order that can be matched against the limit order, before the average
-        // execution price of the order becomes worse than the cutoff price. We get
-        // the amount by solving the equation:
-        //
-        // (avg_price * filled + amount * price) / (filled + amount) = cutoff_price
-        //
-        // We solve for `amount` to get:
-        //
-        // amount = filled * (avg_price - cutoff_price) / (cutoff_price - price)
-        //
-        // We round down the result to ensure that the average price of the market order
-        // does not exceed the cutoff price.
-        let market_order_amount_to_match_in_base = if !price_is_worse_than_cutoff {
-            market_order_amount_in_base
-        } else {
-            let filling_outcome = filling_outcomes
-                .get_mut(&ExtendedOrderId::User(*market_order_id))
-                .unwrap();
-            let current_avg_price = filling_outcome.clearing_price;
-            let filled = filling_outcome.filled;
-            let price_ratio = current_avg_price
-                .checked_into_signed()?
-                .checked_sub(cutoff_price.checked_into_signed()?)?
-                .checked_div(
-                    cutoff_price
-                        .checked_into_signed()?
-                        .checked_sub(price.checked_into_signed()?)?,
-                )?;
+        // Update the order remaining amounts.
+        market_order.fill(fill_amount_in_quote)?;
+        limit_order.fill(fill_amount)?;
 
-            // Calculate how much of the market order can be filled without the average
-            // price of the market order exceeding the cutoff price.
-            let market_order_amount_to_match_in_base = filled
-                .checked_mul_dec_floor(price_ratio.checked_into_unsigned()?)?
-                .min(market_order_amount_in_base);
+        // Update the market order's filling outcome.
+        outcomes.insert(
+            ExtendedOrderId::User(market_order_id),
+            new_market_bid_filling_outcome(
+                market_order,
+                market_base_bought,
+                market_quote_sold,
+                taker_fee_rate, // Market orders are always takers.
+            )?,
+        );
 
-            // Since the order is only partially filled we update the filling outcome
-            // to refund the amount that was not filled.
-            match market_order_direction {
-                Direction::Bid => {
-                    filling_outcome.refund_quote.checked_add_assign(
-                        market_order.remaining.checked_sub(
-                            market_order_amount_to_match_in_base.checked_mul_dec_ceil(*price)?,
-                        )?,
-                    )?;
+        // Update the limit order's filling outcome.
+        outcomes.insert(
+            limit_order.extended_id(),
+            new_limit_ask_filling_outcome(
+                limit_order,
+                limit_base_sold,
+                limit_quote_bought,
+                limit_order_fee_rate(
+                    &limit_order,
+                    current_block_height,
+                    maker_fee_rate,
+                    taker_fee_rate,
+                ),
+            )?,
+        );
+
+        // Determine whether to move on to the next market and/or limit order.
+        // There are two situations:
+        // 1. the market order is fully filled;
+        // 2. the market order isn't fully filled, neither is the limit order.
+        //    This happens when we can't fill the market order any further
+        //    without exceeding the maximum average execution price.
+        // Also, compute the max price for this new order.
+        if market_order.remaining.is_zero() || limit_order.remaining().is_non_zero() {
+            // Advance to the next market order.
+            match market_orders.next() {
+                Some(v) => {
+                    (market_order_id, market_order) = v;
+                    market_base_bought = Uint128::ZERO;
+                    market_quote_sold = Uint128::ZERO;
                 },
-                Direction::Ask => {
-                    filling_outcome.refund_base.checked_add_assign(
-                        market_order
-                            .remaining
-                            .checked_sub(market_order_amount_to_match_in_base)?,
-                    )?;
-                },
+                None => break,
             }
 
-            market_order_amount_to_match_in_base
-        };
+            // Compute the maximum average execution price for this market order.
+            let one_add_max_slippage = Udec128::ONE.saturating_add(market_order.max_slippage);
+            if limit_order.remaining().is_non_zero() {
+                max_price = limit_price.saturating_mul(one_add_max_slippage);
+            } else {
+                match limit_orders.peek() {
+                    Some(Ok((price, _))) => {
+                        max_price = price.saturating_mul(one_add_max_slippage);
+                    },
+                    Some(Err(e)) => return Err(e.clone().into()),
+                    None => break,
+                }
+            }
+        }
 
-        // For a market ASK order the amount is in terms of the base asset. So we can directly
-        // match it against the limit order remaining amount
-        let (filled_amount, price, limit_order, market_order) =
-            match market_order_amount_to_match_in_base.cmp(limit_order.remaining()) {
-                // The market ask order is smaller than the limit order so we advance the market
-                // orders iterator and decrement the limit order remaining amount
-                Ordering::Less => {
-                    limit_order.fill(market_order_amount_to_match_in_base)?;
-                    market_order.clear();
-
-                    // Clone values so we can next the market order iterator
-                    let return_tuple = (
-                        market_order_amount_to_match_in_base,
-                        *price,
-                        *limit_order,
-                        *market_order,
-                    );
-
-                    // Advance the market orders iterator
-                    market_orders.next();
-
-                    return_tuple
+        // Determine whether to move on to the next limit order.
+        // We do this if the limit order is fully filled.
+        if limit_order.remaining().is_zero() {
+            // Advance to the next limit order.
+            match limit_orders.next() {
+                Some(Ok(v)) => {
+                    (limit_price, limit_order) = v;
+                    limit_base_sold = Uint128::ZERO;
+                    limit_quote_bought = Uint128::ZERO;
                 },
-                // The market order amount is equal to the limit order remaining amount, so we can
-                // match both in full, and advance both iterators.
-                Ordering::Equal => {
-                    limit_order.clear();
-                    market_order.clear();
-
-                    // Clone values so we can next the limit order iterator
-                    let return_tuple = (
-                        market_order_amount_to_match_in_base,
-                        *price,
-                        *limit_order,
-                        *market_order,
-                    );
-
-                    // Advance the both order iterators
-                    limit_orders.next();
-                    market_orders.next();
-
-                    return_tuple
-                },
-                // The market order amount is greater than the limit order remaining amount,
-                // so we advance fully match the limit, decrement the market order amount and
-                // advance the limit orders iterator
-                Ordering::Greater => {
-                    let fill_amount = limit_order.clear();
-
-                    // Decrement the market order amount by the limit order remaining amount.
-                    // This is done differently for BUY and SELL market orders because the amount
-                    // is in terms of the quote asset for BUY orders and in terms of the base asset
-                    // for SELL orders.
-                    // If this is the last market order to be matched, i.e. the limit order iterator
-                    // is exhausted, the market order will remain in the market orders iterator and
-                    // the amount left in the market order will be refunded in `cron_execute`.
-                    match market_order_direction {
-                        Direction::Bid => {
-                            let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(*price)?;
-                            market_order.fill(fill_amount_in_quote)?;
-                        },
-                        Direction::Ask => {
-                            market_order.fill(fill_amount)?;
-                        },
-                    }
-
-                    // Clone values so we can next the limit order iterator
-                    let return_tuple = (fill_amount, *price, *limit_order, *market_order);
-
-                    // Pop the limits iterator
-                    limit_orders.next();
-
-                    return_tuple
-                },
-            };
-
-        // Determine the fee rate for the limit order:
-        // - if it's a passive order, it's not charged any fee;
-        // - if it was created at a previous block height, then it's charged the maker fee rate;
-        // - otherwise, it's charged the taker fee rate.
-        let limit_order_fee_rate = match limit_order.created_at_block_height() {
-            None => Udec128::ZERO,
-            Some(block_height) if block_height < current_block_height => maker_fee_rate,
-            Some(_) => taker_fee_rate,
-        };
-
-        update_filling_outcome(
-            &mut filling_outcomes,
-            limit_order,
-            limit_order_direction,
-            filled_amount,
-            price,
-            limit_order_fee_rate,
-        )?;
-
-        update_filling_outcome(
-            &mut filling_outcomes,
-            Order::Market(market_order),
-            market_order_direction,
-            filled_amount,
-            price,
-            taker_fee_rate, // A market order is always a taker.
-        )?;
+                Some(Err(e)) => return Err(e.clone().into()),
+                None => break,
+            }
+        }
     }
 
-    Ok(filling_outcomes)
+    if limit_order.remaining().is_non_zero() {
+        Ok((outcomes, Some((limit_price, limit_order))))
+    } else {
+        Ok((outcomes, None))
+    }
 }
 
-fn update_filling_outcome(
-    filling_outcomes: &mut HashMap<ExtendedOrderId, FillingOutcome>,
-    order: Order,
-    order_direction: Direction,
-    filled_amount: Uint128,
-    price: Udec128,
+fn new_market_bid_filling_outcome(
+    market_order: MarketOrder,
+    market_base_bought: Uint128,
+    market_quote_sold: Uint128,
     fee_rate: Udec128,
-) -> StdResult<()> {
-    let filling_outcome = filling_outcomes
-        .entry(order.extended_id())
-        .or_insert(FillingOutcome {
-            order_direction,
-            order,
-            filled: Uint128::ZERO,
-            clearing_price: price,
-            cleared: false,
-            refund_base: Uint128::ZERO,
-            refund_quote: Uint128::ZERO,
-            fee_base: Uint128::ZERO,
-            fee_quote: Uint128::ZERO,
-        });
+) -> MathResult<FillingOutcome> {
+    let fee_base = market_quote_sold.checked_mul_dec_ceil(fee_rate)?;
+    let refund_base = market_base_bought.checked_sub(fee_base)?;
 
-    match order {
-        Order::Limit(limit_order) => {
-            filling_outcome.cleared = limit_order.remaining.is_zero();
-        },
-        Order::Market(_) => {
-            filling_outcome.clearing_price = Udec128::checked_from_ratio(
-                filling_outcome
-                    .filled
-                    .checked_mul_dec(filling_outcome.clearing_price)?
-                    .checked_add(filled_amount.checked_mul_dec(price)?)?,
-                filling_outcome.filled.checked_add(filled_amount)?,
-            )?;
-        },
-        Order::Passive(passive_order) => {
-            filling_outcome.cleared = passive_order.remaining.is_zero();
-        },
+    Ok(FillingOutcome {
+        order_direction: Direction::Bid,
+        order: Order::Market(market_order),
+        // Note: for market bids, amounts are denoted in the quote asset.
+        filled: market_quote_sold,
+        clearing_price: Udec128::checked_from_ratio(market_quote_sold, market_base_bought)?,
+        cleared: market_order.remaining.is_zero(),
+        refund_base,
+        // Note: market orders are immediate-or-cancel, so refund the remaining.
+        refund_quote: market_order.remaining,
+        fee_base,
+        fee_quote: Uint128::ZERO,
+    })
+}
+
+fn new_limit_ask_filling_outcome(
+    limit_order: Order,
+    limit_base_sold: Uint128,
+    limit_quote_bought: Uint128,
+    fee_rate: Udec128,
+) -> MathResult<FillingOutcome> {
+    let fee_quote = limit_quote_bought.checked_mul_dec_ceil(fee_rate)?;
+    let refund_quote = limit_quote_bought.checked_sub(fee_quote)?;
+
+    Ok(FillingOutcome {
+        order_direction: Direction::Ask,
+        order: limit_order,
+        filled: limit_base_sold,
+        clearing_price: Udec128::checked_from_ratio(limit_quote_bought, limit_base_sold)?,
+        cleared: limit_order.remaining().is_zero(),
+        // Note: limit orders are good-until-cancel, so do NOT refund the remaining.
+        refund_base: Uint128::ZERO,
+        refund_quote,
+        fee_base: Uint128::ZERO,
+        fee_quote,
+    })
+}
+
+/// Determine the fee rate for the limit order:
+/// - if it's a passive order, it's not charged any fee;
+/// - if it was created at a previous block height, then it's charged the maker fee rate;
+/// - otherwise, it's charged the taker fee rate.
+fn limit_order_fee_rate(
+    limit_order: &Order,
+    current_block_height: u64,
+    maker_fee_rate: Udec128,
+    taker_fee_rate: Udec128,
+) -> Udec128 {
+    match limit_order.created_at_block_height() {
+        None => Udec128::ZERO,
+        Some(block_height) if block_height < current_block_height => maker_fee_rate,
+        Some(_) => taker_fee_rate,
     }
+}
 
-    filling_outcome.filled.checked_add_assign(filled_amount)?;
-    filling_outcome.order = order;
+// ----------------------------------- tests -----------------------------------
 
-    match order_direction {
-        Direction::Bid => {
-            let fee_amount = filled_amount.checked_mul_dec_ceil(fee_rate)?;
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::PassiveOrder,
+        grug::{Addr, hash_map},
+        std::str::FromStr,
+        test_case::test_case,
+    };
 
-            filling_outcome.fee_base.checked_add_assign(fee_amount)?;
-            filling_outcome
-                .refund_base
-                .checked_add_assign(filled_amount.checked_sub(fee_amount)?)?;
+    #[test_case(
+        vec![],
+        vec![],
+        hash_map! {},
+        None;
+        "nothing"
+    )]
+    #[test_case(
+        vec![
+            (1, MarketOrder {
+                user: Addr::mock(1),
+                id: 1,
+                amount: Uint128::new(200_000),
+                remaining: Uint128::new(200_000),
+                max_slippage: Udec128::ZERO,
+            }),
+        ],
+        vec![
+            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+                id: 2,
+                price: Udec128::from_str("200").unwrap(),
+                amount: Uint128::new(1000),
+                remaining: Uint128::new(1000),
+            })),
+        ],
+        hash_map! {
+            ExtendedOrderId::User(1) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(1),
+                    id: 1,
+                    amount: Uint128::new(200_000), // in quote
+                    remaining: Uint128::ZERO,
+                    max_slippage: Udec128::ZERO,
+                }),
+                filled: Uint128::new(200_000),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::new(1000),
+                refund_quote: Uint128::ZERO,
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(2) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Passive(PassiveOrder {
+                    id: 2,
+                    price: Udec128::from_str("200").unwrap(),
+                    amount: Uint128::new(1_000),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(1_000),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(200_000),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
         },
-        Direction::Ask => {
-            let filled_amount_in_quote = filled_amount.checked_mul_dec_floor(price)?;
-            let fee_amount_in_quote = filled_amount_in_quote.checked_mul_dec_ceil(fee_rate)?;
-
-            filling_outcome
-                .fee_quote
-                .checked_add_assign(fee_amount_in_quote)?;
-            filling_outcome
-                .refund_quote
-                .checked_add_assign(filled_amount_in_quote.checked_sub(fee_amount_in_quote)?)?;
+        None;
+        "1 limit order, 1 market order; exactly equal amounts"
+    )]
+    #[test_case(
+        vec![
+            (1, MarketOrder {
+                user: Addr::mock(1),
+                id: 1,
+                amount: Uint128::new(200_000),
+                remaining: Uint128::new(200_000),
+                max_slippage: Udec128::from_str("0.005").unwrap(),
+            }),
+        ],
+        vec![
+            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+                id: 2,
+                price: Udec128::from_str("200").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+            (Udec128::from_str("205").unwrap(), Order::Passive(PassiveOrder {
+                id: 3,
+                price: Udec128::from_str("205").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+        ],
+        hash_map! {
+            ExtendedOrderId::User(1) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(1),
+                    id: 1,
+                    amount: Uint128::new(200_000), // in quote
+                    remaining: Uint128::new(200_000 - 125_625),
+                    max_slippage: Udec128::from_str("0.005").unwrap(),
+                }),
+                filled: Uint128::new(125_625),
+                clearing_price: Udec128::from_str("201").unwrap(), // 200 * 1.005 = 125,625 / 625
+                cleared: false,
+                refund_base: Uint128::new(625),
+                refund_quote: Uint128::new(200_000 - 125_625),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(2) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Passive(PassiveOrder {
+                    id: 2,
+                    price: Udec128::from_str("200").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(500),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(500 * 200),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(3) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Passive(PassiveOrder {
+                    id: 3,
+                    price: Udec128::from_str("205").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::new(500 - 125),
+                }),
+                filled: Uint128::new(125),
+                clearing_price: Udec128::from_str("205").unwrap(),
+                cleared: false,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(125 * 205),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
         },
+        Some((Udec128::from_str("205").unwrap(), Order::Passive(PassiveOrder {
+            id: 3,
+            price: Udec128::from_str("205").unwrap(),
+            amount: Uint128::new(500),
+            remaining: Uint128::new(500 - 125),
+        })));
+        "2 limit orders, 1 market order; the 2nd limit order has left-over"
+    )]
+    #[test_case(
+        vec![
+            (1, MarketOrder {
+                user: Addr::mock(1),
+                id: 1,
+                amount: Uint128::new(200_000),
+                remaining: Uint128::new(200_000),
+                max_slippage: Udec128::from_str("0.005").unwrap(),
+            }),
+            (4, MarketOrder {
+                user: Addr::mock(4),
+                id: 4,
+                amount: Uint128::new(200_000),
+                remaining: Uint128::new(200_000),
+                max_slippage: Udec128::from_str("0.005").unwrap(),
+            }),
+        ],
+        vec![
+            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+                id: 2,
+                price: Udec128::from_str("200").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+            (Udec128::from_str("205").unwrap(), Order::Passive(PassiveOrder {
+                id: 3,
+                price: Udec128::from_str("205").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+        ],
+        hash_map! {
+            ExtendedOrderId::User(1) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(1),
+                    id: 1,
+                    amount: Uint128::new(200_000), // in quote
+                    remaining: Uint128::new(200_000 - 125_625),
+                    max_slippage: Udec128::from_str("0.005").unwrap(),
+                }),
+                filled: Uint128::new(125_625),
+                clearing_price: Udec128::from_str("201").unwrap(), // 200 * 1.005 = 125,625 / 625
+                cleared: false,
+                refund_base: Uint128::new(625),
+                refund_quote: Uint128::new(200_000 - 125_625),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(2) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Passive(PassiveOrder {
+                    id: 2,
+                    price: Udec128::from_str("200").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(500),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(500 * 200),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(3) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Passive(PassiveOrder {
+                    id: 3,
+                    price: Udec128::from_str("205").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(500),
+                clearing_price: Udec128::from_str("205").unwrap(),
+                cleared: true,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(500 * 205),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::User(4) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(4),
+                    id: 4,
+                    amount: Uint128::new(200_000), // in quote
+                    remaining: Uint128::new(200_000 - 76_875),
+                    max_slippage: Udec128::from_str("0.005").unwrap(),
+                }),
+                filled: Uint128::new(76_875), // 375 * 205
+                clearing_price: Udec128::from_str("205").unwrap(),
+                cleared: false,
+                refund_base: Uint128::new(375),
+                refund_quote: Uint128::new(200_000 - 76_875),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+        },
+        None;
+        "2 limit orders, 2 market orders; the 2nd market order has left-over"
+    )]
+    fn matching_market_bids_with_limit_asks(
+        market_orders: Vec<(OrderId, MarketOrder)>,
+        limit_orders: Vec<(Udec128, Order)>,
+        expected_outcomes: HashMap<ExtendedOrderId, FillingOutcome>,
+        expected_left_over_limit_order: Option<(Udec128, Order)>,
+    ) {
+        let mut market_orders = market_orders.into_iter();
+        let mut limit_orders = limit_orders.into_iter().map(Ok).peekable();
+
+        let (outcomes, left_over_limit_order) = match_market_bids_with_limit_asks(
+            &mut market_orders,
+            &mut limit_orders,
+            Udec128::ZERO,
+            Udec128::ZERO,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(outcomes, expected_outcomes);
+        assert_eq!(left_over_limit_order, expected_left_over_limit_order);
     }
-
-    Ok(())
 }

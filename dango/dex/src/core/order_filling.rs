@@ -5,6 +5,7 @@ use {
 };
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct FillingOutcome {
     pub order_direction: Direction,
     /// The order with the `filled` amount updated.
