@@ -37,13 +37,13 @@ impl HooksTrait for Hooks {
         &self,
         context: Context,
         block: BlockToIndex,
-        querier: Box<dyn QuerierProvider>,
+        querier: &dyn QuerierProvider,
     ) -> Result<(), Self::Error> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
         self.save_transfers(&context, &block).await?;
-        self.save_accounts(&context, &block, &*querier).await?;
+        self.save_accounts(&context, &block, querier).await?;
 
         #[cfg(feature = "metrics")]
         histogram!(
@@ -52,6 +52,10 @@ impl HooksTrait for Hooks {
         )
         .record(start.elapsed().as_secs_f64());
 
+        Ok(())
+    }
+
+    async fn shutdown(&self) -> Result<(), Self::Error> {
         Ok(())
     }
 }

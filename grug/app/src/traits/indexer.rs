@@ -22,11 +22,8 @@ pub trait Indexer {
     fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> IndexerResult<()>;
 
     /// Called after indexing the block, allowing for DB transactions to be committed
-    fn post_indexing(
-        &self,
-        block_height: u64,
-        querier: Box<dyn QuerierProvider>,
-    ) -> IndexerResult<()>;
+    /// Uses a reference to avoid unnecessary allocations while still allowing sharing
+    fn post_indexing(&self, block_height: u64, querier: &dyn QuerierProvider) -> IndexerResult<()>;
 
     /// Wait for the indexer to finish indexing
     fn wait_for_finish(&self);

@@ -396,15 +396,15 @@ where
             let querier = {
                 let storage = self.db.state_storage(Some(block_height))?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-                Box::new(QuerierProviderImpl::new(
+                QuerierProviderImpl::new(
                     self.vm.clone(),
                     Box::new(storage),
                     GasTracker::new_limitless(),
                     block,
-                ))
+                )
             };
 
-            self.indexer.post_indexing(block_height, querier)?;
+            self.indexer.post_indexing(block_height, &querier)?;
         }
 
         Ok(())

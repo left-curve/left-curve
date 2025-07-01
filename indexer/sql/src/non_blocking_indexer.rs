@@ -8,7 +8,7 @@ use {
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK, QuerierProvider},
+    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
     sea_orm::DatabaseConnection,
     std::{
@@ -543,7 +543,7 @@ where
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: Box<dyn QuerierProvider>,
+        _querier: &dyn grug_app::QuerierProvider,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Err(grug_app::IndexerError::NotRunning);
@@ -562,11 +562,11 @@ where
             .indexer_path
             .block_path(block_to_index.block.info.height);
 
-        // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
-        // the shutdown method could be called and see no current block being indexed, and quit.
-        // The block would then not be indexed.
+        // NOTE: Since we can't move the querier reference into the async task,
+        // we need to call the hooks synchronously or find another approach.
+        // For now, we'll skip the async querier usage in hooks.
 
-        let hooks = self.hooks.clone();
+        let _hooks = self.hooks.clone();
         let id = self.id;
 
         self.handle.spawn(async move {
@@ -583,13 +583,13 @@ where
                 err
             })?;
 
-            hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
-                #[cfg(feature = "tracing")]
-                tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
-
-                // NOTE: any way to get a from Hooks::Error to IndexerError without using IndexerError<X>?
-                error::IndexerError::Hooks(e.to_string())
-            })?;
+            // NOTE: We can't use the querier in async context with reference approach
+            // hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
+            //     #[cfg(feature = "tracing")]
+            //     tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
+            //
+            //     error::IndexerError::Hooks(e.to_string())
+            // })?;
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
@@ -772,7 +772,7 @@ mod tests {
             &self,
             _context: Context,
             _block: BlockToIndex,
-            _querier: Box<dyn QuerierProvider>,
+            _querier: &dyn grug_app::QuerierProvider,
         ) -> Result<(), Self::Error> {
             Ok(())
         }

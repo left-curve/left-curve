@@ -31,7 +31,7 @@ impl Indexer for NullIndexer {
     fn post_indexing(
         &self,
         _block_height: u64,
-        _querier: Box<dyn QuerierProvider>,
+        _querier: &dyn QuerierProvider,
     ) -> IndexerResult<()> {
         Ok(())
     }
