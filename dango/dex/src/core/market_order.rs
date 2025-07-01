@@ -187,7 +187,7 @@ fn new_market_bid_filling_outcome(
     market_quote_sold: Uint128,
     fee_rate: Udec128,
 ) -> MathResult<FillingOutcome> {
-    let fee_base = market_quote_sold.checked_mul_dec_ceil(fee_rate)?;
+    let fee_base = market_base_bought.checked_mul_dec_ceil(fee_rate)?;
     let refund_base = market_base_bought.checked_sub(fee_base)?;
 
     Ok(FillingOutcome {
