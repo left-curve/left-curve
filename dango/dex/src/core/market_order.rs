@@ -83,7 +83,7 @@ where
         if limit_price > max_price {
             let max_fillable_amount = market_base_bought
                 .checked_mul_dec_floor(max_price)?
-                .checked_sub(market_quote_sold)?
+                .saturating_sub(market_quote_sold) // saturating sub to account for rounding errors
                 .checked_div_dec_floor(limit_price - max_price)?;
             fill_amount = cmp::min(fill_amount, max_fillable_amount);
         }
@@ -230,7 +230,7 @@ where
 
         if limit_price < min_price {
             let max_fillable_amount = market_quote_bought
-                .checked_sub(market_base_sold.checked_mul_dec_ceil(min_price)?)?
+                .saturating_sub(market_base_sold.checked_mul_dec_ceil(min_price)?)
                 .checked_div_dec_floor(min_price - limit_price)?;
             fill_amount = cmp::min(fill_amount, max_fillable_amount);
         }
