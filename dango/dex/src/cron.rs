@@ -461,7 +461,7 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
-    // Calculate the vo lume in USD for the filled order. If the oracle query
+    // Calculate the volume in USD for the filled order. If the oracle query
     // fails, we simply skip the volume update, since we want to make sure that
     // the cron_execute function doesn't fail.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {

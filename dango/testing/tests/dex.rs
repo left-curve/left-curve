@@ -1375,7 +1375,7 @@ fn provide_liquidity(
 }
 
 #[test]
-fn provide_liquidity_to_geometric_pool_shouwl_fail_without_oracle_price() {
+fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Update pair params
