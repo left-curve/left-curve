@@ -5804,6 +5804,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+ "typedmap",
  "uuid",
 ]
 

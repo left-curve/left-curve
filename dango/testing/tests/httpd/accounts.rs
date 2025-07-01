@@ -7,6 +7,7 @@ use {
         HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
+    grug_app::Indexer,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_graphql, call_paginated_graphql,
         call_ws_graphql_stream, parse_graphql_subscription_response,

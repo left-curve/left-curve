@@ -9,6 +9,7 @@ use {
         constants::usdc,
     },
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
+    grug_app::Indexer,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,

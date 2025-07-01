@@ -44,6 +44,23 @@ impl HookedIndexer {
         self
     }
 
+    /// Add an indexer and optionally store additional context data
+    /// This allows storing data from the indexer in the hooked indexer's context
+    pub fn add_indexer_with_context<I, F>(&mut self, indexer: I, store_context: F) -> &mut Self
+    where
+        I: Indexer + Send + Sync + 'static,
+        I::Error: Into<HookedIndexerError>,
+        F: FnOnce(&I, &mut IndexerContext),
+    {
+        // Allow caller to store additional context data
+        store_context(&indexer, &mut self.context);
+
+        // Add the indexer normally
+        let adapter = middleware::IndexerAdapter::new(indexer);
+        self.indexers.push(Box::new(adapter));
+        self
+    }
+
     /// Add a boxed Indexer directly
     pub fn add_boxed_indexer(
         &mut self,

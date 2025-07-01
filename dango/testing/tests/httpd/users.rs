@@ -4,6 +4,7 @@ use {
     dango_testing::{
         HyperlaneTestSuite, add_user_public_key, create_user_and_account, setup_test_with_indexer,
     },
+    grug_app::Indexer,
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
 };
 

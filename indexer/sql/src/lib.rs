@@ -1,7 +1,7 @@
 mod active_model;
 mod block;
 pub mod block_to_index;
-mod context;
+pub mod context;
 #[cfg(feature = "async-graphql")]
 pub mod dataloaders;
 pub mod entity;
@@ -16,4 +16,8 @@ pub mod pubsub;
 pub mod scalars;
 pub mod serde_iso8601;
 
-pub use context::Context;
+pub use {
+    context::{Context, ContextKey},
+    error::{IndexerError, Result},
+    non_blocking_indexer::{IndexerBuilder, NonBlockingIndexer},
+};

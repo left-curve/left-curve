@@ -178,6 +178,7 @@ tower-abci                  = "0.19"
 tracing                     = "0.1"
 tracing-actix-web           = "0.7"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+typedmap                    = { version = "0.6", features = ["dashmap"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "5" # keep at v5 because there's license change for v6

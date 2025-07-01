@@ -16,7 +16,7 @@ use {
     httpd::context::Context as HttpdContext,
     indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context as IndexerContext,
-    indexer_sql::non_blocking_indexer,
+    indexer_sql::{ContextKey, non_blocking_indexer},
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::{fmt::Debug, sync::Arc, time},
     tokio::signal::unix::{SignalKind, signal},
@@ -94,7 +94,10 @@ impl StartCmd {
                 // Indexer, HTTP server, and metrics server all enabled
 
                 let mut hooked_indexer = HookedIndexer::new();
-                hooked_indexer.add_indexer(indexer);
+                hooked_indexer.add_indexer_with_context(indexer, |idx, ctx| {
+                    // Store the SQL context in the hooked indexer's context
+                    ctx.data().insert(ContextKey, idx.context.clone());
+                });
 
                 let httpd_context = IndexerContext::new(
                     indexer_context,

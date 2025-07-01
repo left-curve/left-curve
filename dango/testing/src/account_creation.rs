@@ -14,7 +14,6 @@ use {
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
-    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     pyth_client::PythClientCache,
     std::{ops::DerefMut, str::FromStr},
 };
@@ -28,12 +27,7 @@ pub fn create_user_account(
 }
 
 pub fn add_user_public_key(
-    suite: &mut HyperlaneTestSuite<
-        MemDb,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) -> (Key, Hash256) {
@@ -55,12 +49,7 @@ pub fn add_user_public_key(
 }
 
 pub fn add_account_with_existing_user(
-    suite: &mut HyperlaneTestSuite<
-        MemDb,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) -> TestAccount {

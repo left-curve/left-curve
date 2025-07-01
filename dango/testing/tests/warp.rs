@@ -11,6 +11,7 @@ use {
         Addr, Addressable, BalanceChange, HashExt, NumberConst, QuerierExt, ResultExt, StdError,
         Uint128, btree_map, coins,
     },
+    grug_app::Indexer,
     hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32,
