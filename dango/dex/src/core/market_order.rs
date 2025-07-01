@@ -1,5 +1,8 @@
 use {
-    crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
+    crate::{
+        ExtendedOrderId, FillingOutcome, LimitOrder, MarketOrder, MergedOrders, Order, OrderTrait,
+        PassiveOrder,
+    },
     dango_types::dex::{Direction, OrderId},
     grug::{
         IsZero, MathResult, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128,
@@ -13,19 +16,17 @@ use {
 ///
 /// - Filling outcomes for the orders (market and limit).
 /// - If there's a limit order that has not been fully filled, returns this order.
-pub fn match_market_bids_with_limit_asks<M, L>(
+pub fn match_market_bids_with_limit_asks<M, A, B>(
     market_orders: &mut M,
-    limit_orders: &mut L,
+    limit_orders: &mut MergedOrders<A, B>,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<(
-    HashMap<ExtendedOrderId, FillingOutcome>,
-    Option<(Udec128, Order)>,
-)>
+) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
-    L: Iterator<Item = StdResult<(Udec128, Order)>>,
+    A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
+    B: Iterator<Item = (Udec128, PassiveOrder)>,
 {
     let mut market_order_id;
     let mut market_order;
@@ -41,14 +42,14 @@ where
     // Get the first market order.
     match market_orders.next() {
         Some(v) => (market_order_id, market_order) = v,
-        None => return Ok((outcomes, None)),
+        None => return Ok(outcomes),
     }
 
     // Get the first limit order.
     match limit_orders.next() {
         Some(Ok(v)) => (limit_price, limit_order) = v,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok((outcomes, None)),
+        None => return Ok(outcomes),
     }
 
     // Compute the maximum average execution price for the first market order.
@@ -162,28 +163,27 @@ where
         }
     }
 
-    // If a limit order is left over partially filled, return it. It will be
-    // then matched against other limit orders. See `cron_execute` function.
+    // If a limit order is left over partially filled, re-insert it back into
+    // the beginning of the merged iterator, so it can be matched during limit
+    // order matching.
     if limit_order.remaining().is_non_zero() {
-        Ok((outcomes, Some((limit_price, limit_order))))
-    } else {
-        Ok((outcomes, None))
+        limit_orders.prepend((limit_price, limit_order));
     }
+
+    Ok(outcomes)
 }
 
-pub fn match_market_asks_with_limit_bids<M, L>(
+pub fn match_market_asks_with_limit_bids<M, A, B>(
     market_orders: &mut M,
-    limit_orders: &mut L,
+    limit_orders: &mut MergedOrders<A, B>,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<(
-    HashMap<ExtendedOrderId, FillingOutcome>,
-    Option<(Udec128, Order)>,
-)>
+) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
-    L: Iterator<Item = StdResult<(Udec128, Order)>>,
+    A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
+    B: Iterator<Item = (Udec128, PassiveOrder)>,
 {
     let mut market_order_id;
     let mut market_order;
@@ -198,13 +198,13 @@ where
 
     match market_orders.next() {
         Some(v) => (market_order_id, market_order) = v,
-        None => return Ok((outcomes, None)),
+        None => return Ok(outcomes),
     }
 
     match limit_orders.next() {
         Some(Ok(v)) => (limit_price, limit_order) = v,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok((outcomes, None)),
+        None => return Ok(outcomes),
     }
 
     let one_sub_max_slippage = Udec128::ONE.saturating_sub(market_order.max_slippage);
@@ -284,10 +284,10 @@ where
     }
 
     if limit_order.remaining().is_non_zero() {
-        Ok((outcomes, Some((limit_price, limit_order))))
-    } else {
-        Ok((outcomes, None))
+        limit_orders.prepend((limit_price, limit_order));
     }
+
+    Ok(outcomes)
 }
 
 fn new_market_bid_filling_outcome(
@@ -405,8 +405,8 @@ mod tests {
     use {
         super::*,
         crate::PassiveOrder,
-        grug::{Addr, hash_map},
-        std::str::FromStr,
+        grug::{Addr, Order as IterationOrder, hash_map},
+        std::{iter, str::FromStr},
         test_case::test_case,
     };
 
@@ -421,12 +421,12 @@ mod tests {
             }),
         ],
         vec![
-            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+            (Udec128::from_str("200").unwrap(), PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
                 amount: Uint128::new(1_000),
                 remaining: Uint128::new(1_000),
-            })),
+            }),
         ],
         hash_map! {
             ExtendedOrderId::User(1) => FillingOutcome {
@@ -477,18 +477,18 @@ mod tests {
             }),
         ],
         vec![
-            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+            (Udec128::from_str("200").unwrap(), PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
-            (Udec128::from_str("205").unwrap(), Order::Passive(PassiveOrder {
+            }),
+            (Udec128::from_str("205").unwrap(), PassiveOrder {
                 id: 3,
                 price: Udec128::from_str("205").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
+            }),
         ],
         hash_map! {
             ExtendedOrderId::User(1) => FillingOutcome {
@@ -567,18 +567,18 @@ mod tests {
             }),
         ],
         vec![
-            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+            (Udec128::from_str("200").unwrap(), PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
-            (Udec128::from_str("205").unwrap(), Order::Passive(PassiveOrder {
+            }),
+            (Udec128::from_str("205").unwrap(), PassiveOrder {
                 id: 3,
                 price: Udec128::from_str("205").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
+            }),
         ],
         hash_map! {
             ExtendedOrderId::User(1) => FillingOutcome {
@@ -653,14 +653,18 @@ mod tests {
     )]
     fn matching_market_bids_with_limit_asks(
         market_orders: Vec<(OrderId, MarketOrder)>,
-        limit_orders: Vec<(Udec128, Order)>,
+        passive_orders: Vec<(Udec128, PassiveOrder)>,
         expected_outcomes: HashMap<ExtendedOrderId, FillingOutcome>,
         expected_left_over_limit_order: Option<(Udec128, Order)>,
     ) {
         let mut market_orders = market_orders.into_iter();
-        let mut limit_orders = limit_orders.into_iter().map(Ok).peekable();
+        let mut limit_orders = MergedOrders::new(
+            iter::empty(),
+            passive_orders.into_iter(),
+            IterationOrder::Ascending,
+        );
 
-        let (outcomes, left_over_limit_order) = match_market_bids_with_limit_asks(
+        let outcomes = match_market_bids_with_limit_asks(
             &mut market_orders,
             &mut limit_orders,
             Udec128::ZERO,
@@ -670,7 +674,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(outcomes, expected_outcomes);
-        assert_eq!(left_over_limit_order, expected_left_over_limit_order);
+        assert_eq!(
+            limit_orders.next().transpose().unwrap(),
+            expected_left_over_limit_order
+        );
     }
 
     #[test_case(
@@ -684,12 +691,12 @@ mod tests {
             }),
         ],
         vec![
-            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+            (Udec128::from_str("200").unwrap(), PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
                 amount: Uint128::new(1_000),
                 remaining: Uint128::new(1_000),
-            })),
+            }),
         ],
         hash_map! {
             ExtendedOrderId::User(1) => FillingOutcome {
@@ -740,18 +747,18 @@ mod tests {
             }),
         ],
         vec![
-            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+            (Udec128::from_str("200").unwrap(), PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
-            (Udec128::from_str("195").unwrap(), Order::Passive(PassiveOrder {
+            }),
+            (Udec128::from_str("195").unwrap(), PassiveOrder {
                 id: 3,
                 price: Udec128::from_str("195").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
+            }),
         ],
         hash_map! {
             ExtendedOrderId::User(1) => FillingOutcome {
@@ -830,18 +837,18 @@ mod tests {
             }),
         ],
         vec![
-            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+            (Udec128::from_str("200").unwrap(), PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
-            (Udec128::from_str("195").unwrap(), Order::Passive(PassiveOrder {
+            }),
+            (Udec128::from_str("195").unwrap(), PassiveOrder {
                 id: 3,
                 price: Udec128::from_str("195").unwrap(),
                 amount: Uint128::new(500),
                 remaining: Uint128::new(500),
-            })),
+            }),
         ],
         hash_map! {
             ExtendedOrderId::User(1) => FillingOutcome {
@@ -916,14 +923,18 @@ mod tests {
     )]
     fn matching_market_asks_with_limit_bids(
         market_orders: Vec<(OrderId, MarketOrder)>,
-        limit_orders: Vec<(Udec128, Order)>,
+        passive_orders: Vec<(Udec128, PassiveOrder)>,
         expected_outcomes: HashMap<ExtendedOrderId, FillingOutcome>,
         expected_left_over_limit_order: Option<(Udec128, Order)>,
     ) {
         let mut market_orders = market_orders.into_iter();
-        let mut limit_orders = limit_orders.into_iter().map(Ok).peekable();
+        let mut limit_orders = MergedOrders::new(
+            iter::empty(),
+            passive_orders.into_iter(),
+            IterationOrder::Descending,
+        );
 
-        let (outcomes, left_over_limit_order) = match_market_asks_with_limit_bids(
+        let outcomes = match_market_asks_with_limit_bids(
             &mut market_orders,
             &mut limit_orders,
             Udec128::ZERO,
@@ -933,7 +944,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(outcomes, expected_outcomes);
-        assert_eq!(left_over_limit_order, expected_left_over_limit_order);
+        assert_eq!(
+            limit_orders.next().transpose().unwrap(),
+            expected_left_over_limit_order
+        );
     }
 
     // TODO: add tests with non-zero fees.

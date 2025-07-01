@@ -9,6 +9,10 @@ where
     A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
     B: Iterator<Item = (Udec128, PassiveOrder)>,
 {
+    /// In case there is a limit order that's partially filled when matching
+    /// market orders, it can be re-inserted at the beginning of the iterator,
+    /// so that is will be matched during limit order matching.
+    prepended: Option<(Udec128, Order)>,
     /// Iterator that returns real orders in the form of `(price, limit_order)`.
     real: Peekable<A>,
     /// Iterator that returns passive orders in the form of `(price, amount)`.
@@ -24,9 +28,37 @@ where
 {
     pub fn new(real: A, passive: B, iteration_order: IterationOrder) -> Self {
         Self {
+            prepended: None,
             real: real.peekable(),
             passive: passive.peekable(),
             iteration_order,
+        }
+    }
+
+    pub fn prepend(&mut self, (price, order): (Udec128, Order)) {
+        self.prepended = Some((price, order));
+    }
+
+    fn _next(&mut self) -> Option<StdResult<(Udec128, Order)>> {
+        match (self.real.peek(), self.passive.peek()) {
+            (Some(Ok((real_price, _))), Some((passive_price, _))) => {
+                // Compare only the price since passive orders don't have an order ID.
+                let ordering_raw = real_price.cmp(passive_price);
+                let ordering = match self.iteration_order {
+                    IterationOrder::Ascending => ordering_raw,
+                    IterationOrder::Descending => ordering_raw.reverse(),
+                };
+
+                match ordering {
+                    Ordering::Less => self.next_real(),
+                    // In case of equal price we give the passive liquidity priority.
+                    _ => self.next_passive(),
+                }
+            },
+            (Some(Ok(_)), None) => self.next_real(),
+            (None, Some(_)) => self.next_passive(),
+            (None, None) => None,
+            (Some(Err(e)), _) => Some(Err(e.clone())),
         }
     }
 
@@ -54,25 +86,9 @@ where
     type Item = StdResult<(Udec128, Order)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.real.peek(), self.passive.peek()) {
-            (Some(Ok((real_price, _))), Some((passive_price, _))) => {
-                // Compare only the price since passive orders don't have an order ID.
-                let ordering_raw = real_price.cmp(passive_price);
-                let ordering = match self.iteration_order {
-                    IterationOrder::Ascending => ordering_raw,
-                    IterationOrder::Descending => ordering_raw.reverse(),
-                };
-
-                match ordering {
-                    Ordering::Less => self.next_real(),
-                    // In case of equal price we give the passive liquidity priority.
-                    _ => self.next_passive(),
-                }
-            },
-            (Some(Ok(_)), None) => self.next_real(),
-            (None, Some(_)) => self.next_passive(),
-            (None, None) => None,
-            (Some(Err(e)), _) => Some(Err(e.clone())),
+        match self.prepended.take() {
+            Some((price, order)) => Some(Ok((price, order))),
+            None => self._next(),
         }
     }
 }
