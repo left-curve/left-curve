@@ -278,20 +278,17 @@ fn swap_exact_amount_in(
         input.clone(),
     )?;
 
-    // Ensure the output after fee is above the minimum.
+    // Ensure the output is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
     if let Some(minimum_output) = minimum_output {
         ensure!(
             output.amount >= minimum_output,
-            "output amount after fee is below the minimum: {} < {}",
+            "output amount is below the minimum: {} < {}",
             output.amount,
             minimum_output
         );
     } else {
-        ensure!(
-            output.amount.is_non_zero(),
-            "output amount after fee is zero"
-        );
+        ensure!(output.amount.is_non_zero(), "output amount is zero");
     }
 
     // Save the updated pool reserves.
