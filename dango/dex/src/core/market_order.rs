@@ -151,8 +151,8 @@ where
                 max_price = limit_price.saturating_mul(one_add_max_slippage);
             } else {
                 match limit_orders.peek() {
-                    Some(Ok((price, _))) => {
-                        max_price = price.saturating_mul(one_add_max_slippage);
+                    Some(Ok((limit_price, _))) => {
+                        max_price = limit_price.saturating_mul(one_add_max_slippage);
                     },
                     Some(Err(e)) => return Err(e.clone().into()),
                     None => break,
@@ -199,7 +199,119 @@ where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<(Udec128, Order)>>,
 {
-    todo!();
+    let mut market_order_id;
+    let mut market_order;
+    let mut market_base_sold = Uint128::ZERO;
+    let mut market_quote_bought = Uint128::ZERO;
+    let mut limit_price;
+    let mut limit_order;
+    let mut limit_base_bought = Uint128::ZERO;
+    let mut limit_quote_sold = Uint128::ZERO;
+    let mut min_price;
+    let mut outcomes = HashMap::new();
+
+    match market_orders.next() {
+        Some(v) => (market_order_id, market_order) = v,
+        None => return Ok((outcomes, None)),
+    }
+
+    match limit_orders.next() {
+        Some(Ok(v)) => (limit_price, limit_order) = v,
+        Some(Err(e)) => return Err(e.clone().into()),
+        None => return Ok((outcomes, None)),
+    }
+
+    let one_sub_max_slippage = Udec128::ONE.saturating_sub(market_order.max_slippage);
+    min_price = limit_price.saturating_mul(one_sub_max_slippage);
+
+    loop {
+        let mut fill_amount = cmp::min(*limit_order.remaining(), market_order.remaining);
+
+        if limit_price < min_price {
+            let max_fillable_amount = market_quote_bought
+                .checked_sub(market_base_sold.checked_mul_dec_ceil(min_price)?)?
+                .checked_div_dec_floor(min_price - limit_price)?;
+
+            fill_amount = cmp::min(fill_amount, max_fillable_amount);
+        }
+
+        let fill_amount_in_quote = fill_amount.checked_mul_dec_ceil(limit_price)?;
+
+        market_order.fill(fill_amount)?;
+        market_base_sold.checked_add_assign(fill_amount)?;
+        market_quote_bought.checked_add_assign(fill_amount_in_quote)?;
+
+        limit_order.fill(fill_amount)?;
+        limit_base_bought.checked_add_assign(fill_amount)?;
+        limit_quote_sold.checked_add_assign(fill_amount_in_quote)?;
+
+        outcomes.insert(
+            ExtendedOrderId::User(market_order_id),
+            new_market_ask_filling_outcome(
+                market_order,
+                market_base_sold,
+                market_quote_bought,
+                taker_fee_rate, // Market orders are always takers.
+            )?,
+        );
+
+        outcomes.insert(
+            limit_order.extended_id(),
+            new_limit_bid_filling_outcome(
+                limit_order,
+                limit_base_bought,
+                limit_quote_sold,
+                limit_order_fee_rate(
+                    &limit_order,
+                    current_block_height,
+                    maker_fee_rate,
+                    taker_fee_rate,
+                ),
+            )?,
+        );
+
+        if market_order.remaining.is_zero() || limit_order.remaining().is_non_zero() {
+            match market_orders.next() {
+                Some(v) => {
+                    (market_order_id, market_order) = v;
+                    market_base_sold = Uint128::ZERO;
+                    market_quote_bought = Uint128::ZERO;
+                },
+                None => break,
+            }
+
+            let one_sub_max_slippage = Udec128::ONE.saturating_sub(market_order.max_slippage);
+            if limit_order.remaining().is_non_zero() {
+                min_price = limit_price.saturating_mul(one_sub_max_slippage);
+            } else {
+                match limit_orders.peek() {
+                    Some(Ok((limit_price, _))) => {
+                        min_price = limit_price.saturating_mul(one_sub_max_slippage);
+                    },
+                    Some(Err(e)) => return Err(e.clone().into()),
+                    None => break,
+                }
+            }
+        }
+
+        if limit_order.remaining().is_zero() {
+            match limit_orders.next() {
+                Some(Ok(v)) => {
+                    (limit_price, limit_order) = v;
+                    limit_base_bought = Uint128::ZERO;
+                    limit_quote_sold = Uint128::ZERO;
+                },
+                Some(Err(e)) => return Err(e.clone().into()),
+                None => break,
+            }
+        }
+    }
+
+    if limit_order.remaining().is_non_zero() {
+        Ok((outcomes, Some((limit_price, limit_order))))
+    } else {
+        Ok((outcomes, None))
+    }
 }
 
 fn new_market_bid_filling_outcome(
@@ -260,7 +372,7 @@ fn new_limit_bid_filling_outcome(
     Ok(FillingOutcome {
         order_direction: Direction::Bid,
         order,
-        filled: quote_sold,
+        filled: base_bought,
         clearing_price: Udec128::checked_from_ratio(quote_sold, base_bought)?,
         cleared: order.remaining().is_zero(),
         refund_base,
@@ -323,28 +435,21 @@ mod tests {
     };
 
     #[test_case(
-        vec![],
-        vec![],
-        hash_map! {},
-        None;
-        "nothing"
-    )]
-    #[test_case(
         vec![
             (1, MarketOrder {
                 user: Addr::mock(1),
                 id: 1,
                 amount: Uint128::new(200_000),
                 remaining: Uint128::new(200_000),
-                max_slippage: Udec128::ZERO,
+                max_slippage: Udec128::new_bps(50),
             }),
         ],
         vec![
             (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
                 id: 2,
                 price: Udec128::from_str("200").unwrap(),
-                amount: Uint128::new(1000),
-                remaining: Uint128::new(1000),
+                amount: Uint128::new(1_000),
+                remaining: Uint128::new(1_000),
             })),
         ],
         hash_map! {
@@ -355,12 +460,12 @@ mod tests {
                     id: 1,
                     amount: Uint128::new(200_000), // in quote
                     remaining: Uint128::ZERO,
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Udec128::new_bps(50),
                 }),
                 filled: Uint128::new(200_000),
                 clearing_price: Udec128::from_str("200").unwrap(),
                 cleared: true,
-                refund_base: Uint128::new(1000),
+                refund_base: Uint128::new(1_000),
                 refund_quote: Uint128::ZERO,
                 fee_base: Uint128::ZERO,
                 fee_quote: Uint128::ZERO,
@@ -591,4 +696,269 @@ mod tests {
         assert_eq!(outcomes, expected_outcomes);
         assert_eq!(left_over_limit_order, expected_left_over_limit_order);
     }
+
+    #[test_case(
+        vec![
+            (1, MarketOrder {
+                user: Addr::mock(1),
+                id: 1,
+                amount: Uint128::new(1_000),
+                remaining: Uint128::new(1_000),
+                max_slippage: Udec128::new_bps(50),
+            }),
+        ],
+        vec![
+            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+                id: 2,
+                price: Udec128::from_str("200").unwrap(),
+                amount: Uint128::new(1_000),
+                remaining: Uint128::new(1_000),
+            })),
+        ],
+        hash_map! {
+            ExtendedOrderId::User(1) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(1),
+                    id: 1,
+                    amount: Uint128::new(1_000), // in base
+                    remaining: Uint128::ZERO,
+                    max_slippage: Udec128::new_bps(50),
+                }),
+                filled: Uint128::new(1_000),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(1_000 * 200),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(2) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Passive(PassiveOrder {
+                    id: 2,
+                    price: Udec128::from_str("200").unwrap(),
+                    amount: Uint128::new(1_000),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(1_000),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::new(1_000),
+                refund_quote: Uint128::ZERO,
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+        },
+        None;
+        "1 limit order, 1 market order; exactly equal amounts"
+    )]
+    #[test_case(
+        vec![
+            (1, MarketOrder {
+                user: Addr::mock(1),
+                id: 1,
+                amount: Uint128::new(1_000),
+                remaining: Uint128::new(1_000),
+                max_slippage: Udec128::new_bps(50),
+            }),
+        ],
+        vec![
+            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+                id: 2,
+                price: Udec128::from_str("200").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+            (Udec128::from_str("195").unwrap(), Order::Passive(PassiveOrder {
+                id: 3,
+                price: Udec128::from_str("195").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+        ],
+        hash_map! {
+            ExtendedOrderId::User(1) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(1),
+                    id: 1,
+                    amount: Uint128::new(1_000), // in base
+                    remaining: Uint128::new(1_000 - 625),
+                    max_slippage: Udec128::new_bps(50),
+                }),
+                filled: Uint128::new(625),
+                clearing_price: Udec128::from_str("199").unwrap(),
+                cleared: false,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(500 * 200 + 125 * 195),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(2) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Passive(PassiveOrder {
+                    id: 2,
+                    price: Udec128::from_str("200").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(500),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::new(500),
+                refund_quote: Uint128::ZERO,
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(3) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Passive(PassiveOrder {
+                    id: 3,
+                    price: Udec128::from_str("195").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::new(500 - 125),
+                }),
+                filled: Uint128::new(125),
+                clearing_price: Udec128::from_str("195").unwrap(),
+                cleared: false,
+                refund_base: Uint128::new(125),
+                refund_quote: Uint128::ZERO,
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+        },
+        Some((Udec128::from_str("195").unwrap(), Order::Passive(PassiveOrder {
+            id: 3,
+            price: Udec128::from_str("195").unwrap(),
+            amount: Uint128::new(500),
+            remaining: Uint128::new(500 - 125),
+        })));
+        "2 limit orders, 1 market order; the 2nd limit order has left-over"
+    )]
+    #[test_case(
+        vec![
+            (1, MarketOrder {
+                user: Addr::mock(1),
+                id: 1,
+                amount: Uint128::new(1_000),
+                remaining: Uint128::new(1_000),
+                max_slippage: Udec128::new_bps(50),
+            }),
+            (4, MarketOrder {
+                user: Addr::mock(4),
+                id: 4,
+                amount: Uint128::new(1_000),
+                remaining: Uint128::new(1_000),
+                max_slippage: Udec128::new_bps(50),
+            }),
+        ],
+        vec![
+            (Udec128::from_str("200").unwrap(), Order::Passive(PassiveOrder {
+                id: 2,
+                price: Udec128::from_str("200").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+            (Udec128::from_str("195").unwrap(), Order::Passive(PassiveOrder {
+                id: 3,
+                price: Udec128::from_str("195").unwrap(),
+                amount: Uint128::new(500),
+                remaining: Uint128::new(500),
+            })),
+        ],
+        hash_map! {
+            ExtendedOrderId::User(1) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(1),
+                    id: 1,
+                    amount: Uint128::new(1_000), // in base
+                    remaining: Uint128::new(1_000 - 625),
+                    max_slippage: Udec128::new_bps(50),
+                }),
+                filled: Uint128::new(625),
+                clearing_price: Udec128::from_str("199").unwrap(),
+                cleared: false,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(500 * 200 + 125 * 195),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(2) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Passive(PassiveOrder {
+                    id: 2,
+                    price: Udec128::from_str("200").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(500),
+                clearing_price: Udec128::from_str("200").unwrap(),
+                cleared: true,
+                refund_base: Uint128::new(500),
+                refund_quote: Uint128::ZERO,
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::Passive(3) => FillingOutcome {
+                order_direction: Direction::Bid,
+                order: Order::Passive(PassiveOrder {
+                    id: 3,
+                    price: Udec128::from_str("195").unwrap(),
+                    amount: Uint128::new(500),
+                    remaining: Uint128::ZERO,
+                }),
+                filled: Uint128::new(500),
+                clearing_price: Udec128::from_str("195").unwrap(),
+                cleared: true,
+                refund_base: Uint128::new(500),
+                refund_quote: Uint128::ZERO,
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+            ExtendedOrderId::User(4) => FillingOutcome {
+                order_direction: Direction::Ask,
+                order: Order::Market(MarketOrder {
+                    user: Addr::mock(4),
+                    id: 4,
+                    amount: Uint128::new(1_000), // in base
+                    remaining: Uint128::new(1_000 - 375),
+                    max_slippage: Udec128::new_bps(50),
+                }),
+                filled: Uint128::new(375),
+                clearing_price: Udec128::from_str("195").unwrap(),
+                cleared: false,
+                refund_base: Uint128::ZERO,
+                refund_quote: Uint128::new(375 * 195),
+                fee_base: Uint128::ZERO,
+                fee_quote: Uint128::ZERO,
+            },
+        },
+        None;
+        "2 limit orders, 2 market orders; the 2nd market order has left-over"
+    )]
+    fn matching_market_asks_with_limit_bids(
+        market_orders: Vec<(OrderId, MarketOrder)>,
+        limit_orders: Vec<(Udec128, Order)>,
+        expected_outcomes: HashMap<ExtendedOrderId, FillingOutcome>,
+        expected_left_over_limit_order: Option<(Udec128, Order)>,
+    ) {
+        let mut market_orders = market_orders.into_iter();
+        let mut limit_orders = limit_orders.into_iter().map(Ok).peekable();
+
+        let (outcomes, left_over_limit_order) = match_market_asks_with_limit_bids(
+            &mut market_orders,
+            &mut limit_orders,
+            Udec128::ZERO,
+            Udec128::ZERO,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(outcomes, expected_outcomes);
+        assert_eq!(left_over_limit_order, expected_left_over_limit_order);
+    }
+
+    // TODO: add tests with non-zero fees.
 }
