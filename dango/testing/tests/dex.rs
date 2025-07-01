@@ -1374,6 +1374,57 @@ fn provide_liquidity(
         );
 }
 
+#[test]
+fn provide_liquidity_to_geometric_pool_shouwl_fail_without_oracle_price() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Update pair params
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Update pair params
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            pool_type: PassiveLiquidity::Geometric {
+                                order_spacing: Udec128::ONE,
+                                ratio: Bounded::new_unchecked(Udec128::ONE),
+                            },
+                        },
+                    }]),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Since there is no oracle price, liquidity provision should fail.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+                usdc::DENOM.clone() => 100_000,
+            },
+        )
+        .should_fail_with_error("data not found! type: (dango_types::oracle::price::Price");
+}
+
 #[test_case(
     Uint128::new(99),
     Udec128::new_permille(5),
