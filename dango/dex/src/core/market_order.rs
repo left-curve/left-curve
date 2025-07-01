@@ -4,11 +4,7 @@ use {
     grug::{
         IsZero, MathResult, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128,
     },
-    std::{
-        cmp::{self},
-        collections::HashMap,
-        iter::Peekable,
-    },
+    std::{cmp, collections::HashMap},
 };
 
 /// Match a series of market BUY orders against a series of limit SELL orders.
@@ -19,7 +15,7 @@ use {
 /// - If there's a limit order that has not been fully filled, returns this order.
 pub fn match_market_bids_with_limit_asks<M, L>(
     market_orders: &mut M,
-    limit_orders: &mut Peekable<L>,
+    limit_orders: &mut L,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
@@ -82,7 +78,6 @@ where
                 .checked_mul_dec_floor(max_price)?
                 .checked_sub(market_quote_sold)?
                 .checked_div_dec_floor(limit_price - max_price)?;
-
             fill_amount = cmp::min(fill_amount, max_fillable_amount);
         }
 
@@ -150,8 +145,11 @@ where
             if limit_order.remaining().is_non_zero() {
                 max_price = limit_price.saturating_mul(one_add_max_slippage);
             } else {
-                match limit_orders.peek() {
-                    Some(Ok((limit_price, _))) => {
+                match limit_orders.next() {
+                    Some(Ok(v)) => {
+                        (limit_price, limit_order) = v;
+                        limit_base_sold = Uint128::ZERO;
+                        limit_quote_bought = Uint128::ZERO;
                         max_price = limit_price.saturating_mul(one_add_max_slippage);
                     },
                     Some(Err(e)) => return Err(e.clone().into()),
@@ -187,7 +185,7 @@ where
 
 pub fn match_market_asks_with_limit_bids<M, L>(
     market_orders: &mut M,
-    limit_orders: &mut Peekable<L>,
+    limit_orders: &mut L,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
@@ -231,7 +229,6 @@ where
             let max_fillable_amount = market_quote_bought
                 .checked_sub(market_base_sold.checked_mul_dec_ceil(min_price)?)?
                 .checked_div_dec_floor(min_price - limit_price)?;
-
             fill_amount = cmp::min(fill_amount, max_fillable_amount);
         }
 
@@ -284,8 +281,11 @@ where
             if limit_order.remaining().is_non_zero() {
                 min_price = limit_price.saturating_mul(one_sub_max_slippage);
             } else {
-                match limit_orders.peek() {
-                    Some(Ok((limit_price, _))) => {
+                match limit_orders.next() {
+                    Some(Ok(v)) => {
+                        (limit_price, limit_order) = v;
+                        limit_base_bought = Uint128::ZERO;
+                        limit_quote_sold = Uint128::ZERO;
                         min_price = limit_price.saturating_mul(one_sub_max_slippage);
                     },
                     Some(Err(e)) => return Err(e.clone().into()),
