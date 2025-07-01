@@ -8,6 +8,15 @@ use {
     std::{cmp::Ordering, collections::BTreeMap, iter::Peekable},
 };
 
+/// Match and fill market orders against the limit order book. This consumes the
+/// market order iterator fully. If the limit order iterator is exhausted first
+/// all the remaining market orders are returned in the unmatched vector. If the
+/// market order iterator is exhausted first, the remaining limit orders are left
+/// untouched in the limit order iterator, so that they can be matched against other
+/// limit orders.
+///
+/// Returns a tuple containing the filling outcomes and all the market orders that
+/// were not filled.
 pub fn match_and_fill_market_orders<M, L>(
     market_orders: &mut Peekable<M>,
     limit_orders: &mut Peekable<L>,
@@ -15,12 +24,13 @@ pub fn match_and_fill_market_orders<M, L>(
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<Vec<FillingOutcome>>
+) -> anyhow::Result<(Vec<FillingOutcome>, Vec<MarketOrder>)>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
     let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
+    let mut unmatched_market_orders = Vec::new();
 
     // Match the market order to the opposite side of the resting limit order book.
     let limit_order_direction = -market_order_direction;
@@ -31,7 +41,7 @@ where
     let best_price = match limit_orders.peek_mut() {
         Some(Ok(((price, _), _))) => *price,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok(Vec::new()), // Return early if there are no limit orders
+        None => return Ok((Vec::new(), Vec::new())), // Return early if there are no limit orders
     };
 
     // Iterate over the limit orders and market orders until one of them is exhausted.
@@ -133,6 +143,28 @@ where
 
             market_order_amount_to_match_in_base
         };
+
+        // If the amount to match is zero, skip this market order as it cannot be filled
+        if market_order_amount_to_match_in_base.is_zero() {
+            let (_, unfillable_market_order) = market_orders.next().unwrap();
+            unmatched_market_orders.push(unfillable_market_order);
+            continue;
+        }
+
+        // If the resulting output of the match for a SELL market order is zero,
+        // we skip it because it cannot be filled.
+        match market_order_direction {
+            Direction::Ask
+                if market_order_amount_to_match_in_base
+                    .checked_mul_dec_floor(*price)?
+                    .is_zero() =>
+            {
+                let (_, unfillable_market_order) = market_orders.next().unwrap();
+                unmatched_market_orders.push(unfillable_market_order);
+                continue;
+            },
+            _ => {},
+        }
 
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
@@ -256,7 +288,13 @@ where
         )?;
     }
 
-    Ok(filling_outcomes.into_values().collect())
+    // Add any market orders that were left in the iterator after limit orders were exhausted
+    unmatched_market_orders.extend(market_orders.map(|(_, market_order)| market_order));
+
+    Ok((
+        filling_outcomes.into_values().collect(),
+        unmatched_market_orders,
+    ))
 }
 
 fn update_filling_outcome(

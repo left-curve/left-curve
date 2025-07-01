@@ -212,7 +212,7 @@ fn clear_orders_of_pair(
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
-    let market_bid_filling_outcomes = match_and_fill_market_orders(
+    let (market_bid_filling_outcomes, unmatched_market_bids) = match_and_fill_market_orders(
         &mut market_bids,
         &mut merged_ask_iter,
         Direction::Bid,
@@ -220,7 +220,7 @@ fn clear_orders_of_pair(
         taker_fee_rate,
         current_block_height,
     )?;
-    let market_ask_filling_outcomes = match_and_fill_market_orders(
+    let (market_ask_filling_outcomes, unmatched_market_asks) = match_and_fill_market_orders(
         &mut market_asks,
         &mut merged_bid_iter,
         Direction::Ask,
@@ -277,11 +277,11 @@ fn clear_orders_of_pair(
     // ----------------------- 5. Update contract state ------------------------
 
     // Loop over all unmatched market orders and refund the users
-    for (_, market_order) in market_bids {
+    for market_order in unmatched_market_bids {
         refunds.insert(market_order.user, quote_denom.clone(), market_order.amount)?;
     }
 
-    for (_, market_order) in market_asks {
+    for market_order in unmatched_market_asks {
         refunds.insert(market_order.user, base_denom.clone(), market_order.amount)?;
     }
 
