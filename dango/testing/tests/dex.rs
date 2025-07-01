@@ -5344,21 +5344,13 @@ fn market_order_resulting_in_zero_output_when_matched_is_correctly_refunded(
     // No matching could take place so both users should have unchanged balances
     // since before the market order was created.
     println!("user1 balance check");
-    // suite.balances().should_change(&accounts.user1, btree_map! {
-    //     eth::DENOM.clone() => BalanceChange::Unchanged,
-    //     usdc::DENOM.clone() => BalanceChange::Unchanged,
-    // });
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
     println!("user2 balance check");
     suite.balances().should_change(&accounts.user2, btree_map! {
         eth::DENOM.clone() => BalanceChange::Unchanged,
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     });
-}
-
-#[test]
-fn lol() {
-    let a = Udec128::new_bps(1);
-    let b = Uint128::new(10000);
-    let c = b.checked_mul_dec_floor(a).unwrap();
-    println!("c: {}", c);
 }
