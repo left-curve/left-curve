@@ -54,7 +54,7 @@ fn receiving_remote() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn sending_remote() {
-    let (mut suite, mut accounts, _, contracts, ..) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, context) = setup_test_with_indexer();
 
     const RECIPIENT: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");
@@ -131,27 +131,16 @@ async fn sending_remote() {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    let sql_context = suite
-        .app
-        .indexer
-        .context()
-        .data()
-        .lock()
-        .unwrap()
-        .get::<indexer_sql::Context>()
-        .expect("SQL context should be stored")
-        .clone();
-
     // The transfers should have been indexed.
     let blocks = indexer_sql::entity::blocks::Entity::find()
-        .all(&sql_context.db)
+        .all(&context.db)
         .await
         .expect("Can't fetch blocks");
 
     assert_that!(blocks).has_length(1);
 
     let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-        .all(&sql_context.db)
+        .all(&context.db)
         .await
         .expect("Can't fetch transfers");
 
