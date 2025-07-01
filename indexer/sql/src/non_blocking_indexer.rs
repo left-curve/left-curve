@@ -418,17 +418,15 @@ where
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        self.handle
-            .block_on(async {
-                self.context.migrate_db().await?;
-                self.hooks
-                    .start(self.context.clone())
-                    .await
-                    .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+        self.handle.block_on(async {
+            self.context.migrate_db().await?;
+            self.hooks
+                .start(self.context.clone())
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
 
-                Ok::<(), error::IndexerError>(())
-            })
-            .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
+            Ok::<(), error::IndexerError>(())
+        })?;
 
         match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
@@ -443,8 +441,7 @@ where
                     "Start called, found a previous block"
                 );
 
-                self.index_previous_unindexed_blocks(block.height)
-                    .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
+                self.index_previous_unindexed_blocks(block.height)?;
             },
         }
 
@@ -471,16 +468,14 @@ where
             sleep(Duration::from_millis(10));
         }
 
-        self.handle
-            .block_on(async {
-                self.hooks
-                    .shutdown()
-                    .await
-                    .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+        self.handle.block_on(async {
+            self.hooks
+                .shutdown()
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
 
-                Ok::<(), error::IndexerError>(())
-            })
-            .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
+            Ok::<(), error::IndexerError>(())
+        })?;
 
         #[cfg(feature = "tracing")]
         {
@@ -522,22 +517,23 @@ where
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
-        self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block.info.height, "`index_block` started");
+        Ok(
+            self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(block_height = block.info.height, "`index_block` started");
 
-            block_to_index.save_to_disk()?;
+                block_to_index.save_to_disk()?;
 
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block.info.height,
-                indexer_id = self.id,
-                "`index_block` finished"
-            );
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height = block.info.height,
+                    indexer_id = self.id,
+                    "`index_block` finished"
+                );
 
-            Ok(())
-        })
-        .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))
+                Ok(())
+            })?,
+        )
     }
 
     fn post_indexing(
@@ -553,9 +549,7 @@ where
         tracing::debug!(block_height, "`post_indexing` called");
 
         let context = self.context.clone();
-        let block_to_index = self
-            .find_or_fail(block_height)
-            .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
+        let block_to_index = self.find_or_fail(block_height)?;
         let blocks = self.blocks.clone();
         let keep_blocks = self.keep_blocks;
         let block_filename = self

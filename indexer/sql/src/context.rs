@@ -11,16 +11,6 @@ pub struct Context {
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
 }
 
-// Manual Debug implementation since PubSub trait object doesn't implement Debug
-impl std::fmt::Debug for Context {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Context")
-            .field("db", &"<DatabaseConnection>")
-            .field("pubsub", &"<PubSub>")
-            .finish()
-    }
-}
-
 impl Context {
     pub async fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
         Migrator::up(&self.db, None).await
