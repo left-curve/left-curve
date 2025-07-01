@@ -11,6 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
+import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
 import { Badge, Cell, IconChevronDown, IconEmptyStar, Table, Tabs } from "@left-curve/applets-kit";
@@ -22,7 +23,6 @@ import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTrade] = createContext<{
@@ -202,7 +202,9 @@ const ProTradeOrders: React.FC = () => {
     },
     {
       header: m["dex.protrade.spot.price"](),
-      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.price, quoteCoin.decimals)} />,
+      cell: ({ row }) => (
+        <Cell.Text text={parseUnits(row.original.price, baseCoin.decimals - quoteCoin.decimals)} />
+      ),
     },
     {
       id: "cancel-order",

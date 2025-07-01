@@ -7,7 +7,7 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
-import { formatUnits, parseUnits, Decimal } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 
@@ -61,7 +61,7 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
   );
 
   useEffect(() => {
-    const amount = Decimal(baseAmount).mul(ratio.data).toString()
+    const amount = Decimal(baseAmount).mul(ratio.data).toString();
     if (amount === quoteAmount) return;
     controllers.setValue("quoteAmount", amount);
   }, [baseAmount]);
@@ -101,8 +101,8 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
           quoteDenom: pair.quoteDenom,
           lpBurnAmount: "10000000000000000",
         });
-        const baseParseAmount = formatUnits(baseAmount, baseCoin.decimals);
-        const quoteParseAmount = formatUnits(quoteAmount, quoteCoin.decimals);
+      const baseParseAmount = formatUnits(baseAmount, baseCoin.decimals);
+      const quoteParseAmount = formatUnits(quoteAmount, quoteCoin.decimals);
 
       return Decimal(quoteParseAmount).div(baseParseAmount).toNumber();
     },
@@ -120,8 +120,8 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
           baseDenom: pair.baseDenom,
           quoteDenom: pair.quoteDenom,
           funds: {
-            [baseCoin.denom]: parseUnits(baseAmount, baseCoin.decimals).toString(),
-            [quoteCoin.denom]: parseUnits(quoteAmount, quoteCoin.decimals).toString(),
+            [baseCoin.denom]: parseUnits(baseAmount, baseCoin.decimals),
+            [quoteCoin.denom]: parseUnits(quoteAmount, quoteCoin.decimals),
           },
         });
       },
@@ -156,8 +156,14 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
 
   const withdrawAmount = useMemo(() => {
     if (!userLiquidity.data) return { base: "0", quote: "0" };
-    const baseAmount = Decimal(userLiquidity.data.innerBase).mul(withdrawPercent).div(100).toNumber();
-    const quoteAmount = Decimal(userLiquidity.data.innerQuote).mul(withdrawPercent).div(100).toNumber();
+    const baseAmount = Decimal(userLiquidity.data.innerBase)
+      .mul(withdrawPercent)
+      .div(100)
+      .toNumber();
+    const quoteAmount = Decimal(userLiquidity.data.innerQuote)
+      .mul(withdrawPercent)
+      .div(100)
+      .toNumber();
     return {
       base: baseAmount,
       quote: quoteAmount,

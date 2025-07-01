@@ -192,7 +192,7 @@ export const Deposit: React.FC = () => {
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
 
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
 
         await signingClient.registerAccount({
           sender: account!.address,
@@ -218,7 +218,7 @@ export const Deposit: React.FC = () => {
       params: { username },
       listener: async ({ accounts }) => {
         const account = accounts.at(0)!;
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
 
         await wait(300);
 
