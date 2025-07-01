@@ -414,21 +414,21 @@ impl<H> Indexer for NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
 {
-    type Error = crate::error::IndexerError;
-
-    fn start(&mut self, storage: &dyn Storage) -> error::Result<()> {
+    fn start(&mut self, storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
-        self.handle.block_on(async {
-            self.context.migrate_db().await?;
-            self.hooks
-                .start(self.context.clone())
-                .await
-                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+        self.handle
+            .block_on(async {
+                self.context.migrate_db().await?;
+                self.hooks
+                    .start(self.context.clone())
+                    .await
+                    .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
 
-            Ok::<(), error::IndexerError>(())
-        })?;
+                Ok::<(), error::IndexerError>(())
+            })
+            .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
 
         match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
@@ -443,7 +443,8 @@ where
                     "Start called, found a previous block"
                 );
 
-                self.index_previous_unindexed_blocks(block.height)?;
+                self.index_previous_unindexed_blocks(block.height)
+                    .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
             },
         }
 
@@ -452,7 +453,7 @@ where
         Ok(())
     }
 
-    fn shutdown(&mut self) -> error::Result<()> {
+    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -470,14 +471,16 @@ where
             sleep(Duration::from_millis(10));
         }
 
-        self.handle.block_on(async {
-            self.hooks
-                .shutdown()
-                .await
-                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+        self.handle
+            .block_on(async {
+                self.hooks
+                    .shutdown()
+                    .await
+                    .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
 
-            Ok::<(), error::IndexerError>(())
-        })?;
+                Ok::<(), error::IndexerError>(())
+            })
+            .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
 
         #[cfg(feature = "tracing")]
         {
@@ -493,17 +496,21 @@ where
         Ok(())
     }
 
-    fn pre_indexing(&self, _block_height: u64) -> error::Result<()> {
+    fn pre_indexing(&self, _block_height: u64) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            bail!("can't index after shutdown");
+            return Err(grug_app::IndexerError::NotRunning);
         }
 
         Ok(())
     }
 
-    fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> error::Result<()> {
+    fn index_block(
+        &self,
+        block: &Block,
+        block_outcome: &BlockOutcome,
+    ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            bail!("can't index after shutdown");
+            return Err(grug_app::IndexerError::NotRunning);
         }
 
         #[cfg(feature = "tracing")]
@@ -530,22 +537,25 @@ where
 
             Ok(())
         })
+        .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))
     }
 
     fn post_indexing(
         &self,
         block_height: u64,
         querier: Box<dyn QuerierProvider>,
-    ) -> error::Result<()> {
+    ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            bail!("can't index after shutdown");
+            return Err(grug_app::IndexerError::NotRunning);
         }
 
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
 
         let context = self.context.clone();
-        let block_to_index = self.find_or_fail(block_height)?;
+        let block_to_index = self
+            .find_or_fail(block_height)
+            .map_err(|e| grug_app::IndexerError::Generic(e.to_string()))?;
         let blocks = self.blocks.clone();
         let keep_blocks = self.keep_blocks;
         let block_filename = self

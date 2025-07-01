@@ -1,5 +1,5 @@
 use {
-    crate::{AppError, Indexer, QuerierProvider},
+    crate::{Indexer, IndexerError, IndexerResult, QuerierProvider},
     grug_types::{Block, BlockOutcome},
     std::{
         convert::Infallible,
@@ -12,25 +12,19 @@ use {
 pub struct NullIndexer;
 
 impl Indexer for NullIndexer {
-    type Error = NullIndexerError;
-
-    fn start(&mut self, _storage: &dyn grug_types::Storage) -> Result<(), Self::Error> {
+    fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         Ok(())
     }
 
-    fn shutdown(&mut self) -> Result<(), Self::Error> {
+    fn shutdown(&mut self) -> IndexerResult<()> {
         Ok(())
     }
 
-    fn pre_indexing(&self, _block_height: u64) -> Result<(), Self::Error> {
+    fn pre_indexing(&self, _block_height: u64) -> IndexerResult<()> {
         Ok(())
     }
 
-    fn index_block(
-        &self,
-        _block: &Block,
-        _block_outcome: &BlockOutcome,
-    ) -> Result<(), Self::Error> {
+    fn index_block(&self, _block: &Block, _block_outcome: &BlockOutcome) -> IndexerResult<()> {
         Ok(())
     }
 
@@ -38,7 +32,7 @@ impl Indexer for NullIndexer {
         &self,
         _block_height: u64,
         _querier: Box<dyn QuerierProvider>,
-    ) -> Result<(), Self::Error> {
+    ) -> IndexerResult<()> {
         Ok(())
     }
 
@@ -56,8 +50,8 @@ impl Display for NullIndexerError {
     }
 }
 
-impl From<NullIndexerError> for AppError {
+impl From<NullIndexerError> for IndexerError {
     fn from(err: NullIndexerError) -> Self {
-        AppError::Indexer(err.to_string())
+        IndexerError::Generic(err.to_string())
     }
 }

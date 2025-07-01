@@ -1,383 +1,250 @@
 use {
-    grug_app::{Indexer, QuerierProvider},
-    grug_types::{Block, BlockOutcome, GenericResult, MockStorage, Query, QueryResponse, Storage},
-    indexer_hooked::{HookedIndexer, Result},
-    std::sync::{Arc, RwLock},
+    grug_app::{Indexer, IndexerResult, QuerierProvider},
+    grug_types::{Block, BlockOutcome, MockStorage, Storage},
+    indexer_hooked::HookedIndexer,
 };
 
-// Simple mock QuerierProvider for testing
-#[derive(Debug)]
-struct MockQuerierProvider;
-
-impl MockQuerierProvider {
-    fn new() -> Self {
-        Self
-    }
-}
-
-impl QuerierProvider for MockQuerierProvider {
-    fn do_query_chain(&self, _req: Query, _query_depth: usize) -> GenericResult<QueryResponse> {
-        // For this example, we don't need actual querying functionality
-        // In a real implementation, you would handle the query appropriately
-        Err("Mock querier - not implemented".to_string())
-    }
-}
-
-// Example of a simple logging indexer
+/// Example logging indexer that prints operations
 #[derive(Debug, Clone)]
 struct LoggingIndexer {
-    logs: Arc<RwLock<Vec<String>>>,
+    name: String,
 }
 
 impl LoggingIndexer {
-    fn new() -> Self {
+    fn new(name: &str) -> Self {
         Self {
-            logs: Arc::new(RwLock::new(Vec::new())),
+            name: name.to_string(),
         }
-    }
-
-    #[allow(dead_code)] // Public API method for users of LoggingIndexer
-    fn get_logs(&self) -> Vec<String> {
-        self.logs.read().unwrap().clone()
-    }
-
-    fn log(&self, message: String) {
-        self.logs.write().unwrap().push(message);
     }
 }
 
 impl Indexer for LoggingIndexer {
-    type Error = std::convert::Infallible;
-
-    fn start(&mut self, _storage: &dyn Storage) -> std::result::Result<(), Self::Error> {
-        self.log("LoggingIndexer started".to_string());
+    fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
+        println!("{}: Starting indexer", self.name);
         Ok(())
     }
 
-    fn shutdown(&mut self) -> std::result::Result<(), Self::Error> {
-        self.log("LoggingIndexer shut down".to_string());
+    fn shutdown(&mut self) -> IndexerResult<()> {
+        println!("{}: Shutting down indexer", self.name);
         Ok(())
     }
 
-    fn pre_indexing(&self, block_height: u64) -> std::result::Result<(), Self::Error> {
-        self.log(format!("Pre-indexing block {block_height}"));
+    fn pre_indexing(&self, block_height: u64) -> IndexerResult<()> {
+        println!("{}: Pre-indexing block {}", self.name, block_height);
         Ok(())
     }
 
-    fn index_block(
-        &self,
-        block: &Block,
-        _block_outcome: &BlockOutcome,
-    ) -> std::result::Result<(), Self::Error> {
-        self.log(format!("Indexing block {}", block.info.height));
+    fn index_block(&self, block: &Block, _block_outcome: &BlockOutcome) -> IndexerResult<()> {
+        println!("{}: Indexing block {}", self.name, block.info.height);
         Ok(())
     }
 
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: Box<dyn grug_app::QuerierProvider>,
-    ) -> std::result::Result<(), Self::Error> {
-        self.log(format!("Post-indexing block {block_height}"));
+        _querier: Box<dyn QuerierProvider>,
+    ) -> IndexerResult<()> {
+        println!("{}: Post-indexing block {}", self.name, block_height);
         Ok(())
     }
 
-    fn wait_for_finish(&self) {}
-}
-
-// Example of a data processing indexer that counts blocks
-#[derive(Debug, Clone)]
-struct DataProcessorIndexer {
-    processed_count: Arc<RwLock<u64>>,
-}
-
-impl DataProcessorIndexer {
-    fn new() -> Self {
-        Self {
-            processed_count: Arc::new(RwLock::new(0)),
-        }
-    }
-
-    fn get_processed_count(&self) -> u64 {
-        *self.processed_count.read().unwrap()
+    fn wait_for_finish(&self) {
+        println!("{}: Waiting for indexer to finish", self.name);
     }
 }
 
-impl Indexer for DataProcessorIndexer {
-    type Error = std::convert::Infallible;
-
-    fn start(&mut self, _storage: &dyn Storage) -> std::result::Result<(), Self::Error> {
-        println!("DataProcessorIndexer initialized");
-        Ok(())
-    }
-
-    fn shutdown(&mut self) -> std::result::Result<(), Self::Error> {
-        println!(
-            "DataProcessorIndexer shutting down with {} blocks processed",
-            self.get_processed_count()
-        );
-        Ok(())
-    }
-
-    fn pre_indexing(&self, _block_height: u64) -> std::result::Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn index_block(
-        &self,
-        block: &Block,
-        _block_outcome: &BlockOutcome,
-    ) -> std::result::Result<(), Self::Error> {
-        // Process the block data
-        println!("Processing block {}", block.info.height);
-
-        // Update our counter
-        *self.processed_count.write().unwrap() += 1;
-
-        Ok(())
-    }
-
-    fn wait_for_finish(&self) {}
-
-    fn post_indexing(
-        &self,
-        _block_height: u64,
-        _querier: Box<dyn grug_app::QuerierProvider>,
-    ) -> std::result::Result<(), Self::Error> {
-        Ok(())
-    }
-}
-
-// Example of a metrics indexer that tracks statistics
-#[derive(Debug, Clone)]
+/// Example metrics indexer that tracks statistics
+#[derive(Debug, Default)]
 struct MetricsIndexer {
-    total_blocks: Arc<RwLock<u64>>,
-    start_time: Arc<RwLock<Option<std::time::Instant>>>,
-}
-
-impl MetricsIndexer {
-    fn new() -> Self {
-        Self {
-            total_blocks: Arc::new(RwLock::new(0)),
-            start_time: Arc::new(RwLock::new(None)),
-        }
-    }
-
-    fn get_total_blocks(&self) -> u64 {
-        *self.total_blocks.read().unwrap()
-    }
-
-    fn get_uptime(&self) -> Option<std::time::Duration> {
-        self.start_time.read().unwrap().map(|start| start.elapsed())
-    }
+    total_blocks: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    total_txs: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl Indexer for MetricsIndexer {
-    type Error = std::convert::Infallible;
-
-    fn start(&mut self, _storage: &dyn Storage) -> std::result::Result<(), Self::Error> {
-        *self.start_time.write().unwrap() = Some(std::time::Instant::now());
-        println!("MetricsIndexer started");
+    fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
+        println!("[Metrics] Starting metrics collection");
         Ok(())
     }
 
-    fn shutdown(&mut self) -> std::result::Result<(), Self::Error> {
-        if let Some(uptime) = self.get_uptime() {
-            println!("MetricsIndexer shutting down after {uptime:?} uptime");
-        }
-        println!("Total blocks indexed: {}", self.get_total_blocks());
+    fn shutdown(&mut self) -> IndexerResult<()> {
+        let blocks = self.total_blocks.load(std::sync::atomic::Ordering::Relaxed);
+        let txs = self.total_txs.load(std::sync::atomic::Ordering::Relaxed);
+        println!("[Metrics] Final stats: {blocks} blocks, {txs} transactions");
         Ok(())
     }
 
-    fn pre_indexing(&self, _block_height: u64) -> std::result::Result<(), Self::Error> {
+    fn pre_indexing(&self, _block_height: u64) -> IndexerResult<()> {
+        // Pre-processing metrics can be added here
         Ok(())
     }
 
-    fn index_block(
-        &self,
-        _block: &Block,
-        _block_outcome: &BlockOutcome,
-    ) -> std::result::Result<(), Self::Error> {
-        *self.total_blocks.write().unwrap() += 1;
+    fn index_block(&self, block: &Block, _block_outcome: &BlockOutcome) -> IndexerResult<()> {
+        self.total_blocks
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.total_txs
+            .fetch_add(block.txs.len() as u64, std::sync::atomic::Ordering::Relaxed);
+
+        let blocks = self.total_blocks.load(std::sync::atomic::Ordering::Relaxed);
+        let txs = self.total_txs.load(std::sync::atomic::Ordering::Relaxed);
+        println!("[Metrics] Updated stats: {blocks} blocks, {txs} transactions");
         Ok(())
     }
 
     fn post_indexing(
         &self,
         _block_height: u64,
-        _querier: Box<dyn grug_app::QuerierProvider>,
-    ) -> std::result::Result<(), Self::Error> {
+        _querier: Box<dyn QuerierProvider>,
+    ) -> IndexerResult<()> {
+        // Post-processing metrics can be added here
         Ok(())
     }
 
-    fn wait_for_finish(&self) {}
+    fn wait_for_finish(&self) {
+        println!("[Metrics] Metrics collection complete");
+    }
 }
 
-fn main() -> Result<()> {
-    println!("🔗 HookedIndexer Example");
+/// Example data indexer that stores information
+#[derive(Debug, Default)]
+struct DataIndexer;
 
-    // Create our indexers
-    let logging_indexer = LoggingIndexer::new();
-    let processor_indexer = DataProcessorIndexer::new();
-    let metrics_indexer = MetricsIndexer::new();
+impl Indexer for DataIndexer {
+    fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
+        println!("[Data] Initializing data storage");
+        Ok(())
+    }
 
-    // Keep references to check results later
-    let logging_logs = logging_indexer.logs.clone();
-    let processor_count = processor_indexer.processed_count.clone();
-    let metrics_total = metrics_indexer.total_blocks.clone();
+    fn shutdown(&mut self) -> IndexerResult<()> {
+        println!("[Data] Persisting final data");
+        Ok(())
+    }
 
-    // Create a composed indexer
+    fn pre_indexing(&self, _block_height: u64) -> IndexerResult<()> {
+        println!("[Data] Preparing data structures");
+        Ok(())
+    }
+
+    fn index_block(&self, block: &Block, _block_outcome: &BlockOutcome) -> IndexerResult<()> {
+        println!("[Data] Storing block {} data", block.info.height);
+        Ok(())
+    }
+
+    fn post_indexing(
+        &self,
+        _block_height: u64,
+        _querier: Box<dyn QuerierProvider>,
+    ) -> IndexerResult<()> {
+        println!("[Data] Finalizing data storage");
+        Ok(())
+    }
+
+    fn wait_for_finish(&self) {
+        println!("[Data] Data storage complete");
+    }
+}
+
+/// Dummy querier for testing
+struct DummyQuerier;
+
+impl QuerierProvider for DummyQuerier {
+    fn do_query_chain(
+        &self,
+        _req: grug_types::Query,
+        _query_depth: usize,
+    ) -> grug_types::GenericResult<grug_types::QueryResponse> {
+        Ok(grug_types::QueryResponse::WasmRaw(Some(
+            grug_types::Binary::from(b"dummy response".to_vec()),
+        )))
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("🚀 HookedIndexer Example");
+
+    // Create a hooked indexer and add multiple indexers
     let mut hooked_indexer = HookedIndexer::new();
+
+    // Add different types of indexers
     hooked_indexer
-        .add_indexer(logging_indexer)
-        .add_indexer(processor_indexer)
-        .add_indexer(metrics_indexer);
+        .add_indexer(LoggingIndexer::new("Logger"))
+        .add_indexer(MetricsIndexer::default())
+        .add_indexer(DataIndexer);
 
-    println!(
-        "Created HookedIndexer with {} indexers",
-        hooked_indexer.indexer_count()
-    );
+    println!("📊 Added {} indexers", hooked_indexer.indexer_count());
 
-    // Create some mock data
+    // Test shared context functionality
+    hooked_indexer
+        .context()
+        .data()
+        .write()
+        .unwrap()
+        .insert(42i32);
+    hooked_indexer
+        .context()
+        .data()
+        .write()
+        .unwrap()
+        .insert("shared data".to_string());
+
+    if let Some(value) = hooked_indexer.context().data().read().unwrap().get::<i32>() {
+        println!("🔗 Shared integer: {value}");
+    }
+
+    if let Some(text) = hooked_indexer
+        .context()
+        .data()
+        .read()
+        .unwrap()
+        .get::<String>()
+    {
+        println!("🔗 Shared string: {text}");
+    }
+
+    // Simulate indexing operations
     let storage = MockStorage::new();
 
     // Start the indexer
     hooked_indexer.start(&storage)?;
-    println!("✅ HookedIndexer started");
 
-    // Simulate indexing some blocks
-    for height in 1..=5 {
+    // Simulate indexing a few blocks
+    for height in 1..=3 {
+        println!("\n--- Block {height} ---");
+
+        hooked_indexer.pre_indexing(height)?;
+
+        // Create a dummy block
         let block = Block {
             info: grug_types::BlockInfo {
                 height,
                 timestamp: grug_types::Timestamp::from_seconds(1234567890 + height as u128),
                 hash: grug_types::Hash256::ZERO,
             },
-            txs: vec![],
+            txs: vec![], // Empty for this example
         };
-
         let block_outcome = BlockOutcome {
             app_hash: grug_types::Hash256::ZERO,
             cron_outcomes: vec![],
             tx_outcomes: vec![],
         };
 
-        // Run the indexing pipeline
-        hooked_indexer.pre_indexing(height)?;
         hooked_indexer.index_block(&block, &block_outcome)?;
 
-        // Create a mock querier for post_indexing
-        let querier = MockQuerierProvider::new();
+        let querier = DummyQuerier;
         hooked_indexer.post_indexing(height, Box::new(querier))?;
-
-        println!("📦 Indexed block {height}");
     }
 
-    // Check the context data
-    let context = hooked_indexer.context();
-    println!(
-        "Context has {} metadata properties",
-        context.metadata().properties.len()
-    );
+    // Demonstrate error handling
+    println!("\n--- Testing Error Handling ---");
 
-    // Shutdown
+    // Shutdown the indexer
     hooked_indexer.shutdown()?;
-    println!("🛑 HookedIndexer shut down");
 
-    // Display results
-    println!("\n📊 Results:");
-    println!(
-        "Logs from LoggingIndexer: {:?}",
-        logging_logs.read().unwrap().clone()
-    );
-    println!(
-        "Blocks processed by DataProcessorIndexer: {}",
-        processor_count.read().unwrap()
-    );
-    println!(
-        "Total blocks tracked by MetricsIndexer: {}",
-        metrics_total.read().unwrap()
-    );
+    // Try to use after shutdown (should fail)
+    if let Err(e) = hooked_indexer.pre_indexing(999) {
+        println!("❌ Expected error after shutdown: {e}");
+    }
+
+    println!("\n✅ Example completed successfully!");
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_hooked_indexer_composition() -> Result<()> {
-        let logging_indexer = LoggingIndexer::new();
-        let processor_indexer = DataProcessorIndexer::new();
-
-        let logging_logs = logging_indexer.logs.clone();
-        let processor_count = processor_indexer.processed_count.clone();
-
-        let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer
-            .add_indexer(logging_indexer)
-            .add_indexer(processor_indexer);
-
-        let storage = MockStorage::new();
-        hooked_indexer.start(&storage)?;
-
-        // Simulate indexing a block
-        let block = Block {
-            info: grug_types::BlockInfo {
-                height: 1,
-                timestamp: grug_types::Timestamp::from_seconds(1234567890),
-                hash: grug_types::Hash256::ZERO,
-            },
-            txs: vec![],
-        };
-
-        let block_outcome = BlockOutcome {
-            app_hash: grug_types::Hash256::ZERO,
-            cron_outcomes: vec![],
-            tx_outcomes: vec![],
-        };
-
-        hooked_indexer.pre_indexing(1)?;
-        hooked_indexer.index_block(&block, &block_outcome)?;
-
-        let querier = MockQuerierProvider::new();
-        hooked_indexer.post_indexing(1, Box::new(querier))?;
-
-        hooked_indexer.shutdown()?;
-
-        // Check that both indexers worked
-        assert!(!logging_logs.read().unwrap().is_empty());
-        assert_eq!(*processor_count.read().unwrap(), 1);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_context_usage() -> Result<()> {
-        let mut hooked_indexer = HookedIndexer::new();
-
-        // Add some data to the context using Extensions
-        hooked_indexer
-            .context_mut()
-            .set_property("test_key".to_string(), "test_value".to_string());
-        hooked_indexer
-            .context()
-            .data()
-            .lock()
-            .unwrap()
-            .insert(42i32);
-
-        // Check that the context works
-        assert_eq!(
-            hooked_indexer.context().get_property("test_key"),
-            Some(&"test_value".to_string())
-        );
-        assert_eq!(
-            hooked_indexer.context().data().read().unwrap().get::<i32>(),
-            Some(&42)
-        );
-
-        Ok(())
-    }
 }

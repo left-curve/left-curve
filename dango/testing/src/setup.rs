@@ -279,7 +279,7 @@ where
     VM: Vm + GenesisCodes + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     let local_domain = genesis_opt.hyperlane.local_domain;
 

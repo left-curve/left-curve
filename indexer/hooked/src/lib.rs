@@ -1,4 +1,7 @@
-use {grug_app::Indexer, grug_types::Storage};
+use {
+    grug_app::{Indexer, IndexerResult},
+    grug_types::Storage,
+};
 
 // Re-export modules for easier access
 pub mod context;
@@ -7,79 +10,14 @@ pub mod error;
 pub use {
     context::IndexerContext,
     error::{HookedIndexerError, Result},
+    grug_app::IndexerError,
 };
-
-/// Simple adapter that wraps an indexer with error conversion
-struct SimpleIndexerAdapter<I> {
-    indexer: std::sync::Mutex<I>,
-}
-
-impl<I> SimpleIndexerAdapter<I> {
-    fn new(indexer: I) -> Self {
-        Self {
-            indexer: std::sync::Mutex::new(indexer),
-        }
-    }
-}
-
-unsafe impl<I> Send for SimpleIndexerAdapter<I> where I: Send {}
-unsafe impl<I> Sync for SimpleIndexerAdapter<I> where I: Send + Sync {}
-
-impl<I> Indexer for SimpleIndexerAdapter<I>
-where
-    I: Indexer + Send + Sync,
-    I::Error: Into<HookedIndexerError>,
-{
-    type Error = HookedIndexerError;
-
-    fn start(&mut self, storage: &dyn Storage) -> Result<()> {
-        let mut indexer = self.indexer.lock().unwrap();
-        indexer.start(storage).map_err(|e| e.into())
-    }
-
-    fn shutdown(&mut self) -> Result<()> {
-        let mut indexer = self.indexer.lock().unwrap();
-        indexer.shutdown().map_err(|e| e.into())
-    }
-
-    fn pre_indexing(&self, block_height: u64) -> Result<()> {
-        let indexer = self.indexer.lock().unwrap();
-        indexer.pre_indexing(block_height).map_err(|e| e.into())
-    }
-
-    fn index_block(
-        &self,
-        block: &grug_types::Block,
-        block_outcome: &grug_types::BlockOutcome,
-    ) -> Result<()> {
-        let indexer = self.indexer.lock().unwrap();
-        indexer
-            .index_block(block, block_outcome)
-            .map_err(|e| e.into())
-    }
-
-    fn post_indexing(
-        &self,
-        block_height: u64,
-        querier: Box<dyn grug_app::QuerierProvider>,
-    ) -> Result<()> {
-        let indexer = self.indexer.lock().unwrap();
-        indexer
-            .post_indexing(block_height, querier)
-            .map_err(|e| e.into())
-    }
-
-    fn wait_for_finish(&self) {
-        let indexer = self.indexer.lock().unwrap();
-        indexer.wait_for_finish();
-    }
-}
 
 /// A composable indexer that can own multiple indexers and coordinate between them
 pub struct HookedIndexer {
-    /// List of registered indexers with error conversion
-    indexers: Vec<Box<dyn Indexer<Error = HookedIndexerError> + Send + Sync>>,
-    /// Shared context that gets passed to middleware (not directly to indexers)
+    /// List of registered indexers - no wrappers needed!
+    indexers: Vec<Box<dyn Indexer + Send + Sync>>,
+    /// Shared context for data sharing between indexers
     context: IndexerContext,
     /// Whether the indexer is currently running
     is_running: bool,
@@ -98,10 +36,8 @@ impl HookedIndexer {
     pub fn add_indexer<I>(&mut self, indexer: I) -> &mut Self
     where
         I: Indexer + Send + Sync + 'static,
-        I::Error: Into<HookedIndexerError>,
     {
-        let adapter = SimpleIndexerAdapter::new(indexer);
-        self.indexers.push(Box::new(adapter));
+        self.indexers.push(Box::new(indexer));
         self
     }
 
@@ -133,11 +69,9 @@ impl Default for HookedIndexer {
 }
 
 impl Indexer for HookedIndexer {
-    type Error = HookedIndexerError;
-
-    fn start(&mut self, storage: &dyn Storage) -> Result<()> {
+    fn start(&mut self, storage: &dyn Storage) -> IndexerResult<()> {
         if self.is_running {
-            return Err(HookedIndexerError::AlreadyRunning);
+            return Err(grug_app::IndexerError::AlreadyRunning);
         }
 
         // Initialize context
@@ -153,7 +87,7 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
-    fn shutdown(&mut self) -> Result<()> {
+    fn shutdown(&mut self) -> IndexerResult<()> {
         if !self.is_running {
             return Ok(()); // Already shut down
         }
@@ -169,15 +103,15 @@ impl Indexer for HookedIndexer {
         self.is_running = false;
 
         if !errors.is_empty() {
-            return Err(HookedIndexerError::Multiple(errors));
+            return Err(grug_app::IndexerError::Multiple(errors));
         }
 
         Ok(())
     }
 
-    fn pre_indexing(&self, block_height: u64) -> Result<()> {
+    fn pre_indexing(&self, block_height: u64) -> IndexerResult<()> {
         if !self.is_running {
-            return Err(HookedIndexerError::NotRunning);
+            return Err(grug_app::IndexerError::NotRunning);
         }
 
         for indexer in &self.indexers {
@@ -191,9 +125,9 @@ impl Indexer for HookedIndexer {
         &self,
         block: &grug_types::Block,
         block_outcome: &grug_types::BlockOutcome,
-    ) -> Result<()> {
+    ) -> IndexerResult<()> {
         if !self.is_running {
-            return Err(HookedIndexerError::NotRunning);
+            return Err(grug_app::IndexerError::NotRunning);
         }
 
         for indexer in &self.indexers {
@@ -207,9 +141,9 @@ impl Indexer for HookedIndexer {
         &self,
         block_height: u64,
         querier: Box<dyn grug_app::QuerierProvider>,
-    ) -> Result<()> {
+    ) -> IndexerResult<()> {
         if !self.is_running {
-            return Err(HookedIndexerError::NotRunning);
+            return Err(grug_app::IndexerError::NotRunning);
         }
 
         // We need to clone the querier for each indexer since they each take ownership
@@ -261,10 +195,7 @@ mod tests {
         super::*,
         grug_app::{Indexer, QuerierProvider},
         grug_types::{Block, BlockOutcome, MockStorage, Storage},
-        std::{
-            convert::Infallible,
-            sync::{Arc, RwLock},
-        },
+        std::sync::{Arc, RwLock},
     };
 
     #[derive(Debug, Clone)]
@@ -290,28 +221,22 @@ mod tests {
     }
 
     impl Indexer for TestIndexer {
-        type Error = Infallible;
-
-        fn start(&mut self, _storage: &dyn Storage) -> std::result::Result<(), Self::Error> {
+        fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
             self.record_call("start");
             Ok(())
         }
 
-        fn shutdown(&mut self) -> std::result::Result<(), Self::Error> {
+        fn shutdown(&mut self) -> IndexerResult<()> {
             self.record_call("shutdown");
             Ok(())
         }
 
-        fn pre_indexing(&self, _block_height: u64) -> std::result::Result<(), Self::Error> {
+        fn pre_indexing(&self, _block_height: u64) -> IndexerResult<()> {
             self.record_call("pre_indexing");
             Ok(())
         }
 
-        fn index_block(
-            &self,
-            _block: &Block,
-            _block_outcome: &BlockOutcome,
-        ) -> std::result::Result<(), Self::Error> {
+        fn index_block(&self, _block: &Block, _block_outcome: &BlockOutcome) -> IndexerResult<()> {
             self.record_call("index_block");
             Ok(())
         }
@@ -320,7 +245,7 @@ mod tests {
             &self,
             _block_height: u64,
             _querier: Box<dyn QuerierProvider>,
-        ) -> std::result::Result<(), Self::Error> {
+        ) -> IndexerResult<()> {
             self.record_call("post_indexing");
             Ok(())
         }
@@ -380,7 +305,10 @@ mod tests {
         hooked_indexer.start(&storage).unwrap();
         let result = hooked_indexer.start(&storage);
 
-        assert!(matches!(result, Err(HookedIndexerError::AlreadyRunning)));
+        assert!(matches!(
+            result,
+            Err(grug_app::IndexerError::AlreadyRunning)
+        ));
     }
 
     #[test]
@@ -388,7 +316,7 @@ mod tests {
         let hooked_indexer = HookedIndexer::new();
 
         let result = hooked_indexer.pre_indexing(1);
-        assert!(matches!(result, Err(HookedIndexerError::NotRunning)));
+        assert!(matches!(result, Err(grug_app::IndexerError::NotRunning)));
     }
 
     #[test]

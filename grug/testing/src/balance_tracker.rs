@@ -31,7 +31,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     /// Record the current balance of a list of accounts.
     pub fn record_many<'a, I, A>(&mut self, accounts: I)

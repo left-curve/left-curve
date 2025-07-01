@@ -33,7 +33,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer + Send + Sync + 'static,
     ID: Indexer + Send + Sync + 'static,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn new(suite: TestSuite<DB, VM, PP, ID>, block_mode: BlockCreation) -> Self {
         let suite = Arc::new(Mutex::new(suite));
@@ -114,7 +114,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer + Send + Sync,
     ID: Indexer + Send + Sync,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = anyhow::Error;
     type Proof = grug_types::Proof;
@@ -232,7 +232,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer + Send + Sync,
     ID: Indexer + Send + Sync,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = anyhow::Error;
 
@@ -305,7 +305,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     let outcome = suite.make_block(tx);
     index(index_txs, index_blocks, outcome, suite.block).await

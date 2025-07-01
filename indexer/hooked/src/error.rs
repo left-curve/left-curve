@@ -75,6 +75,17 @@ impl<E: ToString + std::fmt::Debug> IntoHookedIndexerError for E {
 
 impl From<HookedIndexerError> for grug_app::AppError {
     fn from(err: HookedIndexerError) -> Self {
-        grug_app::AppError::Indexer(err.to_string())
+        let indexer_error = match err {
+            HookedIndexerError::AlreadyRunning => grug_app::IndexerError::AlreadyRunning,
+            HookedIndexerError::NotRunning => grug_app::IndexerError::NotRunning,
+            HookedIndexerError::Hook(msg) => grug_app::IndexerError::Hook(msg),
+            HookedIndexerError::Multiple(errors) => grug_app::IndexerError::Multiple(errors),
+            HookedIndexerError::Generic(msg) => grug_app::IndexerError::Generic(msg),
+            HookedIndexerError::Storage(msg) => grug_app::IndexerError::Storage(msg),
+            HookedIndexerError::Serialization(msg) => grug_app::IndexerError::Serialization(msg),
+            HookedIndexerError::Io(msg) => grug_app::IndexerError::Io(msg),
+            HookedIndexerError::Config(msg) => grug_app::IndexerError::Config(msg),
+        };
+        grug_app::AppError::Indexer(indexer_error)
     }
 }

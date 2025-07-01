@@ -38,7 +38,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer + Send + Sync + 'static,
     ID: Indexer + Send + Sync + 'static,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
         Ok(self.do_query_app(raw_req, height.unwrap_or(0), false)?)

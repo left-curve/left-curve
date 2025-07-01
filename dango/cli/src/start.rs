@@ -8,7 +8,7 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk_lite::DiskDbLite,
     grug_types::{GIT_COMMIT, HashExt},
@@ -18,7 +18,7 @@ use {
     indexer_httpd::context::Context as IndexerContext,
     indexer_sql::non_blocking_indexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::{fmt::Debug, sync::Arc, time},
+    std::{sync::Arc, time},
     tokio::signal::unix::{SignalKind, signal},
     tower::ServiceBuilder,
     tower_abci::v038::{Server, split},
@@ -236,8 +236,6 @@ impl StartCmd {
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
-        ID::Error: Debug,
-        AppError: From<ID::Error>,
     {
         indexer
             .start(&db.state_storage(None)?)
