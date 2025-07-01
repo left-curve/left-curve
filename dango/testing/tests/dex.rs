@@ -1,4 +1,5 @@
 use {
+    dango_oracle::{PRICE_SOURCES, PRICES},
     dango_testing::{BridgeOp, TestOption, setup_test_naive},
     dango_types::{
         account::single::Params,
@@ -11,7 +12,7 @@ use {
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
         },
         gateway::Remote,
-        oracle::{self, PriceSource},
+        oracle::{self, PrecisionlessPrice, PriceSource},
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
@@ -20,6 +21,7 @@ use {
         coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
+    pyth_types::constants::USDC_USD_ID,
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -1422,7 +1424,9 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 100_000,
             },
         )
-        .should_fail_with_error("data not found! type: (dango_types::oracle::price::Price");
+        .should_fail_with_error(StdError::data_not_found::<(PrecisionlessPrice, u64)>(
+            PRICES.path(USDC_USD_ID).storage_key(),
+        ));
 }
 
 #[test_case(
@@ -2304,9 +2308,9 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 dango::DENOM.clone() => 1000000,
             },
         )
-        .should_fail_with_error(
-            "data not found! type: dango_types::oracle::price_source::PriceSource",
-        );
+        .should_fail_with_error(StdError::data_not_found::<PriceSource>(
+            PRICE_SOURCES.path(&dango::DENOM).storage_key(),
+        ));
 
     // Ensure swap exact amount out fails
     suite
@@ -2324,9 +2328,9 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 1000000,
             },
         )
-        .should_fail_with_error(
-            "data not found! type: dango_types::oracle::price_source::PriceSource",
-        );
+        .should_fail_with_error(StdError::data_not_found::<PriceSource>(
+            PRICE_SOURCES.path(&dango::DENOM).storage_key(),
+        ));
 }
 
 #[test_case(
