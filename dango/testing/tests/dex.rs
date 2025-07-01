@@ -5360,3 +5360,76 @@ fn market_order_clearing(
             )
         });
 }
+
+#[test]
+fn cron_execute_gracefully_handles_oracle_price_failure() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite.balances().record_many(accounts.users());
+
+    // Submit a limit order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    // Submit another limit from user2
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    // ------ Assert that the orders were matched and filled correctly ------
+
+    // There should be no orders in the order book
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(BTreeMap::new());
+
+    // Balances should have been updated
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Decreased(1000000),
+        usdc::DENOM.clone() => BalanceChange::Increased(997500),
+    });
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(996000),
+        usdc::DENOM.clone() => BalanceChange::Decreased(1000000),
+    });
+}
