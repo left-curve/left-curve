@@ -80,7 +80,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           fullWidth
           onTabChange={(tab) => setOperation(tab as "market" | "limit")}
           color="line-red"
-          classNames={{ button: "exposure-xs-italic" }}
+          classNames={{ button: "exposure-xs-italic pt-0" }}
           isDisabled={submission.isPending}
         />
         <div className="flex items-center justify-between gap-2">
@@ -261,6 +261,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
         fullWidth
         onTabChange={(tab) => setOperation(tab as "market" | "limit")}
         color="line-red"
+        classNames={{ button: "pt-0" }}
       />
       <div className="flex items-center justify-between gap-2">
         <p className="diatype-xs-medium text-gray-500">Current Position</p>
