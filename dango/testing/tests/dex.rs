@@ -1215,8 +1215,8 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(100);
-    "provision at pool ratio"
+    Uint128::new(100)
+    ; "provision at pool ratio"
 )]
 #[test_case(
     coins! {
@@ -1231,8 +1231,8 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(50);
-    "provision at half pool balance same ratio"
+    Uint128::new(50)
+    ; "provision at half pool balance same ratio"
 )]
 #[test_case(
     coins! {
@@ -1247,8 +1247,76 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(72);
-    "provision at different ratio"
+    Uint128::new(72)
+    ; "provision at different ratio"
+)]
+#[test_case(
+    coins! {
+        dango::DENOM.clone() => 100,
+        usdc::DENOM.clone() => 100,
+    },
+    Udec128::new_permille(5),
+    PassiveLiquidity::Geometric {
+        order_spacing: Udec128::ONE,
+        ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(2)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(300)
+    ; "geometric pool provision at pool ratio"
+)]
+#[test_case(
+    coins! {
+        dango::DENOM.clone() => 50,
+        usdc::DENOM.clone() => 50,
+    },
+    Udec128::new_permille(5),
+    PassiveLiquidity::Geometric {
+        order_spacing: Udec128::ONE,
+        ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(2)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(150)
+    ; "geometric pool provision at half pool balance same ratio"
+)]
+#[test_case(
+    coins! {
+        dango::DENOM.clone() => 100,
+        usdc::DENOM.clone() => 50,
+    },
+    Udec128::new_permille(5),
+    PassiveLiquidity::Geometric {
+        order_spacing: Udec128::ONE,
+        ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(2)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(248)
+    ; "geometric pool provision at different ratio"
+)]
+#[test_case(
+    coins! {
+        dango::DENOM.clone() => 50,
+        usdc::DENOM.clone() => 100,
+    },
+    Udec128::new_permille(5),
+    PassiveLiquidity::Geometric {
+        order_spacing: Udec128::ONE,
+        ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
+    },
+    vec![
+        (dango::DENOM.clone(), Udec128::new(2)),
+        (usdc::DENOM.clone(), Udec128::new(1)),
+    ],
+    Uint128::new(198)
+    ; "geometric pool provision at different ratio 2"
 )]
 fn provide_liquidity(
     provision: Coins,
