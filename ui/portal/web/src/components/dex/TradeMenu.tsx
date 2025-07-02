@@ -73,16 +73,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
       <div className="w-full flex flex-col gap-4 px-4">
-        <Tabs
-          layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
-          selectedTab={operation}
-          keys={["market", "limit"]}
-          fullWidth
-          onTabChange={(tab) => setOperation(tab as "market" | "limit")}
-          color="line-red"
-          classNames={{ button: "exposure-xs-italic pt-0" }}
-          isDisabled={submission.isPending}
-        />
         <div className="flex items-center justify-between gap-2">
           <p className="diatype-xs-regular text-gray-500">
             {m["dex.protrade.spot.availableToTrade"]()}
@@ -335,14 +325,26 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
 const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const { action, changeAction, type, submission } = state;
+  const { action, changeAction, type, submission, operation, setOperation } = state;
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
       <div className="w-full flex items-center justify-between px-4 gap-2">
+        <Tabs
+          layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
+          selectedTab={operation}
+          keys={["market", "limit"]}
+          fullWidth
+          onTabChange={(tab) => setOperation(tab as "market" | "limit")}
+          color="line-red"
+          classNames={{ button: "exposure-xs-italic pt-0" }}
+          isDisabled={submission.isPending}
+        />
+      </div>
+      <div className="w-full flex items-center justify-between px-4 gap-2">
         <IconButton
           variant="utility"
-          size="lg"
+          size="md"
           type="button"
           className="lg:hidden"
           onClick={() => setTradeBarVisibility(false)}
@@ -361,7 +363,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
         />
         <IconButton
           variant="utility"
-          size="lg"
+          size="md"
           type="button"
           className="lg:hidden"
           onClick={() => [setTradeBarVisibility(false), setSidebarVisibility(true)]}
