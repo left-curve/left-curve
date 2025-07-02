@@ -818,7 +818,8 @@ fn cron_execute() {
         ));
 
     // Wait for the cron job to execute.
-    advance_ten_minutes(&mut suite);
+    let outcome = advance_ten_minutes(&mut suite);
+    println!("{:#?}", outcome.block_outcome.cron_outcomes);
 
     // Ensure the outbound queue is empty.
     suite

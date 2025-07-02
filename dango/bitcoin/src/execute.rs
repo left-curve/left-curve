@@ -5,7 +5,7 @@ use {
     },
     anyhow::{anyhow, bail, ensure},
     corepc_client::bitcoin::{
-        Address, Amount, EcdsaSighashType,
+        Address, Amount, EcdsaSighashType, Transaction as BtcTransaction,
         key::Secp256k1,
         secp256k1::{self, PublicKey, ecdsa::Signature},
         sighash::SighashCache,
@@ -13,7 +13,7 @@ use {
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            BitcoinSignature, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
+            BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
             InboundCredential, InstantiateMsg, Network, OUTPUT_SIZE, OutboundConfirmed,
             OutboundRequested, SIGNATURE_SIZE, Transaction, Vout, create_tx_in,
         },
@@ -24,8 +24,8 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthResponse, Coins, Hash256, HexByteArray, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Number, NumberConst, Order, QuerierExt as _, Response, StdResult,
-        SudoCtx, Tx, Uint128,
+        MsgExecute, MutableCtx, Number, NumberConst, Order, PrefixBound, QuerierExt as _, Response,
+        StdResult, Storage, SudoCtx, Tx, Uint128,
     },
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -335,76 +335,24 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
             }
         }
 
-        // Prepare the transaction in order to estimate the size and so the fee.
-        let tx = Transaction {
-            inputs: BTreeMap::new(),
-            outputs: tx_output.clone(),
-            fee: Uint128::ZERO,
-        };
-
-        let mut btc_transaction = tx.to_btc_transaction(cfg.network)?;
-
-        // The fee is calculated as tx_size * sats_per_vbyte.
-        // The function `vsize()` returns the size of the transaction in vbyte, but
-        // it doesn't include the size of the signatures.
-        let mut fee = Uint128::ZERO;
-
-        // For each input, we need a number of signatures equal to the threshold.
-        // So for each input, we calculate the size of the signatures in vbyte as
-        // INPUT_SIGNATURES_OVERHEAD + SIGNATURE_SIZE * threshold.
-        let signature_size_per_input = INPUT_SIGNATURES_OVERHEAD
-            + SIGNATURE_SIZE * Uint128::new(cfg.multisig.threshold() as u128);
-
-        // Choose the UTXOs as inputs for the outbound transaction.
-        let mut inputs = BTreeMap::new();
-        let mut inputs_amount = Uint128::ZERO;
-
-        // Keep adding UTXOs until we reach the withdraw amount + fee.
-        for res in UTXOS.range(ctx.storage, None, None, cfg.outbound_strategy) {
-            if inputs_amount >= withdraw_amount + fee {
-                break;
-            }
-
-            let (amount, hash, vout) = res?;
-
-            inputs.insert((hash, vout), amount);
-            inputs_amount += amount;
-
-            // Add the input to the transaction for fee estimation.
-            btc_transaction.input.push(create_tx_in(&hash, vout));
-
-            // Size of signatures.
-            let signatures_size = Uint128::new(inputs.len() as u128) * signature_size_per_input;
-
-            // Adding 1 OUTPUT_SIZE to address the output size for the vault.
-            fee = (Uint128::new(btc_transaction.vsize() as u128) + signatures_size + OUTPUT_SIZE)
-                * cfg.sats_per_vbyte;
-        }
-
-        // Ensure we have enough UTXOs to cover the withdraw amount + fee.
-        ensure!(
-            inputs_amount >= withdraw_amount + fee,
-            "not enough UTXOs to cover the withdraw amount + fee: {} < {}",
-            inputs_amount,
-            withdraw_amount + fee
-        );
-
-        // Total amount of BTC needed for this tx.
-        let total = withdraw_amount + fee;
+        // Choose the best UTXOs for this transaction.
+        let withdraw_helper = select_best_utxos(ctx.storage, cfg.clone(), tx_output.clone())?;
 
         // If there's excess input, send the excess back to the vault.
-        if inputs_amount > total {
-            tx_output.insert(cfg.vault.clone(), inputs_amount - total);
+        let surplus_amount = withdraw_helper.surplus_amount();
+        if surplus_amount > Uint128::ZERO {
+            tx_output.insert(cfg.vault.clone(), surplus_amount);
         }
 
         // Delete the chosen UTXOs.
-        for ((hash, vout), amount) in &inputs {
+        for ((hash, vout), amount) in &withdraw_helper.inputs {
             UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
         }
 
         let (id, _) = OUTBOUND_ID.increment(ctx.storage)?;
+        let fee = withdraw_helper.fee();
         let transaction = Transaction {
-            inputs,
+            inputs: withdraw_helper.inputs,
             outputs: tx_output,
             fee,
         };
@@ -476,4 +424,166 @@ fn check_bitcoin_address(address: &str, network: Network) -> anyhow::Result<()> 
         })?;
 
     Ok(())
+}
+
+/// Select the best UTXOs to cover the withdraw amount and fee.
+fn select_best_utxos(
+    storage: &mut dyn Storage,
+    cfg: Config,
+    outputs: BTreeMap<String, Uint128>,
+) -> anyhow::Result<WithdrawHelper> {
+    let mut withdraw_helper = WithdrawHelper::new(outputs, &cfg)?;
+
+    while withdraw_helper.remaining_amount() > Uint128::ZERO {
+        let remaining_amount = withdraw_helper.remaining_amount();
+
+        let maybe_bigger = {
+            let mut value = None;
+
+            for res in UTXOS.prefix_range(
+                storage,
+                Some(PrefixBound::Inclusive(remaining_amount)),
+                None,
+                Order::Ascending,
+            ) {
+                // Ensure the input is not already used.
+                let (amount, hash, vout) = res?;
+                if !withdraw_helper.input_already_used(hash, vout) {
+                    value = Some((amount, hash, vout));
+                    break;
+                }
+            }
+
+            value
+        };
+
+        let maybe_lower = {
+            let mut value = None;
+            for res in UTXOS.prefix_range(
+                storage,
+                None,
+                Some(PrefixBound::Exclusive(remaining_amount)),
+                Order::Descending,
+            ) {
+                // Ensure the input is not already used.
+                let (amount, hash, vout) = res?;
+                if !withdraw_helper.input_already_used(hash, vout) {
+                    value = Some((amount, hash, vout));
+                    break;
+                }
+            }
+
+            value
+        };
+
+        // Select the UTXO with the lowest delta.
+        let (amount, hash, vout) = {
+            // If the remaining amount is less than 10_000 sats, we select the bigger one.
+            if let (Some(bigger), true) = (maybe_bigger, remaining_amount < Uint128::new(10_000)) {
+                bigger
+            } else {
+                match (maybe_bigger, maybe_lower) {
+                    (Some(bigger), Some(lower)) => {
+                        if bigger.0 - remaining_amount < remaining_amount - lower.0 {
+                            bigger
+                        } else {
+                            lower
+                        }
+                    },
+                    (Some(bigger), None) => bigger,
+                    (None, Some(lower)) => lower,
+                    (None, None) => bail!(
+                        "not enough UTXOs to cover the withdraw amount + fee: {} < {}",
+                        withdraw_helper.inputs_amount,
+                        withdraw_helper.withdraw_amount + withdraw_helper.fee()
+                    ),
+                }
+            }
+        };
+
+        // Add the selected input to the transaction.
+        withdraw_helper.add_input(hash, vout, amount)?;
+    }
+    Ok(withdraw_helper)
+}
+
+struct WithdrawHelper {
+    tx: BtcTransaction,
+    signature_size_per_input: Uint128,
+    inputs: BTreeMap<(Hash256, Vout), Uint128>,
+    inputs_amount: Uint128,
+    sats_per_vbyte: Uint128,
+    withdraw_amount: Uint128,
+}
+impl WithdrawHelper {
+    pub fn new(outputs: BTreeMap<String, Uint128>, config: &Config) -> anyhow::Result<Self> {
+        let mut withdraw_amount = Uint128::ZERO;
+        for amount in outputs.values() {
+            withdraw_amount += *amount;
+        }
+
+        let tx = Transaction {
+            inputs: BTreeMap::new(),
+            outputs,
+            fee: Uint128::ZERO,
+        }
+        .to_btc_transaction(config.network)?;
+
+        let signature_size_per_input = INPUT_SIGNATURES_OVERHEAD
+            + SIGNATURE_SIZE * Uint128::new(config.multisig.threshold() as u128);
+
+        Ok(Self {
+            tx,
+            signature_size_per_input,
+            inputs: BTreeMap::new(),
+            inputs_amount: Uint128::ZERO,
+            sats_per_vbyte: config.sats_per_vbyte,
+            withdraw_amount,
+        })
+    }
+
+    pub fn fee(&self) -> Uint128 {
+        let signatures_size =
+            Uint128::new(self.inputs.len() as u128) * self.signature_size_per_input;
+
+        (Uint128::new(self.tx.vsize() as u128) + signatures_size + OUTPUT_SIZE)
+            * self.sats_per_vbyte
+    }
+
+    pub fn add_input(&mut self, hash: Hash256, vout: Vout, amount: Uint128) -> anyhow::Result<()> {
+        if self.input_already_used(hash, vout) {
+            bail!("input `{hash}:{vout}` already exists in the transaction");
+        }
+
+        self.inputs.insert((hash, vout), amount);
+        self.tx.input.push(create_tx_in(&hash, vout));
+        self.inputs_amount += amount;
+
+        Ok(())
+    }
+
+    /// Return true if the input exists in the transaction.
+    pub fn input_already_used(&self, hash: Hash256, vout: Vout) -> bool {
+        self.inputs.contains_key(&(hash, vout))
+    }
+
+    /// Return the remaining amount that needs to cover the withdraw_amount + fee.
+    pub fn remaining_amount(&self) -> Uint128 {
+        let fee = self.fee();
+
+        if self.inputs_amount >= self.withdraw_amount + fee {
+            Uint128::ZERO
+        } else {
+            self.withdraw_amount + fee - self.inputs_amount
+        }
+    }
+
+    /// Return the surplus amount that can be sent back to the vault.
+    pub fn surplus_amount(&self) -> Uint128 {
+        if self.inputs_amount > self.withdraw_amount + self.fee() {
+            self.inputs_amount - (self.withdraw_amount + self.fee())
+        } else {
+            Uint128::ZERO
+        }
+    }
 }
