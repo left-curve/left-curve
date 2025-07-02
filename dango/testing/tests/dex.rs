@@ -5233,8 +5233,16 @@ fn market_order_clearing(
     },
     coins! {
         usdc::DENOM.clone() => 500000,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(9307),
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit ask matched with market bid"
+    ; "limit ask matched with market bid market size limiting factor market order gets refunded"
 )]
 #[test_case(
     CreateLimitOrderRequest {
@@ -5245,7 +5253,7 @@ fn market_order_clearing(
         price: Udec128::new_bps(1),
     },
     coins! {
-        usdc::DENOM.clone() => 500000,
+        usdc::DENOM.clone() => 50,
     },
     CreateMarketOrderRequest {
         base_denom: eth::DENOM.clone(),
@@ -5256,8 +5264,16 @@ fn market_order_clearing(
     },
     coins! {
         eth::DENOM.clone() => 9999,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Decreased(50),
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit bid matched with market ask"
+    ; "limit bid matched with market ask market size limiting factor market order gets refunded"
 )]
 #[test_case(
     CreateLimitOrderRequest {
@@ -5279,14 +5295,24 @@ fn market_order_clearing(
     },
     coins! {
         eth::DENOM.clone() => 500000,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Increased(9974),
+        usdc::DENOM.clone() => BalanceChange::Decreased(1),
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(9999),
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit bid matched with market ask limit size too small"
+    ; "limit bid matched with market ask limit size too small market order is consumed with zero output"
 )]
-fn market_order_resulting_in_zero_output_when_matched_is_correctly_refunded(
+fn market_order_matched_results_in_zero_output(
     limit_order: CreateLimitOrderRequest,
     limit_funds: Coins,
     market_order: CreateMarketOrderRequest,
     market_funds: Coins,
+    expected_balance_changes_limit_order_user: BTreeMap<Denom, BalanceChange>,
+    expected_balance_changes_market_order_user: BTreeMap<Denom, BalanceChange>,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
@@ -5311,6 +5337,8 @@ fn market_order_resulting_in_zero_output_when_matched_is_correctly_refunded(
         )
         .should_succeed();
 
+    suite.balances().record_many(accounts.users());
+
     // Create a limit order with a small amount and price
     suite
         .execute(
@@ -5324,8 +5352,6 @@ fn market_order_resulting_in_zero_output_when_matched_is_correctly_refunded(
             limit_funds,
         )
         .should_succeed();
-
-    suite.balances().record_many(accounts.users());
 
     // Create a market order with a small amount and price
     suite
@@ -5343,14 +5369,10 @@ fn market_order_resulting_in_zero_output_when_matched_is_correctly_refunded(
 
     // No matching could take place so both users should have unchanged balances
     // since before the market order was created.
-    println!("user1 balance check");
-    suite.balances().should_change(&accounts.user1, btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
-    println!("user2 balance check");
-    suite.balances().should_change(&accounts.user2, btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
-    });
+    suite
+        .balances()
+        .should_change(&accounts.user1, expected_balance_changes_limit_order_user);
+    suite
+        .balances()
+        .should_change(&accounts.user2, expected_balance_changes_market_order_user);
 }
