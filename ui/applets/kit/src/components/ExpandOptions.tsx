@@ -3,7 +3,7 @@ import { Children, useState } from "react";
 import { twMerge } from "#utils/twMerge.js";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { IconChevronDown } from "./icons/IconChevronDown";
+import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -33,7 +33,7 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
           onClick={() => setOptionExpanded(!isOptionExpanded)}
         >
           <p>{showOptionText}</p>
-          <IconChevronDown
+          <IconChevronDownFill
             className={twMerge(
               "w-4 h-4 transition-all duration-300",
               isOptionExpanded ? "rotate-180" : "rotate-0",

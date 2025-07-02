@@ -8,7 +8,7 @@ import {
   Checkbox,
   CoinSelector,
   IconButton,
-  IconChevronDown,
+  IconChevronDownFill,
   IconUser,
   Input,
   Range,
@@ -347,7 +347,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           className="lg:hidden"
           onClick={() => setTradeBarVisibility(false)}
         >
-          <IconChevronDown className="h-6 w-6" />
+          <IconChevronDownFill className="h-4 w-4" />
         </IconButton>
         <Tabs
           layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}

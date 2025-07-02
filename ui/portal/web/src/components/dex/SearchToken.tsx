@@ -2,7 +2,7 @@ import { useAppConfig, useConfig } from "@left-curve/store";
 import { useRef, useState } from "react";
 
 import {
-  IconChevronDown,
+  IconChevronDownFill,
   IconSearch,
   Input,
   Popover,
@@ -33,11 +33,8 @@ const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen })
     <div className="flex gap-2 items-center">
       <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
       <p className="diatype-lg-heavy text-gray-700 min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
-      <IconChevronDown
-        className={twMerge(
-          "text-gray-500 w-[20px] h-[20px] transition-all",
-          isOpen ? "rotate-180" : "",
-        )}
+      <IconChevronDownFill
+        className={twMerge("text-gray-500 w-4 h-4 transition-all", isOpen ? "rotate-180" : "")}
       />
     </div>
   );
