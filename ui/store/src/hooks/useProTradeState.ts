@@ -131,7 +131,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
 
     return {
-      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).div(priceValue).toString(),
+      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toString(),
       quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toString(),
     };
   }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
@@ -145,10 +145,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const direction = Direction[capitalize(action) as keyof typeof Direction];
         const { baseDenom, quoteDenom } = pairId;
 
-        const amount =
+        const amount = (
           baseCoin.denom === availableCoin.denom
             ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
-            : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals);
+            : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals)
+        ).toString();
 
         const order =
           operation === "market"
@@ -166,11 +167,13 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
             : {
                 createsLimit: [
                   {
-                    amount,
+                    amount: parseUnits(orderAmount.baseAmount, baseCoin.decimals).toString(),
                     baseDenom,
                     quoteDenom,
                     direction,
-                    price: parseUnits(inputs.price.value, quoteCoin.decimals - baseCoin.decimals),
+                    price: Decimal(inputs.price.value)
+                      .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
+                      .toString(),
                   },
                 ],
               };

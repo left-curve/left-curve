@@ -65,7 +65,9 @@ export function usePrices(parameters: UsePricesParameters = {}) {
 
     const targetAmount = Decimal(fromPrice).div(targetPrice).toNumber();
     return (
-      parse ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals) : targetAmount
+      parse
+        ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals).toString()
+        : targetAmount
     ) as T extends false ? number : string;
   }
 

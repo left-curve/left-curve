@@ -198,7 +198,7 @@ export const Deposit: React.FC = () => {
           sender: account!.address,
           config: { [accountType as "spot"]: { owner: account!.username } },
           funds: {
-            "bridge/usdc": parsedAmount,
+            "bridge/usdc": parsedAmount.toString(),
           },
         });
 
@@ -218,7 +218,7 @@ export const Deposit: React.FC = () => {
       params: { username },
       listener: async ({ accounts }) => {
         const account = accounts.at(0)!;
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
         await wait(300);
 
