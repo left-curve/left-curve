@@ -214,7 +214,7 @@ const ProTradeOrders: React.FC = () => {
           text={parseUnits(
             row.original.price,
             coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
-          )}
+          ).toString()}
         />
       ),
     },
