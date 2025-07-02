@@ -183,9 +183,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
       </select>
       <label htmlFor={selectId} className={trigger({ className: classNames?.trigger })}>
         <span>{SelectedItem?.props.children}</span>
-        <IconChevronDown
-          className={twMerge("min-w-[20px] min-h-[20px] transition-all duration-300")}
-        />
+        <IconChevronDown className={twMerge("w-[20px] h-[20px] transition-all duration-300")} />
       </label>
     </div>
   );
@@ -198,7 +196,7 @@ const selectVariants = tv({
       "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-rice-25 absolute",
     trigger:
       "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-rice-25",
-    icon: "top-[10px] right-4 absolute pointer-events-none min-w-[20px] min-h-[20px] transition-all duration-300",
+    icon: "top-[10px] right-4 absolute pointer-events-none w-[20px] h-[20px] transition-all duration-300",
   },
   variants: {
     isDisabled: {
