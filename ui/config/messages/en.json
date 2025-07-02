@@ -666,6 +666,7 @@
         "volume": "Volume",
         "fees": "Fees",
         "orderValue": "Order Value",
+        "orderSize": "Order Size",
         "availableToTrade": "Available to trade",
         "slippage": "Slippage",
         "enableTrading": "Enable Trading",

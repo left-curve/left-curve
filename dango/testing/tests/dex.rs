@@ -1,4 +1,5 @@
 use {
+    dango_oracle::{PRICE_SOURCES, PRICES},
     dango_testing::{BridgeOp, TestOption, setup_test_naive},
     dango_types::{
         account::single::Params,
@@ -11,7 +12,7 @@ use {
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
         },
         gateway::Remote,
-        oracle::{self, PriceSource},
+        oracle::{self, PrecisionlessPrice, PriceSource},
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
@@ -20,6 +21,7 @@ use {
         coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
+    pyth_types::constants::USDC_USD_ID,
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -1374,6 +1376,59 @@ fn provide_liquidity(
         );
 }
 
+#[test]
+fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Update pair params
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Update pair params
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            pool_type: PassiveLiquidity::Geometric {
+                                order_spacing: Udec128::ONE,
+                                ratio: Bounded::new_unchecked(Udec128::ONE),
+                            },
+                        },
+                    }]),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Since there is no oracle price, liquidity provision should fail.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+                usdc::DENOM.clone() => 100_000,
+            },
+        )
+        .should_fail_with_error(StdError::data_not_found::<(PrecisionlessPrice, u64)>(
+            PRICES.path(USDC_USD_ID).storage_key(),
+        ));
+}
+
 #[test_case(
     Uint128::new(99),
     Udec128::new_permille(5),
@@ -1824,7 +1879,7 @@ fn swap_exact_amount_in(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountIn {
-                route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(route)),
                 minimum_output,
             },
             swap_funds.clone(),
@@ -2153,7 +2208,7 @@ fn swap_exact_amount_out(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: MaxLength::new_unchecked(UniqueVec::try_from(route).unwrap()),
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(route)),
                 output: NonZero::new(exact_out.clone()).unwrap(),
             },
             swap_funds.clone(),
@@ -2185,6 +2240,97 @@ fn swap_exact_amount_out(
                 reserve.clone() == CoinPair::try_from(expected_reserve).unwrap()
             });
     }
+}
+
+#[test]
+fn geometric_pool_swaps_fail_without_oracle_price() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity to pair before changing the pool type since XYK does not require an oracle price
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    // Update pair params to change pool type to geometric
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            // Update pair params
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            pool_type: PassiveLiquidity::Geometric {
+                                order_spacing: Udec128::ONE,
+                                ratio: Bounded::new_unchecked(Udec128::ONE),
+                            },
+                        },
+                    }]),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Ensure swap exact amount in fails
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+            },
+        )
+        .should_fail_with_error(StdError::data_not_found::<PriceSource>(
+            PRICE_SOURCES.path(&dango::DENOM).storage_key(),
+        ));
+
+    // Ensure swap exact amount out fails
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                output: NonZero::new(Coin::new(dango::DENOM.clone(), 50000).unwrap()).unwrap(),
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_fail_with_error(StdError::data_not_found::<PriceSource>(
+            PRICE_SOURCES.path(&dango::DENOM).storage_key(),
+        ));
 }
 
 #[test_case(
@@ -5353,7 +5499,7 @@ fn market_order_matched_results_in_zero_output(
         )
         .should_succeed();
 
-    // Create a market order with a small amount and price
+    // Create a market order with a small amount and price,
     suite
         .execute(
             &mut accounts.user2,
@@ -5375,4 +5521,77 @@ fn market_order_matched_results_in_zero_output(
     suite
         .balances()
         .should_change(&accounts.user2, expected_balance_changes_market_order_user);
+}
+
+#[test]
+fn cron_execute_gracefully_handles_oracle_price_failure() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite.balances().record_many(accounts.users());
+
+    // Submit a limit order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    // Submit another limit from user2
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    // ------ Assert that the orders were matched and filled correctly ------
+
+    // There should be no orders in the order book
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(BTreeMap::new());
+
+    // Balances should have been updated
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Decreased(1000000),
+        usdc::DENOM.clone() => BalanceChange::Increased(997500),
+    });
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(996000),
+        usdc::DENOM.clone() => BalanceChange::Decreased(1000000),
+    });
 }

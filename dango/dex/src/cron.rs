@@ -13,9 +13,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coin, Coins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction, Number,
-        NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx,
-        TransferBuilder, Udec128, Uint128,
+        Addr, Api, Coin, Coins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
+        Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage,
+        SudoCtx, TransferBuilder, Udec128, Uint128,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -77,6 +77,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     for (base_denom, quote_denom) in pairs_with_limit_orders.union(&pairs_with_market_orders) {
         clear_orders_of_pair(
             ctx.storage,
+            ctx.api,
             ctx.block.height,
             app_cfg.addresses.dex,
             &mut oracle_querier,
@@ -128,6 +129,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
+    api: &dyn Api,
     current_block_height: u64,
     dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
@@ -174,8 +176,9 @@ fn clear_orders_of_pair(
 
     // Create iterators over passive orders.
     //
-    // If the pool doesn't have passive liquidity (reserve is `None`), simply
-    // use empty iterators.
+    // If the pool doesn't have passive liquidity (reserve is `None`), or if
+    // the order book reflection fails, simply use empty iterators. I.e. place
+    // no passive liquidity orders.
     let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
     let (passive_bid_iter, passive_ask_iter) = match &reserve {
         Some(reserve) => {
@@ -186,7 +189,12 @@ fn clear_orders_of_pair(
                 base_denom.clone(),
                 quote_denom.clone(),
                 reserve,
-            )?
+            )
+            .inspect_err(|err| {
+                let msg = format!("ERROR: reflect curve failed! base denom: {base_denom}, quote denom: {quote_denom}, reserve: {reserve:?}, error: {err}");
+                api.debug(dex_addr, &msg);
+            })
+            .unwrap_or_else(|_| (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _))
         },
         None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
     };
@@ -309,6 +317,8 @@ fn clear_orders_of_pair(
     {
         update_trading_volumes(
             storage,
+            api,
+            dex_addr,
             oracle_querier,
             account_querier,
             &base_denom,
@@ -449,6 +459,8 @@ fn clear_orders_of_pair(
 /// Updates trading volumes for both user addresses and usernames
 fn update_trading_volumes(
     storage: &mut dyn Storage,
+    api: &dyn Api,
+    dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
     base_denom: &Denom,
@@ -457,8 +469,20 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
 ) -> anyhow::Result<()> {
-    // Calculate the vo lume in USD for the filled order
-    let base_asset_price = oracle_querier.query_price(base_denom, None)?;
+    // Query the base asset's oracle price.
+    let base_asset_price = match oracle_querier.query_price(base_denom, None) {
+        Err(err) => {
+            let msg = format!("ERROR: failed to query price! denom: {base_denom}, error: {err}");
+            api.debug(dex_addr, &msg);
+
+            // If the query fails, simply do nothing and return, since we want to
+            // ensure that `cron_execute` function doesn't fail.
+            return Ok(());
+        },
+        Ok(price) => price,
+    };
+
+    // Calculate the volume in USD for the filled order.
     let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
 
     // Record trading volume for the user's address
