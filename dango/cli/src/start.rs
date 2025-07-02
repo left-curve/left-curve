@@ -77,7 +77,7 @@ impl StartCmd {
             .with_database_max_connections(cfg.indexer.database.max_connections)
             .with_dir(app_dir.indexer_dir())
             .with_sqlx_pubsub()
-            .with_hooks(dango_indexer_sql::hooks::Hooks)
+            .with_hooks(dango_indexer_sql::hooks::Indexer)
             .build()
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 

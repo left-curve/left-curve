@@ -123,7 +123,7 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    // println!("text response: \n{:#?}", graphql_response);
+    println!("text response: \n{:#?}", graphql_response);
 
     let graphql_responses: Vec<GraphQLResponse> = serde_json::from_slice(&graphql_response)
         .inspect_err(|err| {

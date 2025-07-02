@@ -94,6 +94,7 @@ jobs:
     needs: [format]
     name: Lint + Test
     runs-on: self-hosted
+    timeout-minutes: 20
     # Don't use this, it raises permissions issues on self hosted runners
     # container:
     #   image: ghcr.io/left-curve/left-curve/native-builder

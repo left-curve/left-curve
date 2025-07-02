@@ -1,5 +1,5 @@
 use {
-    crate::{entity, error::Error, hooks::Hooks},
+    crate::{entity, error::Error, hooks::Indexer},
     dango_types::{
         DangoQuerier,
         account_factory::{
@@ -21,7 +21,7 @@ use {
     std::time::Instant,
 };
 
-impl Hooks {
+impl Indexer {
     pub(crate) async fn save_accounts(
         &self,
         context: &Context,

@@ -144,15 +144,17 @@ pub fn setup_test_with_indexer() -> (
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
-        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()
         .unwrap();
+
+    let dango_indexer = dango_indexer_sql::hooks::Indexer;
 
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
     hooked_indexer.add_indexer(indexer);
+    hooked_indexer.add_indexer(dango_indexer);
 
     let db = MemDb::new();
     let vm = RustVm::new();

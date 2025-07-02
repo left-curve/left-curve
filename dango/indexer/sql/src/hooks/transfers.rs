@@ -1,5 +1,5 @@
 use {
-    crate::{entity, error::Error, hooks::Hooks},
+    crate::{entity, error::Error, hooks::Indexer},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{Context, block_to_index::BlockToIndex, entity as main_entity},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
@@ -12,7 +12,7 @@ use {
     std::time::Instant,
 };
 
-impl Hooks {
+impl Indexer {
     pub(crate) async fn save_transfers(
         &self,
         context: &Context,
@@ -64,7 +64,7 @@ impl Hooks {
             .collect::<HashMap<_, _>>();
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(
+        tracing::info!(
             transfer_event_count = transfer_events.len(),
             "Looked at transfer events",
         );

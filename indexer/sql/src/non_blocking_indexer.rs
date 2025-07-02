@@ -539,7 +539,7 @@ where
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: &dyn grug_app::QuerierProvider,
+        querier: &dyn grug_app::QuerierProvider,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Err(grug_app::IndexerError::NotRunning);
@@ -556,16 +556,32 @@ where
             .indexer_path
             .block_path(block_to_index.block.info.height);
 
-        // NOTE: Since we can't move the querier reference into the async task,
-        // we need to call the hooks synchronously or find another approach.
-        // For now, we'll skip the async querier usage in hooks.
+        // Call hooks synchronously with the querier reference
+        // This needs to be done in the sync context since we can't move the querier reference
+        let hooks = self.hooks.clone();
+        let hooks_result = self.handle.block_on(async {
+            hooks
+                .post_indexing(context.clone(), block_to_index.clone(), querier)
+                .await
+        });
 
-        let _hooks = self.hooks.clone();
+        if let Err(e) = hooks_result {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                block_height,
+                error = e.to_string(),
+                "`post_indexing` hooks failed"
+            );
+
+            return Err(grug_app::IndexerError::Hook(e.to_string()));
+        }
+
         let id = self.id;
 
+        // Now spawn the async task for the remaining work (DB operations, file handling, pubsub)
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, indexer_id = id, "`post_indexing` started");
+            tracing::debug!(block_height, indexer_id = id, "`post_indexing` async work started");
 
             let block_height = block_to_index.block.info.height;
 
@@ -576,14 +592,6 @@ where
 
                 err
             })?;
-
-            // NOTE: We can't use the querier in async context with reference approach
-            // hooks.post_indexing(context.clone(), block_to_index, querier).await.map_err(|e| {
-            //     #[cfg(feature = "tracing")]
-            //     tracing::error!(block_height, error = e.to_string(), "`post_indexing` hooks failed");
-            //
-            //     error::IndexerError::Hooks(e.to_string())
-            // })?;
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
