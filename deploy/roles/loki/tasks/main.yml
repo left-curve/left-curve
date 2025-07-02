@@ -1,0 +1,38 @@
+- name: Ensure loki dir exists
+  file:
+    path: "{{ loki_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure loki config dir exists
+  file:
+    path: "{{ loki_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Ensure loki data dir exists
+  file:
+    path: "{{ loki_dir }}/data"
+    state: directory
+    mode: '0755'
+
+- name: Copy loki config
+  template:
+    src: "{{ playbook_dir }}/roles/loki/templates/loki-config.yml"
+    dest: "{{ loki_dir }}/config/loki-config.yml"
+
+- name: Copy promtail config
+  template:
+    src: "{{ playbook_dir }}/roles/loki/templates/promtail-config.yml"
+    dest: "{{ loki_dir }}/config/promtail-config.yml"
+
+- name: Copy docker-compose
+  template:
+    src: "{{ playbook_dir }}/roles/loki/templates/docker-compose.yml"
+    dest: "{{ loki_dir }}/docker-compose.yml"
+
+- name: Launch Loki stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ loki_dir }}"
+    pull: missing
+    state: present

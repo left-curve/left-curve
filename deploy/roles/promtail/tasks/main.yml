@@ -1,0 +1,27 @@
+- name: Ensure promtail dir exists
+  file:
+    path: "{{ promtail_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure promtail config dir exists
+  file:
+    path: "{{ promtail_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Copy promtail config
+  template:
+    src: "{{ playbook_dir }}/roles/promtail/templates/promtail-config.yml"
+    dest: "{{ promtail_dir }}/config/promtail-config.yml"
+
+- name: Copy docker-compose
+  template:
+    src: "{{ playbook_dir }}/roles/promtail/templates/docker-compose.yml"
+    dest: "{{ promtail_dir }}/docker-compose.yml"
+
+- name: Launch Promtail
+  community.docker.docker_compose_v2:
+    project_src: "{{ promtail_dir }}"
+    pull: missing
+    state: present

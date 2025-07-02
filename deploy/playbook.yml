@@ -4,3 +4,6 @@
     - common
     - users
     - docker
+    - tailscale
+    - node-exporter
+    - promtail

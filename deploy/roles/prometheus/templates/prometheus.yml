@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['{{ tailscale_ip }}:{{ grafana_port | default(3000) }}']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: 
+        - '100.96.253.40:9100'  # ovh1
+        - '100.107.248.71:9100' # ovh2
+        - '{{ tailscale_ip }}:9100' # ovh3
+    scrape_interval: 15s
+
+  - job_name: 'dango'
+    static_configs:
+      - targets:
+        - '100.96.253.40:8080'  # ovh1
+        - '100.107.248.71:8080' # ovh2
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  - job_name: 'cometbft'
+    static_configs:
+      - targets:
+        - '100.96.253.40:26660'  # ovh1
+        - '100.107.248.71:26660' # ovh2
+    scrape_interval: 30s
+    metrics_path: /metrics

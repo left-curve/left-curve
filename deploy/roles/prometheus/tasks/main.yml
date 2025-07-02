@@ -1,0 +1,49 @@
+- name: Ensure prometheus dir exists
+  file:
+    path: "{{ prometheus_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure prometheus config dir exists
+  file:
+    path: "{{ prometheus_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Ensure prometheus data dir exists
+  file:
+    path: "{{ prometheus_dir }}/data"
+    state: directory
+    mode: '0755'
+
+- name: Ensure alertmanager data dir exists
+  file:
+    path: "{{ prometheus_dir }}/alertmanager-data"
+    state: directory
+    mode: '0755'
+
+- name: Copy prometheus config
+  template:
+    src: "{{ playbook_dir }}/roles/prometheus/templates/prometheus.yml"
+    dest: "{{ prometheus_dir }}/config/prometheus.yml"
+
+- name: Copy alertmanager config
+  template:
+    src: "{{ playbook_dir }}/roles/prometheus/templates/alertmanager.yml"
+    dest: "{{ prometheus_dir }}/config/alertmanager.yml"
+
+- name: Copy alert rules
+  copy:
+    src: "{{ playbook_dir }}/roles/prometheus/files/alert-rules.yml"
+    dest: "{{ prometheus_dir }}/config/alert-rules.yml"
+
+- name: Copy docker-compose
+  template:
+    src: "{{ playbook_dir }}/roles/prometheus/templates/docker-compose.yml"
+    dest: "{{ prometheus_dir }}/docker-compose.yml"
+
+- name: Launch Prometheus stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ prometheus_dir }}"
+    pull: missing
+    state: present

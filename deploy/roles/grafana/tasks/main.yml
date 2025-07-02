@@ -1,0 +1,58 @@
+- name: Ensure grafana dir exists
+  file:
+    path: "{{ grafana_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure grafana data dir exists
+  file:
+    path: "{{ grafana_dir }}/data"
+    state: directory
+    mode: '0755'
+    owner: '472'
+    group: '472'
+
+- name: Ensure grafana config dir exists
+  file:
+    path: "{{ grafana_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Copy grafana config
+  template:
+    src: "{{ playbook_dir }}/roles/grafana/templates/grafana.ini"
+    dest: "{{ grafana_dir }}/config/grafana.ini"
+
+- name: Copy datasources config
+  template:
+    src: "{{ playbook_dir }}/roles/grafana/templates/datasources.yml"
+    dest: "{{ grafana_dir }}/config/datasources.yml"
+
+- name: Copy dashboard provisioning config
+  template:
+    src: "{{ playbook_dir }}/roles/grafana/templates/dashboards.yml"
+    dest: "{{ grafana_dir }}/config/dashboards.yml"
+
+- name: Ensure dashboards dir exists
+  file:
+    path: "{{ grafana_dir }}/dashboards"
+    state: directory
+    mode: '0755'
+
+- name: Copy dashboard files
+  template:
+    src: "{{ item }}"
+    dest: "{{ grafana_dir }}/dashboards/{{ item | basename }}"
+  with_fileglob:
+    - "{{ playbook_dir }}/roles/grafana/templates/dashboards/*.json"
+
+- name: Copy docker-compose
+  template:
+    src: "{{ playbook_dir }}/roles/grafana/templates/docker-compose.yml"
+    dest: "{{ grafana_dir }}/docker-compose.yml"
+
+- name: Launch Grafana stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ grafana_dir }}"
+    pull: missing
+    state: present

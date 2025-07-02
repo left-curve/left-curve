@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://{{ tailscale_ip }}:{{ prometheus_port | default(9091) }}
+    isDefault: true
+    editable: true
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://{{ tailscale_ip }}:{{ loki_port | default(3100) }}
+    editable: true
