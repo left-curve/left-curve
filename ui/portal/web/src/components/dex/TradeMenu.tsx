@@ -123,8 +123,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           startContent={
             <CoinSelector
               classNames={{
-                trigger: "!diatype-lg-medium text-gray-500",
-                selectorIcon: "w-4 h-4",
+                trigger: "text-gray-500",
               }}
               onChange={changeSizeCoin}
               value={sizeCoin.denom}

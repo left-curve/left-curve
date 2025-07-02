@@ -260,7 +260,7 @@ const ProTradeOrders: React.FC = () => {
           classNames={{ button: "exposure-xs-italic" }}
         />
 
-        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
+        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[1px]" />
       </div>
       <div className="w-full h-full relative">
         {activeTab === "open order" ? (
