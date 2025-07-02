@@ -9,6 +9,7 @@ use {
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
+    indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context,
     std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
@@ -69,17 +70,26 @@ where
         .with_keep_blocks(keep_blocks)
         .with_sqlx_pubsub()
         .with_tmpdir()
-        .with_hooks(dango_indexer_sql::hooks::Indexer)
         .build()?;
 
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
+    let mut hooked_indexer = HookedIndexer::new();
+    let dango_indexer = dango_indexer_sql::hooks::Indexer {
+        runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+            indexer.handle.handle().clone(),
+        ),
+        context: indexer.context.clone(),
+    };
+    hooked_indexer.add_indexer(indexer);
+    hooked_indexer.add_indexer(dango_indexer);
+
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
         ProposalPreparer::new(),
-        indexer,
+        hooked_indexer,
         RustVm::genesis_codes(),
         test_opt,
         genesis_opt,

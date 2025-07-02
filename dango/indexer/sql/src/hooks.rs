@@ -1,9 +1,8 @@
 use {
-    async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::Storage,
     grug_app::QuerierProvider,
-    indexer_sql::{Context, block_to_index::BlockToIndex, hooks::Hooks as HooksTrait},
+    indexer_sql::{Context, block_to_index::BlockToIndex, non_blocking_indexer::RuntimeHandler},
 };
 #[cfg(feature = "metrics")]
 use {
@@ -14,20 +13,31 @@ use {
 mod accounts;
 mod transfers;
 
-#[derive(Clone)]
-pub struct Indexer;
+pub struct Indexer {
+    pub runtime_handle: RuntimeHandler,
+    pub context: Context,
+}
 
 impl grug_app::Indexer for Indexer {
     fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
-        // Migrator::up(&context.db, None)
-        //     .await
-        //     .map_err(|e| grug_app::IndexerError::Database(e.to_string()))?;
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        self.runtime_handle.block_on(async {
+            Migrator::up(&self.context.db, None)
+                .await
+                .map_err(|e| grug_app::IndexerError::Database(e.to_string()))?;
+
+            Ok::<(), grug_app::IndexerError>(())
+        })?;
 
         #[cfg(feature = "metrics")]
         {
             transfers::init_metrics();
             accounts::init_metrics();
             init_metrics();
+
+            histogram!("indexer.dango.start.duration",).record(start.elapsed().as_secs_f64());
         }
 
         Ok(())
@@ -37,7 +47,11 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
-    fn pre_indexing(&self, _block_height: u64) -> grug_app::IndexerResult<()> {
+    fn pre_indexing(
+        &self,
+        _block_height: u64,
+        _ctx: &mut grug_app::IndexerContext,
+    ) -> grug_app::IndexerResult<()> {
         Ok(())
     }
 
@@ -45,6 +59,7 @@ impl grug_app::Indexer for Indexer {
         &self,
         _block: &grug::Block,
         _block_outcome: &grug::BlockOutcome,
+        _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         Ok(())
     }
@@ -52,13 +67,26 @@ impl grug_app::Indexer for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: &dyn QuerierProvider,
+        querier: &dyn QuerierProvider,
+        ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        // self.save_transfers(&context, &block).await?;
-        // self.save_accounts(&context, &block, querier).await?;
+        #[cfg(feature = "tracing")]
+        tracing::info!("post_indexing: {block_height}");
+
+        let block_to_index = ctx
+            .get::<BlockToIndex>()
+            .ok_or(grug_app::IndexerError::Database(
+                "BlockToIndex not found".to_string(),
+            ))?;
+
+        self.runtime_handle.block_on(async {
+            self.save_transfers(block_height).await?;
+            self.save_accounts(block_to_index, querier).await?;
+            grug_app::IndexerResult::Ok(())
+        })?;
 
         #[cfg(feature = "metrics")]
         histogram!(
@@ -70,91 +98,10 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
-    fn wait_for_finish(&self) {
-        todo!()
-    }
+    fn wait_for_finish(&self) {}
 }
-
-// #[async_trait]
-// impl HooksTrait for Indexer {
-//     type Error = crate::error::Error;
-
-//     async fn start(&self, context: Context) -> Result<(), Self::Error> {
-//         Migrator::up(&context.db, None).await?;
-
-//         #[cfg(feature = "metrics")]
-//         {
-//             transfers::init_metrics();
-//             accounts::init_metrics();
-//             init_metrics();
-//         }
-
-//         Ok(())
-//     }
-
-//     async fn post_indexing(
-//         &self,
-//         context: Context,
-//         block: BlockToIndex,
-//         querier: &dyn QuerierProvider,
-//     ) -> Result<(), Self::Error> {
-//         #[cfg(feature = "metrics")]
-//         let start = Instant::now();
-
-//         self.save_transfers(&context, &block).await?;
-//         self.save_accounts(&context, &block, querier).await?;
-
-//         #[cfg(feature = "metrics")]
-//         histogram!(
-//             "indexer.dango.hooks.duration",
-//             "block_height" => block.block.info.height.to_string()
-//         )
-//         .record(start.elapsed().as_secs_f64());
-
-//         Ok(())
-//     }
-
-//     async fn shutdown(&self) -> Result<(), Self::Error> {
-//         Ok(())
-//     }
-// }
 
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     describe_histogram!("indexer.dango.hooks.duration", "Hook duration in seconds");
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use {
-        super::*, crate::entity, assertor::*, grug_app::Indexer, grug_types::MockStorage,
-        indexer_sql::non_blocking_indexer::IndexerBuilder, sea_orm::EntityTrait,
-    };
-
-    // #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    // async fn build_with_hooks() -> anyhow::Result<()> {
-    //     let mut indexer = IndexerBuilder::default()
-    //         .with_memory_database()
-    //         .with_tmpdir()
-    //         .with_hooks(Indexer)
-    //         .build()?;
-
-    //     let storage = MockStorage::new();
-
-    //     assert!(!indexer.indexing);
-    //     indexer.start(&storage).expect("Can't start Indexer");
-    //     assert!(indexer.indexing);
-
-    //     indexer.shutdown().expect("Can't shutdown Indexer");
-    //     assert!(!indexer.indexing);
-
-    //     let transfers = entity::transfers::Entity::find()
-    //         .all(&indexer.context.db)
-    //         .await?;
-    //     assert_that!(transfers).is_empty();
-
-    //     Ok(())
-    // }
 }

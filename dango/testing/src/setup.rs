@@ -147,12 +147,19 @@ pub fn setup_test_with_indexer() -> (
         .build()
         .unwrap();
 
-    let dango_indexer = dango_indexer_sql::hooks::Indexer;
-
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
+    // Create a shared runtime handler that uses the same tokio runtime
+    let shared_runtime_handle = indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+        indexer.handle.handle().clone(),
+    );
+
     let mut hooked_indexer = HookedIndexer::new();
+    let dango_indexer = dango_indexer_sql::hooks::Indexer {
+        runtime_handle: shared_runtime_handle,
+        context: indexer.context.clone(),
+    };
     hooked_indexer.add_indexer(indexer);
     hooked_indexer.add_indexer(dango_indexer);
 

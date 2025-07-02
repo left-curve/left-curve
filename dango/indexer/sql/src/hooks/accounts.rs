@@ -9,7 +9,7 @@ use {
     grug::{EventName, Inner, JsonDeExt},
     grug_app::QuerierProvider,
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
-    indexer_sql::{Context, block_to_index::BlockToIndex},
+    indexer_sql::block_to_index::BlockToIndex,
     sea_orm::{
         ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
     },
@@ -24,12 +24,14 @@ use {
 impl Indexer {
     pub(crate) async fn save_accounts(
         &self,
-        context: &Context,
         block: &BlockToIndex,
         querier: &dyn QuerierProvider,
     ) -> Result<(), Error> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("Saving accounts for block: {}", block.block.info.height);
 
         let account_factory = querier.query_account_factory()?;
 
@@ -103,14 +105,14 @@ impl Indexer {
         }
 
         let created_at = block.block.info.timestamp.to_naive_date_time();
-        let txn = context.db.begin().await?;
+        let txn = self.context.db.begin().await?;
 
         // I have to do with chunks to avoid psql errors with too many items
         let chunk_size = 1000;
 
         if !user_registered_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::debug!("Detected `user_registered_events`: {user_registered_events:?}");
+            tracing::info!("Detected `user_registered_events`: {user_registered_events:?}");
 
             for user_register_events in user_registered_events.chunks(chunk_size) {
                 let new_users = user_register_events
@@ -147,7 +149,7 @@ impl Indexer {
 
         if !account_registered_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::debug!("Detected `account_registered_events`: {account_registered_events:?}");
+            tracing::info!("Detected `account_registered_events`: {account_registered_events:?}");
 
             for account_registered_event in account_registered_events {
                 let new_account_id = Uuid::new_v4();
@@ -213,7 +215,7 @@ impl Indexer {
 
         if !account_key_added_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::debug!("Detected `account_key_added_events`: {account_key_added_events:?}");
+            tracing::info!("Detected `account_key_added_events`: {account_key_added_events:?}");
 
             for account_key_added_event in account_key_added_events {
                 let model = entity::public_keys::ActiveModel {
@@ -232,9 +234,7 @@ impl Indexer {
 
         if !account_key_removed_events.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                "Detected `account_key_removed_events`: {account_key_removed_events:?}"
-            );
+            tracing::info!("Detected `account_key_removed_events`: {account_key_removed_events:?}");
 
             for account_key_removed_event in account_key_removed_events {
                 entity::public_keys::Entity::delete_many()

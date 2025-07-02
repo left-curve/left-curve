@@ -6,14 +6,14 @@ use {
     grug_vm_rust::RustVm,
     httpd::traits::QueryApp,
     indexer_httpd::context::Context,
-    indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
+    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     std::{str::FromStr, sync::Arc},
     tokio::sync::Mutex,
 };
 
 pub async fn create_block() -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer>>,
     TestAccounts,
 )> {
     create_blocks(1).await
@@ -23,7 +23,7 @@ pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer>>,
     TestAccounts,
 )> {
     let denom = Denom::from_str("ugrug")?;

@@ -1,7 +1,7 @@
 use {
     crate::{entity, error::Error, hooks::Indexer},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
-    indexer_sql::{Context, block_to_index::BlockToIndex, entity as main_entity},
+    indexer_sql::entity as main_entity,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
     std::collections::HashMap,
     uuid::Uuid,
@@ -13,18 +13,14 @@ use {
 };
 
 impl Indexer {
-    pub(crate) async fn save_transfers(
-        &self,
-        context: &Context,
-        block: &BlockToIndex,
-    ) -> Result<(), Error> {
+    pub(crate) async fn save_transfers(&self, block_height: u64) -> Result<(), Error> {
         #[cfg(feature = "tracing")]
         tracing::debug!("About to look at transfer events");
 
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let txn = context.db.begin().await?;
+        let txn = self.context.db.begin().await?;
 
         // 1. get all successful transfers events from the database for this block
         let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
@@ -35,7 +31,7 @@ impl Indexer {
                     main_entity::events::Column::CommitmentStatus
                         .eq(FlatCommitmentStatus::Committed.as_i16()),
                 )
-                .filter(main_entity::events::Column::BlockHeight.eq(block.block.info.height))
+                .filter(main_entity::events::Column::BlockHeight.eq(block_height))
                 .all(&txn)
                 .await?
                 .into_iter()
@@ -56,7 +52,7 @@ impl Indexer {
                 .collect::<Vec<_>>();
 
         let transactions_by_id = main_entity::transactions::Entity::find()
-            .filter(main_entity::transactions::Column::BlockHeight.eq(block.block.info.height))
+            .filter(main_entity::transactions::Column::BlockHeight.eq(block_height as i64))
             .all(&txn)
             .await?
             .into_iter()
@@ -135,7 +131,7 @@ impl Indexer {
         #[cfg(feature = "metrics")]
         histogram!(
             "indexer.dango.hooks.transfers.duration",
-            "block_height" => block.block.info.height.to_string()
+            "block_height" => block_height.to_string()
         )
         .record(start.elapsed().as_secs_f64());
 

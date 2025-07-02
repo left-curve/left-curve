@@ -20,11 +20,20 @@ impl Indexer for NullIndexer {
         Ok(())
     }
 
-    fn pre_indexing(&self, _block_height: u64) -> IndexerResult<()> {
+    fn pre_indexing(
+        &self,
+        _block_height: u64,
+        _ctx: &mut crate::IndexerContext,
+    ) -> IndexerResult<()> {
         Ok(())
     }
 
-    fn index_block(&self, _block: &Block, _block_outcome: &BlockOutcome) -> IndexerResult<()> {
+    fn index_block(
+        &self,
+        _block: &Block,
+        _block_outcome: &BlockOutcome,
+        _ctx: &mut crate::IndexerContext,
+    ) -> IndexerResult<()> {
         Ok(())
     }
 
@@ -32,6 +41,7 @@ impl Indexer for NullIndexer {
         &self,
         _block_height: u64,
         _querier: &dyn QuerierProvider,
+        _ctx: &mut crate::IndexerContext,
     ) -> IndexerResult<()> {
         Ok(())
     }

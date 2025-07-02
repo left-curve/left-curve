@@ -229,7 +229,9 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        self.indexer.pre_indexing(block.info.height)?;
+        let mut indexer_ctx = crate::IndexerContext::new();
+        self.indexer
+            .pre_indexing(block.info.height, &mut indexer_ctx)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -381,7 +383,9 @@ where
             tx_outcomes,
         };
 
-        self.indexer.index_block(&block, &block_outcome)?;
+        let mut indexer_ctx = crate::IndexerContext::new();
+        self.indexer
+            .index_block(&block, &block_outcome, &mut indexer_ctx)?;
 
         Ok(block_outcome)
     }
@@ -404,7 +408,9 @@ where
                 )
             };
 
-            self.indexer.post_indexing(block_height, &querier)?;
+            let mut indexer_ctx = crate::IndexerContext::new();
+            self.indexer
+                .post_indexing(block_height, &querier, &mut indexer_ctx)?;
         }
 
         Ok(())

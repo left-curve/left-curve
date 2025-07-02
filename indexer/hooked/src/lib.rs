@@ -82,13 +82,17 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
-    fn pre_indexing(&self, block_height: u64) -> IndexerResult<()> {
+    fn pre_indexing(
+        &self,
+        block_height: u64,
+        ctx: &mut grug_app::IndexerContext,
+    ) -> IndexerResult<()> {
         if !self.is_running {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
         for indexer in &self.indexers {
-            indexer.pre_indexing(block_height)?;
+            indexer.pre_indexing(block_height, ctx)?;
         }
 
         Ok(())
@@ -98,13 +102,14 @@ impl Indexer for HookedIndexer {
         &self,
         block: &grug_types::Block,
         block_outcome: &grug_types::BlockOutcome,
+        ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
         for indexer in &self.indexers {
-            indexer.index_block(block, block_outcome)?;
+            indexer.index_block(block, block_outcome, ctx)?;
         }
 
         Ok(())
@@ -114,14 +119,14 @@ impl Indexer for HookedIndexer {
         &self,
         block_height: u64,
         querier: &dyn grug_app::QuerierProvider,
+        ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
-        // All indexers get the same querier reference efficiently!
         for indexer in &self.indexers {
-            indexer.post_indexing(block_height, querier)?;
+            indexer.post_indexing(block_height, querier, ctx)?;
         }
 
         Ok(())
@@ -160,7 +165,11 @@ mod tests {
             Ok(())
         }
 
-        fn pre_indexing(&self, _block_height: u64) -> IndexerResult<()> {
+        fn pre_indexing(
+            &self,
+            _block_height: u64,
+            _ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
             self.record_call("pre_indexing");
             Ok(())
         }
@@ -169,6 +178,7 @@ mod tests {
             &self,
             _block: &grug_types::Block,
             _block_outcome: &grug_types::BlockOutcome,
+            _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             self.record_call("index_block");
             Ok(())
@@ -178,6 +188,7 @@ mod tests {
             &self,
             _block_height: u64,
             _querier: &dyn grug_app::QuerierProvider,
+            _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             self.record_call("post_indexing");
             Ok(())
@@ -243,8 +254,9 @@ mod tests {
         let hooked_indexer = HookedIndexer::new();
 
         // Operations should fail when not running
+        let mut ctx = grug_app::IndexerContext::new();
         assert!(matches!(
-            hooked_indexer.pre_indexing(1),
+            hooked_indexer.pre_indexing(1, &mut ctx),
             Err(grug_app::IndexerError::NotRunning)
         ));
 
@@ -263,8 +275,162 @@ mod tests {
         };
 
         assert!(matches!(
-            hooked_indexer.index_block(&block, &outcome),
+            hooked_indexer.index_block(&block, &outcome, &mut ctx),
             Err(grug_app::IndexerError::NotRunning)
         ));
+    }
+
+    /// Example indexer that stores data in the context for later indexers to use
+    #[derive(Default)]
+    struct DataProducerIndexer {
+        id: String,
+    }
+
+    impl DataProducerIndexer {
+        fn new(id: &str) -> Self {
+            Self { id: id.to_string() }
+        }
+    }
+
+    impl Indexer for DataProducerIndexer {
+        fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn shutdown(&mut self) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn pre_indexing(
+            &self,
+            block_height: u64,
+            ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
+            // Store some data that other indexers can use
+            ctx.insert(format!("data_from_{}_at_height_{}", self.id, block_height));
+            Ok(())
+        }
+
+        fn index_block(
+            &self,
+            _block: &grug_types::Block,
+            _block_outcome: &grug_types::BlockOutcome,
+            _ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn post_indexing(
+            &self,
+            _block_height: u64,
+            _querier: &dyn grug_app::QuerierProvider,
+            _ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn wait_for_finish(&self) {}
+    }
+
+    /// Example indexer that consumes data from the context
+    #[derive(Default)]
+    struct DataConsumerIndexer {
+        consumed_data: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    }
+
+    impl DataConsumerIndexer {
+        fn new() -> Self {
+            Self {
+                consumed_data: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+            }
+        }
+    }
+
+    impl Indexer for DataConsumerIndexer {
+        fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn shutdown(&mut self) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn pre_indexing(
+            &self,
+            _block_height: u64,
+            _ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn index_block(
+            &self,
+            _block: &grug_types::Block,
+            _block_outcome: &grug_types::BlockOutcome,
+            ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
+            // Try to consume data stored by other indexers
+            if let Some(data) = ctx.get::<String>() {
+                self.consumed_data.lock().unwrap().push(data.clone());
+            }
+            Ok(())
+        }
+
+        fn post_indexing(
+            &self,
+            _block_height: u64,
+            _querier: &dyn grug_app::QuerierProvider,
+            _ctx: &mut grug_app::IndexerContext,
+        ) -> IndexerResult<()> {
+            Ok(())
+        }
+
+        fn wait_for_finish(&self) {}
+    }
+
+    #[test]
+    fn test_context_data_passing() {
+        let mut hooked_indexer = HookedIndexer::new();
+
+        // Add a producer indexer that stores data
+        let producer = DataProducerIndexer::new("producer1");
+        hooked_indexer.add_indexer(producer);
+
+        // Add a consumer indexer that reads data
+        let consumer = DataConsumerIndexer::new();
+        let consumer_data = consumer.consumed_data.clone();
+        hooked_indexer.add_indexer(consumer);
+
+        let storage = MockStorage::new();
+        hooked_indexer.start(&storage).unwrap();
+
+        let block = grug_types::Block {
+            info: grug_types::BlockInfo {
+                height: 42,
+                timestamp: grug_types::Timestamp::from_seconds(123456789),
+                hash: grug_types::Hash256::ZERO,
+            },
+            txs: vec![],
+        };
+        let outcome = grug_types::BlockOutcome {
+            app_hash: grug_types::Hash256::ZERO,
+            cron_outcomes: vec![],
+            tx_outcomes: vec![],
+        };
+
+        let mut ctx = grug_app::IndexerContext::new();
+
+        // Run the indexing pipeline
+        hooked_indexer.pre_indexing(42, &mut ctx).unwrap();
+        hooked_indexer
+            .index_block(&block, &outcome, &mut ctx)
+            .unwrap();
+
+        // Verify that data was passed from producer to consumer
+        let consumed_data = consumer_data.lock().unwrap();
+        assert_eq!(consumed_data.len(), 1);
+        assert_eq!(consumed_data[0], "data_from_producer1_at_height_42");
+
+        hooked_indexer.shutdown().unwrap();
     }
 }

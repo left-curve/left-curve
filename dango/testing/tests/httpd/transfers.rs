@@ -8,22 +8,19 @@ use {
         account_factory::{self, AccountParams},
         constants::usdc,
     },
-    grug::{Addressable, Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
+    grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
     itertools::Itertools,
-    sea_orm::EntityTrait,
     serde_json::json,
     tokio::sync::mpsc,
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
@@ -45,95 +42,87 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish();
 
-    let transfers = entity::transfers::Entity::find()
-        .all(&httpd_context.db)
-        .await?;
-    tracing::info!("transfers: {:#?}", transfers);
+    let graphql_query = r#"
+      query Transfers($block_height: Int!) {
+        transfers(blockHeight: $block_height) {
+          nodes {
+            id
+            idx
+            blockHeight
+            txHash
+            fromAddress
+            toAddress
+            amount
+            denom
+            createdAt
+            accounts { address users { username }}
+            fromAccount { address users { username }}
+            toAccount { address users { username }}
+          }
+          edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
 
-    Ok(())
+    let variables = serde_json::json!({
+        "block_height": 1,
+    })
+    .as_object()
+    .unwrap()
+    .to_owned();
 
-    // let graphql_query = r#"
-    //   query Transfers($block_height: Int!) {
-    //     transfers(blockHeight: $block_height) {
-    //       nodes {
-    //         id
-    //         idx
-    //         blockHeight
-    //         txHash
-    //         fromAddress
-    //         toAddress
-    //         amount
-    //         denom
-    //         createdAt
-    //         accounts { address users { username }}
-    //         fromAccount { address users { username }}
-    //         toAccount { address users { username }}
-    //       }
-    //       edges { node { id idx blockHeight txHash fromAddress toAddress amount denom createdAt accounts { address users { username }} fromAccount { address users { username }} toAccount { address users { username }} } cursor }
-    //       pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
-    //     }
-    //   }
-    // "#;
+    let request_body = GraphQLCustomRequest {
+        name: "transfers",
+        query: graphql_query,
+        variables,
+    };
 
-    // let variables = serde_json::json!({
-    //     "block_height": 1,
-    // })
-    // .as_object()
-    // .unwrap()
-    // .to_owned();
+    let local_set = tokio::task::LocalSet::new();
 
-    // let request_body = GraphQLCustomRequest {
-    //     name: "transfers",
-    //     query: graphql_query,
-    //     variables,
-    // };
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(httpd_context);
 
-    // let local_set = tokio::task::LocalSet::new();
+                let response: PaginatedResponse<entity::transfers::Model> =
+                    call_paginated_graphql(app, request_body).await?;
 
-    // local_set
-    //     .run_until(async {
-    //         tokio::task::spawn_local(async move {
-    //             let app = build_actix_app(httpd_context);
+                assert_that!(response.edges).has_length(2);
 
-    //             let response: PaginatedResponse<entity::transfers::Model> =
-    //                 call_paginated_graphql(app, request_body).await?;
+                assert_that!(
+                    response
+                        .edges
+                        .iter()
+                        .map(|t| t.node.block_height)
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec![1, 1]);
 
-    //             assert_that!(response.edges).has_length(2);
+                assert_that!(
+                    response
+                        .edges
+                        .iter()
+                        .map(|t| t.node.amount.as_str())
+                        .collect::<Vec<_>>()
+                )
+                .is_equal_to(vec!["100000000", "100000000"]);
 
-    //             assert_that!(
-    //                 response
-    //                     .edges
-    //                     .iter()
-    //                     .map(|t| t.node.block_height)
-    //                     .collect::<Vec<_>>()
-    //             )
-    //             .is_equal_to(vec![1, 1]);
+                response.edges.iter().for_each(|edge| {
+                    assert!(
+                        !edge.node.tx_hash.is_empty(),
+                        "Transaction hash should not be empty."
+                    );
+                });
 
-    //             assert_that!(
-    //                 response
-    //                     .edges
-    //                     .iter()
-    //                     .map(|t| t.node.amount.as_str())
-    //                     .collect::<Vec<_>>()
-    //             )
-    //             .is_equal_to(vec!["100000000", "100000000"]);
-
-    //             response.edges.iter().for_each(|edge| {
-    //                 assert!(
-    //                     !edge.node.tx_hash.is_empty(),
-    //                     "Transaction hash should not be empty."
-    //                 );
-    //             });
-
-    //             Ok::<(), anyhow::Error>(())
-    //         })
-    //         .await
-    //     })
-    //     .await?
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn graphql_transfers_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
         setup_test_with_indexer();
@@ -254,7 +243,6 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
         setup_test_with_indexer();
@@ -328,7 +316,6 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn graphql_paginate_transfers() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
@@ -484,7 +471,6 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 
@@ -618,7 +604,6 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore]
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
 

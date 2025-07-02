@@ -77,7 +77,6 @@ impl StartCmd {
             .with_database_max_connections(cfg.indexer.database.max_connections)
             .with_dir(app_dir.indexer_dir())
             .with_sqlx_pubsub()
-            .with_hooks(dango_indexer_sql::hooks::Indexer)
             .build()
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
@@ -94,7 +93,14 @@ impl StartCmd {
                 // Indexer, HTTP server, and metrics server all enabled
 
                 let mut hooked_indexer = HookedIndexer::new();
+                let dango_indexer = dango_indexer_sql::hooks::Indexer {
+                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                        indexer.handle.handle().clone(),
+                    ),
+                    context: indexer.context.clone(),
+                };
                 hooked_indexer.add_indexer(indexer);
+                hooked_indexer.add_indexer(dango_indexer);
 
                 let httpd_context = IndexerContext::new(
                     indexer_context,
@@ -112,6 +118,16 @@ impl StartCmd {
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
 
+                let mut hooked_indexer = HookedIndexer::new();
+                let dango_indexer = dango_indexer_sql::hooks::Indexer {
+                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                        indexer.handle.handle().clone(),
+                    ),
+                    context: indexer.context.clone(),
+                };
+                hooked_indexer.add_indexer(indexer);
+                hooked_indexer.add_indexer(dango_indexer);
+
                 let httpd_context = IndexerContext::new(
                     indexer_context,
                     Arc::new(app),
@@ -121,21 +137,41 @@ impl StartCmd {
 
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
                 )?;
             },
             (true, false, true) => {
                 // Indexer and metrics enabled, HTTP server disabled
 
+                let mut hooked_indexer = HookedIndexer::new();
+                let dango_indexer = dango_indexer_sql::hooks::Indexer {
+                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                        indexer.handle.handle().clone(),
+                    ),
+                    context: indexer.context.clone(),
+                };
+                hooked_indexer.add_indexer(indexer);
+                hooked_indexer.add_indexer(dango_indexer);
+
                 tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
                 )?;
             },
             (true, false, false) => {
                 // Only indexer enabled
 
-                self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                let mut hooked_indexer = HookedIndexer::new();
+                let dango_indexer = dango_indexer_sql::hooks::Indexer {
+                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                        indexer.handle.handle().clone(),
+                    ),
+                    context: indexer.context.clone(),
+                };
+                hooked_indexer.add_indexer(indexer);
+                hooked_indexer.add_indexer(dango_indexer);
+
+                self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
                     .await?;
             },
             (false, true, false) => {
