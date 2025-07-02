@@ -31,7 +31,7 @@ pub fn add_subsequent_liquidity(
 
     reserve.merge(deposit)?;
 
-    Ok(deposit_value.checked_div(reserve_value.checked_add(deposit_value)?)?)
+    Ok(deposit_value.checked_div(reserve_value)?)
 }
 
 pub fn swap_exact_amount_in(
