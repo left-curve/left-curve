@@ -25,7 +25,7 @@ import Big from "big.js";
 import { m } from "~/paraglide/messages";
 
 import type { PairUpdate } from "@left-curve/dango/types";
-import type { PropsWithChildren } from "react";
+import { useEffect, type PropsWithChildren } from "react";
 import { Modals } from "../modals/RootModal";
 import { MobileTitle } from "../foundation/MobileTitle";
 
@@ -431,6 +431,12 @@ const PoolLiquidityWithdraw: React.FC = () => {
 const PoolLiquidityHeaderTabs: React.FC = () => {
   const { state } = usePoolLiquidity();
   const { action, onChangeAction, userHasLiquidity } = state;
+
+  useEffect(() => {
+    if (!userHasLiquidity) {
+      onChangeAction("deposit");
+    }
+  }, [userHasLiquidity]);
 
   return (
     <Tabs
