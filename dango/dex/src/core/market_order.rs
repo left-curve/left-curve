@@ -1,10 +1,7 @@
 use {
     crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
     dango_types::dex::{Direction, OrderId},
-    grug::{
-        IsZero, MultiplyFraction, Number, NumberConst, Signed, StdResult, Udec128, Uint128,
-        Unsigned,
-    },
+    grug::{MultiplyFraction, Number, NumberConst, Signed, StdResult, Udec128, Uint128, Unsigned},
     std::{cmp::Ordering, collections::HashMap, iter::Peekable},
 };
 
@@ -95,8 +92,13 @@ where
             let extended_market_order_id = ExtendedOrderId::User(*market_order_id);
             let filling_outcome = filling_outcomes.get_mut(&extended_market_order_id).unwrap();
 
-            let current_avg_price = filling_outcome.clearing_price;
-            let filled = filling_outcome.filled;
+            // Calculate how much of the market order can be filled without the average
+            // price of the market order exceeding the cutoff price.
+            // TODO: optimize the math here. See the jupyter notebook.
+            let current_avg_price = Udec128::checked_from_ratio(
+                filling_outcome.filled_quote,
+                filling_outcome.filled_base,
+            )?;
             let price_ratio = current_avg_price
                 .checked_into_signed()?
                 .checked_sub(cutoff_price.checked_into_signed()?)?
@@ -105,10 +107,8 @@ where
                         .checked_into_signed()?
                         .checked_sub(price.checked_into_signed()?)?,
                 )?;
-
-            // Calculate how much of the market order can be filled without the average
-            // price of the market order exceeding the cutoff price.
-            let market_order_amount_to_match_in_base = filled
+            let market_order_amount_to_match_in_base = filling_outcome
+                .filled_base
                 .checked_mul_dec_floor(price_ratio.checked_into_unsigned()?)?
                 .min(market_order_amount_in_base);
 
@@ -136,7 +136,7 @@ where
 
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
-        let (filled_amount, price, limit_order, market_order) =
+        let (filled_base, price, limit_order, market_order) =
             match market_order_amount_to_match_in_base.cmp(limit_order.remaining()) {
                 // The market ask order is smaller than the limit order so we advance the market
                 // orders iterator and decrement the limit order remaining amount
@@ -223,7 +223,7 @@ where
             &mut filling_outcomes,
             limit_order,
             limit_order_direction,
-            filled_amount,
+            filled_base,
             price,
             limit_order_fee_rate,
         )?;
@@ -232,7 +232,7 @@ where
             &mut filling_outcomes,
             Order::Market(market_order),
             market_order_direction,
-            filled_amount,
+            filled_base,
             price,
             taker_fee_rate,
         )?;
@@ -245,7 +245,7 @@ fn update_filling_outcome(
     filling_outcomes: &mut HashMap<ExtendedOrderId, FillingOutcome>,
     order: Order,
     order_direction: Direction,
-    filled_amount: Uint128,
+    filled_base: Uint128,
     price: Udec128,
     fee_rate: Udec128,
 ) -> StdResult<()> {
@@ -254,55 +254,40 @@ fn update_filling_outcome(
         .or_insert_with(|| FillingOutcome {
             order_direction,
             order,
-            filled: Uint128::ZERO,
-            clearing_price: price,
-            cleared: false,
+            filled_base: Uint128::ZERO,
+            filled_quote: Uint128::ZERO,
             refund_base: Uint128::ZERO,
             refund_quote: Uint128::ZERO,
             fee_base: Uint128::ZERO,
             fee_quote: Uint128::ZERO,
         });
 
-    match order {
-        Order::Limit(limit_order) => {
-            filling_outcome.cleared = limit_order.remaining.is_zero();
-        },
-        Order::Market(_) => {
-            filling_outcome.clearing_price = Udec128::checked_from_ratio(
-                filling_outcome
-                    .filled
-                    .checked_mul_dec(filling_outcome.clearing_price)?
-                    .checked_add(filled_amount.checked_mul_dec(price)?)?,
-                filling_outcome.filled.checked_add(filled_amount)?,
-            )?;
-        },
-        Order::Passive(passive_order) => {
-            filling_outcome.cleared = passive_order.remaining.is_zero();
-        },
-    }
+    let filled_quote = filled_base.checked_mul_dec_floor(price)?;
 
-    filling_outcome.filled.checked_add_assign(filled_amount)?;
+    filling_outcome
+        .filled_base
+        .checked_add_assign(filled_base)?;
+    filling_outcome
+        .filled_quote
+        .checked_add_assign(filled_base.checked_mul_dec_floor(price)?)?;
     filling_outcome.order = order;
 
     match order_direction {
         Direction::Bid => {
-            let fee_amount = filled_amount.checked_mul_dec_ceil(fee_rate)?;
+            let fee_base = filled_base.checked_mul_dec_ceil(fee_rate)?;
 
-            filling_outcome.fee_base.checked_add_assign(fee_amount)?;
+            filling_outcome.fee_base.checked_add_assign(fee_base)?;
             filling_outcome
                 .refund_base
-                .checked_add_assign(filled_amount.checked_sub(fee_amount)?)?;
+                .checked_add_assign(filled_base.checked_sub(fee_base)?)?;
         },
         Direction::Ask => {
-            let filled_amount_in_quote = filled_amount.checked_mul_dec_floor(price)?;
-            let fee_amount_in_quote = filled_amount_in_quote.checked_mul_dec_ceil(fee_rate)?;
+            let fee_quote = filled_quote.checked_mul_dec_ceil(fee_rate)?;
 
-            filling_outcome
-                .fee_quote
-                .checked_add_assign(fee_amount_in_quote)?;
+            filling_outcome.fee_quote.checked_add_assign(fee_quote)?;
             filling_outcome
                 .refund_quote
-                .checked_add_assign(filled_amount_in_quote.checked_sub(fee_amount_in_quote)?)?;
+                .checked_add_assign(filled_quote.checked_sub(fee_quote)?)?;
         },
     }
 

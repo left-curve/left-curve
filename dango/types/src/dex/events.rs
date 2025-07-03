@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId},
-    grug::{Addr, Coin, Coins, Denom, Udec128, Uint128},
+    grug::{Addr, Coin, Denom, Udec128, Uint128},
 };
 
 #[grug::derive(Serde)]
@@ -60,17 +60,14 @@ pub struct OrderFilled {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
+    pub filled_base: Uint128,
+    pub filled_quote: Uint128,
+    pub refund_base: Uint128,
+    pub refund_quote: Uint128,
+    pub fee_base: Uint128,
+    pub fee_quote: Uint128,
     /// The price at which the order was executed.
     pub clearing_price: Udec128,
-    /// The amount that was filled.
-    ///
-    /// This can be either denominated in the base or the quote asset, depending
-    /// on order type.
-    pub filled: Uint128,
-    /// The amount of coins returned to the user.
-    pub refund: Coins,
-    /// The amount of protocol fee collected.
-    pub fee: Option<Coin>,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
 }
