@@ -3,7 +3,7 @@ use {
         CONFIG, INBOUNDS, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
         UTXOS,
     },
-    anyhow::{anyhow, bail, ensure},
+    anyhow::{bail, ensure},
     corepc_client::bitcoin::{
         Address, Amount, EcdsaSighashType, Transaction as BtcTransaction,
         key::Secp256k1,
@@ -53,14 +53,12 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let mut msgs = tx.msgs.iter();
 
-    // Assert the transaction contains exactly 1 MsgExecute.
     let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
         (msgs.next(), msgs.next())
     else {
         bail!("transaction must contain exactly one message");
     };
 
-    // Assert the contract is the bridge.
     ensure!(
         contract == ctx.contract,
         "contract must be the bitcoin bridge"
@@ -68,72 +66,72 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
     let cfg = CONFIG.load(ctx.storage)?;
 
-    if let Ok(ExecuteMsg::ObserveInbound(inbound_msg)) = msg.clone().deserialize_json() {
-        let credential: InboundCredential = tx.credential.deserialize_json()?;
+    // The only allowed messages are `ObserveInbound` and `AuthorizeOutbound`.
+    match msg.clone().deserialize_json() {
+        Ok(ExecuteMsg::ObserveInbound(inbound_msg)) => {
+            let credential: InboundCredential = tx.credential.deserialize_json()?;
 
-        ensure!(
-            cfg.multisig.pub_keys().contains(&inbound_msg.pub_key),
-            "public key `{}` is not a valid multisig public key",
-            inbound_msg.pub_key.to_string()
-        );
+            ensure!(
+                cfg.multisig.pub_keys().contains(&inbound_msg.pub_key),
+                "public key `{}` is not a valid multisig public key",
+                inbound_msg.pub_key.to_string()
+            );
 
-        // Verify the credential is valid.
-        let secp = Secp256k1::verification_only();
-        let msg = secp256k1::Message::from_digest_slice(&inbound_msg.hash()?)?;
-
-        secp.verify_ecdsa(
-            &msg,
-            &Signature::from_der(credential.signature.inner())?,
-            &PublicKey::from_slice(inbound_msg.pub_key.inner())?,
-        )?;
-    } else if let Ok(ExecuteMsg::AuthorizeOutbound {
-        id,
-        signatures,
-        pub_key,
-    }) = msg.clone().deserialize_json()
-    {
-        let tx = OUTBOUNDS.load(ctx.storage, id)?;
-
-        ensure!(
-            cfg.multisig.pub_keys().contains(&pub_key),
-            "public key `{}` is not a valid multisig public key",
-            pub_key.to_string()
-        );
-
-        ensure!(
-            tx.inputs.len() == signatures.len(),
-            "transaction `{id}` has {} inputs, but {} signatures were provided",
-            tx.inputs.len(),
-            signatures.len()
-        );
-
-        // Validate the signatures.
-        let btc_transaction = tx.to_btc_transaction(cfg.network)?;
-        for (i, ((hash, vout), amount)) in tx.inputs.iter().enumerate() {
-            let signature = signatures.get(i).ok_or(anyhow!(
-                "missing signature for input `{hash}:{vout}` of transaction `{id}`"
-            ))?;
-
-            let signature = Signature::from_der(&signature[..signature.len() - 1])?;
-
-            // TODO: Can this be moved outside the loop?
-            let mut cache = SighashCache::new(&btc_transaction);
-
-            let sighash = cache.p2wsh_signature_hash(
-                i,
-                cfg.multisig.script(),
-                Amount::from_sat(amount.into_inner() as u64),
-                EcdsaSighashType::All,
-            )?;
-
-            let msg = secp256k1::Message::from_digest_slice(&sighash[..])?;
-
+            // Verify the credential is valid.
             let secp = Secp256k1::verification_only();
-            secp.verify_ecdsa(&msg, &signature, &PublicKey::from_slice(pub_key.inner())?)?
-        }
-    } else {
-        bail!("the execute message must be either `ObserveInbound` or `AuthorizeOutbound`");
-    }
+            let msg = secp256k1::Message::from_digest_slice(&inbound_msg.hash()?)?;
+
+            secp.verify_ecdsa(
+                &msg,
+                &Signature::from_der(credential.signature.inner())?,
+                &PublicKey::from_slice(inbound_msg.pub_key.inner())?,
+            )?;
+        },
+
+        Ok(ExecuteMsg::AuthorizeOutbound {
+            id,
+            signatures,
+            pub_key,
+        }) => {
+            let tx = OUTBOUNDS.load(ctx.storage, id)?;
+
+            ensure!(
+                cfg.multisig.pub_keys().contains(&pub_key),
+                "public key `{}` is not a valid multisig public key",
+                pub_key.to_string()
+            );
+
+            ensure!(
+                tx.inputs.len() == signatures.len(),
+                "transaction `{id}` has {} inputs, but {} signatures were provided",
+                tx.inputs.len(),
+                signatures.len()
+            );
+
+            // Validate the signatures.
+            let mut cache = SighashCache::new(tx.to_btc_transaction(cfg.network)?);
+
+            for (i, (_, amount)) in tx.inputs.iter().enumerate() {
+                let signature = signatures.get(i).unwrap();
+                // Remove the last byte, which is the sighash type.
+                let signature = Signature::from_der(&signature[..signature.len() - 1])?;
+
+                let sighash = cache.p2wsh_signature_hash(
+                    i,
+                    cfg.multisig.script(),
+                    Amount::from_sat(amount.into_inner() as u64),
+                    EcdsaSighashType::All,
+                )?;
+
+                let msg = secp256k1::Message::from_digest_slice(&sighash[..])?;
+
+                let secp = Secp256k1::verification_only();
+                secp.verify_ecdsa(&msg, &signature, &PublicKey::from_slice(pub_key.inner())?)?
+            }
+        },
+
+        _ => bail!("the execute message must be either `ObserveInbound` or `AuthorizeOutbound`"),
+    };
 
     Ok(AuthResponse::new().request_backrun(false))
 }
