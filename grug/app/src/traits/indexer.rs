@@ -1,4 +1,7 @@
-use grug_types::{Block, BlockOutcome, Storage};
+use {
+    grug_types::{Block, BlockOutcome, Storage},
+    std::sync::Arc,
+};
 
 use crate::{IndexerError, QuerierProvider};
 
@@ -82,11 +85,11 @@ pub trait Indexer {
     ) -> IndexerResult<()>;
 
     /// Called after indexing the block, allowing for DB transactions to be committed
-    /// Uses a reference to avoid unnecessary allocations while still allowing sharing
+    /// Uses owned querier to allow spawning in background threads
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: &dyn QuerierProvider,
+        querier: Arc<dyn QuerierProvider>,
         ctx: &mut IndexerContext,
     ) -> IndexerResult<()>;
 

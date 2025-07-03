@@ -4,6 +4,7 @@ use {
     grug::Storage,
     grug_app::QuerierProvider,
     indexer_sql::{block_to_index::BlockToIndex, non_blocking_indexer::RuntimeHandler},
+    std::sync::Arc,
 };
 #[cfg(feature = "metrics")]
 use {
@@ -68,7 +69,7 @@ impl grug_app::Indexer for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: &dyn QuerierProvider,
+        querier: Arc<dyn QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
@@ -83,16 +84,26 @@ impl grug_app::Indexer for Indexer {
                 "BlockToIndex not found".to_string(),
             ))?;
 
+        let handle = self.runtime_handle.spawn({
+            let context = self.context.clone();
+            let block_to_index = block_to_index.clone();
+            async move {
+                // Transfer processing
+                transfers::save_transfers(&context, block_height).await?;
+
+                // Save accounts
+                accounts::save_accounts(&context, &block_to_index, &*querier).await?;
+
+                context.pubsub.publish_block_minted(block_height).await?;
+
+                Ok::<(), grug_app::IndexerError>(())
+            }
+        });
+
         self.runtime_handle.block_on(async {
-            self.save_transfers(block_height).await?;
-            self.save_accounts(block_to_index, querier).await?;
-
-            self.context
-                .pubsub
-                .publish_block_minted(block_height)
-                .await?;
-
-            grug_app::IndexerResult::Ok(())
+            handle
+                .await
+                .map_err(|e| grug_app::IndexerError::Database(e.to_string()))?
         })?;
 
         #[cfg(feature = "metrics")]

@@ -96,6 +96,8 @@ where
             graphql_schema.clone(),
         ))
     })
+    .workers(4)
+    .worker_max_blocking_threads(16)
     .bind((ip.to_string(), port))?
     .run()
     .await?;

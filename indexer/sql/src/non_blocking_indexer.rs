@@ -493,7 +493,7 @@ impl Indexer for NonBlockingIndexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: &dyn grug_app::QuerierProvider,
+        _querier: Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
@@ -516,24 +516,24 @@ impl Indexer for NonBlockingIndexer {
         ctx.insert(block_to_index.clone());
         ctx.insert(context.pubsub.clone());
 
-        self.handle.block_on(async move {
+        let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height, indexer_id = id, "`post_indexing` async work started");
 
             let block_height = block_to_index.block.info.height;
 
             #[allow(clippy::map_identity)]
-            block_to_index.save(context.db.clone(), id).await.map_err(|err| {
+            if let Err(err) = block_to_index.save(context.db.clone(), id).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
-
-                err
-            })?;
+                return Ok(());
+            }
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
+                    return Ok(());
                 }
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
@@ -548,15 +548,27 @@ impl Indexer for NonBlockingIndexer {
                 }
             }
 
-            Self::remove_or_fail(blocks, &block_height)?;
+            if let Err(err) = Self::remove_or_fail(blocks, &block_height) {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %err, indexer_id = id, block_height, "Can't remove block in `post_indexing`");
+                return Ok(());
+            }
 
-            context.pubsub.publish_block_minted(block_height).await?;
+            if let Err(err) = context.pubsub.publish_block_minted(block_height).await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %err, indexer_id = id, block_height, "Can't publish block minted in `post_indexing`");
+                return Ok(());
+            }
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
 
-            Ok::<_, error::IndexerError>(())
-        })?;
+            Ok::<(), grug_app::IndexerError>(())
+        });
+
+        self.handle
+            .block_on(handle)
+            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
 
         Ok(())
     }
@@ -662,6 +674,26 @@ impl RuntimeHandler {
         if self.runtime.is_some() {
             self.handle.block_on(closure)
         } else {
+            // Check if we're in an actix-web worker thread context
+            if let Some(name) = std::thread::current().name() {
+                if name.contains("actix-") {
+                    // For actix-web worker threads, use futures::executor::block_on
+                    // which doesn't require multi-threaded runtime
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(
+                        "Using futures::executor::block_on for actix-web worker thread: {}",
+                        name
+                    );
+                    let result = futures::executor::block_on(closure);
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(
+                        "futures::executor::block_on completed for actix-web worker thread: {}",
+                        name
+                    );
+                    return result;
+                }
+            }
+
             tokio::task::block_in_place(|| self.handle.block_on(closure))
         }
     }

@@ -24,6 +24,7 @@ use {
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
+    std::sync::Arc,
 };
 
 /// The ABCI application.
@@ -400,17 +401,17 @@ where
             let querier = {
                 let storage = self.db.state_storage(Some(block_height))?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-                QuerierProviderImpl::new(
+                Arc::new(QuerierProviderImpl::new(
                     self.vm.clone(),
                     Box::new(storage),
                     GasTracker::new_limitless(),
                     block,
-                )
+                )) as Arc<dyn crate::QuerierProvider>
             };
 
             let mut indexer_ctx = crate::IndexerContext::new();
             self.indexer
-                .post_indexing(block_height, &querier, &mut indexer_ctx)?;
+                .post_indexing(block_height, querier, &mut indexer_ctx)?;
         }
 
         Ok(())

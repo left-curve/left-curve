@@ -18,7 +18,6 @@ use {
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn query_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
@@ -97,7 +96,6 @@ async fn query_accounts() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
@@ -169,7 +167,6 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
@@ -238,7 +235,6 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
@@ -334,7 +330,6 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
@@ -453,7 +448,6 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;

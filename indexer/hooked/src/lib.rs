@@ -1,11 +1,14 @@
-use grug_app::{Indexer, IndexerResult};
+use {
+    grug_app::{Indexer, IndexerResult},
+    std::sync::Arc,
+};
 
 // Re-export for convenience
 pub use grug_app::IndexerError;
 
 /// A composable indexer that can own multiple indexers and coordinate between them
 pub struct HookedIndexer {
-    /// List of registered indexers - no wrappers needed!
+    /// List of registered indexers
     indexers: Vec<Box<dyn Indexer + Send + Sync>>,
     /// Whether the indexer is currently running
     is_running: bool,
@@ -118,19 +121,19 @@ impl Indexer for HookedIndexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: &dyn grug_app::QuerierProvider,
+        querier: Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
+        // For now, let's fall back to the original synchronous approach
+        // The threading approach requires solving complex lifetime and trait object issues
+        // that are beyond the scope of this immediate fix
         for indexer in &self.indexers {
-            indexer.post_indexing(block_height, querier, ctx)?;
+            indexer.post_indexing(block_height, querier.clone(), ctx)?;
         }
-
-        // Note: publish_block_minted is now called by the last indexer in the chain
-        // to ensure all data is saved before the notification is sent
 
         Ok(())
     }
@@ -148,7 +151,7 @@ mod tests {
 
     #[derive(Default)]
     struct TestIndexer {
-        calls: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+        calls: Arc<std::sync::Mutex<Vec<String>>>,
     }
 
     impl TestIndexer {
@@ -190,7 +193,7 @@ mod tests {
         fn post_indexing(
             &self,
             _block_height: u64,
-            _querier: &dyn grug_app::QuerierProvider,
+            _querier: Arc<dyn grug_app::QuerierProvider>,
             _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             self.record_call("post_indexing");
@@ -326,7 +329,7 @@ mod tests {
         fn post_indexing(
             &self,
             _block_height: u64,
-            _querier: &dyn grug_app::QuerierProvider,
+            _querier: Arc<dyn grug_app::QuerierProvider>,
             _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             Ok(())
@@ -338,13 +341,13 @@ mod tests {
     /// Example indexer that consumes data from the context
     #[derive(Default)]
     struct DataConsumerIndexer {
-        consumed_data: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+        consumed_data: Arc<std::sync::Mutex<Vec<String>>>,
     }
 
     impl DataConsumerIndexer {
         fn new() -> Self {
             Self {
-                consumed_data: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+                consumed_data: Arc::new(std::sync::Mutex::new(Vec::new())),
             }
         }
     }
@@ -382,7 +385,7 @@ mod tests {
         fn post_indexing(
             &self,
             _block_height: u64,
-            _querier: &dyn grug_app::QuerierProvider,
+            _querier: Arc<dyn grug_app::QuerierProvider>,
             _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             Ok(())

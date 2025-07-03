@@ -4,6 +4,7 @@ use {
     std::{
         convert::Infallible,
         fmt::{self, Display},
+        sync::Arc,
     },
 };
 
@@ -40,7 +41,7 @@ impl Indexer for NullIndexer {
     fn post_indexing(
         &self,
         _block_height: u64,
-        _querier: &dyn QuerierProvider,
+        _querier: Arc<dyn QuerierProvider>,
         _ctx: &mut crate::IndexerContext,
     ) -> IndexerResult<()> {
         Ok(())
