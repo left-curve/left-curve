@@ -8,7 +8,7 @@ import {
   Badge,
   BorrowBar,
   IconButton,
-  IconChevronDown,
+  IconChevronDownFill,
   IconClose,
   TextCopy,
   TruncateText,
@@ -90,7 +90,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
               {isSelectorActive ? (
                 <IconClose className="w-5 h-5" />
               ) : (
-                <IconChevronDown className="w-5 h-5" />
+                <IconChevronDownFill className="w-4 h-4" />
               )}
             </motion.span>
           </IconButton>

@@ -14,7 +14,14 @@ import { useApp } from "~/hooks/useApp";
 import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
-import { Badge, Cell, IconChevronDown, IconEmptyStar, Table, Tabs } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Cell,
+  IconChevronDownFill,
+  IconEmptyStar,
+  Table,
+  Tabs,
+} from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
@@ -88,8 +95,8 @@ const ProTradeHeader: React.FC = () => {
             className="cursor-pointer flex items-center justify-center lg:hidden"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            <IconChevronDown
-              className={twMerge("text-gray-500 w-5 h-5 transition-all", {
+            <IconChevronDownFill
+              className={twMerge("text-gray-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
@@ -260,7 +267,7 @@ const ProTradeOrders: React.FC = () => {
           classNames={{ button: "exposure-xs-italic" }}
         />
 
-        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
+        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[1px]" />
       </div>
       <div className="w-full h-full relative">
         {activeTab === "open order" ? (
