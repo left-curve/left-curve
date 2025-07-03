@@ -41,7 +41,14 @@ where
     let best_price = match limit_orders.peek_mut() {
         Some(Ok(((price, _), _))) => *price,
         Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok((Vec::new(), Vec::new())), // Return early if there are no limit orders
+        None => {
+            return Ok((
+                Vec::new(),
+                market_orders
+                    .map(|(_, market_order)| market_order)
+                    .collect(),
+            ));
+        }, // Return early if there are no limit orders
     };
 
     // Iterate over the limit orders and market orders until one of them is exhausted.
