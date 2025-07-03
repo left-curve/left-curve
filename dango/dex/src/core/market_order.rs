@@ -137,7 +137,7 @@ where
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
         let (filled_amount, price, limit_order, market_order) =
-            match market_order_amount_to_match_in_base.cmp(&limit_order.remaining()) {
+            match market_order_amount_to_match_in_base.cmp(limit_order.remaining()) {
                 // The market ask order is smaller than the limit order so we advance the market
                 // orders iterator and decrement the limit order remaining amount
                 Ordering::Less => {
@@ -253,7 +253,7 @@ fn update_filling_outcome(
         .entry(order.extended_id())
         .or_insert_with(|| FillingOutcome {
             order_direction,
-            order: order.clone(),
+            order,
             filled: Uint128::ZERO,
             clearing_price: price,
             cleared: false,
