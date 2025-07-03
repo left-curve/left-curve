@@ -2,50 +2,10 @@ use {
     crate::{error::Result, pubsub::PubSub},
     async_trait::async_trait,
     sea_orm::sqlx::{self, postgres::PgListener},
-    std::{
-        collections::HashSet,
-        pin::Pin,
-        sync::{Arc, Mutex},
-        time::{Duration, Instant},
-    },
+    std::pin::Pin,
     tokio::sync::broadcast,
     tokio_stream::{Stream, StreamExt, wrappers::BroadcastStream},
 };
-
-/// Simple deduplication cache for block notifications
-#[derive(Debug)]
-struct DeduplicationCache {
-    published_blocks: Arc<Mutex<HashSet<u64>>>,
-    last_cleanup: Arc<Mutex<Instant>>,
-}
-
-impl DeduplicationCache {
-    fn new() -> Self {
-        Self {
-            published_blocks: Arc::new(Mutex::new(HashSet::new())),
-            last_cleanup: Arc::new(Mutex::new(Instant::now())),
-        }
-    }
-
-    fn try_publish(&self, block_height: u64) -> bool {
-        let mut published_blocks = self.published_blocks.lock().unwrap();
-
-        // Clean up old entries periodically (keep last 1000 blocks)
-        let mut last_cleanup = self.last_cleanup.lock().unwrap();
-        if last_cleanup.elapsed() > Duration::from_secs(60) {
-            if published_blocks.len() > 1000 {
-                let min_height = block_height.saturating_sub(1000);
-                published_blocks.retain(|&h| h >= min_height);
-            }
-            *last_cleanup = Instant::now();
-        }
-
-        // Try to insert, returns false if already exists
-        published_blocks.insert(block_height)
-    }
-}
-
-static POSTGRES_DEDUP_CACHE: std::sync::OnceLock<DeduplicationCache> = std::sync::OnceLock::new();
 
 #[derive(Clone)]
 pub struct PostgresPubSub {
@@ -122,30 +82,11 @@ impl PubSub for PostgresPubSub {
     }
 
     async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
-        let cache = POSTGRES_DEDUP_CACHE.get_or_init(|| DeduplicationCache::new());
+        sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
+            .bind(block_height as i64)
+            .execute(&self.pool)
+            .await?;
 
-        // Only publish if this block height hasn't been published recently
-        if cache.try_publish(block_height) {
-            sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
-                .bind(block_height as i64)
-                .execute(&self.pool)
-                .await?;
-
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                "Published block_minted notification for block {}",
-                block_height
-            );
-
-            Ok(1)
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                "Skipped duplicate block_minted notification for block {}",
-                block_height
-            );
-
-            Ok(0)
-        }
+        Ok(1)
     }
 }
