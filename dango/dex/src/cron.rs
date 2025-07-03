@@ -148,13 +148,13 @@ fn clear_orders_of_pair(
     // --------------------------- 1. Prepare orders ---------------------------
 
     // Load the market orders for this pair.
-    let mut market_bids = MARKET_ORDERS
+    let market_bids = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .drain(storage, None, None)?
         .into_iter()
         .peekable();
-    let mut market_asks = MARKET_ORDERS
+    let market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .drain(storage, None, None)?
@@ -221,7 +221,7 @@ fn clear_orders_of_pair(
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
     let (market_bid_filling_outcomes, unmatched_market_bids) = match_and_fill_market_orders(
-        &mut market_bids,
+        market_bids,
         &mut merged_ask_iter,
         Direction::Bid,
         maker_fee_rate,
@@ -229,7 +229,7 @@ fn clear_orders_of_pair(
         current_block_height,
     )?;
     let (market_ask_filling_outcomes, unmatched_market_asks) = match_and_fill_market_orders(
-        &mut market_asks,
+        market_asks,
         &mut merged_bid_iter,
         Direction::Ask,
         maker_fee_rate,

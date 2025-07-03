@@ -18,7 +18,7 @@ use {
 /// Returns a tuple containing the filling outcomes and all the market orders that
 /// were not filled.
 pub fn match_and_fill_market_orders<M, L>(
-    market_orders: &mut Peekable<M>,
+    mut market_orders: Peekable<M>,
     limit_orders: &mut Peekable<L>,
     market_order_direction: Direction,
     maker_fee_rate: Udec128,
