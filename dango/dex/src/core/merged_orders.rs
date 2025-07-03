@@ -13,7 +13,7 @@ where
     real: Peekable<A>,
     /// Iterator that returns passive orders in the form of `(price, amount)`.
     passive: Peekable<B>,
-    /// Iterating from the lowest price to to highest, or the other way around.
+    /// Iterating from the lowest price to highest, or the other way around.
     iteration_order: IterationOrder,
 }
 
