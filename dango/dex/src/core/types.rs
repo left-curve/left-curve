@@ -20,7 +20,7 @@ pub trait OrderTrait {
     /// Return the order's _extended_ identifier.
     fn extended_id(&self) -> ExtendedOrderId;
 
-    /// Return order's ID the user who created it. `None` for passive orders.
+    /// Return the order's ID and the user who created it. `None` for passive orders.
     fn id_and_user(&self) -> Option<(OrderId, Addr)>;
 
     /// Return the user who created the order. `None` for passive orders.
