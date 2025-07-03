@@ -482,17 +482,6 @@ fn fill_passive_order(
     match order_direction {
         Direction::Bid => {
             inflows.insert((base_denom.clone(), filled_base))?;
-            // Why is this `filled_quote` instead of `refund_quote`?
-            //
-            // Because a trader who places a BUY order must make a
-            // deposit of the amount `amount * limit_price`.
-            // Then, when the order is filled, the trader gets refunded
-            // `amount * (limit_price - clearing_price)`.
-            // The _net_ outflow is the difference between the two values,
-            // which is `amount * clearing_price`.
-            //
-            // In comparison, the passive liquidity pool doesn't need to
-            // make a deposit, so the outflow is simply the _net_ outflow.
             outflows.insert((quote_denom.clone(), filled_quote))?;
         },
         Direction::Ask => {
