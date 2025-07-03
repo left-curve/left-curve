@@ -13,7 +13,7 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, Coin, Coins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
+        Addr, Api, Coins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
         Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
         Udec128, Uint128,
     },
@@ -440,19 +440,6 @@ fn fill_user_order(
     fees: &mut Coins,
     fee_payments: &mut TransferBuilder,
 ) -> StdResult<()> {
-    let refund = Coins::try_from([
-        Coin {
-            denom: base_denom.clone(),
-            amount: refund_base,
-        },
-        Coin {
-            denom: quote_denom.clone(),
-            amount: refund_quote,
-        },
-    ])?;
-
-    refunds.insert_many(user, refund.clone())?;
-
     // Handle fees.
     if fee_base.is_non_zero() {
         fees.insert((base_denom.clone(), fee_base))?;
@@ -464,7 +451,9 @@ fn fill_user_order(
         fee_payments.insert(user, quote_denom.clone(), fee_quote)?;
     }
 
-    Ok(())
+    // Handle refunds.
+    refunds.insert(user, base_denom.clone(), refund_base)?;
+    refunds.insert(user, quote_denom.clone(), refund_quote)
 }
 
 fn fill_passive_order(
