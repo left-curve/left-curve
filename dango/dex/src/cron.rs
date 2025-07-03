@@ -1,8 +1,8 @@
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
-        MatchingOutcome, MergedOrders, Order, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES,
-        VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
+        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, RESERVES,
+        VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -168,11 +168,19 @@ fn clear_orders_of_pair(
     let bid_iter = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Descending);
+        .range(storage, None, None, IterationOrder::Descending)
+        .map(|res| {
+            let ((price, _), limit_order) = res?;
+            Ok((price, limit_order))
+        });
     let ask_iter = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending);
+        .range(storage, None, None, IterationOrder::Ascending)
+        .map(|res| {
+            let ((price, _), limit_order) = res?;
+            Ok((price, limit_order))
+        });
 
     // Create iterators over passive orders.
     //
@@ -200,20 +208,10 @@ fn clear_orders_of_pair(
     };
 
     // Merge the orders from users and from the passive pool.
-    let mut merged_bid_iter = MergedOrders::new(
-        bid_iter,
-        passive_bid_iter,
-        IterationOrder::Descending,
-        dex_addr,
-    )
-    .peekable();
-    let mut merged_ask_iter = MergedOrders::new(
-        ask_iter,
-        passive_ask_iter,
-        IterationOrder::Ascending,
-        dex_addr,
-    )
-    .peekable();
+    let mut merged_bid_iter =
+        MergedOrders::new(bid_iter, passive_bid_iter, IterationOrder::Descending).peekable();
+    let mut merged_ask_iter =
+        MergedOrders::new(ask_iter, passive_ask_iter, IterationOrder::Ascending).peekable();
 
     // -------------------- 2. Match and fill market orders --------------------
 
@@ -286,11 +284,19 @@ fn clear_orders_of_pair(
 
     // Loop over all unmatched market orders and refund the users
     for (_, market_order) in market_bids {
-        refunds.insert(market_order.user, quote_denom.clone(), market_order.amount)?;
+        refunds.insert(
+            market_order.user,
+            quote_denom.clone(),
+            market_order.remaining,
+        )?;
     }
 
     for (_, market_order) in market_asks {
-        refunds.insert(market_order.user, base_denom.clone(), market_order.amount)?;
+        refunds.insert(
+            market_order.user,
+            base_denom.clone(),
+            market_order.remaining,
+        )?;
     }
 
     // Track the inflows and outflows of the dex.
@@ -300,8 +306,6 @@ fn clear_orders_of_pair(
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
-        order_price,
-        order_id,
         order,
         filled,
         clearing_price,
@@ -311,93 +315,27 @@ fn clear_orders_of_pair(
         fee_base,
         fee_quote,
     } in market_bid_filling_outcomes
-        .into_iter()
-        .chain(market_ask_filling_outcomes)
+        .into_values()
+        .chain(market_ask_filling_outcomes.into_values())
         .chain(limit_order_filling_outcomes)
     {
-        update_trading_volumes(
-            storage,
-            api,
-            dex_addr,
-            oracle_querier,
-            account_querier,
-            &base_denom,
-            filled,
-            order.user(),
-            volumes,
-            volumes_by_username,
-        )?;
-
-        if order.user() == dex_addr {
-            // The order only exists in the storage if it's not owned by the dex, since
-            // the passive orders are "virtual". If it is virtual, we need to update the
-            // reserve.
-
-            match order_direction {
-                Direction::Bid => {
-                    inflows.insert((base_denom.clone(), filled))?;
-                    // Why isn't this simply `refund_quote`?
-                    //
-                    // Because a trader who places a BUY order must make a
-                    // deposit of the amount `amount * limit_price`.
-                    // Then, when the order is filled, the trader gets refunded
-                    // `amount * (limit_price - clearing_price)`.
-                    // The _net_ outflow is the difference between the two values,
-                    // which is `amount * clearing_price`.
-                    //
-                    // In comparison, the passive liquidity pool doesn't need to
-                    // make a deposit, so the outflow is simply the _net_ outflow.
-                    let net_outflow = filled.checked_mul_dec_floor(clearing_price)?;
-                    outflows.insert((quote_denom.clone(), net_outflow))?;
-                },
-                Direction::Ask => {
-                    inflows.insert((quote_denom.clone(), refund_quote))?;
-                    outflows.insert((base_denom.clone(), filled))?;
-                },
-            }
-        } else {
-            let refund = Coins::try_from([
-                Coin {
-                    denom: base_denom.clone(),
-                    amount: refund_base,
-                },
-                Coin {
-                    denom: quote_denom.clone(),
-                    amount: refund_quote,
-                },
-            ])?;
-
-            refunds.insert_many(order.user(), refund.clone())?;
-
-            // Handle fees.
-            if fee_base.is_non_zero() {
-                fees.insert((base_denom.clone(), fee_base))?;
-                fee_payments.insert(order.user(), base_denom.clone(), fee_base)?;
-            }
-
-            if fee_quote.is_non_zero() {
-                fees.insert((quote_denom.clone(), fee_quote))?;
-                fee_payments.insert(order.user(), quote_denom.clone(), fee_quote)?;
-            }
-
-            // Include fee information in the event
-            let fee = if fee_base.is_non_zero() {
-                Some(Coin {
-                    denom: base_denom.clone(),
-                    amount: fee_base,
-                })
-            } else if fee_quote.is_non_zero() {
-                Some(Coin {
-                    denom: quote_denom.clone(),
-                    amount: fee_quote,
-                })
-            } else {
-                None
-            };
+        if let Some((order_id, user)) = order.id_and_user() {
+            let (refund, fee) = fill_user_order(
+                user,
+                &base_denom,
+                &quote_denom,
+                refund_base,
+                refund_quote,
+                fee_base,
+                fee_quote,
+                refunds,
+                fees,
+                fee_payments,
+            )?;
 
             // Emit event for filled user orders to be used by the frontend
             events.push(OrderFilled {
-                user: order.user(),
+                user,
                 id: order_id,
                 kind: order.kind(),
                 base_denom: base_denom.clone(),
@@ -418,7 +356,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            order_price,
+                            limit_order.price,
                             order_id,
                         ),
                     )?;
@@ -428,14 +366,39 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            order_price,
+                            limit_order.price,
                             order_id,
                         ),
                         &limit_order,
                     )?;
                 }
             }
+        } else {
+            fill_passive_order(
+                &base_denom,
+                &quote_denom,
+                order_direction,
+                filled,
+                clearing_price,
+                refund_quote,
+                fee_quote,
+                &mut inflows,
+                &mut outflows,
+            )?;
         }
+
+        update_trading_volumes(
+            storage,
+            api,
+            dex_addr,
+            oracle_querier,
+            account_querier,
+            &base_denom,
+            filled,
+            order.user().unwrap_or(dex_addr),
+            volumes,
+            volumes_by_username,
+        )?;
     }
 
     // Update the pool reserve.
@@ -451,6 +414,109 @@ fn clear_orders_of_pair(
 
             Ok::<_, StdError>(reserve)
         })?;
+    }
+
+    Ok(())
+}
+
+/// Handle the `FillingOutcome` of a user order.
+///
+/// ## Returns
+///
+/// - `refund`: fund to be sent back to the user.
+/// - `fee`: protocol fee to be transferred to the taxman contract.
+fn fill_user_order(
+    user: Addr,
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    refund_base: Uint128,
+    refund_quote: Uint128,
+    fee_base: Uint128,
+    fee_quote: Uint128,
+    refunds: &mut TransferBuilder,
+    fees: &mut Coins,
+    fee_payments: &mut TransferBuilder,
+) -> StdResult<(Coins, Option<Coin>)> {
+    let refund = Coins::try_from([
+        Coin {
+            denom: base_denom.clone(),
+            amount: refund_base,
+        },
+        Coin {
+            denom: quote_denom.clone(),
+            amount: refund_quote,
+        },
+    ])?;
+
+    refunds.insert_many(user, refund.clone())?;
+
+    // Handle fees.
+    if fee_base.is_non_zero() {
+        fees.insert((base_denom.clone(), fee_base))?;
+        fee_payments.insert(user, base_denom.clone(), fee_base)?;
+    }
+
+    if fee_quote.is_non_zero() {
+        fees.insert((quote_denom.clone(), fee_quote))?;
+        fee_payments.insert(user, quote_denom.clone(), fee_quote)?;
+    }
+
+    // Include fee information in the event
+    let fee = if fee_base.is_non_zero() {
+        Some(Coin {
+            denom: base_denom.clone(),
+            amount: fee_base,
+        })
+    } else if fee_quote.is_non_zero() {
+        Some(Coin {
+            denom: quote_denom.clone(),
+            amount: fee_quote,
+        })
+    } else {
+        None
+    };
+
+    Ok((refund, fee))
+}
+
+fn fill_passive_order(
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    order_direction: Direction,
+    filled: Uint128,
+    clearing_price: Udec128,
+    refund_quote: Uint128,
+    fee_quote: Uint128,
+    inflows: &mut Coins,
+    outflows: &mut Coins,
+) -> StdResult<()> {
+    // The order only exists in the storage if it's not owned by the dex, since
+    // the passive orders are "virtual". If it is virtual, we need to update the
+    // reserve.
+    match order_direction {
+        Direction::Bid => {
+            inflows.insert((base_denom.clone(), filled))?;
+            // Why isn't this simply `refund_quote`?
+            //
+            // Because a trader who places a BUY order must make a
+            // deposit of the amount `amount * limit_price`.
+            // Then, when the order is filled, the trader gets refunded
+            // `amount * (limit_price - clearing_price)`.
+            // The _net_ outflow is the difference between the two values,
+            // which is `amount * clearing_price`.
+            //
+            // In comparison, the passive liquidity pool doesn't need to
+            // make a deposit, so the outflow is simply the _net_ outflow.
+            let net_outflow = filled.checked_mul_dec_floor(clearing_price)?;
+            outflows.insert((quote_denom.clone(), net_outflow))?;
+        },
+        Direction::Ask => {
+            // The passive liquidity pool doesn't pay protocol fees, so
+            // we need to include the fee as part of the inflow.
+            let net_inflow = refund_quote.checked_add(fee_quote)?;
+            inflows.insert((quote_denom.clone(), net_inflow))?;
+            outflows.insert((base_denom.clone(), filled))?;
+        },
     }
 
     Ok(())
