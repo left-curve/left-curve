@@ -43,3 +43,13 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         git_commit: GIT_COMMIT,
     }))
 }
+
+#[get("/sentry-raise")]
+pub async fn sentry_raise() -> Result<impl Responder, Error> {
+    sentry::capture_message("Capturing a message before a crash", sentry::Level::Info);
+
+    let err = "NaN".parse::<usize>().unwrap_err();
+    sentry::capture_error(&err);
+
+    Ok(HttpResponse::Ok().body("Sending a sentry crash"))
+}
