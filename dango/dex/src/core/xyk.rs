@@ -6,8 +6,10 @@ use {
     std::{cmp, iter},
 };
 
+const INITIAL_LP_TOKEN_MULTIPLIER: Uint128 = Uint128::new(1_000_000u128);
+
 pub fn add_initial_liquidity(deposit: &CoinPair) -> MathResult<Uint128> {
-    normalized_invariant(deposit)
+    normalized_invariant(deposit)?.checked_mul(INITIAL_LP_TOKEN_MULTIPLIER)
 }
 
 pub fn add_subsequent_liquidity(
