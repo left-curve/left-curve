@@ -13,7 +13,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_transfer_events() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, _, dango_context) =
+        setup_test_with_indexer().await;
 
     // Copied from benchmarks.rs
     let msgs = vec![
@@ -40,13 +41,13 @@ async fn index_transfer_events() -> anyhow::Result<()> {
     // The 2 transfers should have been indexed.
 
     let blocks = indexer_sql::entity::blocks::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     assert_that!(blocks).has_length(1);
 
     let transfers = dango_indexer_sql::entity::transfers::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     assert_that!(transfers).has_length(2);
@@ -78,14 +79,14 @@ async fn index_transfer_events() -> anyhow::Result<()> {
 
     // The transfer should have been indexed.
     let blocks = indexer_sql::entity::blocks::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     assert_that!(blocks).has_length(2);
 
     let transfers = dango_indexer_sql::entity::transfers::Entity::find()
         .filter(dango_indexer_sql::entity::transfers::Column::BlockHeight.eq(2))
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     assert_that!(transfers).has_length(1);

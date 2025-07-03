@@ -129,6 +129,9 @@ impl Indexer for HookedIndexer {
             indexer.post_indexing(block_height, querier, ctx)?;
         }
 
+        // Note: publish_block_minted is now called by the last indexer in the chain
+        // to ensure all data is saved before the notification is sent
+
         Ok(())
     }
 

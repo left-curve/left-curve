@@ -3427,7 +3427,9 @@ dependencies = [
 name = "dango-httpd"
 version = "0.0.0"
 dependencies = [
+ "actix-cors",
  "actix-web",
+ "actix-web-metrics",
  "async-graphql",
  "async-graphql-actix-web",
  "chrono",
@@ -3440,6 +3442,7 @@ dependencies = [
  "itertools 0.14.0",
  "metrics",
  "sea-orm",
+ "sentry-actix",
  "serde",
  "thiserror 2.0.12",
  "tokio",
@@ -3587,6 +3590,7 @@ dependencies = [
  "digest 0.10.7",
  "grug",
  "grug-app",
+ "grug-client",
  "grug-crypto",
  "grug-db-disk-lite",
  "grug-db-memory",

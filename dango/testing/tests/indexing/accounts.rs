@@ -13,8 +13,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_account_creations() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -22,19 +22,19 @@ async fn index_account_creations() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish();
 
     let users = dango_indexer_sql::entity::users::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     let accounts = dango_indexer_sql::entity::accounts::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     let account_users = dango_indexer_sql::entity::accounts_users::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     let public_keys = dango_indexer_sql::entity::public_keys::Entity::find()
-        .all(&context.db)
+        .all(&dango_context.db)
         .await?;
 
     assert_that!(
@@ -61,8 +61,8 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_previous_blocks() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -72,7 +72,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
         dango_indexer_sql::entity::accounts::Entity::find()
             .find_with_related(dango_indexer_sql::entity::users::Entity)
-            .all(&context.db)
+            .all(&dango_context.db)
             .await?;
 
     assert_that!(accounts).has_length(1);
@@ -91,8 +91,8 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -105,7 +105,7 @@ async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
         dango_indexer_sql::entity::accounts::Entity::find()
             .find_with_related(dango_indexer_sql::entity::users::Entity)
-            .all(&context.db)
+            .all(&dango_context.db)
             .await?;
 
     assert_that!(accounts).has_length(2);

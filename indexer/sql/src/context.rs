@@ -1,5 +1,5 @@
 use {
-    crate::pubsub::PubSub,
+    crate::pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection},
     std::sync::Arc,
@@ -12,6 +12,28 @@ pub struct Context {
 }
 
 impl Context {
+    /// Create a new context with the same database connection but a separate pubsub instance
+    /// This allows independent indexers to share the DB connection pool but have their own pubsub
+    pub async fn with_separate_pubsub(&self) -> Result<Self, sea_orm::DbErr> {
+        let new_pubsub: Arc<dyn PubSub + Send + Sync> = match &self.db {
+            DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+                let pool: &sqlx::PgPool = self.db.get_postgres_connection_pool();
+                Arc::new(PostgresPubSub::new(pool.clone()).await.map_err(|e| {
+                    sea_orm::DbErr::Custom(format!("Failed to create PostgresPubSub: {e}"))
+                })?)
+            },
+            _ => {
+                // For non-Postgres databases, use in-memory pubsub
+                Arc::new(MemoryPubSub::new(100))
+            },
+        };
+
+        Ok(Context {
+            db: self.db.clone(),
+            pubsub: new_pubsub,
+        })
+    }
+
     pub async fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
         Migrator::up(&self.db, None).await
     }

@@ -21,7 +21,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -83,7 +84,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response: PaginatedResponse<entity::transfers::Model> =
                     call_paginated_graphql(app, request_body).await?;
@@ -124,8 +125,8 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_transfers_with_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -183,7 +184,7 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response: PaginatedResponse<serde_json::Value> =
                     call_paginated_graphql(app, request_body).await?;
@@ -244,8 +245,8 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -301,7 +302,7 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response: PaginatedResponse<serde_json::Value> =
                     call_paginated_graphql(app, request_body).await?;
@@ -317,7 +318,8 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
 
     // Create 10 transfers to paginate through
     for _ in 0..10 {
@@ -373,7 +375,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
                 // 1. first with descending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "transfers",
                     "BLOCK_HEIGHT_DESC",
@@ -396,7 +398,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
                 // 2. first with ascending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "transfers",
                     "BLOCK_HEIGHT_ASC",
@@ -419,7 +421,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
                 // 3. last with descending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "transfers",
                     "BLOCK_HEIGHT_DESC",
@@ -442,7 +444,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
                 // 4. last with ascending order
                 let block_heights = paginate_models::<entity::transfers::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "transfers",
                     "BLOCK_HEIGHT_ASC",
@@ -472,7 +474,8 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -545,7 +548,8 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
+                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                        .await?;
 
                 // 1st response is always the existing last block
                 let (framed, response) = parse_graphql_subscription_response::<
@@ -605,7 +609,8 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, httpd_context) = setup_test_with_indexer();
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -685,7 +690,8 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
+                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                        .await?;
 
                 // 1st response is always the existing last block
                 let (framed, response) = parse_graphql_subscription_response::<

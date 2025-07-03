@@ -1,8 +1,9 @@
 use {
+    crate::context::Context,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::Storage,
     grug_app::QuerierProvider,
-    indexer_sql::{Context, block_to_index::BlockToIndex, non_blocking_indexer::RuntimeHandler},
+    indexer_sql::{block_to_index::BlockToIndex, non_blocking_indexer::RuntimeHandler},
 };
 #[cfg(feature = "metrics")]
 use {
@@ -85,6 +86,12 @@ impl grug_app::Indexer for Indexer {
         self.runtime_handle.block_on(async {
             self.save_transfers(block_height).await?;
             self.save_accounts(block_to_index, querier).await?;
+
+            self.context
+                .pubsub
+                .publish_block_minted(block_height)
+                .await?;
+
             grug_app::IndexerResult::Ok(())
         })?;
 

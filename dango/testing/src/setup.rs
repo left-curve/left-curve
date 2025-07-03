@@ -22,7 +22,6 @@ use {
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
-    indexer_httpd::context::Context,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -133,13 +132,15 @@ pub fn setup_test_naive_with_custom_genesis(
 /// `ContractWrapper` codes but with a non-blocking indexer.
 ///
 /// Used for running tests that require an indexer.
-pub fn setup_test_with_indexer() -> (
+/// Synchronous wrapper for setup_test_with_indexer_async
+pub async fn setup_test_with_indexer() -> (
     TestSuiteWithIndexer,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    Context,
+    indexer_httpd::context::Context,
+    dango_httpd::context::Context,
 ) {
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
@@ -156,9 +157,18 @@ pub fn setup_test_with_indexer() -> (
     );
 
     let mut hooked_indexer = HookedIndexer::new();
-    let dango_indexer = dango_indexer_sql::hooks::Indexer {
+
+    // Create a separate context for dango indexer (shares DB but has independent pubsub)
+    let dango_context: dango_indexer_sql::context::Context = indexer
+        .context
+        .with_separate_pubsub()
+        .await
+        .expect("Failed to create separate context for dango indexer in test setup")
+        .into();
+
+    let dango_indexer = dango_indexer_sql::indexer::Indexer {
         runtime_handle: shared_runtime_handle,
-        context: indexer.context.clone(),
+        context: dango_context.clone(),
     };
     hooked_indexer.add_indexer(indexer);
     hooked_indexer.add_indexer(dango_indexer);
@@ -178,12 +188,15 @@ pub fn setup_test_with_indexer() -> (
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let httpd_context = Context::new(
+    let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
         indexer_path,
     );
+
+    let dango_httpd_context =
+        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
 
     (
         suite,
@@ -191,7 +204,8 @@ pub fn setup_test_with_indexer() -> (
         codes,
         contracts,
         validator_sets,
-        httpd_context,
+        indexer_httpd_context,
+        dango_httpd_context,
     )
 }
 

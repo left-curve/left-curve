@@ -1,7 +1,6 @@
 use {
     anyhow::bail,
     dango_genesis::{Codes, Contracts, GenesisCodes},
-    dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
     grug_app::{Db, Indexer},
@@ -10,7 +9,6 @@ use {
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
     indexer_hooked::HookedIndexer,
-    indexer_httpd::context::Context,
     std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
 };
@@ -76,11 +74,25 @@ where
     let indexer_path = indexer.indexer_path.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
-    let dango_indexer = dango_indexer_sql::hooks::Indexer {
+
+    // Create a separate context for dango indexer (shares DB but has independent pubsub)
+    let dango_context: dango_indexer_sql::context::Context = indexer
+        .context
+        .with_separate_pubsub()
+        .await
+        .map_err(|e| {
+            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to create separate context for dango indexer: {}",
+                e
+            )))
+        })?
+        .into();
+
+    let dango_indexer = dango_indexer_sql::indexer::Indexer {
         runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
             indexer.handle.handle().clone(),
         ),
-        context: indexer.context.clone(),
+        context: dango_context.clone(),
     };
     hooked_indexer.add_indexer(indexer);
     hooked_indexer.add_indexer(dango_indexer);
@@ -100,42 +112,38 @@ where
     let suite = Arc::new(Mutex::new(suite));
 
     // Start the indexer on the storage
-    {
-        let mut suite_guard = suite.lock().await;
-        let storage = suite_guard.app.db.state_storage(None).map_err(|e| {
-            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
-                "Failed to get storage: {}",
-                e
-            )))
-        })?;
-        suite_guard.app.indexer.start(&storage).map_err(|e| {
-            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
-                "Failed to start indexer: {}",
-                e
-            )))
-        })?;
-    }
+    // {
+    //     let mut suite_guard = suite.lock().await;
+    //     let storage = suite_guard.app.db.state_storage(None).map_err(|e| {
+    //         Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+    //             "Failed to get storage: {}",
+    //             e
+    //         )))
+    //     })?;
+    //     suite_guard.app.indexer.start(&storage).map_err(|e| {
+    //         Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+    //             "Failed to start indexer: {}",
+    //             e
+    //         )))
+    //     })?;
+    // }
 
     let mock_client = MockClient::new_shared(suite.clone(), block_creation);
 
     let app = suite.lock().await.app.clone_without_indexer();
 
-    let context = Context::new(
+    let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context,
         Arc::new(Mutex::new(app)),
         Arc::new(mock_client),
         indexer_path,
     );
 
-    indexer_httpd::server::run_server(
-        "127.0.0.1",
-        port,
-        cors_allowed_origin,
-        context,
-        config_app,
-        build_schema,
-    )
-    .await
+    let dango_httpd_context =
+        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+
+    dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)
+        .await
 }
 
 pub fn get_mock_socket_addr() -> u16 {

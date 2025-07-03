@@ -20,8 +20,8 @@ use {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore]
 async fn query_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
@@ -57,7 +57,7 @@ async fn query_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response: PaginatedResponse<serde_json::Value> =
                     call_paginated_graphql(app, request_body).await?;
@@ -99,8 +99,8 @@ async fn query_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -142,7 +142,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
                     app,
@@ -171,8 +171,8 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -214,7 +214,7 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response =
                     call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
@@ -240,8 +240,8 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -286,7 +286,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
                     app,
@@ -336,8 +336,8 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Create 10 accounts to paginate through
@@ -379,7 +379,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
                 // 1. first with descending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "accounts",
                     "BLOCK_HEIGHT_DESC",
@@ -396,7 +396,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
                 // 2. first with ascending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "accounts",
                     "BLOCK_HEIGHT_ASC",
@@ -413,7 +413,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
                 // 3. last with descending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "accounts",
                     "BLOCK_HEIGHT_DESC",
@@ -430,7 +430,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
                 // 4. last with ascending order
                 let block_heights = paginate_models::<entity::accounts::Model>(
-                    httpd_context.clone(),
+                    dango_httpd_context.clone(),
                     graphql_query,
                     "accounts",
                     "BLOCK_HEIGHT_ASC",
@@ -455,8 +455,8 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let _test_account =
@@ -509,7 +509,8 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
+                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                        .await?;
 
                 // 1st response is always the existing last block
                 let (framed, response) = parse_graphql_subscription_response::<
@@ -553,8 +554,8 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -620,7 +621,8 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, build_actix_app, request_body).await?;
+                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                        .await?;
 
                 let expected_data = serde_json::json!({
                     "users": [

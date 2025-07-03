@@ -1,5 +1,5 @@
 use {
-    crate::{entity, error::Error, hooks::Indexer},
+    crate::{entity, error::Error, indexer::Indexer},
     dango_types::{
         DangoQuerier,
         account_factory::{

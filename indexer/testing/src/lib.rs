@@ -208,8 +208,8 @@ where
 }
 
 /// Calls a GraphQL subscription and returns a stream
-pub async fn call_ws_graphql_stream<F, A, B>(
-    context: Context,
+pub async fn call_ws_graphql_stream<C, F, A, B>(
+    context: C,
     app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
 ) -> anyhow::Result<(
@@ -218,7 +218,8 @@ pub async fn call_ws_graphql_stream<F, A, B>(
     Framed<BoxedSocket, ws::Codec>,
 )>
 where
-    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    C: Clone + Send + Sync + 'static,
+    F: Fn(C) -> App<A> + Clone + Send + Sync + 'static,
     A: ServiceFactory<
             ServiceRequest,
             Response = ServiceResponse<B>,

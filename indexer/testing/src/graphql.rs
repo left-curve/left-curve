@@ -32,8 +32,8 @@ where
     .await
 }
 
-pub async fn paginate_models_with_app_builder<R, A, S, B, F>(
-    httpd_context: Context,
+pub async fn paginate_models_with_app_builder<C, R, A, S, B, F>(
+    context: C,
     graphql_query: &str,
     name: &str,
     sort_by: &str,
@@ -42,8 +42,9 @@ pub async fn paginate_models_with_app_builder<R, A, S, B, F>(
     app_builder: F,
 ) -> anyhow::Result<Vec<R>>
 where
+    C: Clone,
     R: serde::de::DeserializeOwned,
-    F: Fn(Context) -> A,
+    F: Fn(C) -> A,
     A: actix_service::IntoServiceFactory<S, actix_http::Request>,
     S: ServiceFactory<
             actix_http::Request,
@@ -59,7 +60,7 @@ where
     let mut before: Option<String> = None;
 
     loop {
-        let app = app_builder(httpd_context.clone());
+        let app = app_builder(context.clone());
 
         let variables = json!({
               "first": first,

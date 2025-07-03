@@ -514,6 +514,7 @@ impl Indexer for NonBlockingIndexer {
         let id = self.id;
 
         ctx.insert(block_to_index.clone());
+        ctx.insert(context.pubsub.clone());
 
         self.handle.block_on(async move {
             #[cfg(feature = "tracing")]

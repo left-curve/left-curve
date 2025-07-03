@@ -1,5 +1,5 @@
 use {
-    crate::{entity, error::Error, hooks::Indexer},
+    crate::{entity, error::Error, indexer::Indexer},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::entity as main_entity,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
