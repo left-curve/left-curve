@@ -11,10 +11,11 @@ use {
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
             InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, coins,
+        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
     },
 };
 
@@ -262,14 +263,20 @@ fn swap_exact_amount_in(
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
+    let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Perform the swap.
-    let (reserves, output) =
-        core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route, input.clone())?;
+    let (reserves, output, protocol_fee) = core::swap_exact_amount_in(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate, // Charge the taker fee rate for swaps.
+        route,
+        input.clone(),
+    )?;
 
     // Ensure the output is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
@@ -291,6 +298,20 @@ fn swap_exact_amount_in(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, output.clone())?)
+        .may_add_message(if protocol_fee.is_non_zero() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
+                    },
+                },
+                coins! { output.denom.clone() => protocol_fee },
+            )?)
+        } else {
+            None
+        })
         .add_event(Swapped {
             user: ctx.sender,
             input,
@@ -303,13 +324,20 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Perform the swap.
-    let (reserves, input) =
-        core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route, output.clone())?;
+    let (reserves, input, protocol_fee) = core::swap_exact_amount_out(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate, // Charge the taker fee rate for swaps.
+        route,
+        output.clone(),
+    )?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
@@ -323,10 +351,22 @@ fn swap_exact_amount_out(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    // Unlike `swap_exact_amount_in`, no need to check whether output is zero
-    // here, because we already ensure it's non-zero.
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .may_add_message(if protocol_fee.is_non_zero() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
+                    },
+                },
+                coins! { output.denom.clone() => protocol_fee },
+            )?)
+        } else {
+            None
+        })
         .add_event(Swapped {
             user: ctx.sender,
             input,
