@@ -206,6 +206,14 @@ fn provide_liquidity(
             Coins::new(), // No funds needed for minting
         )?)
         .may_add_message(if lp_token_supply.is_zero() {
+            // If this is the first liquidity provision, mint a minimum liquidity.
+            // to the contract itself and permanently lock it here. See the comment
+            // on `MINIMUM_LIQUIDITY` for more details.
+            //
+            // Our implementation of this slight different from Uniswap's, which
+            // mints 1000 tokens less to the user, while we mint 1000 extra to
+            // the contract. Slightly different math but similarly prevents the
+            // attack.
             Some(Message::execute(
                 bank,
                 &bank::ExecuteMsg::Mint {
