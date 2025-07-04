@@ -36,7 +36,7 @@ export default defineConfig({
     },
     define: {
       ...publicVars,
-      "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT}"`,
+      "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "process.env": {},
       "import.meta.env": {},
     },
