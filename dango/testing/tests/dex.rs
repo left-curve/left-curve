@@ -5483,6 +5483,170 @@ fn market_order_clearing(
         });
 }
 
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: eth::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(9307)),
+        price: Udec128::new(1000000),
+    },
+    coins! {
+        eth::DENOM.clone() => 9307,
+    },
+    CreateMarketOrderRequest {
+        base_denom: eth::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(500000)),
+        max_slippage: Udec128::new_percent(8),
+    },
+    coins! {
+        usdc::DENOM.clone() => 500000,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(9307),
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Decreased(500000),
+    }
+    ; "limit ask matched with market bid market size limiting factor market order gets refunded"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: eth::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(500000)),
+        price: Udec128::new_bps(1),
+    },
+    coins! {
+        usdc::DENOM.clone() => 50,
+    },
+    CreateMarketOrderRequest {
+        base_denom: eth::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(9999)),
+        max_slippage: Udec128::new_percent(8),
+    },
+    coins! {
+        eth::DENOM.clone() => 9999,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Decreased(50),
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(9999),
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    }
+    ; "limit bid matched with market ask market size limiting factor market order gets refunded"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: eth::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(9999)),
+        price: Udec128::new_bps(1),
+    },
+    coins! {
+        usdc::DENOM.clone() => 1,
+    },
+    CreateMarketOrderRequest {
+        base_denom: eth::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(500000)),
+        max_slippage: Udec128::new_percent(8),
+    },
+    coins! {
+        eth::DENOM.clone() => 500000,
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Increased(9974),
+        usdc::DENOM.clone() => BalanceChange::Decreased(1),
+    },
+    btree_map! {
+        eth::DENOM.clone() => BalanceChange::Decreased(9999),
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    }
+    ; "limit bid matched with market ask limit size too small market order is consumed with zero output"
+)]
+fn market_order_matched_results_in_zero_output(
+    limit_order: CreateLimitOrderRequest,
+    limit_funds: Coins,
+    market_order: CreateMarketOrderRequest,
+    market_funds: Coins,
+    expected_balance_changes_limit_order_user: BTreeMap<Denom, BalanceChange>,
+    expected_balance_changes_market_order_user: BTreeMap<Denom, BalanceChange>,
+) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Register oracle price source for USDC and ETH. Needed for volume tracking in cron_execute
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+                eth::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite.balances().record_many(accounts.users());
+
+    // Create a limit order with a small amount and price
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![limit_order],
+                cancels: None,
+            },
+            limit_funds,
+        )
+        .should_succeed();
+
+    // Create a market order with a small amount and price,
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![market_order],
+                creates_limit: vec![],
+                cancels: None,
+            },
+            market_funds,
+        )
+        .should_succeed();
+
+    // No matching could take place so both users should have unchanged balances
+    // since before the market order was created.
+    suite
+        .balances()
+        .should_change(&accounts.user1, expected_balance_changes_limit_order_user);
+    suite
+        .balances()
+        .should_change(&accounts.user2, expected_balance_changes_market_order_user);
+}
+
 #[test]
 fn cron_execute_gracefully_handles_oracle_price_failure() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());

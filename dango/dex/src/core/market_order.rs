@@ -1,10 +1,16 @@
 use {
     crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
     dango_types::dex::{Direction, OrderId},
-    grug::{MultiplyFraction, Number, NumberConst, Signed, StdResult, Udec128, Uint128, Unsigned},
+    grug::{
+        IsZero, MultiplyFraction, Number, NumberConst, Signed, StdResult, Udec128, Uint128,
+        Unsigned,
+    },
     std::{cmp::Ordering, collections::HashMap, iter::Peekable},
 };
 
+/// Match and fill market orders against the limit order book.
+///
+/// Returns a tuple containing the filling outcomes.
 pub fn match_and_fill_market_orders<M, L>(
     market_orders: &mut Peekable<M>,
     limit_orders: &mut Peekable<L>,
@@ -86,7 +92,7 @@ where
         //
         // We round down the result to ensure that the average price of the market order
         // does not exceed the cutoff price.
-        let market_order_amount_to_match_in_base = if !price_is_worse_than_cutoff {
+        let filled_base = if !price_is_worse_than_cutoff {
             market_order_amount_in_base
         } else {
             let extended_market_order_id = ExtendedOrderId::User(*market_order_id);
@@ -134,23 +140,37 @@ where
             market_order_amount_to_match_in_base
         };
 
+        // If the amount to match is zero, skip this market order as it cannot
+        // be filled.
+        // We do not refund the market order since that would allow spamming the
+        // contract with tiny market orders at no cost.
+        if filled_base.is_zero() {
+            market_orders.next();
+            continue;
+        }
+
+        // If the resulting output of the match for a SELL market order is zero,
+        // we skip it because it cannot be filled.
+        if market_order_direction == Direction::Ask {
+            let filled_quote = filled_base.checked_mul_dec_floor(*price)?;
+            if filled_quote.is_zero() {
+                market_orders.next();
+                continue;
+            }
+        }
+
         // For a market ASK order the amount is in terms of the base asset. So we can directly
         // match it against the limit order remaining amount
         let (filled_base, price, limit_order, market_order) =
-            match market_order_amount_to_match_in_base.cmp(limit_order.remaining()) {
+            match filled_base.cmp(limit_order.remaining()) {
                 // The market ask order is smaller than the limit order so we advance the market
                 // orders iterator and decrement the limit order remaining amount
                 Ordering::Less => {
-                    limit_order.fill(market_order_amount_to_match_in_base)?;
+                    limit_order.fill(filled_base)?;
                     market_order.clear();
 
                     // Clone values so we can next the market order iterator
-                    let return_tuple = (
-                        market_order_amount_to_match_in_base,
-                        *price,
-                        *limit_order,
-                        *market_order,
-                    );
+                    let return_tuple = (filled_base, *price, *limit_order, *market_order);
 
                     // Advance the market orders iterator
                     market_orders.next();
@@ -164,12 +184,7 @@ where
                     market_order.clear();
 
                     // Clone values so we can next the limit order iterator
-                    let return_tuple = (
-                        market_order_amount_to_match_in_base,
-                        *price,
-                        *limit_order,
-                        *market_order,
-                    );
+                    let return_tuple = (filled_base, *price, *limit_order, *market_order);
 
                     // Advance the both order iterators
                     limit_orders.next();
