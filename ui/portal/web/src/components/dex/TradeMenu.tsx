@@ -1,5 +1,6 @@
-import { useAccount, useAppConfig, usePrices, type useProTrade } from "@left-curve/store";
+import { useAccount, useAppConfig, usePrices } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -7,7 +8,7 @@ import {
   Checkbox,
   CoinSelector,
   IconButton,
-  IconChevronDown,
+  IconChevronDownFill,
   IconUser,
   Input,
   Range,
@@ -22,8 +23,8 @@ import { Sheet } from "react-modal-sheet";
 import { Big } from "big.js";
 import { m } from "~/paraglide/messages";
 
+import type { useProTradeState } from "@left-curve/store";
 import type React from "react";
-import { useMemo } from "react";
 
 export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
   const { isLg } = useMediaQuery();
@@ -32,7 +33,7 @@ export const TradeMenu: React.FC<TradeMenuProps> = (props) => {
 
 type TradeMenuProps = {
   className?: string;
-  state: ReturnType<typeof useProTrade>;
+  state: ReturnType<typeof useProTradeState>;
   controllers: ReturnType<typeof useInputs>;
 };
 
@@ -52,6 +53,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
     changeSizeCoin,
     sizeCoin,
     availableCoin,
+    orderAmount,
     maxSizeAmount,
     baseCoin,
     quoteCoin,
@@ -71,16 +73,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
       <div className="w-full flex flex-col gap-4 px-4">
-        <Tabs
-          layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
-          selectedTab={operation}
-          keys={["market", "limit"]}
-          fullWidth
-          onTabChange={(tab) => setOperation(tab as "market" | "limit")}
-          color="line-red"
-          classNames={{ button: "exposure-xs-italic" }}
-          isDisabled={submission.isPending}
-        />
         <div className="flex items-center justify-between gap-2">
           <p className="diatype-xs-regular text-gray-500">
             {m["dex.protrade.spot.availableToTrade"]()}
@@ -121,8 +113,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           startContent={
             <CoinSelector
               classNames={{
-                trigger: "!diatype-lg-medium text-gray-500",
-                selectorIcon: "w-4 h-4",
+                trigger: "text-gray-500",
               }}
               onChange={changeSizeCoin}
               value={sizeCoin.denom}
@@ -173,6 +164,20 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             </p>
             <p className="diatype-xs-medium text-gray-700">
               {getPrice(amount, sizeCoin.denom, { format: true })}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex gap-1 diatype-xs-regular text-gray-500">
+              <span>{m["dex.protrade.spot.orderSize"]()}</span>
+            </p>
+            <p className="diatype-xs-medium text-gray-700">
+              {orderAmount.quoteAmount} {quoteCoin.symbol}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="diatype-xs-regular text-gray-500" />
+            <p className="diatype-xs-medium text-gray-700">
+              {orderAmount.baseAmount} {baseCoin.symbol}
             </p>
           </div>
           {operation === "market" ? (
@@ -245,6 +250,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
         fullWidth
         onTabChange={(tab) => setOperation(tab as "market" | "limit")}
         color="line-red"
+        classNames={{ button: "pt-0" }}
       />
       <div className="flex items-center justify-between gap-2">
         <p className="diatype-xs-medium text-gray-500">Current Position</p>
@@ -319,19 +325,31 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
 const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
   const { isLg } = useMediaQuery();
   const { setTradeBarVisibility, setSidebarVisibility } = useApp();
-  const { action, changeAction, type, submission } = state;
+  const { action, changeAction, type, submission, operation, setOperation } = state;
 
   return (
     <div className={twMerge("w-full flex items-center flex-col gap-4 relative", className)}>
       <div className="w-full flex items-center justify-between px-4 gap-2">
+        <Tabs
+          layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
+          selectedTab={operation}
+          keys={["market", "limit"]}
+          fullWidth
+          onTabChange={(tab) => setOperation(tab as "market" | "limit")}
+          color="line-red"
+          classNames={{ button: "exposure-xs-italic pt-0" }}
+          isDisabled={submission.isPending}
+        />
+      </div>
+      <div className="w-full flex items-center justify-between px-4 gap-2">
         <IconButton
           variant="utility"
-          size="lg"
+          size="md"
           type="button"
           className="lg:hidden"
           onClick={() => setTradeBarVisibility(false)}
         >
-          <IconChevronDown className="h-6 w-6" />
+          <IconChevronDownFill className="h-4 w-4" />
         </IconButton>
         <Tabs
           layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}
@@ -345,7 +363,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
         />
         <IconButton
           variant="utility"
-          size="lg"
+          size="md"
           type="button"
           className="lg:hidden"
           onClick={() => [setTradeBarVisibility(false), setSidebarVisibility(true)]}
