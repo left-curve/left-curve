@@ -273,7 +273,7 @@ fn swap_exact_amount_in(
     let (reserves, output, protocol_fee) = core::swap_exact_amount_in(
         ctx.storage,
         &mut oracle_querier,
-        *app_cfg.taker_fee_rate,
+        *app_cfg.taker_fee_rate, // Charge the taker fee rate for swaps.
         route,
         input.clone(),
     )?;
@@ -334,7 +334,7 @@ fn swap_exact_amount_out(
     let (reserves, input, protocol_fee) = core::swap_exact_amount_out(
         ctx.storage,
         &mut oracle_querier,
-        *app_cfg.taker_fee_rate,
+        *app_cfg.taker_fee_rate, // Charge the taker fee rate for swaps.
         route,
         output.clone(),
     )?;
