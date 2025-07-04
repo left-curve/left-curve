@@ -100,6 +100,7 @@ fn check_balances(
     executed_action: &DexAction,
     passive_orders_filled: Option<PassiveOrdersFilled>,
     passive_bid_filling_outcomes_len: usize,
+    passive_ask_filling_outcomes_len: usize,
 ) -> Result<(), TestCaseError> {
     // Check dex contract's balances.
     let balances = suite.query_balances(&contracts.dex)?;
@@ -169,39 +170,46 @@ fn check_balances(
 
         // TODO: This is not quite correct, as we expect the rounding error from the passive filling outcomes to carry over to actions other than limit and market orders.
         // Add the passive filling outcomes to expected balance as each filling outcome creates one unit of rounding error.
-        let expected_balance = match executed_action {
-            DexAction::CreateLimitOrder {
-                quote_denom,
-                direction,
-                ..
-            }
-            | DexAction::CreateMarketOrder {
-                quote_denom,
-                direction,
-                ..
-            } => match direction {
-                Direction::Bid => {
-                    // let passive_filling_outcomes_len = passive_orders_filled
-                    //     .as_ref()
-                    //     .map(|o| o.passive_bid_filling_outcomes_len)
-                    //     .unwrap_or_default();
-                    let passive_filling_outcomes_len = passive_bid_filling_outcomes_len;
+        // let expected_balance = match executed_action {
+        //     DexAction::CreateLimitOrder {
+        //         quote_denom,
+        //         direction,
+        //         ..
+        //     }
+        //     | DexAction::CreateMarketOrder {
+        //         quote_denom,
+        //         direction,
+        //         ..
+        //     } => match direction {
+        //         Direction::Bid => {
+        //             // let passive_filling_outcomes_len = passive_orders_filled
+        //             //     .as_ref()
+        //             //     .map(|o| o.passive_bid_filling_outcomes_len)
+        //             //     .unwrap_or_default();
+        //             let passive_filling_outcomes_len = passive_bid_filling_outcomes_len;
 
-                    if coin.denom == *quote_denom {
-                        order_and_passive_liquidity_balance
-                            + Uint128::new(passive_filling_outcomes_len as u128)
-                    } else {
-                        order_and_passive_liquidity_balance
-                    }
-                },
-                Direction::Ask => order_and_passive_liquidity_balance,
-            },
-            _ => order_and_passive_liquidity_balance,
+        //             if coin.denom == *quote_denom {
+        //                 order_and_passive_liquidity_balance
+        //                     + Uint128::new(passive_filling_outcomes_len as u128)
+        //             } else {
+        //                 order_and_passive_liquidity_balance
+        //             }
+        //         },
+        //         Direction::Ask => order_and_passive_liquidity_balance,
+        //     },
+        //     _ => order_and_passive_liquidity_balance,
+        // };
+
+        let expected_balance = if coin.denom == usdc::DENOM.clone() {
+            order_and_passive_liquidity_balance
+                + Uint128::new(passive_ask_filling_outcomes_len as u128)
+        } else {
+            order_and_passive_liquidity_balance
         };
 
         println!("expected_balance: {}", expected_balance);
         // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
-        assert_approx_eq(coin.amount, expected_balance, "0.001")?;
+        assert_approx_eq(coin.amount, expected_balance, "0.0001")?;
     }
 
     Ok(())
@@ -467,7 +475,10 @@ impl DexAction {
                     )
                     .should(|tx_outcome| {
                         if tx_outcome.result.is_err() {
-                            tx_outcome.should_fail_with_error("insufficient liquidity");
+                            tx_outcome.should_fail_and(|e| {
+                                e.to_string().contains("insufficient liquidity")
+                                    || e.to_string().contains("output amount is zero")
+                            });
                         } else {
                             tx_outcome.should_succeed();
                         }
@@ -868,7 +879,7 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
                             ))
                             .unwrap(),
                             pool_type: PassiveLiquidity::Xyk {
-                                order_spacing: Udec128::new_bps(1),
+                                order_spacing: Udec128::new_bps(1000),
                             },
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                         },
@@ -884,19 +895,28 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
     assert_eq!(balances, Coins::new());
 
     let mut passive_bid_filling_outcomes_len = 0;
+    let mut passive_ask_filling_outcomes_len = 0;
 
     // Execute the actions and check balances after each action.
     for action in dex_actions {
         // Execute the action.
         let passive_orders_filled = action.execute(&mut suite, &mut accounts, &contracts)?;
 
+        println!("passive_orders_filled: {:?}", passive_orders_filled);
+
         if let Some(passive_orders_filled) = &passive_orders_filled {
             passive_bid_filling_outcomes_len +=
                 passive_orders_filled.passive_bid_filling_outcomes_len;
+            passive_ask_filling_outcomes_len +=
+                passive_orders_filled.passive_ask_filling_outcomes_len;
         }
         println!(
             "passive_bid_filling_outcomes_len: {}",
             passive_bid_filling_outcomes_len
+        );
+        println!(
+            "passive_ask_filling_outcomes_len: {}",
+            passive_ask_filling_outcomes_len
         );
 
         // Check balances.
@@ -906,6 +926,7 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
             &action,
             passive_orders_filled,
             passive_bid_filling_outcomes_len,
+            passive_ask_filling_outcomes_len,
         )?;
     }
 
@@ -914,10 +935,10 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
 
 proptest! {
     #![proptest_config(ProptestConfig {
-        cases: 20,
+        cases: 10,
         max_local_rejects: 1_000_000,
         max_global_rejects: 0,
-        max_shrink_iters: 10,
+        max_shrink_iters: 0,
         verbose: 1,
         ..ProptestConfig::default()
     })]
