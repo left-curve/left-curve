@@ -151,10 +151,11 @@ where
             market_order_amount_to_match_in_base
         };
 
-        // If the amount to match is zero, skip this market order as it cannot be filled
+        // If the amount to match is zero, skip this market order as it cannot be filled.
+        // We do not refund the market order since that would allow spamming the contract with
+        // tiny market orders at no cost.
         if market_order_amount_to_match_in_base.is_zero() {
-            let (_, unfillable_market_order) = market_orders.next().unwrap();
-            unmatched_market_orders.push(unfillable_market_order);
+            market_orders.next();
             continue;
         }
 
@@ -166,8 +167,7 @@ where
                     .checked_mul_dec_floor(*price)?
                     .is_zero() =>
             {
-                let (_, unfillable_market_order) = market_orders.next().unwrap();
-                unmatched_market_orders.push(unfillable_market_order);
+                market_orders.next();
                 continue;
             },
             _ => {},
