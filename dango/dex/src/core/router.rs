@@ -62,9 +62,11 @@ pub fn swap_exact_amount_out(
     let mut reserves = HashMap::new();
     let mut input = output.clone().into_inner();
 
-    // Add protocol fee to the output amount.
+    // Compute the output amount _before_ applying the protcol fee.
     let one_sub_fee_rate = Udec128::ONE.checked_sub(protocol_fee_rate)?;
     input.amount.checked_div_dec_ceil_assign(one_sub_fee_rate)?;
+
+    // Compute the protocol fee.
     let protocol_fee = input.amount.checked_sub(output.amount)?;
 
     for pair in route.into_iter().rev() {
