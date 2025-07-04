@@ -2,7 +2,9 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{MAX_ORACLE_STALENESS, PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{
+        MAX_ORACLE_STALENESS, MINIMUM_LP_TOKEN_AMOUNT, PAIRS, PassiveLiquidityPool, RESERVES, core,
+    },
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -194,17 +196,28 @@ fn provide_liquidity(
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
-    Ok(Response::new().add_message({
-        let bank = ctx.querier.query_bank()?;
-        Message::execute(
+    let bank = ctx.querier.query_bank()?;
+    Ok(Response::new()
+        .add_message(Message::execute(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                coins: coins! { pair.lp_denom => lp_mint_amount },
+                coins: coins! { pair.lp_denom.clone() => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
-        )?
-    }))
+        )?)
+        .may_add_message(if lp_token_supply.is_zero() {
+            Some(Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    coins: coins! { pair.lp_denom => MINIMUM_LP_TOKEN_AMOUNT },
+                },
+                Coins::new(), // No funds needed for minting
+            )?)
+        } else {
+            None
+        }))
     // TODO: add event
 }
 
