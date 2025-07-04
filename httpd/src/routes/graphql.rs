@@ -13,7 +13,7 @@ pub fn graphql_route() -> Resource {
                 .guard(actix_web::guard::Header("upgrade", "websocket"))
                 .to(graphql_ws),
         )
-        .route(web::get().to(graphiql_playgound))
+        .route(web::get().to(graphiql_playground))
 }
 
 pub(crate) async fn graphql_index(
@@ -26,7 +26,7 @@ pub(crate) async fn graphql_index(
     schema.execute_batch(request).await.into()
 }
 
-pub async fn graphiql_playgound() -> HttpResponse {
+pub async fn graphiql_playground() -> HttpResponse {
     let html = GraphiQLSource::build()
         .endpoint("/graphql")
         .subscription_endpoint("/graphql")
