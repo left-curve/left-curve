@@ -3,8 +3,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::PairId,
     grug::{
-        Coin, CoinPair, Inner, MultiplyFraction, NonZero, Number, Storage, Udec128, Uint128,
-        UniqueVec,
+        Coin, CoinPair, Inner, MultiplyFraction, NonZero, Number, NumberConst, Storage, Udec128,
+        Uint128, UniqueVec,
     },
     std::collections::HashMap,
 };
@@ -60,7 +60,12 @@ pub fn swap_exact_amount_out(
     output: NonZero<Coin>,
 ) -> anyhow::Result<(HashMap<PairId, CoinPair>, Coin, Uint128)> {
     let mut reserves = HashMap::new();
-    let mut input = output.into_inner();
+    let mut input = output.clone().into_inner();
+
+    // Add protocol fee to the output amount.
+    let one_sub_fee_rate = Udec128::ONE.checked_sub(protocol_fee_rate)?;
+    input.amount.checked_div_dec_ceil_assign(one_sub_fee_rate)?;
+    let protocol_fee = input.amount.checked_sub(output.amount)?;
 
     for pair in route.into_iter().rev() {
         // Load the pair's parameters.
@@ -81,10 +86,6 @@ pub fn swap_exact_amount_out(
         // Save the updated reserves.
         reserves.insert(pair.clone(), reserve);
     }
-
-    // Apply the protocol fee to the input amount.
-    let protocol_fee = input.amount.checked_mul_dec_ceil(protocol_fee_rate)?;
-    input.amount.checked_add_assign(protocol_fee)?;
 
     Ok((reserves, input, protocol_fee))
 }

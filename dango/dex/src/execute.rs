@@ -330,7 +330,7 @@ fn swap_exact_amount_out(
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    // Perform the swap for the total output needed (user's output + fee)
+    // Perform the swap.
     let (reserves, input, protocol_fee) = core::swap_exact_amount_out(
         ctx.storage,
         &mut oracle_querier,
@@ -359,10 +359,10 @@ fn swap_exact_amount_out(
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
                     payments: btree_map! {
-                        ctx.sender => coins! { input.denom.clone() => protocol_fee },
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
                     },
                 },
-                coins! { input.denom.clone() => protocol_fee },
+                coins! { output.denom.clone() => protocol_fee },
             )?)
         } else {
             None

@@ -1836,7 +1836,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             dango::DENOM.clone() => 2000000,
             usdc::DENOM.clone() => 500000,
         },
-    } => panics "output amount after fee is below the minimum: 495510 < 500000" ;
+    } => panics "output amount is below the minimum: 495510 < 500000" ;
     "1:1 pool no swap fee one step route input 100% of pool liquidity output is less than minimum output"
 )]
 #[test_case(
