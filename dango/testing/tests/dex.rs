@@ -1498,16 +1498,16 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
 }
 
 #[test_case(
-    Uint128::new(99_000_000),
+    Uint128::new(100_001_000),
     Udec128::new_permille(5),
     coins! {
-        dango::DENOM.clone() => 99,
-        usdc::DENOM.clone()  => 99,
+        dango::DENOM.clone() => 100,
+        usdc::DENOM.clone()  => 100,
     };
     "withdrawa all"
 )]
 #[test_case(
-    Uint128::new(50_000_000),
+    Uint128::new(50_000_500),
     Udec128::new_permille(5),
     coins! {
         dango::DENOM.clone() => 50,
