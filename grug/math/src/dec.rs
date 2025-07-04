@@ -413,8 +413,8 @@ where
         I: Iterator<Item = Self>,
     {
         let mut sum = Self::ZERO;
-        for int in iter {
-            sum += int;
+        for dec in iter {
+            sum += dec;
         }
         sum
     }
