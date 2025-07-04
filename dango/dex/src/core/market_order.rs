@@ -18,19 +18,18 @@ use {
 /// Returns a tuple containing the filling outcomes and all the market orders that
 /// were not filled.
 pub fn match_and_fill_market_orders<M, L>(
-    mut market_orders: Peekable<M>,
+    market_orders: &mut Peekable<M>,
     limit_orders: &mut Peekable<L>,
     market_order_direction: Direction,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<(Vec<FillingOutcome>, Vec<MarketOrder>)>
+) -> anyhow::Result<Vec<FillingOutcome>>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<((Udec128, OrderId), LimitOrder)>>,
 {
     let mut filling_outcomes = BTreeMap::<OrderId, FillingOutcome>::new();
-    let mut unmatched_market_orders = Vec::new();
 
     // Match the market order to the opposite side of the resting limit order book.
     let limit_order_direction = -market_order_direction;
@@ -42,12 +41,7 @@ where
         Some(Ok(((price, _), _))) => *price,
         Some(Err(e)) => return Err(e.clone().into()),
         None => {
-            return Ok((
-                Vec::new(),
-                market_orders
-                    .map(|(_, market_order)| market_order)
-                    .collect(),
-            ));
+            return Ok(Vec::new());
         }, // Return early if there are no limit orders
     };
 
@@ -295,13 +289,7 @@ where
         )?;
     }
 
-    // Add any market orders that were left in the iterator after limit orders were exhausted
-    unmatched_market_orders.extend(market_orders.map(|(_, market_order)| market_order));
-
-    Ok((
-        filling_outcomes.into_values().collect(),
-        unmatched_market_orders,
-    ))
+    Ok(filling_outcomes.into_values().collect())
 }
 
 fn update_filling_outcome(
