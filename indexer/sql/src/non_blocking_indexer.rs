@@ -523,9 +523,9 @@ impl Indexer for NonBlockingIndexer {
             let block_height = block_to_index.block.info.height;
 
             #[allow(clippy::map_identity)]
-            if let Err(err) = block_to_index.save(context.db.clone(), id).await {
+            if let Err(_err) = block_to_index.save(context.db.clone(), id).await {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
+                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
                 return Ok(());
             }
 
@@ -548,15 +548,15 @@ impl Indexer for NonBlockingIndexer {
                 }
             }
 
-            if let Err(err) = Self::remove_or_fail(blocks, &block_height) {
+            if let Err(_err) = Self::remove_or_fail(blocks, &block_height) {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, indexer_id = id, block_height, "Can't remove block in `post_indexing`");
+                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't remove block in `post_indexing`");
                 return Ok(());
             }
 
-            if let Err(err) = context.pubsub.publish_block_minted(block_height).await {
+            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, indexer_id = id, block_height, "Can't publish block minted in `post_indexing`");
+                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't publish block minted in `post_indexing`");
                 return Ok(());
             }
 
