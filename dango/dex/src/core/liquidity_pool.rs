@@ -231,8 +231,6 @@ impl PassiveLiquidityPool for PairParams {
                 .checked_div(deposit_value)?
         };
 
-        println!("fee_rate: {}", fee_rate);
-
         let mint_ratio = match &self.pool_type {
             PassiveLiquidity::Xyk { .. } => {
                 xyk::add_subsequent_liquidity(&mut reserve, deposit.clone())?
