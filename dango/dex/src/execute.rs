@@ -197,6 +197,7 @@ fn provide_liquidity(
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
     let bank = ctx.querier.query_bank()?;
+
     Ok(Response::new()
         .add_message(Message::execute(
             bank,
