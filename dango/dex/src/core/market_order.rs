@@ -8,15 +8,9 @@ use {
     std::{cmp::Ordering, collections::BTreeMap, iter::Peekable},
 };
 
-/// Match and fill market orders against the limit order book. This consumes the
-/// market order iterator fully. If the limit order iterator is exhausted first
-/// all the remaining market orders are returned in the unmatched vector. If the
-/// market order iterator is exhausted first, the remaining limit orders are left
-/// untouched in the limit order iterator, so that they can be matched against other
-/// limit orders.
+/// Match and fill market orders against the limit order book.
 ///
-/// Returns a tuple containing the filling outcomes and all the market orders that
-/// were not filled.
+/// Returns a tuple containing the filling outcomes.
 pub fn match_and_fill_market_orders<M, L>(
     market_orders: &mut Peekable<M>,
     limit_orders: &mut Peekable<L>,
