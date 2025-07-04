@@ -116,7 +116,9 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
-    fn wait_for_finish(&self) {}
+    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+        Ok(())
+    }
 }
 
 #[cfg(feature = "metrics")]

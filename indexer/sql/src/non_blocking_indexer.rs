@@ -497,6 +497,7 @@ impl Indexer for NonBlockingIndexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
+            Self::remove_or_fail(self.blocks.clone(), &block_height)?;
             return Err(grug_app::IndexerError::NotRunning);
         }
 
@@ -574,9 +575,14 @@ impl Indexer for NonBlockingIndexer {
     }
 
     /// Wait for all blocks to be indexed
-    fn wait_for_finish(&self) {
+    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
         for _ in 0..100 {
-            if self.blocks.lock().expect("can't lock blocks").is_empty() {
+            if self
+                .blocks
+                .lock()
+                .map_err(|_| grug_app::IndexerError::MutexPoisoned)?
+                .is_empty()
+            {
                 break;
             }
 
@@ -592,6 +598,8 @@ impl Indexer for NonBlockingIndexer {
                 blocks.keys()
             );
         }
+
+        Ok(())
     }
 }
 

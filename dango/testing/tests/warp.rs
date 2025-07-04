@@ -129,7 +129,11 @@ async fn sending_remote() {
     // ----------------------------- Check indexer -----------------------------
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // The transfers should have been indexed.
     let blocks = indexer_sql::entity::blocks::Entity::find()

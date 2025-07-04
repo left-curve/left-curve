@@ -41,7 +41,11 @@ fn index_block() {
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
     suite.app.indexer.handle.block_on(async {
@@ -156,7 +160,11 @@ async fn parse_previous_block_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
     suite.app.indexer.handle.block_on(async {
@@ -266,7 +274,11 @@ fn no_sql_index_error_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
     suite.app.indexer.handle.block_on(async {
@@ -468,7 +480,11 @@ fn index_block_events() {
     assert_that!(suite.app.indexer.indexing).is_true();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
     suite.app.indexer.handle.block_on(async {
@@ -550,7 +566,11 @@ fn blocks_on_disk_compressed() {
         .address;
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     let mut block_path = suite.app.indexer.indexer_path.block_path(1);
 

@@ -24,7 +24,7 @@ pub type IndexerResult<T> = Result<T, IndexerError>;
 /// ```
 ///
 /// Note: Types must implement `Clone + Send + Sync + 'static` to be stored.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct IndexerContext {
     extensions: http::Extensions,
 }
@@ -94,5 +94,5 @@ pub trait Indexer {
     ) -> IndexerResult<()>;
 
     /// Wait for the indexer to finish indexing
-    fn wait_for_finish(&self);
+    fn wait_for_finish(&self) -> IndexerResult<()>;
 }

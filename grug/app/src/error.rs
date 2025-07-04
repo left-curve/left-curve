@@ -1,5 +1,9 @@
 use {
     grug_types::{Addr, Hash256, StdError},
+    std::{
+        collections::HashMap,
+        sync::{MutexGuard, PoisonError},
+    },
     thiserror::Error,
 };
 
@@ -90,11 +94,23 @@ pub enum IndexerError {
 
     #[error("generic indexer error: {0}")]
     Generic(String),
+
+    #[error("mutex for the indexers is poisoned")]
+    MutexPoisoned,
+
+    #[error("rwlock for the indexers is poisoned")]
+    RwlockPoisoned,
 }
 
 impl From<std::io::Error> for IndexerError {
     fn from(err: std::io::Error) -> Self {
         IndexerError::Io(err.to_string())
+    }
+}
+
+impl From<PoisonError<MutexGuard<'_, HashMap<u64, bool>>>> for IndexerError {
+    fn from(_: PoisonError<MutexGuard<'_, HashMap<u64, bool>>>) -> Self {
+        Self::MutexPoisoned
     }
 }
 

@@ -47,7 +47,9 @@ impl Indexer for NullIndexer {
         Ok(())
     }
 
-    fn wait_for_finish(&self) {}
+    fn wait_for_finish(&self) -> IndexerResult<()> {
+        Ok(())
+    }
 }
 
 /// An error type that is never encountered.

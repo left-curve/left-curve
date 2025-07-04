@@ -63,7 +63,13 @@ pub async fn create_blocks(
             .await?;
     }
 
-    suite.lock().await.app.indexer.wait_for_finish();
+    suite
+        .lock()
+        .await
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     let client = Arc::new(mock_client);
 

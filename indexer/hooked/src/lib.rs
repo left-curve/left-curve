@@ -1,6 +1,11 @@
 use {
     grug_app::{Indexer, IndexerResult},
-    std::sync::Arc,
+    std::{
+        collections::HashMap,
+        sync::{Arc, Mutex, RwLock},
+        thread::sleep,
+        time::Duration,
+    },
 };
 
 // Re-export for convenience
@@ -9,16 +14,18 @@ pub use grug_app::IndexerError;
 /// A composable indexer that can own multiple indexers and coordinate between them
 pub struct HookedIndexer {
     /// List of registered indexers
-    indexers: Vec<Box<dyn Indexer + Send + Sync>>,
+    indexers: Arc<RwLock<Vec<Box<dyn Indexer + Send + Sync>>>>,
     /// Whether the indexer is currently running
     is_running: bool,
+    post_indexing_threads: Arc<Mutex<HashMap<u64, bool>>>,
 }
 
 impl HookedIndexer {
     pub fn new() -> Self {
         Self {
-            indexers: Vec::new(),
+            indexers: Arc::new(RwLock::new(Vec::new())),
             is_running: false,
+            post_indexing_threads: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -27,7 +34,11 @@ impl HookedIndexer {
     where
         I: Indexer + Send + Sync + 'static,
     {
-        self.indexers.push(Box::new(indexer));
+        if self.is_running {
+            panic!("Can't add indexer to a running HookedIndexer");
+        }
+
+        self.indexers.write().unwrap().push(Box::new(indexer));
         self
     }
 
@@ -38,7 +49,7 @@ impl HookedIndexer {
 
     /// Get the number of registered indexers
     pub fn indexer_count(&self) -> usize {
-        self.indexers.len()
+        self.indexers.read().unwrap().len()
     }
 }
 
@@ -54,12 +65,34 @@ impl Indexer for HookedIndexer {
             return Err(grug_app::IndexerError::AlreadyRunning);
         }
 
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            "Starting HookedIndexer with {} indexers",
+            self.indexer_count()
+        );
+
+        let mut errors = Vec::new();
+
         // Call start on all indexers
-        for indexer in &mut self.indexers {
-            indexer.start(storage)?;
+        for indexer in &mut self
+            .indexers
+            .write()
+            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .iter_mut()
+        {
+            if let Err(err) = indexer.start(storage) {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Error in start: {:?}", err);
+                errors.push(err.to_string());
+            }
         }
 
         self.is_running = true;
+
+        if !errors.is_empty() {
+            return Err(grug_app::IndexerError::Multiple(errors));
+        }
+
         Ok(())
     }
 
@@ -70,8 +103,17 @@ impl Indexer for HookedIndexer {
 
         // Call shutdown on all indexers in reverse order
         let mut errors = Vec::new();
-        for indexer in self.indexers.iter_mut().rev() {
+        for indexer in self
+            .indexers
+            .write()
+            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .iter_mut()
+            .rev()
+        {
             if let Err(e) = indexer.shutdown() {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Error in shutdown: {:?}", e);
+
                 errors.push(e.to_string());
             }
         }
@@ -94,8 +136,24 @@ impl Indexer for HookedIndexer {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
-        for indexer in &self.indexers {
-            indexer.pre_indexing(block_height, ctx)?;
+        let mut errors = Vec::new();
+
+        for indexer in self
+            .indexers
+            .read()
+            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .iter()
+        {
+            if let Err(err) = indexer.pre_indexing(block_height, ctx) {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Error in pre_indexing: {:?}", err);
+
+                errors.push(err.to_string());
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(grug_app::IndexerError::Multiple(errors));
         }
 
         Ok(())
@@ -111,8 +169,22 @@ impl Indexer for HookedIndexer {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
-        for indexer in &self.indexers {
-            indexer.index_block(block, block_outcome, ctx)?;
+        let mut errors = Vec::new();
+        for indexer in self
+            .indexers
+            .read()
+            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .iter()
+        {
+            if let Err(err) = indexer.index_block(block, block_outcome, ctx) {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Error in index_block: {:?}", err);
+                errors.push(err.to_string());
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(grug_app::IndexerError::Multiple(errors));
         }
 
         Ok(())
@@ -128,20 +200,109 @@ impl Indexer for HookedIndexer {
             return Err(grug_app::IndexerError::NotRunning);
         }
 
-        // For now, let's fall back to the original synchronous approach
-        // The threading approach requires solving complex lifetime and trait object issues
-        // that are beyond the scope of this immediate fix
-        for indexer in &self.indexers {
-            indexer.post_indexing(block_height, querier.clone(), ctx)?;
-        }
+        let post_indexing_threads = self.post_indexing_threads.clone();
+
+        let indexers = self.indexers.clone();
+
+        // Clone the `IndexerContext` to avoid borrowing issues.
+        // I do this clone because:
+        // 1. `IndexerContext` isn't used in the main thread after `post_indexing` is called
+        // 2. `post_indexing` is called in a separate thread
+        let mut ctx = ctx.clone();
+
+        self.post_indexing_threads
+            .lock()?
+            .insert(block_height, true);
+
+        std::thread::spawn(move || {
+            let mut errors = Vec::new();
+
+            for indexer in indexers
+                .read()
+                .map_err(|_| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("Rwlock poisoned in post_indexing");
+                    grug_app::IndexerError::RwlockPoisoned
+                })?
+                .iter()
+            {
+                if let Err(err) = indexer.post_indexing(block_height, querier.clone(), &mut ctx) {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("Error in post_indexing: {:?}", err);
+                    errors.push(err.to_string());
+                }
+            }
+
+            post_indexing_threads
+                .lock()
+                .map_err(|_| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("Mutex poisoned in post_indexing");
+                    grug_app::IndexerError::MutexPoisoned
+                })?
+                .remove(&block_height);
+
+            if !errors.is_empty() {
+                return Err(grug_app::IndexerError::Multiple(errors));
+            }
+
+            Ok::<(), IndexerError>(())
+        });
 
         Ok(())
     }
 
-    fn wait_for_finish(&self) {
-        for indexer in self.indexers.iter().rev() {
-            indexer.wait_for_finish();
+    fn wait_for_finish(&self) -> IndexerResult<()> {
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Waiting for indexer to finish");
+
+        // 1. We have our own internal threads that are running post_indexing
+        for _ in 0..100 {
+            let post_indexing_threads = self
+                .post_indexing_threads
+                .lock()
+                .map_err(|_| grug_app::IndexerError::MutexPoisoned)?
+                .len();
+
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                threads = post_indexing_threads,
+                "Waiting for threads to finish",
+            );
+
+            if post_indexing_threads == 0 {
+                break;
+            }
+
+            sleep(Duration::from_millis(100));
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Waiting for indexers to finish");
+
+        // 2. We have the indexers that are potentially running their own way
+        for indexer in self
+            .indexers
+            .read()
+            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .iter()
+        {
+            indexer.wait_for_finish()?;
+        }
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Waited for indexers to finish");
+
+        Ok(())
+    }
+}
+
+impl Drop for HookedIndexer {
+    fn drop(&mut self) {
+        // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
+        // expects a Tokio context. We must call `commit` manually on it within our Tokio
+        // context.
+        self.shutdown().expect("can't shutdown hooked_indexer");
     }
 }
 
@@ -200,8 +361,9 @@ mod tests {
             Ok(())
         }
 
-        fn wait_for_finish(&self) {
+        fn wait_for_finish(&self) -> IndexerResult<()> {
             self.record_call("wait_for_finish");
+            Ok(())
         }
     }
 
@@ -335,7 +497,9 @@ mod tests {
             Ok(())
         }
 
-        fn wait_for_finish(&self) {}
+        fn wait_for_finish(&self) -> IndexerResult<()> {
+            Ok(())
+        }
     }
 
     /// Example indexer that consumes data from the context
@@ -391,7 +555,9 @@ mod tests {
             Ok(())
         }
 
-        fn wait_for_finish(&self) {}
+        fn wait_for_finish(&self) -> IndexerResult<()> {
+            Ok(())
+        }
     }
 
     #[test]

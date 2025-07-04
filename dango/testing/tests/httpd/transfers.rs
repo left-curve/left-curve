@@ -41,7 +41,7 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Transfers($block_height: Int!) {
@@ -141,7 +141,7 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Transfers($username: String) {
@@ -341,7 +341,7 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
             .should_succeed();
     }
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Transfers($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
@@ -494,7 +494,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       subscription Transfer {

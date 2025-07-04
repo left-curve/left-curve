@@ -19,7 +19,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let users = dango_indexer_sql::entity::users::Entity::find()
         .all(&dango_context.db)
@@ -67,7 +67,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
         dango_indexer_sql::entity::accounts::Entity::find()
@@ -100,7 +100,7 @@ async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let accounts: Vec<(entity::accounts::Model, Vec<entity::users::Model>)> =
         dango_indexer_sql::entity::accounts::Entity::find()

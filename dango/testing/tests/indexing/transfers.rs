@@ -36,7 +36,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     // The 2 transfers should have been indexed.
 
@@ -75,7 +75,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     // The transfer should have been indexed.
     let blocks = indexer_sql::entity::blocks::Entity::find()

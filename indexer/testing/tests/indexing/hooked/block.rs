@@ -38,7 +38,11 @@ async fn index_block() {
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
     let block = entity::blocks::Entity::find()
@@ -99,12 +103,20 @@ async fn parse_previous_block_after_restart() {
         )
         .should_succeed();
 
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
+
     // Force the runtime to shutdown or when reusing this `start` would fail
     suite
         .app
         .indexer
         .shutdown()
         .expect("Can't shutdown indexer");
+
+    tracing::warn!("Shut down indexer");
 
     // 1. Delete database block height 1
     entity::blocks::Entity::delete_block_and_data(&indexer_context.db, 1)
@@ -127,6 +139,8 @@ async fn parse_previous_block_after_restart() {
         .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
         .expect("Can't start indexer");
 
+    tracing::warn!("Start indexer");
+
     // 4. Verify the block height 1 is indexed
     let block = entity::blocks::Entity::find()
         .one(&indexer_context.db)
@@ -145,7 +159,11 @@ async fn parse_previous_block_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
     let block = entity::blocks::Entity::find()
@@ -181,6 +199,12 @@ async fn no_sql_index_error_after_restart() {
             Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
         )
         .should_succeed();
+
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // Force the runtime to shutdown or when reusing this `start` would fail
     suite
@@ -244,7 +268,11 @@ async fn no_sql_index_error_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
     let block = entity::blocks::Entity::find()
@@ -301,7 +329,11 @@ async fn index_block_events() {
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
     let block = entity::blocks::Entity::find()

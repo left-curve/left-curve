@@ -26,7 +26,7 @@ async fn query_accounts() -> anyhow::Result<()> {
     let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
     let user2 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "bar");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Accounts {
@@ -103,7 +103,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Accounts($username: String) {
@@ -174,7 +174,7 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 
     create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Accounts($username: String) {
@@ -245,7 +245,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Accounts($username: String) {
@@ -346,7 +346,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
         );
     }
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Accounts($after: String, $before: String, $first: Int, $last: Int, $sortBy: String) {
@@ -456,7 +456,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     let _test_account =
         create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       subscription Accounts {
@@ -555,7 +555,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     let mut test_account1 =
         create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       subscription Accounts($username: String) {

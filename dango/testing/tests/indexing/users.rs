@@ -19,7 +19,7 @@ async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
     let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account1);
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let users_and_public_keys: Vec<(entity::users::Model, Vec<entity::public_keys::Model>)> =
         dango_indexer_sql::entity::users::Entity::find()
