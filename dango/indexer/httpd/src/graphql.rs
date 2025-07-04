@@ -93,6 +93,6 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         .data(file_transaction_loader)
         .data(event_transaction_loader)
         .limit_complexity(300)
-        .limit_depth(10)
+        .limit_depth(20)
         .finish()
 }
