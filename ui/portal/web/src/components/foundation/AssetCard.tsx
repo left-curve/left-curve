@@ -56,7 +56,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
         <div className="flex flex-col items-end">
           <p className="text-gray-900 diatype-m-bold">{price}</p>
           <IconChevronDownFill
-            className={twMerge("w-3 h-3 text-gray-200 transition-all", {
+            className={twMerge("w-4 h-4 text-gray-200 transition-all", {
               "rotate-180": isExpanded,
             })}
           />

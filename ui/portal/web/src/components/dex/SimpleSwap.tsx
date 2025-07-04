@@ -191,7 +191,7 @@ const SimpleSwapForm: React.FC = () => {
       const { output } = await simulation.simulate({
         pair,
         input: {
-          amount: parseUnits(request.amount, request.input.decimals),
+          amount: parseUnits(request.amount, request.input.decimals).toString(),
           denom: request.input.denom,
         },
       });

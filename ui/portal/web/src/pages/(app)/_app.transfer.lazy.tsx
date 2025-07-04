@@ -115,7 +115,7 @@ function TransferApplet() {
         await signingClient.transfer({
           transfer: {
             [address]: {
-              [selectedCoin.denom]: parsedAmount,
+              [selectedCoin.denom]: parsedAmount.toString(),
             },
           },
           sender: account!.address as Address,

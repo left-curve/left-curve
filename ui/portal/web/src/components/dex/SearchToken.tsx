@@ -7,6 +7,7 @@ import {
   Input,
   Popover,
   Tabs,
+  twMerge,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
@@ -20,17 +21,26 @@ import type React from "react";
 
 type SearchTokenHeaderProps = {
   pairId: PairId;
+  isOpen?: boolean;
 };
 
-const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId }) => {
+const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen }) => {
   const { coins } = useConfig();
   const baseCoin = coins[pairId.baseDenom];
   const quoteCoin = coins[pairId.quoteDenom];
+
   return (
     <div className="flex gap-2 items-center">
       <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
-      <p className="diatype-lg-heavy text-gray-700 min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
-      <IconChevronDownFill className="text-gray-500 w-4 h-4 transition-all" />
+      <p className="diatype-lg-heavy text-gray-700 min-w-fit">
+        {`${baseCoin.symbol}-${quoteCoin.symbol}`} LP
+      </p>
+      <IconChevronDownFill
+        className={twMerge(
+          "text-gray-500 w-4 h-4 transition-all lg:hidden",
+          isOpen ? "rotate-180" : "",
+        )}
+      />
     </div>
   );
 };
@@ -63,7 +73,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
           onTabChange={setActiveFilter}
         />
 
-        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
+        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[1px]" />
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot
@@ -93,8 +103,7 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
       <Popover
         ref={popoverRef}
         classNames={{ menu: "min-w-[45rem]" }}
-        showArrow={false}
-        trigger={<SearchTokenHeader pairId={pairId} />}
+        trigger={<SearchTokenHeader pairId={pairId} isOpen={isSearchTokenVisible} />}
         menu={
           <SearchTokenMenu
             pairId={pairId}
@@ -110,7 +119,7 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
   return (
     <>
       <div onClick={() => setIsSearchTokenVisible(true)} className="cursor-pointer">
-        <SearchTokenHeader pairId={pairId} />
+        <SearchTokenHeader pairId={pairId} isOpen={isSearchTokenVisible} />
       </div>
       <Sheet
         isOpen={isSearchTokenVisible}

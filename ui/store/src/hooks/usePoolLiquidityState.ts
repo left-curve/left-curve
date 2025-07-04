@@ -120,8 +120,8 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
           baseDenom: pair.baseDenom,
           quoteDenom: pair.quoteDenom,
           funds: {
-            [baseCoin.denom]: parseUnits(baseAmount, baseCoin.decimals),
-            [quoteCoin.denom]: parseUnits(quoteAmount, quoteCoin.decimals),
+            [baseCoin.denom]: parseUnits(baseAmount, baseCoin.decimals).toString(),
+            [quoteCoin.denom]: parseUnits(quoteAmount, quoteCoin.decimals).toString(),
           },
         });
       },

@@ -20,7 +20,11 @@ export const APPLETS = Array.from(
       } as AppletMetadata;
     }
   },
-).filter(Boolean) as AppletMetadata[];
+).filter((a) => {
+  if (!a) return false;
+  if (a.id === "earn" && import.meta.env.CONFIG_ENVIRONMENT === "test") return false;
+  return true;
+}) as AppletMetadata[];
 
 export const DEFAULT_FAV_APPLETS = APPLETS.filter(({ id }) =>
   ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"].includes(id),
