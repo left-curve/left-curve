@@ -13,7 +13,7 @@ pub fn create_hooked_indexer(
     let indexer_path = indexer.indexer_path.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
-    hooked_indexer.add_indexer(indexer);
+    hooked_indexer.add_indexer(indexer).unwrap();
 
     (hooked_indexer, indexer_context, indexer_path)
 }

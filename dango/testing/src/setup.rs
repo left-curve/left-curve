@@ -169,8 +169,8 @@ pub async fn setup_test_with_indexer() -> (
         runtime_handle: shared_runtime_handle,
         context: dango_context.clone(),
     };
-    hooked_indexer.add_indexer(indexer);
-    hooked_indexer.add_indexer(dango_indexer);
+    hooked_indexer.add_indexer(indexer).unwrap();
+    hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let db = MemDb::new();
     let vm = RustVm::new();

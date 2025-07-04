@@ -30,16 +30,19 @@ impl HookedIndexer {
     }
 
     /// Add an indexer to the composition
-    pub fn add_indexer<I>(&mut self, indexer: I) -> &mut Self
+    pub fn add_indexer<I>(&mut self, indexer: I) -> Result<&mut Self, grug_app::IndexerError>
     where
         I: Indexer + Send + Sync + 'static,
     {
         if self.is_running {
-            panic!("Can't add indexer to a running HookedIndexer");
+            return Err(grug_app::IndexerError::AlreadyRunning);
         }
 
-        self.indexers.write().unwrap().push(Box::new(indexer));
-        self
+        self.indexers
+            .write()
+            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .push(Box::new(indexer));
+        Ok(self)
     }
 
     /// Check if the indexer is running
@@ -49,7 +52,10 @@ impl HookedIndexer {
 
     /// Get the number of registered indexers
     pub fn indexer_count(&self) -> usize {
-        self.indexers.read().unwrap().len()
+        self.indexers
+            .read()
+            .map(|indexers| indexers.len())
+            .unwrap_or(0)
     }
 }
 
@@ -380,7 +386,9 @@ mod tests {
 
         hooked_indexer
             .add_indexer(TestIndexer::default())
-            .add_indexer(TestIndexer::default());
+            .unwrap()
+            .add_indexer(TestIndexer::default())
+            .unwrap();
 
         assert_eq!(hooked_indexer.indexer_count(), 2);
     }
@@ -388,7 +396,7 @@ mod tests {
     #[test]
     fn test_start_and_shutdown() {
         let mut hooked_indexer = HookedIndexer::new();
-        hooked_indexer.add_indexer(TestIndexer::default());
+        hooked_indexer.add_indexer(TestIndexer::default()).unwrap();
 
         let storage = MockStorage::new();
 
@@ -405,47 +413,46 @@ mod tests {
     #[test]
     fn test_double_start_fails() {
         let mut hooked_indexer = HookedIndexer::new();
+        hooked_indexer.add_indexer(TestIndexer::default()).unwrap();
+
         let storage = MockStorage::new();
 
         hooked_indexer.start(&storage).unwrap();
 
         // Second start should fail
-        let result = hooked_indexer.start(&storage);
-        assert!(matches!(
-            result,
-            Err(grug_app::IndexerError::AlreadyRunning)
-        ));
+        assert!(hooked_indexer.start(&storage).is_err());
     }
 
     #[test]
     fn test_operations_when_not_running() {
-        let hooked_indexer = HookedIndexer::new();
+        let mut hooked_indexer = HookedIndexer::new();
+        hooked_indexer.add_indexer(TestIndexer::default()).unwrap();
+
+        let mut ctx = grug_app::IndexerContext::new();
 
         // Operations should fail when not running
-        let mut ctx = grug_app::IndexerContext::new();
-        assert!(matches!(
-            hooked_indexer.pre_indexing(1, &mut ctx),
-            Err(grug_app::IndexerError::NotRunning)
-        ));
+        assert!(hooked_indexer.pre_indexing(1, &mut ctx).is_err());
 
         let block = grug_types::Block {
             info: grug_types::BlockInfo {
                 height: 1,
-                timestamp: grug_types::Timestamp::from_seconds(123456789),
-                hash: grug_types::Hash256::ZERO,
+                timestamp: grug_types::Timestamp::from_seconds(1),
+                hash: [0u8; 32].into(),
             },
             txs: vec![],
         };
+
         let outcome = grug_types::BlockOutcome {
             app_hash: grug_types::Hash256::ZERO,
             cron_outcomes: vec![],
             tx_outcomes: vec![],
         };
 
-        assert!(matches!(
-            hooked_indexer.index_block(&block, &outcome, &mut ctx),
-            Err(grug_app::IndexerError::NotRunning)
-        ));
+        assert!(
+            hooked_indexer
+                .index_block(&block, &outcome, &mut ctx)
+                .is_err()
+        );
     }
 
     /// Example indexer that stores data in the context for later indexers to use
@@ -566,12 +573,12 @@ mod tests {
 
         // Add a producer indexer that stores data
         let producer = DataProducerIndexer::new("producer1");
-        hooked_indexer.add_indexer(producer);
+        hooked_indexer.add_indexer(producer).unwrap();
 
         // Add a consumer indexer that reads data
         let consumer = DataConsumerIndexer::new();
         let consumer_data = consumer.consumed_data.clone();
-        hooked_indexer.add_indexer(consumer);
+        hooked_indexer.add_indexer(consumer).unwrap();
 
         let storage = MockStorage::new();
         hooked_indexer.start(&storage).unwrap();

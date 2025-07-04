@@ -15,6 +15,7 @@ use {
     grug_vm_hybrid::HybridVm,
     httpd::context::Context as HttpdContext,
     indexer_hooked::HookedIndexer,
+    indexer_sql::indexer_path::IndexerPath,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::{sync::Arc, time},
     tokio::signal::unix::{SignalKind, signal},
@@ -69,7 +70,7 @@ impl StartCmd {
             cfg.grug.query_gas_limit,
         );
 
-        let non_blocking_indexer = indexer_sql::IndexerBuilder::default()
+        let sql_indexer = indexer_sql::IndexerBuilder::default()
             .with_keep_blocks(cfg.indexer.keep_blocks)
             .with_database_url(&cfg.indexer.database.url)
             .with_database_max_connections(cfg.indexer.database.max_connections)
@@ -78,8 +79,8 @@ impl StartCmd {
             .build()
             .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
-        let indexer_path = non_blocking_indexer.indexer_path.clone();
-        let indexer_context = non_blocking_indexer.context.clone();
+        let indexer_path = sql_indexer.indexer_path.clone();
+        let indexer_context = sql_indexer.context.clone();
 
         // Run ABCI server, optionally with indexer and httpd server.
         match (
@@ -89,39 +90,15 @@ impl StartCmd {
         ) {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
-
-                let mut hooked_indexer = HookedIndexer::new();
-
-                // Create a separate context for dango indexer (shares DB but has independent pubsub)
-                let dango_context: dango_indexer_sql::context::Context = non_blocking_indexer
-                    .context
-                    .with_separate_pubsub()
-                    .await
-                    .map_err(|e| {
-                        anyhow!("Failed to create separate context for dango indexer: {}", e)
-                    })?
-                    .into();
-
-                let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-                        non_blocking_indexer.handle.handle().clone(),
-                    ),
-                    context: dango_context.clone(),
-                };
-                hooked_indexer.add_indexer(non_blocking_indexer);
-                hooked_indexer.add_indexer(dango_indexer);
-
-                let indexer_httpd_context = indexer_httpd::context::Context::new(
-                    indexer_context.clone(),
-                    Arc::new(app),
-                    Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
-                    indexer_path,
-                );
-
-                let dango_httpd_context = dango_httpd::context::Context::new(
-                    indexer_httpd_context.clone(),
-                    dango_context,
-                );
+                let (hooked_indexer, _, dango_httpd_context) = self
+                    .setup_indexer_stack(
+                        sql_indexer,
+                        indexer_context,
+                        indexer_path,
+                        Arc::new(app),
+                        &cfg.tendermint.rpc_addr,
+                    )
+                    .await?;
 
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
@@ -131,39 +108,15 @@ impl StartCmd {
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
-
-                let mut hooked_indexer = HookedIndexer::new();
-
-                // Create a separate context for dango indexer (shares DB but has independent pubsub)
-                let dango_context: dango_indexer_sql::context::Context = non_blocking_indexer
-                    .context
-                    .with_separate_pubsub()
-                    .await
-                    .map_err(|e| {
-                        anyhow!("Failed to create separate context for dango indexer: {}", e)
-                    })?
-                    .into();
-
-                let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-                        non_blocking_indexer.handle.handle().clone(),
-                    ),
-                    context: dango_context.clone(),
-                };
-                hooked_indexer.add_indexer(non_blocking_indexer);
-                hooked_indexer.add_indexer(dango_indexer);
-
-                let indexer_httpd_context = indexer_httpd::context::Context::new(
-                    indexer_context,
-                    Arc::new(app),
-                    Arc::new(TendermintRpcClient::new(&cfg.tendermint.rpc_addr)?),
-                    indexer_path,
-                );
-
-                let dango_httpd_context = dango_httpd::context::Context::new(
-                    indexer_httpd_context.clone(),
-                    dango_context,
-                );
+                let (hooked_indexer, _, dango_httpd_context) = self
+                    .setup_indexer_stack(
+                        sql_indexer,
+                        indexer_context,
+                        indexer_path,
+                        Arc::new(app),
+                        &cfg.tendermint.rpc_addr,
+                    )
+                    .await?;
 
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
@@ -172,27 +125,15 @@ impl StartCmd {
             },
             (true, false, true) => {
                 // Indexer and metrics enabled, HTTP server disabled
-
-                let mut hooked_indexer = HookedIndexer::new();
-
-                // Create a separate context for dango indexer (shares DB but has independent pubsub)
-                let dango_context: dango_indexer_sql::context::Context = non_blocking_indexer
-                    .context
-                    .with_separate_pubsub()
-                    .await
-                    .map_err(|e| {
-                        anyhow!("Failed to create separate context for dango indexer: {}", e)
-                    })?
-                    .into();
-
-                let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-                        non_blocking_indexer.handle.handle().clone(),
-                    ),
-                    context: dango_context,
-                };
-                hooked_indexer.add_indexer(non_blocking_indexer);
-                hooked_indexer.add_indexer(dango_indexer);
+                let (hooked_indexer, ..) = self
+                    .setup_indexer_stack(
+                        sql_indexer,
+                        indexer_context,
+                        indexer_path,
+                        Arc::new(app),
+                        &cfg.tendermint.rpc_addr,
+                    )
+                    .await?;
 
                 tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
@@ -201,27 +142,15 @@ impl StartCmd {
             },
             (true, false, false) => {
                 // Only indexer enabled
-
-                let mut hooked_indexer = HookedIndexer::new();
-
-                // Create a separate context for dango indexer (shares DB but has independent pubsub)
-                let dango_context: dango_indexer_sql::context::Context = non_blocking_indexer
-                    .context
-                    .with_separate_pubsub()
-                    .await
-                    .map_err(|e| {
-                        anyhow!("Failed to create separate context for dango indexer: {}", e)
-                    })?
-                    .into();
-
-                let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-                        non_blocking_indexer.handle.handle().clone(),
-                    ),
-                    context: dango_context,
-                };
-                hooked_indexer.add_indexer(non_blocking_indexer);
-                hooked_indexer.add_indexer(dango_indexer);
+                let (hooked_indexer, ..) = self
+                    .setup_indexer_stack(
+                        sql_indexer,
+                        indexer_context,
+                        indexer_path,
+                        Arc::new(app),
+                        &cfg.tendermint.rpc_addr,
+                    )
+                    .await?;
 
                 self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
                     .await?;
@@ -251,6 +180,52 @@ impl StartCmd {
         }
 
         Ok(())
+    }
+
+    /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
+    async fn setup_indexer_stack(
+        &self,
+        sql_indexer: indexer_sql::NonBlockingIndexer,
+        indexer_context: indexer_sql::context::Context,
+        indexer_path: IndexerPath,
+        app: Arc<App<DiskDbLite, HybridVm, NaiveProposalPreparer, NullIndexer>>,
+        tendermint_rpc_addr: &str,
+    ) -> anyhow::Result<(
+        HookedIndexer,
+        indexer_httpd::context::Context,
+        dango_httpd::context::Context,
+    )> {
+        let mut hooked_indexer = HookedIndexer::new();
+
+        // Create a separate context for dango indexer (shares DB but has independent pubsub)
+        let dango_context: dango_indexer_sql::context::Context = sql_indexer
+            .context
+            .with_separate_pubsub()
+            .await
+            .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {}", e))?
+            .into();
+
+        let dango_indexer = dango_indexer_sql::indexer::Indexer {
+            runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
+                sql_indexer.handle.handle().clone(),
+            ),
+            context: dango_context.clone(),
+        };
+
+        hooked_indexer.add_indexer(sql_indexer)?;
+        hooked_indexer.add_indexer(dango_indexer)?;
+
+        let indexer_httpd_context = indexer_httpd::context::Context::new(
+            indexer_context,
+            app.clone(),
+            Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
+            indexer_path,
+        );
+
+        let dango_httpd_context =
+            dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+
+        Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }
 
     /// Run the minimal HTTP server (without indexer features)

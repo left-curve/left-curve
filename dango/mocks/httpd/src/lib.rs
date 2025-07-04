@@ -93,8 +93,8 @@ where
         ),
         context: dango_context.clone(),
     };
-    hooked_indexer.add_indexer(indexer);
-    hooked_indexer.add_indexer(dango_indexer);
+    hooked_indexer.add_indexer(indexer).unwrap();
+    hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
