@@ -2,9 +2,7 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{
-        MAX_ORACLE_STALENESS, MINIMUM_LP_TOKEN_AMOUNT, PAIRS, PassiveLiquidityPool, RESERVES, core,
-    },
+    crate::{MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PassiveLiquidityPool, RESERVES, core},
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -212,7 +210,7 @@ fn provide_liquidity(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: ctx.contract,
-                    coins: coins! { pair.lp_denom => MINIMUM_LP_TOKEN_AMOUNT },
+                    coins: coins! { pair.lp_denom => MINIMUM_LIQUIDITY },
                 },
                 Coins::new(), // No funds needed for minting
             )?)
