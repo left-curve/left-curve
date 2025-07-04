@@ -373,3 +373,160 @@ fn swap_exact_amount_out(
             output: output.into_inner(),
         })?)
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::{
+            constants::{dango, usdc},
+            dex::{Direction, PairParams, PassiveLiquidity},
+        },
+        grug::{Addr, Bounded, MockContext, NumberConst, Udec128},
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    /// Ensure that if a user creates orders with more-than-sufficient funds, the
+    /// extra funds are properly refunded.
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![],
+            creates_limit: vec![CreateLimitOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                price: Udec128::new(2),
+            }],
+            cancels: None,
+        },
+        coins! { usdc::DENOM.clone() => 300 },
+        coins! { usdc::DENOM.clone() => 100 };
+        "overfunded limit bid: send 300, require 200"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![],
+            creates_limit: vec![CreateLimitOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                price: Udec128::new(2),
+            }],
+            cancels: None,
+        },
+        coins! { dango::DENOM.clone() => 300 },
+        coins! { dango::DENOM.clone() => 200 };
+        "overfunded limit ask: send 300, require 100"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![CreateMarketOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                max_slippage: Udec128::ZERO,
+            }],
+            creates_limit: vec![],
+            cancels: None,
+        },
+        coins! { usdc::DENOM.clone() => 300 },
+        coins! { usdc::DENOM.clone() => 200 };
+        "overfunded market bid: send 300, require 100"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![CreateMarketOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                max_slippage: Udec128::ZERO,
+            }],
+            creates_limit: vec![],
+            cancels: None,
+        },
+        coins! { dango::DENOM.clone() => 300 },
+        coins! { dango::DENOM.clone() => 200 };
+        "overfunded market ask: send 300, require 100"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    max_slippage: Udec128::ZERO,
+                },
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    max_slippage: Udec128::ZERO,
+                },
+            ],
+            creates_limit: vec![
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    price: Udec128::new(2),
+                },
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    price: Udec128::new(2),
+                },
+            ],
+            cancels: None,
+        },
+        coins! {
+            usdc::DENOM.clone() => 600,
+            dango::DENOM.clone() => 600,
+        },
+        coins! {
+            usdc::DENOM.clone() => 300,
+            dango::DENOM.clone() => 400,
+        };
+        "overfunded both in one tx; send 600 usdc + 600 dango, require 300 usdc + 200 dango"
+    )]
+    fn overfunded_order_refund_works(msg: ExecuteMsg, funds: Coins, expected_refunds: Coins) {
+        let sender = Addr::mock(1);
+        let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
+
+        // Create the dango-usdc pair.
+        // The specific parameters don't matter. We just need the pair to exist.
+        PAIRS
+            .save(
+                &mut ctx.storage,
+                (&dango::DENOM, &usdc::DENOM),
+                &PairParams {
+                    lp_denom: Denom::from_str("lp").unwrap(),
+                    pool_type: PassiveLiquidity::Xyk {
+                        order_spacing: Udec128::ONE,
+                    },
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                },
+            )
+            .unwrap();
+
+        // The response should contain exactly 1 message, which is the refund.
+        let res = execute(ctx.as_mutable(), msg).unwrap();
+        assert_eq!(res.submsgs.len(), 1);
+        assert_eq!(
+            res.submsgs[0].msg,
+            Message::Transfer(btree_map! { sender => expected_refunds })
+        );
+    }
+}
