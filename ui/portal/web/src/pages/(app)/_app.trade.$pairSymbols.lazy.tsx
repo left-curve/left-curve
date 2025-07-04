@@ -44,7 +44,7 @@ function ProTradeApplet() {
   };
 
   return (
-    <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)] relative overflow-visible">
+    <div className="flex-1 flex w-full relative overflow-visible">
       <ProTrade
         pairId={pairId}
         onChangePairId={onChangePairId}
@@ -53,7 +53,7 @@ function ProTradeApplet() {
       >
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
-            <div className="flex flex-col flex-1">
+            <div className="flex flex-col lg:flex-1">
               <ProTrade.Header />
               <ProTrade.Chart />
             </div>

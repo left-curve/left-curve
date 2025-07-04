@@ -204,6 +204,10 @@ export const tailwindConfig: Partial<Config> = {
           "50%": { opacity: "0.5" },
         },
       },
+      gridTemplateColumns: {
+        "auto-200": "repeat(auto-fill,minmax(200px,1fr))",
+        "auto-210": "repeat(auto-fill,minmax(210px,1fr))",
+      },
     },
   },
   plugins: [
