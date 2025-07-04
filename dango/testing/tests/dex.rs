@@ -5386,7 +5386,7 @@ fn market_order_clearing(
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Unchanged,
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Decreased(500000),
     }
     ; "limit ask matched with market bid market size limiting factor market order gets refunded"
 )]
@@ -5416,7 +5416,7 @@ fn market_order_clearing(
         usdc::DENOM.clone() => BalanceChange::Decreased(50),
     },
     btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
+        eth::DENOM.clone() => BalanceChange::Decreased(9999),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
     ; "limit bid matched with market ask market size limiting factor market order gets refunded"
