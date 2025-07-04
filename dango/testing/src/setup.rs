@@ -142,7 +142,7 @@ pub async fn setup_test_with_indexer() -> (
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
 ) {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
         .build()
@@ -152,9 +152,8 @@ pub async fn setup_test_with_indexer() -> (
     let indexer_path = indexer.indexer_path.clone();
 
     // Create a shared runtime handler that uses the same tokio runtime
-    let shared_runtime_handle = indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
-        indexer.handle.handle().clone(),
-    );
+    let shared_runtime_handle =
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
 
     let mut hooked_indexer = HookedIndexer::new();
 

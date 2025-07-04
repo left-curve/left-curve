@@ -17,7 +17,7 @@ use {
 fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -90,7 +90,7 @@ fn index_block() {
 async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_keep_blocks(true)
         .with_memory_database()
         .build()
@@ -185,7 +185,7 @@ async fn parse_previous_block_after_restart() {
 fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -437,7 +437,7 @@ pub mod replier {
 /// Ensure that flatten events are indexed correctly.
 #[test]
 fn index_block_events() {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -533,7 +533,7 @@ fn index_block_events() {
 /// Ensure the indexed blocks are compressed on disk.
 #[test]
 fn blocks_on_disk_compressed() {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_keep_blocks(true)
         .build()

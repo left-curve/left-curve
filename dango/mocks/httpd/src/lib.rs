@@ -53,7 +53,7 @@ pub async fn run_with_callback<C>(
 where
     C: FnOnce(TestAccounts, Codes<ContractWrapper>, Contracts, MockValidatorSets) + Send + Sync,
 {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
+    let indexer = indexer_sql::IndexerBuilder::default();
 
     let indexer = if let Some(url) = database_url {
         indexer.with_database_url(url)
@@ -88,7 +88,7 @@ where
         .into();
 
     let dango_indexer = dango_indexer_sql::indexer::Indexer {
-        runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+        runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
             indexer.handle.handle().clone(),
         ),
         context: dango_context.clone(),

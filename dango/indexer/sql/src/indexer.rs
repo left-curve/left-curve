@@ -3,7 +3,7 @@ use {
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::Storage,
     grug_app::QuerierProvider,
-    indexer_sql::{block_to_index::BlockToIndex, non_blocking_indexer::RuntimeHandler},
+    indexer_sql::{block_to_index::BlockToIndex, indexer::RuntimeHandler},
     std::sync::Arc,
 };
 #[cfg(feature = "metrics")]

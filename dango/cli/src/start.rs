@@ -15,7 +15,6 @@ use {
     grug_vm_hybrid::HybridVm,
     httpd::context::Context as HttpdContext,
     indexer_hooked::HookedIndexer,
-    indexer_sql::non_blocking_indexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::{sync::Arc, time},
     tokio::signal::unix::{SignalKind, signal},
@@ -70,7 +69,7 @@ impl StartCmd {
             cfg.grug.query_gas_limit,
         );
 
-        let non_blocking_indexer = non_blocking_indexer::IndexerBuilder::default()
+        let non_blocking_indexer = indexer_sql::IndexerBuilder::default()
             .with_keep_blocks(cfg.indexer.keep_blocks)
             .with_database_url(&cfg.indexer.database.url)
             .with_database_max_connections(cfg.indexer.database.max_connections)
@@ -104,7 +103,7 @@ impl StartCmd {
                     .into();
 
                 let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
                         non_blocking_indexer.handle.handle().clone(),
                     ),
                     context: dango_context.clone(),
@@ -146,7 +145,7 @@ impl StartCmd {
                     .into();
 
                 let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
                         non_blocking_indexer.handle.handle().clone(),
                     ),
                     context: dango_context.clone(),
@@ -187,7 +186,7 @@ impl StartCmd {
                     .into();
 
                 let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
                         non_blocking_indexer.handle.handle().clone(),
                     ),
                     context: dango_context,
@@ -216,7 +215,7 @@ impl StartCmd {
                     .into();
 
                 let dango_indexer = dango_indexer_sql::indexer::Indexer {
-                    runtime_handle: indexer_sql::non_blocking_indexer::RuntimeHandler::from_handle(
+                    runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
                         non_blocking_indexer.handle.handle().clone(),
                     ),
                     context: dango_context,

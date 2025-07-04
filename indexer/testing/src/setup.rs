@@ -3,7 +3,7 @@ use {indexer_hooked::HookedIndexer, indexer_sql::indexer_path::IndexerPath};
 pub fn create_hooked_indexer(
     keep_blocks: bool,
 ) -> (HookedIndexer, indexer_sql::Context, IndexerPath) {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_keep_blocks(keep_blocks)
         .build()

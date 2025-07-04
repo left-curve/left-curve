@@ -6,7 +6,7 @@ use {
     grug_vm_rust::RustVm,
     httpd::traits::QueryApp,
     indexer_httpd::context::Context,
-    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    indexer_sql::indexer::NonBlockingIndexer,
     std::{str::FromStr, sync::Arc},
     tokio::sync::Mutex,
 };
@@ -28,7 +28,7 @@ pub async fn create_blocks(
 )> {
     let denom = Denom::from_str("ugrug")?;
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
         .with_keep_blocks(true)
