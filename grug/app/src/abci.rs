@@ -29,7 +29,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = BoxError;
     type Future =
@@ -52,7 +52,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn tower_call(&self, req: Request) -> AppResult<Response> {
         match req {

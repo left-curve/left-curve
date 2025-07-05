@@ -17,7 +17,7 @@ pub trait Hooks {
         &self,
         _context: Context,
         _block: BlockToIndex,
-        _querier: Box<dyn QuerierProvider>,
+        _querier: &dyn QuerierProvider,
     ) -> Result<(), Self::Error> {
         Ok(())
     }

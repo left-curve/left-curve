@@ -25,6 +25,7 @@ use {
 
 pub mod block;
 pub mod graphql;
+pub mod setup;
 
 // Re-export the configurable pagination function for use by other crates
 pub use graphql::paginate_models_with_app_builder;
@@ -122,7 +123,7 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    // println!("text response: \n{:#?}", graphql_response);
+    // println!("text response: \n{graphql_response:#?}");
 
     let graphql_responses: Vec<GraphQLResponse> = serde_json::from_slice(&graphql_response)
         .inspect_err(|err| {
@@ -207,8 +208,8 @@ where
 }
 
 /// Calls a GraphQL subscription and returns a stream
-pub async fn call_ws_graphql_stream<F, A, B>(
-    context: Context,
+pub async fn call_ws_graphql_stream<C, F, A, B>(
+    context: C,
     app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
 ) -> anyhow::Result<(
@@ -217,7 +218,8 @@ pub async fn call_ws_graphql_stream<F, A, B>(
     Framed<BoxedSocket, ws::Codec>,
 )>
 where
-    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    C: Clone + Send + Sync + 'static,
+    F: Fn(C) -> App<A> + Clone + Send + Sync + 'static,
     A: ServiceFactory<
             ServiceRequest,
             Response = ServiceResponse<B>,
@@ -308,8 +310,10 @@ where
     R: DeserializeOwned,
 {
     loop {
-        match framed.next().await {
-            Some(Ok(ws::Frame::Text(text))) => {
+        let res = timeout(Duration::from_secs(2), framed.next()).await;
+
+        match res {
+            Ok(Some(Ok(ws::Frame::Text(text)))) => {
                 // When I need to debug the response
                 // println!("text response: \n{}", str::from_utf8(&text)?);
 
@@ -328,13 +332,14 @@ where
                     bail!("can't find {name} in response");
                 }
             },
-            Some(Ok(ws::Frame::Ping(ping))) => {
+            Ok(Some(Ok(ws::Frame::Ping(ping)))) => {
                 framed.send(ws::Message::Pong(ping)).await?;
                 continue;
             },
-            Some(Err(e)) => return Err(e.into()),
-            None => bail!("connection closed unexpectedly"),
-            res => bail!("unexpected message type: {res:?}"),
+            Ok(Some(Err(e))) => return Err(e.into()),
+            Ok(None) => bail!("connection closed unexpectedly"),
+            Ok(res) => bail!("unexpected message type: {res:?}"),
+            Err(_) => bail!("connection timed out"),
         }
     }
 }

@@ -20,6 +20,7 @@ data-encoding = { workspace = true, optional = true }
 dyn-event     = { workspace = true }
 grug-storage  = { workspace = true }
 grug-types    = { workspace = true }
+http          = { workspace = true }
 ics23         = { workspace = true, optional = true }
 prost         = { workspace = true }
 tendermint    = { workspace = true, optional = true }

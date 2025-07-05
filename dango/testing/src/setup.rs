@@ -21,8 +21,7 @@ use {
     grug_vm_wasm::WasmVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
-    indexer_httpd::context::Context,
-    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    indexer_hooked::HookedIndexer,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -64,7 +63,7 @@ pub type TestSuiteWithIndexer<
     PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
-    ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
+    ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
@@ -133,23 +132,45 @@ pub fn setup_test_naive_with_custom_genesis(
 /// `ContractWrapper` codes but with a non-blocking indexer.
 ///
 /// Used for running tests that require an indexer.
-pub fn setup_test_with_indexer() -> (
+/// Synchronous wrapper for setup_test_with_indexer_async
+pub async fn setup_test_with_indexer() -> (
     TestSuiteWithIndexer,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
-    Context,
+    indexer_httpd::context::Context,
+    dango_httpd::context::Context,
 ) {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
-        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()
         .unwrap();
 
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
+
+    // Create a shared runtime handler that uses the same tokio runtime
+    let shared_runtime_handle =
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
+
+    let mut hooked_indexer = HookedIndexer::new();
+
+    // Create a separate context for dango indexer (shares DB but has independent pubsub)
+    let dango_context: dango_indexer_sql::context::Context = indexer
+        .context
+        .with_separate_pubsub()
+        .await
+        .expect("Failed to create separate context for dango indexer in test setup")
+        .into();
+
+    let dango_indexer = dango_indexer_sql::indexer::Indexer {
+        runtime_handle: shared_runtime_handle,
+        context: dango_context.clone(),
+    };
+    hooked_indexer.add_indexer(indexer).unwrap();
+    hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let db = MemDb::new();
     let vm = RustVm::new();
@@ -158,7 +179,7 @@ pub fn setup_test_with_indexer() -> (
         db.clone(),
         vm.clone(),
         ProposalPreparer::new_with_cache(),
-        indexer,
+        hooked_indexer,
         RustVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
@@ -166,12 +187,15 @@ pub fn setup_test_with_indexer() -> (
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
-    let httpd_context = Context::new(
+    let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
         indexer_path,
     );
+
+    let dango_httpd_context =
+        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
 
     (
         suite,
@@ -179,7 +203,8 @@ pub fn setup_test_with_indexer() -> (
         codes,
         contracts,
         validator_sets,
-        httpd_context,
+        indexer_httpd_context,
+        dango_httpd_context,
     )
 }
 
@@ -276,7 +301,7 @@ where
     VM: Vm + GenesisCodes + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     let local_domain = genesis_opt.hyperlane.local_domain;
 

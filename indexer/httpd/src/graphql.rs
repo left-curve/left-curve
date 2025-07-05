@@ -89,6 +89,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 
     schema_builder
         .data(app_ctx.db.clone())
+        .data(app_ctx.base.clone())
         .data(app_ctx)
         .data(block_transactions_loader)
         .data(block_events_loader)

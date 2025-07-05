@@ -1,14 +1,13 @@
 use {
     anyhow::bail,
     dango_genesis::{Codes, Contracts, GenesisCodes},
-    dango_httpd::{graphql::build_schema, server::config_app},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
     grug_db_memory::MemDb,
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
-    indexer_httpd::context::Context,
+    indexer_hooked::HookedIndexer,
     std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
 };
@@ -54,7 +53,7 @@ pub async fn run_with_callback<C>(
 where
     C: FnOnce(TestAccounts, Codes<ContractWrapper>, Contracts, MockValidatorSets) + Send + Sync,
 {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default();
+    let indexer = indexer_sql::IndexerBuilder::default();
 
     let indexer = if let Some(url) = database_url {
         indexer.with_database_url(url)
@@ -68,17 +67,40 @@ where
         .with_keep_blocks(keep_blocks)
         .with_sqlx_pubsub()
         .with_tmpdir()
-        .with_hooks(dango_indexer_sql::hooks::Hooks)
         .build()?;
 
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
+    let mut hooked_indexer = HookedIndexer::new();
+
+    // Create a separate context for dango indexer (shares DB but has independent pubsub)
+    let dango_context: dango_indexer_sql::context::Context = indexer
+        .context
+        .with_separate_pubsub()
+        .await
+        .map_err(|e| {
+            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to create separate context for dango indexer: {}",
+                e
+            )))
+        })?
+        .into();
+
+    let dango_indexer = dango_indexer_sql::indexer::Indexer {
+        runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
+            indexer.handle.handle().clone(),
+        ),
+        context: dango_context.clone(),
+    };
+    hooked_indexer.add_indexer(indexer).unwrap();
+    hooked_indexer.add_indexer(dango_indexer).unwrap();
+
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
         ProposalPreparer::new(),
-        indexer,
+        hooked_indexer,
         RustVm::genesis_codes(),
         test_opt,
         genesis_opt,
@@ -90,17 +112,20 @@ where
 
     let mock_client = MockClient::new_shared(suite.clone(), block_creation);
 
-    let context = Context::new(indexer_context, suite, Arc::new(mock_client), indexer_path);
+    let app = suite.lock().await.app.clone_without_indexer();
 
-    indexer_httpd::server::run_server(
-        "127.0.0.1",
-        port,
-        cors_allowed_origin,
-        context,
-        config_app,
-        build_schema,
-    )
-    .await
+    let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_context,
+        Arc::new(Mutex::new(app)),
+        Arc::new(mock_client),
+        indexer_path,
+    );
+
+    let dango_httpd_context =
+        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+
+    dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)
+        .await
 }
 
 pub fn get_mock_socket_addr() -> u16 {

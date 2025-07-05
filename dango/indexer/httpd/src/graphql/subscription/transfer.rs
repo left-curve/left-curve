@@ -15,7 +15,7 @@ pub struct TransferSubscription;
 impl TransferSubscription {
     /// Get all transfers for the given `block_heights` range.
     async fn get_transfers(
-        app_ctx: &indexer_httpd::context::Context,
+        app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
         address: Option<String>,
         username: Option<String>,
@@ -72,15 +72,16 @@ impl TransferSubscription {
     async fn transfers<'a>(
         &self,
         ctx: &Context<'a>,
-        // The address of the transfer, either origin or destination
         address: Option<String>,
-        // The username related to the transfer, either as origin or as destination
         username: Option<String>,
         // The block height of the transfer
         // This is used to get the older transfers in case of disconnection
         since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<entity::transfers::Model>> + 'a> {
-        let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
+    ) -> Result<impl Stream<Item = Vec<entity::transfers::Model>> + 'a>
+    where
+        Self: Sync,
+    {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 

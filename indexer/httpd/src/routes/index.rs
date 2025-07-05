@@ -23,7 +23,7 @@ struct UpResponse<'a> {
 pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     // This ensures than grug is working
     let block_height = app_ctx
-        .grug_app
+        .grug_app()
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
         .await?

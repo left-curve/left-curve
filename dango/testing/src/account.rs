@@ -249,7 +249,7 @@ where
         DB: Db,
         VM: Vm + Clone + Send + Sync + 'static,
         ID: Indexer,
-        AppError: From<PP::Error> + From<DB::Error> + From<VM::Error> + From<ID::Error>,
+        AppError: From<PP::Error> + From<DB::Error> + From<VM::Error>,
     {
         let chain_id = test_suite.chain_id.clone();
 
@@ -288,7 +288,7 @@ where
         DB: Db,
         VM: Vm + Clone + Send + Sync + 'static,
         ID: Indexer,
-        AppError: From<PP::Error> + From<DB::Error> + From<VM::Error> + From<ID::Error>,
+        AppError: From<PP::Error> + From<DB::Error> + From<VM::Error>,
     {
         // If registering a single account, ensure the supplied username matches this account's username.
         let account_type = match &params {

@@ -46,7 +46,11 @@ macro_rules! generate_types {
 
                         // Spawn server in separate thread with its own runtime
                         let _server_handle = std::thread::spawn(move || {
-                            let rt = tokio::runtime::Runtime::new().unwrap();
+                            let rt = tokio::runtime::Builder::new_multi_thread()
+                                .worker_threads(2)
+                                .enable_all()
+                                .build()
+                                .unwrap();
                             rt.block_on(async {
                                 #[cfg(feature = "tracing")]
                                 tracing::info!("Starting mock HTTP server on port {port}");
