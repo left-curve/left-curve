@@ -14,6 +14,7 @@ where
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
             .service(routes::index::up)
+            .service(routes::index::sentry_raise)
             .service(routes::api::services::api_services())
             .service(graphql::graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
