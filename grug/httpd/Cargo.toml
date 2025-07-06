@@ -9,13 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[lib]
-path = "src/lib.rs"
-
-[[bin]]
-name = "httpd"
-path = "src/bin/main.rs"
-
 [features]
 metrics = [
   "dep:actix-web-metrics",
