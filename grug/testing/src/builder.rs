@@ -541,7 +541,7 @@ where
     VM: TestVm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<VM::Error> + From<PP::Error> + From<ID::Error> + From<DB::Error>,
+    AppError: From<VM::Error> + From<PP::Error> + From<DB::Error>,
 {
     pub fn build(self) -> (TestSuite<DB, VM, PP, ID>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {

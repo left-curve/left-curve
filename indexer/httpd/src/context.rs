@@ -1,5 +1,6 @@
 use {
-    crate::traits::{ConsensusClient, QueryApp},
+    crate::traits::ConsensusClient,
+    grug_httpd::{context::Context as BaseContext, traits::QueryApp},
     indexer_sql::{indexer_path::IndexerPath, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
@@ -7,9 +8,9 @@ use {
 
 #[derive(Clone)]
 pub struct Context {
+    pub base: BaseContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
-    pub grug_app: Arc<dyn QueryApp + Send + Sync>,
     pub consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
     pub indexer_path: IndexerPath,
 }
@@ -22,12 +23,16 @@ impl Context {
         indexer_path: IndexerPath,
     ) -> Self {
         Self {
+            base: BaseContext::new(grug_app),
             db: ctx.db,
             pubsub: ctx.pubsub,
-            grug_app,
             consensus_client,
             indexer_path,
         }
+    }
+
+    pub fn grug_app(&self) -> &Arc<dyn QueryApp + Send + Sync> {
+        &self.base.grug_app
     }
 }
 

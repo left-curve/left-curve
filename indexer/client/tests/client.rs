@@ -8,7 +8,7 @@ use {
 
 mod utils;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn broadcast() -> anyhow::Result<()> {
     let (client, mut accounts) = setup_client_test().await?;
 

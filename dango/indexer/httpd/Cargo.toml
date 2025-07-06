@@ -10,21 +10,26 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dep:metrics", "indexer-httpd/metrics", "indexer-sql/metrics"]
+metrics = ["dep:actix-web-metrics", "dep:metrics", "indexer-httpd/metrics", "indexer-sql/metrics"]
+tracing = []
 
 [dependencies]
+actix-cors              = { workspace = true }
 actix-web               = { workspace = true }
+actix-web-metrics       = { workspace = true, optional = true }
 async-graphql           = { workspace = true }
 async-graphql-actix-web = { workspace = true }
 chrono                  = { workspace = true }
 clap                    = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["async-graphql"] }
 dango-types             = { workspace = true, features = ["async-graphql"] }
+grug-httpd              = { workspace = true }
 indexer-httpd           = { workspace = true, features = ["tracing"] }
 indexer-sql             = { workspace = true, features = ["async-graphql"] }
 itertools               = { workspace = true }
 metrics                 = { workspace = true, optional = true }
 sea-orm                 = { workspace = true }
+sentry-actix            = { workspace = true }
 serde                   = { workspace = true }
 thiserror               = { workspace = true }
 tokio                   = { workspace = true }
