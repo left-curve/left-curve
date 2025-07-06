@@ -23,7 +23,7 @@ chrono                  = { workspace = true }
 clap                    = { workspace = true }
 dango-indexer-sql       = { workspace = true, features = ["async-graphql"] }
 dango-types             = { workspace = true, features = ["async-graphql"] }
-httpd                   = { workspace = true }
+grug-httpd              = { workspace = true }
 indexer-httpd           = { workspace = true, features = ["tracing"] }
 indexer-sql             = { workspace = true, features = ["async-graphql"] }
 itertools               = { workspace = true }

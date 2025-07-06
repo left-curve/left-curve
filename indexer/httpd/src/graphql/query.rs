@@ -1,6 +1,7 @@
 use {
     async_graphql::MergedObject, block::BlockQuery, event::EventQuery,
-    httpd::graphql::query::grug::GrugQuery, message::MessageQuery, transaction::TransactionQuery,
+    grug_httpd::graphql::query::grug::GrugQuery, message::MessageQuery,
+    transaction::TransactionQuery,
 };
 
 pub mod block;

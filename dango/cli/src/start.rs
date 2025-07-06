@@ -11,9 +11,9 @@ use {
     grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk_lite::DiskDbLite,
+    grug_httpd::context::Context as HttpdContext,
     grug_types::{GIT_COMMIT, HashExt},
     grug_vm_hybrid::HybridVm,
-    httpd::context::Context as HttpdContext,
     indexer_hooked::HookedIndexer,
     indexer_sql::indexer_path::IndexerPath,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -235,13 +235,13 @@ impl StartCmd {
     ) -> anyhow::Result<()> {
         tracing::info!("Starting minimal HTTP server at {}:{}", &cfg.ip, cfg.port);
 
-        httpd::server::run_server(
+        grug_httpd::server::run_server(
             &cfg.ip,
             cfg.port,
             cfg.cors_allowed_origin.clone(),
             context,
-            httpd::server::config_app,
-            httpd::graphql::build_schema,
+            grug_httpd::server::config_app,
+            grug_httpd::graphql::build_schema,
         )
         .await
         .map_err(|err| {

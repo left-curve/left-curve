@@ -31,6 +31,7 @@ members = [
   "grug/db/disk-lite",
   "grug/db/memory",
   "grug/ffi",
+  "grug/httpd",
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
@@ -44,7 +45,6 @@ members = [
   "grug/types",
   "grug/vm/rust",
   "grug/vm/wasm",
-  "httpd",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
   "hyperlane/testing",
@@ -218,6 +218,7 @@ grug-db-disk                = { path = "grug/db/disk" }
 grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
 grug-ffi                    = { path = "grug/ffi" }
+grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
 grug-macros                 = { path = "grug/macros" }
 grug-math                   = { path = "grug/math" }
@@ -231,7 +232,6 @@ grug-types                  = { path = "grug/types" }
 grug-vm-hybrid              = { path = "grug/vm/hybrid" }
 grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
-httpd                       = { path = "httpd" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }

@@ -1,10 +1,10 @@
 use {
     grug_app::{Indexer, NaiveProposalPreparer},
     grug_db_memory::MemDb,
+    grug_httpd::traits::QueryApp,
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
-    httpd::traits::QueryApp,
     indexer_httpd::context::Context,
     indexer_sql::indexer::NonBlockingIndexer,
     std::{str::FromStr, sync::Arc},

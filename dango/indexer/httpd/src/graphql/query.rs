@@ -1,7 +1,7 @@
 use {
     account::AccountQuery,
     async_graphql::MergedObject,
-    httpd::graphql::query::grug::GrugQuery,
+    grug_httpd::graphql::query::grug::GrugQuery,
     indexer_httpd::graphql::query::{
         block::BlockQuery, event::EventQuery, message::MessageQuery, transaction::TransactionQuery,
     },

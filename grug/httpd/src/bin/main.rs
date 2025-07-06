@@ -1,6 +1,6 @@
 use {
     clap::Parser,
-    httpd::{context::Context, graphql, server},
+    grug_httpd::{context::Context, graphql, server},
     std::sync::Arc,
 };
 
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 struct MockGrugApp;
 
 #[async_trait::async_trait]
-impl httpd::traits::QueryApp for MockGrugApp {
+impl grug_httpd::traits::QueryApp for MockGrugApp {
     async fn query_app(
         &self,
         _raw_req: grug_types::Query,

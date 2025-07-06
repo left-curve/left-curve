@@ -1,6 +1,6 @@
 use {
     crate::traits::ConsensusClient,
-    httpd::{context::Context as BaseContext, traits::QueryApp},
+    grug_httpd::{context::Context as BaseContext, traits::QueryApp},
     indexer_sql::{indexer_path::IndexerPath, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
