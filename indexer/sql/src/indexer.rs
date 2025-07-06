@@ -692,12 +692,15 @@ impl RuntimeHandler {
                         "Using futures::executor::block_on for actix-web worker thread: {}",
                         name
                     );
+
                     let result = futures::executor::block_on(closure);
+
                     #[cfg(feature = "tracing")]
                     tracing::info!(
                         "futures::executor::block_on completed for actix-web worker thread: {}",
                         name
                     );
+
                     return result;
                 }
             }
