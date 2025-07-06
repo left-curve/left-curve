@@ -14,10 +14,10 @@ use {
 };
 
 #[test]
-fn index_block_with_nonblocking_indexer() {
+fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -41,7 +41,11 @@ fn index_block_with_nonblocking_indexer() {
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
     suite.app.indexer.handle.block_on(async {
@@ -82,11 +86,11 @@ fn index_block_with_nonblocking_indexer() {
 /// This test is to ensure the indexer will index previous block not yet indexed.
 /// This happens if the process crash after the block was saved on disk, and
 /// before it was indexed.
-#[test]
-fn parse_previous_block_after_restart() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_keep_blocks(true)
         .with_memory_database()
         .build()
@@ -116,20 +120,16 @@ fn parse_previous_block_after_restart() {
         .expect("Can't shutdown indexer");
 
     // 1. Delete database block height 1
-    suite
-        .app
-        .indexer
-        .delete_block_from_db(1)
-        .expect("Can't delete block");
+    entity::blocks::Entity::delete_block_and_data(&suite.app.indexer.context.db, 1)
+        .await
+        .unwrap();
 
     // 1 bis. Verify the block height 1 is deleted
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_none();
-    });
+    let block = entity::blocks::Entity::find()
+        .one(&suite.app.indexer.context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_none();
 
     // 2. on disk block already exists (we keep blocks)
 
@@ -160,7 +160,11 @@ fn parse_previous_block_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
     suite.app.indexer.handle.block_on(async {
@@ -181,7 +185,7 @@ fn parse_previous_block_after_restart() {
 fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -270,7 +274,11 @@ fn no_sql_index_error_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
     suite.app.indexer.handle.block_on(async {
@@ -288,7 +296,7 @@ fn no_sql_index_error_after_restart() {
     });
 }
 
-mod replier {
+pub mod replier {
     use {
         grug_storage::Set,
         grug_types::{
@@ -429,7 +437,7 @@ mod replier {
 /// Ensure that flatten events are indexed correctly.
 #[test]
 fn index_block_events() {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -472,7 +480,11 @@ fn index_block_events() {
     assert_that!(suite.app.indexer.indexing).is_true();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
     suite.app.indexer.handle.block_on(async {
@@ -521,7 +533,7 @@ fn index_block_events() {
 /// Ensure the indexed blocks are compressed on disk.
 #[test]
 fn blocks_on_disk_compressed() {
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_keep_blocks(true)
         .build()
@@ -554,7 +566,11 @@ fn blocks_on_disk_compressed() {
         .address;
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer.wait_for_finish();
+    suite
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     let mut block_path = suite.app.indexer.indexer_path.block_path(1);
 

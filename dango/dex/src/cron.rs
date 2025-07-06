@@ -282,7 +282,7 @@ fn clear_orders_of_pair(
 
     // ----------------------- 5. Update contract state ------------------------
 
-    // Loop over all unmatched market orders and refund the users
+    // Loop over all unmatched market orders and refund the users.
     for (_, market_order) in market_bids {
         refunds.insert(
             market_order.user,
@@ -290,7 +290,6 @@ fn clear_orders_of_pair(
             market_order.remaining,
         )?;
     }
-
     for (_, market_order) in market_asks {
         refunds.insert(
             market_order.user,

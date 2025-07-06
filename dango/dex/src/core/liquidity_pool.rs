@@ -176,15 +176,6 @@ impl PassiveLiquidityPool for PairParams {
             return Ok((reserve, mint_amount));
         }
 
-        let mint_ratio = match &self.pool_type {
-            PassiveLiquidity::Xyk { .. } => {
-                xyk::add_subsequent_liquidity(&mut reserve, deposit.clone())?
-            },
-            PassiveLiquidity::Geometric { .. } => {
-                geometric::add_subsequent_liquidity(oracle_querier, &mut reserve, deposit.clone())?
-            },
-        };
-
         // In case the deposit is asymmetrical, we need to apply a deposit fee.
         //
         // This is to prevent an attack where a user deposits asymmetrically,
@@ -238,6 +229,15 @@ impl PassiveLiquidityPool for PairParams {
                 .checked_div(deposit_value.checked_add(reserve_value)?)?
                 .checked_mul(*self.swap_fee_rate)?
                 .checked_div(deposit_value)?
+        };
+
+        let mint_ratio = match &self.pool_type {
+            PassiveLiquidity::Xyk { .. } => {
+                xyk::add_subsequent_liquidity(&mut reserve, deposit.clone())?
+            },
+            PassiveLiquidity::Geometric { .. } => {
+                geometric::add_subsequent_liquidity(oracle_querier, &mut reserve, deposit.clone())?
+            },
         };
 
         let mint_amount = {

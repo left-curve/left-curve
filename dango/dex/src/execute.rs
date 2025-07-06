@@ -2,7 +2,7 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{MAX_ORACLE_STALENESS, PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PassiveLiquidityPool, RESERVES, core},
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -194,17 +194,37 @@ fn provide_liquidity(
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
-    Ok(Response::new().add_message({
-        let bank = ctx.querier.query_bank()?;
-        Message::execute(
+    let bank = ctx.querier.query_bank()?;
+
+    Ok(Response::new()
+        .add_message(Message::execute(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                coins: coins! { pair.lp_denom => lp_mint_amount },
+                coins: coins! { pair.lp_denom.clone() => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
-        )?
-    }))
+        )?)
+        .may_add_message(if lp_token_supply.is_zero() {
+            // If this is the first liquidity provision, mint a minimum liquidity.
+            // to the contract itself and permanently lock it here. See the comment
+            // on `MINIMUM_LIQUIDITY` for more details.
+            //
+            // Our implementation of this is slightly different from Uniswap's, which
+            // mints 1000 tokens less to the user, while we mint 1000 extra to
+            // the contract. Slightly different math but similarly prevents the
+            // attack.
+            Some(Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    coins: coins! { pair.lp_denom => MINIMUM_LIQUIDITY },
+                },
+                Coins::new(), // No funds needed for minting
+            )?)
+        } else {
+            None
+        }))
     // TODO: add event
 }
 

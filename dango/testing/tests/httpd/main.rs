@@ -1,21 +1,22 @@
-pub mod accounts;
-pub mod grug;
-pub mod metrics;
-pub mod transfers;
-pub mod users;
 use {
     actix_web::{
         App,
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
+        web,
     },
     dango_httpd::{graphql::build_schema, server::config_app},
-    indexer_httpd::context::Context,
-    indexer_testing::{build_actix_app_with_config, paginate_models_with_app_builder},
+    indexer_testing::paginate_models_with_app_builder,
 };
 
+pub mod accounts;
+pub mod grug;
+pub mod metrics;
+pub mod transfers;
+pub mod users;
+
 fn build_actix_app(
-    app_ctx: Context,
+    dango_httpd_context: dango_httpd::context::Context,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -25,15 +26,19 @@ fn build_actix_app(
         Error = actix_web::Error,
     >,
 > {
-    let graphql_schema = build_schema(app_ctx.clone());
+    let graphql_schema = build_schema(dango_httpd_context.clone());
 
-    build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
-        config_app(app_ctx, graphql_schema)
-    })
+    App::new()
+        .app_data(web::Data::new(dango_httpd_context.clone()))
+        .app_data(web::Data::new(
+            dango_httpd_context.indexer_httpd_context.clone(),
+        ))
+        .app_data(web::Data::new(graphql_schema.clone()))
+        .configure(config_app(dango_httpd_context, graphql_schema))
 }
 
 async fn paginate_models<R>(
-    httpd_context: Context,
+    dango_httpd_context: dango_httpd::context::Context,
     graphql_query: &str,
     name: &str,
     sort_by: &str,
@@ -44,7 +49,7 @@ where
     R: serde::de::DeserializeOwned,
 {
     paginate_models_with_app_builder(
-        httpd_context,
+        dango_httpd_context,
         graphql_query,
         name,
         sort_by,

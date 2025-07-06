@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub grug: GrugConfig,
     pub indexer: IndexerConfig,
+    pub httpd: HttpdConfig,
+    pub metrics_httpd: HttpdConfig,
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
@@ -47,8 +49,6 @@ pub struct SentryConfig {
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
-    pub httpd: HttpdConfig,
-    pub metrics_httpd: HttpdConfig,
     pub database: IndexerDatabaseConfig,
 }
 

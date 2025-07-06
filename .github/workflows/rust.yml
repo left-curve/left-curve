@@ -94,6 +94,7 @@ jobs:
     needs: [format]
     name: Lint + Test
     runs-on: self-hosted
+    timeout-minutes: 20
     # Don't use this, it raises permissions issues on self hosted runners
     # container:
     #   image: ghcr.io/left-curve/left-curve/native-builder
@@ -102,16 +103,16 @@ jobs:
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
-    # services:
-    #   postgres:
-    #     image: postgres:17
-    #     env:
-    #       POSTGRES_PASSWORD: postgres
-    #     options: >-
-    #       --health-cmd pg_isready
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -122,7 +123,7 @@ jobs:
           toolchain: stable
           components: clippy
 
-      # - name: Create database
+      # - name: Create psql database
       #   run: |
       #     createdb -U postgres -h postgres "$PGDATABASE"
 
