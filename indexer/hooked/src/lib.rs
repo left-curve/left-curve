@@ -312,6 +312,8 @@ impl Drop for HookedIndexer {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {super::*, grug_types::MockStorage};
