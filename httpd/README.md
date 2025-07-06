@@ -2,7 +2,7 @@
 
 A lightweight HTTP server crate that provides GraphQL and REST endpoints for Grug applications. This crate is a simplified version of the indexer HTTP server, focusing only on core Grug query functionality without any indexing features.
 
-## Features
+## Highlights
 
 - **GraphQL API**: Query Grug applications, store, and simulate transactions
 - **REST endpoints**: Health checks and status information
