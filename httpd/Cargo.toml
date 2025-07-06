@@ -18,11 +18,11 @@ path = "src/bin/main.rs"
 
 [features]
 metrics = [
-    "dep:actix-web-metrics",
-    "dep:futures-util",
-    "dep:metrics",
-    "dep:metrics-exporter-prometheus",
-    "dep:prometheus",
+  "dep:actix-web-metrics",
+  "dep:futures-util",
+  "dep:metrics",
+  "dep:metrics-exporter-prometheus",
+  "dep:prometheus",
 ]
 testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
