@@ -39,7 +39,6 @@ async-graphql-actix-web     = { workspace = true }
 async-trait                 = { workspace = true }
 base64                      = { workspace = true }
 chrono                      = { workspace = true }
-clap                        = { workspace = true }
 futures-util                = { workspace = true, optional = true }
 grug-app                    = { workspace = true, features = ["tracing"] }
 grug-testing                = { workspace = true, optional = true }
@@ -64,3 +63,4 @@ uuid                        = { workspace = true }
 
 [dev-dependencies]
 assertor = { workspace = true }
+clap     = { workspace = true }
