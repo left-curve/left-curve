@@ -34,9 +34,9 @@ where
 
     /// Convert the decimal number to an integer, rounded towards negative infinity.
     pub fn into_int_floor(self) -> Int<U> {
-        let int = self.into_int();
         // Safe to unwrap because we know `Self::PRECISION` is non-zero.
         let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+        let int = self.into_int();
 
         match (rem.is_zero(), rem.is_negative()) {
             (true, _) | (false, false) => int,
@@ -48,9 +48,9 @@ where
 
     /// Convert the decimal number to an integer, rounded towards positive infinity.
     pub fn into_int_ceil(self) -> Int<U> {
-        let int = self.into_int();
         // Safe to unwrap because we know `Self::PRECISION` is non-zero.
         let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+        let int = self.into_int();
 
         match (rem.is_zero(), rem.is_negative()) {
             (true, _) | (false, true) => int,
