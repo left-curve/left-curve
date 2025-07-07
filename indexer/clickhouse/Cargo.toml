@@ -20,7 +20,9 @@ async-stream   = { workspace = true }
 async-trait    = { workspace = true }
 borsh          = { workspace = true }
 clickhouse     = { workspace = true, features = ["time", "uuid"] }
+dango-types    = { workspace = true }
 futures        = { workspace = true }
+grug           = { workspace = true }
 grug-app       = { workspace = true }
 grug-types     = { workspace = true, features = ["chrono"] }
 indexer-hooked = { workspace = true }

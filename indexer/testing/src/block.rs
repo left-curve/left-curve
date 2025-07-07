@@ -6,14 +6,14 @@ use {
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
-    indexer_sql::indexer::Indexer,
+    indexer_sql::indexer::Indexer as IndexerTrait,
     std::{str::FromStr, sync::Arc},
     tokio::sync::Mutex,
 };
 
 pub async fn create_block() -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, Indexer>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
     TestAccounts,
 )> {
     create_blocks(1).await
@@ -23,7 +23,7 @@ pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, Indexer>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
     TestAccounts,
 )> {
     let denom = Denom::from_str("ugrug")?;

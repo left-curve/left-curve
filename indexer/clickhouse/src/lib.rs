@@ -1,3 +1,4 @@
+pub mod candles;
 pub mod entities;
 pub mod error;
 pub mod httpd;

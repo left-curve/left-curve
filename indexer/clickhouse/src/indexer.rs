@@ -16,28 +16,24 @@ impl Indexer {
 
 impl grug_app::Indexer for Indexer {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
-        todo!()
-    }
-
-    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
-        todo!()
+        todo!("run migrations")
     }
 
     fn pre_indexing(
         &self,
-        block_height: u64,
-        ctx: &mut grug_app::IndexerContext,
+        _block_height: u64,
+        _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        todo!()
+        Ok(())
     }
 
     fn index_block(
         &self,
-        block: &grug_types::Block,
-        block_outcome: &grug_types::BlockOutcome,
-        ctx: &mut grug_app::IndexerContext,
+        _block: &grug_types::Block,
+        _block_outcome: &grug_types::BlockOutcome,
+        _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        todo!()
+        Ok(())
     }
 
     fn post_indexing(
@@ -46,10 +42,6 @@ impl grug_app::Indexer for Indexer {
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        todo!()
-    }
-
-    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
-        todo!()
+        self.store_candles(block_height, querier, ctx)
     }
 }

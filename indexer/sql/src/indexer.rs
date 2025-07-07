@@ -514,8 +514,12 @@ impl IndexerTrait for Indexer {
 
         let id = self.id;
 
+        // TODO: remove this once we extracted the caching to its own crate
         ctx.insert(block_to_index.clone());
+
         ctx.insert(context.pubsub.clone());
+        ctx.insert(block_to_index.block.clone());
+        ctx.insert(block_to_index.block_outcome.clone());
 
         let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
