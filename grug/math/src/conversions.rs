@@ -1,5 +1,5 @@
 use {
-    crate::{Dec, FixedPoint, Int, MathError, MathResult, Number, NumberConst},
+    crate::{Dec, FixedPoint, Int, IsZero, MathError, MathResult, Number, NumberConst, Sign},
     std::cmp::Ordering,
 };
 
@@ -24,11 +24,37 @@ where
 impl<U, const S: u32> Dec<U, S>
 where
     Self: FixedPoint<U>,
-    Int<U>: Number,
+    Int<U>: Number + NumberConst + Sign + IsZero,
+    U: Number,
 {
+    /// Convert the decimal number to an integer, rounded towards zero.
     pub fn into_int(self) -> Int<U> {
-        // We know the decimal fraction is non-zero, so safe to unwrap.
+        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
         self.0.checked_div(Self::PRECISION).unwrap()
+    }
+
+    /// Convert the decimal number to an integer, rounded towards negative infinity.
+    pub fn into_int_floor(self) -> Int<U> {
+        let int = self.into_int();
+        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
+        let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+
+        match (rem.is_zero(), rem.is_negative()) {
+            (true, _) | (false, false) => int,
+            (false, true) => int - Int::<U>::ONE,
+        }
+    }
+
+    /// Convert the decimal number to an integer, rounded towards positive infinity.
+    pub fn into_int_ceil(self) -> Int<U> {
+        let int = self.into_int();
+        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
+        let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+
+        match (rem.is_zero(), rem.is_negative()) {
+            (true, _) | (false, true) => int,
+            (false, false) => int + Int::<U>::ONE,
+        }
     }
 }
 
