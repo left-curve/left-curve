@@ -1,17 +1,15 @@
 import { useConfig, usePrices } from "@left-curve/store";
-import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { PairAssets } from "@left-curve/applets-kit";
-import { IconChevronDownFill, twMerge } from "@left-curve/applets-kit";
-import { AnimatePresence, motion } from "framer-motion";
+import { twMerge } from "@left-curve/applets-kit";
+import { motion } from "framer-motion";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
 
-import type { Coin } from "@left-curve/dango/types";
+import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 interface Props {
-  coin: Coin;
+  coin: WithAmount<AnyCoin>;
 }
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
@@ -22,7 +20,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const coinInfo = getCoinInfo(coin.denom);
 
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  /*  const [isExpanded, setIsExpanded] = useState<boolean>(false); */
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const price = getPrice(humanAmount, coin.denom, { format: true });
@@ -31,12 +29,14 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
     <motion.div
       layout="position"
       className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
-      onClick={() => setIsExpanded(!isExpanded)}
+      /*  onClick={() => setIsExpanded(!isExpanded)} */
     >
       <div
-        className={twMerge("flex items-center justify-between transition-all", {
+        className={twMerge(
+          "flex items-center justify-between transition-all" /* {
           "pb-2": isExpanded,
-        })}
+        } */,
+        )}
       >
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
@@ -55,14 +55,14 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
         </div>
         <div className="flex flex-col items-end">
           <p className="text-gray-900 diatype-m-bold">{price}</p>
-          <IconChevronDownFill
+          {/* <IconChevronDownFill
             className={twMerge("w-4 h-4 text-gray-200 transition-all", {
               "rotate-180": isExpanded,
             })}
-          />
+          /> */}
         </div>
       </div>
-      <AnimatePresence initial={false}>
+      {/* <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
             layout="position"
@@ -86,7 +86,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
     </motion.div>
   );
 };

@@ -1,6 +1,6 @@
-import { useAccount, useBalances, usePrices, useSessionKey } from "@left-curve/store";
+import { useAccount, useBalances, useConfig, usePrices, useSessionKey } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
 import { useApp } from "~/hooks/useApp";
 
@@ -13,6 +13,7 @@ import { AccountCard } from "./AccountCard";
 
 import {
   Button,
+  EmptyPlaceholder,
   IconAddCross,
   IconButton,
   IconChevronDown,
@@ -20,6 +21,7 @@ import {
   IconLogOut,
   IconMobile,
   IconSwitch,
+  Tabs,
   twMerge,
   useClickAway,
   useMediaQuery,
@@ -29,6 +31,8 @@ import { AssetCard } from "./AssetCard";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
+import type { AnyCoin, WithAmount } from "@left-curve/store/types";
+import { useQuery } from "@tanstack/react-query";
 
 const Root: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -163,13 +167,10 @@ type AssetsProps = {
 export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
-  const { connector, account } = useAccount();
+  const { connector } = useAccount();
   const { deleteSessionKey } = useSessionKey();
   const { isMd } = useMediaQuery();
-
-  const { data: balances = {} } = useBalances({
-    address: account?.address,
-  });
+  const [activeTab, setActiveTab] = useState("wallet");
 
   return (
     <div className="flex flex-col w-full gap-4 items-center">
@@ -203,12 +204,101 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
           <IconLogOut />
         </IconButton>
       </div>
+      <div className="px-4 py-0 w-full">
+        <Tabs
+          color="line-red"
+          layoutId="tabs-assets-account"
+          selectedTab={activeTab}
+          keys={["wallet", "vaults", "orders"]}
+          fullWidth
+          onTabChange={setActiveTab}
+        />
+      </div>
       <div className="flex flex-col w-full overflow-y-scroll scrollbar-none pb-4 h-full max-h-[calc(100svh-20rem)]">
-        {Object.entries(balances).map(([denom, amount]) => (
-          <AssetCard key={denom} coin={{ amount, denom }} />
-        ))}
+        <CoinsList type={activeTab as "wallet" | "orders" | "vaults"} />
       </div>
     </div>
+  );
+};
+
+export const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ type }) => {
+  const { getCoinInfo } = useConfig();
+  const { account } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
+
+  const allCoins = useMemo(
+    () =>
+      Object.entries(balances).map(([denom, amount]) =>
+        Object.assign(getCoinInfo(denom), { amount }),
+      ),
+    [balances],
+  );
+
+  const walletCoins: WithAmount<AnyCoin>[] = useMemo(() => {
+    return allCoins.filter(({ type }) => type === "native");
+  }, [allCoins]);
+
+  const vaultCoins: WithAmount<AnyCoin>[] = useMemo(() => {
+    return allCoins.filter(({ type }) => type === "lp");
+  }, [allCoins]);
+
+  return (
+    <>
+      {type === "wallet" ? <WalletTab coins={walletCoins} /> : null}
+      {type === "vaults" ? <VaultsTab coins={vaultCoins} /> : null}
+      {/* {type === "orders" ? <OrdersTab orders={orders} /> : null} */}
+    </>
+  );
+};
+
+export const WalletTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
+  if (!coins || coins.length === 0) {
+    return (
+      <div className="px-4">
+        <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
+      </div>
+    );
+  }
+  return (
+    <>
+      {coins.map((coin) => (
+        <AssetCard key={coin.denom} coin={coin} />
+      ))}
+    </>
+  );
+};
+
+export const VaultsTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
+  if (!coins || coins.length === 0) {
+    return (
+      <div className="px-4">
+        <EmptyPlaceholder component={m["accountMenu.noVaults"]()} className="p-4" />
+      </div>
+    );
+  }
+  return (
+    <>
+      {coins.map((coin) => (
+        <AssetCard key={coin.denom} coin={coin} />
+      ))}
+    </>
+  );
+};
+
+export const OrdersTab: React.FC<{ orders: any[] }> = ({ orders }) => {
+  if (!orders || orders.length === 0) {
+    return (
+      <div className="px-4">
+        <EmptyPlaceholder component={m["dex.protrade.spot.noOpenOrders"]()} className="p-4" />
+      </div>
+    );
+  }
+  return (
+    <>
+      {orders.map((order) => (
+        <div key={order.id}>{order.id}</div>
+      ))}
+    </>
   );
 };
 
