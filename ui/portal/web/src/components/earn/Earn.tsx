@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 import { uid } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
-import { StrategyCard, createContext } from "@left-curve/applets-kit";
+import { EmptyPlaceholder, StrategyCard, createContext } from "@left-curve/applets-kit";
 import { Cell, Table } from "@left-curve/applets-kit";
 import { useAccount, useAppConfig, useBalances, useConfig } from "@left-curve/store";
 
@@ -123,11 +123,7 @@ const EarnUserPoolsTable: React.FC = () => {
         data={userPools}
         columns={columns}
         isLoading={isLoading}
-        emptyComponent={
-          <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[7rem]">
-            <p className="diatype-sm-regular text-gray-700">{m["earn.noLiquidity"]()}</p>
-          </div>
-        }
+        emptyComponent={<EmptyPlaceholder component={m["earn.noLiquidity"]()} />}
       />
     </div>
   );
