@@ -13,9 +13,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, Coins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
-        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128, Uint128,
+        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number,
+        NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx,
+        TransferBuilder, Udec128,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -38,11 +38,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
-    let mut refunds = TransferBuilder::new();
-    let mut volumes = HashMap::new();
-    let mut volumes_by_username = HashMap::new();
-    let mut fees = Coins::new();
-    let mut fee_payments = TransferBuilder::new();
+    let mut refunds = TransferBuilder::<DecCoins>::new();
+    let mut volumes = HashMap::<Addr, Udec128>::new();
+    let mut volumes_by_username = HashMap::<Username, Udec128>::new();
+    let mut fees = DecCoins::new();
+    let mut fee_payments = TransferBuilder::<DecCoins>::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
@@ -139,11 +139,11 @@ fn clear_orders_of_pair(
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
-    refunds: &mut TransferBuilder,
-    fees: &mut Coins,
-    fee_payments: &mut TransferBuilder,
-    volumes: &mut HashMap<Addr, Uint128>,
-    volumes_by_username: &mut HashMap<Username, Uint128>,
+    refunds: &mut TransferBuilder<DecCoins>,
+    fees: &mut DecCoins,
+    fee_payments: &mut TransferBuilder<DecCoins>,
+    volumes: &mut HashMap<Addr, Udec128>,
+    volumes_by_username: &mut HashMap<Username, Udec128>,
 ) -> anyhow::Result<()> {
     // --------------------------- 1. Prepare orders ---------------------------
 
@@ -287,20 +287,20 @@ fn clear_orders_of_pair(
         refunds.insert(
             market_order.user,
             quote_denom.clone(),
-            market_order.remaining.into_int(),
+            market_order.remaining,
         )?;
     }
     for (_, market_order) in market_asks {
         refunds.insert(
             market_order.user,
             base_denom.clone(),
-            market_order.remaining.into_int(),
+            market_order.remaining,
         )?;
     }
 
     // Track the inflows and outflows of the dex.
-    let mut inflows = Coins::new();
-    let mut outflows = Coins::new();
+    let mut inflows = DecCoins::new();
+    let mut outflows = DecCoins::new();
 
     // Track the number of passive liquidity orders filled.
     let mut passive_bid_filling_outcomes_len = 0;
@@ -421,10 +421,12 @@ fn clear_orders_of_pair(
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
         RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
+            let inflows: Coins = inflows.into(); // TODO: should we round up instead?
             for inflow in inflows {
                 reserve.checked_add(&inflow)?;
             }
 
+            let outflows: Coins = outflows.into();
             for outflow in outflows {
                 reserve.checked_sub(&outflow)?;
             }
@@ -450,15 +452,10 @@ fn fill_user_order(
     refund_quote: Udec128,
     fee_base: Udec128,
     fee_quote: Udec128,
-    refunds: &mut TransferBuilder,
-    fees: &mut Coins,
-    fee_payments: &mut TransferBuilder,
+    refunds: &mut TransferBuilder<DecCoins>,
+    fees: &mut DecCoins,
+    fee_payments: &mut TransferBuilder<DecCoins>,
 ) -> StdResult<()> {
-    let refund_base = refund_base.into_int();
-    let refund_quote = refund_quote.into_int();
-    let fee_base = fee_base.into_int(); // TODO: ceil
-    let fee_quote = fee_quote.into_int(); // TODO: ceil
-
     // Handle fees.
     if fee_base.is_non_zero() {
         fees.insert((base_denom.clone(), fee_base))?;
@@ -481,13 +478,9 @@ fn fill_passive_order(
     order_direction: Direction,
     filled_base: Udec128,
     filled_quote: Udec128,
-    inflows: &mut Coins,
-    outflows: &mut Coins,
+    inflows: &mut DecCoins,
+    outflows: &mut DecCoins,
 ) -> StdResult<()> {
-    // TODO: ceil inflow, floor outflow?
-    let filled_base = filled_base.into_int();
-    let filled_quote = filled_quote.into_int();
-
     // The order only exists in the storage if it's not owned by the dex, since
     // the passive orders are "virtual". If it is virtual, we need to update the
     // reserve.
@@ -515,8 +508,8 @@ fn update_trading_volumes(
     base_denom: &Denom,
     filled: Udec128,
     order_user: Addr,
-    volumes: &mut HashMap<Addr, Uint128>,
-    volumes_by_username: &mut HashMap<Username, Uint128>,
+    volumes: &mut HashMap<Addr, Udec128>,
+    volumes_by_username: &mut HashMap<Username, Udec128>,
 ) -> anyhow::Result<()> {
     // Query the base asset's oracle price.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
@@ -532,9 +525,7 @@ fn update_trading_volumes(
     };
 
     // Calculate the volume in USD for the filled order.
-    let new_volume = base_asset_price
-        .value_of_unit_amount(filled.into_int())?
-        .into_int();
+    let new_volume = base_asset_price.value_of_dec_amount(filled)?;
 
     // Record trading volume for the user's address
     {
@@ -548,7 +539,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Uint128::ZERO)
+                    .unwrap_or(Udec128::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
@@ -572,7 +563,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Uint128::ZERO)
+                    .unwrap_or(Udec128::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);

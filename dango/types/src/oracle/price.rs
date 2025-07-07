@@ -1,7 +1,7 @@
 use {
     grug::{
-        Defined, MaybeDefined, MultiplyFraction, Number, StdResult, Timestamp, Udec128, Uint128,
-        Undefined,
+        Defined, MaybeDefined, MultiplyFraction, Number, NumberConst, StdResult, Timestamp,
+        Udec128, Uint128, Undefined,
     },
     pyth_types::PriceFeed,
 };
@@ -90,6 +90,13 @@ impl PrecisionedPrice {
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
             )?)?)
+    }
+
+    pub fn value_of_dec_amount(&self, dec_amount: Udec128) -> StdResult<Udec128> {
+        let factor = Udec128::TEN.checked_pow(self.precision.into_inner() as u32)?;
+        Ok(self
+            .humanized_price
+            .checked_mul(dec_amount.checked_div(factor)?)?)
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
