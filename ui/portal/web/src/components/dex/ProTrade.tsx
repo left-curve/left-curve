@@ -24,13 +24,14 @@ import {
 } from "@left-curve/applets-kit";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { AnimatePresence, motion } from "framer-motion";
+import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
 import { TradeMenu } from "./TradeMenu";
 import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
+import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
 import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTrade] = createContext<{
@@ -166,16 +167,14 @@ const ProTradeMenu: React.FC = () => {
 };
 
 const ProTradeOrders: React.FC = () => {
-  const { showModal: _ } = useApp();
+  const { showModal } = useApp();
   const { coins } = useConfig();
-  const { account } = useAccount();
-  const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
   const { orders } = state;
 
-  const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
+  const columns: TableColumn<OrdersByUserResponse & { id: OrderId }> = [
     /*  {
       header: "Time",
       cell: ({ row }) => <Cell.Time date={row.original.time} />,
@@ -231,9 +230,7 @@ const ProTradeOrders: React.FC = () => {
       header: () => (
         <Cell.Action
           isDisabled={!orders.data.length}
-          action={() =>
-            signingClient?.batchUpdateOrders({ cancels: "all", sender: account!.address })
-          }
+          action={() => showModal(Modals.ProTradeCloseAll)}
           label={m["common.cancelAll"]()}
           classNames={{
             cell: "items-end diatype-xs-regular",
@@ -243,12 +240,7 @@ const ProTradeOrders: React.FC = () => {
       ),
       cell: ({ row }) => (
         <Cell.Action
-          action={() =>
-            signingClient?.batchUpdateOrders({
-              sender: account!.address,
-              cancels: { some: [row.original.id] },
-            })
-          }
+          action={() => showModal(Modals.ProTradeCloseOrder, { orderId: row.original.id })}
           label={m["common.cancel"]()}
           classNames={{ cell: "items-end", button: "!exposure-xs-italic m-0 p-0 px-1 h-fit" }}
         />

@@ -19,6 +19,7 @@ export const Modals = {
   ConfirmSwap: "confirm-swap",
   RenewSession: "renew-session",
   ProTradeCloseAll: "pro-trade-close-all",
+  ProTradeCloseOrder: "pro-trade-close-order",
   ProTradeLimitClose: "pro-trade-limit-close",
   ProSwapMarketClose: "pro-swap-market-close",
   ProSwapEditTPSL: "pro-edit-tpsl",
@@ -86,6 +87,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
   [Modals.ProTradeCloseAll]: {
     component: lazy(() =>
       import("./ProTradeCloseAll").then(({ ProTradeCloseAll }) => ({ default: ProTradeCloseAll })),
+    ),
+  },
+  [Modals.ProTradeCloseOrder]: {
+    component: lazy(() =>
+      import("./ProTradeCloseOrder").then(({ ProTradeCloseOrder }) => ({
+        default: ProTradeCloseOrder,
+      })),
     ),
   },
   [Modals.ProTradeLimitClose]: {
