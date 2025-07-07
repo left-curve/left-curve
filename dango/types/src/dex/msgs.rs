@@ -202,7 +202,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Returns the trading volume of a user address since the specified timestamp.
-    #[returns(Uint128)]
+    #[returns(Udec128)]
     Volume {
         /// The user's address to query trading volume for.
         user: Addr,
@@ -211,7 +211,7 @@ pub enum QueryMsg {
         since: Option<Timestamp>,
     },
     /// Returns the trading volume of a username since the specified timestamp.
-    #[returns(Uint128)]
+    #[returns(Udec128)]
     VolumeByUser {
         /// The username to query trading volume for.
         user: Username,

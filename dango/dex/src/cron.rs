@@ -15,7 +15,7 @@ use {
     grug::{
         Addr, Api, Coins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
         Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128, Uint128,
+        Udec128,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -142,8 +142,8 @@ fn clear_orders_of_pair(
     refunds: &mut TransferBuilder,
     fees: &mut Coins,
     fee_payments: &mut TransferBuilder,
-    volumes: &mut HashMap<Addr, Uint128>,
-    volumes_by_username: &mut HashMap<Username, Uint128>,
+    volumes: &mut HashMap<Addr, Udec128>,
+    volumes_by_username: &mut HashMap<Username, Udec128>,
 ) -> anyhow::Result<()> {
     // --------------------------- 1. Prepare orders ---------------------------
 
@@ -500,8 +500,8 @@ fn update_trading_volumes(
     base_denom: &Denom,
     filled: Udec128,
     order_user: Addr,
-    volumes: &mut HashMap<Addr, Uint128>,
-    volumes_by_username: &mut HashMap<Username, Uint128>,
+    volumes: &mut HashMap<Addr, Udec128>,
+    volumes_by_username: &mut HashMap<Username, Udec128>,
 ) -> anyhow::Result<()> {
     // Query the base asset's oracle price.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
@@ -517,9 +517,7 @@ fn update_trading_volumes(
     };
 
     // Calculate the volume in USD for the filled order.
-    let new_volume = base_asset_price
-        .value_of_unit_amount(filled.into_int())?
-        .into_int();
+    let new_volume = base_asset_price.value_of_dec_amount(filled)?;
 
     // Record trading volume for the user's address
     {
@@ -533,7 +531,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Uint128::ZERO)
+                    .unwrap_or(Udec128::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
@@ -557,7 +555,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Uint128::ZERO)
+                    .unwrap_or(Udec128::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
