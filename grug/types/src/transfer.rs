@@ -73,7 +73,7 @@ impl TransferBuilder<DecCoins> {
             .into_iter()
             .filter_map(|(addr, dec_coins)| {
                 // Round _down_ decimal amount to integer.
-                let coins: Coins = dec_coins.into();
+                let coins = dec_coins.into_coins_floor();
                 if coins.is_non_empty() {
                     Some((addr, coins))
                 } else {

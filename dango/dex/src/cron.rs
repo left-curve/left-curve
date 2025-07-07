@@ -13,9 +13,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number,
-        NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx,
-        TransferBuilder, Udec128,
+        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
+        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
+        Udec128,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -106,9 +106,9 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         // TODO: purge volume data that are too old.
     }
 
-    // Round refunds and fee to integer amounts.
+    // Round refunds and fee to integer amounts. Round _down_ in both cases.
     let refunds = refunds.into_batch();
-    let fees: Coins = fees.into();
+    let fees = fees.into_coins_floor();
 
     Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
@@ -410,13 +410,11 @@ fn clear_orders_of_pair(
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
         RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
-            let inflows: Coins = inflows.into(); // TODO: should we round up instead?
-            for inflow in inflows {
+            for inflow in inflows.into_coins_floor() {
                 reserve.checked_add(&inflow)?;
             }
 
-            let outflows: Coins = outflows.into();
-            for outflow in outflows {
+            for outflow in outflows.into_coins_ceil() {
                 reserve.checked_sub(&outflow)?;
             }
 

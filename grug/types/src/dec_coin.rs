@@ -76,6 +76,38 @@ impl DecCoins {
 
         Ok(self)
     }
+
+    pub fn into_coins_floor(self) -> Coins {
+        let map = self
+            .0
+            .into_iter()
+            .filter_map(|(denom, amount)| {
+                let amount = amount.into_int_floor(); // Important: floor the amount.
+                if amount.is_non_zero() {
+                    Some((denom, amount))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Coins::new_unchecked(map)
+    }
+
+    pub fn into_coins_ceil(self) -> Coins {
+        let map = self
+            .0
+            .into_iter()
+            .filter_map(|(denom, amount)| {
+                let amount = amount.into_int_ceil(); // Important: ceil the amount.
+                if amount.is_non_zero() {
+                    Some((denom, amount))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Coins::new_unchecked(map)
+    }
 }
 
 impl<'a> IntoIterator for &'a DecCoins {
@@ -93,24 +125,6 @@ impl IntoIterator for DecCoins {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
-    }
-}
-
-impl From<DecCoins> for Coins {
-    fn from(dec_coins: DecCoins) -> Self {
-        let map = dec_coins
-            .0
-            .into_iter()
-            .filter_map(|(denom, amount)| {
-                let amount = amount.into_int(); // NOTE: round down
-                if amount.is_non_zero() {
-                    Some((denom, amount))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        Coins::new_unchecked(map)
     }
 }
 
