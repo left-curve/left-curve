@@ -623,7 +623,7 @@ mod dec_tests {
         let padding_zero = S as usize - d.len();
         let mut s = String::new();
         s.push_str(n);
-        s.push_str(".");
+        s.push('.');
         s.push_str(&"0".repeat(padding_zero));
         s.push_str(d);
 
