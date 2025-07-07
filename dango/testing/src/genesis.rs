@@ -1,10 +1,11 @@
 use {
     crate::{
-        BridgeOp, MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, TestOption,
+        BridgeOp, MOCK_BITCOIN_REGTEST_VAULT, TestOption,
         constants::{
             DEFAULT_GAS_LIMIT, MOCK_BLOCK_TIME, MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP, owner,
             user1, user2, user3, user4, user5, user6, user7, user8, user9,
         },
+        guardian1, guardian2, guardian3,
     },
     dango_genesis::{
         AccountOption, BankOption, BitcoinOption, DexOption, GatewayOption, GenesisOption,
@@ -644,9 +645,9 @@ impl Preset for BitcoinOption {
             multisig: MultisigSettings::new(
                 2,
                 NonEmpty::new_unchecked(btree_set! {
-                    HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1),
-                    HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1),
-                    HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1),
+                    HexByteArray::from_inner(guardian1::PUBLIC_KEY),
+                    HexByteArray::from_inner(guardian2::PUBLIC_KEY),
+                    HexByteArray::from_inner(guardian3::PUBLIC_KEY),
 
                 }),
             )

@@ -5,8 +5,8 @@ use {
     },
     dango_genesis::{BitcoinOption, GenesisOption},
     dango_testing::{
-        MOCK_BITCOIN_REGTEST_VAULT, MOCK_BRIDGE_GUARDIANS_KEYS, Preset, TestAccount, TestSuite,
-        setup_test_naive, setup_test_naive_with_custom_genesis,
+        MOCK_BITCOIN_REGTEST_VAULT, Preset, TestAccount, TestSuite, guardian1, guardian2,
+        guardian3, setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         bitcoin::{
@@ -74,11 +74,11 @@ fn deposit_and_confirm(
     amount: Uint128,
     recipient: Option<Addr>,
 ) {
-    let val_sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
-    let val_pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
+    let val_sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
+    let val_pk1 = HexByteArray::<33>::from_inner(guardian1::PUBLIC_KEY);
 
-    let val_sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
-    let val_pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+    let val_sk2 = SigningKey::from_bytes(&guardian2::PRIVATE_KEY.into()).unwrap();
+    let val_pk2 = HexByteArray::<33>::from_inner(guardian2::PUBLIC_KEY);
 
     let msg = InboundMsg {
         transaction_hash: tx_hash,
@@ -174,9 +174,9 @@ fn instantiate() {
     let multisig_settings = MultisigSettings::new(
         2,
         NonEmpty::new(btree_set!(
-            HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1),
-            HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1),
-            HexByteArray::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1),
+            HexByteArray::from_inner(guardian1::PUBLIC_KEY),
+            HexByteArray::from_inner(guardian2::PUBLIC_KEY),
+            HexByteArray::from_inner(guardian3::PUBLIC_KEY),
         ))
         .unwrap(),
     )
@@ -344,14 +344,14 @@ fn authenticate() {
 fn observe_inbound() {
     let (mut suite, accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
-    let val_sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
-    let val_pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
+    let val_sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
+    let val_pk1 = HexByteArray::<33>::from_inner(guardian1::PUBLIC_KEY);
 
-    let val_sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
-    let val_pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+    let val_sk2 = SigningKey::from_bytes(&guardian2::PRIVATE_KEY.into()).unwrap();
+    let val_pk2 = HexByteArray::<33>::from_inner(guardian2::PUBLIC_KEY);
 
-    let val_sk3 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[2].0.into()).unwrap();
-    let val_pk3 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1);
+    let val_sk3 = SigningKey::from_bytes(&guardian3::PRIVATE_KEY.into()).unwrap();
+    let val_pk3 = HexByteArray::<33>::from_inner(guardian3::PUBLIC_KEY);
 
     // Signature checks.
     {
@@ -903,14 +903,14 @@ fn authorize_outbound() {
 
     let user1_address = *accounts.user1.address.inner();
 
-    let sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
-    let pk1 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[0].1);
+    let sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
+    let pk1 = HexByteArray::<33>::from_inner(guardian1::PUBLIC_KEY);
 
-    let sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
-    let pk2 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[1].1);
+    let sk2 = SigningKey::from_bytes(&guardian2::PRIVATE_KEY.into()).unwrap();
+    let pk2 = HexByteArray::<33>::from_inner(guardian2::PUBLIC_KEY);
 
-    let sk3 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[2].0.into()).unwrap();
-    let pk3 = HexByteArray::<33>::from_inner(MOCK_BRIDGE_GUARDIANS_KEYS[2].1);
+    let sk3 = SigningKey::from_bytes(&guardian3::PRIVATE_KEY.into()).unwrap();
+    let pk3 = HexByteArray::<33>::from_inner(guardian3::PUBLIC_KEY);
 
     let config = suite
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
@@ -1218,8 +1218,8 @@ fn fee() {
 
     suite.block_time = Duration::from_minutes(10);
 
-    let sk1 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[0].0.into()).unwrap();
-    let sk2 = SigningKey::from_bytes(&MOCK_BRIDGE_GUARDIANS_KEYS[1].0.into()).unwrap();
+    let sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
+    let sk2 = SigningKey::from_bytes(&guardian2::PRIVATE_KEY.into()).unwrap();
 
     let btc_recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0";
     let user1_address = *accounts.user1.address.inner();
