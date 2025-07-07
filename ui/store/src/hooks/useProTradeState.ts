@@ -104,7 +104,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       const response = await publicClient.ordersByUser({ user: account.address });
       return Object.entries(response).map(([id, order]) => ({
         ...order,
-        id: +id,
+        id,
       }));
     },
     initialData: [],
