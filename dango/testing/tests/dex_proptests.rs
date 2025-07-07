@@ -27,6 +27,15 @@ use {
     },
 };
 
+/// Calculates the absolute difference between two values.
+fn absolute_difference(a: Uint128, b: Uint128) -> Uint128 {
+    if a > b {
+        a - b
+    } else {
+        b - a
+    }
+}
+
 /// Calculates the relative difference between two values.
 fn relative_difference(a: Uint128, b: Uint128) -> Udec128 {
     // Handle the case where both numbers are zero
@@ -55,6 +64,14 @@ fn relative_difference(a: Uint128, b: Uint128) -> Udec128 {
 /// Asserts that two values are approximately equal within a specified
 /// relative difference.
 fn assert_approx_eq(a: Uint128, b: Uint128, max_rel_diff: &str) -> Result<(), TestCaseError> {
+    // An absolute difference of up to one unit is acceptable, and unavoidable
+    // due to rounding errors. In this case, we consider the values effectively equal.
+    if absolute_difference(a, b) <= Uint128::ONE {
+        return Ok(());
+    }
+
+    // If the difference is greater than one unit, we ensure the relative difference
+    // isn't greater than a given threshold.
     let rel_diff_num = relative_difference(a, b);
     let rel_diff = Udec128::from_str(rel_diff_num.to_string().as_str()).unwrap();
     prop_assert!(
