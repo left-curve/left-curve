@@ -1,4 +1,11 @@
-import { useAccount, useBalances, useConfig, usePrices, useSessionKey } from "@left-curve/store";
+import {
+  useAccount,
+  useBalances,
+  useConfig,
+  useOrdersByUser,
+  usePrices,
+  useSessionKey,
+} from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
@@ -6,10 +13,9 @@ import { useApp } from "~/hooks/useApp";
 
 import { motion } from "framer-motion";
 
+import { Decimal, capitalize, formatUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 import { Modals } from "../modals/RootModal";
-
-import { AccountCard } from "./AccountCard";
 
 import {
   Button,
@@ -17,24 +23,27 @@ import {
   IconAddCross,
   IconButton,
   IconChevronDown,
+  IconChevronDownFill,
   IconLeft,
   IconLogOut,
   IconMobile,
   IconSwitch,
+  PairAssets,
   Tabs,
   twMerge,
   useClickAway,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { AnimatePresence } from "framer-motion";
+import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
 
+import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
+import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import type { PropsWithChildren } from "react";
 import type React from "react";
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
-import { useQuery } from "@tanstack/react-query";
 
-const Root: React.FC<PropsWithChildren> = ({ children }) => {
+const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
 };
 
@@ -117,7 +126,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   );
 };
 
-export const Desktop: React.FC = () => {
+const Desktop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible } = useApp();
 
@@ -144,7 +153,7 @@ export const Desktop: React.FC = () => {
   );
 };
 
-export const Mobile: React.FC = () => {
+const Mobile: React.FC = () => {
   const { isSidebarVisible, setSidebarVisibility } = useApp();
 
   return (
@@ -164,7 +173,7 @@ type AssetsProps = {
   onSwitch: () => void;
 };
 
-export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
+const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const { setSidebarVisibility, showModal } = useApp();
   const navigate = useNavigate();
   const { connector } = useAccount();
@@ -221,10 +230,12 @@ export const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   );
 };
 
-export const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ type }) => {
+const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ type }) => {
   const { getCoinInfo } = useConfig();
   const { account } = useAccount();
   const { data: balances = {} } = useBalances({ address: account?.address });
+
+  const { data: orders = [] } = useOrdersByUser();
 
   const allCoins = useMemo(
     () =>
@@ -252,7 +263,7 @@ export const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ 
     >
       {type === "wallet" ? <WalletTab coins={walletCoins} /> : null}
       {type === "vaults" ? <VaultsTab coins={vaultCoins} /> : null}
-      {/* {type === "orders" ? <OrdersTab orders={orders} /> : null} */}
+      {type === "orders" ? <OrdersTab orders={orders} /> : null}
     </motion.div>
   );
 };
@@ -274,7 +285,7 @@ export const WalletTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins })
   );
 };
 
-export const VaultsTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
+const VaultsTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
   if (!coins || coins.length === 0) {
     return (
       <div className="px-4">
@@ -291,7 +302,8 @@ export const VaultsTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins })
   );
 };
 
-export const OrdersTab: React.FC<{ orders: any[] }> = ({ orders }) => {
+const OrdersTab: React.FC<{ orders: WithId<OrdersByUserResponse>[] }> = ({ orders }) => {
+  const { coins } = useConfig();
   if (!orders || orders.length === 0) {
     return (
       <div className="px-4">
@@ -299,12 +311,101 @@ export const OrdersTab: React.FC<{ orders: any[] }> = ({ orders }) => {
       </div>
     );
   }
+
+  const ordersGoupedByPair = useMemo(() => {
+    return orders.reduce(
+      (acc, order) => {
+        const base = coins[order.baseDenom];
+        const quote = coins[order.quoteDenom];
+        const pairId = `${base.symbol}-${quote.symbol}`;
+        if (!acc[pairId]) acc[pairId] = [];
+        acc[pairId].push(order);
+        return acc;
+      },
+      {} as Record<string, WithId<OrdersByUserResponse>[]>,
+    );
+  }, [orders]);
+
   return (
     <>
-      {orders.map((order) => (
-        <div key={order.id}>{order.id}</div>
+      {Object.entries(ordersGoupedByPair).map(([pairId, orders]) => (
+        <OrderCard key={pairId} pairId={pairId} orders={orders} />
       ))}
     </>
+  );
+};
+
+type OrderCardProps = {
+  pairId: string;
+  orders: WithId<OrdersByUserResponse>[];
+};
+
+const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
+  const { coins } = useConfig();
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  const { getPrice } = usePrices();
+
+  const total = useMemo(
+    () => orders.reduce((sum, order) => sum.plus(order.amount), Decimal.ZERO),
+    [orders],
+  );
+  const { baseDenom, quoteDenom } = orders[0];
+
+  const base = coins[baseDenom];
+
+  return (
+    <motion.div
+      layout="position"
+      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+    >
+      <div
+        className={twMerge("flex items-center justify-between transition-all", {
+          "pb-2": isExpanded,
+        })}
+      >
+        <div className="flex gap-2 items-center">
+          <div className="flex h-8 w-12">
+            <PairAssets assets={[base, coins[quoteDenom]]} />
+          </div>
+          <div className="flex flex-col">
+            <p className="text-gray-900 diatype-m-bold">{pairId}</p>
+            <p className="text-gray-500 diatype-m-regular">
+              {getPrice(formatUnits(total.toNumber(), base.decimals), base.denom, { format: true })}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end" onClick={() => setIsExpanded(!isExpanded)}>
+          <IconChevronDownFill
+            className={twMerge("w-4 h-4 text-gray-200 transition-all", {
+              "rotate-180": isExpanded,
+            })}
+          />
+        </div>
+      </div>
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            layout="position"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden flex flex-col gap-2 pl-14 w-full"
+          >
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-center justify-between text-gray-500 diatype-m-regular"
+              >
+                <p className="flex items-center gap-2">{capitalize(order.direction)}</p>
+                <p> {formatUnits(order.amount, base.decimals)}</p>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
@@ -312,7 +413,7 @@ type SelectorProps = {
   onBack: () => void;
 };
 
-export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
+const Selector: React.FC<SelectorProps> = ({ onBack }) => {
   const { setSidebarVisibility } = useApp();
   const navigate = useNavigate();
   const { account, accounts, changeAccount } = useAccount();
@@ -356,11 +457,9 @@ export const Selector: React.FC<SelectorProps> = ({ onBack }) => {
   );
 };
 
-const ExportComponent = Object.assign(Root, {
+export const AccountMenu = Object.assign(Container, {
   Desktop,
   Mobile,
   Assets,
   Selector,
 });
-
-export { ExportComponent as AccountMenu };
