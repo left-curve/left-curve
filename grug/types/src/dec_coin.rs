@@ -1,7 +1,10 @@
 use {
     crate::{Coins, Denom, StdError, StdResult},
     grug_math::{IsZero, Number, Udec128},
-    std::collections::{BTreeMap, btree_map},
+    std::{
+        collections::{BTreeMap, btree_map},
+        fmt,
+    },
 };
 
 /// Like `Coin` but the amount is a decimal.
@@ -16,10 +19,12 @@ impl From<(Denom, Udec128)> for DecCoin {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DecCoins(BTreeMap<Denom, Udec128>);
 
 impl DecCoins {
+    pub const EMPTY_DEC_COINS_STR: &'static str = "[]";
+
     pub fn new() -> Self {
         Self(BTreeMap::new())
     }
@@ -69,6 +74,15 @@ impl DecCoins {
     }
 }
 
+impl<'a> IntoIterator for &'a DecCoins {
+    type IntoIter = btree_map::Iter<'a, Denom, Udec128>;
+    type Item = (&'a Denom, &'a Udec128);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 impl IntoIterator for DecCoins {
     type IntoIter = btree_map::IntoIter<Denom, Udec128>;
     type Item = (Denom, Udec128);
@@ -84,7 +98,7 @@ impl From<DecCoins> for Coins {
             .0
             .into_iter()
             .filter_map(|(denom, amount)| {
-                let amount = amount.into_int();
+                let amount = amount.into_int(); // NOTE: round down
                 if amount.is_non_zero() {
                     Some((denom, amount))
                 } else {
@@ -93,5 +107,22 @@ impl From<DecCoins> for Coins {
             })
             .collect();
         Coins::new_unchecked(map)
+    }
+}
+
+impl fmt::Display for DecCoins {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // special case: empty string
+        if self.is_empty() {
+            return f.write_str(Self::EMPTY_DEC_COINS_STR);
+        }
+
+        let s = self
+            .into_iter()
+            .map(|(denom, amount)| format!("{denom}:{amount}"))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        f.write_str(&s)
     }
 }

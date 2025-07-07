@@ -4,7 +4,7 @@ use {
     std::collections::BTreeMap,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TransferBuilder<T = Coins> {
     batch: BTreeMap<Addr, T>,
 }
@@ -71,10 +71,14 @@ impl TransferBuilder<DecCoins> {
     pub fn into_batch(self) -> BTreeMap<Addr, Coins> {
         self.batch
             .into_iter()
-            .map(|(addr, dec_coins)| {
+            .filter_map(|(addr, dec_coins)| {
                 // Round _down_ decimal amount to integer.
-                let coins = dec_coins.into();
-                (addr, coins)
+                let coins: Coins = dec_coins.into();
+                if coins.is_non_empty() {
+                    Some((addr, coins))
+                } else {
+                    None
+                }
             })
             .collect()
     }
