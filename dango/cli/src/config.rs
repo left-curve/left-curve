@@ -14,6 +14,15 @@ pub struct Config {
 }
 
 #[derive(Serialize, Deserialize, Default)]
+pub struct ClickhouseConfig {
+    pub url: String,
+    pub database: String,
+    pub user: String,
+    pub password: String,
+    pub max_connections: u32,
+}
+
+#[derive(Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LogFormat {
     #[default]
@@ -50,6 +59,7 @@ pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
     pub database: IndexerDatabaseConfig,
+    pub clickhouse: ClickhouseConfig,
 }
 
 #[derive(Serialize, Deserialize)]

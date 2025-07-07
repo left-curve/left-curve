@@ -92,6 +92,7 @@ impl StartCmd {
                 // Indexer, HTTP server, and metrics server all enabled
                 let (hooked_indexer, _, dango_httpd_context) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -110,6 +111,7 @@ impl StartCmd {
                 // Indexer and HTTP server enabled, metrics disabled
                 let (hooked_indexer, _, dango_httpd_context) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -127,6 +129,7 @@ impl StartCmd {
                 // Indexer and metrics enabled, HTTP server disabled
                 let (hooked_indexer, ..) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -144,6 +147,7 @@ impl StartCmd {
                 // Only indexer enabled
                 let (hooked_indexer, ..) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -185,7 +189,8 @@ impl StartCmd {
     /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
     async fn setup_indexer_stack(
         &self,
-        sql_indexer: indexer_sql::NonBlockingIndexer,
+        cfg: &Config,
+        sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
         app: Arc<App<DiskDbLite, HybridVm, NaiveProposalPreparer, NullIndexer>>,
@@ -212,8 +217,16 @@ impl StartCmd {
             context: dango_context.clone(),
         };
 
+        let clickhouse_indexer = indexer_clickhouse::Indexer::new(
+            cfg.indexer.clickhouse.url.clone(),
+            cfg.indexer.clickhouse.database.clone(),
+            cfg.indexer.clickhouse.user.clone(),
+            cfg.indexer.clickhouse.password.clone(),
+        );
+
         hooked_indexer.add_indexer(sql_indexer)?;
         hooked_indexer.add_indexer(dango_indexer)?;
+        hooked_indexer.add_indexer(clickhouse_indexer)?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
             indexer_context,

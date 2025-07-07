@@ -49,6 +49,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/clickhouse",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -109,6 +110,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
+clickhouse                  = { version = "0.13" }
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -148,6 +150,7 @@ pyth-sdk                    = "0.8"
 pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
+refinery                    = { version = "0.8" }
 reqwest                     = { version = "0.12", features = ["stream"] }
 reqwest-eventsource         = "0.6.0"
 ripemd                      = "0.1"
@@ -237,6 +240,7 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

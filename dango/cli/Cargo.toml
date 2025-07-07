@@ -37,6 +37,7 @@ grug-types                  = { workspace = true }
 grug-vm-hybrid              = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }
+indexer-clickhouse          = { workspace = true, features = ["metrics", "tracing"] }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
 indexer-sql                 = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }

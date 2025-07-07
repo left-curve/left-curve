@@ -39,6 +39,20 @@ url = "postgres://postgres@db:5432/grug_dev"
 # How many connections to keep in the connection pool.
 max_connections = 10
 
+[indexer.clickhouse]
+
+# URL to the Clickhouse database to be used by the indexer.
+url = "http://localhost:8123"
+
+#
+username = ""
+
+#
+password = ""
+
+# How many connections to keep in the connection pool.
+max_connections = 10
+
 [httpd]
 
 # Whether to enable the HTTP server.

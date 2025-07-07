@@ -19,5 +19,5 @@ pub mod serde_iso8601;
 pub use {
     context::Context,
     error::{IndexerError, Result},
-    indexer::{IndexerBuilder, NonBlockingIndexer},
+    indexer::{Indexer, IndexerBuilder},
 };
