@@ -11,7 +11,7 @@ use {
             OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
         },
-        gateway::Remote,
+        gateway::{Remote, WarpRemote},
         oracle::{self, PrecisionlessPrice, PriceSource},
     },
     grug::{
