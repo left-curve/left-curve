@@ -25,10 +25,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
-    <motion.div
-      layout="position"
-      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
-    >
+    <motion.div layout="position" className="flex flex-col p-4">
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
@@ -39,9 +36,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             )}
           </div>
           <div className="flex flex-col">
-            <p className="text-gray-900 diatype-m-bold">
-              {coinInfo.symbol} {coinInfo.type === "lp" ? "LP" : ""}
-            </p>
+            <p className="text-gray-900 diatype-m-bold">{coinInfo.symbol}</p>
             <p className="text-gray-500 diatype-m-regular">
               {formatNumber(humanAmount, formatNumberOptions)}
             </p>
