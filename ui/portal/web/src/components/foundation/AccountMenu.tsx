@@ -4,6 +4,7 @@ import {
   useConfig,
   useOrdersByUser,
   usePrices,
+  usePublicClient,
   useSessionKey,
 } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -13,7 +14,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { motion } from "framer-motion";
 
-import { Decimal, capitalize, formatUnits } from "@left-curve/dango/utils";
+import { Decimal, capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 import { Modals } from "../modals/RootModal";
 
@@ -39,7 +40,8 @@ import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
 
 import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
+import type { AnyCoin, LpCoin, NativeCoin, WithAmount } from "@left-curve/store/types";
+import { useQuery } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 
@@ -245,12 +247,12 @@ const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ type })
     [balances],
   );
 
-  const walletCoins: WithAmount<AnyCoin>[] = useMemo(() => {
-    return allCoins.filter(({ type }) => type === "native");
+  const walletCoins = useMemo(() => {
+    return allCoins.filter(({ type }) => type === "native") as WithAmount<NativeCoin>[];
   }, [allCoins]);
 
-  const vaultCoins: WithAmount<AnyCoin>[] = useMemo(() => {
-    return allCoins.filter(({ type }) => type === "lp");
+  const vaultCoins = useMemo(() => {
+    return allCoins.filter(({ type }) => type === "lp") as WithAmount<LpCoin>[];
   }, [allCoins]);
 
   return (
@@ -267,7 +269,7 @@ const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ type })
   );
 };
 
-export const WalletTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
+export const WalletTab: React.FC<{ coins: WithAmount<NativeCoin>[] }> = ({ coins }) => {
   if (!coins || coins.length === 0) {
     return (
       <div className="px-4">
@@ -284,7 +286,7 @@ export const WalletTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins })
   );
 };
 
-const VaultsTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
+const VaultsTab: React.FC<{ coins: WithAmount<LpCoin>[] }> = ({ coins }) => {
   if (!coins || coins.length === 0) {
     return (
       <div className="px-4">
@@ -295,7 +297,7 @@ const VaultsTab: React.FC<{ coins: WithAmount<AnyCoin>[] }> = ({ coins }) => {
   return (
     <>
       {coins.map((coin) => (
-        <AssetCard key={coin.denom} coin={coin} />
+        <VaultCard key={coin.denom} coin={coin} />
       ))}
     </>
   );
@@ -334,6 +336,106 @@ const OrdersTab: React.FC<{ orders: WithId<OrdersByUserResponse>[] }> = ({ order
   );
 };
 
+type VaultCardProps = {
+  coin: WithAmount<LpCoin>;
+};
+
+const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
+  const publicClient = usePublicClient();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
+  const userLiquidity = useQuery({
+    queryKey: ["lpAmounts", coin.symbol],
+    queryFn: async () => {
+      const [{ amount: baseAmount }, { amount: quoteAmount }] =
+        await publicClient.simulateWithdrawLiquidity({
+          baseDenom: coin.base.denom,
+          quoteDenom: coin.quote.denom,
+          lpBurnAmount: coin.amount,
+        });
+      const baseParseAmount = formatUnits(baseAmount, coin.base.decimals);
+      const quoteParseAmount = formatUnits(quoteAmount, coin.quote.decimals);
+
+      return {
+        innerBase: baseParseAmount,
+        innerQuote: quoteParseAmount,
+      };
+    },
+  });
+
+  const assets = [coin.base, coin.quote];
+
+  const basePrice = getPrice(userLiquidity.data?.innerBase || "0", coin.base.denom);
+  const quotePrice = getPrice(userLiquidity?.data?.innerQuote || "0", coin.quote.denom);
+
+  const totalPrice = formatNumber(Decimal(basePrice).plus(quotePrice).toString(), {
+    ...formatNumberOptions,
+    currency: "USD",
+  });
+
+  return (
+    <motion.div
+      layout="position"
+      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+      onClick={() => setIsExpanded(!isExpanded)}
+    >
+      <div
+        className={twMerge("flex items-center justify-between transition-all", {
+          "pb-2": isExpanded,
+        })}
+      >
+        <div className="flex gap-2 items-center">
+          <div className="flex h-8 w-12">
+            <PairAssets assets={assets} />
+          </div>
+          <div className="flex flex-col">
+            <p className="text-gray-900 diatype-m-bold">{coin.symbol} LP</p>
+            <p className="text-gray-500 diatype-m-regular">{coin.amount}</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end">
+          <p className="text-gray-900 diatype-m-bold">{totalPrice}</p>
+          <IconChevronDownFill
+            className={twMerge("w-4 h-4 text-gray-200 transition-all", {
+              "rotate-180": isExpanded,
+            })}
+          />
+        </div>
+      </div>
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            layout="position"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden flex flex-col gap-2 pl-14 w-full"
+          >
+            {[
+              { ...coin.base, amount: userLiquidity.data?.innerBase },
+              { ...coin.quote, amount: userLiquidity.data?.innerQuote },
+            ].map((asset, index) => (
+              <div
+                key={`${asset.denom}-${index}`}
+                className="flex items-center justify-between text-gray-500 diatype-m-regular"
+              >
+                <p className="flex items-center gap-2">{asset.symbol}</p>
+                <p>{formatNumber(asset.amount || "0", { ...formatNumberOptions })}</p>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
 type OrderCardProps = {
   pairId: string;
   orders: WithId<OrdersByUserResponse>[];
@@ -357,6 +459,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
     <motion.div
       layout="position"
       className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+      onClick={() => setIsExpanded(!isExpanded)}
     >
       <div
         className={twMerge("flex items-center justify-between transition-all", {
@@ -374,7 +477,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-end" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex flex-col items-end">
           <IconChevronDownFill
             className={twMerge("w-4 h-4 text-gray-200 transition-all", {
               "rotate-180": isExpanded,
