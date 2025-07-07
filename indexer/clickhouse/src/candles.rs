@@ -9,15 +9,14 @@ use {
 impl Indexer {
     pub(crate) fn store_candles(
         &self,
-        block_height: u64,
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        let block = ctx
-            .get::<grug_types::Block>()
-            .ok_or(grug_app::IndexerError::Database(
-                "Block not found".to_string(),
-            ))?;
+        // let block = ctx
+        //     .get::<grug_types::Block>()
+        //     .ok_or(grug_app::IndexerError::Database(
+        //         "Block not found".to_string(),
+        //     ))?;
 
         let block_outcome =
             ctx.get::<grug_types::BlockOutcome>()
@@ -25,7 +24,9 @@ impl Indexer {
                     "BlockOutcome not found".to_string(),
                 ))?;
 
-        let dex = querier.query_dex()?;
+        let dex = querier.as_ref().query_dex().map_err(|err| {
+            grug_app::IndexerError::Generic(format!("Failed to query DEX address: {err}"))
+        })?;
 
         // (base_denom, quote_denom) -> clearing_price
         // Clearing price is denominated as the units of quote asset per 1 unit
@@ -64,8 +65,7 @@ impl Indexer {
                         ..
                     } = event.data.clone().deserialize_json().map_err(|err| {
                         grug_app::IndexerError::Deserialization(format!(
-                            "Failed to deserialize OrderFilled event: {}",
-                            err
+                            "Failed to deserialize OrderFilled event: {err}",
                         ))
                     })?;
 
@@ -73,9 +73,7 @@ impl Indexer {
 
                     // If this trading pair doesn't have a clearing price recorded
                     // yet, insert it into the map.
-                    if !clearing_prices.contains_key(&pair_id) {
-                        clearing_prices.insert(pair_id, clearing_price);
-                    }
+                    clearing_prices.entry(pair_id).or_insert(clearing_price);
                 }
             }
         }
