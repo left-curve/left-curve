@@ -38,9 +38,6 @@ pub enum IndexerError {
     #[error(transparent)]
     Persistence(#[from] indexer_disk_saver::error::Error),
 
-    #[error("hooks error: {0}")]
-    Hooks(String),
-
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
@@ -69,7 +66,6 @@ impl From<IndexerError> for AppError {
             IndexerError::Io(e) => grug_app::IndexerError::Io(e.to_string()),
             IndexerError::Persist(e) => grug_app::IndexerError::Io(e.to_string()),
             IndexerError::Persistence(e) => grug_app::IndexerError::Storage(e.to_string()),
-            IndexerError::Hooks(msg) => grug_app::IndexerError::Hook(msg),
             IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
             IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
             IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
@@ -96,7 +92,6 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::Io(e) => grug_app::IndexerError::Io(e.to_string()),
             IndexerError::Persist(e) => grug_app::IndexerError::Io(e.to_string()),
             IndexerError::Persistence(e) => grug_app::IndexerError::Storage(e.to_string()),
-            IndexerError::Hooks(msg) => grug_app::IndexerError::Hook(msg),
             IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
             IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
             IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),

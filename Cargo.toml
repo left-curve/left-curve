@@ -31,7 +31,6 @@ members = [
   "grug/db/disk-lite",
   "grug/db/memory",
   "grug/ffi",
-  "grug/httpd",
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
@@ -45,10 +44,12 @@ members = [
   "grug/types",
   "grug/vm/rust",
   "grug/vm/wasm",
+  "httpd",
   "hyperlane/isms/multisig",
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/cache",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -91,7 +92,6 @@ actix-web-metrics           = "0"
 aes-gcm                     = "0.10"
 alloy                       = "1"
 anyhow                      = "1"
-anymap                      = "0.12"
 assert-json-diff            = "2"
 assertor                    = { version = "0.0", git = "https://github.com/google/assertor" }
 async-graphql-actix-web     = "7.0"
@@ -179,7 +179,6 @@ tower-abci                  = "0.19"
 tracing                     = "0.1"
 tracing-actix-web           = "0.7"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-typedmap                    = { version = "0.6", features = ["dashmap"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "5" # keep at v5 because there's license change for v6
@@ -218,7 +217,6 @@ grug-db-disk                = { path = "grug/db/disk" }
 grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
 grug-ffi                    = { path = "grug/ffi" }
-grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
 grug-macros                 = { path = "grug/macros" }
 grug-math                   = { path = "grug/math" }
@@ -232,11 +230,13 @@ grug-types                  = { path = "grug/types" }
 grug-vm-hybrid              = { path = "grug/vm/hybrid" }
 grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
+httpd                       = { path = "httpd" }
 hyperlane-ism               = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-cache               = { path = "indexer/cache" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

@@ -3331,11 +3331,11 @@ dependencies = [
  "grug-app",
  "grug-client",
  "grug-db-disk-lite",
- "grug-httpd",
  "grug-types",
  "grug-vm-hybrid",
  "hex",
  "home",
+ "httpd",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3436,7 +3436,7 @@ dependencies = [
  "clap",
  "dango-indexer-sql",
  "dango-types",
- "grug-httpd",
+ "httpd",
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
@@ -3512,10 +3512,10 @@ dependencies = [
  "dango-testing",
  "grug-app",
  "grug-db-memory",
- "grug-httpd",
  "grug-testing",
  "grug-types",
  "grug-vm-rust",
+ "httpd",
  "hyperlane-testing",
  "indexer-hooked",
  "indexer-httpd",
@@ -4725,46 +4725,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-httpd"
-version = "0.0.0"
-dependencies = [
- "actix",
- "actix-cors",
- "actix-files",
- "actix-web",
- "actix-web-metrics",
- "anyhow",
- "assertor",
- "async-graphql",
- "async-graphql-actix-web",
- "async-trait",
- "base64 0.22.1",
- "chrono",
- "clap",
- "futures-util",
- "grug-app",
- "grug-testing",
- "grug-types",
- "metrics",
- "metrics-exporter-prometheus",
- "num_cpus",
- "prometheus",
- "sentry",
- "sentry-actix",
- "serde",
- "serde_json",
- "tempfile",
- "tendermint",
- "tendermint-rpc",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "tracing-actix-web",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
@@ -5271,6 +5231,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "httpd"
+version = "0.0.0"
+dependencies = [
+ "actix",
+ "actix-cors",
+ "actix-files",
+ "actix-web",
+ "actix-web-metrics",
+ "anyhow",
+ "assertor",
+ "async-graphql",
+ "async-graphql-actix-web",
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "clap",
+ "futures-util",
+ "grug-app",
+ "grug-testing",
+ "grug-types",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "num_cpus",
+ "prometheus",
+ "sentry",
+ "sentry-actix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tendermint",
+ "tendermint-rpc",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-actix-web",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "httpdate"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5653,6 +5653,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
+name = "indexer-cache"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "async-stream",
+ "async-trait",
+ "borsh 1.5.7",
+ "futures",
+ "grug-app",
+ "grug-types",
+ "indexer-disk-saver",
+ "indexer-hooked",
+ "itertools 0.14.0",
+ "metrics",
+ "serde",
+ "serde_json",
+ "strum 0.27.1",
+ "strum_macros 0.27.1",
+ "tempfile",
+ "test-case",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "indexer-client"
 version = "0.0.0"
 dependencies = [
@@ -5755,9 +5783,9 @@ dependencies = [
  "clap",
  "futures-util",
  "grug-app",
- "grug-httpd",
  "grug-testing",
  "grug-types",
+ "httpd",
  "indexer-sql",
  "itertools 0.14.0",
  "metrics",
@@ -5839,11 +5867,11 @@ dependencies = [
  "futures-util",
  "grug-app",
  "grug-db-memory",
- "grug-httpd",
  "grug-storage",
  "grug-testing",
  "grug-types",
  "grug-vm-rust",
+ "httpd",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
