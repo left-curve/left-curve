@@ -25,7 +25,6 @@ impl<U, const S: u32> Dec<U, S>
 where
     Self: FixedPoint<U>,
     Int<U>: Number + NumberConst + Sign + IsZero,
-    U: Number,
 {
     /// Convert the decimal number to an integer, rounded towards zero.
     pub fn into_int(self) -> Int<U> {
@@ -41,7 +40,9 @@ where
 
         match (rem.is_zero(), rem.is_negative()) {
             (true, _) | (false, false) => int,
-            (false, true) => int - Int::<U>::ONE,
+            // Safe to unwrap, because the biggest value supported by `Int<U>`
+            // is necessarily more than one unit bigger than that by `Dec<U, S>`.
+            (false, true) => int.checked_sub(Int::<U>::ONE).unwrap(),
         }
     }
 
@@ -53,7 +54,9 @@ where
 
         match (rem.is_zero(), rem.is_negative()) {
             (true, _) | (false, true) => int,
-            (false, false) => int + Int::<U>::ONE,
+            // Safe to unwrap, because the smallest value supported by `Int<U>`
+            // is necessarily more than one unit smaller than that by `Dec<U, S>`.
+            (false, false) => int.checked_add(Int::<U>::ONE).unwrap(),
         }
     }
 }
