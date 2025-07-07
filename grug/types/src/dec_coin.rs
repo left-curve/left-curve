@@ -1,3 +1,7 @@
+//! This is a quick and dirty implementation. In the long term, a better idea
+//! may be to introduce a generic into `Coins`: `Coins<T>` where `T` is either
+//! `Uint128` or `Udec128`.
+
 use {
     crate::{Coins, Denom, StdError, StdResult},
     grug_math::{IsZero, Number, Udec128},
