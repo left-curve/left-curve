@@ -157,6 +157,14 @@ fn check_balances(
         // Ensure contract is not undercollateralized.
         assert!(coin.amount >= order_and_passive_liquidity_balance);
 
+        // We don't care about LP tokens.
+        if coin
+            .denom
+            .starts_with(&[dex::NAMESPACE.clone(), dex::LP_NAMESPACE.clone()])
+        {
+            continue;
+        }
+
         // Dex contract sometimes has some dust amounts, so we ignore them.
         if coin.amount < Uint128::new(10) && order_and_passive_liquidity_balance == Uint128::ZERO {
             continue;
