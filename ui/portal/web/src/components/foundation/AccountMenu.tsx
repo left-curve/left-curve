@@ -243,11 +243,17 @@ export const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ 
   }, [allCoins]);
 
   return (
-    <>
+    <motion.div
+      key={type}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+    >
       {type === "wallet" ? <WalletTab coins={walletCoins} /> : null}
       {type === "vaults" ? <VaultsTab coins={vaultCoins} /> : null}
       {/* {type === "orders" ? <OrdersTab orders={orders} /> : null} */}
-    </>
+    </motion.div>
   );
 };
 
