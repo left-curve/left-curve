@@ -258,7 +258,6 @@ const CoinsList: React.FC<{ type: "wallet" | "orders" | "vaults" }> = ({ type })
       key={type}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       transition={{ duration: 0.5, ease: "easeInOut" }}
     >
       {type === "wallet" ? <WalletTab coins={walletCoins} /> : null}
