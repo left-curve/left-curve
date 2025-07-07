@@ -117,6 +117,7 @@ export type {
   KeyOfUnion,
   ExtractFromUnion,
   NestedOmit,
+  WithId,
 } from "./utils.js";
 
 export type {
