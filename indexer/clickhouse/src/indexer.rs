@@ -1,4 +1,5 @@
 pub struct Indexer {
+    #[allow(dead_code)]
     client: clickhouse::Client,
 }
 
