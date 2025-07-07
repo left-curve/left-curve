@@ -55,7 +55,7 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
         let paid = ctx.funds.amount_of(&coin.denom);
         ensure!(
             paid >= coin.amount,
-            "sent fund is less than declared payment! denom: {}, declared: {}, sent: {}",
+            "sent fund is less than declared payment! denom: {}, declared: {}, paid: {}",
             coin.denom,
             coin.amount,
             paid
