@@ -123,7 +123,9 @@ const EarnUserPoolsTable: React.FC = () => {
         data={userPools}
         columns={columns}
         isLoading={isLoading}
-        emptyComponent={<EmptyPlaceholder component={m["earn.noLiquidity"]()} />}
+        emptyComponent={
+          <EmptyPlaceholder component={m["earn.noLiquidity"]()} className="h-[7rem]" />
+        }
       />
     </div>
   );
