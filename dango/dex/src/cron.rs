@@ -106,13 +106,17 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         // TODO: purge volume data that are too old.
     }
 
+    // Round refunds and fee to integer amounts.
+    let refunds = refunds.into_batch();
+    let fees: Coins = fees.into();
+
     Ok(Response::new()
-        .may_add_message(if refunds.is_non_empty() {
-            Some(refunds.into_message())
+        .may_add_message(if !refunds.is_empty() {
+            Some(Message::Transfer(refunds))
         } else {
             None
         })
-        .may_add_message(if fee_payments.is_non_empty() {
+        .may_add_message(if fees.is_non_empty() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
