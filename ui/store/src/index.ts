@@ -108,6 +108,12 @@ export {
 } from "./hooks/useSignin.js";
 
 export {
+  type UseOrdersByUserParameters,
+  type UseOrdersByUserReturnType,
+  useOrdersByUser,
+} from "./hooks/useOrdersByUser.js";
+
+export {
   type UseAppConfigParameters,
   type UseAppConfigReturnType,
   useAppConfig,

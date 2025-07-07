@@ -628,7 +628,9 @@
     "accounts": {
       "otherAccounts": "Other Accounts",
       "addAccount": "Add Account"
-    }
+    },
+    "noVaults": "You don't have any vaults yet",
+    "noWalletCoins": "You don't have any coins yet"
   },
   "dex": {
     "fee": "Fee",
