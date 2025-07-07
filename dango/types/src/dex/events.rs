@@ -48,7 +48,7 @@ pub struct LimitOrdersMatched {
     pub quote_denom: Denom,
     pub clearing_price: Udec128,
     /// Amount matched denominated in the base asset.
-    pub volume: Uint128,
+    pub volume: Udec128,
 }
 
 #[grug::derive(Serde)]
@@ -60,12 +60,12 @@ pub struct OrderFilled {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub filled_base: Uint128,
-    pub filled_quote: Uint128,
-    pub refund_base: Uint128,
-    pub refund_quote: Uint128,
-    pub fee_base: Uint128,
-    pub fee_quote: Uint128,
+    pub filled_base: Udec128,
+    pub filled_quote: Udec128,
+    pub refund_base: Udec128,
+    pub refund_quote: Udec128,
+    pub fee_base: Udec128,
+    pub fee_quote: Udec128,
     /// The price at which the order was executed.
     pub clearing_price: Udec128,
     /// Whether the order was _completed_ filled and cleared from the book.
