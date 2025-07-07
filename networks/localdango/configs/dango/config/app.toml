@@ -50,9 +50,6 @@ username = ""
 #
 password = ""
 
-# How many connections to keep in the connection pool.
-max_connections = 10
-
 [httpd]
 
 # Whether to enable the HTTP server.

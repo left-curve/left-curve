@@ -1,23 +1,31 @@
+use {anyhow::Result, clickhouse::Client};
+
 pub struct Indexer {
     #[allow(dead_code)]
-    client: clickhouse::Client,
+    clickhouse_client: Client,
 }
 
 impl Indexer {
-    pub fn new(url: String, database: String, user: String, password: String) -> Self {
-        let client = clickhouse::Client::default()
-            .with_url(url)
-            .with_user(user)
-            .with_password(password)
-            .with_database(database);
+    pub async fn new(
+        url: String,
+        database: String,
+        user: String,
+        password: String,
+    ) -> Result<Self> {
+        let clickhouse_client = Client::default()
+            .with_url(&url)
+            .with_user(&user)
+            .with_password(&password)
+            .with_database(&database);
 
-        Self { client }
+        Ok(Self { clickhouse_client })
     }
 }
 
 impl grug_app::Indexer for Indexer {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
-        todo!("run migrations")
+        // TODO: run migrations when needed
+        Ok(())
     }
 
     fn pre_indexing(

@@ -19,7 +19,6 @@ pub struct ClickhouseConfig {
     pub database: String,
     pub user: String,
     pub password: String,
-    pub max_connections: u32,
 }
 
 #[derive(Serialize, Deserialize, Default)]

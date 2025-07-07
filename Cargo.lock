@@ -5726,7 +5726,6 @@ dependencies = [
  "indexer-hooked",
  "itertools 0.14.0",
  "metrics",
- "refinery",
  "strum 0.27.1",
  "strum_macros 0.27.1",
  "tempfile",
@@ -7854,49 +7853,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "refinery"
-version = "0.8.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ba5d693abf62492c37268512ff35b77655d2e957ca53dab85bf993fe9172d15"
-dependencies = [
- "refinery-core",
- "refinery-macros",
-]
-
-[[package]]
-name = "refinery-core"
-version = "0.8.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a83581f18c1a4c3a6ebd7a174bdc665f17f618d79f7edccb6a0ac67e660b319"
-dependencies = [
- "async-trait",
- "cfg-if",
- "log",
- "regex",
- "serde",
- "siphasher",
- "thiserror 1.0.69",
- "time",
- "toml 0.8.22",
- "url",
- "walkdir",
-]
-
-[[package]]
-name = "refinery-macros"
-version = "0.8.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72c225407d8e52ef8cf094393781ecda9a99d6544ec28d90a6915751de259264"
-dependencies = [
- "heck 0.5.0",
- "proc-macro2",
- "quote",
- "refinery-core",
- "regex",
- "syn 2.0.101",
-]
-
-[[package]]
 name = "regalloc2"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9289,12 +9245,6 @@ dependencies = [
  "thiserror 2.0.12",
  "time",
 ]
-
-[[package]]
-name = "siphasher"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "sketches-ddsketch"

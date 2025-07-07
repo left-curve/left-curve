@@ -12,12 +12,6 @@ impl Indexer {
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        // let block = ctx
-        //     .get::<grug_types::Block>()
-        //     .ok_or(grug_app::IndexerError::Database(
-        //         "Block not found".to_string(),
-        //     ))?;
-
         let block_outcome =
             ctx.get::<grug_types::BlockOutcome>()
                 .ok_or(grug_app::IndexerError::Database(
@@ -82,6 +76,14 @@ impl Indexer {
         // If for a (base_denom, quote_denom) pair there is no clearing price,
         // meaning no trade occurred for this tracing pair in this block, then
         // the price is the same as the last block's.
+
+        // Example of how to use the connection pool:
+        // let client = self.get_client(); // No await needed - just clones the pooled client
+        //
+        // // Use the client directly - it has built-in connection pooling
+        // // let result = client.query("INSERT INTO candles ...").execute().await.map_err(|err| {
+        // //     grug_app::IndexerError::Generic(format!("Failed to execute query: {err}"))
+        // // })?;
 
         Ok(())
     }

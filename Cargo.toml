@@ -102,6 +102,7 @@ async-trait                 = "0"
 awc                         = "3"
 axum                        = "0.8"
 base64                      = "0.22"
+bb8                         = "0.9"
 bip32                       = "0.5"
 blake2                      = "0.10"
 blake3                      = "1"
@@ -135,6 +136,7 @@ http                        = "1"
 ics23                       = "0.12"
 itertools                   = "0.14"
 k256                        = "0.13"
+klickhouse                  = { version = "0.14", features = ["bb8", "refinery"] }
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
@@ -150,7 +152,7 @@ pyth-sdk                    = "0.8"
 pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
-refinery                    = { version = "0.8" }
+refinery                    = { version = "0.8.14" }
 reqwest                     = { version = "0.12", features = ["stream"] }
 reqwest-eventsource         = "0.6.0"
 ripemd                      = "0.1"
