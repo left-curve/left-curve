@@ -271,7 +271,7 @@ pub struct OrderResponse {
     pub direction: Direction,
     pub price: Udec128,
     pub amount: Uint128,
-    pub remaining: Uint128,
+    pub remaining: Udec128,
 }
 
 /// Response type of the `QueryMsg::OrdersByPair` query.
@@ -281,7 +281,7 @@ pub struct OrdersByPairResponse {
     pub direction: Direction,
     pub price: Udec128,
     pub amount: Uint128,
-    pub remaining: Uint128,
+    pub remaining: Udec128,
 }
 
 /// Response type of the `QueryMsg::OrdersByUser` query.
@@ -292,5 +292,5 @@ pub struct OrdersByUserResponse {
     pub direction: Direction,
     pub price: Udec128,
     pub amount: Uint128,
-    pub remaining: Uint128,
+    pub remaining: Udec128,
 }

@@ -287,14 +287,14 @@ fn clear_orders_of_pair(
         refunds.insert(
             market_order.user,
             quote_denom.clone(),
-            market_order.remaining,
+            market_order.remaining.into_int(),
         )?;
     }
     for (_, market_order) in market_asks {
         refunds.insert(
             market_order.user,
             base_denom.clone(),
-            market_order.remaining,
+            market_order.remaining.into_int(),
         )?;
     }
 
@@ -331,7 +331,7 @@ fn clear_orders_of_pair(
                 fee_payments,
             )?;
 
-            let clearing_price = Udec128::checked_from_ratio(filled_quote, filled_base)?;
+            let clearing_price = filled_quote.checked_div(filled_base)?;
             let cleared = order.remaining().is_zero();
 
             // Emit event for filled user orders to be used by the frontend
@@ -431,14 +431,19 @@ fn fill_user_order(
     user: Addr,
     base_denom: &Denom,
     quote_denom: &Denom,
-    refund_base: Uint128,
-    refund_quote: Uint128,
-    fee_base: Uint128,
-    fee_quote: Uint128,
+    refund_base: Udec128,
+    refund_quote: Udec128,
+    fee_base: Udec128,
+    fee_quote: Udec128,
     refunds: &mut TransferBuilder,
     fees: &mut Coins,
     fee_payments: &mut TransferBuilder,
 ) -> StdResult<()> {
+    let refund_base = refund_base.into_int();
+    let refund_quote = refund_quote.into_int();
+    let fee_base = fee_base.into_int(); // TODO: ceil
+    let fee_quote = fee_quote.into_int(); // TODO: ceil
+
     // Handle fees.
     if fee_base.is_non_zero() {
         fees.insert((base_denom.clone(), fee_base))?;
@@ -459,11 +464,15 @@ fn fill_passive_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     order_direction: Direction,
-    filled_base: Uint128,
-    filled_quote: Uint128,
+    filled_base: Udec128,
+    filled_quote: Udec128,
     inflows: &mut Coins,
     outflows: &mut Coins,
 ) -> StdResult<()> {
+    // TODO: ceil inflow, floor outflow?
+    let filled_base = filled_base.into_int();
+    let filled_quote = filled_quote.into_int();
+
     // The order only exists in the storage if it's not owned by the dex, since
     // the passive orders are "virtual". If it is virtual, we need to update the
     // reserve.
@@ -489,7 +498,7 @@ fn update_trading_volumes(
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
     base_denom: &Denom,
-    filled: Uint128,
+    filled: Udec128,
     order_user: Addr,
     volumes: &mut HashMap<Addr, Uint128>,
     volumes_by_username: &mut HashMap<Username, Uint128>,
@@ -508,7 +517,9 @@ fn update_trading_volumes(
     };
 
     // Calculate the volume in USD for the filled order.
-    let new_volume = base_asset_price.value_of_unit_amount(filled)?.into_int();
+    let new_volume = base_asset_price
+        .value_of_unit_amount(filled.into_int())?
+        .into_int();
 
     // Record trading volume for the user's address
     {

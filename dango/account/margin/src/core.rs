@@ -11,8 +11,8 @@ use {
         oracle::PrecisionedPrice,
     },
     grug::{
-        Addr, Coin, Coins, Denom, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
-        QuerierWrapper, StorageQuerier, Timestamp, Udec128, Uint128,
+        Addr, Coin, Coins, Denom, IsZero, Number, NumberConst, QuerierExt, QuerierWrapper,
+        StorageQuerier, Timestamp, Udec128, Uint128,
     },
     std::{
         cmp::min,
@@ -233,15 +233,15 @@ pub fn compute_health(
             Direction::Bid => (
                 Coin::new(
                     res.quote_denom.clone(),
-                    res.remaining.checked_mul_dec_ceil(res.price)?,
+                    res.remaining.checked_mul(res.price)?.into_int(), // TODO: ceil
                 )?,
-                Coin::new(res.base_denom.clone(), res.remaining)?,
+                Coin::new(res.base_denom.clone(), res.remaining.into_int())?,
             ),
             Direction::Ask => (
-                Coin::new(res.base_denom.clone(), res.remaining)?,
+                Coin::new(res.base_denom.clone(), res.remaining.into_int())?,
                 Coin::new(
                     res.quote_denom.clone(),
-                    res.remaining.checked_mul_dec_floor(res.price)?,
+                    res.remaining.checked_mul(res.price)?.into_int(),
                 )?,
             ),
         };
