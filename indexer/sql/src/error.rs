@@ -53,13 +53,60 @@ pub enum IndexerError {
 
 impl From<IndexerError> for AppError {
     fn from(err: IndexerError) -> Self {
-        AppError::Indexer(err.to_string())
+        let indexer_error = match err {
+            IndexerError::SeaOrm(e) => grug_app::IndexerError::Database(e.to_string()),
+            IndexerError::Anyhow(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Join(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Indexing(msg) => grug_app::IndexerError::Generic(msg),
+            IndexerError::Poison(msg) => grug_app::IndexerError::Generic(msg),
+            IndexerError::Runtime(msg) => grug_app::IndexerError::Generic(msg),
+            IndexerError::TryFromInt(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::App(_) => {
+                // For App errors, just wrap as generic since it's already processed
+                grug_app::IndexerError::Generic("nested app error".to_string())
+            },
+            IndexerError::Std(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Io(e) => grug_app::IndexerError::Io(e.to_string()),
+            IndexerError::Persist(e) => grug_app::IndexerError::Io(e.to_string()),
+            IndexerError::Persistence(e) => grug_app::IndexerError::Storage(e.to_string()),
+            IndexerError::Hooks(msg) => grug_app::IndexerError::Hook(msg),
+            IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
+            IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
+        };
+        AppError::Indexer(indexer_error)
+    }
+}
+
+impl From<IndexerError> for grug_app::IndexerError {
+    fn from(err: IndexerError) -> Self {
+        match err {
+            IndexerError::SeaOrm(e) => grug_app::IndexerError::Database(e.to_string()),
+            IndexerError::Anyhow(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Join(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Indexing(msg) => grug_app::IndexerError::Generic(msg),
+            IndexerError::Poison(msg) => grug_app::IndexerError::Generic(msg),
+            IndexerError::Runtime(msg) => grug_app::IndexerError::Generic(msg),
+            IndexerError::TryFromInt(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::App(_) => {
+                // For App errors, just wrap as generic since it's already processed
+                grug_app::IndexerError::Generic("nested app error".to_string())
+            },
+            IndexerError::Std(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Io(e) => grug_app::IndexerError::Io(e.to_string()),
+            IndexerError::Persist(e) => grug_app::IndexerError::Io(e.to_string()),
+            IndexerError::Persistence(e) => grug_app::IndexerError::Storage(e.to_string()),
+            IndexerError::Hooks(msg) => grug_app::IndexerError::Hook(msg),
+            IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
+            IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
+            IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
+        }
     }
 }
 
 impl<T> From<std::sync::PoisonError<T>> for IndexerError {
     fn from(err: std::sync::PoisonError<T>) -> Self {
-        IndexerError::Poison(format!("Poisoned mutex: {:?}", err))
+        IndexerError::Poison(err.to_string())
     }
 }
 

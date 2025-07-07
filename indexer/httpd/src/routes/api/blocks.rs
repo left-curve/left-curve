@@ -7,7 +7,7 @@ use {
 #[get("/info")]
 pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
-        .grug_app
+        .grug_app()
         .last_finalized_block()
         .await
         .map_err(ErrorInternalServerError)?
@@ -28,7 +28,7 @@ fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
     if !BlockToIndex::exists(block_filename.clone()) {
-        println!("Block not found: {:?}", block_filename);
+        println!("Block not found: {block_filename:?}");
         return Ok(HttpResponse::NotFound().body("Block not found"));
     }
 
@@ -41,7 +41,7 @@ fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse
 #[get("/result")]
 pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
-        .grug_app
+        .grug_app()
         .last_finalized_block()
         .await
         .map_err(ErrorInternalServerError)?

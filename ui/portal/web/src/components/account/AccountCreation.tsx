@@ -192,13 +192,13 @@ export const Deposit: React.FC = () => {
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
 
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
 
         await signingClient.registerAccount({
           sender: account!.address,
           config: { [accountType as "spot"]: { owner: account!.username } },
           funds: {
-            "bridge/usdc": parsedAmount,
+            "bridge/usdc": parsedAmount.toString(),
           },
         });
 

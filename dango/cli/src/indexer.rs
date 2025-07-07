@@ -106,8 +106,8 @@ impl IndexerCmd {
 
                             if block_text.contains(&text) || block_results.contains(&text) {
                                 println!("Found in block {block}:");
-                                println!("Block: {:#?}", block_text);
-                                println!("Block Outcome: {:#?}", block_results);
+                                println!("Block: {block_text:#?}");
+                                println!("Block Outcome: {block_results:#?}");
                             }
                         });
                     });
@@ -128,14 +128,14 @@ impl IndexerCmd {
 
                 tracing::info!(
                     "Starting metrics HTTP server at {}:{}",
-                    &cfg.indexer.metrics_httpd.ip,
-                    cfg.indexer.metrics_httpd.port
+                    &cfg.metrics_httpd.ip,
+                    cfg.metrics_httpd.port
                 );
 
                 // Run the metrics HTTP server
                 indexer_httpd::server::run_metrics_server(
-                    &cfg.indexer.metrics_httpd.ip,
-                    cfg.indexer.metrics_httpd.port,
+                    &cfg.metrics_httpd.ip,
+                    cfg.metrics_httpd.port,
                     metrics_handler,
                 )
                 .await?;

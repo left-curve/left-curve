@@ -372,11 +372,18 @@ fn query_simulate_swap_exact_amount_in(
     route: SwapRoute,
     input: Coin,
 ) -> anyhow::Result<Coin> {
+    let app_cfg = ctx.querier.query_dango_config()?;
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route.into_inner(), input)
-        .map(|(_updated_reserves, output)| output)
+    core::swap_exact_amount_in(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate,
+        route.into_inner(),
+        input,
+    )
+    .map(|(_, output, _)| output)
 }
 
 fn query_simulate_swap_exact_amount_out(
@@ -384,6 +391,16 @@ fn query_simulate_swap_exact_amount_out(
     route: SwapRoute,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Coin> {
-    core::swap_exact_amount_out(ctx.storage, route.into_inner(), output)
-        .map(|(_updated_reserves, input)| input)
+    let app_cfg = ctx.querier.query_dango_config()?;
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    core::swap_exact_amount_out(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate,
+        route.into_inner(),
+        output,
+    )
+    .map(|(_, input, _)| input)
 }

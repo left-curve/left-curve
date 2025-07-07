@@ -9,7 +9,7 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
 import { Direction } from "@left-curve/dango/types";
-import { capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
 import type { PairId } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
@@ -27,7 +27,7 @@ export type UseProTradeStateParameters = {
 };
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
-  const { controllers, pairId, onChangePairId, action, onChangeAction } = parameters;
+  const { controllers, pairId, onChangePairId, onChangeAction, action } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
   const { coins } = useConfig();
@@ -42,6 +42,12 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const { data: balances = {}, refetch: updateBalance } = useBalances({
     address: account?.address,
   });
+
+  const changePairId = useCallback((pairId: PairId) => {
+    onChangePairId(pairId);
+    setSizeCoin(coins[pairId.quoteDenom]);
+    setValue("size", "0");
+  }, []);
 
   const changeAction = useCallback((action: "buy" | "sell") => {
     onChangeAction(action);
@@ -73,12 +79,22 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const needsConversion = sizeCoin.denom !== availableCoin.denom;
 
+  const sizeValue = inputs.size?.value || "0";
+  const priceValue = inputs.price?.value || "0";
+
   const maxSizeAmount = useMemo(() => {
     if (availableCoin.amount === "0") return 0;
-    return needsConversion
-      ? convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom)
-      : +availableCoin.amount;
-  }, [sizeCoin, availableCoin, needsConversion]);
+    if (!needsConversion) return +availableCoin.amount;
+
+    return operation === "limit"
+      ? (() => {
+          if (priceValue === "0") return 0;
+          return action === "buy"
+            ? Decimal(availableCoin.amount).div(priceValue).toNumber()
+            : Decimal(availableCoin.amount).mul(priceValue).toNumber();
+        })()
+      : convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom);
+  }, [sizeCoin, availableCoin, needsConversion, priceValue]);
 
   const orders = useQuery({
     enabled: !!account,
@@ -95,6 +111,31 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     refetchInterval: 1000 * 10,
   });
 
+  const orderAmount = useMemo(() => {
+    if (sizeValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+
+    const isBaseSize = sizeCoin.denom === pairId.baseDenom;
+    const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
+
+    if (operation === "market") {
+      return {
+        baseAmount: isBaseSize
+          ? sizeValue
+          : convertAmount(sizeValue, sizeCoin.denom, pairId.baseDenom).toString(),
+        quoteAmount: isQuoteSize
+          ? sizeValue
+          : convertAmount(sizeValue, sizeCoin.denom, pairId.quoteDenom).toString(),
+      };
+    }
+
+    if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+
+    return {
+      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toString(),
+      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toString(),
+    };
+  }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
+
   const submission = useSubmitTx({
     mutation: {
       mutationFn: async () => {
@@ -104,9 +145,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const direction = Direction[capitalize(action) as keyof typeof Direction];
         const { baseDenom, quoteDenom } = pairId;
 
-        const amount = needsConversion
-          ? convertAmount(inputs.size.value, sizeCoin.denom, availableCoin.denom, true)
-          : parseUnits(inputs.size.value, availableCoin.decimals).toString();
+        const amount = (
+          baseCoin.denom === availableCoin.denom
+            ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
+            : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals)
+        ).toString();
 
         const order =
           operation === "market"
@@ -124,11 +167,13 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
             : {
                 createsLimit: [
                   {
-                    amount,
+                    amount: parseUnits(orderAmount.baseAmount, baseCoin.decimals).toString(),
                     baseDenom,
                     quoteDenom,
                     direction,
-                    price: parseUnits(inputs.price.value, quoteCoin.decimals).toString(),
+                    price: Decimal(inputs.price.value)
+                      .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
+                      .toString(),
                   },
                 ],
               };
@@ -148,7 +193,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   return {
     pairId,
-    onChangePairId,
+    onChangePairId: changePairId,
+    orderAmount,
     maxSizeAmount,
     availableCoin,
     baseCoin,

@@ -17,7 +17,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     suite: TestSuite<DB, VM, PP, ID>,
     validator_sets: MockValidatorSets,
@@ -31,7 +31,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Target = TestSuite<DB, VM, PP, ID>;
 
@@ -46,7 +46,7 @@ where
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.suite
@@ -59,7 +59,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn new(
         suite: TestSuite<DB, VM, PP, ID>,

@@ -98,7 +98,7 @@ function TransferApplet() {
       mutationFn: async ({ address, amount }, { abort }) => {
         if (!signingClient) throw new Error("error: no signing client");
 
-        const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
+        const parsedAmount = parseUnits(amount, selectedCoin.decimals);
 
         const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
 
@@ -115,7 +115,7 @@ function TransferApplet() {
         await signingClient.transfer({
           transfer: {
             [address]: {
-              [selectedCoin.denom]: parsedAmount,
+              [selectedCoin.denom]: parsedAmount.toString(),
             },
           },
           sender: account!.address as Address,

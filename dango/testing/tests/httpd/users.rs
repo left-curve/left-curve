@@ -4,18 +4,19 @@ use {
     dango_testing::{
         HyperlaneTestSuite, add_user_public_key, create_user_and_account, setup_test_with_indexer,
     },
+    grug_app::Indexer,
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Users {
@@ -41,7 +42,7 @@ async fn query_user() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
                     app,
@@ -70,8 +71,8 @@ async fn query_user() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, httpd_context) =
-        setup_test_with_indexer();
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account =
@@ -79,7 +80,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
 
     let (pk, key_hash) = add_user_public_key(&mut suite, &contracts, &mut test_account);
 
-    suite.app.indexer.wait_for_finish();
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Users {
@@ -105,7 +106,7 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(httpd_context);
+                let app = build_actix_app(dango_httpd_context);
 
                 let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
                     app,

@@ -5,15 +5,23 @@ import {
   useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAppConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useAccount, useSigningClient } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
+import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
-import { Badge, Cell, IconChevronDown, IconEmptyStar, Table, Tabs } from "@left-curve/applets-kit";
+import {
+  Badge,
+  Cell,
+  IconChevronDownFill,
+  IconEmptyStar,
+  Table,
+  Tabs,
+} from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
@@ -22,7 +30,6 @@ import { TradingViewChart } from "./TradingViewChart";
 
 import type { TableColumn } from "@left-curve/applets-kit";
 import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { formatUnits } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTrade] = createContext<{
@@ -88,8 +95,8 @@ const ProTradeHeader: React.FC = () => {
             className="cursor-pointer flex items-center justify-center lg:hidden"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            <IconChevronDown
-              className={twMerge("text-gray-500 w-5 h-5 transition-all", {
+            <IconChevronDownFill
+              className={twMerge("text-gray-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
@@ -159,12 +166,13 @@ const ProTradeMenu: React.FC = () => {
 
 const ProTradeOrders: React.FC = () => {
   const { showModal: _ } = useApp();
+  const { coins } = useConfig();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
-  const { orders, quoteCoin, baseCoin } = state;
+  const { orders } = state;
 
   const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
     /*  {
@@ -193,16 +201,29 @@ const ProTradeOrders: React.FC = () => {
     {
       header: m["dex.protrade.spot.ordersTable.size"](),
       cell: ({ row }) => (
-        <Cell.Text text={formatUnits(row.original.remaining, baseCoin.decimals)} />
+        <Cell.Text
+          text={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
+        />
       ),
     },
     {
       header: m["dex.protrade.spot.ordersTable.originalSize"](),
-      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.amount, baseCoin.decimals)} />,
+      cell: ({ row }) => (
+        <Cell.Text
+          text={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
+        />
+      ),
     },
     {
       header: m["dex.protrade.spot.price"](),
-      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.price, quoteCoin.decimals)} />,
+      cell: ({ row }) => (
+        <Cell.Text
+          text={parseUnits(
+            row.original.price,
+            coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
+          ).toString()}
+        />
+      ),
     },
     {
       id: "cancel-order",
@@ -246,7 +267,7 @@ const ProTradeOrders: React.FC = () => {
           classNames={{ button: "exposure-xs-italic" }}
         />
 
-        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
+        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[1px]" />
       </div>
       <div className="w-full h-full relative">
         {activeTab === "open order" ? (
@@ -262,14 +283,16 @@ const ProTradeOrders: React.FC = () => {
                 "group-hover:bg-transparent": !orders.data.length,
               }),
             }}
+            emptyComponent={
+              activeTab === "open order" ? (
+                <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[3.5rem]">
+                  <p className="diatype-xs-regular text-gray-700">
+                    {m["dex.protrade.spot.noOpenOrders"]()}
+                  </p>
+                </div>
+              ) : null
+            }
           />
-        ) : null}
-        {orders.data.length === 0 && activeTab === "open order" ? (
-          <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[3.5rem]">
-            <p className="diatype-xs-regular text-gray-700">
-              {m["dex.protrade.spot.noOpenOrders"]()}
-            </p>
-          </div>
         ) : null}
       </div>
     </div>

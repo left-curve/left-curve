@@ -29,7 +29,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     type Error = BoxError;
     type Future =
@@ -52,7 +52,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     ID: Indexer,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn tower_call(&self, req: Request) -> AppResult<Response> {
         match req {
@@ -197,10 +197,10 @@ where
                     .enumerate()
                     .map(|(id, cron)| {
                         Ok(abci::Event {
-                            kind: format!("cron-{}", id),
+                            kind: format!("cron-{id}"),
                             attributes: vec![abci::EventAttribute::V037(
                                 abci::v0_37::EventAttribute {
-                                    key: format!("cron-{}", id),
+                                    key: format!("cron-{id}"),
                                     value: cron.to_json_string()?,
                                     index: false,
                                 },

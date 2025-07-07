@@ -14,3 +14,9 @@ pub enum Error {
     #[error("grug error: {0}")]
     Std(#[from] grug::StdError),
 }
+
+impl From<Error> for grug_app::IndexerError {
+    fn from(error: Error) -> Self {
+        grug_app::IndexerError::Database(error.to_string())
+    }
+}

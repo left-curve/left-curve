@@ -11,8 +11,8 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
 
     let (sx, rx) = tokio::sync::oneshot::channel();
 
-    // Spawn server in separate thread with its own runtime
-    let _server_handle = std::thread::spawn(move || {
+    // Run server in separate thread with its own runtime
+    std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             tracing::info!("Starting mock HTTP server on port {port}");
@@ -31,7 +31,7 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
             )
             .await
             {
-                tracing::error!("Error running mock HTTP server: {error}");
+                println!("Error running mock HTTP server: {error}");
             }
         });
     });

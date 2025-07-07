@@ -1,6 +1,6 @@
 use {
     crate::{
-        Integer, MathError, MathResult, NextNumber, Number,
+        Integer, MathError, MathResult, NextNumber, Number, NumberConst,
         utils::{bytes_to_digits, grow_le_int, grow_le_uint},
     },
     bnum::types::{I256, I512, U256, U512},
@@ -8,6 +8,7 @@ use {
     serde::{de, ser},
     std::{
         fmt::{self, Display},
+        iter::Sum,
         marker::PhantomData,
         ops::{
             Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign,
@@ -275,6 +276,22 @@ where
     }
 }
 
+impl<U> Sum for Int<U>
+where
+    U: Number + NumberConst,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        let mut sum = Self::ZERO;
+        for int in iter {
+            sum += int;
+        }
+        sum
+    }
+}
+
 // ------------------------------ concrete types -------------------------------
 
 /// 64-bit unsigned integer.
@@ -451,7 +468,7 @@ pub mod tests {
         }
         method = |_, samples| {
             for (number, str) in samples {
-                assert_eq!(format!("{}", number), str);
+                assert_eq!(format!("{number}"), str);
             }
         }
     );
@@ -484,7 +501,7 @@ pub mod tests {
         method = |_0, samples| {
             for (padded_str, compare) in samples {
                 let uint = bt(_0, Int::from_str(padded_str).unwrap());
-                assert_eq!(format!("{}", uint), compare);
+                assert_eq!(format!("{uint}"), compare);
             }
         }
     );
@@ -509,10 +526,10 @@ pub mod tests {
                 let original = bt(_0, Int::from_str(sample).unwrap());
 
                 let serialized_str = serde_json::to_string(&original).unwrap();
-                assert_eq!(serialized_str, format!("\"{}\"", sample));
+                assert_eq!(serialized_str, format!("\"{sample}\""));
 
                 let serialized_vec = serde_json::to_vec(&original).unwrap();
-                assert_eq!(serialized_vec, format!("\"{}\"", sample).as_bytes());
+                assert_eq!(serialized_vec, format!("\"{sample}\"").as_bytes());
 
                 let parsed: Int::<_> = serde_json::from_str(&serialized_str).unwrap();
                 assert_eq!(parsed, original);

@@ -131,7 +131,7 @@ mod replier {
     pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
         let msg = match (res, msg) {
             (GenericResult::Err(wee), ReplyMsg::Fail(execute_msg)) => {
-                println!("replying with error: {}", wee);
+                println!("replying with error: {wee}");
                 execute_msg
             },
             (GenericResult::Ok(_), ReplyMsg::Ok(execute_msg)) => execute_msg,

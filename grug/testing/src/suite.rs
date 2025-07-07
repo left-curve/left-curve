@@ -128,7 +128,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     /// Create a new test suite with the given DB and VM.
     pub fn new_with_db_vm_indexer_and_pp(
@@ -161,10 +161,7 @@ where
             });
 
         id.start(&state_storage).unwrap_or_else(|err| {
-            panic!(
-                "fatal error while running indexer start: {}",
-                err.to_string()
-            );
+            panic!("fatal error while running indexer start: {err}");
         });
 
         // 2. Creating the app instance
@@ -632,7 +629,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.app
@@ -644,10 +641,10 @@ where
 impl<DB, VM, PP, ID> TestSuite<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone + 'static,
+    VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
     Self: Querier,
 {
     pub fn query_balance<D>(&self, address: &dyn Addressable, denom: D) -> StdResult<Uint128>

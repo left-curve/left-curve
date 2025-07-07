@@ -21,7 +21,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,422px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
@@ -30,7 +30,7 @@ export const OrderBookOverview: React.FC = () => {
         keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
-        classNames={{ button: "exposure-xs-italic" }}
+        classNames={{ button: "exposure-xs-italic pt-0" }}
       />
       {activeTab === "graph" && <TradingViewChart />}
       {activeTab === "order book" && <OrderBook />}

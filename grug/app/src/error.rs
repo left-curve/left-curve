@@ -1,5 +1,9 @@
 use {
     grug_types::{Addr, Hash256, StdError},
+    std::{
+        collections::HashMap,
+        sync::{MutexGuard, PoisonError},
+    },
     thiserror::Error,
 };
 
@@ -18,7 +22,7 @@ pub enum AppError {
     PrepareProposal(String),
 
     #[error("indexer error: {0}")]
-    Indexer(String),
+    Indexer(#[from] IndexerError),
 
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {
@@ -56,6 +60,58 @@ pub enum AppError {
 
     #[error("max message depth exceeded")]
     ExceedMaxMessageDepth,
+}
+
+/// Dedicated error type for indexer operations
+#[derive(Clone, Debug, Error)]
+pub enum IndexerError {
+    #[error("indexer is already running")]
+    AlreadyRunning,
+
+    #[error("indexer is not running")]
+    NotRunning,
+
+    #[error("storage error: {0}")]
+    Storage(String),
+
+    #[error("database error: {0}")]
+    Database(String),
+
+    #[error("serialization error: {0}")]
+    Serialization(String),
+
+    #[error("I/O error: {0}")]
+    Io(String),
+
+    #[error("configuration error: {0}")]
+    Config(String),
+
+    #[error("hook error: {0}")]
+    Hook(String),
+
+    #[error("multiple errors: {0:?}")]
+    Multiple(Vec<String>),
+
+    #[error("generic indexer error: {0}")]
+    Generic(String),
+
+    #[error("mutex for the indexers is poisoned")]
+    MutexPoisoned,
+
+    #[error("rwlock for the indexers is poisoned")]
+    RwlockPoisoned,
+}
+
+impl From<std::io::Error> for IndexerError {
+    fn from(err: std::io::Error) -> Self {
+        IndexerError::Io(err.to_string())
+    }
+}
+
+impl From<PoisonError<MutexGuard<'_, HashMap<u64, bool>>>> for IndexerError {
+    fn from(_: PoisonError<MutexGuard<'_, HashMap<u64, bool>>>) -> Self {
+        Self::MutexPoisoned
+    }
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;

@@ -16,7 +16,7 @@ pub struct AccountSubscription;
 
 impl AccountSubscription {
     async fn get_accounts(
-        app_ctx: &indexer_httpd::context::Context,
+        app_ctx: &crate::context::Context,
         block_heights: RangeInclusive<i64>,
         username: Option<String>,
     ) -> Vec<entity::accounts::Model> {
@@ -56,7 +56,7 @@ impl AccountSubscription {
         // This is used to get the older account creations in case of disconnection
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::accounts::Model>> + 'a> {
-        let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
+        let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let latest_block_height = latest_block_height(&app_ctx.db).await?.unwrap_or_default();
 

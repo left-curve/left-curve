@@ -9,6 +9,7 @@ use {
     std::{
         cmp::Ordering,
         fmt::{self, Display, Write},
+        iter::Sum,
         marker::PhantomData,
         ops::{
             Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
@@ -400,6 +401,22 @@ where
 {
     fn rem_assign(&mut self, rhs: Self) {
         *self = *self % rhs;
+    }
+}
+
+impl<U, const S: u32> Sum for Dec<U, S>
+where
+    Self: Number + NumberConst,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Self>,
+    {
+        let mut sum = Self::ZERO;
+        for dec in iter {
+            sum += dec;
+        }
+        sum
     }
 }
 
@@ -846,10 +863,10 @@ mod tests {
                 let dec = bt(_0d, dec(base));
 
                 let serialized_str = serde_json::to_string(&dec).unwrap();
-                assert_eq!(serialized_str, format!("\"{}\"", base));
+                assert_eq!(serialized_str, format!("\"{base}\""));
 
                 let serialized_vec = serde_json::to_vec(&dec).unwrap();
-                assert_eq!(serialized_vec, format!("\"{}\"", base).as_bytes());
+                assert_eq!(serialized_vec, format!("\"{base}\"").as_bytes());
 
                 let parsed: Dec::<_, 18> = serde_json::from_str(&serialized_str).unwrap();
                 assert_eq!(parsed, dec);
