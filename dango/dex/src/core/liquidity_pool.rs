@@ -7,7 +7,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Sign, Udec128,
+        Uint128,
     },
     std::ops::Sub,
 };
@@ -271,12 +272,11 @@ impl PassiveLiquidityPool for PairParams {
             );
         };
 
-        let output_amount_after_fee = match self.pool_type {
+        let output_amount_before_fee = match self.pool_type {
             PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_in(
-                input.amount,
                 reserve.amount_of(&input.denom)?,
                 reserve.amount_of(&output_denom)?,
-                self.swap_fee_rate,
+                input.amount,
             )?,
             PassiveLiquidity::Geometric {
                 ratio,
@@ -293,11 +293,17 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        let output = Coin {
-            denom: output_denom,
-            amount: output_amount_after_fee,
-        };
+        // Apply the swap fee. Deduct the fee from the output amount.
+        let fee = output_amount_before_fee.checked_mul_dec_ceil(*self.swap_fee_rate)?;
+        let output_amount = output_amount_before_fee.checked_sub(fee)?;
+        let output = Coin::new(output_denom, output_amount)?;
 
+        ensure!(
+            output.amount.is_positive(),
+            "output amount after fee must be positive, got: {output}"
+        );
+
+        // Update the reserve.
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, output))
@@ -320,24 +326,21 @@ impl PassiveLiquidityPool for PairParams {
         let input_reserve = reserve.amount_of(&input_denom)?;
         let output_reserve = reserve.amount_of(&output.denom)?;
 
-        // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
-        // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-        // to get the ask amount after fees.
-        // Round so that user takes the loss.
-        let output_amount_before_fee = output
-            .amount
-            .checked_div_dec_ceil(Udec128::ONE - *self.swap_fee_rate)?;
+        // Apply swap fee. Add the fee to the output amount.
+        let rate = Udec128::ONE - *self.swap_fee_rate;
+        let mut output_before_fee = output.clone();
+        output_before_fee.amount.checked_div_dec_ceil_assign(rate)?;
 
         ensure!(
-            output_reserve > output_amount_before_fee,
+            output_reserve > output_before_fee.amount,
             "insufficient liquidity: {} <= {}",
             output_reserve,
-            output_amount_before_fee
+            output_before_fee.amount
         );
 
         let input_amount = match self.pool_type {
             PassiveLiquidity::Xyk { .. } => {
-                xyk::swap_exact_amount_out(output_amount_before_fee, input_reserve, output_reserve)?
+                xyk::swap_exact_amount_out(input_reserve, output_reserve, output_before_fee.amount)?
             },
             PassiveLiquidity::Geometric {
                 ratio,
@@ -346,7 +349,7 @@ impl PassiveLiquidityPool for PairParams {
                 oracle_querier,
                 base_denom,
                 quote_denom,
-                &output,
+                &output_before_fee,
                 &reserve,
                 ratio,
                 order_spacing,
@@ -354,11 +357,14 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        let input = Coin {
-            denom: input_denom,
-            amount: input_amount,
-        };
+        let input = Coin::new(input_denom, input_amount)?;
 
+        ensure!(
+            input.amount.is_positive(),
+            "input amount must be positive, got: {input}"
+        );
+
+        // Update the reserve.
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, input))
