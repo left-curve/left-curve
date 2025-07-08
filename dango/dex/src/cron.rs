@@ -9,7 +9,7 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, OrderFilled, PassiveOrdersFilled},
+        dex::{Direction, LimitOrdersMatched, OrderFilled},
         taxman::{self, FeeType},
     },
     grug::{
@@ -302,10 +302,6 @@ fn clear_orders_of_pair(
     let mut inflows = Coins::new();
     let mut outflows = Coins::new();
 
-    // Track the number of passive liquidity orders filled.
-    let mut passive_bid_filling_outcomes_len = 0;
-    let mut passive_ask_filling_outcomes_len = 0;
-
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order_direction,
@@ -382,10 +378,6 @@ fn clear_orders_of_pair(
                 }
             }
         } else {
-            match order_direction {
-                Direction::Bid => passive_bid_filling_outcomes_len += 1,
-                Direction::Ask => passive_ask_filling_outcomes_len += 1,
-            }
             fill_passive_order(
                 &base_denom,
                 &quote_denom,
@@ -409,13 +401,6 @@ fn clear_orders_of_pair(
             volumes,
             volumes_by_username,
         )?;
-    }
-
-    if passive_bid_filling_outcomes_len > 0 || passive_ask_filling_outcomes_len > 0 {
-        events.push(PassiveOrdersFilled {
-            passive_bid_filling_outcomes_len,
-            passive_ask_filling_outcomes_len,
-        })?;
     }
 
     // Update the pool reserve.

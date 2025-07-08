@@ -73,13 +73,6 @@ pub struct OrderFilled {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("passive_orders_filled")]
-pub struct PassiveOrdersFilled {
-    pub passive_bid_filling_outcomes_len: usize,
-    pub passive_ask_filling_outcomes_len: usize,
-}
-
-#[grug::derive(Serde)]
 #[grug::event("swapped")]
 pub struct Swapped {
     pub user: Addr,

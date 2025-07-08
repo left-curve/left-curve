@@ -8,14 +8,14 @@ use {
         constants::{dango, eth, sol, usdc},
         dex::{
             self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, PairId, PairParams,
-            PairUpdate, PassiveLiquidity, PassiveOrdersFilled, SwapRoute,
+            PairUpdate, PassiveLiquidity, SwapRoute,
         },
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, CheckedContractEvent, Coin, Coins, Dec128, Denom, Inner, JsonDeExt,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, SearchEvent, Signed, Signer, Udec128, Uint128, UniqueVec, btree_map, coins,
+        Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, MaxLength, Message,
+        MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
+        Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -117,10 +117,6 @@ fn register_fixed_price(
 fn check_balances(
     suite: &TestSuite<NaiveProposalPreparer>,
     contracts: &Contracts,
-    _executed_action: &DexAction,
-    _passive_orders_filled: Option<PassiveOrdersFilled>,
-    _passive_bid_filling_outcomes_len: usize,
-    passive_ask_filling_outcomes_len: usize,
 ) -> Result<(), TestCaseError> {
     // Check dex contract's balances.
     let balances = suite.query_balances(&contracts.dex)?;
@@ -219,16 +215,9 @@ fn check_balances(
         //     _ => order_and_passive_liquidity_balance,
         // };
 
-        let expected_balance = if coin.denom == usdc::DENOM.clone() {
-            order_and_passive_liquidity_balance
-                + Uint128::new(passive_ask_filling_outcomes_len as u128)
-        } else {
-            order_and_passive_liquidity_balance
-        };
-
-        println!("expected_balance: {expected_balance}");
+        println!("expected_balance: {order_and_passive_liquidity_balance}");
         // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
-        assert_approx_eq(coin.amount, expected_balance, "0.0001")?;
+        assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
     }
 
     Ok(())
@@ -277,7 +266,7 @@ impl DexAction {
         suite: &mut TestSuite<NaiveProposalPreparer>,
         accounts: &mut TestAccounts,
         contracts: &Contracts,
-    ) -> Result<Option<PassiveOrdersFilled>, TestCaseError> {
+    ) -> Result<(), TestCaseError> {
         println!("Executing action: {self:?}");
 
         match self {
@@ -333,27 +322,6 @@ impl DexAction {
                         .as_result()
                         .is_ok()
                 );
-
-                let passive_orders_filled = block_outcome
-                    .cron_outcomes
-                    .first()
-                    .unwrap()
-                    .cron_event
-                    .clone()
-                    .search_event::<CheckedContractEvent>()
-                    .with_predicate(|e| e.ty == "passive_orders_filled")
-                    .take()
-                    .all()
-                    .first()
-                    .map(|e| {
-                        e.event
-                            .data
-                            .clone()
-                            .deserialize_json::<PassiveOrdersFilled>()
-                            .unwrap()
-                    });
-
-                Ok(passive_orders_filled)
             },
             DexAction::CreateMarketOrder {
                 base_denom,
@@ -406,27 +374,6 @@ impl DexAction {
                         .as_result()
                         .is_ok()
                 );
-
-                let passive_orders_filled = block_outcome
-                    .cron_outcomes
-                    .first()
-                    .unwrap()
-                    .cron_event
-                    .clone()
-                    .search_event::<CheckedContractEvent>()
-                    .with_predicate(|e| e.ty == "passive_orders_filled")
-                    .take()
-                    .all()
-                    .first()
-                    .map(|e| {
-                        e.event
-                            .data
-                            .clone()
-                            .deserialize_json::<PassiveOrdersFilled>()
-                            .unwrap()
-                    });
-
-                Ok(passive_orders_filled)
             },
             DexAction::ProvideLiquidity {
                 base_denom,
@@ -444,8 +391,6 @@ impl DexAction {
                         funds.clone(),
                     )
                     .should_succeed();
-
-                Ok(None)
             },
             DexAction::WithdrawLiquidity {
                 base_denom,
@@ -478,8 +423,6 @@ impl DexAction {
                         Coins::one(pair.lp_denom.clone(), lp_token_amount).unwrap(),
                     )
                     .should_succeed();
-
-                Ok(None)
             },
             DexAction::SwapExactAmountIn { route, input } => {
                 suite
@@ -503,8 +446,6 @@ impl DexAction {
                         }
                         true
                     });
-
-                Ok(None)
             },
             DexAction::SwapExactAmountOut {
                 route,
@@ -529,10 +470,10 @@ impl DexAction {
                         }
                         true
                     });
-
-                Ok(None)
             },
         }
+
+        Ok(())
     }
 }
 
@@ -913,33 +854,13 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
     let balances = suite.query_balances(&contracts.dex)?;
     assert_eq!(balances, Coins::new());
 
-    let mut passive_bid_filling_outcomes_len = 0;
-    let mut passive_ask_filling_outcomes_len = 0;
-
     // Execute the actions and check balances after each action.
     for action in dex_actions {
         // Execute the action.
-        let passive_orders_filled = action.execute(&mut suite, &mut accounts, &contracts)?;
-        println!("passive_orders_filled: {passive_orders_filled:?}");
-
-        if let Some(passive_orders_filled) = &passive_orders_filled {
-            passive_bid_filling_outcomes_len +=
-                passive_orders_filled.passive_bid_filling_outcomes_len;
-            passive_ask_filling_outcomes_len +=
-                passive_orders_filled.passive_ask_filling_outcomes_len;
-        }
-        println!("passive_bid_filling_outcomes_len: {passive_bid_filling_outcomes_len}");
-        println!("passive_ask_filling_outcomes_len: {passive_ask_filling_outcomes_len}");
+        action.execute(&mut suite, &mut accounts, &contracts)?;
 
         // Check balances.
-        check_balances(
-            &suite,
-            &contracts,
-            &action,
-            passive_orders_filled,
-            passive_bid_filling_outcomes_len,
-            passive_ask_filling_outcomes_len,
-        )?;
+        check_balances(&suite, &contracts)?;
     }
 
     Ok(())
