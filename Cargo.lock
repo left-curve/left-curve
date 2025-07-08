@@ -3668,6 +3668,7 @@ dependencies = [
  "home",
  "hyperlane-testing",
  "hyperlane-types",
+ "indexer-clickhouse",
  "indexer-client",
  "indexer-disk-saver",
  "indexer-hooked",

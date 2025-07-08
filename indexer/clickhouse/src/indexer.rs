@@ -48,7 +48,7 @@ impl Indexer {
         database: String,
         user: String,
         password: String,
-    ) -> grug_app::IndexerResult<Self> {
+    ) -> Self {
         let clickhouse_client = Client::default()
             .with_url(&url)
             .with_user(&user)
@@ -57,11 +57,11 @@ impl Indexer {
 
         init_metrics();
 
-        Ok(Self {
+        Self {
             mock: None,
             clickhouse_client,
             runtime_handler,
-        })
+        }
     }
 
     #[cfg(feature = "testing")]
@@ -84,7 +84,18 @@ impl Indexer {
 
 impl grug_app::Indexer for Indexer {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
+        #[cfg(feature = "testing")]
+        if self.mock.is_some() {
+            #[cfg(feature = "tracing")]
+            tracing::info!("Clickhouse indexer is mocked");
+            return Ok(());
+        }
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("Clickhouse indexer started");
+
         // TODO: run migrations
+
         Ok(())
     }
 

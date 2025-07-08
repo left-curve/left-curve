@@ -94,6 +94,9 @@ impl Indexer {
             })
             .collect::<Vec<_>>();
 
+        #[cfg(feature = "tracing")]
+        tracing::info!("Saving {} pair prices", pairs.len());
+
         // Code taken from https://github.com/ClickHouse/clickhouse-rs/blob/c48caa3f05de5b2b7a0e33da5a57d621bd13eac8/examples/inserter.rs
         let mut inserter = clickhouse_client
             .inserter::<PairPrice>("pair_prices")

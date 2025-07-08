@@ -154,6 +154,8 @@ pub async fn setup_test_with_indexer() -> (
     // Create a shared runtime handler that uses the same tokio runtime
     let shared_runtime_handle =
         indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
+    let shared_runtime_handle2 =
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
 
     let mut hooked_indexer = HookedIndexer::new();
 
@@ -170,6 +172,16 @@ pub async fn setup_test_with_indexer() -> (
 
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
+
+    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(
+        shared_runtime_handle2,
+        "http://localhost:8123".to_string(),
+        "dango".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    )
+    .mock();
+    hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
     let db = MemDb::new();
     let vm = RustVm::new();

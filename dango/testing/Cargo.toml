@@ -31,6 +31,7 @@ grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
+indexer-clickhouse      = { workspace = true, features = ["metrics", "testing", "tracing"] }
 indexer-hooked          = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd           = { workspace = true, features = ["metrics"] }
 indexer-sql             = { workspace = true, features = ["async-graphql", "testing", "tracing"] }

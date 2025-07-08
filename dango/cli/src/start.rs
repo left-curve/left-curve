@@ -221,7 +221,7 @@ impl StartCmd {
             cfg.indexer.clickhouse.database.clone(),
             cfg.indexer.clickhouse.user.clone(),
             cfg.indexer.clickhouse.password.clone(),
-        )?;
+        );
 
         hooked_indexer.add_indexer(sql_indexer)?;
         hooked_indexer.add_indexer(dango_indexer)?;
