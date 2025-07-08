@@ -5,8 +5,8 @@ use {
         dex::{Direction, OrderId, PairParams},
     },
     grug::{
-        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, Timestamp, Udec128, Uint128,
-        UniqueIndex,
+        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, NumberConst, Timestamp,
+        Udec128, Uint64, Uint128, UniqueIndex,
     },
 };
 
@@ -16,7 +16,7 @@ pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 // (base_denom, quote_denom) => coin_pair
 pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
-pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 1, 1);
+pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", Uint64::ONE, Uint64::ONE);
 
 pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderIndex> =
     IndexedMap::new("market_order", MarketOrderIndex {

@@ -1,6 +1,6 @@
 use {
     dango_types::dex::{OrderId, OrderKind},
-    grug::{Addr, MathResult, Number, NumberConst, Udec128, Uint128},
+    grug::{Addr, MathResult, Number, NumberConst, Udec128, Uint64, Uint128},
 };
 
 /// An identifier type that is extended to represent both real orders from users
@@ -8,9 +8,9 @@ use {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ExtendedOrderId {
     /// An limit or market order created by a user.
-    User(u64),
+    User(Uint64),
     /// A virtual limit order created by the passive pool.
-    Passive(u64),
+    Passive(Uint64),
 }
 
 pub trait OrderTrait {
