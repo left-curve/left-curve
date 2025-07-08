@@ -20,7 +20,7 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Big } from "big.js";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
 import type { useProTradeState } from "@left-curve/store";
@@ -40,7 +40,6 @@ type TradeMenuProps = {
 const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isLg } = useMediaQuery();
   const { isConnected } = useAccount();
   const { data: appConfig } = useAppConfig();
 
@@ -65,6 +64,8 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
 
   const amount = inputs.size?.value || "0";
 
+  const priceAmount = inputs.price?.value || "0";
+
   const rangeValue = useMemo(() => {
     if (maxSizeAmount === 0) return 0;
     return Math.min(100, (+amount / maxSizeAmount) * 100);
@@ -78,7 +79,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
           <p className="diatype-xs-medium text-gray-700">
-            {availableCoin.amount} {availableCoin.symbol}
+            {formatNumber(availableCoin.amount, { ...formatNumberOptions })} {availableCoin.symbol}
           </p>
         </div>
         {operation === "limit" ? (
@@ -130,7 +131,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           inputEndContent="%"
           value={rangeValue}
           onChange={(v) => {
-            setValue("size", Big(maxSizeAmount).mul(Big(v).div(100)).toString());
+            setValue("size", Decimal(maxSizeAmount).mul(Decimal(v).div(100)).toString());
           }}
         />
       </div>
@@ -141,6 +142,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               variant={action === "sell" ? "primary" : "tertiary"}
               fullWidth
               size="md"
+              isDisabled={amount === "0" || (operation === "limit" && priceAmount === "0")}
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >
@@ -171,13 +173,13 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               <span>{m["dex.protrade.spot.orderSize"]()}</span>
             </p>
             <p className="diatype-xs-medium text-gray-700">
-              {orderAmount.quoteAmount} {quoteCoin.symbol}
+              {formatNumber(orderAmount.quoteAmount, { ...formatNumberOptions })} {quoteCoin.symbol}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-gray-500" />
             <p className="diatype-xs-medium text-gray-700">
-              {orderAmount.baseAmount} {baseCoin.symbol}
+              {formatNumber(orderAmount.baseAmount, { ...formatNumberOptions })} {baseCoin.symbol}
             </p>
           </div>
           {operation === "market" ? (
@@ -250,7 +252,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
         fullWidth
         onTabChange={(tab) => setOperation(tab as "market" | "limit")}
         color="line-red"
-        classNames={{ button: "pt-0" }}
       />
       <div className="flex items-center justify-between gap-2">
         <p className="diatype-xs-medium text-gray-500">Current Position</p>
@@ -337,7 +338,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           fullWidth
           onTabChange={(tab) => setOperation(tab as "market" | "limit")}
           color="line-red"
-          classNames={{ button: "exposure-xs-italic pt-0" }}
+          classNames={{ button: "exposure-xs-italic" }}
           isDisabled={submission.isPending}
         />
       </div>
