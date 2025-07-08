@@ -14,8 +14,8 @@ use {
     },
     grug::{
         Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
-        Udec128, Uint128, UniqueVec, btree_map, coins,
+        MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
+        Signer, Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -134,10 +134,10 @@ fn check_balances(
         let coin = if order.direction == Direction::Bid {
             Coin::new(
                 order.quote_denom,
-                order.remaining.checked_mul_dec_ceil(order.price)?,
+                order.remaining.checked_mul(order.price)?.into_int(),
             )?
         } else {
-            Coin::new(order.base_denom, order.remaining)?
+            Coin::new(order.base_denom, order.remaining.into_int())?
         };
         order_balances.insert(coin)?;
     }
