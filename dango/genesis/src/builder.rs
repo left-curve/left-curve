@@ -173,10 +173,7 @@ where
                 vault: opt.bitcoin.vault,
                 multisig: opt.bitcoin.multisig,
                 sats_per_vbyte: opt.bitcoin.sats_per_vbyte,
-                fee_rate_updater: addresses
-                    .get(&opt.bitcoin.fee_rate_updater)
-                    .unwrap()
-                    .clone(),
+                fee_rate_updater: *addresses.get(&opt.bitcoin.fee_rate_updater).unwrap(),
                 minimum_deposit: opt.bitcoin.minimum_deposit,
                 max_output_per_tx: opt.bitcoin.max_output_per_tx,
             },
