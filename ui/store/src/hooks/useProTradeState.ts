@@ -131,8 +131,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
 
     return {
-      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toString(),
-      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toString(),
+      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toFixed(),
+      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toFixed(),
     };
   }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
 
