@@ -32,45 +32,38 @@ pub fn add_subsequent_liquidity(
     Ok(invariant_ratio.checked_sub(Udec128::ONE)?)
 }
 
+/// Note: this function does not concern the liquidity fee.
+/// Liquidity fee logics are found in `PairParams::swap_exact_amount_in`, in `liquidity_pool.rs`.
 pub fn swap_exact_amount_in(
-    input_amount: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    input_amount: Uint128,
 ) -> MathResult<Uint128> {
     // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
     // => output_amount = B - (A * B) / (A + input_amount)
     // Round so that user takes the loss.
-    let output_amount =
-        output_reserve.checked_sub(input_reserve.checked_multiply_ratio_ceil(
+    output_reserve.checked_sub(
+        input_reserve.checked_multiply_ratio_ceil(
             output_reserve,
             input_reserve.checked_add(input_amount)?,
-        )?)?;
-
-    // Apply swap fee. Round so that user takes the loss.
-    output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)
+        )?,
+    )
 }
 
+/// Note: this function does not concern the liquidity fee.
+/// Liquidity fee logics are found in `PairParams::swap_exact_amount_out`, in `liquidity_pool.rs`.
 pub fn swap_exact_amount_out(
-    output_amount: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    output_amount: Uint128,
 ) -> MathResult<Uint128> {
-    // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
-    // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-    // to get the ask amount after fees.
-    // Round so that user takes the loss.
-    let output_amount_before_fee =
-        output_amount.checked_div_dec_ceil(Udec128::ONE - *swap_fee_rate)?;
-
     // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
     // => input_amount = (A * B) / (B - output_amount) - A
     // Round so that user takes the loss.
     Uint128::ONE
         .checked_multiply_ratio_floor(
             input_reserve.checked_mul(output_reserve)?,
-            output_reserve.checked_sub(output_amount_before_fee)?,
+            output_reserve.checked_sub(output_amount)?,
         )?
         .checked_sub(input_reserve)
 }
