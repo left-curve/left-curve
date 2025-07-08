@@ -10,7 +10,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
 import {
@@ -21,8 +21,8 @@ import {
   Table,
   Tabs,
 } from "@left-curve/applets-kit";
-import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { AnimatePresence, motion } from "framer-motion";
+import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
@@ -200,9 +200,16 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => <Cell.Text text="Limit" />,
     },
     {
-      header: m["dex.protrade.spot.ordersTable.coin"](),
+      header: m["dex.protrade.spot.ordersTable.pair"](),
       cell: ({ row }) => {
-        return <Cell.Asset noImage denom={row.original.baseDenom} />;
+        return (
+          <div className="flex items-center gap-1">
+            <Cell.PairName
+              className="diatype-xs-medium"
+              pairId={{ baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom }}
+            />
+          </div>
+        );
       },
     },
     {
@@ -215,7 +222,11 @@ const ProTradeOrders: React.FC = () => {
       ),
     },
     {
-      header: m["dex.protrade.spot.ordersTable.size"](),
+      id: "remaining",
+      header: ({ table }) =>
+        m["dex.protrade.spot.ordersTable.remaining"]({
+          symbol: coins[table.getRow("0").original.baseDenom].symbol,
+        }),
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
@@ -224,7 +235,11 @@ const ProTradeOrders: React.FC = () => {
       ),
     },
     {
-      header: m["dex.protrade.spot.ordersTable.originalSize"](),
+      id: "size",
+      header: ({ table }) =>
+        m["dex.protrade.spot.ordersTable.size"]({
+          symbol: coins[table.getRow("0").original.baseDenom].symbol,
+        }),
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
@@ -235,12 +250,17 @@ const ProTradeOrders: React.FC = () => {
     {
       header: m["dex.protrade.spot.price"](),
       cell: ({ row }) => (
-        <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={parseUnits(
-            row.original.price,
-            coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
-          ).toString()}
+        <Cell.Text
+          text={formatNumber(
+            Decimal(row.original.price)
+              .times(
+                Decimal(10).pow(
+                  coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
+                ),
+              )
+              .toFixed(),
+            formatNumberOptions,
+          )}
         />
       ),
     },
@@ -291,7 +311,7 @@ const ProTradeOrders: React.FC = () => {
               row: "h-fit",
               header: "pt-0",
               base: "pb-0",
-              cell: twMerge("diatype-xs-regular", {
+              cell: twMerge("diatype-xs-regular py-1", {
                 "group-hover:bg-transparent": !orders.data.length,
               }),
             }}

@@ -661,13 +661,13 @@
       "allOrdersCancelled": "All orders cancelled",
       "spot": {
         "noOpenOrders": "No open orders yet",
-        "price": "Price",
+        "price": "Limit Price",
         "ordersTable": {
           "id": "ID",
-          "coin": "Coin",
-          "size": "Size",
+          "pair": "Pair",
+          "remaining": "Remaining ({symbol})",
           "type": "Type",
-          "originalSize": "Original Size",
+          "size": "Size ({symbol})",
           "direction": "Direction"
         },
         "24hChange": "24h Change",

@@ -34,6 +34,8 @@ export type FormatNumberOptions = {
   notation?: "standard" | "scientific" | "engineering" | "compact";
   maxFractionDigits?: number;
   minFractionDigits?: number;
+  maxSignificantDigits?: number;
+  minSignificantDigits?: number;
   mask: keyof typeof formatNumberMask;
 };
 
@@ -87,6 +89,8 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
     currency,
     maxFractionDigits = 2,
     minFractionDigits = 2,
+    maxSignificantDigits = 3,
+    minSignificantDigits = 1,
     notation = "standard",
     mask = 1,
   } = options;
@@ -107,6 +111,8 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
     roundingMode: "floor",
     minimumFractionDigits: minFractionDigits,
     maximumFractionDigits: maxFractionDigits,
+    maximumSignificantDigits: maxSignificantDigits,
+    minimumSignificantDigits: minSignificantDigits,
     useGrouping: formatNumberMask[mask].useGrouping,
     ...currencyOptions,
   })

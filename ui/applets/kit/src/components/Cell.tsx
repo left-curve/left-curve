@@ -300,19 +300,25 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
 
 type CellPairNameProps = {
   pairId: PairId;
-  type: string;
+  type?: string;
+  className?: string;
 };
 
-const PairName: React.FC<CellPairNameProps> = ({ pairId, type }) => {
+const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins[baseDenom];
   const quoteCoin = coins[quoteDenom];
 
   return (
-    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+    <div
+      className={twMerge(
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        className,
+      )}
+    >
       <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
-      <Badge text={type} color="blue" size="s" />
+      {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
 };
