@@ -2,7 +2,7 @@ use {
     crate::PassiveOrder,
     grug::{
         Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
-        NumberConst, Udec128, Uint128, ZeroExclusiveOneExclusive,
+        NumberConst, Udec128, Uint64, Uint128, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -32,45 +32,38 @@ pub fn add_subsequent_liquidity(
     Ok(invariant_ratio.checked_sub(Udec128::ONE)?)
 }
 
+/// Note: this function does not concern the liquidity fee.
+/// Liquidity fee logics are found in `PairParams::swap_exact_amount_in`, in `liquidity_pool.rs`.
 pub fn swap_exact_amount_in(
-    input_amount: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    input_amount: Uint128,
 ) -> MathResult<Uint128> {
     // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
     // => output_amount = B - (A * B) / (A + input_amount)
     // Round so that user takes the loss.
-    let output_amount =
-        output_reserve.checked_sub(input_reserve.checked_multiply_ratio_ceil(
+    output_reserve.checked_sub(
+        input_reserve.checked_multiply_ratio_ceil(
             output_reserve,
             input_reserve.checked_add(input_amount)?,
-        )?)?;
-
-    // Apply swap fee. Round so that user takes the loss.
-    output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)
+        )?,
+    )
 }
 
+/// Note: this function does not concern the liquidity fee.
+/// Liquidity fee logics are found in `PairParams::swap_exact_amount_out`, in `liquidity_pool.rs`.
 pub fn swap_exact_amount_out(
-    output_amount: Uint128,
     input_reserve: Uint128,
     output_reserve: Uint128,
-    swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    output_amount: Uint128,
 ) -> MathResult<Uint128> {
-    // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
-    // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-    // to get the ask amount after fees.
-    // Round so that user takes the loss.
-    let output_amount_before_fee =
-        output_amount.checked_div_dec_ceil(Udec128::ONE - *swap_fee_rate)?;
-
     // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
     // => input_amount = (A * B) / (B - output_amount) - A
     // Round so that user takes the loss.
     Uint128::ONE
         .checked_multiply_ratio_floor(
             input_reserve.checked_mul(output_reserve)?,
-            output_reserve.checked_sub(output_amount_before_fee)?,
+            output_reserve.checked_sub(output_amount)?,
         )?
         .checked_sub(input_reserve)
 }
@@ -90,7 +83,7 @@ pub fn reflect_curve(
     // Construct the bid order iterator.
     // Start from the marginal price minus the swap fee rate.
     let bids = {
-        let mut id = 0;
+        let mut id = Uint64::ZERO;
         let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
         let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
         let mut prev_size = Uint128::ZERO;
@@ -133,7 +126,7 @@ pub fn reflect_curve(
             }
 
             // Update the iterator state.
-            id += 1;
+            id += Uint64::ONE;
             prev_size = size;
             prev_size_quote = size_quote;
             maybe_price = price.checked_sub(order_spacing).ok();
@@ -149,7 +142,7 @@ pub fn reflect_curve(
 
     // Construct the ask order iterator.
     let asks = {
-        let mut id = u64::MAX;
+        let mut id = Uint64::MAX;
         let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
         let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
         let mut prev_size = Uint128::ZERO;
@@ -178,7 +171,7 @@ pub fn reflect_curve(
             }
 
             // Update the iterator state.
-            id -= 1;
+            id -= Uint64::ONE;
             prev_size = size;
             maybe_price = price.checked_add(order_spacing).ok();
 
