@@ -185,39 +185,6 @@ fn check_balances(
             continue;
         }
 
-        // TODO: This is not quite correct, as we expect the rounding error from the passive filling outcomes to carry over to actions other than limit and market orders.
-        // Add the passive filling outcomes to expected balance as each filling outcome creates one unit of rounding error.
-        // let expected_balance = match executed_action {
-        //     DexAction::CreateLimitOrder {
-        //         quote_denom,
-        //         direction,
-        //         ..
-        //     }
-        //     | DexAction::CreateMarketOrder {
-        //         quote_denom,
-        //         direction,
-        //         ..
-        //     } => match direction {
-        //         Direction::Bid => {
-        //             // let passive_filling_outcomes_len = passive_orders_filled
-        //             //     .as_ref()
-        //             //     .map(|o| o.passive_bid_filling_outcomes_len)
-        //             //     .unwrap_or_default();
-        //             let passive_filling_outcomes_len = passive_bid_filling_outcomes_len;
-
-        //             if coin.denom == *quote_denom {
-        //                 order_and_passive_liquidity_balance
-        //                     + Uint128::new(passive_filling_outcomes_len as u128)
-        //             } else {
-        //                 order_and_passive_liquidity_balance
-        //             }
-        //         },
-        //         Direction::Ask => order_and_passive_liquidity_balance,
-        //     },
-        //     _ => order_and_passive_liquidity_balance,
-        // };
-
-        println!("expected_balance: {order_and_passive_liquidity_balance}");
         // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
         assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
     }
