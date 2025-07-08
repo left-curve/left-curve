@@ -13,7 +13,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_account_creations() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -61,7 +61,7 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_previous_blocks() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -91,7 +91,7 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 

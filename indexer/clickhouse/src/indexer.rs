@@ -1,7 +1,4 @@
-use {clickhouse::Client, indexer_sql::indexer::RuntimeHandler};
-
-#[cfg(feature = "testing")]
-use clickhouse::test;
+use {crate::context::Context, indexer_sql::indexer::RuntimeHandler};
 
 #[cfg(feature = "metrics")]
 use {
@@ -10,82 +7,23 @@ use {
 };
 
 pub struct Indexer {
-    #[cfg(feature = "testing")]
-    #[allow(dead_code)]
-    mock: Option<test::Mock>,
-    #[allow(dead_code)]
-    clickhouse_client: Client,
+    context: Context,
     pub runtime_handler: RuntimeHandler,
 }
 
 impl Indexer {
-    #[cfg(not(feature = "testing"))]
-    pub fn new(
-        runtime_handler: RuntimeHandler,
-        url: String,
-        database: String,
-        user: String,
-        password: String,
-    ) -> grug_app::IndexerResult<Self> {
-        let clickhouse_client = Client::default()
-            .with_url(&url)
-            .with_user(&user)
-            .with_password(&password)
-            .with_database(&database);
-
-        init_metrics();
-
-        Ok(Self {
-            clickhouse_client,
-            runtime_handler,
-        })
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn new(
-        runtime_handler: RuntimeHandler,
-        url: String,
-        database: String,
-        user: String,
-        password: String,
-    ) -> Self {
-        let clickhouse_client = Client::default()
-            .with_url(&url)
-            .with_user(&user)
-            .with_password(&password)
-            .with_database(&database);
-
-        init_metrics();
-
+    pub fn new(runtime_handler: RuntimeHandler, context: Context) -> Self {
         Self {
-            mock: None,
-            clickhouse_client,
+            context,
             runtime_handler,
         }
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn mock(self) -> Self {
-        let mock = test::Mock::new();
-
-        Self {
-            clickhouse_client: self.clickhouse_client.with_mock(&mock),
-            mock: Some(mock),
-            runtime_handler: self.runtime_handler,
-        }
-    }
-}
-
-impl Indexer {
-    pub fn clickhouse_client(&self) -> &Client {
-        &self.clickhouse_client
     }
 }
 
 impl grug_app::Indexer for Indexer {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
-        if self.mock.is_some() {
+        if self.context.is_mocked() {
             #[cfg(feature = "tracing")]
             tracing::info!("Clickhouse indexer is mocked");
             return Ok(());
@@ -125,7 +63,7 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` work started");
 
-        let clickhouse_client = self.clickhouse_client.clone();
+        let clickhouse_client = self.context.clickhouse_client().clone();
         let querier = querier.clone();
         let mut ctx = ctx.clone();
 

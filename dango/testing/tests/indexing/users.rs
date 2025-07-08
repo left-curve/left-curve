@@ -10,7 +10,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_single_user_multiple_public_keys() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 

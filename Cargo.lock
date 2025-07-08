@@ -3640,6 +3640,7 @@ dependencies = [
  "async-graphql",
  "bip32",
  "chrono",
+ "clickhouse",
  "criterion",
  "dango-account-factory",
  "dango-auth",

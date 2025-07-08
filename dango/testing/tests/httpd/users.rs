@@ -10,7 +10,7 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -71,7 +71,7 @@ async fn query_user() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 

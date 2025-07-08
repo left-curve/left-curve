@@ -141,6 +141,7 @@ pub async fn setup_test_with_indexer() -> (
     MockValidatorSets,
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
+    indexer_clickhouse::context::Context,
 ) {
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
@@ -170,17 +171,26 @@ pub async fn setup_test_with_indexer() -> (
     let dango_indexer =
         dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
 
-    hooked_indexer.add_indexer(indexer).unwrap();
-    hooked_indexer.add_indexer(dango_indexer).unwrap();
-
-    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(
-        shared_runtime_handle2,
+    let clickhouse_context = indexer_clickhouse::context::Context::new(
+        indexer
+            .context
+            .with_separate_pubsub()
+            .await
+            .expect("Failed to create separate context for dango indexer in test setup"),
         "http://localhost:8123".to_string(),
         "dango".to_string(),
         "default".to_string(),
         "default".to_string(),
     )
-    .mock();
+    .with_mock();
+
+    hooked_indexer.add_indexer(indexer).unwrap();
+    hooked_indexer.add_indexer(dango_indexer).unwrap();
+
+    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(
+        shared_runtime_handle2,
+        clickhouse_context.clone(),
+    );
     hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
     let db = MemDb::new();
@@ -216,6 +226,7 @@ pub async fn setup_test_with_indexer() -> (
         validator_sets,
         indexer_httpd_context,
         dango_httpd_context,
+        clickhouse_context,
     )
 }
 
