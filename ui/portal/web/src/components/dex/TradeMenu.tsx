@@ -64,6 +64,8 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
 
   const amount = inputs.size?.value || "0";
 
+  const priceAmount = inputs.price?.value || "0";
+
   const rangeValue = useMemo(() => {
     if (maxSizeAmount === 0) return 0;
     return Math.min(100, (+amount / maxSizeAmount) * 100);
@@ -140,6 +142,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               variant={action === "sell" ? "primary" : "tertiary"}
               fullWidth
               size="md"
+              isDisabled={amount === "0" || (operation === "limit" && priceAmount === "0")}
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >
