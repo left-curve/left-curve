@@ -4,7 +4,7 @@ use {
     dango_oracle::OracleQuerier,
     grug::{
         Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
-        Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Uint64, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
     std::{cmp, iter},
 };
@@ -232,7 +232,7 @@ pub fn reflect_curve(
 
     // Construct bid price iterator with decreasing prices.
     let bids = {
-        let mut id = 0;
+        let mut id = Uint64::ZERO;
         let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
         let bid_starting_price = marginal_price.checked_mul(one_sub_fee_rate)?;
         let mut maybe_price = Some(bid_starting_price);
@@ -247,7 +247,7 @@ pub fn reflect_curve(
             let size_in_quote = remaining_quote.checked_mul_dec(*ratio).ok()?;
             let size = size_in_quote.checked_div_dec_floor(price).ok()?;
 
-            id += 1;
+            id += Uint64::ONE;
             maybe_price = price.checked_sub(order_spacing).ok();
             remaining_quote.checked_sub_assign(size_in_quote).ok()?;
 
@@ -262,7 +262,7 @@ pub fn reflect_curve(
 
     // Construct ask price iterator with increasing prices.
     let asks = {
-        let mut id = u64::MAX;
+        let mut id = Uint64::MAX;
         let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
         let ask_starting_price = marginal_price.checked_mul(one_plus_fee_rate)?;
         let mut maybe_price = Some(ask_starting_price);
@@ -272,7 +272,7 @@ pub fn reflect_curve(
             let price = maybe_price?;
             let size = remaining_base.checked_mul_dec(*ratio).ok()?;
 
-            id -= 1;
+            id -= Uint64::ONE;
             maybe_price = price.checked_add(order_spacing).ok();
             remaining_base.checked_sub_assign(size).ok()?;
 
