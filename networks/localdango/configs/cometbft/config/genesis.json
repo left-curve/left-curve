@@ -393,6 +393,7 @@
           "label": "dango/bitcoin",
           "msg": {
             "config": {
+              "fee_rate_updater": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
               "max_output_per_tx": 30,
               "minimum_deposit": "1000",
               "multisig": {
@@ -404,7 +405,6 @@
                 "threshold": 2
               },
               "network": "regtest",
-              "outbound_strategy": "Ascending",
               "sats_per_vbyte": "10",
               "vault": "bcrt1q4ga0r07vte2p638c8vh4fvpwjaln0qmxalffdkgeztl8l0act0xsvm7j9k"
             }

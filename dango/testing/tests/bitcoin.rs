@@ -189,7 +189,7 @@ fn instantiate() {
             vault: "Hello Dango!".to_string(),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
-            fee_rate_updater: owner.address.inner().clone(),
+            fee_rate_updater: *owner.address.inner(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
         };
@@ -216,7 +216,7 @@ fn instantiate() {
             vault: "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4".to_string(),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
-            fee_rate_updater: owner.address.inner().clone(),
+            fee_rate_updater: *owner.address.inner(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
         };
@@ -241,7 +241,7 @@ fn instantiate() {
             vault: MOCK_BITCOIN_REGTEST_VAULT.to_string(),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
-            fee_rate_updater: owner.address.inner().clone(),
+            fee_rate_updater: *owner.address.inner(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
         };
@@ -1461,7 +1461,7 @@ fn update_config() {
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
         .unwrap();
 
-    let new_fee_rate_updater = accounts.user1.address.inner().clone();
+    let new_fee_rate_updater = *accounts.user1.address.inner();
     let new_minimum_deposit = Uint128::new(200_000);
     let new_max_output_per_tx = 1000;
 
