@@ -118,11 +118,11 @@ where
             // to refund the amount that was not filled.
             match market_order_direction {
                 Direction::Bid => {
-                    filling_outcome
-                        .refund_quote
-                        .checked_add_assign(market_order.remaining.checked_sub(
-                        market_order_amount_to_match_in_base.checked_mul(*price)?, // TODO: ceil?
-                    )?)?;
+                    filling_outcome.refund_quote.checked_add_assign(
+                        market_order.remaining.checked_sub(
+                            market_order_amount_to_match_in_base.checked_mul(*price)?,
+                        )?,
+                    )?;
                 },
                 Direction::Ask => {
                     filling_outcome.refund_base.checked_add_assign(
@@ -203,7 +203,7 @@ where
                     // the amount left in the market order will be refunded in `cron_execute`.
                     match market_order_direction {
                         Direction::Bid => {
-                            let fill_amount_in_quote = fill_amount.checked_mul(*price)?; // TODO: ceil?
+                            let fill_amount_in_quote = fill_amount.checked_mul(*price)?;
                             market_order.fill(fill_amount_in_quote)?;
                         },
                         Direction::Ask => {
@@ -285,7 +285,7 @@ fn update_filling_outcome(
 
     match order_direction {
         Direction::Bid => {
-            let fee_base = filled_base.checked_mul(fee_rate)?; // TODO: ceil?
+            let fee_base = filled_base.checked_mul(fee_rate)?;
 
             filling_outcome.fee_base.checked_add_assign(fee_base)?;
             filling_outcome
@@ -293,7 +293,7 @@ fn update_filling_outcome(
                 .checked_add_assign(filled_base.checked_sub(fee_base)?)?;
         },
         Direction::Ask => {
-            let fee_quote = filled_quote.checked_mul(fee_rate)?; // TODO: ceil?
+            let fee_quote = filled_quote.checked_mul(fee_rate)?;
 
             filling_outcome.fee_quote.checked_add_assign(fee_quote)?;
             filling_outcome

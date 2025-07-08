@@ -86,7 +86,7 @@ fn bid_exact_amount_in(
         let matched_amount = cmp::min(order.remaining, remaining_bid);
         output_amount.checked_add_assign(matched_amount)?;
 
-        let matched_amount_in_quote = matched_amount.checked_mul(price)?; // TODO: ceil?
+        let matched_amount_in_quote = matched_amount.checked_mul(price)?;
         remaining_bid_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
         if remaining_bid_in_quote.is_zero() {
@@ -172,7 +172,7 @@ fn bid_exact_amount_out(
         let matched_amount = cmp::min(order.remaining, remaining_bid);
         remaining_bid.checked_sub_assign(matched_amount)?;
 
-        let matched_amount_in_quote = matched_amount.checked_mul(price)?; // TODO: ceil?
+        let matched_amount_in_quote = matched_amount.checked_mul(price)?;
         input_amount.checked_add_assign(matched_amount_in_quote)?;
 
         if remaining_bid.is_zero() {
@@ -195,7 +195,7 @@ fn ask_exact_amount_out(
         let matched_amount_in_quote = cmp::min(bid_size_in_quote, remaining_ask_in_quote);
         remaining_ask_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
-        let matched_amount_in_base = matched_amount_in_quote.checked_div(price)?; // TODO: ceil?
+        let matched_amount_in_base = matched_amount_in_quote.checked_div(price)?;
         input_amount.checked_add_assign(matched_amount_in_base)?;
 
         if remaining_ask_in_quote.is_zero() {

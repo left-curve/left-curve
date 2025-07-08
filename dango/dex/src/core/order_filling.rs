@@ -89,7 +89,7 @@ fn fill_bids(
         };
 
         // For bids, the fee is paid in base asset.
-        let fee_base = filled_base.checked_mul(fee_rate)?; // TODO: ceil?
+        let fee_base = filled_base.checked_mul(fee_rate)?;
         let fee_quote = Udec128::ZERO;
 
         // Determine the refund amounts.
@@ -153,7 +153,7 @@ fn fill_asks(
 
         // For asks, the fee is paid in quote asset.
         let fee_base = Udec128::ZERO;
-        let fee_quote = filled_quote.checked_mul(fee_rate)?; // TODO: ceil?
+        let fee_quote = filled_quote.checked_mul(fee_rate)?;
 
         // Determine the refund amounts.
         // For base, since limit orders are good-till-canceled, no need to refund.

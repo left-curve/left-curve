@@ -233,7 +233,7 @@ pub fn compute_health(
             Direction::Bid => (
                 Coin::new(
                     res.quote_denom.clone(),
-                    res.remaining.checked_mul(res.price)?.into_int(), // TODO: ceil
+                    res.remaining.checked_mul(res.price)?.into_int(),
                 )?,
                 Coin::new(res.base_denom.clone(), res.remaining.into_int())?,
             ),
