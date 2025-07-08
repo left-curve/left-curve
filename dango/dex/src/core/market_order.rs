@@ -59,11 +59,11 @@ where
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
             Direction::Bid => Udec128::ONE
-                .checked_add(market_order.max_slippage)?
-                .checked_mul(best_price)?,
+                .saturating_add(market_order.max_slippage)
+                .saturating_mul(best_price),
             Direction::Ask => Udec128::ONE
-                .checked_sub(market_order.max_slippage)?
-                .checked_mul(best_price)?,
+                .saturating_sub(market_order.max_slippage)
+                .saturating_mul(best_price),
         };
 
         // The direction of the comparison depends on whether the market order
@@ -249,7 +249,7 @@ where
             market_order_direction,
             filled_base,
             price,
-            taker_fee_rate,
+            taker_fee_rate, // A market order is always a taker.
         )?;
     }
 
