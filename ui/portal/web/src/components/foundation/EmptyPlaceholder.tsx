@@ -1,7 +1,8 @@
 import React from "react";
 
-import type { PropsWithChildren } from "react";
 import { twMerge } from "@left-curve/applets-kit";
+
+import type { PropsWithChildren } from "react";
 
 interface Props {
   component?: string | React.ReactNode;
