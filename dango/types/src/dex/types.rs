@@ -18,10 +18,10 @@ use {
 /// The reason for this, is we need orders to be sorted by **price-time priority**
 /// in the contract's storage. Meaning, orders with the better prices come first;
 /// for those with the same price, the older ones come first. We achieve this by
-/// prefixing the storage key of each order with:
+/// using the following storage key for orders:
 ///
 /// ```plain
-/// direction | price | order_id | ...other subkeys...
+/// direction | price | order_id
 /// ```
 ///
 /// - For bids, we iterate all orders prefixed with `Direction::Bid`, _ascendingly_.
