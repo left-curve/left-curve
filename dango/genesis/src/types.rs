@@ -11,7 +11,7 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Order, Part, Uint128},
+    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
@@ -142,8 +142,8 @@ pub struct BitcoinOption {
     pub vault: BitcoinAddress,
     pub multisig: MultisigSettings,
     pub sats_per_vbyte: Uint128,
+    pub fee_rate_updater: Username,
     pub outbound_fee: Uint128,
-    pub outbound_strategy: Order,
     /// Define how often the withdrawal requests are processed.
     pub withdraw_timeout: Duration,
     pub minimum_deposit: Uint128,

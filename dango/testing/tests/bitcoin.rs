@@ -189,7 +189,7 @@ fn instantiate() {
             vault: "Hello Dango!".to_string(),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
-            outbound_strategy: Order::Ascending,
+            fee_rate_updater: owner.address.inner().clone(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
         };
@@ -216,7 +216,7 @@ fn instantiate() {
             vault: "1PuJjnF476W3zXfVYmJfGnouzFDAXakkL4".to_string(),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
-            outbound_strategy: Order::Ascending,
+            fee_rate_updater: owner.address.inner().clone(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
         };
@@ -241,7 +241,7 @@ fn instantiate() {
             vault: MOCK_BITCOIN_REGTEST_VAULT.to_string(),
             multisig: multisig_settings.clone(),
             sats_per_vbyte: Uint128::new(10),
-            outbound_strategy: Order::Ascending,
+            fee_rate_updater: owner.address.inner().clone(),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,
         };
@@ -318,8 +318,9 @@ fn authenticate() {
         let msg = Message::execute(
             bitcoin_contract,
             &ExecuteMsg::UpdateConfig {
-                sats_per_vbyte: None,
-                outbound_strategy: None,
+                fee_rate_updater: None,
+                minimum_deposit: None,
+                max_output_per_tx: None,
             },
             Coins::new(),
         )
@@ -1417,4 +1418,80 @@ fn multiple_outbound_tx() {
     });
 
     assert!(tx2.outputs.contains_key(recipient2));
+}
+
+#[test]
+fn update_fee_rate() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    let current_fee_rate = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .unwrap()
+        .sats_per_vbyte;
+
+    let new_fee_rate = current_fee_rate * Uint128::new(2);
+
+    let msg = ExecuteMsg::UpdateFeeRate(new_fee_rate);
+
+    // Try to update the price with a non authorized address.
+    suite
+        .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+
+    // Update with an authorized address.
+    suite
+        .execute(&mut accounts.owner, contracts.bitcoin, &msg, Coins::new())
+        .should_succeed();
+
+    // Ensure the price is updated.
+    assert_eq!(
+        suite
+            .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+            .unwrap()
+            .sats_per_vbyte,
+        new_fee_rate
+    );
+}
+
+#[test]
+fn update_config() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    let config = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .unwrap();
+
+    let new_fee_rate_updater = accounts.user1.address.inner().clone();
+    let new_minimum_deposit = Uint128::new(200_000);
+    let new_max_output_per_tx = 1000;
+
+    assert_ne!(config.fee_rate_updater, new_fee_rate_updater);
+    assert_ne!(config.minimum_deposit, new_minimum_deposit);
+    assert_ne!(config.max_output_per_tx, new_max_output_per_tx);
+
+    // Try to update the config with a non authorized address.
+    let msg = ExecuteMsg::UpdateConfig {
+        fee_rate_updater: Some(new_fee_rate_updater),
+        minimum_deposit: Some(new_minimum_deposit),
+        max_output_per_tx: Some(new_max_output_per_tx),
+    };
+
+    // Ensure only owner can update the config.
+    suite
+        .execute(&mut accounts.user1, contracts.bitcoin, &msg, Coins::new())
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+
+    // Update with an authorized address.
+    suite
+        .execute(&mut accounts.owner, contracts.bitcoin, &msg, Coins::new())
+        .should_succeed();
+
+    // Ensure the config is updated.
+    let config = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .should_succeed();
+
+    assert_eq!(config.fee_rate_updater, new_fee_rate_updater);
+    assert_eq!(config.minimum_deposit, new_minimum_deposit);
+    assert_eq!(config.max_output_per_tx, new_max_output_per_tx);
 }

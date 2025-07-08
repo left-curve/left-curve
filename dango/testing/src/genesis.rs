@@ -25,8 +25,8 @@ use {
     },
     grug::{
         Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, HexByteArray, LengthBounded, NonEmpty, NumberConst, Order,
-        Udec128, Uint128, btree_map, btree_set, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, HexByteArray, LengthBounded, NonEmpty, NumberConst, Udec128,
+        Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -653,8 +653,8 @@ impl Preset for BitcoinOption {
             )
             .unwrap(),
             sats_per_vbyte: Uint128::new(10),
+            fee_rate_updater: owner::USERNAME.clone(),
             outbound_fee: Uint128::new(1000),
-            outbound_strategy: Order::Ascending,
             withdraw_timeout: Duration::from_minutes(10),
             minimum_deposit: Uint128::new(1000),
             max_output_per_tx: 30,

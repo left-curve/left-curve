@@ -134,16 +134,8 @@ pub struct Config {
     pub multisig: MultisigSettings,
     /// The amount of Sats for each vByte to calculate the fee.
     pub sats_per_vbyte: Uint128,
-    /// Strategy for choosing the UTXOs as inputs for outbound transactions.
-    ///
-    /// During periods of high gas price on Bitcoin network, we want to minimize
-    /// the number of input UTXOs to save on gas fees. To achieve this, use `Order::Descending`
-    /// so that we use the biggest UTXOs first.
-    ///
-    /// During period of low gas price, we may want to take the opportunity to
-    /// consolidate the many small UTXOs into a few big ones. To achieve this,
-    /// use `Order::Ascending`.
-    pub outbound_strategy: Order,
+    /// The address of the fee rate updater.
+    pub fee_rate_updater: Addr,
     /// Minimum amount of Sats.
     /// All deposits lower than this amount will be ignored.
     pub minimum_deposit: Uint128,
@@ -294,10 +286,13 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     UpdateConfig {
-        sats_per_vbyte: Option<Uint128>,
-        outbound_strategy: Option<Order>,
+        fee_rate_updater: Option<Addr>,
+        minimum_deposit: Option<Uint128>,
+        max_output_per_tx: Option<usize>,
         // TODO: Allow changing the vault address and guardian set? This requires resetting the UTXO set.
     },
+    /// Update the fee rate in sats per Vbyte to calculate the fee for outbound transactions.
+    UpdateFeeRate(Uint128),
     /// Observe an inbound transaction.
     ///
     /// Can only be called by the guardians.

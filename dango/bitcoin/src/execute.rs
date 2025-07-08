@@ -24,7 +24,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthResponse, Coins, Hash256, HexByteArray, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Number, NumberConst, Order, PrefixBound, QuerierExt as _, Response,
+        MsgExecute, MutableCtx, Number, NumberConst, Order, PrefixBound, QuerierExt, Response,
         StdResult, Storage, SudoCtx, Tx, Uint128,
     },
     std::{collections::BTreeMap, str::FromStr},
@@ -140,9 +140,11 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateConfig {
-            sats_per_vbyte,
-            outbound_strategy,
-        } => update_config(ctx, sats_per_vbyte, outbound_strategy),
+            fee_rate_updater,
+            minimum_deposit,
+            max_output_per_tx,
+        } => update_config(ctx, fee_rate_updater, minimum_deposit, max_output_per_tx),
+        ExecuteMsg::UpdateFeeRate(sats_per_vbyte) => update_fee_rate(ctx, sats_per_vbyte),
         ExecuteMsg::ObserveInbound(inbound_msg) => observe_inbound(
             ctx,
             inbound_msg.transaction_hash,
@@ -164,25 +166,49 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn update_config(
     ctx: MutableCtx,
-    sats_per_vbyte: Option<Uint128>,
-    outbound_strategy: Option<Order>,
+    fee_rate_updater: Option<Addr>,
+    minimum_deposit: Option<Uint128>,
+    max_output_per_tx: Option<usize>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 
-    CONFIG.update(ctx.storage, |mut cfg| -> StdResult<_> {
-        if let Some(sats_per_vbyte) = sats_per_vbyte {
-            cfg.sats_per_vbyte = sats_per_vbyte;
-        }
+    let mut config = CONFIG.load(ctx.storage)?;
 
-        if let Some(outbound_strategy) = outbound_strategy {
-            cfg.outbound_strategy = outbound_strategy;
-        }
+    if let Some(fee_rate_updater) = fee_rate_updater {
+        config.fee_rate_updater = fee_rate_updater;
+    }
 
-        Ok(cfg)
-    })?;
+    if let Some(minimum_deposit) = minimum_deposit {
+        config.minimum_deposit = minimum_deposit;
+    }
+
+    if let Some(max_output_per_tx) = max_output_per_tx {
+        ensure!(
+            max_output_per_tx > 0,
+            "max_output_per_tx must be greater than 0"
+        );
+        config.max_output_per_tx = max_output_per_tx;
+    }
+
+    CONFIG.save(ctx.storage, &config)?;
+
+    Ok(Response::new())
+}
+
+fn update_fee_rate(ctx: MutableCtx, sats_per_vbyte: Uint128) -> anyhow::Result<Response> {
+    let mut config = CONFIG.load(ctx.storage)?;
+
+    ensure!(
+        ctx.sender == config.fee_rate_updater || ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    config.sats_per_vbyte = sats_per_vbyte;
+
+    CONFIG.save(ctx.storage, &config)?;
 
     Ok(Response::new())
 }
