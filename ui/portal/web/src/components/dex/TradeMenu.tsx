@@ -20,7 +20,7 @@ import {
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
-import { Big } from "big.js";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
 import type { useProTradeState } from "@left-curve/store";
@@ -40,7 +40,6 @@ type TradeMenuProps = {
 const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { isLg } = useMediaQuery();
   const { isConnected } = useAccount();
   const { data: appConfig } = useAppConfig();
 
@@ -78,7 +77,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
           <p className="diatype-xs-medium text-gray-700">
-            {availableCoin.amount} {availableCoin.symbol}
+            {formatNumber(availableCoin.amount, { ...formatNumberOptions })} {availableCoin.symbol}
           </p>
         </div>
         {operation === "limit" ? (
@@ -130,7 +129,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           inputEndContent="%"
           value={rangeValue}
           onChange={(v) => {
-            setValue("size", Big(maxSizeAmount).mul(Big(v).div(100)).toString());
+            setValue("size", Decimal(maxSizeAmount).mul(Decimal(v).div(100)).toString());
           }}
         />
       </div>
@@ -171,13 +170,13 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               <span>{m["dex.protrade.spot.orderSize"]()}</span>
             </p>
             <p className="diatype-xs-medium text-gray-700">
-              {orderAmount.quoteAmount} {quoteCoin.symbol}
+              {formatNumber(orderAmount.quoteAmount, { ...formatNumberOptions })} {quoteCoin.symbol}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-gray-500" />
             <p className="diatype-xs-medium text-gray-700">
-              {orderAmount.baseAmount} {baseCoin.symbol}
+              {formatNumber(orderAmount.baseAmount, { ...formatNumberOptions })} {baseCoin.symbol}
             </p>
           </div>
           {operation === "market" ? (

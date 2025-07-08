@@ -6,12 +6,11 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
-import { useAccount, useSigningClient } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
 import {
@@ -167,18 +166,35 @@ const ProTradeMenu: React.FC = () => {
 };
 
 const ProTradeOrders: React.FC = () => {
-  const { showModal } = useApp();
+  const { showModal, settings } = useApp();
   const { coins } = useConfig();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
   const { orders } = state;
+  const { formatNumberOptions } = settings;
 
   const columns: TableColumn<OrdersByUserResponse & { id: OrderId }> = [
     /*  {
       header: "Time",
       cell: ({ row }) => <Cell.Time date={row.original.time} />,
     }, */
+    {
+      header: m["dex.protrade.spot.ordersTable.id"](),
+      cell: ({ row }) => {
+        const orderId = Decimal(row.original.id);
+        const value = orderId.gte("9223372036854775807")
+          ? Decimal("18446744073709551615").minus(orderId).toString()
+          : orderId.toString();
+        return (
+          <Cell.Text
+            text={value}
+            className="diatype-xs-regular text-gray-700 hover:text-black cursor-pointer"
+          />
+        );
+      },
+    },
+
     {
       header: m["dex.protrade.spot.ordersTable.type"](),
       cell: ({ row }) => <Cell.Text text="Limit" />,
@@ -201,24 +217,27 @@ const ProTradeOrders: React.FC = () => {
     {
       header: m["dex.protrade.spot.ordersTable.size"](),
       cell: ({ row }) => (
-        <Cell.Text
-          text={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
+        <Cell.Number
+          formatOptions={formatNumberOptions}
+          value={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
         />
       ),
     },
     {
       header: m["dex.protrade.spot.ordersTable.originalSize"](),
       cell: ({ row }) => (
-        <Cell.Text
-          text={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
+        <Cell.Number
+          formatOptions={formatNumberOptions}
+          value={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
         />
       ),
     },
     {
       header: m["dex.protrade.spot.price"](),
       cell: ({ row }) => (
-        <Cell.Text
-          text={parseUnits(
+        <Cell.Number
+          formatOptions={formatNumberOptions}
+          value={parseUnits(
             row.original.price,
             coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
           ).toString()}

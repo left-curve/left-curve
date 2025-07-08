@@ -110,6 +110,20 @@ const Text: React.FC<CellTextProps> = ({ text, className }) => {
   );
 };
 
+type CellNumberProps = {
+  className?: string;
+  formatOptions: FormatNumberOptions;
+  value: number | string;
+};
+
+const CellNumber: React.FC<CellNumberProps> = ({ value, formatOptions, className }) => {
+  return (
+    <div className={twMerge("flex flex-col gap-1 text-gray-500", className)}>
+      <p>{formatNumber(value, formatOptions)}</p>
+    </div>
+  );
+};
+
 type CellOrderDirectionProps = {
   className?: string;
   direction: Directions;
@@ -313,6 +327,7 @@ export const Cell = Object.assign(Container, {
   Sender,
   Text,
   TxHash,
+  Number: CellNumber,
   OrderDirection,
   TxMessages,
   TxResult,

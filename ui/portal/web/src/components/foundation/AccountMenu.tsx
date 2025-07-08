@@ -7,6 +7,7 @@ import {
   usePublicClient,
   useSessionKey,
 } from "@left-curve/store";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
@@ -14,11 +15,12 @@ import { useApp } from "~/hooks/useApp";
 
 import { motion } from "framer-motion";
 
-import { Decimal, capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 import { Modals } from "../modals/RootModal";
 
 import {
+  Badge,
   Button,
   IconAddCross,
   IconButton,
@@ -34,6 +36,7 @@ import {
   useClickAway,
   useMediaQuery,
 } from "@left-curve/applets-kit";
+import { Direction } from "@left-curve/dango/types";
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
@@ -41,7 +44,6 @@ import { EmptyPlaceholder } from "./EmptyPlaceholder";
 
 import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
 import type { LpCoin, NativeCoin, WithAmount } from "@left-curve/store/types";
-import { useQuery } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 
@@ -443,12 +445,14 @@ type OrderCardProps = {
 
 const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
   const { coins } = useConfig();
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
-  const { getPrice } = usePrices();
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
   const total = useMemo(
-    () => orders.reduce((sum, order) => sum.plus(order.amount), Decimal.ZERO),
+    () => orders.reduce((sum, order) => sum.plus(order.remaining), Decimal.ZERO),
     [orders],
   );
   const { baseDenom, quoteDenom } = orders[0];
@@ -495,15 +499,28 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden flex flex-col gap-2 pl-14 w-full"
           >
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between text-gray-500 diatype-m-regular"
-              >
-                <p className="flex items-center gap-2">{capitalize(order.direction)}</p>
-                <p> {formatUnits(order.amount, base.decimals)}</p>
-              </div>
-            ))}
+            {orders.map((order) => {
+              return (
+                <div
+                  key={order.id}
+                  className={twMerge(
+                    "flex items-center justify-between text-gray-500 diatype-m-regular",
+                  )}
+                >
+                  <p className="flex items-center gap-2">
+                    <Badge
+                      text={m["dex.protrade.spot.direction"]({ direction: order.direction })}
+                      color={order.direction === Direction.Buy ? "green" : "red"}
+                    />
+                  </p>
+                  <p>
+                    {getPrice(formatUnits(order.remaining, base.decimals), base.denom, {
+                      format: true,
+                    })}
+                  </p>
+                </div>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>

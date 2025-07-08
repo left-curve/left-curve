@@ -173,7 +173,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
                     direction,
                     price: Decimal(inputs.price.value)
                       .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
-                      .toString(),
+                      .toFixed(),
                   },
                 ],
               };

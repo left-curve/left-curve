@@ -663,6 +663,7 @@
         "noOpenOrders": "No open orders yet",
         "price": "Price",
         "ordersTable": {
+          "id": "ID",
           "coin": "Coin",
           "size": "Size",
           "type": "Type",
