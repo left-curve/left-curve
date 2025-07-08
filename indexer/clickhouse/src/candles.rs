@@ -1,5 +1,6 @@
 use {
-    crate::indexer::Indexer,
+    crate::{entities::pair_price::PairPrice, indexer::Indexer},
+    clickhouse::Client,
     dango_types::{DangoQuerier, dex::OrderFilled},
     grug::{CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Udec128},
     grug_types::Denom,
@@ -7,11 +8,17 @@ use {
 };
 
 impl Indexer {
-    pub(crate) fn store_candles(
-        &self,
+    pub(crate) async fn store_candles(
+        clickhouse_client: &Client,
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
+        let block = ctx
+            .get::<grug_types::Block>()
+            .ok_or(grug_app::IndexerError::Database(
+                "Block not found".to_string(),
+            ))?;
+
         let block_outcome =
             ctx.get::<grug_types::BlockOutcome>()
                 .ok_or(grug_app::IndexerError::Database(
@@ -77,13 +84,36 @@ impl Indexer {
         // meaning no trade occurred for this tracing pair in this block, then
         // the price is the same as the last block's.
 
-        // Example of how to use the connection pool:
-        // let client = self.get_client(); // No await needed - just clones the pooled client
-        //
-        // // Use the client directly - it has built-in connection pooling
-        // // let result = client.query("INSERT INTO candles ...").execute().await.map_err(|err| {
-        // //     grug_app::IndexerError::Generic(format!("Failed to execute query: {err}"))
-        // // })?;
+        let pairs = clearing_prices
+            .into_iter()
+            .map(|(pair_id, clearing_price)| PairPrice {
+                denoms: pair_id,
+                clearing_price,
+                timestamp: block.info.timestamp.to_naive_date_time(),
+                block_height: block.info.height,
+            })
+            .collect::<Vec<_>>();
+
+        // Code taken from https://github.com/ClickHouse/clickhouse-rs/blob/c48caa3f05de5b2b7a0e33da5a57d621bd13eac8/examples/inserter.rs
+        let mut inserter = clickhouse_client
+            .inserter::<PairPrice>("pair_prices")
+            .map_err(|err| {
+                grug_app::IndexerError::Database(format!("Failed to create inserter: {err}"))
+            })?
+            .with_max_rows(pairs.len() as u64);
+
+        for pair_price in pairs {
+            inserter.write(&pair_price).map_err(|err| {
+                grug_app::IndexerError::Database(format!("Failed to write pair price: {err}"))
+            })?;
+            inserter.commit().await.map_err(|err| {
+                grug_app::IndexerError::Database(format!("Failed to commit pair price: {err}"))
+            })?;
+        }
+
+        inserter.end().await.map_err(|err| {
+            grug_app::IndexerError::Database(format!("Failed to end inserter: {err}"))
+        })?;
 
         Ok(())
     }

@@ -210,20 +210,18 @@ impl StartCmd {
             .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {}", e))?
             .into();
 
-        let dango_indexer = dango_indexer_sql::indexer::Indexer {
-            runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-                sql_indexer.handle.handle().clone(),
-            ),
-            context: dango_context.clone(),
-        };
+        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
+            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
+            dango_context.clone(),
+        );
 
         let clickhouse_indexer = indexer_clickhouse::Indexer::new(
+            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
             cfg.indexer.clickhouse.url.clone(),
             cfg.indexer.clickhouse.database.clone(),
             cfg.indexer.clickhouse.user.clone(),
             cfg.indexer.clickhouse.password.clone(),
-        )
-        .await?;
+        )?;
 
         hooked_indexer.add_indexer(sql_indexer)?;
         hooked_indexer.add_indexer(dango_indexer)?;

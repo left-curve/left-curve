@@ -2730,24 +2730,25 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 [[package]]
 name = "clickhouse"
 version = "0.13.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a9a81a1dffadd762ee662635ce409232258ce9beebd7cc0fa227df0b5e7efc0"
+source = "git+https://github.com/ClickHouse/clickhouse-rs#c48caa3f05de5b2b7a0e33da5a57d621bd13eac8"
 dependencies = [
  "bstr",
  "bytes",
  "cityhash-rs",
  "clickhouse-derive",
+ "clickhouse-types",
  "futures",
  "futures-channel",
  "http-body-util",
  "hyper 1.6.0",
  "hyper-util",
  "lz4_flex",
+ "quanta",
  "replace_with",
  "sealed",
  "serde",
  "static_assertions",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "time",
  "tokio",
  "url",
@@ -2757,13 +2758,21 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d70f3e2893f7d3e017eeacdc9a708fbc29a10488e3ebca21f9df6a5d2b616dbb"
+source = "git+https://github.com/ClickHouse/clickhouse-rs#c48caa3f05de5b2b7a0e33da5a57d621bd13eac8"
 dependencies = [
  "proc-macro2",
  "quote",
  "serde_derive_internals",
  "syn 2.0.101",
+]
+
+[[package]]
+name = "clickhouse-types"
+version = "0.1.0"
+source = "git+https://github.com/ClickHouse/clickhouse-rs#c48caa3f05de5b2b7a0e33da5a57d621bd13eac8"
+dependencies = [
+ "bytes",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -5717,6 +5726,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "borsh 1.5.7",
+ "chrono",
  "clickhouse",
  "dango-types",
  "futures",
@@ -5724,8 +5734,10 @@ dependencies = [
  "grug-app",
  "grug-types",
  "indexer-hooked",
+ "indexer-sql",
  "itertools 0.14.0",
  "metrics",
+ "serde",
  "strum 0.27.1",
  "strum_macros 0.27.1",
  "tempfile",

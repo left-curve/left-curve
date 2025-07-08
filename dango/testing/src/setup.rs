@@ -165,10 +165,9 @@ pub async fn setup_test_with_indexer() -> (
         .expect("Failed to create separate context for dango indexer in test setup")
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer {
-        runtime_handle: shared_runtime_handle,
-        context: dango_context.clone(),
-    };
+    let dango_indexer =
+        dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
