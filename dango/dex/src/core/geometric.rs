@@ -35,6 +35,8 @@ pub fn add_subsequent_liquidity(
     Ok(deposit_value.checked_div(reserve_value)?)
 }
 
+/// Note: this function does not concern the liquidity fee.
+/// Liquidity fee logics are found in `PairParams::swap_exact_amount_in`, in `liquidity_pool.rs`.
 pub fn swap_exact_amount_in(
     oracle_querier: &mut OracleQuerier,
     base_denom: &Denom,
@@ -58,19 +60,16 @@ pub fn swap_exact_amount_in(
 
     // Pretend the input is a market order. Match it against the opposite side
     // of the passive limit orders.
-    let output_amount = if input.denom == *base_denom {
-        ask_exact_amount_in(input.amount, passive_bids)?
+    if input.denom == *base_denom {
+        ask_exact_amount_in(input.amount, passive_bids)
     } else if input.denom == *quote_denom {
-        bid_exact_amount_in(input.amount, passive_asks)?
+        bid_exact_amount_in(input.amount, passive_asks)
     } else {
         unreachable!(
             "input denom (`{}`) is neither the base (`{}`) nor the quote (`{}`). this should have been caught earlier.",
             input.denom, base_denom, quote_denom
         );
-    };
-
-    // Apply swap fee. Round so that user takes the loss.
-    Ok(output_amount.checked_mul_dec_floor(Udec128::ONE - *swap_fee_rate)?)
+    }
 }
 
 // NOTE: Always round down (floor) the output amount; always round up (ceil) the input amount.
@@ -119,6 +118,8 @@ fn ask_exact_amount_in(
     bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_ask}")
 }
 
+/// Note: this function does not concern the liquidity fee.
+/// Liquidity fee logics are found in `PairParams::swap_exact_amount_out`, in `liquidity_pool.rs`.
 pub fn swap_exact_amount_out(
     oracle_querier: &mut OracleQuerier,
     base_denom: &Denom,
@@ -129,13 +130,6 @@ pub fn swap_exact_amount_out(
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<Uint128> {
-    // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
-    // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-    // to get the ask amount after fees.
-    // Round so that user takes the loss.
-    let one_sub_fee_rate = Udec128::ONE - *swap_fee_rate;
-    let output_amount_before_fee = output.amount.checked_div_dec_ceil(one_sub_fee_rate)?;
-
     let (passive_bids, passive_asks) = reflect_curve(
         oracle_querier,
         base_denom,
@@ -147,18 +141,16 @@ pub fn swap_exact_amount_out(
         swap_fee_rate,
     )?;
 
-    let input_amount = if output.denom == *base_denom {
-        bid_exact_amount_out(output_amount_before_fee, passive_asks)?
+    if output.denom == *base_denom {
+        bid_exact_amount_out(output.amount, passive_asks)
     } else if output.denom == *quote_denom {
-        ask_exact_amount_out(output_amount_before_fee, passive_bids)?
+        ask_exact_amount_out(output.amount, passive_bids)
     } else {
         unreachable!(
             "output denom (`{}`) is neither the base (`{}`) nor the quote (`{}`). this should have been caught earlier.",
             output.denom, base_denom, quote_denom
         );
-    };
-
-    Ok(input_amount)
+    }
 }
 
 fn bid_exact_amount_out(
