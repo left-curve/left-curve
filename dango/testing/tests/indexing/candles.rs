@@ -1,17 +1,17 @@
 use {
-    // assertor::*,
+    assertor::*,
     dango_testing::setup_test_with_indexer,
     dango_types::{
         constants::{dango, usdc},
         dex::{self, CreateLimitOrderRequest, Direction, OrderId},
         oracle::{self, PriceSource},
     },
-    grug::setup_tracing_subscriber,
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
-        Signer, StdResult, Timestamp, Udec128, Uint128, btree_map,
+        Signer, StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
+    indexer_clickhouse::entities::pair_price::PairPrice,
     std::collections::BTreeMap,
     tracing::Level,
 };
@@ -25,7 +25,7 @@ async fn index_candles() -> anyhow::Result<()> {
 
     let recording = clickhouse_context
         .mock()
-        .add(clickhouse::test::handlers::record_ddl());
+        .add(clickhouse::test::handlers::record());
 
     // NOTE: used the same code as `dex_works` in `dex.rs`
 
@@ -136,7 +136,9 @@ async fn index_candles() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish()?;
 
-    tracing::info!("{:#?}", recording.query().await);
+    let clickhouse_inserts = recording.collect::<Vec<PairPrice>>().await;
+
+    assert_that!(clickhouse_inserts).is_not_empty();
 
     Ok(())
 }
