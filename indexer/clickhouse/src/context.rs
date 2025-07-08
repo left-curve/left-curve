@@ -66,6 +66,7 @@ impl Context {
         }
     }
 
+    #[cfg(feature = "testing")]
     pub fn mock(&self) -> &test::Mock {
         self.mock.as_ref().unwrap()
     }
