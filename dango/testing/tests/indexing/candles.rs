@@ -3,16 +3,15 @@ use {
     dango_testing::setup_test_with_indexer,
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction, OrderId},
+        dex::{self, CreateLimitOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
-        Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
-        Signer, StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
+        Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt, Signer,
+        StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::pair_price::PairPrice,
-    std::collections::BTreeMap,
     tracing::Level,
 };
 
@@ -28,22 +27,6 @@ async fn index_candles() -> anyhow::Result<()> {
         .add(clickhouse::test::handlers::record());
 
     // NOTE: used the same code as `dex_works` in `dex.rs`
-
-    // Register oracle price source for USDC and DANGO. Needed for volume tracking in cron_execute
-    // suite
-    //     .execute(
-    //         &mut accounts.owner,
-    //         contracts.oracle,
-    //         &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-    //             usdc::DENOM.clone() => PriceSource::Fixed {
-    //                 humanized_price: Udec128::ONE,
-    //                 precision: 6,
-    //                 timestamp: Timestamp::from_seconds(1730802926),
-    //             },
-    //         }),
-    //         Coins::new(),
-    //     )
-    //     .should_succeed();
 
     suite
         .execute(
@@ -68,23 +51,6 @@ async fn index_candles() -> anyhow::Result<()> {
         (Direction::Ask, 15, 10), //  4 - filled
         (Direction::Ask, 25, 10), //  5 - 50% filled
     ];
-
-    // Find which accounts will submit the orders, so we can track their balances.
-    let users_by_order_id = orders_to_submit
-        .iter()
-        .zip(accounts.users())
-        .enumerate()
-        .map(|(order_id, ((direction, ..), signer))| {
-            let order_id = (order_id + 1) as OrderId;
-            match direction {
-                Direction::Bid => (!order_id, signer.address()),
-                Direction::Ask => (order_id, signer.address()),
-            }
-        })
-        .collect::<BTreeMap<_, _>>();
-
-    // Track the users' balances.
-    suite.balances().record_many(users_by_order_id.values());
 
     // Submit the orders in a single block.
     let txs = orders_to_submit
@@ -139,6 +105,8 @@ async fn index_candles() -> anyhow::Result<()> {
     let clickhouse_inserts = recording.collect::<Vec<PairPrice>>().await;
 
     assert_that!(clickhouse_inserts).is_not_empty();
+
+    tracing::info!("{:#?}", clickhouse_inserts);
 
     Ok(())
 }
