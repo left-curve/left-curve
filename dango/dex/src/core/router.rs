@@ -29,9 +29,7 @@ pub fn swap_exact_amount_in(
         let params = PAIRS.load(storage, (&pair.base_denom, &pair.quote_denom))?;
 
         // Load the pool's reserves.
-        let mut reserve = RESERVES
-            .load(storage, (&pair.base_denom, &pair.quote_denom))
-            .map_err(|e| anyhow::anyhow!("failed to load reserves for pair {:?}: {}", pair, e))?;
+        let mut reserve = RESERVES.load(storage, (&pair.base_denom, &pair.quote_denom))?;
 
         // Perform the swap.
         // The output of the previous step is the input of this step.
