@@ -20,7 +20,6 @@ import { Modals } from "../modals/RootModal";
 
 import {
   Button,
-  EmptyPlaceholder,
   IconAddCross,
   IconButton,
   IconChevronDown,
@@ -38,9 +37,10 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
+import { EmptyPlaceholder } from "./EmptyPlaceholder";
 
 import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
-import type { AnyCoin, LpCoin, NativeCoin, WithAmount } from "@left-curve/store/types";
+import type { LpCoin, NativeCoin, WithAmount } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import type React from "react";
