@@ -128,6 +128,7 @@ fn check_balances(
         limit: None,
     })?;
     println!("open orders: {open_orders:?}");
+
     let mut order_balances = Coins::new();
     for (_, order) in open_orders {
         let coin = if order.direction == Direction::Bid {
@@ -148,6 +149,7 @@ fn check_balances(
         limit: None,
     })?;
     println!("passive liquidity: {passive_liquidity:?}");
+
     let mut passive_liquidity_balances = Coins::new();
     for reserve in passive_liquidity.clone() {
         passive_liquidity_balances.insert_many(reserve.reserve)?;
@@ -311,7 +313,7 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                println!("block outcome: {block_outcome:?}");
+                // println!("block outcome: {block_outcome:?}");
 
                 assert!(
                     block_outcome
@@ -363,7 +365,7 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                println!("block outcome: {block_outcome:?}");
+                // println!("block outcome: {block_outcome:?}");
 
                 assert!(
                     block_outcome
@@ -594,7 +596,7 @@ fn provide_liquidity_and_market_order() -> impl Strategy<Value = Vec<DexAction>>
                 base_denom: base_denom.clone(),
                 quote_denom: quote_denom.clone(),
             },
-            _ => panic!("provide_liquidity should be a ProvideLiquidity action"),
+            _ => panic!("`provide_liquidity` should be a `ProvideLiquidity` action"),
         };
         market_order_with_pair_id(pair_id)
             .prop_map(move |market_order| vec![provide_liquidity.clone(), market_order])
@@ -852,7 +854,7 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
 
     // Check dex contract's balances. Should be empty.
     let balances = suite.query_balances(&contracts.dex)?;
-    assert_eq!(balances, Coins::new());
+    assert!(balances.is_empty());
 
     // Execute the actions and check balances after each action.
     for action in dex_actions {
