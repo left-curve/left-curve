@@ -1,6 +1,5 @@
 import {
   AddressVisualizer,
-  EmptyPlaceholder,
   createContext,
   twMerge,
   useInputs,
@@ -23,6 +22,7 @@ import {
   Table,
   Tabs,
 } from "@left-curve/applets-kit";
+import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { AnimatePresence, motion } from "framer-motion";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
