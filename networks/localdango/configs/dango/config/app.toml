@@ -50,6 +50,9 @@ username = ""
 #
 password = ""
 
+#
+database = ""
+
 [httpd]
 
 # Whether to enable the HTTP server.
