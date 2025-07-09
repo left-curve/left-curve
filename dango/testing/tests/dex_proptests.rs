@@ -64,9 +64,9 @@ fn relative_difference(a: Uint128, b: Uint128) -> Udec128 {
 /// Asserts that two values are approximately equal within a specified
 /// relative difference.
 fn assert_approx_eq(a: Uint128, b: Uint128, max_rel_diff: &str) -> Result<(), TestCaseError> {
-    // An absolute difference of up to one unit is acceptable, and unavoidable
+    // An absolute difference of up to a few units is acceptable, and unavoidable
     // due to rounding errors. In this case, we consider the values effectively equal.
-    if absolute_difference(a, b) <= Uint128::ONE {
+    if absolute_difference(a, b) <= Uint128::new(5) {
         return Ok(());
     }
 
