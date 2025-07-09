@@ -293,9 +293,17 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        // Apply the swap fee. Deduct the fee from the output amount.
-        let fee = output_amount_before_fee.checked_mul_dec_ceil(*self.swap_fee_rate)?;
-        let output_amount = output_amount_before_fee.checked_sub(fee)?;
+        // Compute the liquidity fee.
+        // Not to be confused with the protocol fee:
+        // - Liquidity fee (also called "swap fee") is paid into the pool.
+        //   It's equivalent to the bid-ask spread in order books.
+        // - Protocol fee is paid to the Dango protocol (specifically, the taxman
+        //   contract). It's equivalent to the maker/taker fee in order books,
+        //   and handled by `core::router::swap_exact_amount_in`.
+        let fee_amount = output_amount_before_fee.checked_mul_dec_ceil(*self.swap_fee_rate)?;
+
+        // Deduct the fee from the output amount.
+        let output_amount = output_amount_before_fee.checked_sub(fee_amount)?;
         let output = Coin::new(output_denom, output_amount)?;
 
         ensure!(
@@ -303,7 +311,9 @@ impl PassiveLiquidityPool for PairParams {
             "output amount after fee must be positive, got: {output}"
         );
 
-        // Update the reserve.
+        // Update the reserve:
+        // - insert the input;
+        // - remove the **after fee** output.
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, output))
@@ -326,10 +336,10 @@ impl PassiveLiquidityPool for PairParams {
         let input_reserve = reserve.amount_of(&input_denom)?;
         let output_reserve = reserve.amount_of(&output.denom)?;
 
-        // Apply swap fee. Add the fee to the output amount.
-        let rate = Udec128::ONE - *self.swap_fee_rate;
-        let mut output_before_fee = output.clone();
-        output_before_fee.amount.checked_div_dec_ceil_assign(rate)?;
+        // Compute the output amount before deducting the liquidity fee.
+        let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
+        let output_amount_before_fee = output.amount.checked_div_dec_ceil(one_sub_fee_rate)?;
+        let output_before_fee = Coin::new(output.denom.clone(), output_amount_before_fee)?;
 
         ensure!(
             output_reserve > output_before_fee.amount,
@@ -364,7 +374,9 @@ impl PassiveLiquidityPool for PairParams {
             "input amount must be positive, got: {input}"
         );
 
-        // Update the reserve.
+        // Update the reserve:
+        // - insert the input;
+        // - remove the **after fee** output.
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, input))
