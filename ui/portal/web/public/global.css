@@ -24,7 +24,7 @@ html.dark {
   --color-primary-900: #FFFCF6;
   --color-secondary-700: #FFF9F0;
   --color-tertiary-500: #B2AEA8;
-  --shadow-card: 0px 4px 13px 0px #E8DBD380, 0px 1px 6px 0px #D6C9B566;
+  --shadow-card:0px 4px 13px 0px #E8DBD380 0px 1px 6px 0px #D6C9B566;
   --color-bg-card-red:linear-gradient(98.89deg, #494443 11.21%, #584D4E 46.73%, #322F2F 88.96%);
 }
 
