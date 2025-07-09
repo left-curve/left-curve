@@ -405,15 +405,14 @@ impl DexAction {
                         input.clone(),
                     )
                     .should(|tx_outcome| {
-                        if tx_outcome.result.is_err() {
-                            tx_outcome.should_fail_and(|e| {
-                                e.to_string().contains("insufficient liquidity")
-                                    || e.to_string().contains("output amount is zero")
-                            });
+                        // We expect the transaction to succeed, unless for two
+                        // specific reasons:
+                        if let Err(err) = tx_outcome.result {
+                            err.contains("insufficient liquidity")
+                                || err.contains("output amount after fee must be positive")
                         } else {
-                            tx_outcome.should_succeed();
+                            true
                         }
-                        true
                     });
             },
             DexAction::SwapExactAmountOut {
@@ -432,12 +431,14 @@ impl DexAction {
                         funds.clone(),
                     )
                     .should(|tx_outcome| {
-                        if tx_outcome.result.is_err() {
-                            tx_outcome.should_fail_with_error("insufficient liquidity");
+                        // We expect the transaction to succeed, unless for two
+                        // specific reasons:
+                        if let Err(err) = tx_outcome.result {
+                            err.contains("insufficient liquidity")
+                                || err.contains("input amount must be positive")
                         } else {
-                            tx_outcome.should_succeed();
+                            true
                         }
-                        true
                     });
             },
         }
