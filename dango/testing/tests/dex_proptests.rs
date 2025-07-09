@@ -86,33 +86,6 @@ fn assert_approx_eq(a: Uint128, b: Uint128, max_rel_diff: &str) -> Result<(), Te
     Ok(())
 }
 
-/// Helper function to register a fixed price for a denom
-fn register_fixed_price(
-    suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    denom: Denom,
-    humanized_price: Udec128,
-    precision: u8,
-) {
-    // Register price source
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                denom => dango_types::oracle::PriceSource::Fixed {
-                    humanized_price,
-                    precision,
-                    // Use a very recent time to avoid the "price is too old" error.
-                    timestamp: MOCK_GENESIS_TIMESTAMP,
-                },
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
-}
-
 /// Checks that the balances of the dex contract are equal to the balances of the open orders plus the balances of the passive liquidity.
 fn check_balances(
     suite: &TestSuite<NaiveProposalPreparer>,
@@ -781,14 +754,21 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
 
     // Register fixed prices for all denoms.
     for denom in denoms() {
-        register_fixed_price(
-            &mut suite,
-            &mut accounts,
-            &contracts,
-            denom,
-            Udec128::ONE,
-            6,
-        );
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                    denom => dango_types::oracle::PriceSource::Fixed {
+                        humanized_price: Udec128::ONE,
+                        precision: 6,
+                        // Use a very recent time to avoid the "price is too old" error.
+                        timestamp: MOCK_GENESIS_TIMESTAMP,
+                    },
+                }),
+                Coins::default(),
+            )
+            .should_succeed();
     }
 
     // Create pairs
