@@ -56,7 +56,7 @@ impl grug_app::Indexer for Indexer {
 
     fn post_indexing(
         &self,
-        block_height: u64,
+        #[allow(unused_variables)] block_height: u64,
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
