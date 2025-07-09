@@ -3341,7 +3341,6 @@ fn volume_tracking_works() {
         .should_succeed_and_equal(Udec128::new(100));
 }
 
-#[ignore = "this test needs to be updated"]
 #[test]
 fn volume_tracking_works_with_multiple_orders_from_same_user() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
@@ -3378,7 +3377,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         )
         .should_succeed();
 
-    // Register oracle price source for BTC
+    // Register oracle price source for ETH
     suite
         .execute(
             &mut accounts.owner,
@@ -3394,7 +3393,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         )
         .should_succeed();
 
-    // Submit two orders for DANGO/USDC and one for BTC/USDC with user1
+    // Submit two orders for DANGO/USDC and one for ETH/USDC with user1
     suite
         .execute(
             &mut accounts.user1,
@@ -3471,7 +3470,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
 
     // Query the volume for username user2, should be 300
     suite
@@ -3479,7 +3478,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
 
     // Query the volume for user1 address, should be 300
     suite
@@ -3487,7 +3486,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
 
     // Query the volume for user2 address, should be 300
     suite
@@ -3495,7 +3494,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
 
     // Query the volume for both usernames since timestamp after first trade, should be zero
     suite
@@ -3600,7 +3599,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(700));
+        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
 
     // Query the volume for username user2, should be 700
     suite
@@ -3608,7 +3607,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(700));
+        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
 
     // Query the volume for user1 address, should be 700
     suite
@@ -3616,7 +3615,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(700));
+        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
 
     // Query the volume for user2 address, should be 700
     suite
@@ -3624,7 +3623,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(700));
+        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
 
     // Query the volume for both usernames since timestamp after second trade, should be zero
     suite
@@ -3646,13 +3645,13 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::new(400));
+        .should_succeed_and_equal(Udec128::from_str("400.0002935568").unwrap());
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: accounts.user2.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::new(400));
+        .should_succeed_and_equal(Udec128::from_str("400.0002935568").unwrap());
 }
 
 #[test_case(
