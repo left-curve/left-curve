@@ -87,8 +87,9 @@ impl Indexer {
         let pairs = clearing_prices
             .into_iter()
             .map(|(pair_id, clearing_price)| PairPrice {
-                denoms: pair_id,
-                clearing_price,
+                base_denom: pair_id.0.to_string(),
+                quote_denom: pair_id.1.to_string(),
+                clearing_price: clearing_price.to_string(),
                 created_at: block.info.timestamp.to_naive_date_time(),
                 block_height: block.info.height,
             })

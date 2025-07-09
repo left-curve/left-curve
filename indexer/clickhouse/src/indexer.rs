@@ -32,7 +32,41 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        // TODO: run migrations
+        // Create pair_prices table if not exists
+        let create_table_sql = r#"
+            CREATE TABLE IF NOT EXISTS pair_prices (
+                quoteDenom String,
+                baseDenom String,
+                clearing_price String,
+                created_at DateTime,
+                block_height UInt64
+            ) ENGINE = MergeTree()
+            ORDER BY (quoteDenom, baseDenom, created_at)
+        "#;
+
+        let handle = self.runtime_handler.spawn({
+            let clickhouse_client = self.context.clickhouse_client().clone();
+            async move {
+                clickhouse_client
+                    .query(create_table_sql)
+                    .execute()
+                    .await
+                    .map_err(|e| {
+                        grug_app::IndexerError::Database(format!(
+                            "Failed to create pair_prices table: {e}"
+                        ))
+                    })?;
+
+                #[cfg(feature = "tracing")]
+                tracing::info!("Created pair_prices table successfully");
+
+                Ok::<(), grug_app::IndexerError>(())
+            }
+        });
+
+        self.runtime_handler
+            .block_on(handle)
+            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
 
         Ok(())
     }

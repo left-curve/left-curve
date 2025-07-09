@@ -6,7 +6,6 @@ use {
 use {
     chrono::NaiveDateTime,
     clickhouse::Row,
-    grug::{Denom, Udec128},
     serde::{Deserialize, Serialize},
 };
 
@@ -16,10 +15,9 @@ use {
 #[cfg_attr(feature = "async-graphql", graphql(name = "PairPrice"))]
 #[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct PairPrice {
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub denoms: (Denom, Denom),
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub clearing_price: Udec128,
+    pub base_denom: String,
+    pub quote_denom: String,
+    pub clearing_price: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub created_at: NaiveDateTime,
     pub block_height: u64,

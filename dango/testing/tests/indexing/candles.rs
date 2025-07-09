@@ -104,7 +104,7 @@ async fn index_candles() -> anyhow::Result<()> {
 
     let clickhouse_inserts = recording.collect::<Vec<PairPrice>>().await;
 
-    assert_that!(clickhouse_inserts).is_not_empty();
+    assert_that!(clickhouse_inserts).has_length(1);
 
     tracing::info!("{:#?}", clickhouse_inserts);
 
