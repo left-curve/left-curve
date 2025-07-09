@@ -1,6 +1,7 @@
 import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 import { useNotifications } from "./hooks/useNotifications";
+import { useTheme } from "@left-curve/applets-kit";
 
 import * as Sentry from "@sentry/react";
 import { router } from "./app.router";
@@ -49,6 +50,9 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
+
+  // Initialize theme
+  const theme = useTheme();
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
