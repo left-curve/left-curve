@@ -535,6 +535,7 @@ mod tests {
                     lp_denom: Denom::from_str("lp").unwrap(),
                     pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                 },
