@@ -300,10 +300,8 @@ impl PassiveLiquidityPool for PairParams {
         // - Protocol fee is paid to the Dango protocol (specifically, the taxman
         //   contract). It's equivalent to the maker/taker fee in order books,
         //   and handled by `core::router::swap_exact_amount_in`.
-        let fee_amount = output_amount_before_fee.checked_mul_dec_ceil(*self.swap_fee_rate)?;
-
-        // Deduct the fee from the output amount.
-        let output_amount = output_amount_before_fee.checked_sub(fee_amount)?;
+        let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
+        let output_amount = output_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?;
         let output = Coin::new(output_denom, output_amount)?;
 
         ensure!(
