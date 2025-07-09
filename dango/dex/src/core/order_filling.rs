@@ -72,7 +72,7 @@ fn fill_bids(
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
         let filled_base = *order.remaining().min(&volume);
-        let filled_quote = filled_base.checked_mul(order_price)?;
+        let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
         order.fill(filled_base)?;

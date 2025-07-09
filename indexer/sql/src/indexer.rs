@@ -261,11 +261,10 @@ impl NonBlockingIndexer {
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("can't lock blocks");
-        let block_to_index = blocks.entry(block.info.height).or_insert(BlockToIndex::new(
-            block_filename,
-            block.clone(),
-            block_outcome.clone(),
-        ));
+
+        let block_to_index = blocks.entry(block.info.height).or_insert_with(|| {
+            BlockToIndex::new(block_filename, block.clone(), block_outcome.clone())
+        });
 
         block_to_index.block_outcome = block_outcome.clone();
 
@@ -332,12 +331,13 @@ impl NonBlockingIndexer {
         for block_height in next_block_height..=latest_block_height {
             let block_filename = self.indexer_path.block_path(block_height);
 
-            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
+            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone())
+                .unwrap_or_else(|_err| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, block_height, "Can't load block from disk");
 
                     panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
-            });
+                });
 
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -357,7 +357,12 @@ impl NonBlockingIndexer {
             if !self.keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "Can't delete block from disk");
+                    tracing::error!(
+                        error = %_err,
+                        block_height,
+                        block_filename = %block_filename.display(),
+                        "Can't delete block from disk"
+                    );
                 }
             }
 
@@ -430,7 +435,7 @@ impl Indexer for NonBlockingIndexer {
             if !blocks.is_empty() {
                 tracing::warn!(
                     indexer_id = self.id,
-                    "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
+                    "Some blocks are still being indexed. Maybe `non_blocking_indexer` `post_indexing` wasn't called by the main app?"
                 );
             }
         }
@@ -519,21 +524,36 @@ impl Indexer for NonBlockingIndexer {
 
         let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, indexer_id = id, "`post_indexing` async work started");
+            tracing::debug!(
+                block_height,
+                indexer_id = id,
+                "`post_indexing` async work started"
+            );
 
             let block_height = block_to_index.block.info.height;
 
             #[allow(clippy::map_identity)]
             if let Err(_err) = block_to_index.save(context.db.clone(), id).await {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
+                tracing::error!(
+                    err = %_err,
+                    indexer_id = id,
+                    block_height,
+                    "Can't save to db in `post_indexing`"
+                );
+
                 return Ok(());
             }
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
+                    tracing::error!(
+                        error = %_err,
+                        block_filename = %block_filename.display(),
+                        "Can't delete block from disk in post_indexing"
+                    );
+
                     return Ok(());
                 }
             } else {
@@ -541,23 +561,41 @@ impl Indexer for NonBlockingIndexer {
                 if let Err(_err) = tokio::task::spawn_blocking(move || {
                     if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
-                        tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
+                        tracing::error!(
+                            error = %_err,
+                            block_filename = %block_filename.display(),
+                            "Can't compress block on disk in post_indexing"
+                        );
                     }
-                }).await {
+                })
+                .await
+                {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "spawn_blocking error compressing block file");
+                    tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
                 }
             }
 
             if let Err(_err) = Self::remove_or_fail(blocks, &block_height) {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't remove block in `post_indexing`");
+                tracing::error!(
+                    err = %_err,
+                    indexer_id = id,
+                    block_height,
+                    "Can't remove block in `post_indexing`"
+                );
+
                 return Ok(());
             }
 
             if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't publish block minted in `post_indexing`");
+                tracing::error!(
+                    err = %_err,
+                    indexer_id = id,
+                    block_height,
+                    "Can't publish block minted in `post_indexing`"
+                );
+
                 return Ok(());
             }
 

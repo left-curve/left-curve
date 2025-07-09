@@ -64,16 +64,17 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
           </div>
         }
       />
-      <div className="relative overflow-x-auto scrollbar-none">
+      <div className="relative overflow-x-auto scrollbar-none pt-1">
         <Tabs
           color="line-red"
           layoutId="search-token-tabs"
           selectedTab={activeFilter}
           keys={["All", "Spot"]}
           onTabChange={setActiveFilter}
+          classNames={{ base: "z-10" }}
         />
 
-        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[1px]" />
+        <span className="w-full absolute h-[2px] bg-gray-100 bottom-[0px] z-0" />
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot

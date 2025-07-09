@@ -36,7 +36,6 @@ export { Tooltip } from "./Tooltip";
 export { Radio } from "./RadioGroup";
 export { Toast } from "./Toast";
 export { PairAssets } from "./PairAssets";
-export { EmptyPlaceholder } from "./EmptyPlaceholder";
 
 /* ---------------------------------- Icons --------------------------------- */
 

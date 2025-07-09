@@ -272,8 +272,13 @@
     },
     "protradeCloseAllOrders": {
       "title": "Close All Orders",
-      "description": "This will close all your positions and cancel their associated TP/SL orders.",
+      "description": "This will close all your open orders.",
       "action": "Confirm Close Orders"
+    },
+    "proTradeCloseOrder": {
+      "title": "Close Order",
+      "description": "This will close the order.",
+      "action": "Confirm Close Order"
     }
   },
   "signin": {
@@ -656,12 +661,13 @@
       "allOrdersCancelled": "All orders cancelled",
       "spot": {
         "noOpenOrders": "No open orders yet",
-        "price": "Price",
+        "price": "Limit Price",
         "ordersTable": {
-          "coin": "Coin",
-          "size": "Size",
+          "id": "ID",
+          "pair": "Pair",
+          "remaining": "Remaining ({symbol})",
           "type": "Type",
-          "originalSize": "Original Size",
+          "size": "Size ({symbol})",
           "direction": "Direction"
         },
         "24hChange": "24h Change",

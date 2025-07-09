@@ -55,9 +55,7 @@ class Decimal {
 
   div(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
-    if (other.isZero()) {
-      throw new Error("Cannot divide by zero.");
-    }
+    if (other.isZero()) return new Decimal(0);
     const result = this.inner.div(other.inner);
     return new Decimal(result);
   }

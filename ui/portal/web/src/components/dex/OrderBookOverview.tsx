@@ -30,7 +30,7 @@ export const OrderBookOverview: React.FC = () => {
         keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
-        classNames={{ button: "exposure-xs-italic pt-0" }}
+        classNames={{ button: "exposure-xs-italic" }}
       />
       {activeTab === "graph" && <TradingViewChart />}
       {activeTab === "order book" && <OrderBook />}

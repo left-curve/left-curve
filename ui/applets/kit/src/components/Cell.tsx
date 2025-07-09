@@ -110,6 +110,20 @@ const Text: React.FC<CellTextProps> = ({ text, className }) => {
   );
 };
 
+type CellNumberProps = {
+  className?: string;
+  formatOptions: FormatNumberOptions;
+  value: number | string;
+};
+
+const CellNumber: React.FC<CellNumberProps> = ({ value, formatOptions, className }) => {
+  return (
+    <div className={twMerge("flex flex-col gap-1 text-gray-500", className)}>
+      <p>{formatNumber(value, formatOptions)}</p>
+    </div>
+  );
+};
+
 type CellOrderDirectionProps = {
   className?: string;
   direction: Directions;
@@ -286,19 +300,25 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
 
 type CellPairNameProps = {
   pairId: PairId;
-  type: string;
+  type?: string;
+  className?: string;
 };
 
-const PairName: React.FC<CellPairNameProps> = ({ pairId, type }) => {
+const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
   const baseCoin = coins[baseDenom];
   const quoteCoin = coins[quoteDenom];
 
   return (
-    <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
+    <div
+      className={twMerge(
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        className,
+      )}
+    >
       <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
-      <Badge text={type} color="blue" size="s" />
+      {type ? <Badge text={type} color="blue" size="s" /> : null}
     </div>
   );
 };
@@ -313,6 +333,7 @@ export const Cell = Object.assign(Container, {
   Sender,
   Text,
   TxHash,
+  Number: CellNumber,
   OrderDirection,
   TxMessages,
   TxResult,
