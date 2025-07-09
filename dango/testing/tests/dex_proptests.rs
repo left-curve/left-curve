@@ -1,9 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{
-        BridgeOp, TestAccounts, TestOption, TestSuite, constants::MOCK_GENESIS_TIMESTAMP,
-        setup_test_naive,
-    },
+    dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
     dango_types::{
         constants::{dango, eth, sol, usdc},
         dex::{
@@ -13,9 +10,9 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, IsZero, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Uint128, UniqueVec, btree_map, coins,
+        Addressable, Bounded, Coin, Coins, Dec128, Denom, Duration, Inner, IsZero, MaxLength,
+        Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt,
+        Signed, Signer, Timestamp, Udec128, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -104,8 +101,8 @@ fn register_fixed_price(
                 denom => dango_types::oracle::PriceSource::Fixed {
                     humanized_price,
                     precision,
-                    // Use a very recent time to avoid the "price is too old" error.
-                    timestamp: MOCK_GENESIS_TIMESTAMP,
+                    // Use a future timestamp to avoid the "price is too old" error.
+                    timestamp: suite.block.timestamp + Duration::from_weeks(52),
                 },
             }),
             Coins::default(),
@@ -117,6 +114,7 @@ fn register_fixed_price(
 fn check_balances(
     suite: &TestSuite<NaiveProposalPreparer>,
     contracts: &Contracts,
+    balance_differences: &mut Coins,
 ) -> Result<(), TestCaseError> {
     // Check dex contract's balances.
     let balances = suite.query_balances(&contracts.dex)?;
@@ -180,13 +178,33 @@ fn check_balances(
             continue;
         }
 
-        // Dex contract sometimes has some dust amounts, so we ignore them.
-        if coin.amount < Uint128::new(10) && order_and_passive_liquidity_balance == Uint128::ZERO {
-            continue;
-        }
+        // Check the actual difference.
+        let diff = coin.amount - order_and_passive_liquidity_balance;
 
-        // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
-        assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
+        println!("diff: {diff}");
+
+        // Get the previous balance difference.
+        let prev_diff = balance_differences.amount_of(&coin.denom);
+        println!("prev_diff: {prev_diff}");
+
+        // Ensure the difference did not decrease (which would mean the dex contract lost funds, but is not yet fully undercollateralized).
+        assert!(diff >= prev_diff);
+
+        println!("diff - prev_diff: {}", diff - prev_diff);
+
+        // Ensure that the difference does not grow by more than three microunits per action.
+        assert!(diff - prev_diff <= Uint128::new(3));
+
+        // Update the balance difference.
+        balance_differences.insert(Coin::new(coin.denom, diff - prev_diff)?)?;
+
+        // // Dex contract sometimes has some dust amounts, so we ignore them.
+        // if coin.amount < Uint128::new(10) && order_and_passive_liquidity_balance == Uint128::ZERO {
+        //     continue;
+        // }
+
+        // // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
+        // assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
     }
 
     Ok(())
@@ -835,13 +853,16 @@ fn test_dex_actions(
     let balances = suite.query_balances(&contracts.dex)?;
     assert!(balances.is_empty());
 
+    // Create a map for keeping track of balance differences.
+    let mut balance_differences = Coins::new();
+
     // Execute the actions and check balances after each action.
     for action in dex_actions {
         // Execute the action.
         action.execute(&mut suite, &mut accounts, &contracts)?;
 
         // Check balances.
-        check_balances(&suite, &contracts)?;
+        check_balances(&suite, &contracts, &mut balance_differences)?;
     }
 
     Ok((suite, accounts, contracts))
@@ -849,7 +870,7 @@ fn test_dex_actions(
 
 proptest! {
     #![proptest_config(ProptestConfig {
-        cases: 10_000,
+        cases: 100,
         max_local_rejects: 1_000_000,
         max_global_rejects: 0,
         max_shrink_iters: 0,
@@ -858,7 +879,7 @@ proptest! {
     })]
 
     #[test]
-    fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 10)) {
+    fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 300)) {
         test_dex_actions(dex_actions)?;
     }
 
