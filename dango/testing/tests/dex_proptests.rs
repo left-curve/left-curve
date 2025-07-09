@@ -131,15 +131,15 @@ fn check_balances(
 
     let mut order_balances = Coins::new();
     for (_, order) in open_orders {
-        let coin = if order.direction == Direction::Bid {
-            Coin::new(
-                order.quote_denom,
-                order.remaining.checked_mul_dec_ceil(order.price)?,
-            )?
-        } else {
-            Coin::new(order.base_denom, order.remaining)?
+        let (denom, amount) = match order.direction {
+            Direction::Bid => {
+                let remaining_in_quote = order.remaining.checked_mul_dec_ceil(order.price)?;
+                (order.quote_denom, remaining_in_quote)
+            },
+            Direction::Ask => (order.base_denom, order.remaining),
         };
-        order_balances.insert(coin)?;
+
+        order_balances.insert((denom, amount))?;
     }
     println!("order balances: {order_balances:?}");
 
