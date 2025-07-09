@@ -11,8 +11,8 @@
   --color-primary-900: #2E2521;
   --color-secondary-700: #453D39;
   --color-tertiary-500: #6E6865;
-  --shadow-card:"0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5)";
-  --color-bg-card-red:"linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%)"
+  --shadow-card:0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
+  --color-bg-card-red:linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%)
 }
 
 html.dark {
