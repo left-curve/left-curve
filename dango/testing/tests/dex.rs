@@ -2010,9 +2010,7 @@ fn swap_exact_amount_in(
                 base_denom: base_denom.clone(),
                 quote_denom: quote_denom.clone(),
             })
-            .should_succeed_and(|reserve: &CoinPair| {
-                reserve.clone() == CoinPair::try_from(expected_reserve).unwrap()
-            });
+            .should_succeed_and_equal(CoinPair::try_from(expected_reserve).unwrap());
     }
 }
 
