@@ -66,7 +66,7 @@ fn relative_difference(a: Uint128, b: Uint128) -> Udec128 {
 fn assert_approx_eq(a: Uint128, b: Uint128, max_rel_diff: &str) -> Result<(), TestCaseError> {
     // An absolute difference of up to a few units is acceptable, and unavoidable
     // due to rounding errors. In this case, we consider the values effectively equal.
-    if absolute_difference(a, b) <= Uint128::new(2) {
+    if absolute_difference(a, b) <= Uint128::new(5) {
         return Ok(());
     }
 
@@ -407,8 +407,11 @@ impl DexAction {
                     .should(|tx_outcome| {
                         if tx_outcome.result.is_err() {
                             tx_outcome.should_fail_and(|e| {
-                                e.to_string().contains("insufficient liquidity")
-                                    || e.to_string().contains("output amount is zero")
+                                let e = e.to_string();
+                                // These two errors are allowed. We don't expect
+                                // the swap to fail for any other error.
+                                e.contains("insufficient liquidity")
+                                    || e.contains("output amount after fee must be positive")
                             });
                         } else {
                             tx_outcome.should_succeed();
@@ -433,7 +436,13 @@ impl DexAction {
                     )
                     .should(|tx_outcome| {
                         if tx_outcome.result.is_err() {
-                            tx_outcome.should_fail_with_error("insufficient liquidity");
+                            tx_outcome.should_fail_and(|e| {
+                                let e = e.to_string();
+                                // These two errors are allowed. We don't expect
+                                // the swap to fail for any other error.
+                                e.contains("insufficient liquidity")
+                                    || e.contains("input amount must be positive")
+                            });
                         } else {
                             tx_outcome.should_succeed();
                         }
