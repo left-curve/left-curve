@@ -11,7 +11,7 @@ impl Indexer {
     pub(crate) async fn store_candles(
         clickhouse_client: &Client,
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
-        ctx: &mut grug_app::IndexerContext,
+        ctx: &grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         let block = ctx
             .get::<grug_types::Block>()

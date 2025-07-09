@@ -26,6 +26,7 @@ impl CandleSubscription {
     async fn candle<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
+        pair_id: Option<String>,
         // This is used to get the older candles in case of disconnection
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<PairPrice>> + 'a> {

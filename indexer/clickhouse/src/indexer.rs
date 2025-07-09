@@ -65,13 +65,14 @@ impl grug_app::Indexer for Indexer {
 
         let clickhouse_client = self.context.clickhouse_client().clone();
         let querier = querier.clone();
-        let mut ctx = ctx.clone();
+        let ctx = ctx.clone();
+        let context = self.context.clone();
 
         let handle = self.runtime_handler.spawn(async move {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
-            Self::store_candles(&clickhouse_client, querier, &mut ctx).await?;
+            Self::store_candles(&clickhouse_client, querier, &ctx).await?;
 
             #[cfg(feature = "metrics")]
             histogram!(
@@ -80,15 +81,21 @@ impl grug_app::Indexer for Indexer {
             )
             .record(start.elapsed().as_secs_f64());
 
+            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_err, block_height, "Can't publish block minted in `post_indexing`");
+                return Ok(());
+            }
+
+            #[cfg(feature = "tracing")]
+            tracing::debug!(block_height, "`post_indexing` async work finished");
+
             Ok::<(), grug_app::IndexerError>(())
         });
 
         self.runtime_handler
             .block_on(handle)
             .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
-
-        #[cfg(feature = "tracing")]
-        tracing::debug!(block_height, "`post_indexing` async work finished");
 
         Ok(())
     }
