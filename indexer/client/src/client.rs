@@ -53,7 +53,8 @@ impl HttpClient {
             .post(format!("{}/graphql", self.endpoint))
             .json(&query)
             .send()
-            .await?;
+            .await?
+            .error_for_status()?;
 
         #[cfg(feature = "tracing")]
         {
