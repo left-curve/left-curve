@@ -293,7 +293,7 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        // Compute the liquidity fee.
+        // Deduct liquidity fee from the output.
         // Not to be confused with the protocol fee:
         // - Liquidity fee (also called "swap fee") is paid into the pool.
         //   It's equivalent to the bid-ask spread in order books.
