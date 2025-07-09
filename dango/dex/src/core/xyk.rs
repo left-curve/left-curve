@@ -143,7 +143,7 @@ pub fn reflect_curve(
                 id,
                 price,
                 amount,
-                remaining: amount,
+                remaining: amount.checked_into_dec().ok()?,
             }))
         })
     };
@@ -187,7 +187,7 @@ pub fn reflect_curve(
                 id,
                 price,
                 amount,
-                remaining: amount,
+                remaining: amount.checked_into_dec().ok()?,
             }))
         })
     };
