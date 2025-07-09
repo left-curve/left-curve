@@ -89,7 +89,7 @@ impl Indexer {
             .map(|(pair_id, clearing_price)| PairPrice {
                 denoms: pair_id,
                 clearing_price,
-                timestamp: block.info.timestamp.to_naive_date_time(),
+                created_at: block.info.timestamp.to_naive_date_time(),
                 block_height: block.info.height,
             })
             .collect::<Vec<_>>();

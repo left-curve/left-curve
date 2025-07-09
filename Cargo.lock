@@ -5725,6 +5725,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "async-graphql",
  "async-stream",
  "async-trait",
  "borsh 1.5.7",

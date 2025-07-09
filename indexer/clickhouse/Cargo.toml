@@ -10,12 +10,14 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-metrics = ["dep:metrics"]
-testing = ["clickhouse/test-util"]
-tracing = ["dep:tracing"]
+async-graphql = ["dep:async-graphql", "grug-types/async-graphql"]
+metrics       = ["dep:metrics"]
+testing       = ["clickhouse/test-util"]
+tracing       = ["dep:tracing"]
 
 [dependencies]
 anyhow         = { workspace = true }
+async-graphql  = { workspace = true, optional = true }
 async-stream   = { workspace = true }
 async-trait    = { workspace = true }
 borsh          = { workspace = true }
