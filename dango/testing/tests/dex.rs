@@ -5483,7 +5483,6 @@ fn market_order_clearing(
         });
 }
 
-#[ignore = "these test cases needs to be updated"] // TODO
 #[test_case(
     CreateLimitOrderRequest {
         base_denom: eth::DENOM.clone(),
@@ -5507,7 +5506,7 @@ fn market_order_clearing(
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Decreased(9307),
-        usdc::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Increased(498750),
     },
     btree_map! {
         eth::DENOM.clone() => BalanceChange::Unchanged,
@@ -5537,7 +5536,7 @@ fn market_order_clearing(
         eth::DENOM.clone() => 9999,
     },
     btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
+        eth::DENOM.clone() => BalanceChange::Increased(9974),
         usdc::DENOM.clone() => BalanceChange::Decreased(50),
     },
     btree_map! {
