@@ -1175,6 +1175,7 @@ fn only_owner_can_create_passive_pool() {
                     lp_denom: lp_denom.clone(),
                     pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::new_bps(1),
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
@@ -1195,6 +1196,7 @@ fn only_owner_can_create_passive_pool() {
                     lp_denom: lp_denom.clone(),
                     pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::new_bps(1),
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
@@ -1212,6 +1214,7 @@ fn only_owner_can_create_passive_pool() {
     Udec128::new_permille(5),
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
@@ -1228,6 +1231,7 @@ fn only_owner_can_create_passive_pool() {
     Udec128::new_permille(5),
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
@@ -1244,6 +1248,7 @@ fn only_owner_can_create_passive_pool() {
     Udec128::new_permille(5),
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
@@ -2460,6 +2465,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_percent(1),
     coins! {
@@ -2506,6 +2512,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_permille(5),
     coins! {
@@ -2550,6 +2557,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_percent(1),
     coins! {
@@ -2594,6 +2602,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_percent(1),
     coins! {
@@ -2640,6 +2649,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_permille(5),
     coins! {
@@ -2684,6 +2694,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_permille(5),
     coins! {
@@ -2728,6 +2739,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_permille(5),
     coins! {
@@ -2774,6 +2786,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 #[test_case(
     PassiveLiquidity::Xyk {
         order_spacing: Udec128::ONE,
+        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
     },
     Udec128::new_percent(1),
     coins! {

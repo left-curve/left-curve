@@ -1,7 +1,7 @@
 use {
     grug::{
         Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint64,
-        ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
     },
     std::ops::Neg,
 };
@@ -128,6 +128,14 @@ pub enum PassiveLiquidity {
         /// This is the price difference between two consecutive orders when
         /// the passive liquidity is reflected onto the orderbook.
         order_spacing: Udec128,
+        /// The portion of reserve that the pool will keep on hand and not use
+        /// to place orders.
+        ///
+        /// This prevents an edge case where a trader makes an extremely large
+        /// trade, reducing one side of the pool's liquidity to zero. This would
+        /// cause any subsequent liquidity provision to fail with a "division by
+        /// zero" error.
+        reserve_ratio: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     },
     /// Places liquidity around the oracle price in a geometric progression,
     /// such that the liquidity assigned to each price point is a fixed ratio of

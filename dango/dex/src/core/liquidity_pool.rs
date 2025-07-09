@@ -394,10 +394,14 @@ impl PassiveLiquidityPool for PairParams {
         let quote_reserve = reserve.amount_of(&quote_denom)?;
 
         match self.pool_type {
-            PassiveLiquidity::Xyk { order_spacing } => xyk::reflect_curve(
+            PassiveLiquidity::Xyk {
+                order_spacing,
+                reserve_ratio,
+            } => xyk::reflect_curve(
                 base_reserve,
                 quote_reserve,
                 order_spacing,
+                reserve_ratio,
                 self.swap_fee_rate,
             ),
             PassiveLiquidity::Geometric {
@@ -447,6 +451,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::ONE,
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_permille(5),
         coins! {
@@ -483,6 +488,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::ONE,
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_percent(1),
         coins! {
@@ -519,6 +525,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::new_percent(1),
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_permille(5),
         coins! {
@@ -555,6 +562,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::new_percent(1),
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_percent(1),
         coins! {
