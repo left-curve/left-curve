@@ -13,7 +13,7 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, MaxLength, Message,
+        Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, IsZero, MaxLength, Message,
         MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
         Udec128, Uint128, UniqueVec, btree_map, coins,
     },
@@ -709,7 +709,9 @@ fn dex_actions(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<De
 }
 
 /// Test a list of DexActions. Execute the actions and check balances after each action.
-fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
+fn test_dex_actions(
+    dex_actions: Vec<DexAction>,
+) -> Result<(TestSuite<NaiveProposalPreparer>, TestAccounts, Contracts), TestCaseError> {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
         bridge_ops: |accounts| {
             vec![
@@ -813,7 +815,7 @@ fn test_dex_actions(dex_actions: Vec<DexAction>) -> Result<(), TestCaseError> {
         check_balances(&suite, &contracts)?;
     }
 
-    Ok(())
+    Ok((suite, accounts, contracts))
 }
 
 proptest! {
@@ -835,4 +837,46 @@ proptest! {
     fn provide_liq_and_market_order(dex_actions in provide_liquidity_and_market_order()) {
         test_dex_actions(dex_actions)?;
     }
+}
+
+/// An error case discovered by proptest. Here the traders makes a very large
+/// market order, dumping as much as ~6x the liqudity available in the pool.
+/// Before the fix, this would reduce the pool's USDC liquidity to zero, causing
+/// any subsequent liquidity provision to fail with "division by zero" error.
+///
+/// We've introduced a fix this way: introduce a new parameter `reserve_ratio`
+/// to the xyk pool, which identifies the portion of funds that the pool must
+/// hold and use to place older. E.g. if reserve ratio is 5%, then the pool will
+/// only use 95% of its funds to place order, thus its liquidity never reduces
+/// to zero.
+#[test]
+fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
+    let (suite, _, contracts) = test_dex_actions(vec![
+        DexAction::ProvideLiquidity {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            funds: coins! {
+                eth::DENOM.clone() => Uint128::new(106265421),
+                usdc::DENOM.clone() => Uint128::new(58295192),
+            },
+        },
+        DexAction::CreateMarketOrder {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(626970560),
+        },
+    ])
+    .unwrap();
+
+    // Query the reserve of ETH-USDC pool. Neither tokens should be zero.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|reserve| {
+            reserve.amount_of(&eth::DENOM).unwrap().is_non_zero()
+                && reserve.amount_of(&usdc::DENOM).unwrap().is_non_zero()
+        });
 }
