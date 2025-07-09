@@ -28,7 +28,6 @@ impl grug_app::Indexer for Indexer {
             tracing::info!("Clickhouse indexer is mocked");
             return Ok(());
         }
-
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 

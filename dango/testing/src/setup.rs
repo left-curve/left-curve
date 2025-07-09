@@ -133,7 +133,9 @@ pub fn setup_test_naive_with_custom_genesis(
 ///
 /// Used for running tests that require an indexer.
 /// Synchronous wrapper for setup_test_with_indexer_async
-pub async fn setup_test_with_indexer() -> (
+pub async fn setup_test_with_indexer(
+    real_clickhouse: bool,
+) -> (
     TestSuiteWithIndexer,
     TestAccounts,
     Codes<ContractWrapper>,
@@ -171,7 +173,7 @@ pub async fn setup_test_with_indexer() -> (
     let dango_indexer =
         dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
 
-    let clickhouse_context = indexer_clickhouse::context::Context::new(
+    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
         indexer
             .context
             .with_separate_pubsub()
@@ -181,8 +183,11 @@ pub async fn setup_test_with_indexer() -> (
         "dango".to_string(),
         "default".to_string(),
         "default".to_string(),
-    )
-    .with_mock();
+    );
+
+    if !real_clickhouse {
+        clickhouse_context = clickhouse_context.with_mock();
+    }
 
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
