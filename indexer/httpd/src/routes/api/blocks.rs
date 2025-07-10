@@ -4,6 +4,14 @@ use {
     indexer_sql::block_to_index::BlockToIndex,
 };
 
+macro_rules! block_exists {
+    ($block_filename:expr, $height:expr) => {
+        if !BlockToIndex::exists($block_filename.clone()) {
+            return Ok(HttpResponse::NotFound().body(format!("block not found: {}", $height)));
+        }
+    };
+}
+
 #[get("/info")]
 pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
@@ -27,10 +35,7 @@ pub async fn block_info_by_height(
 fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
-    if !BlockToIndex::exists(block_filename.clone()) {
-        println!("Block not found: {block_filename:?}");
-        return Ok(HttpResponse::NotFound().body("Block not found"));
-    }
+    block_exists!(block_filename, block_height);
 
     match BlockToIndex::load_from_disk(block_filename) {
         Ok(data) => Ok(HttpResponse::Ok().json(data.block)),
@@ -60,6 +65,8 @@ pub async fn block_result_by_height(
 
 fn _block_results_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx.indexer_path.block_path(block_height);
+
+    block_exists!(block_filename, block_height);
 
     match BlockToIndex::load_from_disk(block_filename) {
         Ok(data) => Ok(HttpResponse::Ok().json(data.block_outcome)),
