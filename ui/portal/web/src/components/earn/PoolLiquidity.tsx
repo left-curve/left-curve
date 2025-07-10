@@ -160,7 +160,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-bg-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-tertiary-500">{m["poolLiquidity.liquidity"]()}</p>
-        <p className="h4-bold text-gray-900">{totalPrice}</p>
+        <p className="h4-bold text-primary-900">{totalPrice}</p>
       </div>
       <div className="flex flex-col w-full gap-2">
         <div className="flex items-center justify-between">

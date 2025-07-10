@@ -40,7 +40,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
           <div className="h-12 w-12 bg-green-bean-300 rounded-full flex items-center justify-center">
             <IconChecked className="h-6 w-6 text-green-bean-100" />
           </div>
-          <p className="text-gray-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
+          <p className="text-primary-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
         </div>
 
         <span className="h-[1px] w-full bg-gray-100" />

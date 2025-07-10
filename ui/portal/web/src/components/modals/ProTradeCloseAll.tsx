@@ -27,7 +27,9 @@ export const ProTradeCloseAll = forwardRef(() => {
 
   return (
     <div className="flex flex-col bg-bg-primary-rice md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-      <h2 className="text-gray-900 h4-bold w-full">{m["modals.protradeCloseAllOrders.title"]()}</h2>
+      <h2 className="text-primary-900 h4-bold w-full">
+        {m["modals.protradeCloseAllOrders.title"]()}
+      </h2>
       <p className="text-tertiary-500 diatype-sm-regular">
         {m["modals.protradeCloseAllOrders.description"]()}
       </p>

@@ -36,14 +36,14 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             )}
           </div>
           <div className="flex flex-col">
-            <p className="text-gray-900 diatype-m-bold">{coinInfo.symbol}</p>
+            <p className="text-primary-900 diatype-m-bold">{coinInfo.symbol}</p>
             <p className="text-tertiary-500 diatype-m-regular">
               {formatNumber(humanAmount, formatNumberOptions)}
             </p>
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <p className="text-gray-900 diatype-m-bold">{price}</p>
+          <p className="text-primary-900 diatype-m-bold">{price}</p>
         </div>
       </div>
     </motion.div>

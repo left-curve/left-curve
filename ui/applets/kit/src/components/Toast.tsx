@@ -27,7 +27,7 @@ export const Toast: React.FC<ToastProps> = ({ title, description, type, close })
     <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-bg-primary-rice border border-gray-100 transition-all duration-500 shadow-account-card flex items-start gap-2 relative">
       {Icon[type]}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <p className="text-gray-900 diatype-sm-medium">{title}</p>
+        <p className="text-primary-900 diatype-sm-medium">{title}</p>
         {description && (
           <p className="text-tertiary-500 diatype-xs-medium break-all">{description}</p>
         )}
@@ -38,7 +38,7 @@ export const Toast: React.FC<ToastProps> = ({ title, description, type, close })
         onClick={close}
         type="button"
       >
-        <IconClose className="w-6 h-6 text-tertiary-500 hover:text-gray-900" />
+        <IconClose className="w-6 h-6 text-tertiary-500 hover:text-primary-900" />
       </button>
     </div>
   );

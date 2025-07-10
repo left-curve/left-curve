@@ -121,7 +121,7 @@ const FutureBlock: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4 flex flex-col gap-6">
       <div className="flex flex-col gap-6 rounded-md p-4 bg-bg-secondary-rice shadow-account-card relative overflow-hidden text-secondary-700">
         <div className="flex flex-col gap-1">
-          <h3 className="h4-heavy text-gray-900">
+          <h3 className="h4-heavy text-primary-900">
             {m["explorer.block.futureBlock.targetBlock"]()} {height}
           </h3>
           <p className="diatype-m-medium text-tertiary-500">
@@ -149,28 +149,28 @@ const FutureBlock: React.FC = () => {
         <span className="w-full h-[1px] bg-gray-200 lg:max-w-[45.5rem]" />
         <div className="grid grid-cols-3 lg:grid-cols-7 gap-3 items-center text-center lg:max-w-[45.5rem]">
           <div>
-            <p className="h1-bold text-gray-900">{days}</p>
+            <p className="h1-bold text-primary-900">{days}</p>
             <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.days"]({ days })}
             </span>
           </div>
-          <span className="h1-bold text-gray-900">:</span>
+          <span className="h1-bold text-primary-900">:</span>
           <div>
-            <p className="h1-bold text-gray-900">{hours}</p>
+            <p className="h1-bold text-primary-900">{hours}</p>
             <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.hours"]({ hours })}
             </span>
           </div>
-          <span className="hidden lg:flex h1-bold text-gray-900">:</span>
+          <span className="hidden lg:flex h1-bold text-primary-900">:</span>
           <div>
-            <p className="h1-bold text-gray-900">{minutes}</p>
+            <p className="h1-bold text-primary-900">{minutes}</p>
             <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.minutes"]({ minutes })}
             </span>
           </div>
-          <span className="h1-bold text-gray-900">:</span>
+          <span className="h1-bold text-primary-900">:</span>
           <div>
-            <p className="h1-bold text-gray-900">{seconds}</p>
+            <p className="h1-bold text-primary-900">{seconds}</p>
             <span className="diatype-m-medium uppercase text-tertiary-500">
               {m["countdown.seconds"]({ seconds })}
             </span>

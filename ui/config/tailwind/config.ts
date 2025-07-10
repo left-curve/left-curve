@@ -14,14 +14,17 @@ export const tailwindConfig: Partial<Config> = {
         "bg-secondary-rice": "var(--color-bg-secondary-rice)",
         "bg-tertiary-rice": "var(--color-bg-tertiary-rice)",
         primary: {
+          blue: "var(--color-primary-blue)",
           red: "var(--color-primary-red)",
           rice: "var(--color-primary-rice)",
           "900": "var(--color-primary-900)",
         },
         secondary: {
           "700": "var(--color-secondary-700)",
+          blue: "var(--color-secondary-blue)",
         },
         tertiary: {
+          rice: "var(--color-tertiary-rice)",
           "500": "var(--color-tertiary-500)",
         },
         transparent: "transparent",

@@ -22,7 +22,7 @@ import type React from "react";
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="rounded-xl bg-bg-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
-      <h3 className="h4-bold text-gray-900 px-2">{m["settings.display"]()}</h3>
+      <h3 className="h4-bold text-primary-900 px-2">{m["settings.display"]()}</h3>
       {children}
     </div>
   );
