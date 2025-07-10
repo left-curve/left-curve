@@ -45,7 +45,7 @@ max_connections = 10
 url = "http://localhost:8123"
 
 #
-username = ""
+user = ""
 
 #
 password = ""
