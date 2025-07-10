@@ -13,13 +13,16 @@ use {
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "PairPrice"))]
-#[cfg_attr(feature = "async-graphql", serde(rename_all = "camelCase"))]
 pub struct PairPrice {
-    pub base_denom: String,
+    #[cfg_attr(feature = "async-graphql", graphql(name = "quoteDenom"))]
     pub quote_denom: String,
+    #[cfg_attr(feature = "async-graphql", graphql(name = "baseDenom"))]
+    pub base_denom: String,
+    #[cfg_attr(feature = "async-graphql", graphql(name = "clearingPrice"))]
     pub clearing_price: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub created_at: NaiveDateTime,
+    #[cfg_attr(feature = "async-graphql", graphql(name = "blockHeight"))]
     pub block_height: u64,
 }
 

@@ -180,9 +180,9 @@ pub async fn setup_test_with_indexer(
             .await
             .expect("Failed to create separate context for dango indexer in test setup"),
         "http://localhost:8123".to_string(),
-        "dango".to_string(),
+        "grug_dev".to_string(),
         "default".to_string(),
-        "default".to_string(),
+        "".to_string(),
     );
 
     if !real_clickhouse {

@@ -31,16 +31,16 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        // Create pair_prices table if not exists
+        // Create pair_prices table with correct schema (replace if schema is wrong)
         let create_table_sql = r#"
-            CREATE TABLE IF NOT EXISTS pair_prices (
-                quoteDenom String,
-                baseDenom String,
+            CREATE OR REPLACE TABLE pair_prices (
+                quote_denom String,
+                base_denom String,
                 clearing_price String,
                 created_at DateTime,
                 block_height UInt64
             ) ENGINE = MergeTree()
-            ORDER BY (quoteDenom, baseDenom, created_at)
+            ORDER BY (quote_denom, base_denom, created_at)
         "#;
 
         let handle = self.runtime_handler.spawn({
@@ -57,7 +57,7 @@ impl grug_app::Indexer for Indexer {
                     })?;
 
                 #[cfg(feature = "tracing")]
-                tracing::info!("Created pair_prices table successfully");
+                tracing::info!("Created/replaced pair_prices table successfully");
 
                 Ok::<(), grug_app::IndexerError>(())
             }

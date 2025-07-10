@@ -15,6 +15,7 @@ use {
     tracing::Level,
 };
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);

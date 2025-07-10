@@ -87,8 +87,8 @@ impl Indexer {
         let pairs = clearing_prices
             .into_iter()
             .map(|(pair_id, clearing_price)| PairPrice {
-                base_denom: pair_id.0.to_string(),
                 quote_denom: pair_id.1.to_string(),
+                base_denom: pair_id.0.to_string(),
                 clearing_price: clearing_price.to_string(),
                 created_at: block.info.timestamp.to_naive_date_time(),
                 block_height: block.info.height,
@@ -98,26 +98,33 @@ impl Indexer {
         #[cfg(feature = "tracing")]
         tracing::info!("Saving {} pair prices", pairs.len());
 
-        // Code taken from https://github.com/ClickHouse/clickhouse-rs/blob/c48caa3f05de5b2b7a0e33da5a57d621bd13eac8/examples/inserter.rs
-        let mut inserter = clickhouse_client
-            .inserter::<PairPrice>("pair_prices")
-            .map_err(|err| {
-                grug_app::IndexerError::Database(format!("Failed to create inserter: {err}"))
-            })?
-            .with_max_rows(pairs.len() as u64);
-
-        for pair_price in pairs {
-            inserter.write(&pair_price).map_err(|err| {
-                grug_app::IndexerError::Database(format!("Failed to write pair price: {err}"))
-            })?;
-            inserter.commit().await.map_err(|err| {
-                grug_app::IndexerError::Database(format!("Failed to commit pair price: {err}"))
-            })?;
+        // Early return if no pairs to insert
+        if pairs.is_empty() {
+            return Ok(());
         }
 
-        inserter.end().await.map_err(|err| {
-            grug_app::IndexerError::Database(format!("Failed to end inserter: {err}"))
-        })?;
+        // Use SQL INSERT instead of binary Row format to avoid serialization issues
+        for pair_price in pairs {
+            let sql = "INSERT INTO pair_prices (quote_denom, base_denom, clearing_price, created_at, block_height) VALUES (?, ?, ?, ?, ?)";
+
+            clickhouse_client
+                .query(sql)
+                .bind(&pair_price.quote_denom)
+                .bind(&pair_price.base_denom)
+                .bind(&pair_price.clearing_price)
+                .bind(
+                    pair_price
+                        .created_at
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string(),
+                )
+                .bind(pair_price.block_height)
+                .execute()
+                .await
+                .map_err(|err| {
+                    grug_app::IndexerError::Database(format!("Failed to insert pair price: {err}"))
+                })?;
+        }
 
         Ok(())
     }
