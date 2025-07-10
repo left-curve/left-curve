@@ -1,9 +1,10 @@
-import { createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
 import { twMerge } from "@left-curve/applets-kit";
+import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";
 
@@ -19,6 +20,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       });
     }
   },
+  component: () => (
+    <>
+      {createPortal(<HeadContent />, document.querySelector("head")!)}
+      <Outlet />
+    </>
+  ),
   errorComponent: () => (
     <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-white-100">
       <img

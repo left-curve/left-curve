@@ -1,9 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { z } from "zod";
+import { m } from "~/paraglide/messages";
 import { coinsBySymbol } from "~/store";
 
 export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
+  head: () => ({
+    meta: [{ title: `Dango | ${m["applets.0.title"]()}` }],
+  }),
   beforeLoad: async ({ context, params }) => {
     const { client } = context;
     const { pairSymbols } = params;
