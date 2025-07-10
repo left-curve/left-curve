@@ -28,7 +28,9 @@ export const Toast: React.FC<ToastProps> = ({ title, description, type, close })
       {Icon[type]}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <p className="text-gray-900 diatype-sm-medium">{title}</p>
-        {description && <p className="text-gray-500 diatype-xs-medium break-all">{description}</p>}
+        {description && (
+          <p className="text-tertiary-500 diatype-xs-medium break-all">{description}</p>
+        )}
       </div>
       <button
         aria-label="Close Notification"
@@ -36,7 +38,7 @@ export const Toast: React.FC<ToastProps> = ({ title, description, type, close })
         onClick={close}
         type="button"
       >
-        <IconClose className="w-6 h-6 text-gray-500 hover:text-gray-900" />
+        <IconClose className="w-6 h-6 text-tertiary-500 hover:text-gray-900" />
       </button>
     </div>
   );

@@ -126,15 +126,15 @@ const SimpleSwapHeader: React.FC = () => {
       </div>
       <div className="flex items-center justify-between gap-2 relative z-10 min-h-[22px]">
         <div className="flex items-center gap-2">
-          <p className="text-gray-500 diatype-xs-medium">{m["dex.apy"]()}</p>
+          <p className="text-tertiary-500 diatype-xs-medium">{m["dex.apy"]()}</p>
           <p className="text-gray-700 diatype-xs-bold">{apy}</p>
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-gray-500 diatype-xs-medium">{m["dex.24h"]()}</p>
+          <p className="text-tertiary-500 diatype-xs-medium">{m["dex.24h"]()}</p>
           <p className="text-gray-700 diatype-xs-bold">{volume}</p>
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-gray-500 diatype-xs-medium">{m["dex.tvl"]()}</p>
+          <p className="text-tertiary-500 diatype-xs-medium">{m["dex.tvl"]()}</p>
           <p className="text-gray-700 diatype-xs-bold">{tvl}</p>
         </div>
       </div>
@@ -245,7 +245,7 @@ const SimpleSwapForm: React.FC = () => {
           </div>
         }
         insideBottomComponent={
-          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-gray-500 diatype-sm-regular pl-4">
+          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular pl-4">
             <div className="flex items-center gap-2">
               <p>
                 {baseBalance} {base.symbol}
@@ -327,7 +327,7 @@ const SimpleSwapForm: React.FC = () => {
           )
         }
         insideBottomComponent={
-          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-gray-500 diatype-sm-regular pl-4">
+          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular pl-4">
             <div className="flex items-center gap-2">
               <p>
                 {quoteBalance} {quote.symbol}
@@ -386,7 +386,7 @@ const SimpleSwapDetails: React.FC = () => {
   return (
     <div className="flex flex-col gap-1 w-full">
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">
+        <p className="text-tertiary-500 diatype-sm-regular">
           {m["dex.fee"]()} ({Number(pair?.params.swapFeeRate || 0) * 100}%)
         </p>
         {isPending ? (
@@ -398,7 +398,7 @@ const SimpleSwapDetails: React.FC = () => {
         )}
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-gray-500 diatype-sm-regular">{m["dex.convert.rate"]()}</p>
+        <p className="text-tertiary-500 diatype-sm-regular">{m["dex.convert.rate"]()}</p>
         {isPending ? (
           <Skeleton className="w-36 h-4" />
         ) : (

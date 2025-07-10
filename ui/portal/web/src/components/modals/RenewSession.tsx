@@ -25,7 +25,9 @@ export const RenewSession = forwardRef<undefined>(() => {
           <IconKey />
         </div>
         <p className="text-gray-700 h4-bold">{m["modals.renewSession.title"]()}</p>
-        <p className="text-gray-500 diatype-m-medium">{m["modals.renewSession.description"]()}</p>
+        <p className="text-tertiary-500 diatype-m-medium">
+          {m["modals.renewSession.description"]()}
+        </p>
       </div>
       <span className="w-full h-[1px] bg-gray-100 my-2 lg:block hidden" />
       <div className="p-4 flex gap-4 flex-col-reverse lg:flex-row">

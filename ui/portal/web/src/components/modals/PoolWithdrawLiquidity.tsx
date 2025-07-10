@@ -28,7 +28,7 @@ export const PoolWithdrawLiquidity = forwardRef(
           </div>
           <div className="flex flex-col gap-2">
             <h3 className="h4-bold">{m["poolLiquidity.modal.withdrawalConfirmation"]()}</h3>
-            <p className="text-gray-500 diatype-m-regular">
+            <p className="text-tertiary-500 diatype-m-regular">
               {m["poolLiquidity.modal.withdrawPenaltyAdvice"]()}
             </p>
           </div>

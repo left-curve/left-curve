@@ -58,7 +58,7 @@ export const ConfirmSend = forwardRef(
               </p>
               <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
             </div>
-            <p className="text-gray-500 diatype-sm-regular">
+            <p className="text-tertiary-500 diatype-sm-regular">
               {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>
@@ -69,10 +69,10 @@ export const ConfirmSend = forwardRef(
             ) : (
               <p className=" text-gray-700 h3-bold">{username}</p>
             )}
-            <TruncateText className="text-gray-500 diatype-sm-regular " text={to} />
+            <TruncateText className="text-tertiary-500 diatype-sm-regular " text={to} />
           </div>
           {/*  <div className="flex items-center justify-between ">
-          <p className="text-gray-500 diatype-sm-regular">Fee</p>
+          <p className="text-tertiary-500 diatype-sm-regular">Fee</p>
           <p className="text-gray-700 diatype-sm-medium">$1.2</p>
         </div> */}
         </div>

@@ -65,7 +65,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
               </p>
               <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
             </div>
-            <p className="text-gray-500 diatype-sm-regular">
+            <p className="text-tertiary-500 diatype-sm-regular">
               {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>

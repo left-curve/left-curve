@@ -94,16 +94,19 @@ const SearchMenu: React.FC = () => {
             ) : null}
             <div className="flex-col bg-bg-secondary-rice shadow-account-card lg:shadow-none rounded-md w-full flex items-center">
               <motion.div className="w-full flex items-center gap-2 px-3 py-2 rounded-md">
-                <IconSearch className="w-5 h-5 text-gray-500" />
+                <IconSearch className="w-5 h-5 text-tertiary-500" />
                 <Command.Input
                   ref={inputRef}
                   onValueChange={setSearchText}
                   value={searchText}
-                  className="bg-bg-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
+                  className="bg-bg-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-tertiary-500"
                 />
 
                 {!isLg && searchText ? (
-                  <IconClose className="w-6 h-6 text-gray-500" onClick={() => setSearchText("")} />
+                  <IconClose
+                    className="w-6 h-6 text-tertiary-500"
+                    onClick={() => setSearchText("")}
+                  />
                 ) : null}
               </motion.div>
               {!isSearchBarVisible && (
@@ -192,7 +195,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
                     <Spinner color="pink" size="lg" />
                   </div>
                 ) : (
-                  <p className="text-gray-500 diatype-m-regular p-2 text-center">
+                  <p className="text-tertiary-500 diatype-m-regular p-2 text-center">
                     {m["searchBar.noResult"]()}
                   </p>
                 )}

@@ -97,12 +97,12 @@ const ProTradeHeader: React.FC = () => {
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <IconChevronDownFill
-              className={twMerge("text-gray-500 w-4 h-4 transition-all", {
+              className={twMerge("text-tertiary-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
           </div>
-          <IconEmptyStar className="w-5 h-5 text-gray-500" />
+          <IconEmptyStar className="w-5 h-5 text-tertiary-500" />
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -117,23 +117,27 @@ const ProTradeHeader: React.FC = () => {
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.price"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">
+                {m["dex.protrade.spot.price"]()}
+              </p>
               <p className="diatype-sm-bold text-gray-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">
+              <p className="diatype-xs-medium text-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.volume"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">
+                {m["dex.protrade.spot.volume"]()}
+              </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.contract"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">{m["dex.contract"]()}</p>
               <AddressVisualizer
                 address={config?.addresses.dex || "0x"}
                 withIcon

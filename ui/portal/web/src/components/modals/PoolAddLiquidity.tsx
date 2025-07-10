@@ -54,7 +54,7 @@ export const PoolAddLiquidity = forwardRef(
                 </p>
                 <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
               </div>
-              <p className="text-gray-500 diatype-sm-regular">
+              <p className="text-tertiary-500 diatype-sm-regular">
                 {getPrice(base.amount, base.denom, { format: true })}
               </p>
             </div>
@@ -65,7 +65,7 @@ export const PoolAddLiquidity = forwardRef(
                 </p>
                 <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
               </div>
-              <p className="text-gray-500 diatype-sm-regular">
+              <p className="text-tertiary-500 diatype-sm-regular">
                 {getPrice(quote.amount, quote.denom, { format: true })}
               </p>
             </div>

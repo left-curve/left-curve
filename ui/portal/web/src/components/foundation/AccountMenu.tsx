@@ -397,7 +397,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
           </div>
           <div className="flex flex-col">
             <p className="text-gray-900 diatype-m-bold">{coin.symbol} LP</p>
-            <p className="text-gray-500 diatype-m-regular">{coin.amount}</p>
+            <p className="text-tertiary-500 diatype-m-regular">{coin.amount}</p>
           </div>
         </div>
         <div className="flex flex-col items-end">
@@ -425,7 +425,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
             ].map((asset, index) => (
               <div
                 key={`${asset.denom}-${index}`}
-                className="flex items-center justify-between text-gray-500 diatype-m-regular"
+                className="flex items-center justify-between text-tertiary-500 diatype-m-regular"
               >
                 <p className="flex items-center gap-2">{asset.symbol}</p>
                 <p>{formatNumber(asset.amount || "0", { ...formatNumberOptions })}</p>
@@ -476,7 +476,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
           </div>
           <div className="flex flex-col">
             <p className="text-gray-900 diatype-m-bold">{pairId}</p>
-            <p className="text-gray-500 diatype-m-regular">
+            <p className="text-tertiary-500 diatype-m-regular">
               {getPrice(formatUnits(total.toNumber(), base.decimals), base.denom, { format: true })}
             </p>
           </div>
@@ -504,7 +504,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
                 <div
                   key={order.id}
                   className={twMerge(
-                    "flex items-center justify-between text-gray-500 diatype-m-regular",
+                    "flex items-center justify-between text-tertiary-500 diatype-m-regular",
                   )}
                 >
                   <p className="flex items-center gap-2">

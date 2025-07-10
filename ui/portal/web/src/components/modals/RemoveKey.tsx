@@ -52,10 +52,10 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         </div>
         <div className="flex flex-col gap-2">
           <h3 className="h4-bold">{m["settings.keyManagement.management.delete.title"]()}</h3>
-          <p className="text-gray-500 diatype-m-regular">
+          <p className="text-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.delete.description"]()}
           </p>
-          <p className="text-gray-500 diatype-m-regular">
+          <p className="text-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.delete.warning"]()}
           </p>
         </div>

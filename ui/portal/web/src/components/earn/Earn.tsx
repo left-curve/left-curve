@@ -33,7 +33,7 @@ const EarnHeader: React.FC = () => {
         className="w-[148px] h-[148px]"
       />
       <h1 className="exposure-h1-italic text-gray-900">{m["earn.title"]()}</h1>
-      <p className="text-gray-500 diatype-lg-medium">{m["earn.description"]()}</p>
+      <p className="text-tertiary-500 diatype-lg-medium">{m["earn.description"]()}</p>
     </div>
   );
 };

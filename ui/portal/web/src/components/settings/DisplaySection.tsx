@@ -32,7 +32,7 @@ const LanguageSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconLanguage className="text-gray-500" />
+        <IconLanguage className="text-tertiary-500" />
         <span className="diatype-m-bold text-gray-700">{m["settings.language"]()}</span>
       </p>
       <Select value={getLocale()} onChange={(key) => setLocale(key as (typeof locales)[number])}>
@@ -52,7 +52,7 @@ const FormatNumberSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconFormatNumber className="text-gray-500" />
+        <IconFormatNumber className="text-tertiary-500" />
         <span className="diatype-m-bold text-gray-700"> {m["settings.number"]()}</span>
       </p>
 
@@ -90,7 +90,7 @@ const ThemeSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconTheme className="text-gray-500" />
+        <IconTheme className="text-tertiary-500" />
         <span className="diatype-m-bold text-gray-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs

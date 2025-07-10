@@ -17,7 +17,7 @@ export const NotFound: React.FC = () => {
         <h1 className="text-center font-exposure text-[30px] md:text-[60px] font-extrabold text-gray-700 italic">
           {m["notFound.title"]()}
         </h1>
-        <p className="text-gray-500 diatype-m-regular">{m["notFound.description"]()}</p>
+        <p className="text-tertiary-500 diatype-m-regular">{m["notFound.description"]()}</p>
       </div>
       <Button onClick={() => navigate({ to: "/" })}>{m["notFound.goToHome"]()}</Button>
     </div>

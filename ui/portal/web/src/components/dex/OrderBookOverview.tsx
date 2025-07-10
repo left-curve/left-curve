@@ -112,7 +112,7 @@ const OrderBook: React.FC = () => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
         <p className="order-2 lg:order-none text-end lg:text-start">Price</p>
         <p className="text-end hidden lg:block">Size (ETH)</p>
         <p className="lg:text-end order-1 lg:order-none">Total (ETH)</p>
@@ -158,7 +158,7 @@ const LiveTrades: React.FC = () => {
   const numberOfTrades = isLg ? 24 : 16;
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
         <p>Price</p>
         <p className="text-end">Size (ETH)</p>
         <p className="text-end">Time</p>

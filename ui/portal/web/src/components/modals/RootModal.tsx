@@ -186,7 +186,7 @@ export const RootModal: React.FC = () => {
                 <Button variant="link" onClick={hideModal}>
                   {m["common.cancel"]()}
                 </Button>
-                <p className="mt-1 text-gray-500 font-semibold">{options.header}</p>
+                <p className="mt-1 text-tertiary-500 font-semibold">{options.header}</p>
                 <div className="w-[66px]" />
               </div>
             ) : null}
