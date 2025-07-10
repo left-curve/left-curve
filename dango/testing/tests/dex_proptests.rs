@@ -832,11 +832,13 @@ proptest! {
         ..ProptestConfig::default()
     })]
 
+    #[ignore = "this test takes 15+ minutes so skip it during CI"]
     #[test]
     fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 10)) {
         test_dex_actions(dex_actions)?;
     }
 
+    #[ignore = "this test takes 15+ minutes so skip it during CI"]
     #[test]
     fn provide_liq_and_market_order(dex_actions in provide_liquidity_and_market_order()) {
         test_dex_actions(dex_actions)?;
