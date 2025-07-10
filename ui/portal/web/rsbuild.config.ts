@@ -42,7 +42,7 @@ export default defineConfig({
     },
   },
   server: { port: 5080 },
-  html: { template: "public/index.html" },
+  html: { template: "public/index.html", title: "" },
   performance: {
     prefetch: {
       type: "all-assets",
