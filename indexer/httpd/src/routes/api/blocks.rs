@@ -68,7 +68,7 @@ fn _block_results_by_height(block_height: u64, app_ctx: &Context) -> Result<Http
 }
 
 fn check_block_exists(block_filename: PathBuf, height: u64) -> Result<(), Error> {
-    if !BlockToIndex::exists(block_filename.clone()) {
+    if !BlockToIndex::exists(block_filename) {
         Err(actix_web::error::ErrorNotFound(format!(
             "block not found: {}",
             height
