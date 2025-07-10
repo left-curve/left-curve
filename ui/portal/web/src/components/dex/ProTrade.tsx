@@ -83,7 +83,7 @@ const ProTradeHeader: React.FC = () => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+    <div className="flex bg-bg-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />

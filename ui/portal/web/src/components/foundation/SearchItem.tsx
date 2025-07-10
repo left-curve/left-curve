@@ -33,7 +33,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
 
   return (
     <motion.div
-      className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 flex items-center justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={title}
     >
@@ -62,7 +62,7 @@ type SearchAssetProps = WithPrice<AnyCoin>;
 const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={symbol}
     >
@@ -89,7 +89,7 @@ type SearchBlockItemProps = {
 const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={height}
     >
@@ -114,7 +114,7 @@ type SearchTransactionItemProps = {
 const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={height}
     >
@@ -141,7 +141,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   const { isMd } = useMediaQuery();
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={address}
     >
@@ -178,7 +178,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
 
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={address}
     >

@@ -70,7 +70,7 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
   const quoteCoin = coins[quoteDenom];
 
   return (
-    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
+    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-bg-tertiary-rice shadow-account-card rounded-xl overflow-hidden">
       <img
         src={images[index].character}
         alt={images[index].alt}

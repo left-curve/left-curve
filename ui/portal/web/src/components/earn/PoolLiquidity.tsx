@@ -82,7 +82,7 @@ const PoolLiquidityHeader: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-rice-50 relative w-full overflow-hidden",
+        "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-bg-tertiary-rice relative w-full overflow-hidden",
         { "lg:flex-row": userHasLiquidity },
       )}
     >

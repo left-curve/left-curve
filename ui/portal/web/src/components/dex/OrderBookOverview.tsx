@@ -135,7 +135,7 @@ const OrderBook: React.FC = () => {
             <p className="diatype-xs-bold text-status-success relative z-20">
               {bids[bids.length - 1].price.toFixed(2)}
             </p>
-            <span className="bg-rice-50 w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
+            <span className="bg-bg-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
           </div>
         )}
         <div className="bid-container flex flex-col w-full gap-1">
@@ -186,7 +186,7 @@ const LiveTrades: React.FC = () => {
                 <p>{trade.createdAt}</p>
                 <IconLink className="w-3 h-3" />
               </div>
-              <span className="group-hover:bg-rice-50 h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+              <span className="group-hover:bg-bg-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
             </div>
           );
         })}

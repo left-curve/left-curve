@@ -383,7 +383,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
   return (
     <motion.div
       layout="position"
-      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+      className="flex flex-col p-4 hover:bg-bg-tertiary-rice hover:cursor-pointer"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div
@@ -462,7 +462,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
   return (
     <motion.div
       layout="position"
-      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+      className="flex flex-col p-4 hover:bg-bg-tertiary-rice hover:cursor-pointer"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div
