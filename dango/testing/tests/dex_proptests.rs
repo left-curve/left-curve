@@ -378,11 +378,14 @@ impl DexAction {
                         input.clone(),
                     )
                     .should(|tx_outcome| {
-                        // We expect the transaction to succeed, unless for two
-                        // specific reasons:
-                        if let Err(err) = tx_outcome.result {
+                        // We expect the transaction to succeed, unless for the
+                        // following three specific reasons. These errors indicate
+                        // an unfortunate combination of parameters, not an bug
+                        // in the contract.
+                        if let Err(err) = &tx_outcome.result {
                             err.contains("insufficient liquidity")
-                                || err.contains("output amount after fee must be positive")
+                                || err.contains("output amount after fee must be positive") // this refers to output after _liquidity fee_
+                                || err.contains("output amount is zero") // this refers to output after _protocol fee_
                         } else {
                             true
                         }
@@ -406,7 +409,7 @@ impl DexAction {
                     .should(|tx_outcome| {
                         // We expect the transaction to succeed, unless for two
                         // specific reasons:
-                        if let Err(err) = tx_outcome.result {
+                        if let Err(err) = &tx_outcome.result {
                             err.contains("insufficient liquidity")
                                 || err.contains("input amount must be positive")
                         } else {
@@ -847,7 +850,7 @@ proptest! {
 ///
 /// We've introduced a fix this way: introduce a new parameter `reserve_ratio`
 /// to the xyk pool, which identifies the portion of funds that the pool must
-/// hold and use to place older. E.g. if reserve ratio is 5%, then the pool will
+/// hold and use to place order. E.g. if reserve ratio is 5%, then the pool will
 /// only use 95% of its funds to place order, thus its liquidity never reduces
 /// to zero.
 #[test]
