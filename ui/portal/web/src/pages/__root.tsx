@@ -4,8 +4,8 @@ import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
 import { twMerge } from "@left-curve/applets-kit";
-
 import { createPortal } from "react-dom";
+
 import type { RouterContext } from "~/app.router";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
