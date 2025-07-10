@@ -12,9 +12,13 @@ pub trait ResultExt: Sized {
     /// Ensure the result satisfies the given predicate.
     fn should<F>(self, predicate: F)
     where
-        F: FnOnce(Self) -> bool,
+        Self: Debug,
+        F: FnOnce(&Self) -> bool,
     {
-        assert!(predicate(self), "result does not satisfy predicte!");
+        assert!(
+            predicate(&self),
+            "result does not satisfy predicte! result: {self:?}"
+        );
     }
 
     /// Ensure the result is ok; return the value.

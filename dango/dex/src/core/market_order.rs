@@ -49,7 +49,7 @@ where
             None => break,
         };
 
-        let Some((market_order_id, market_order)) = market_orders.peek_mut() else {
+        let Some((ref market_order_id, market_order)) = market_orders.peek_mut() else {
             break;
         };
 
