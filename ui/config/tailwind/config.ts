@@ -24,6 +24,7 @@ export const tailwindConfig: Partial<Config> = {
           "700": "var(--color-secondary-700)",
           blue: "var(--color-secondary-blue)",
           rice: "var(--color-secondary-rice)",
+          gray: "var(--color-secondary-gray)",
         },
         tertiary: {
           rice: "var(--color-tertiary-rice)",

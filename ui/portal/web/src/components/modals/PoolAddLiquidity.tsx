@@ -31,7 +31,7 @@ export const PoolAddLiquidity = forwardRef(
     }));
 
     return (
-      <div className="flex flex-col bg-bg-primary-rice md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-bg-primary-rice md:border border-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
         <p className="text-primary-900 diatype-lg-medium w-full text-center">
           {m["poolLiquidity.modal.addLiquidity"]()}
         </p>

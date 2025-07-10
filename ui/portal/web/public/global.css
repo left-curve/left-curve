@@ -15,6 +15,7 @@
   --color-secondary-700: #453D39;
   --color-secondary-blue: #918CC6;
   --color-secondary-rice: #9C4D21;
+  --color-secondary-gray: #EAE9E9;
   --color-tertiary-500: #6E6865;
   --color-tertiary-rice: #F3E5BF;
   --shadow-card:0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
@@ -35,6 +36,7 @@ html.dark {
   --color-secondary-700: #FFF9F0;
   --color-secondary-blue: #CBCBE7;
   --color-secondary-rice: #E3BD66;
+  --color-secondary-gray: #4D4B48;
   --color-tertiary-500: #B2AEA8;
   --color-tertiary-rice:#474237;
   --shadow-card:0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);

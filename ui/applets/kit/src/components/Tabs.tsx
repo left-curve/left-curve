@@ -127,7 +127,7 @@ const tabsVariants = tv({
       },
       "line-red": {
         base: "p-0",
-        button: "border-b-[1px] border-gray-100 pt-0",
+        button: "border-b-[1px] border-secondary-gray pt-0",
         "animated-element": "bg-red-bean-400 w-full h-[2px] bottom-[-1px]",
       },
     },
