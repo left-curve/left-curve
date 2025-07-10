@@ -102,7 +102,7 @@ jobs:
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
-      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_HOST: localhost
       CLICKHOUSE_PORT: 8123
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
