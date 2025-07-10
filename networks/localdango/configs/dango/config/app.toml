@@ -44,14 +44,11 @@ max_connections = 10
 # URL to the Clickhouse database to be used by the indexer.
 url = "http://localhost:8123"
 
-#
-user = ""
+user = "default"
 
-#
 password = ""
 
-#
-database = ""
+database = "grug_dev"
 
 [httpd]
 
