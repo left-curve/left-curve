@@ -1,7 +1,7 @@
 use {
     crate::{Order, OrderTrait},
     dango_types::dex::Direction,
-    grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
+    grug::{IsZero, Number, NumberConst, StdResult, Udec128},
 };
 
 #[derive(Debug)]
@@ -10,17 +10,17 @@ pub struct FillingOutcome {
     /// The order with the `filled` amount updated.
     pub order: Order,
     /// Amount this order was filled for, in base asset.
-    pub filled_base: Uint128,
+    pub filled_base: Udec128,
     /// Amount this order was filled for, in quote asset.
-    pub filled_quote: Uint128,
+    pub filled_quote: Udec128,
     /// Amount of base asset that should be refunded to the trader.
-    pub refund_base: Uint128,
+    pub refund_base: Udec128,
     /// Amount of quote asset that should be refunded to the trader.
-    pub refund_quote: Uint128,
+    pub refund_quote: Udec128,
     /// Fee charged in base asset.
-    pub fee_base: Uint128,
+    pub fee_base: Udec128,
     /// Fee charged in quote asset.
-    pub fee_quote: Uint128,
+    pub fee_quote: Udec128,
 }
 
 /// Clear the orders given a clearing price and volume.
@@ -28,7 +28,7 @@ pub fn fill_orders(
     bids: Vec<(Udec128, Order)>,
     asks: Vec<(Udec128, Order)>,
     clearing_price: Udec128,
-    volume: Uint128,
+    volume: Udec128,
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
@@ -60,7 +60,7 @@ pub fn fill_orders(
 fn fill_bids(
     bids: Vec<(Udec128, Order)>,
     clearing_price: Udec128,
-    mut volume: Uint128,
+    mut volume: Udec128,
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
@@ -72,7 +72,7 @@ fn fill_bids(
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
         let filled_base = *order.remaining().min(&volume);
-        let filled_quote = filled_base.checked_mul_dec_floor(order_price)?;
+        let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
         order.fill(filled_base)?;
@@ -89,15 +89,15 @@ fn fill_bids(
         };
 
         // For bids, the fee is paid in base asset.
-        let fee_base = filled_base.checked_mul_dec_ceil(fee_rate)?;
-        let fee_quote = Uint128::ZERO;
+        let fee_base = filled_base.checked_mul(fee_rate)?;
+        let fee_quote = Udec128::ZERO;
 
         // Determine the refund amounts.
         // For base, it's the filled amount minus the fee.
         // For quote, in case the order is filled at a price better than the
         // limit price, refund the unused deposit.
         let refund_base = filled_base.checked_sub(fee_base)?;
-        let refund_quote = filled_base.checked_mul_dec_floor(order_price - clearing_price)?;
+        let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Bid,
@@ -122,7 +122,7 @@ fn fill_bids(
 fn fill_asks(
     asks: Vec<(Udec128, Order)>,
     clearing_price: Udec128,
-    mut volume: Uint128,
+    mut volume: Udec128,
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
@@ -134,7 +134,7 @@ fn fill_asks(
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
         let filled_base = *order.remaining().min(&volume);
-        let filled_quote = filled_base.checked_mul_dec_floor(clearing_price)?;
+        let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
         order.fill(filled_base)?;
@@ -152,13 +152,13 @@ fn fill_asks(
         };
 
         // For asks, the fee is paid in quote asset.
-        let fee_base = Uint128::ZERO;
-        let fee_quote = filled_quote.checked_mul_dec_ceil(fee_rate)?;
+        let fee_base = Udec128::ZERO;
+        let fee_quote = filled_quote.checked_mul(fee_rate)?;
 
         // Determine the refund amounts.
         // For base, since limit orders are good-till-canceled, no need to refund.
         // For quote, it's the filled amount minus the fee.
-        let refund_base = Uint128::ZERO;
+        let refund_base = Udec128::ZERO;
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
 
         outcome.push(FillingOutcome {

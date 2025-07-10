@@ -69,7 +69,7 @@ export async function batchUpdateOrders<transport extends Transport>(
         { name: "amount", type: "string" },
         { name: "price", type: "string" },
       ],
-      ...(cancels && cancels !== "all" ? { CancelSome: [{ name: "some", type: "uint64[]" }] } : {}),
+      ...(cancels && cancels !== "all" ? { CancelSome: [{ name: "some", type: "string[]" }] } : {}),
     },
   };
 

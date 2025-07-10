@@ -112,7 +112,7 @@ fn check_balances(
             Direction::Ask => (order.base_denom, order.remaining),
         };
 
-        order_balances.insert((denom, amount))?;
+        order_balances.insert((denom, amount.into_int()))?;
     }
     println!("order balances: {order_balances:?}");
 
@@ -792,6 +792,7 @@ fn test_dex_actions(
                             .unwrap(),
                             pool_type: PassiveLiquidity::Xyk {
                                 order_spacing: Udec128::new_bps(1000),
+                                reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
                             },
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                         },

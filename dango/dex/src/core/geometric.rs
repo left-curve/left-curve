@@ -77,8 +77,8 @@ fn bid_exact_amount_in(
     bid_amount_in_quote: Uint128,
     passive_asks: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
-    let mut remaining_bid_in_quote = bid_amount_in_quote;
-    let mut output_amount = Uint128::ZERO;
+    let mut remaining_bid_in_quote = bid_amount_in_quote.checked_into_dec()?;
+    let mut output_amount = Udec128::ZERO;
 
     for (price, order) in passive_asks {
         let remaining_bid = remaining_bid_in_quote.checked_div_dec_floor(price)?;
@@ -89,7 +89,7 @@ fn bid_exact_amount_in(
         remaining_bid_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
         if remaining_bid_in_quote.is_zero() {
-            return Ok(output_amount);
+            return Ok(output_amount.into_int());
         }
     }
 
@@ -100,8 +100,8 @@ fn ask_exact_amount_in(
     ask_amount: Uint128,
     passive_bids: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
-    let mut remaining_ask = ask_amount;
-    let mut output_amount_in_quote = Uint128::ZERO;
+    let mut remaining_ask = ask_amount.checked_into_dec()?;
+    let mut output_amount_in_quote = Udec128::ZERO;
 
     for (price, order) in passive_bids {
         let matched_amount = cmp::min(order.remaining, remaining_ask);
@@ -111,7 +111,7 @@ fn ask_exact_amount_in(
         output_amount_in_quote.checked_add_assign(matched_amount_in_quote)?;
 
         if remaining_ask.is_zero() {
-            return Ok(output_amount_in_quote);
+            return Ok(output_amount_in_quote.into_int());
         }
     }
 
@@ -154,11 +154,11 @@ pub fn swap_exact_amount_out(
 }
 
 fn bid_exact_amount_out(
-    bid_amount_base: Uint128,
+    bid_amount: Uint128,
     passive_asks: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
-    let mut remaining_bid = bid_amount_base;
-    let mut input_amount = Uint128::ZERO;
+    let mut remaining_bid = bid_amount.checked_into_dec()?;
+    let mut input_amount = Udec128::ZERO;
 
     for (price, order) in passive_asks {
         let matched_amount = cmp::min(order.remaining, remaining_bid);
@@ -168,7 +168,7 @@ fn bid_exact_amount_out(
         input_amount.checked_add_assign(matched_amount_in_quote)?;
 
         if remaining_bid.is_zero() {
-            return Ok(input_amount);
+            return Ok(input_amount.into_int());
         }
     }
 
@@ -179,19 +179,19 @@ fn ask_exact_amount_out(
     ask_amount_in_quote: Uint128,
     passive_bids: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
-    let mut remaining_ask_in_quote = ask_amount_in_quote;
-    let mut input_amount = Uint128::ZERO;
+    let mut remaining_ask_in_quote = ask_amount_in_quote.checked_into_dec()?;
+    let mut input_amount = Udec128::ZERO;
 
     for (price, order) in passive_bids {
-        let bid_size_in_quote = order.remaining.checked_mul_dec(price)?;
-        let matched_amount_in_quote = cmp::min(bid_size_in_quote, remaining_ask_in_quote);
+        let remaining_ask = remaining_ask_in_quote.checked_div_dec_ceil(price)?;
+        let matched_amount = cmp::min(order.remaining, remaining_ask);
+        input_amount.checked_add_assign(matched_amount)?;
+
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_floor(price)?;
         remaining_ask_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
-        let matched_amount_in_base = matched_amount_in_quote.checked_div_dec_ceil(price)?;
-        input_amount.checked_add_assign(matched_amount_in_base)?;
-
         if remaining_ask_in_quote.is_zero() {
-            return Ok(input_amount);
+            return Ok(input_amount.into_int());
         }
     }
 
@@ -246,6 +246,9 @@ pub fn reflect_curve(
 
             let size_in_quote = remaining_quote.checked_mul_dec(*ratio).ok()?;
             let size = size_in_quote.checked_div_dec_floor(price).ok()?;
+            if size.is_zero() {
+                return None;
+            }
 
             id += Uint64::ONE;
             maybe_price = price.checked_sub(order_spacing).ok();
@@ -255,7 +258,7 @@ pub fn reflect_curve(
                 id,
                 price,
                 amount: size,
-                remaining: size,
+                remaining: size.checked_into_dec().ok()?,
             }))
         })
     };
@@ -270,7 +273,11 @@ pub fn reflect_curve(
 
         iter::from_fn(move || {
             let price = maybe_price?;
+
             let size = remaining_base.checked_mul_dec(*ratio).ok()?;
+            if size.is_zero() {
+                return None;
+            }
 
             id -= Uint64::ONE;
             maybe_price = price.checked_add(order_spacing).ok();
@@ -280,7 +287,7 @@ pub fn reflect_curve(
                 id,
                 price,
                 amount: size,
-                remaining: size,
+                remaining: size.checked_into_dec().ok()?,
             }))
         })
     };

@@ -6,7 +6,7 @@ use {
     },
     grug::{
         Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, NumberConst, Timestamp,
-        Udec128, Uint64, Uint128, UniqueIndex,
+        Udec128, Uint64, UniqueIndex,
     },
 };
 
@@ -38,10 +38,10 @@ pub const INCOMING_ORDERS: Map<(Addr, OrderId), (LimitOrderKey, LimitOrder)> =
     Map::new("incoming_orders");
 
 /// Stores the total trading volume in USD for each account address and timestamp.
-pub const VOLUMES: Map<(&Addr, Timestamp), Uint128> = Map::new("volume");
+pub const VOLUMES: Map<(&Addr, Timestamp), Udec128> = Map::new("volume");
 
 /// Stores the total trading volume in USD for each username and timestamp.
-pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Uint128> = Map::new("volume_by_user");
+pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128> = Map::new("volume_by_user");
 
 /// Storage key for market orders.
 ///
