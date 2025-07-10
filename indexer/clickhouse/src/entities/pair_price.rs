@@ -9,7 +9,7 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "PairPrice"))]

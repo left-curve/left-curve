@@ -179,10 +179,14 @@ pub async fn setup_test_with_indexer(
             .with_separate_pubsub()
             .await
             .expect("Failed to create separate context for dango indexer in test setup"),
-        "http://localhost:8123".to_string(),
-        "grug_dev".to_string(),
-        "default".to_string(),
-        "".to_string(),
+        format!(
+            "http://{}:{}",
+            std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
+            std::env::var("CLICKHOUSE_PORT").unwrap_or("8123".to_string())
+        ),
+        std::env::var("CLICKHOUSE_DATABASE").unwrap_or("grug_dev".to_string()),
+        std::env::var("CLICKHOUSE_USER").unwrap_or("default".to_string()),
+        std::env::var("CLICKHOUSE_PASSWORD").unwrap_or("".to_string()),
     );
 
     if !real_clickhouse {
