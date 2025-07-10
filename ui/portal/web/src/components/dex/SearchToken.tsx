@@ -60,7 +60,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
         placeholder={
           <div className="flex gap-1 items-center">
             <p className="text-tertiary-500 diatype-m-regular mt-[2px]">{m["dex.searchFor"]()}</p>
-            <p className="exposure-m-italic text-rice-700">{m["dex.tokens"]()}</p>
+            <p className="exposure-m-italic text-secondary-rice">{m["dex.tokens"]()}</p>
           </div>
         }
       />
