@@ -134,6 +134,20 @@ impl grug_app::Indexer for Indexer {
     }
 }
 
+#[cfg(feature = "testing")]
+impl Drop for Indexer {
+    fn drop(&mut self) {
+        let context = self.context.clone();
+
+        self.runtime_handler.block_on(async move {
+            if let Err(_err) = context.cleanup_test_database().await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_err, "Failed to cleanup test database");
+            }
+        })
+    }
+}
+
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     describe_histogram!(

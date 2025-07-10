@@ -8,18 +8,15 @@ use {
     },
     grug::{
         Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt, Signer,
-        StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
+        StdResult, Timestamp, Udec128, Uint128, btree_map,
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::pair_price::PairPrice,
-    tracing::Level,
 };
 
 // #[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(false).await;
 
@@ -113,8 +110,6 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 
     assert_that!(clickhouse_inserts).has_length(1);
 
-    tracing::info!("{:#?}", clickhouse_inserts);
-
     let pair_price = clickhouse_inserts[0].clone();
 
     // Manual asserts so if clearing price changes, it doesn't break this test.
@@ -127,8 +122,6 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(true).await;
 
@@ -218,8 +211,6 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
     assert_that!(pair_price.clearing_price.len()).is_greater_than(0);
-
-    tracing::info!("{:#?}", pair_price);
 
     Ok(())
 }

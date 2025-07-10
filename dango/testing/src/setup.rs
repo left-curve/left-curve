@@ -189,7 +189,9 @@ pub async fn setup_test_with_indexer(
         std::env::var("CLICKHOUSE_PASSWORD").unwrap_or("".to_string()),
     );
 
-    if !real_clickhouse {
+    if real_clickhouse {
+        clickhouse_context = clickhouse_context.with_test_database().await.unwrap();
+    } else {
         clickhouse_context = clickhouse_context.with_mock();
     }
 

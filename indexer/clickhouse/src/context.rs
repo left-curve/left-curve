@@ -8,6 +8,9 @@ pub struct Context {
     #[cfg(feature = "testing")]
     #[allow(dead_code)]
     mock: Option<Arc<test::Mock>>,
+    #[cfg(feature = "testing")]
+    #[allow(dead_code)]
+    pub clickhouse_database: String,
     #[allow(dead_code)]
     clickhouse_client: Client,
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
@@ -56,6 +59,7 @@ impl Context {
 
         Self {
             mock: None,
+            clickhouse_database: database,
             clickhouse_client,
             pubsub: indexer_context.pubsub,
         }
@@ -66,10 +70,34 @@ impl Context {
         let mock = test::Mock::new();
 
         Self {
-            clickhouse_client: self.clickhouse_client.with_mock(&mock),
+            clickhouse_client: self.clickhouse_client.clone().with_mock(&mock),
             mock: Some(Arc::new(mock)),
-            pubsub: self.pubsub,
+            clickhouse_database: self.clickhouse_database.clone(),
+            pubsub: self.pubsub.clone(),
         }
+    }
+
+    #[cfg(feature = "testing")]
+    pub async fn with_test_database(self) -> crate::error::Result<Self> {
+        let test_database = testing::generate_test_database_name();
+
+        let create_db_sql = format!("CREATE DATABASE IF NOT EXISTS `{test_database}`",);
+        self.clickhouse_client
+            .query(&create_db_sql)
+            .execute()
+            .await?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("Created test database: {test_database}");
+
+        let clickhouse_client = self.clickhouse_client.with_database(&test_database);
+
+        Ok(Self {
+            mock: None,
+            clickhouse_database: test_database,
+            clickhouse_client,
+            pubsub: self.pubsub,
+        })
     }
 
     #[cfg(feature = "testing")]
@@ -87,5 +115,70 @@ impl Context {
 
         #[cfg(not(feature = "testing"))]
         return false;
+    }
+
+    #[cfg(feature = "testing")]
+    pub async fn cleanup_test_database(&self) -> Result<(), String> {
+        if self.is_mocked() {
+            // No cleanup needed for mocked databases
+            return Ok(());
+        }
+
+        let drop_sql = format!("DROP DATABASE IF EXISTS `{}`", self.clickhouse_database);
+
+        self.clickhouse_client
+            .query(&drop_sql)
+            .execute()
+            .await
+            .map_err(|e| {
+                format!(
+                    "Failed to drop test database {}: {e}",
+                    self.clickhouse_database,
+                )
+            })?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("Cleaned up test database: {}", self.clickhouse_database);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "testing")]
+    pub async fn create_test_database(&self, database_name: &str) -> Result<(), String> {
+        if self.is_mocked() {
+            // No database creation needed for mocked databases
+            return Ok(());
+        }
+
+        let create_sql = format!("CREATE DATABASE IF NOT EXISTS `{database_name}`",);
+
+        self.clickhouse_client
+            .query(&create_sql)
+            .execute()
+            .await
+            .map_err(|e| format!("Failed to create test database {database_name}: {e}"))?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("Created test database: {database_name}",);
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "testing")]
+pub mod testing {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static TEST_DB_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+    /// Generates a unique database name for testing
+    pub(crate) fn generate_test_database_name() -> String {
+        let test_id = TEST_DB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        format!("dango_test_{test_id}_{timestamp}")
     }
 }
