@@ -78,7 +78,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           <p className="diatype-xs-regular text-tertiary-500">
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
-          <p className="diatype-xs-medium text-gray-700">
+          <p className="diatype-xs-medium text-secondary-700">
             {formatNumber(availableCoin.amount, { ...formatNumberOptions })} {availableCoin.symbol}
           </p>
         </div>
@@ -164,7 +164,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             <p className="diatype-xs-regular text-tertiary-500">
               {m["dex.protrade.spot.orderValue"]()}
             </p>
-            <p className="diatype-xs-medium text-gray-700">
+            <p className="diatype-xs-medium text-secondary-700">
               {getPrice(amount, sizeCoin.denom, { format: true })}
             </p>
           </div>
@@ -172,13 +172,13 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             <p className="flex gap-1 diatype-xs-regular text-tertiary-500">
               <span>{m["dex.protrade.spot.orderSize"]()}</span>
             </p>
-            <p className="diatype-xs-medium text-gray-700">
+            <p className="diatype-xs-medium text-secondary-700">
               {formatNumber(orderAmount.quoteAmount, { ...formatNumberOptions })} {quoteCoin.symbol}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-tertiary-500" />
-            <p className="diatype-xs-medium text-gray-700">
+            <p className="diatype-xs-medium text-secondary-700">
               {formatNumber(orderAmount.baseAmount, { ...formatNumberOptions })} {baseCoin.symbol}
             </p>
           </div>
@@ -192,7 +192,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           ) : null}
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-tertiary-500">{m["dex.protrade.spot.fees"]()}</p>
-            <p className="diatype-xs-medium text-gray-700">
+            <p className="diatype-xs-medium text-secondary-700">
               {Number(appConfig?.takerFeeRate) * 100} % / {Number(appConfig?.makerFeeRate) * 100} %
             </p>
           </div>
@@ -203,34 +203,34 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             <p className="diatype-xs-bold">Account Equity</p>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Spot</p>
-              <p className="diatype-xs-medium text-gray-700">$10.00</p>
+              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Perps</p>
-              <p className="diatype-xs-medium text-gray-700">$10.00</p>
+              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Perp Overview</p>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Balance</p>
-              <p className="diatype-xs-medium text-gray-700">$10.00</p>
+              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Unrealized PNL</p>
-              <p className="diatype-xs-medium text-gray-700">$10.00</p>
+              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Cross Margin Ratio</p>
-              <p className="diatype-xs-medium text-gray-700">0.00%</p>
+              <p className="diatype-xs-medium text-secondary-700">0.00%</p>
             </div>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Maintenance</p>
-              <p className="diatype-xs-medium text-gray-700">$10.00</p>
+              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
               <p className="diatype-xs-regular text-tertiary-500">Cross Account Leverage</p>
-              <p className="diatype-xs-medium text-gray-700">0.00x</p>
+              <p className="diatype-xs-medium text-secondary-700">0.00x</p>
             </div>
           </div>
         </div> */}
@@ -255,7 +255,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
       />
       <div className="flex items-center justify-between gap-2">
         <p className="diatype-xs-medium text-tertiary-500">Current Position</p>
-        <p className="diatype-xs-bold text-gray-700">123.00 ETH</p>
+        <p className="diatype-xs-bold text-secondary-700">123.00 ETH</p>
       </div>
       <Input
         placeholder="0"

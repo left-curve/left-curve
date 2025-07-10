@@ -73,7 +73,7 @@ const OrderRow: React.FC<
     type === "bid" ? "bg-green-300 lg:-left-4" : "bg-red-300 -right-0 lg:-left-4 lg:right-auto";
 
   return (
-    <div className="relative flex-1 diatype-xs-medium text-gray-700 grid grid-cols-2 lg:grid-cols-3">
+    <div className="relative flex-1 diatype-xs-medium text-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -169,7 +169,7 @@ const LiveTrades: React.FC = () => {
             <div
               key={trade.hash}
               className={
-                "grid grid-cols-3 diatype-xs-medium text-gray-700 w-full cursor-pointer group relative"
+                "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
             >
               <p

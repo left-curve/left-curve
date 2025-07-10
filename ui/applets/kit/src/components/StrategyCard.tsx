@@ -110,11 +110,11 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           <div className="p-2 rounded-xl bg-rice-100/80 flex items-center justify-between">
             <div className="flex gap-2 items-center">
               <span className="text-tertiary-500 diatype-xs-medium">{labels.apy}</span>
-              <span className="text-gray-700 diatype-sm-bold">-</span>
+              <span className="text-secondary-700 diatype-sm-bold">-</span>
             </div>
             <div className="flex gap-2 items-center">
               <span className="text-tertiary-500 diatype-xs-medium">{labels.tvl}</span>
-              <span className="text-gray-700 diatype-sm-bold">-</span>
+              <span className="text-secondary-700 diatype-sm-bold">-</span>
             </div>
           </div>
         </div>

@@ -52,7 +52,7 @@ export const ConfirmSend = forwardRef(
         <div className=" flex flex-col gap-4">
           <div className="flex flex-col gap-2 w-full">
             <p className="exposure-sm-italic text-gray-300">{m["modals.confirmSend.sending"]()}</p>
-            <div className="flex items-center justify-between text-gray-700 h3-bold">
+            <div className="flex items-center justify-between text-secondary-700 h3-bold">
               <p>
                 {humanAmount} {coin.symbol}
               </p>
@@ -67,13 +67,13 @@ export const ConfirmSend = forwardRef(
             {isLoading ? (
               <Skeleton className="h-[34px] w-full max-w-36" />
             ) : (
-              <p className=" text-gray-700 h3-bold">{username}</p>
+              <p className=" text-secondary-700 h3-bold">{username}</p>
             )}
             <TruncateText className="text-tertiary-500 diatype-sm-regular " text={to} />
           </div>
           {/*  <div className="flex items-center justify-between ">
           <p className="text-tertiary-500 diatype-sm-regular">Fee</p>
-          <p className="text-gray-700 diatype-sm-medium">$1.2</p>
+          <p className="text-secondary-700 diatype-sm-medium">$1.2</p>
         </div> */}
         </div>
         <IconButton

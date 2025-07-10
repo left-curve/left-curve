@@ -38,7 +38,7 @@ export const PoolAddLiquidity = forwardRef(
         <div className=" flex flex-col gap-8">
           <div className="flex gap-2 items-center">
             <PairAssets assets={[base, quote]} />
-            <p className="text-gray-700 h4-bold">
+            <p className="text-secondary-700 h4-bold">
               {base.symbol}/{quote.symbol}
             </p>
             <Badge color="green" size="s" text="Stable Strategy" />
@@ -49,7 +49,7 @@ export const PoolAddLiquidity = forwardRef(
             </p>
             <div className="flex flex-col">
               <div className="w-full flex items-center justify-between">
-                <p className="text-gray-700 h3-bold">
+                <p className="text-secondary-700 h3-bold">
                   {base.amount} {base.symbol}
                 </p>
                 <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
@@ -60,7 +60,7 @@ export const PoolAddLiquidity = forwardRef(
             </div>
             <div className="flex flex-col">
               <div className="w-full flex items-center justify-between">
-                <p className="text-gray-700 h3-bold">
+                <p className="text-secondary-700 h3-bold">
                   {quote.amount} {quote.symbol}
                 </p>
                 <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />

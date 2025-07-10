@@ -13,7 +13,7 @@ export const ProSwapEditedSL = forwardRef(() => {
       <div className="flex flex-col  gap-1">
         <div className="w-full flex gap-2 items-center justify-between">
           <p className="diatype-sm-regular text-tertiary-500">Coin</p>
-          <p className="diatype-sm-medium text-gray-700">ETH</p>
+          <p className="diatype-sm-medium text-secondary-700">ETH</p>
         </div>
         <div className="w-full flex gap-2 items-center justify-between">
           <p className="diatype-sm-regular text-tertiary-500">Position</p>
@@ -21,17 +21,17 @@ export const ProSwapEditedSL = forwardRef(() => {
         </div>
         <div className="w-full flex gap-2 items-center justify-between">
           <p className="diatype-sm-regular text-tertiary-500">Entry Price</p>
-          <p className="diatype-sm-medium text-gray-700">82.145</p>
+          <p className="diatype-sm-medium text-secondary-700">82.145</p>
         </div>
         <div className="w-full flex gap-2 items-center justify-between">
           <p className="diatype-sm-regular text-tertiary-500">Mark Price</p>
-          <p className="diatype-sm-medium text-gray-700">82.145</p>
+          <p className="diatype-sm-medium text-secondary-700">82.145</p>
         </div>
         <div className="w-full flex gap-2 items-center justify-between">
           <p className="diatype-sm-regular text-tertiary-500">Stop Loss</p>
           <div className="flex flex-col items-end">
-            <p className="diatype-sm-medium text-gray-700">Price below 7000</p>
-            <p className="diatype-sm-medium text-gray-700">Expected loss: -2.06 USDC</p>
+            <p className="diatype-sm-medium text-secondary-700">Price below 7000</p>
+            <p className="diatype-sm-medium text-secondary-700">Expected loss: -2.06 USDC</p>
           </div>
         </div>
       </div>

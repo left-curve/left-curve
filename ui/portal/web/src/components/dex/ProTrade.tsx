@@ -120,7 +120,7 @@ const ProTradeHeader: React.FC = () => {
               <p className="diatype-xs-medium text-tertiary-500">
                 {m["dex.protrade.spot.price"]()}
               </p>
-              <p className="diatype-sm-bold text-gray-700">
+              <p className="diatype-sm-bold text-secondary-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
               </p>
             </div>
@@ -193,7 +193,7 @@ const ProTradeOrders: React.FC = () => {
         return (
           <Cell.Text
             text={value}
-            className="diatype-xs-regular text-gray-700 hover:text-black cursor-pointer"
+            className="diatype-xs-regular text-secondary-700 hover:text-black cursor-pointer"
           />
         );
       },

@@ -51,7 +51,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
               {m["modals.accountCreation.accountName"]()}
             </p>
             <div className="flex gap-1 items-center ">
-              <p className=" text-gray-700 h3-bold">{accountName}</p>
+              <p className=" text-secondary-700 h3-bold">{accountName}</p>
               <Badge text={capitalize(accountType)} color="blue" />
             </div>
           </div>
@@ -59,7 +59,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
             <p className="exposure-sm-italic text-gray-300">
               {m["modals.accountCreation.accountBalance"]()}
             </p>
-            <div className="flex items-center justify-between text-gray-700 h3-bold">
+            <div className="flex items-center justify-between text-secondary-700 h3-bold">
               <p>
                 {humanAmount} {coin.symbol}
               </p>

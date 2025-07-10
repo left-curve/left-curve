@@ -88,7 +88,7 @@ const PoolLiquidityHeader: React.FC = () => {
     >
       <div className="flex gap-2 items-center">
         <PairAssets assets={[base, quote]} />
-        <p className="text-gray-700 h4-bold">
+        <p className="text-secondary-700 h4-bold">
           {base.symbol}/{quote.symbol}
         </p>
         <Badge color="green" size="s" text="Stable Strategy" />
@@ -104,7 +104,7 @@ const PoolLiquidityHeader: React.FC = () => {
           })}
         >
           <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">-</p>
+          <p className="text-secondary-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-center gap-0 ", {
@@ -112,7 +112,7 @@ const PoolLiquidityHeader: React.FC = () => {
           })}
         >
           <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">-</p>
+          <p className="text-secondary-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-end gap-0 ", {
@@ -120,7 +120,7 @@ const PoolLiquidityHeader: React.FC = () => {
           })}
         >
           <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">-</p>
+          <p className="text-secondary-700 diatype-sm-bold">-</p>
         </div>
       </div>
       <img
@@ -168,7 +168,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
             <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
             <p className="text-tertiary-500 diatype-m-regular">{base.symbol}</p>
           </div>
-          <p className="text-gray-700 diatype-m-regular">
+          <p className="text-secondary-700 diatype-m-regular">
             {formatNumber(innerBase, formatNumberOptions)}{" "}
             <span className="text-tertiary-500">
               ({formatNumber(basePrice, { ...formatNumberOptions, currency: "USD" })})
@@ -180,7 +180,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
             <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
             <p className="text-tertiary-500 diatype-m-regular">{quote.symbol}</p>
           </div>
-          <p className="text-gray-700 diatype-m-regular">
+          <p className="text-secondary-700 diatype-m-regular">
             {formatNumber(innerQuote, formatNumberOptions)}{" "}
             <span className="text-tertiary-500">
               ({formatNumber(quotePrice, { ...formatNumberOptions, currency: "USD" })})
@@ -207,7 +207,7 @@ const PoolLiquidityDeposit: React.FC = () => {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.deposit"]()}</p>
+        <p className="exposure-sm-italic text-secondary-700">{m["poolLiquidity.deposit"]()}</p>
         <div className="flex flex-col rounded-xl bg-bg-secondary-rice shadow-account-card">
           <Input
             {...register("baseAmount", {
@@ -349,9 +349,11 @@ const PoolLiquidityWithdraw: React.FC = () => {
     <>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
+          <p className="exposure-sm-italic text-secondary-700">
+            {m["poolLiquidity.withdrawAmount"]()}
+          </p>
           <div className="flex rounded-xl bg-bg-secondary-rice shadow-account-card flex-col gap-2 p-4 items-center">
-            <p className="h1-regular text-gray-700">{withdrawPercent}%</p>
+            <p className="h1-regular text-secondary-700">{withdrawPercent}%</p>
             <Range
               isDisabled={withdraw.isPending}
               minValue={0}

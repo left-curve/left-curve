@@ -22,7 +22,7 @@ export const ProSwapMarketClose = forwardRef(() => {
           </div>
           <div className="w-full flex gap-2 items-center justify-between">
             <p className="diatype-sm-regular text-tertiary-500">Price</p>
-            <p className="diatype-sm-medium text-gray-700">Market</p>
+            <p className="diatype-sm-medium text-secondary-700">Market</p>
           </div>
         </div>
       </div>

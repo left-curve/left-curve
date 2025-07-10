@@ -70,7 +70,7 @@ export const KeyManagementSection: React.FC = () => {
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
-                  <div className="flex gap-[6px] items-center text-gray-700 diatype-m-bold">
+                  <div className="flex gap-[6px] items-center text-secondary-700 diatype-m-bold">
                     {isMd ? <p>{keyRepresentation}</p> : <TruncateText text={keyRepresentation} />}
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>

@@ -231,7 +231,7 @@ type CellTxHashProps = {
 const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
   return (
     <div
-      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-gray-700"
+      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-secondary-700"
       onClick={navigate}
     >
       <div className="flex items-center hover:text-black">

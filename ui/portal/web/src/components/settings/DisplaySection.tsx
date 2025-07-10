@@ -33,7 +33,7 @@ const LanguageSection: React.FC = () => {
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
         <IconLanguage className="text-tertiary-500" />
-        <span className="diatype-m-bold text-gray-700">{m["settings.language"]()}</span>
+        <span className="diatype-m-bold text-secondary-700">{m["settings.language"]()}</span>
       </p>
       <Select value={getLocale()} onChange={(key) => setLocale(key as (typeof locales)[number])}>
         {locales.map((locale) => (
@@ -53,7 +53,7 @@ const FormatNumberSection: React.FC = () => {
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
         <IconFormatNumber className="text-tertiary-500" />
-        <span className="diatype-m-bold text-gray-700"> {m["settings.number"]()}</span>
+        <span className="diatype-m-bold text-secondary-700"> {m["settings.number"]()}</span>
       </p>
 
       <Select
@@ -91,7 +91,7 @@ const ThemeSection: React.FC = () => {
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
         <IconTheme className="text-tertiary-500" />
-        <span className="diatype-m-bold text-gray-700">{m["settings.theme"]()}</span>
+        <span className="diatype-m-bold text-secondary-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs
         defaultKey={theme}

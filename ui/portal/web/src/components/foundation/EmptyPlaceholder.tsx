@@ -18,7 +18,7 @@ export const EmptyPlaceholder: React.FC<PropsWithChildren<Props>> = ({
 
   const renderedComponent = component ? (
     typeof component === "string" ? (
-      <p className="diatype-xs-regular text-gray-700">{component}</p>
+      <p className="diatype-xs-regular text-secondary-700">{component}</p>
     ) : (
       component
     )

@@ -65,7 +65,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={base({ className: classNames?.base })}>
         {label ? (
-          <label className="exposure-sm-italic text-gray-700" htmlFor={name}>
+          <label className="exposure-sm-italic text-secondary-700" htmlFor={name}>
             {label}
           </label>
         ) : null}
@@ -154,7 +154,7 @@ const inputVariants = tv(
       ],
       inputParent: "w-full inline-flex relative items-center gap-2",
       input: [
-        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-gray-700 leading-none relative z-10",
+        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-secondary-700 leading-none relative z-10",
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
@@ -173,7 +173,7 @@ const inputVariants = tv(
       isInvalid: {
         true: {
           inputWrapper: "border-error-500",
-          input: "text-gray-700",
+          input: "text-secondary-700",
         },
       },
       startText: {

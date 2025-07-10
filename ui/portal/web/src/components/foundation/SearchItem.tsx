@@ -42,7 +42,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
           <img src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
-          <p className="diatype-lg-medium text-gray-700">{title}</p>
+          <p className="diatype-lg-medium text-secondary-700">{title}</p>
           <p className="diatype-m-regular text-tertiary-500">{description}</p>
         </div>
       </div>

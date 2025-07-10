@@ -47,10 +47,12 @@ function LayoutApp() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const { theme } = useTheme();
+
   return (
-    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen ">
+    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-bg-primary-rice text-secondary-700">
       <img
-        src="/images/union.png"
+        src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"
         className={twMerge(
           "pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom",

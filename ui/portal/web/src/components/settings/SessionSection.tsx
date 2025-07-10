@@ -38,10 +38,10 @@ const UsernameSection: React.FC = () => {
       <div className="flex flex-col">
         <div className="flex items-start gap-2">
           <IconUser className="text-tertiary-500" />
-          <p className="diatype-m-bold text-gray-700">{m["common.username"]()}</p>
+          <p className="diatype-m-bold text-secondary-700">{m["common.username"]()}</p>
         </div>
       </div>
-      <div className="text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+      <div className="text-secondary-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
         {username}
       </div>
     </div>
@@ -58,7 +58,7 @@ const RemainingTimeSection: React.FC = () => {
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 items-center">
             <IconTimer className="text-tertiary-500" />
-            <span className="diatype-m-bold text-gray-700 capitalize">
+            <span className="diatype-m-bold text-secondary-700 capitalize">
               {m["settings.session.remaining"]()}
             </span>
           </div>
@@ -97,11 +97,11 @@ const NetworkSection: React.FC = () => {
         <div className="flex justify-between items-center gap-2 capitalize">
           <div className="flex gap-2 items-center">
             <IconNetwork className="text-tertiary-500" />
-            <span className="diatype-m-bold text-gray-700">
+            <span className="diatype-m-bold text-secondary-700">
               {m["settings.session.network.title"]()}
             </span>
           </div>
-          <div className="text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
+          <div className="text-secondary-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] flex items-center justify-center">
             {chain.name}
           </div>
         </div>
@@ -167,7 +167,9 @@ const ConnectMobileSection: React.FC = () => {
       >
         <span className="flex items-center justify-center gap-2">
           <IconMobile className="text-tertiary-500" />
-          <span className="diatype-m-bold text-gray-700">{m["settings.connectToMobile"]()}</span>
+          <span className="diatype-m-bold text-secondary-700">
+            {m["settings.connectToMobile"]()}
+          </span>
         </span>
       </button>
     </div>

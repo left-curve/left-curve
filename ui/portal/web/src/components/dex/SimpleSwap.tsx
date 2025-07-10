@@ -121,21 +121,21 @@ const SimpleSwapHeader: React.FC = () => {
     <div className="flex flex-col gap-3 rounded-3xl bg-rice-50 shadow-account-card p-4 relative overflow-hidden mb-4">
       <div className="flex gap-2 items-center relative z-10">
         <img src={quote.logoURI} alt="token" className="h-6 w-6" />
-        <p className="text-gray-700 h4-bold">{quote.symbol}</p>
+        <p className="text-secondary-700 h4-bold">{quote.symbol}</p>
         <Badge text="Stable Strategy" color="green" size="s" />
       </div>
       <div className="flex items-center justify-between gap-2 relative z-10 min-h-[22px]">
         <div className="flex items-center gap-2">
           <p className="text-tertiary-500 diatype-xs-medium">{m["dex.apy"]()}</p>
-          <p className="text-gray-700 diatype-xs-bold">{apy}</p>
+          <p className="text-secondary-700 diatype-xs-bold">{apy}</p>
         </div>
         <div className="flex items-center gap-2">
           <p className="text-tertiary-500 diatype-xs-medium">{m["dex.24h"]()}</p>
-          <p className="text-gray-700 diatype-xs-bold">{volume}</p>
+          <p className="text-secondary-700 diatype-xs-bold">{volume}</p>
         </div>
         <div className="flex items-center gap-2">
           <p className="text-tertiary-500 diatype-xs-medium">{m["dex.tvl"]()}</p>
-          <p className="text-gray-700 diatype-xs-bold">{tvl}</p>
+          <p className="text-secondary-700 diatype-xs-bold">{tvl}</p>
         </div>
       </div>
       <img
@@ -392,7 +392,7 @@ const SimpleSwapDetails: React.FC = () => {
         {isPending ? (
           <Skeleton className="w-14 h-4" />
         ) : (
-          <p className="text-gray-700 diatype-sm-medium">
+          <p className="text-secondary-700 diatype-sm-medium">
             {formatNumber(fee, { ...formatNumberOptions, currency: "usd" })}
           </p>
         )}
@@ -402,7 +402,7 @@ const SimpleSwapDetails: React.FC = () => {
         {isPending ? (
           <Skeleton className="w-36 h-4" />
         ) : (
-          <p className="text-gray-700 diatype-sm-medium">
+          <p className="text-secondary-700 diatype-sm-medium">
             1 {inputCoin.symbol} ≈{" "}
             {formatNumber(Number(outputAmount) / Number(inputAmount), {
               ...formatNumberOptions,

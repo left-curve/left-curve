@@ -32,7 +32,7 @@ const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen })
   return (
     <div className="flex gap-2 items-center">
       <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
-      <p className="diatype-lg-heavy text-gray-700 min-w-fit">
+      <p className="diatype-lg-heavy text-secondary-700 min-w-fit">
         {`${baseCoin.symbol}-${quoteCoin.symbol}`} LP
       </p>
       <IconChevronDownFill
