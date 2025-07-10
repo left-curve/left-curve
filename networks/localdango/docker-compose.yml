@@ -154,7 +154,6 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
-    profiles: ["clickhouse"]
     restart: unless-stopped
     ports:
       - "127.0.0.1:8123:8123" # HTTP interface
