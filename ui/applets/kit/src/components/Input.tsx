@@ -154,7 +154,7 @@ const inputVariants = tv(
       ],
       inputParent: "w-full inline-flex relative items-center gap-2",
       input: [
-        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-secondary-700 leading-none relative z-10",
+        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-tertiary-500 text-secondary-700 leading-none relative z-10",
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",

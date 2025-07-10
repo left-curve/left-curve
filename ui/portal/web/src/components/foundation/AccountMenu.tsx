@@ -569,7 +569,7 @@ const Selector: React.FC<SelectorProps> = ({ onBack }) => {
             ))}
         </div>
         <div className="absolute h-2 w-full bottom-[1.5rem] z-50 max-w-[22.5rem] md:max-w-[20.5rem] pointer-events-none left-1/2 -translate-x-1/2">
-          <div className="bg-gradient-to-b from-transparent from-20% to-white-100 h-[3rem] w-full rounded-b-2xl" />
+          <div className="bg-gradient-to-b from-transparent from-20% to-bg-primary-rice h-[3rem] w-full rounded-b-2xl" />
         </div>
       </div>
     </div>
