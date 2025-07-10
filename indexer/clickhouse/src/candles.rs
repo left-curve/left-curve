@@ -1,5 +1,6 @@
 use {
     crate::{entities::pair_price::PairPrice, indexer::Indexer},
+    chrono::{DateTime, Utc},
     clickhouse::Client,
     dango_types::{DangoQuerier, dex::OrderFilled},
     grug::{CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Udec128},
@@ -90,7 +91,10 @@ impl Indexer {
                 quote_denom: pair_id.1.to_string(),
                 base_denom: pair_id.0.to_string(),
                 clearing_price: clearing_price.to_string(),
-                created_at: block.info.timestamp.to_naive_date_time(),
+                created_at: DateTime::<Utc>::from_naive_utc_and_offset(
+                    block.info.timestamp.to_naive_date_time(),
+                    Utc,
+                ),
                 block_height: block.info.height,
             })
             .collect::<Vec<_>>();
@@ -103,28 +107,27 @@ impl Indexer {
             return Ok(());
         }
 
-        // Use SQL INSERT instead of binary Row format to avoid serialization issues
-        for pair_price in pairs {
-            let sql = "INSERT INTO pair_prices (quote_denom, base_denom, clearing_price, created_at, block_height) VALUES (?, ?, ?, ?, ?)";
+        // Use Row binary inserter with the official clickhouse serde helpers
+        let mut inserter = clickhouse_client
+            .inserter::<PairPrice>("pair_prices")
+            .map_err(|err| {
+                grug_app::IndexerError::Database(format!("Failed to create inserter: {err}"))
+            })?
+            .with_max_rows(pairs.len() as u64);
 
-            clickhouse_client
-                .query(sql)
-                .bind(&pair_price.quote_denom)
-                .bind(&pair_price.base_denom)
-                .bind(&pair_price.clearing_price)
-                .bind(
-                    pair_price
-                        .created_at
-                        .format("%Y-%m-%d %H:%M:%S")
-                        .to_string(),
-                )
-                .bind(pair_price.block_height)
-                .execute()
-                .await
-                .map_err(|err| {
-                    grug_app::IndexerError::Database(format!("Failed to insert pair price: {err}"))
-                })?;
+        for pair_price in pairs {
+            inserter.write(&pair_price).map_err(|err| {
+                grug_app::IndexerError::Database(format!("Failed to write pair price: {err}"))
+            })?;
         }
+
+        inserter.commit().await.map_err(|err| {
+            grug_app::IndexerError::Database(format!("Failed to commit pair prices: {err}"))
+        })?;
+
+        inserter.end().await.map_err(|err| {
+            grug_app::IndexerError::Database(format!("Failed to end inserter: {err}"))
+        })?;
 
         Ok(())
     }

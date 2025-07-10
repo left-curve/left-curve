@@ -4,12 +4,12 @@ use {
     grug_types::Timestamp,
 };
 use {
-    chrono::NaiveDateTime,
+    chrono::{DateTime, Utc},
     clickhouse::Row,
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Debug, Row, Serialize, Deserialize)]
+#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "PairPrice"))]
@@ -21,7 +21,8 @@ pub struct PairPrice {
     #[cfg_attr(feature = "async-graphql", graphql(name = "clearingPrice"))]
     pub clearing_price: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub created_at: NaiveDateTime,
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    pub created_at: DateTime<Utc>,
     #[cfg_attr(feature = "async-graphql", graphql(name = "blockHeight"))]
     pub block_height: u64,
 }
@@ -31,6 +32,6 @@ pub struct PairPrice {
 impl PairPrice {
     /// Returns the block timestamp in ISO 8601 format with time zone.
     async fn created_at(&self) -> String {
-        Timestamp::from(self.created_at).to_rfc3339_string()
+        Timestamp::from(self.created_at.naive_utc()).to_rfc3339_string()
     }
 }

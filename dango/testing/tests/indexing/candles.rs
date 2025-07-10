@@ -1,5 +1,6 @@
 use {
     assertor::*,
+    chrono::{DateTime, Utc},
     dango_testing::setup_test_with_indexer,
     dango_types::{
         constants::{dango, usdc},
@@ -122,7 +123,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
 
-    let (mut suite, mut accounts, _, contracts, _, _, _, _clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(true).await;
 
     // NOTE: used the same code as `dex_works` in `dex.rs`
@@ -200,6 +201,24 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         });
 
     suite.app.indexer.wait_for_finish()?;
+
+    let pair_price = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT * FROM pair_prices")
+        .fetch_one::<PairPrice>()
+        .await?;
+
+    let expected_pair_price = PairPrice {
+        quote_denom: "bridge/usdc".to_string(),
+        base_denom: "dango".to_string(),
+        clearing_price: "27.4".to_string(),
+        created_at: "1971-01-01T00:00:00.500Z".parse::<DateTime<Utc>>().unwrap(),
+        block_height: 2,
+    };
+
+    assert_that!(pair_price).is_equal_to(expected_pair_price);
+
+    tracing::info!("{:#?}", pair_price);
 
     Ok(())
 }

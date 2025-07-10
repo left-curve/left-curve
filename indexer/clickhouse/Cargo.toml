@@ -22,7 +22,7 @@ async-stream   = { workspace = true }
 async-trait    = { workspace = true }
 borsh          = { workspace = true }
 chrono         = { workspace = true }
-clickhouse     = { workspace = true, features = ["inserter", "time", "uuid"] }
+clickhouse     = { workspace = true, features = ["chrono", "inserter", "time", "uuid"] }
 dango-types    = { workspace = true }
 futures        = { workspace = true }
 grug           = { workspace = true }

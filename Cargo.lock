@@ -2734,6 +2734,7 @@ source = "git+https://github.com/ClickHouse/clickhouse-rs#c48caa3f05de5b2b7a0e33
 dependencies = [
  "bstr",
  "bytes",
+ "chrono",
  "cityhash-rs",
  "clickhouse-derive",
  "clickhouse-types",

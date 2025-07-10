@@ -37,7 +37,7 @@ impl grug_app::Indexer for Indexer {
                 quote_denom String,
                 base_denom String,
                 clearing_price String,
-                created_at DateTime,
+                created_at DateTime64(3),
                 block_height UInt64
             ) ENGINE = MergeTree()
             ORDER BY (quote_denom, base_denom, created_at)
