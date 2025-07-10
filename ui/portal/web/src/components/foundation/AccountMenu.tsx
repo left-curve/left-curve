@@ -149,7 +149,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-gray-100">
+        <div className="w-full bg-bg-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-gray-100">
           <Menu />
         </div>
       </div>
@@ -162,7 +162,7 @@ const Mobile: React.FC = () => {
 
   return (
     <Sheet isOpen={isSidebarVisible} onClose={() => setSidebarVisibility(false)} rootId="root">
-      <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
+      <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
           <Menu />

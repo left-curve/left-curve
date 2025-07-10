@@ -38,7 +38,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-xl relative max-w-[400px]">
+    <div className="flex flex-col bg-bg-primary-rice rounded-xl relative max-w-[400px]">
       <IconButton
         className="hidden lg:block absolute right-2 top-2"
         variant="link"

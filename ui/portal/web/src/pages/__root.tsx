@@ -27,7 +27,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     </>
   ),
   errorComponent: () => (
-    <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-white-100">
+    <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-bg-primary-rice">
       <img
         src="/images/union.png"
         alt="bg-image"

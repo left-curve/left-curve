@@ -33,7 +33,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-white-100 items-center justify-center gap-2">
+    <div className="flex flex-col h-full bg-bg-primary-rice items-center justify-center gap-2">
       {isPending ? (
         <div className="flex flex-col items-center justify-center gap-2 p-4">
           <Spinner size="lg" color="pink" />
@@ -55,7 +55,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
             allowMultiple={false}
             components={{ audio: false }}
             formats={["qr_code"]}
-            classNames={{ container: "qr-container", video: "bg-white-100" }}
+            classNames={{ container: "qr-container", video: "bg-bg-primary-rice" }}
           />
           <div className="py-20 flex items-center justify-center">
             <p className="text-gray-400 diatype-m-medium" />

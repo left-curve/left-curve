@@ -127,7 +127,7 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
         onClose={() => setIsSearchTokenVisible(false)}
         rootId="root"
       >
-        <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
+        <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
           <Sheet.Header />
           <Sheet.Content>
             <div className="flex flex-col gap-4 p-4">

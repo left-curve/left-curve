@@ -7,7 +7,7 @@ export const ProSwapEditedSL = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
-    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[30rem]">
+    <div className="flex flex-col bg-bg-primary-rice md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[30rem]">
       <h2 className="text-gray-900 h4-bold w-full">TP/SL for Position</h2>
 
       <div className="flex flex-col  gap-1">

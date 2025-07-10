@@ -1,4 +1,4 @@
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge, useTheme } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -14,10 +14,12 @@ export const Route = createFileRoute("/(app)/_app")({
       captureException(error);
     }, []);
 
+    const { theme } = useTheme();
+
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-white-100">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-bg-primary-rice">
         <img
-          src="/images/union.png"
+          src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
           alt="bg-image"
           className={twMerge(
             "drag-none select-none h-[15vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0",

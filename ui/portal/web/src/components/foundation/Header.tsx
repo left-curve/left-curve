@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     <header
       className={twMerge(
         "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full transition-all",
-        isScrolled ? "lg:bg-white-100 lg:shadow-account-card" : "bg-transparent shadow-none",
+        isScrolled ? "lg:bg-bg-primary-rice lg:shadow-account-card" : "bg-transparent shadow-none",
       )}
     >
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">

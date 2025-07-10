@@ -383,7 +383,7 @@ const MenuMobile: React.FC<TradeMenuProps> = (props) => {
 
   return (
     <Sheet isOpen={isTradeBarVisible} onClose={() => setTradeBarVisibility(false)} rootId="root">
-      <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
+      <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
           <Menu className="overflow-y-auto h-full" {...props} />
