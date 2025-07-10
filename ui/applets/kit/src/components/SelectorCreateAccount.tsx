@@ -37,7 +37,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
       onClick={onClick}
     >
       <p className="capitalize exposure-m-italic">{accountType} Account</p>
-      <p className="diatype-sm-medium text-gray-500 relative max-w-[15.5rem] z-10 ">
+      <p className="diatype-sm-medium text-tertiary-500 relative max-w-[15.5rem] z-10 ">
         {subtext[accountType]}
       </p>
       <img

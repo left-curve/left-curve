@@ -149,7 +149,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-gray-100">
+        <div className="w-full bg-bg-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray">
           <Menu />
         </div>
       </div>
@@ -162,7 +162,7 @@ const Mobile: React.FC = () => {
 
   return (
     <Sheet isOpen={isSidebarVisible} onClose={() => setSidebarVisibility(false)} rootId="root">
-      <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
+      <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
           <Menu />
@@ -383,7 +383,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
   return (
     <motion.div
       layout="position"
-      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+      className="flex flex-col p-4 hover:bg-bg-tertiary-rice hover:cursor-pointer"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div
@@ -396,12 +396,12 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
             <PairAssets assets={assets} />
           </div>
           <div className="flex flex-col">
-            <p className="text-gray-900 diatype-m-bold">{coin.symbol} LP</p>
-            <p className="text-gray-500 diatype-m-regular">{coin.amount}</p>
+            <p className="text-primary-900 diatype-m-bold">{coin.symbol} LP</p>
+            <p className="text-tertiary-500 diatype-m-regular">{coin.amount}</p>
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <p className="text-gray-900 diatype-m-bold">{totalPrice}</p>
+          <p className="text-primary-900 diatype-m-bold">{totalPrice}</p>
           <IconChevronDownFill
             className={twMerge("w-4 h-4 text-gray-200 transition-all", {
               "rotate-180": isExpanded,
@@ -425,7 +425,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
             ].map((asset, index) => (
               <div
                 key={`${asset.denom}-${index}`}
-                className="flex items-center justify-between text-gray-500 diatype-m-regular"
+                className="flex items-center justify-between text-tertiary-500 diatype-m-regular"
               >
                 <p className="flex items-center gap-2">{asset.symbol}</p>
                 <p>{formatNumber(asset.amount || "0", { ...formatNumberOptions })}</p>
@@ -462,7 +462,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
   return (
     <motion.div
       layout="position"
-      className="flex flex-col p-4 hover:bg-rice-50 hover:cursor-pointer"
+      className="flex flex-col p-4 hover:bg-bg-tertiary-rice hover:cursor-pointer"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div
@@ -475,8 +475,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
             <PairAssets assets={[base, coins[quoteDenom]]} />
           </div>
           <div className="flex flex-col">
-            <p className="text-gray-900 diatype-m-bold">{pairId}</p>
-            <p className="text-gray-500 diatype-m-regular">
+            <p className="text-primary-900 diatype-m-bold">{pairId}</p>
+            <p className="text-tertiary-500 diatype-m-regular">
               {getPrice(formatUnits(total.toNumber(), base.decimals), base.denom, { format: true })}
             </p>
           </div>
@@ -504,7 +504,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
                 <div
                   key={order.id}
                   className={twMerge(
-                    "flex items-center justify-between text-gray-500 diatype-m-regular",
+                    "flex items-center justify-between text-tertiary-500 diatype-m-regular",
                   )}
                 >
                   <p className="flex items-center gap-2">
@@ -569,7 +569,7 @@ const Selector: React.FC<SelectorProps> = ({ onBack }) => {
             ))}
         </div>
         <div className="absolute h-2 w-full bottom-[1.5rem] z-50 max-w-[22.5rem] md:max-w-[20.5rem] pointer-events-none left-1/2 -translate-x-1/2">
-          <div className="bg-gradient-to-b from-transparent from-20% to-white-100 h-[3rem] w-full rounded-b-2xl" />
+          <div className="bg-gradient-to-b from-transparent from-20% to-bg-primary-rice h-[3rem] w-full rounded-b-2xl" />
         </div>
       </div>
     </div>

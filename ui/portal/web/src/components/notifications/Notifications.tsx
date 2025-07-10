@@ -45,7 +45,7 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
           className="h-[154px]"
         />
         <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
-        <p className="diatype-m-bold text-gray-500">
+        <p className="diatype-m-bold text-tertiary-500">
           {m["notifications.noNotifications.description"]()}
         </p>
       </div>
@@ -77,7 +77,7 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
           >
             {Object.entries(notifications).map(([dateKey, n]) => (
               <motion.div key={dateKey}>
-                <p className="text-sm text-gray-500 mx-2 my-1">{dateKey}</p>
+                <p className="text-sm text-tertiary-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
                   {n.map((notification) => {
                     const NotificationCard = Notification[

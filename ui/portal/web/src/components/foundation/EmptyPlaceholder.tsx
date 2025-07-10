@@ -18,7 +18,7 @@ export const EmptyPlaceholder: React.FC<PropsWithChildren<Props>> = ({
 
   const renderedComponent = component ? (
     typeof component === "string" ? (
-      <p className="diatype-xs-regular text-gray-700">{component}</p>
+      <p className="diatype-xs-regular text-secondary-700">{component}</p>
     ) : (
       component
     )
@@ -27,7 +27,7 @@ export const EmptyPlaceholder: React.FC<PropsWithChildren<Props>> = ({
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50",
+        "flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-bg-tertiary-rice",
         className,
       )}
     >

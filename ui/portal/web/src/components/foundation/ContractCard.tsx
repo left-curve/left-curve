@@ -35,11 +35,11 @@ export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, ba
         <div className="flex gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-gray-500"
+            className="diatype-xs-medium text-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
         </div>
       </div>
 

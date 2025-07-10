@@ -59,7 +59,7 @@ export const Group: React.FC<PropsWithChildren<RadioGroupProps>> = ({
     <RadioGroupProvider value={context}>
       <div role="radiogroup" aria-labelledby={`${groupName}-label`}>
         {label && (
-          <span id={`${groupName}-label`} className="exposure-m-italic text-gray-700">
+          <span id={`${groupName}-label`} className="exposure-m-italic text-secondary-700">
             {label}
           </span>
         )}

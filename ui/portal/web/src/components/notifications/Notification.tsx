@@ -86,11 +86,11 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
           onNavigate(`/tx/${txHash}`);
         }}
       >
-        <IconInfo className="text-gray-700 w-5 h-5 flex-shrink-0" />
+        <IconInfo className="text-secondary-700 w-5 h-5 flex-shrink-0" />
 
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
           <div className="flex gap-2">
-            <span className="diatype-m-medium text-gray-700">
+            <span className="diatype-m-medium text-secondary-700">
               {m["notifications.notification.transfer.title"]({ action: type })}
             </span>
             <span
@@ -100,7 +100,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
               })}
             >{`${isSent ? "−" : "+"}${formattedAmount}  ${coin.symbol}`}</span>
           </div>
-          <div className="flex diatype-m-medium text-gray-500 flex-wrap items-center gap-1">
+          <div className="flex diatype-m-medium text-tertiary-500 flex-wrap items-center gap-1">
             <div className="flex flex-wrap items-center gap-1">
               <span>
                 {m["notifications.notification.transfer.direction.first"]({ direction: type })}
@@ -126,7 +126,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
           </div>
         </div>
       </div>
-      <div className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative">
+      <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center relative">
         <IconClose
           className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px] remove-notification"
           onClick={() => deleteNotification(notification.id)}
@@ -155,15 +155,15 @@ const NotificationAccount: React.FC<NotificationAccountProps> = ({ notification 
   return (
     <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100 max-w-full group">
       <div className="flex items-start gap-2 max-w-full overflow-hidden">
-        <IconInfo className="text-gray-700 w-5 h-5 flex-shrink-0" />
+        <IconInfo className="text-secondary-700 w-5 h-5 flex-shrink-0" />
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
-          <span className="diatype-m-medium text-gray-700 capitalize">
+          <span className="diatype-m-medium text-secondary-700 capitalize">
             {m["notifications.notification.account.title"]({ accountType })}
           </span>
           <AddressVisualizer address={address} withIcon onClick={onNavigate} />
         </div>
       </div>
-      <div className="flex flex-col diatype-sm-medium text-gray-500 min-w-fit items-center relative">
+      <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center relative">
         <IconClose
           className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px]"
           onClick={() => deleteNotification(notification.id)}

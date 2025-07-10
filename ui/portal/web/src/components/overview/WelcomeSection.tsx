@@ -28,7 +28,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
 
         <div className=" lg:pr-[4.75rem]">
           <div className="flex flex-col gap-4 items-center max-w-[19.5rem] text-center">
-            <p className="text-rice-800 exposure-h3-italic lg:exposure-h2-italic lg:!leading-normal">
+            <p className="text-primary-rice exposure-h3-italic lg:exposure-h2-italic lg:!leading-normal">
               {m["common.motto"]()}
             </p>
             <div className="flex items-center justify-center gap-4 w-full lg:px-6">

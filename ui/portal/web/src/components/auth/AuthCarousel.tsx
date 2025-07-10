@@ -14,7 +14,7 @@ export const AuthCarousel: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "custom-width h-svh xl:min-w-[720px] xl:w-[720px] bg-white-100 overflow-hidden",
+        "custom-width h-svh xl:min-w-[720px] xl:w-[720px] bg-bg-primary-rice overflow-hidden",
         "items-start xl:pt-0 xl:items-center justify-center",
         "xl:bg-[url('./images/frame-rounded.svg')] bg-no-repeat bg-cover bg-center",
         isFirstVisit
@@ -41,7 +41,7 @@ export const AuthCarousel: React.FC = () => {
               </div>
               <div className="flex flex-col flex-1 items-center justify-center gap-1 max-w-full md:max-w-[25rem]">
                 <h3 className="exposure-h3-italic">{title}</h3>
-                <p className="text-gray-500 text-sm sm:text-md">
+                <p className="text-tertiary-500 text-sm sm:text-md">
                   {m["signup.carousel.description"]({ step: index })}
                 </p>
               </div>

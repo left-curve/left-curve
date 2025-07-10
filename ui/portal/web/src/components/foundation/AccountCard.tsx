@@ -104,11 +104,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
         <div className="flex gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-gray-500"
+            className="diatype-xs-medium text-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
         </div>
       </div>
       {type === AccountType.Margin ? (
@@ -159,20 +159,20 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
       <div className="flex items-start justify-between relative z-10">
         <div className="flex flex-col">
           <div className="flex gap-1 items-center">
-            <p className="exposure-m-italic capitalize text-gray-400">{name}</p>
+            <p className="exposure-m-italic capitalize text-tertiary-500">{name}</p>
           </div>
           <div className="flex gap-1 items-center">
             <TruncateText
               text={address}
-              className="diatype-xs-medium text-gray-500"
+              className="diatype-xs-medium text-tertiary-500"
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">
-          <p className="diatype-m-bold text-gray-400">{totalBalance}</p>
+          <p className="diatype-m-bold text-tertiary-500">{totalBalance}</p>
           <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
         </div>
       </div>

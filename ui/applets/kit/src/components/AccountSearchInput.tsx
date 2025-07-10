@@ -69,18 +69,18 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
         <div
           ref={menuRef}
           className={twMerge(
-            "absolute top-[4.8rem] shadow-account-card bg-rice-25 rounded-lg p-1 z-30 w-full overflow-y-scroll max-h-[20rem] transition-all duration-300 ease-in-out scrollbar-none",
+            "absolute top-[4.8rem] shadow-account-card bg-bg-secondary-rice rounded-lg p-1 z-30 w-full overflow-y-scroll max-h-[20rem] transition-all duration-300 ease-in-out scrollbar-none",
             showMenu ? "block" : "hidden",
             options.length
               ? "h-auto translate-x-0"
               : "h-0 -translate-x-30 overflow-hidden py-0 px-1",
           )}
         >
-          <p className="diatype-sm-medium text-gray-500 px-3 pt-2">Accounts</p>
+          <p className="diatype-sm-medium text-tertiary-500 px-3 pt-2">Accounts</p>
           {options.map(({ accountName, address }, i) => (
             <div
               onClick={() => [setInputValue(address), setShowMenu(false)]}
-              className="w-full px-3 py-2 hover:bg-rice-50 rounded-md text-left cursor-pointer"
+              className="w-full px-3 py-2 hover:bg-bg-tertiary-rice rounded-md text-left cursor-pointer"
               key={address}
             >
               <div className="flex items-center gap-4">
@@ -94,7 +94,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
                 <div className="w-fit flex flex-col gap-1 overflow-x-hidden">
                   <p className="diatype-lg-medium">{accountName}</p>
                   <TruncateText
-                    className="diatype-m-regular text-gray-500"
+                    className="diatype-m-regular text-tertiary-500"
                     text={address}
                     start={20}
                   />

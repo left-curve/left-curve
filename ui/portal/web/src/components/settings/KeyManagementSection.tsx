@@ -39,11 +39,11 @@ export const KeyManagementSection: React.FC = () => {
   if (status !== ConnectionStatus.Connected) return null;
 
   return (
-    <div className="rounded-xl bg-rice-25 shadow-account-card flex flex-col w-full p-4 gap-4">
+    <div className="rounded-xl bg-bg-secondary-rice shadow-account-card flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-4 max-w-lg">
-          <h3 className="h4-bold text-gray-900">{m["settings.keyManagement.title"]()}</h3>
-          <p className="text-gray-500 diatype-sm-regular">
+          <h3 className="h4-bold text-primary-900">{m["settings.keyManagement.title"]()}</h3>
+          <p className="text-tertiary-500 diatype-sm-regular">
             {m["settings.keyManagement.description"]()}
           </p>
         </div>
@@ -66,16 +66,16 @@ export const KeyManagementSection: React.FC = () => {
           return (
             <div
               key={uid()}
-              className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-rice-50 transition-all p-4"
+              className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-bg-tertiary-rice transition-all p-4"
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
-                  <div className="flex gap-[6px] items-center text-gray-700 diatype-m-bold">
+                  <div className="flex gap-[6px] items-center text-secondary-700 diatype-m-bold">
                     {isMd ? <p>{keyRepresentation}</p> : <TruncateText text={keyRepresentation} />}
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
-                  <p className="text-gray-500 diatype-sm-medium">
+                  <p className="text-tertiary-500 diatype-sm-medium">
                     {KeyTranslation[keyType as keyof typeof KeyTranslation]}
                   </p>
                 </div>

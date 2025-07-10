@@ -74,7 +74,7 @@ const StepIcon: React.FC<StepProps> = ({ index, active }) => {
     <div
       className={twMerge(
         "transition-all rounded-full flex items-center justify-center relative z-20",
-        "before:content-[''] before:absolute before:z-10 before:bg-white-100 before:border before:border-red-bean-400 before:w-7 before:h-7 before:rounded-full before:bg-reb-bean-400 before:transition-all",
+        "before:content-[''] before:absolute before:z-10 before:bg-bg-primary-rice before:border before:border-red-bean-400 before:w-7 before:h-7 before:rounded-full before:bg-red-bean-400 before:transition-all",
         "",
         active === index
           ? "border-white bg-red-bean-400 before:scale-1 w-7 h-7 border-4"

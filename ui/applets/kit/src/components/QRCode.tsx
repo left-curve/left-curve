@@ -53,6 +53,6 @@ export const QRCode: React.FC<Props> = ({ data, isLoading, options = {}, ...prop
   return isLoading || !data ? (
     <Spinner color="blue" size="xl" />
   ) : (
-    <div ref={ref} {...props} className={twMerge("bg-rice-25 p-2", props.className)} />
+    <div ref={ref} {...props} className={twMerge("bg-bg-secondary-rice p-2", props.className)} />
   );
 };

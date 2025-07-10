@@ -19,7 +19,7 @@ export const TextLoop: React.FC<TextLoopProps> = ({ texts }) => {
     <span className="overflow-hidden relative min-h-[1.56rem] w-[8rem]">
       <AnimatePresence initial={false}>
         <motion.span
-          className="absolute left-0 w-[2rem] exposure-m-italic text-rice-800"
+          className="absolute left-0 w-[2rem] exposure-m-italic text-primary-rice"
           key={index}
           layout
           variants={{

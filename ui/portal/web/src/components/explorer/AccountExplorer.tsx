@@ -84,21 +84,21 @@ const Details: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <AccountCard account={account} balance={totalBalance} />
-      <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-bg-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
         <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
 
             <p className="diatype-sm-medium break-all whitespace-normal">
               {codeHash}
-              <TextCopy className="w-4 h-4 text-gray-500 ml-1" copyText={codeHash} />
+              <TextCopy className="w-4 h-4 text-tertiary-500 ml-1" copyText={codeHash} />
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? (
@@ -113,7 +113,7 @@ const Details: React.FC = () => {
             )}
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />
@@ -132,10 +132,10 @@ const NotFound: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center border border-red-bean-50">
-          <h3 className="exposure-m-italic text-gray-700">
+          <h3 className="exposure-m-italic text-secondary-700">
             {m["explorer.accounts.notFound.title"]()}
           </h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-gray-500 ">
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-tertiary-500 ">
             {m["explorer.accounts.notFound.pre"]()}
             <span className="break-all overflow-hidden underline">{address}</span>{" "}
             {m["explorer.accounts.notFound.description"]()}

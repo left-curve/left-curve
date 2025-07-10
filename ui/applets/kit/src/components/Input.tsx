@@ -65,7 +65,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={base({ className: classNames?.base })}>
         {label ? (
-          <label className="exposure-sm-italic text-gray-700" htmlFor={name}>
+          <label className="exposure-sm-italic text-secondary-700" htmlFor={name}>
             {label}
           </label>
         ) : null}
@@ -81,7 +81,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <div className="relative flex-1 flex items-center">
               {!props.value && !isLoading && placeholder ? (
                 <div
-                  className={twMerge("w-full absolute z-0 text-gray-500 text-left ", {
+                  className={twMerge("w-full absolute z-0 text-tertiary-500 text-left ", {
                     "text-right": startText === "right",
                   })}
                 >
@@ -128,11 +128,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             block: !bottomComponent && hintMessage,
           })}
         >
-          <span className="diatype-sm-regular text-gray-500">{hintMessage}</span>
+          <span className="diatype-sm-regular text-tertiary-500">{hintMessage}</span>
         </div>
 
         {bottomComponent ? (
-          <div className="text-gray-500 diatype-sm-regular">{bottomComponent}</div>
+          <div className="text-tertiary-500 diatype-sm-regular">{bottomComponent}</div>
         ) : null}
       </div>
     );
@@ -149,12 +149,12 @@ const inputVariants = tv(
       base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
       inputWrapper: [
         "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-account-card  gap-2 z-10",
-        "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
+        "bg-bg-secondary-rice hover:bg-bg-tertiary-rice border border-transparent active:border-rice-200",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
       inputParent: "w-full inline-flex relative items-center gap-2",
       input: [
-        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-gray-700 leading-none relative z-10",
+        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-tertiary-500 text-secondary-700 leading-none relative z-10",
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
@@ -173,7 +173,7 @@ const inputVariants = tv(
       isInvalid: {
         true: {
           inputWrapper: "border-error-500",
-          input: "text-gray-700",
+          input: "text-secondary-700",
         },
       },
       startText: {

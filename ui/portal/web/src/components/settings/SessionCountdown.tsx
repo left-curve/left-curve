@@ -20,7 +20,7 @@ export const SessionCountdown: React.FC = () => {
   });
 
   return (
-    <div className="flex gap-1 text-gray-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] items-center justify-center">
+    <div className="flex gap-1 text-secondary-700 px-4 py-3 shadow-account-card rounded-md min-w-[9rem] h-[46px] items-center justify-center">
       {[
         { value: hours, label: hoursLabel },
         { value: minutes, label: minutesLabel },

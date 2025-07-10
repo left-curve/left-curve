@@ -198,12 +198,12 @@ const UsernameStep: React.FC = () => {
         {existUsernames ? (
           <>
             <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
-            <p className="text-gray-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
+            <p className="text-tertiary-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
           </>
         ) : (
           <>
             <h1 className="h2-heavy">{m["signin.noUsernamesFound"]()}</h1>
-            <p className="text-gray-500 diatype-m-medium">{m["signin.noUsernameMessage"]()}</p>
+            <p className="text-tertiary-500 diatype-m-medium">{m["signin.noUsernameMessage"]()}</p>
           </>
         )}
       </div>

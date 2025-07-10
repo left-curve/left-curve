@@ -74,12 +74,12 @@ const buttonVariants = tv(
     variants: {
       variant: {
         primary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-red-bean-400 hover:bg-red-bean-600 text-white-100",
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-red-bean-400 hover:bg-red-bean-600 text-bg-primary-rice",
         secondary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility:
-          "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-rice-100 hover:bg-rice-200 text-rice-700",
-        link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-gray-600 text-gray-500",
+          "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-quaternary-rice hover:bg-rice-200 text-secondary-rice",
+        link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-gray-600 text-tertiary-500",
       },
       color: {
         blue: "",
@@ -119,7 +119,7 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "blue",
-        class: "bg-blue-50 hover:bg-blue-100 text-blue-500",
+        class: "bg-primary-blue hover:bg-blue-100 text-blue-500",
       },
       {
         variant: "secondary",
@@ -129,7 +129,7 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "green",
-        class: "bg-green-bean-50 hover:bg-green-bean-100 text-green-bean-500",
+        class: "bg-button-green hover:bg-green-bean-100 text-bg-primary-rice",
       },
       {
         variant: "link",
