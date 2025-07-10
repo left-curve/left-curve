@@ -1,6 +1,16 @@
 import { useApp } from "~/hooks/useApp";
 
-import { IconFormatNumber, IconLanguage, Select, Tab, Tabs } from "@left-curve/applets-kit";
+import {
+  IconFormatNumber,
+  IconLanguage,
+  IconMoon,
+  IconSun,
+  IconTheme,
+  Select,
+  Tab,
+  Tabs,
+  useTheme,
+} from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
@@ -67,12 +77,35 @@ const FormatNumberSection: React.FC = () => {
 };
 
 const ThemeSection: React.FC = () => {
+  const { theme, setTheme } = useTheme();
+
+  const changeTheme = (key: string) => {
+    if (key === "system") {
+      setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      return;
+    }
+    setTheme(key as "dark" | "light");
+  };
+
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
-      <p>Theme</p>
-      <Tabs defaultKey="light" layoutId="theme">
+      <p className="flex items-center justify-center gap-2">
+        <IconTheme className="text-gray-500" />
+        <span className="diatype-m-bold text-gray-700">{m["settings.theme"]()}</span>
+      </p>
+      <Tabs
+        defaultKey={theme}
+        layoutId="theme"
+        onTabChange={changeTheme}
+        classNames={{ base: "exposure-sm-italic" }}
+      >
         <Tab title="system">System</Tab>
-        <Tab title="light">light</Tab>
+        <Tab title="light">
+          <IconSun className="w-6 h-6" />
+        </Tab>
+        <Tab title="dark">
+          <IconMoon className="w-6 h-6" />
+        </Tab>
       </Tabs>
     </div>
   );
