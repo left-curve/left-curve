@@ -160,6 +160,7 @@ mod tests {
         };
 
         let block_outcome = BlockOutcome {
+            height: 10,
             app_hash: Hash::ZERO,
             cron_outcomes: vec![],
             tx_outcomes: vec![],
