@@ -39,7 +39,7 @@ html.dark {
   --color-secondary-rice: #E3BD66;
   --color-secondary-gray: #4D4B48;
   --color-tertiary-500: #B2AEA8;
-  --color-tertiary-rice:#474237;
+  --color-tertiary-rice: #474237;
   --shadow-card:0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
   --shadow-btn-shadow-gradient:0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
   --color-bg-card-red:linear-gradient(98.89deg, #494443 11.21%, #584D4E 46.73%, #322F2F 88.96%);
