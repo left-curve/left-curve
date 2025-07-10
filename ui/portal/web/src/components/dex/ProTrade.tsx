@@ -171,7 +171,7 @@ const ProTradeOrders: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
-  const { orders } = state;
+  const { orders, baseCoin } = state;
   const { formatNumberOptions } = settings;
 
   const columns: TableColumn<OrdersByUserResponse & { id: OrderId }> = [
@@ -223,9 +223,9 @@ const ProTradeOrders: React.FC = () => {
     },
     {
       id: "remaining",
-      header: ({ table }) =>
+      header: () =>
         m["dex.protrade.spot.ordersTable.remaining"]({
-          symbol: coins[table.getRow("0").original.baseDenom].symbol,
+          symbol: baseCoin.symbol,
         }),
       cell: ({ row }) => (
         <Cell.Number
@@ -236,9 +236,9 @@ const ProTradeOrders: React.FC = () => {
     },
     {
       id: "size",
-      header: ({ table }) =>
+      header: () =>
         m["dex.protrade.spot.ordersTable.size"]({
-          symbol: coins[table.getRow("0").original.baseDenom].symbol,
+          symbol: baseCoin.symbol,
         }),
       cell: ({ row }) => (
         <Cell.Number

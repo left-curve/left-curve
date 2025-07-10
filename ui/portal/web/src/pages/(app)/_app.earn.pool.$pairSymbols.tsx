@@ -2,8 +2,12 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { coinsBySymbol } from "~/store";
 
 import { z } from "zod";
+import { m } from "~/paraglide/messages";
 
 export const Route = createFileRoute("/(app)/_app/earn/pool/$pairSymbols")({
+  head: () => ({
+    meta: [{ title: `Dango | ${m["poolLiquidity.pool"]()}` }],
+  }),
   beforeLoad: async ({ context, params }) => {
     const { client } = context;
     const { pairSymbols } = params;

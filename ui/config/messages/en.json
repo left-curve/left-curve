@@ -28,6 +28,7 @@
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
+    "overview": "Overview",
     "testnet": {
       "title": "Message from the founder",
       "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
@@ -539,6 +540,7 @@
     "networkFee": "Network fee",
     "24hVol": "24h vol",
     "tvl": "TVL",
+    "pool": "Pool",
     "liquidity": "Liquidity",
     "deposit": "You deposit",
     "withdrawAmount": "Withdrawal amount",
