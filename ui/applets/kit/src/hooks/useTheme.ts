@@ -10,9 +10,9 @@ export type UseThemeReturnType = {
 };
 
 const getInitialTheme = (): ThemeType => {
-  if (typeof window !== "undefined" && window.matchMedia) {
+  /* if (typeof window !== "undefined" && window.matchMedia) {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
+  } */
   return "light";
 };
 
@@ -26,7 +26,8 @@ export function useTheme(): UseThemeReturnType {
 
     root.classList.remove("light", "dark");
 
-    root.classList.add(theme);
+    /* root.classList.add(theme); */
+    root.classList.add("light");
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
