@@ -31,11 +31,13 @@ impl HttpClient {
     where
         P: Display,
     {
-        Ok(self
-            .inner
-            .get(format!("{}/{}", self.endpoint, path))
-            .send()
-            .await?)
+        error_for_status(
+            self.inner
+                .get(format!("{}/{}", self.endpoint, path))
+                .send()
+                .await?,
+        )
+        .await
     }
 
     async fn post_graphql<V>(
@@ -48,12 +50,14 @@ impl HttpClient {
             std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);
-        let response = self
-            .inner
-            .post(format!("{}/graphql", self.endpoint))
-            .json(&query)
-            .send()
-            .await?;
+        let response = error_for_status(
+            self.inner
+                .post(format!("{}/graphql", self.endpoint))
+                .json(&query)
+                .send()
+                .await?,
+        )
+        .await?;
 
         #[cfg(feature = "tracing")]
         {
@@ -217,5 +221,13 @@ impl SearchTxClient for HttpClient {
                     .deserialize_json()?,
             },
         })
+    }
+}
+
+async fn error_for_status(response: reqwest::Response) -> Result<reqwest::Response, anyhow::Error> {
+    if let Err(e) = response.error_for_status_ref() {
+        bail!("{}: {}", e, response.text().await?)
+    } else {
+        Ok(response)
     }
 }
