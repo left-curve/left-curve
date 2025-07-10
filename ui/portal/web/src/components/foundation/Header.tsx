@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             className=""
             data-status={linkStatus("/settings")}
           >
-            <IconGear className="w-6 h-6 text-rice-700" />
+            <IconGear className="w-6 h-6" />
           </Button>
 
           {isConnected ? (
@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 data-status={linkStatus("/notifications")}
                 onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
               >
-                <IconBell className="w-6 h-6 text-rice-700" />
+                <IconBell className="w-6 h-6" />
               </Button>
             </TxIndicator>
           ) : null}

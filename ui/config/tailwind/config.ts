@@ -13,6 +13,7 @@ export const tailwindConfig: Partial<Config> = {
         "bg-primary-rice": "var(--color-bg-primary-rice)",
         "bg-secondary-rice": "var(--color-bg-secondary-rice)",
         "bg-tertiary-rice": "var(--color-bg-tertiary-rice)",
+        "button-green": "var(--color-button-green)",
         primary: {
           blue: "var(--color-primary-blue)",
           red: "var(--color-primary-red)",
@@ -22,10 +23,14 @@ export const tailwindConfig: Partial<Config> = {
         secondary: {
           "700": "var(--color-secondary-700)",
           blue: "var(--color-secondary-blue)",
+          rice: "var(--color-secondary-rice)",
         },
         tertiary: {
           rice: "var(--color-tertiary-rice)",
           "500": "var(--color-tertiary-500)",
+        },
+        quaternary: {
+          rice: "var(--color-quaternary-rice)",
         },
         transparent: "transparent",
         status: {
@@ -140,8 +145,7 @@ export const tailwindConfig: Partial<Config> = {
         "card-shadow":
           "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
         "account-card": "var(--shadow-card)",
-        "btn-shadow-gradient":
-          "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
+        "btn-shadow-gradient": "var(--shadow-btn-shadow-gradient)",
         "btn-shadow-disabled":
           "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
         "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",
