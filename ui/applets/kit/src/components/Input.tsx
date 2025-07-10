@@ -149,7 +149,7 @@ const inputVariants = tv(
       base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
       inputWrapper: [
         "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-account-card  gap-2 z-10",
-        "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
+        "bg-bg-secondary-rice hover:bg-rice-50 border border-transparent active:border-rice-200",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
       inputParent: "w-full inline-flex relative items-center gap-2",

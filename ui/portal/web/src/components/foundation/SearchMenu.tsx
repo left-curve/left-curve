@@ -80,7 +80,7 @@ const SearchMenu: React.FC = () => {
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
-            "flex-col bg-rice-25 rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:top-[-22px] flex-1 lg:shadow-account-card transition-all duration-300",
+            "flex-col bg-bg-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:top-[-22px] flex-1 lg:shadow-account-card transition-all duration-300",
             !isLg && isSearchBarVisible
               ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-bg-primary-rice p-4 gap-4"
               : "",
@@ -92,14 +92,14 @@ const SearchMenu: React.FC = () => {
                 <IconChevronDown className="rotate-90" />
               </IconButton>
             ) : null}
-            <div className="flex-col bg-rice-25 shadow-account-card lg:shadow-none rounded-md w-full flex items-center">
+            <div className="flex-col bg-bg-secondary-rice shadow-account-card lg:shadow-none rounded-md w-full flex items-center">
               <motion.div className="w-full flex items-center gap-2 px-3 py-2 rounded-md">
                 <IconSearch className="w-5 h-5 text-gray-500" />
                 <Command.Input
                   ref={inputRef}
                   onValueChange={setSearchText}
                   value={searchText}
-                  className="bg-rice-25 pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
+                  className="bg-bg-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
                 />
 
                 {!isLg && searchText ? (

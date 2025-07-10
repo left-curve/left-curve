@@ -157,7 +157,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   });
 
   return (
-    <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
+    <div className="flex p-4 flex-col gap-4 rounded-xl bg-bg-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-gray-500">{m["poolLiquidity.liquidity"]()}</p>
         <p className="h4-bold text-gray-900">{totalPrice}</p>
@@ -208,7 +208,7 @@ const PoolLiquidityDeposit: React.FC = () => {
     <>
       <div className="flex flex-col gap-2">
         <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.deposit"]()}</p>
-        <div className="flex flex-col rounded-xl bg-rice-25 shadow-account-card">
+        <div className="flex flex-col rounded-xl bg-bg-secondary-rice shadow-account-card">
           <Input
             {...register("baseAmount", {
               validate: (v) => {
@@ -350,7 +350,7 @@ const PoolLiquidityWithdraw: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
-          <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
+          <div className="flex rounded-xl bg-bg-secondary-rice shadow-account-card flex-col gap-2 p-4 items-center">
             <p className="h1-regular text-gray-700">{withdrawPercent}%</p>
             <Range
               isDisabled={withdraw.isPending}

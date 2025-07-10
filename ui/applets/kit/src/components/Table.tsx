@@ -168,7 +168,7 @@ const tabsVariants = tv({
   variants: {
     style: {
       default: {
-        base: "bg-rice-25 shadow-account-card px-4 pt-4 gap-4",
+        base: "bg-bg-secondary-rice shadow-account-card px-4 pt-4 gap-4",
         header:
           "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",

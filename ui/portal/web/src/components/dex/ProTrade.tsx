@@ -154,7 +154,7 @@ const ProTradeChart: React.FC = () => {
   if (!isLg) return null;
 
   return (
-    <div className="shadow-card-shadow bg-rice-25 h-full">
+    <div className="shadow-card-shadow bg-bg-secondary-rice h-full">
       <TradingViewChart />
     </div>
   );
@@ -288,7 +288,7 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-bg-secondary-rice flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
