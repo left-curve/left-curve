@@ -1,5 +1,9 @@
 use {
-    crate::{entities::pair_price::PairPrice, indexer::Indexer},
+    crate::{
+        entities::pair_price::PairPrice,
+        error::{IndexerError, Result},
+        indexer::Indexer,
+    },
     chrono::{DateTime, Utc},
     clickhouse::Client,
     dango_types::{DangoQuerier, dex::OrderFilled},
@@ -13,22 +17,16 @@ impl Indexer {
         clickhouse_client: &Client,
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
+    ) -> Result<()> {
         let block = ctx
             .get::<grug_types::Block>()
-            .ok_or(grug_app::IndexerError::Database(
-                "Block not found".to_string(),
-            ))?;
+            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
 
-        let block_outcome =
-            ctx.get::<grug_types::BlockOutcome>()
-                .ok_or(grug_app::IndexerError::Database(
-                    "BlockOutcome not found".to_string(),
-                ))?;
+        let block_outcome = ctx
+            .get::<grug_types::BlockOutcome>()
+            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
 
-        let dex = querier.as_ref().query_dex().map_err(|err| {
-            grug_app::IndexerError::Generic(format!("Failed to query DEX address: {err}"))
-        })?;
+        let dex = querier.as_ref().query_dex()?;
 
         // (base_denom, quote_denom) -> clearing_price
         // Clearing price is denominated as the units of quote asset per 1 unit
@@ -65,11 +63,7 @@ impl Indexer {
                         quote_denom,
                         clearing_price,
                         ..
-                    } = event.data.clone().deserialize_json().map_err(|err| {
-                        grug_app::IndexerError::Deserialization(format!(
-                            "Failed to deserialize OrderFilled event: {err}",
-                        ))
-                    })?;
+                    } = event.data.clone().deserialize_json()?;
 
                     let pair_id = (base_denom, quote_denom);
 
@@ -79,11 +73,6 @@ impl Indexer {
                 }
             }
         }
-
-        // TODO: save clearing prices to the database.
-        // If for a (base_denom, quote_denom) pair there is no clearing price,
-        // meaning no trade occurred for this tracing pair in this block, then
-        // the price is the same as the last block's.
 
         let pairs = clearing_prices
             .into_iter()
@@ -109,25 +98,15 @@ impl Indexer {
 
         // Use Row binary inserter with the official clickhouse serde helpers
         let mut inserter = clickhouse_client
-            .inserter::<PairPrice>("pair_prices")
-            .map_err(|err| {
-                grug_app::IndexerError::Database(format!("Failed to create inserter: {err}"))
-            })?
+            .inserter::<PairPrice>("pair_prices")?
             .with_max_rows(pairs.len() as u64);
 
         for pair_price in pairs {
-            inserter.write(&pair_price).map_err(|err| {
-                grug_app::IndexerError::Database(format!("Failed to write pair price: {err}"))
-            })?;
+            inserter.write(&pair_price)?;
         }
 
-        inserter.commit().await.map_err(|err| {
-            grug_app::IndexerError::Database(format!("Failed to commit pair prices: {err}"))
-        })?;
-
-        inserter.end().await.map_err(|err| {
-            grug_app::IndexerError::Database(format!("Failed to end inserter: {err}"))
-        })?;
+        inserter.commit().await?;
+        inserter.end().await?;
 
         Ok(())
     }
