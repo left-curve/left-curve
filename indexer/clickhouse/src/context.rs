@@ -48,6 +48,12 @@ impl Context {
             .with_password(&password)
             .with_database(&database);
 
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            "Clickhouse client created: {url}, user: {user}, password len: {}, database: {database}",
+            password.len()
+        );
+
         Self {
             mock: None,
             clickhouse_client,
