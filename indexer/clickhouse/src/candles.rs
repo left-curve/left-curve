@@ -88,10 +88,7 @@ impl Indexer {
                     });
 
                     // If the volume overflows, set it to the maximum value.
-                    match pair_price
-                        .volume_base
-                        .checked_add(order_filled.filled_base as grug::Uint128)
-                    {
+                    match pair_price.volume_base.checked_add(order_filled.filled_base) {
                         Ok(volume) => pair_price.volume_base = volume.into(),
                         Err(_) => {
                             // TODO: add sentry error reporting
@@ -103,7 +100,7 @@ impl Indexer {
 
                     match pair_price
                         .volume_quote
-                        .checked_add(order_filled.filled_quote as grug::Uint128)
+                        .checked_add(order_filled.filled_quote)
                     {
                         Ok(volume) => pair_price.volume_quote = volume.into(),
                         Err(_) => {

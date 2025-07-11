@@ -84,6 +84,7 @@ mod test {
     use {
         super::*,
         assertor::*,
+        chrono::SubsecRound,
         grug::{NumberConst, Udec128, Udec256, Uint128, Uint256},
     };
 
@@ -95,12 +96,16 @@ mod test {
             clearing_price: Udec128::MAX.into(),
             volume_base: Uint128::MAX.into(),
             volume_quote: Uint128::MAX.into(),
-            created_at: Utc::now(),
+            // On the CI I saw nanoseconds (9), on my computer it's milliseconds (6).
+            created_at: Utc::now().trunc_subsecs(6),
             block_height: 1000000,
         };
 
         let serialized = serde_json::to_string(&pair_price).unwrap();
-        let deserialized: PairPrice = serde_json::from_str(&serialized).unwrap();
+        let mut deserialized: PairPrice = serde_json::from_str(&serialized).unwrap();
+
+        // On the CI I saw nanoseconds (9), on my computer it's milliseconds (6)..
+        deserialized.created_at = deserialized.created_at.trunc_subsecs(6);
 
         // println!("serialized = {serialized}",);
         // println!("deserialized = {deserialized:#?}",);
