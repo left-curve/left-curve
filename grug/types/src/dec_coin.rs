@@ -4,7 +4,7 @@
 
 use {
     crate::{Coins, Denom, StdError, StdResult},
-    grug_math::{IsZero, Number, Udec128},
+    grug_math::{IsZero, MathError, NextNumber, Number, PrevNumber, Udec128, Udec256, Uint128},
     std::{
         collections::{BTreeMap, btree_map},
         fmt,
@@ -14,17 +14,35 @@ use {
 /// Like `Coin` but the amount is a decimal.
 pub struct DecCoin {
     pub denom: Denom,
-    pub amount: Udec128,
+    pub amount: Udec256,
 }
 
 impl From<(Denom, Udec128)> for DecCoin {
     fn from((denom, amount): (Denom, Udec128)) -> Self {
+        Self {
+            denom,
+            amount: amount.into_next(),
+        }
+    }
+}
+
+impl From<(Denom, Udec256)> for DecCoin {
+    fn from((denom, amount): (Denom, Udec256)) -> Self {
         Self { denom, amount }
     }
 }
 
+impl TryFrom<(Denom, Uint128)> for DecCoin {
+    type Error = StdError;
+
+    fn try_from((denom, amount): (Denom, Uint128)) -> Result<Self, Self::Error> {
+        let amount = amount.into_next().checked_into_dec()?;
+        Ok(Self { denom, amount })
+    }
+}
+
 #[derive(Default, Debug)]
-pub struct DecCoins(BTreeMap<Denom, Udec128>);
+pub struct DecCoins(BTreeMap<Denom, Udec256>);
 
 impl DecCoins {
     pub const EMPTY_DEC_COINS_STR: &'static str = "[]";
@@ -77,42 +95,54 @@ impl DecCoins {
         Ok(self)
     }
 
-    pub fn into_coins_floor(self) -> Coins {
+    pub fn into_coins_floor(self) -> Result<Coins, MathError> {
         let map = self
             .0
             .into_iter()
             .filter_map(|(denom, amount)| {
-                let amount = amount.into_int_floor(); // Important: floor the amount.
-                if amount.is_non_zero() {
-                    Some((denom, amount))
-                } else {
-                    None
-                }
+                // Important: floor the amount.
+                amount
+                    .into_int_floor()
+                    .checked_into_prev()
+                    .map(|a| {
+                        if a.is_non_zero() {
+                            Some((denom, a))
+                        } else {
+                            None
+                        }
+                    })
+                    .transpose()
             })
-            .collect();
-        Coins::new_unchecked(map)
+            .collect::<Result<_, _>>()?;
+        Ok(Coins::new_unchecked(map))
     }
 
-    pub fn into_coins_ceil(self) -> Coins {
+    pub fn into_coins_ceil(self) -> Result<Coins, MathError> {
         let map = self
             .0
             .into_iter()
             .filter_map(|(denom, amount)| {
-                let amount = amount.into_int_ceil(); // Important: ceil the amount.
-                if amount.is_non_zero() {
-                    Some((denom, amount))
-                } else {
-                    None
-                }
+                // Important: ceil the amount.
+                amount
+                    .into_int_ceil()
+                    .checked_into_prev()
+                    .map(|a| {
+                        if amount.is_non_zero() {
+                            Some((denom, a))
+                        } else {
+                            None
+                        }
+                    })
+                    .transpose()
             })
-            .collect();
-        Coins::new_unchecked(map)
+            .collect::<Result<_, _>>()?;
+        Ok(Coins::new_unchecked(map))
     }
 }
 
 impl<'a> IntoIterator for &'a DecCoins {
-    type IntoIter = btree_map::Iter<'a, Denom, Udec128>;
-    type Item = (&'a Denom, &'a Udec128);
+    type IntoIter = btree_map::Iter<'a, Denom, Udec256>;
+    type Item = (&'a Denom, &'a Udec256);
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -120,8 +150,8 @@ impl<'a> IntoIterator for &'a DecCoins {
 }
 
 impl IntoIterator for DecCoins {
-    type IntoIter = btree_map::IntoIter<Denom, Udec128>;
-    type Item = (Denom, Udec128);
+    type IntoIter = btree_map::IntoIter<Denom, Udec256>;
+    type Item = (Denom, Udec256);
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

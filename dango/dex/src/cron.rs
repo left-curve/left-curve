@@ -15,7 +15,7 @@ use {
     grug::{
         Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
         Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128,
+        Udec128, Udec256,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -23,7 +23,7 @@ use {
     },
 };
 
-const HALF: Udec128 = Udec128::new_percent(50);
+const HALF: Udec256 = Udec256::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -39,8 +39,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins>::new();
-    let mut volumes = HashMap::<Addr, Udec128>::new();
-    let mut volumes_by_username = HashMap::<Username, Udec128>::new();
+    let mut volumes = HashMap::<Addr, Udec256>::new();
+    let mut volumes_by_username = HashMap::<Username, Udec256>::new();
     let mut fees = DecCoins::new();
     let mut fee_payments = TransferBuilder::<DecCoins>::new();
 
@@ -107,8 +107,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     }
 
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
-    let refunds = refunds.into_batch();
-    let fees = fees.into_coins_floor();
+    let refunds = refunds.into_batch()?;
+    let fees = fees.into_coins_floor()?;
 
     Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
@@ -121,7 +121,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
-                    payments: fee_payments.into_batch(),
+                    payments: fee_payments.into_batch()?,
                 },
                 fees,
             )?)
@@ -146,8 +146,8 @@ fn clear_orders_of_pair(
     refunds: &mut TransferBuilder<DecCoins>,
     fees: &mut DecCoins,
     fee_payments: &mut TransferBuilder<DecCoins>,
-    volumes: &mut HashMap<Addr, Udec128>,
-    volumes_by_username: &mut HashMap<Username, Udec128>,
+    volumes: &mut HashMap<Addr, Udec256>,
+    volumes_by_username: &mut HashMap<Username, Udec256>,
 ) -> anyhow::Result<()> {
     // --------------------------- 1. Prepare orders ---------------------------
 
@@ -410,11 +410,11 @@ fn clear_orders_of_pair(
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
         RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
-            for inflow in inflows.into_coins_floor() {
+            for inflow in inflows.into_coins_floor()? {
                 reserve.checked_add(&inflow)?;
             }
 
-            for outflow in outflows.into_coins_ceil() {
+            for outflow in outflows.into_coins_ceil()? {
                 reserve.checked_sub(&outflow)?;
             }
 
@@ -435,10 +435,10 @@ fn fill_user_order(
     user: Addr,
     base_denom: &Denom,
     quote_denom: &Denom,
-    refund_base: Udec128,
-    refund_quote: Udec128,
-    fee_base: Udec128,
-    fee_quote: Udec128,
+    refund_base: Udec256,
+    refund_quote: Udec256,
+    fee_base: Udec256,
+    fee_quote: Udec256,
     refunds: &mut TransferBuilder<DecCoins>,
     fees: &mut DecCoins,
     fee_payments: &mut TransferBuilder<DecCoins>,
@@ -463,8 +463,8 @@ fn fill_passive_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     order_direction: Direction,
-    filled_base: Udec128,
-    filled_quote: Udec128,
+    filled_base: Udec256,
+    filled_quote: Udec256,
     inflows: &mut DecCoins,
     outflows: &mut DecCoins,
 ) -> StdResult<()> {
@@ -493,10 +493,10 @@ fn update_trading_volumes(
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
     base_denom: &Denom,
-    filled: Udec128,
+    filled: Udec256,
     order_user: Addr,
-    volumes: &mut HashMap<Addr, Udec128>,
-    volumes_by_username: &mut HashMap<Username, Udec128>,
+    volumes: &mut HashMap<Addr, Udec256>,
+    volumes_by_username: &mut HashMap<Username, Udec256>,
 ) -> anyhow::Result<()> {
     // Query the base asset's oracle price.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
@@ -526,7 +526,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Udec128::ZERO)
+                    .unwrap_or(Udec256::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
@@ -550,7 +550,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Udec128::ZERO)
+                    .unwrap_or(Udec256::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);

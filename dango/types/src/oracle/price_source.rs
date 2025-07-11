@@ -1,6 +1,6 @@
 use {
     crate::oracle::Precision,
-    grug::{Timestamp, Udec128},
+    grug::{Timestamp, Udec256},
     pyth_types::PythId,
 };
 
@@ -9,7 +9,7 @@ pub enum PriceSource {
     /// A price source that uses a fixed price. For testing purposes only.
     Fixed {
         /// The price of the token.
-        humanized_price: Udec128,
+        humanized_price: Udec256,
         /// The number of decimal places of the token that is used to convert
         /// the price from its smallest unit to a humanized form. E.g. 1 ATOM
         /// is 10^6 uatom, so the precision is 6.

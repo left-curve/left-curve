@@ -14,8 +14,8 @@ use {
     },
     grug::{
         Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, IsZero, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
-        Udec128, Uint128, UniqueVec, btree_map, coins,
+        MultiplyFraction, NextNumber, NonEmpty, NonZero, NumberConst, PrevNumber, QuerierExt,
+        ResultExt, Signed, Signer, Udec128, Udec256, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -112,7 +112,7 @@ fn check_balances(
             Direction::Ask => (order.base_denom, order.remaining),
         };
 
-        order_balances.insert((denom, amount.into_int()))?;
+        order_balances.insert((denom, amount.into_int().checked_into_prev().unwrap()))?;
     }
     println!("order balances: {order_balances:?}");
 
@@ -239,7 +239,7 @@ impl DexAction {
                             quote_denom: quote_denom.clone(),
                             direction: *direction,
                             amount: NonZero::new(*amount)?,
-                            price: *price,
+                            price: price.into_next(),
                         }],
                         cancels: None,
                     },
@@ -765,7 +765,7 @@ fn test_dex_actions(
                 contracts.oracle,
                 &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                     denom => dango_types::oracle::PriceSource::Fixed {
-                        humanized_price: Udec128::ONE,
+                        humanized_price: Udec256::ONE,
                         precision: 6,
                         // Use a very recent time to avoid the "price is too old" error.
                         timestamp: MOCK_GENESIS_TIMESTAMP,

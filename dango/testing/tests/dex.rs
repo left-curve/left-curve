@@ -16,9 +16,9 @@ use {
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Uint128, UniqueVec, btree_map,
-        coin_pair, coins,
+        MaxLength, Message, MultiplyFraction, NextNumber, NonEmpty, NonZero, NumberConst,
+        PrevNumber, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
+        Udec256, Uint128, UniqueVec, btree_map, coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
     pyth_types::constants::USDC_USD_ID,
@@ -51,7 +51,7 @@ fn cannot_submit_order_with_zero_amount() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -95,7 +95,7 @@ fn cannot_submit_orders_in_non_existing_pairs() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -346,7 +346,7 @@ fn dex_works(
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -360,7 +360,7 @@ fn dex_works(
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -411,7 +411,7 @@ fn dex_works(
                         quote_denom: usdc::DENOM.clone(),
                         direction,
                         amount: NonZero::new_unchecked(amount),
-                        price,
+                        price: price.into_next(),
                     }],
                     cancels: None,
                 },
@@ -449,7 +449,17 @@ fn dex_works(
         })
         .unwrap()
         .into_iter()
-        .map(|(order_id, order)| (order_id, order.remaining.into_int().into_inner()))
+        .map(|(order_id, order)| {
+            (
+                order_id,
+                order
+                    .remaining
+                    .into_int()
+                    .checked_into_prev()
+                    .unwrap()
+                    .into_inner(),
+            )
+        })
         .collect::<BTreeMap<_, _>>();
     assert_eq!(orders, remaining_orders);
 }
@@ -460,7 +470,7 @@ fn dex_works(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     None,
     coins! { usdc::DENOM.clone() => 100 },
@@ -471,9 +481,9 @@ fn dex_works(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128::new(100),
+            remaining: Udec256::new(100),
         },
     };
     "one submission no cancellations"
@@ -484,7 +494,7 @@ fn dex_works(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
     coins! { usdc::DENOM.clone() => 100 },
@@ -499,14 +509,14 @@ fn dex_works(
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
         CreateLimitOrderRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
     ],
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -518,9 +528,9 @@ fn dex_works(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128::new(100),
+            remaining: Udec256::new(100),
         },
     };
     "two submission cancels one order"
@@ -532,14 +542,14 @@ fn dex_works(
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
         CreateLimitOrderRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
     ],
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1), OrderId::new(!2)]))),
@@ -555,14 +565,14 @@ fn dex_works(
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
         CreateLimitOrderRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
     ],
     Some(CancelOrderRequest::All),
@@ -578,14 +588,14 @@ fn dex_works(
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
         CreateLimitOrderRequest {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
             amount: NonZero::new_unchecked(Uint128::new(100)),
-            price: Udec128::new(1),
+            price: Udec256::new(1),
         },
     ],
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -666,7 +676,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -675,7 +685,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     Coins::new(),
     btree_map! { usdc::DENOM.clone() => BalanceChange::Unchanged },
@@ -685,9 +695,9 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128::new(100),
+            remaining: Udec256::new(100),
         },
     };
     "submit one order then cancel it and submit it again"
@@ -698,7 +708,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -707,7 +717,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(50)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     Coins::new(),
     btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(50) },
@@ -717,9 +727,9 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(50),
-            remaining: Udec128::new(50),
+            remaining: Udec256::new(50),
         },
     };
     "submit one order then cancel it and place a new order using half of the funds"
@@ -730,7 +740,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -739,7 +749,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(200)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
@@ -749,9 +759,9 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(200),
-            remaining: Udec128::new(200),
+            remaining: Udec256::new(200),
         },
     };
     "submit one order then cancel it and place a new order using more funds"
@@ -762,7 +772,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -771,7 +781,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(200)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     Coins::new(),
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
@@ -781,9 +791,9 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(200),
-            remaining: Udec128::new(200),
+            remaining: Udec256::new(200),
         },
     }
     => panics "insufficient funds";
@@ -795,7 +805,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(100)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -804,7 +814,7 @@ fn submit_and_cancel_orders(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(150)),
-        price: Udec128::new(1),
+        price: Udec256::new(1),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(50) },
@@ -814,9 +824,9 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128::new(1),
+            price: Udec256::new(1),
             amount: Uint128::new(150),
-            remaining: Udec128::new(150),
+            remaining: Udec256::new(150),
         },
     };
     "submit one order then cancel it and place a new order excess funds are returned"
@@ -905,7 +915,7 @@ fn submit_and_cancel_order_in_same_block() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: Udec128::new(1),
+                price: Udec256::new(1),
             }],
             cancels: None,
         },
@@ -1108,7 +1118,7 @@ fn query_orders_by_pair(
                         quote_denom,
                         direction,
                         amount: NonZero::new_unchecked(amount),
-                        price,
+                        price: price.into_next(),
                     }],
                     cancels: None,
                 },
@@ -1149,9 +1159,9 @@ fn query_orders_by_pair(
                 .all(|(order_id, (direction, price, amount))| {
                     let queried_order = orders.get(order_id).unwrap();
                     queried_order.direction == *direction
-                        && queried_order.price == *price
+                        && queried_order.price == price.into_next()
                         && queried_order.amount == *amount
-                        && queried_order.remaining == amount.checked_into_dec().unwrap()
+                        && queried_order.remaining == amount.checked_into_dec().unwrap().into_next()
                         && queried_order.user == accounts.user1.address()
                 })
         });
@@ -1376,7 +1386,7 @@ fn provide_liquidity(
                 contracts.oracle,
                 &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                     denom => PriceSource::Fixed {
-                        humanized_price: price,
+                        humanized_price: price.into_next(),
                         precision: 6,
                         timestamp: Timestamp::from_seconds(1730802926),
                     },
@@ -1566,7 +1576,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -1581,7 +1591,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -2479,7 +2489,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::from(49751)),
-                price: Udec128::new_percent(20100),
+                price: Udec256::new_percent(20100),
             },
         ],
     ],
@@ -2526,7 +2536,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::from(49751)),
-                price: Udec128::new_percent(20100),
+                price: Udec256::new_percent(20100),
             },
         ],
     ],
@@ -2571,7 +2581,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::from(47783)),
-                price: Udec128::new_percent(20200),
+                price: Udec256::new_percent(20200),
             },
         ],
     ],
@@ -2616,7 +2626,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::from(157784)),
-                price: Udec128::new_percent(20300),
+                price: Udec256::new_percent(20300),
             },
         ],
     ],
@@ -2663,7 +2673,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: NonZero::new_unchecked(Uint128::from(50251)),
-                price: Udec128::new_percent(19900),
+                price: Udec256::new_percent(19900),
             },
         ],
     ],
@@ -2708,7 +2718,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: NonZero::new_unchecked(Uint128::from(30000)),
-                price: Udec128::new_percent(19900),
+                price: Udec256::new_percent(19900),
             },
         ],
     ],
@@ -2753,7 +2763,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: NonZero::new_unchecked(Uint128::from(60251)),
-                price: Udec128::new_percent(19900),
+                price: Udec256::new_percent(19900),
             },
         ],
     ],
@@ -2800,7 +2810,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: NonZero::new_unchecked(Uint128::from(162284)),
-                price: Udec128::new_percent(19800),
+                price: Udec256::new_percent(19800),
             },
         ],
         vec![
@@ -2809,7 +2819,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                     quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::from(157784)),
-                price: Udec128::new_percent(20200),
+                price: Udec256::new_percent(20200),
             },
         ],
     ],
@@ -2903,7 +2913,7 @@ fn curve_on_orderbook(
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -2919,7 +2929,7 @@ fn curve_on_orderbook(
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 eth::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::new_percent(2000),
+                    humanized_price: Udec256::new_percent(2000),
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -3010,8 +3020,8 @@ fn curve_on_orderbook(
             assert_eq!(orders.len(), expected_orders_after_clearing.len());
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
-                assert_eq!(order.price, price);
-                assert_eq!(order.remaining, remaining);
+                assert_eq!(order.price, price.into_next());
+                assert_eq!(order.remaining, remaining.into_next());
                 assert_eq!(order.direction, direction);
             }
             true
@@ -3044,7 +3054,7 @@ fn volume_tracking_works() {
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -3060,7 +3070,7 @@ fn volume_tracking_works() {
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -3144,7 +3154,7 @@ fn volume_tracking_works() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -3164,7 +3174,7 @@ fn volume_tracking_works() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -3235,7 +3245,7 @@ fn volume_tracking_works() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -3255,7 +3265,7 @@ fn volume_tracking_works() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -3365,7 +3375,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -3381,7 +3391,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -3397,7 +3407,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 eth::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::from_str("85248.71").unwrap(),
+                    humanized_price: Udec256::from_str("85248.71").unwrap(),
                     precision: 8,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -3419,21 +3429,21 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                        price: Udec128::new(1),
+                        price: Udec256::new(1),
                     },
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                        price: Udec128::from_str("1.01").unwrap(),
+                        price: Udec256::from_str("1.01").unwrap(),
                     },
                     CreateLimitOrderRequest {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: Udec128::from_str("852.485845").unwrap(),
+                        price: Udec256::from_str("852.485845").unwrap(),
                     },
                 ],
                 cancels: None,
@@ -3455,14 +3465,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
-                        price: Udec128::new(1),
+                        price: Udec256::new(1),
                     },
                     CreateLimitOrderRequest {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: Udec128::from_str("852.485845").unwrap(),
+                        price: Udec256::from_str("852.485845").unwrap(),
                     },
                 ],
                 cancels: None,
@@ -3536,28 +3546,28 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                        price: Udec128::new(1),
+                        price: Udec256::new(1),
                     },
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                        price: Udec128::from_str("1.01").unwrap(),
+                        price: Udec256::from_str("1.01").unwrap(),
                     },
                     CreateLimitOrderRequest {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: Udec128::from_str("852.485845").unwrap(),
+                        price: Udec256::from_str("852.485845").unwrap(),
                     },
                     CreateLimitOrderRequest {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: Udec128::from_str("937.7344336").unwrap(),
+                        price: Udec256::from_str("937.7344336").unwrap(),
                     },
                 ],
                 cancels: None,
@@ -3581,14 +3591,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(300_000_000)),
-                        price: Udec128::new(1),
+                        price: Udec256::new(1),
                     },
                     CreateLimitOrderRequest {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(117304 * 2)),
-                        price: Udec128::from_str("85248.71")
+                        price: Udec256::from_str("85248.71")
                             .unwrap()
                             .checked_inv()
                             .unwrap(),
@@ -3676,7 +3686,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -3727,7 +3737,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -3778,7 +3788,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -3827,7 +3837,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(2),
+                    price: Udec256::new(2),
                 },
             ],
             coins! {
@@ -3876,7 +3886,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -3925,7 +3935,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(2),
+                    price: Udec256::new(2),
                 },
             ],
             coins! {
@@ -3974,7 +3984,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4025,7 +4035,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    price: Udec128::new(2),
+                    price: Udec256::new(2),
                 },
             ],
             coins! {
@@ -4076,7 +4086,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4127,7 +4137,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    price: Udec128::new(2),
+                    price: Udec256::new(2),
                 },
             ],
             coins! {
@@ -4178,7 +4188,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4227,7 +4237,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4241,7 +4251,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new_percent(200),
+                    price: Udec256::new_percent(200),
                 },
             ],
             coins! {
@@ -4296,7 +4306,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4310,7 +4320,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new_percent(200),
+                    price: Udec256::new_percent(200),
                 },
             ],
             coins! {
@@ -4365,7 +4375,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4379,7 +4389,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new_percent(50),
+                    price: Udec256::new_percent(50),
                 },
             ],
             coins! {
@@ -4434,7 +4444,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4448,7 +4458,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new_percent(10),
+                    price: Udec256::new_percent(10),
                 },
             ],
             coins! {
@@ -4503,7 +4513,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4573,7 +4583,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4643,7 +4653,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4692,7 +4702,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    price: Udec128::new(2),
+                    price: Udec256::new(2),
                 },
             ],
             coins! {
@@ -4741,7 +4751,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4790,7 +4800,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(2),
+                    price: Udec256::new(2),
                 },
             ],
             coins! {
@@ -4839,7 +4849,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4888,7 +4898,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4937,7 +4947,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -4993,7 +5003,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -5049,7 +5059,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -5123,7 +5133,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -5197,7 +5207,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(110_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -5271,7 +5281,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(110_000_000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 },
             ],
             coins! {
@@ -5368,12 +5378,12 @@ fn market_order_clearing(
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
                 dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -5487,9 +5497,10 @@ fn market_order_clearing(
                 |(order_id, (direction, price, amount, remaining, user_index))| {
                     let queried_order = orders.get(order_id).unwrap();
                     queried_order.direction == *direction
-                        && queried_order.price == *price
+                        && queried_order.price == price.into_next()
                         && queried_order.amount == *amount
-                        && queried_order.remaining == remaining.checked_into_dec().unwrap()
+                        && queried_order.remaining
+                            == remaining.checked_into_dec().unwrap().into_next()
                         && queried_order.user == users[*user_index].address()
                 },
             )
@@ -5502,7 +5513,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(9307)),
-        price: Udec128::new(1000000),
+        price: Udec256::new(1000000),
     },
     coins! {
         eth::DENOM.clone() => 9307,
@@ -5533,7 +5544,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
-        price: Udec128::new_bps(1),
+        price: Udec256::new_bps(1),
     },
     coins! {
         usdc::DENOM.clone() => 50,
@@ -5564,7 +5575,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(9999)),
-        price: Udec128::new_bps(1),
+        price: Udec256::new_bps(1),
     },
     coins! {
         usdc::DENOM.clone() => 1,
@@ -5606,12 +5617,12 @@ fn market_order_matched_results_in_zero_output(
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
                 eth::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },
@@ -5678,7 +5689,7 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(1000000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },
@@ -5700,7 +5711,7 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(1000000)),
-                    price: Udec128::new(1),
+                    price: Udec256::new(1),
                 }],
                 cancels: None,
             },

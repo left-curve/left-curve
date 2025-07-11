@@ -1,6 +1,6 @@
 use {
     crate::{Addr, Coin, Coins, DecCoin, DecCoins, Denom, Message, StdResult},
-    grug_math::{Udec128, Uint128},
+    grug_math::{MathError, Udec256, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -52,7 +52,7 @@ impl TransferBuilder<Coins> {
 }
 
 impl TransferBuilder<DecCoins> {
-    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Udec128) -> StdResult<()> {
+    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Udec256) -> StdResult<()> {
         self.batch
             .entry(address)
             .or_default()
@@ -68,22 +68,26 @@ impl TransferBuilder<DecCoins> {
             .map(|_| ())
     }
 
-    pub fn into_batch(self) -> BTreeMap<Addr, Coins> {
+    pub fn into_batch(self) -> Result<BTreeMap<Addr, Coins>, MathError> {
         self.batch
             .into_iter()
             .filter_map(|(addr, dec_coins)| {
                 // Round _down_ decimal amount to integer.
-                let coins = dec_coins.into_coins_floor();
-                if coins.is_non_empty() {
-                    Some((addr, coins))
-                } else {
-                    None
-                }
+                dec_coins
+                    .into_coins_floor()
+                    .map(|coins| {
+                        if coins.is_non_empty() {
+                            Some((addr, coins))
+                        } else {
+                            None
+                        }
+                    })
+                    .transpose()
             })
-            .collect()
+            .collect::<Result<_, _>>()
     }
 
-    pub fn into_message(self) -> Message {
-        Message::Transfer(self.into_batch())
+    pub fn into_message(self) -> Result<Message, MathError> {
+        Ok(Message::Transfer(self.into_batch()?))
     }
 }

@@ -1,7 +1,9 @@
 use {
     crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
     dango_types::dex::{Direction, OrderId},
-    grug::{IsZero, Number, NumberConst, Signed, StdResult, Udec128, Unsigned},
+    grug::{
+        IsZero, NextNumber, Number, NumberConst, Signed, StdResult, Udec128, Udec256, Unsigned,
+    },
     std::{cmp::Ordering, collections::HashMap, iter::Peekable},
 };
 
@@ -18,7 +20,7 @@ pub fn match_and_fill_market_orders<M, L>(
 ) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
-    L: Iterator<Item = StdResult<(Udec128, Order)>>,
+    L: Iterator<Item = StdResult<(Udec256, Order)>>,
 {
     let mut filling_outcomes = HashMap::new();
 
@@ -55,11 +57,11 @@ where
 
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
-            Direction::Bid => Udec128::ONE
-                .saturating_add(market_order.max_slippage)
+            Direction::Bid => Udec256::ONE
+                .saturating_add(market_order.max_slippage.into_next())
                 .saturating_mul(best_price),
-            Direction::Ask => Udec128::ONE
-                .saturating_sub(market_order.max_slippage)
+            Direction::Ask => Udec256::ONE
+                .saturating_sub(market_order.max_slippage.into_next())
                 .saturating_mul(best_price),
         };
 
@@ -256,8 +258,8 @@ fn update_filling_outcome(
     filling_outcomes: &mut HashMap<ExtendedOrderId, FillingOutcome>,
     order: Order,
     order_direction: Direction,
-    filled_base: Udec128,
-    price: Udec128,
+    filled_base: Udec256,
+    price: Udec256,
     fee_rate: Udec128,
 ) -> StdResult<()> {
     let filling_outcome = filling_outcomes
@@ -265,12 +267,12 @@ fn update_filling_outcome(
         .or_insert_with(|| FillingOutcome {
             order_direction,
             order,
-            filled_base: Udec128::ZERO,
-            filled_quote: Udec128::ZERO,
-            refund_base: Udec128::ZERO,
-            refund_quote: Udec128::ZERO,
-            fee_base: Udec128::ZERO,
-            fee_quote: Udec128::ZERO,
+            filled_base: Udec256::ZERO,
+            filled_quote: Udec256::ZERO,
+            refund_base: Udec256::ZERO,
+            refund_quote: Udec256::ZERO,
+            fee_base: Udec256::ZERO,
+            fee_quote: Udec256::ZERO,
         });
 
     let filled_quote = filled_base.checked_mul(price)?;
@@ -285,7 +287,7 @@ fn update_filling_outcome(
 
     match order_direction {
         Direction::Bid => {
-            let fee_base = filled_base.checked_mul(fee_rate)?;
+            let fee_base = filled_base.checked_mul(fee_rate.into_next())?;
 
             filling_outcome.fee_base.checked_add_assign(fee_base)?;
             filling_outcome
@@ -293,7 +295,7 @@ fn update_filling_outcome(
                 .checked_add_assign(filled_base.checked_sub(fee_base)?)?;
         },
         Direction::Ask => {
-            let fee_quote = filled_quote.checked_mul(fee_rate)?;
+            let fee_quote = filled_quote.checked_mul(fee_rate.into_next())?;
 
             filling_outcome.fee_quote.checked_add_assign(fee_quote)?;
             filling_outcome

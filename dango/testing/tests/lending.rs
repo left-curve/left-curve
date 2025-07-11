@@ -77,12 +77,12 @@ fn feed_oracle_usdc_price(
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("1.00000966").unwrap()
+            Udec256::from_str("1.00000966").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("0.99999889").unwrap()
+            Udec256::from_str("0.99999889").unwrap()
         );
 
         assert_eq!(current_price.precision(), precision);
@@ -194,7 +194,7 @@ fn indexes_are_updated_when_interest_rate_model_is_updated() {
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
+                    humanized_price: Udec256::ONE,
                     precision: 6,
                     timestamp: Timestamp::from_seconds(1730802926),
                 },

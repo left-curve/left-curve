@@ -7,8 +7,8 @@ use {
         oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
-        Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
-        Udec128,
+        Addr, Cache, Denom, NextNumber, Number, QuerierWrapper, StdResult, Storage, StorageQuerier,
+        Timestamp, Udec128,
     },
     pyth_types::PythId,
     std::{cell::OnceCell, collections::HashMap},
@@ -135,8 +135,12 @@ impl<'a> OracleQuerierNoCache<'a> {
 
                 // Calculate the price of the LP token.
                 Ok(PrecisionedPrice::new(
-                    underlying_price.humanized_price.checked_mul(supply_index)?,
-                    underlying_price.humanized_ema.checked_mul(supply_index)?,
+                    underlying_price
+                        .humanized_price
+                        .checked_mul(supply_index.into_next())?,
+                    underlying_price
+                        .humanized_ema
+                        .checked_mul(supply_index.into_next())?,
                     underlying_price.timestamp,
                     underlying_price.precision(),
                 ))
@@ -221,15 +225,15 @@ mod tests {
     use {
         super::*,
         dango_types::constants::{eth, usdc},
-        grug::{ResultExt, Timestamp, hash_map},
+        grug::{ResultExt, Timestamp, Udec256, hash_map},
         test_case::test_case,
     };
 
     #[test_case(
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
-                Udec128::new_percent(2000),
+                Udec256::new_percent(2000),
+                Udec256::new_percent(2000),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -239,14 +243,14 @@ mod tests {
     #[test_case(
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
-                Udec128::new_percent(2000),
+                Udec256::new_percent(2000),
+                Udec256::new_percent(2000),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(1000),
-                Udec128::new_percent(1000),
+                Udec256::new_percent(1000),
+                Udec256::new_percent(1000),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -297,8 +301,8 @@ mod tests {
     ) -> bool {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
-                Udec128::new_percent(2000),
+                Udec256::new_percent(2000),
+                Udec256::new_percent(2000),
                 publish_time,
                 6,
             ),

@@ -7,7 +7,7 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, StorageQuerier,
-        Timestamp, Udec128, btree_map,
+        Timestamp, Udec256, btree_map,
     },
     grug_app::NaiveProposalPreparer,
     pyth_client::{PythClientCache, PythClientTrait},
@@ -73,12 +73,12 @@ fn oracle() {
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("71405.18251230").unwrap()
+            Udec256::from_str("71405.18251230").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("71175.70800000").unwrap()
+            Udec256::from_str("71175.70800000").unwrap()
         );
 
         assert_eq!(current_price.precision(), 8);
@@ -107,12 +107,12 @@ fn oracle() {
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("68744.84759622").unwrap()
+            Udec256::from_str("68744.84759622").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("68739.90600000").unwrap()
+            Udec256::from_str("68739.90600000").unwrap()
         );
 
         assert_eq!(current_price.timestamp, Timestamp::from_seconds(1730804420));
@@ -139,12 +139,12 @@ fn oracle() {
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("68744.84759622").unwrap()
+            Udec256::from_str("68744.84759622").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("68739.90600000").unwrap()
+            Udec256::from_str("68739.90600000").unwrap()
         );
 
         assert_eq!(current_price.timestamp, Timestamp::from_seconds(1730804420));
