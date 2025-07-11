@@ -42,4 +42,4 @@ jobs:
         run: |
           cd deploy
           pipx ensurepath
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e facuet_version=0.1.5
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=0.1.5
