@@ -1,3 +1,10 @@
+pub const MIGRATIONS: [&str; 4] = [
+    CREATE_TABLES,
+    CREATE_PAIR_PRICES_1M_TABLE,
+    DROP_PAIR_PRICES_1M_MV,
+    CREATE_PAIR_PRICES_1M_MV,
+];
+
 pub const CREATE_TABLES: &str = r#"
             CREATE OR REPLACE TABLE pair_prices (
                 quote_denom String,
@@ -12,10 +19,10 @@ pub const CREATE_TABLES: &str = r#"
             "#;
 
 #[allow(dead_code)]
-pub const CREATE_MATERIALIZED_VIEWS_1M: &str = r#"
+pub const CREATE_PAIR_PRICES_1M_TABLE: &str = r#"
             -- 1m target table: Pre-aggregated OHLCV data for 1-minute intervals.
             -- This is populated automatically by the materialized view.
-            CREATE TABLE pair_prices_1m (
+            CREATE OR REPLACE TABLE pair_prices_1m (
                 quote_denom String,
                 base_denom String,
                 time_start DateTime64(6), -- Start of the 1m interval
@@ -27,7 +34,15 @@ pub const CREATE_MATERIALIZED_VIEWS_1M: &str = r#"
                 volume_quote UInt128
             ) ENGINE = MergeTree()
             ORDER BY (quote_denom, base_denom, time_start)
+"#;
 
+#[allow(dead_code)]
+pub const DROP_PAIR_PRICES_1M_MV: &str = r#"
+            DROP VIEW IF EXISTS pair_prices_1m_mv
+"#;
+
+#[allow(dead_code)]
+pub const CREATE_PAIR_PRICES_1M_MV: &str = r#"
             -- 1m materialized view: Automatically aggregates from pair_prices into pair_prices_1m.
             -- Uses toStartOfMinute (shorthand for INTERVAL 1 MINUTE).
             CREATE MATERIALIZED VIEW pair_prices_1m_mv TO pair_prices_1m AS

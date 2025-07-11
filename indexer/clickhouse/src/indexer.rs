@@ -34,28 +34,20 @@ impl grug_app::Indexer for Indexer {
         let handle = self.runtime_handler.spawn({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
-                clickhouse_client
-                    .query(crate::migrations::create_tables::CREATE_TABLES)
-                    .execute()
-                    .await
-                    .map_err(|e| {
-                        grug_app::IndexerError::Database(format!(
-                            "Failed to create pair_prices table: {e}"
-                        ))
-                    })?;
-
-                // clickhouse_client
-                //     .query(crate::migrations::create_tables::CREATE_MATERIALIZED_VIEWS_1M)
-                //     .execute()
-                //     .await
-                //     .map_err(|e| {
-                //         grug_app::IndexerError::Database(format!(
-                //             "Failed to create materialized views: {e}"
-                //         ))
-                //     })?;
+                for migration in crate::migrations::create_tables::MIGRATIONS {
+                    clickhouse_client
+                        .query(migration)
+                        .execute()
+                        .await
+                        .map_err(|e| {
+                            grug_app::IndexerError::Database(format!(
+                                "Failed to run migration: {e}"
+                            ))
+                        })?;
+                }
 
                 #[cfg(feature = "tracing")]
-                tracing::info!("Created/replaced pair_prices table successfully");
+                tracing::info!("ran migrations successfully");
 
                 Ok::<(), grug_app::IndexerError>(())
             }
@@ -131,7 +123,6 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 }
-
 #[cfg(feature = "testing")]
 impl Drop for Indexer {
     fn drop(&mut self) {
@@ -145,7 +136,6 @@ impl Drop for Indexer {
         })
     }
 }
-
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     describe_histogram!(
