@@ -65,7 +65,7 @@ fn deposit(
     suite.send_transaction(tx)
 }
 
-// Create a deposit and sing it with 2 guardians.
+// Create a deposit and sign it with 2 guardians.
 fn deposit_and_confirm(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     bitcoin_contract: Addr,

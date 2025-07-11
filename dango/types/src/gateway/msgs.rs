@@ -30,7 +30,7 @@ pub enum ExecuteMsg {
     /// Set rate limit for the routes.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Set withdrawal fees for the denoms.
-    /// For outbound transactions, a flat fee deducted from the withdraw amount.
+    /// For outbound transactions, a flat fee deducted from the withdrawal amount.
     ///
     /// We expect this to be updated often to reflect the gas price of the chains
     /// and roughly inline with the withdrawal fee on major centralized exchanges.

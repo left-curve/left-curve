@@ -40,11 +40,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::OutboundSignature { id } => {
-            let res = query_outbound_singnature(ctx.storage, id)?;
+            let res = query_outbound_signature(ctx.storage, id)?;
             res.to_json_value()
         },
         QueryMsg::OutboundSignatures { start_after, limit } => {
-            let res = query_outbound_singnatures(ctx.storage, start_after, limit)?;
+            let res = query_outbound_signatures(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -114,14 +114,14 @@ fn query_outbound_transactions(
         .collect()
 }
 
-fn query_outbound_singnature(
+fn query_outbound_signature(
     storage: &dyn Storage,
     id: u32,
 ) -> StdResult<BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>> {
     SIGNATURES.load(storage, id)
 }
 
-fn query_outbound_singnatures(
+fn query_outbound_signatures(
     storage: &dyn Storage,
     start_after: Option<u32>,
     limit: Option<u32>,
