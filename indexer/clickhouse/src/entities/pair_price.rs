@@ -1,112 +1,14 @@
+use {
+    crate::entities::{clearing_price::ClearingPrice, volume::Volume},
+    chrono::{DateTime, Utc},
+    clickhouse::Row,
+    serde::{Deserialize, Serialize},
+};
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, SimpleObject},
     grug_types::Timestamp,
 };
-use {
-    chrono::{DateTime, Utc},
-    clickhouse::Row,
-    grug::{Udec128, Uint128},
-    serde::{Deserialize, Serialize},
-    std::ops::{Deref, DerefMut, DivAssign},
-};
-
-// Using my own struct so I can use my own serde implementation since grug will serialize as a string
-// and clickhouse expects a number.
-
-/// ClearingPrice is a wrapper around `grug::Udec128`, but serialize as a number.
-/// ClearingPrice -> Udec128 -> Uint128 -> u128
-#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord)]
-pub struct ClearingPrice(Udec128);
-
-impl Deref for ClearingPrice {
-    type Target = Udec128;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for ClearingPrice {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl From<Udec128> for ClearingPrice {
-    fn from(value: Udec128) -> Self {
-        Self(value)
-    }
-}
-
-impl serde::ser::Serialize for ClearingPrice {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        self.0.0.0.serialize(serializer)
-    }
-}
-
-impl<'de> serde::de::Deserialize<'de> for ClearingPrice {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        let inner: u128 = <_ as serde::de::Deserialize<'de>>::deserialize(deserializer)?;
-        Ok(Self(grug::Udec128::raw(grug::Uint128::new(inner))))
-    }
-}
-
-/// Volume is a wrapper around `grug::Uint128`, but serialize as a number.
-/// Volume -> Uint128 -> u128
-#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord)]
-pub struct Volume(Uint128);
-
-impl Deref for Volume {
-    type Target = Uint128;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Volume {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl DivAssign for Volume {
-    fn div_assign(&mut self, rhs: Self) {
-        self.0 /= rhs.0;
-    }
-}
-
-impl From<Uint128> for Volume {
-    fn from(value: Uint128) -> Self {
-        Self(value)
-    }
-}
-
-impl serde::ser::Serialize for Volume {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        self.0.0.serialize(serializer)
-    }
-}
-
-impl<'de> serde::de::Deserialize<'de> for Volume {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        let inner = <_ as serde::de::Deserialize<'de>>::deserialize(deserializer)?;
-        Ok(Self(grug::Uint128::new(inner)))
-    }
-}
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
@@ -182,7 +84,7 @@ mod test {
     use {
         super::*,
         assertor::*,
-        grug::{NumberConst, Udec256, Uint256},
+        grug::{NumberConst, Udec128, Udec256, Uint128, Uint256},
     };
 
     #[test]

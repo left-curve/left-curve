@@ -12,8 +12,7 @@ use {
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::{
-        candle::Candle,
-        pair_price::{ClearingPrice, PairPrice, Volume},
+        candle::Candle, clearing_price::ClearingPrice, pair_price::PairPrice, volume::Volume,
     },
     tracing::Level,
 };
@@ -221,13 +220,18 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     // Makes sure we get correct precision: 27.4 without specific number, since this can change.
     assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
 
-    let pair_price_1m: Vec<Candle> = clickhouse_context
+    let pair_price_1m: Candle = clickhouse_context
         .clickhouse_client()
-        .query("SELECT * FROM pair_prices_1m")
-        .fetch_all()
+        .query("SELECT *, '1m' as interval FROM pair_prices_1m")
+        .fetch_one()
         .await?;
 
-    tracing::info!("pair_price_1m = {pair_price_1m:#?}");
+    tracing::info!("pair_price_1m = {:#?}", pair_price_1m);
+
+    tracing::info!(
+        "pair_price_1m = {:#?}",
+        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&pair_price_1m).unwrap())
+    );
 
     Ok(())
 }
