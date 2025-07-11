@@ -1,21 +1,31 @@
 use {
-    crate::{Addr, Coin, Coins, Denom, Message, StdResult},
-    grug_math::Uint128,
+    crate::{Addr, Coin, Coins, DecCoin, DecCoins, Denom, Message, StdResult},
+    grug_math::{Udec128, Uint128},
     std::collections::BTreeMap,
 };
 
-#[derive(Default)]
-pub struct TransferBuilder {
-    batch: BTreeMap<Addr, Coins>,
+#[derive(Default, Debug)]
+pub struct TransferBuilder<T = Coins> {
+    batch: BTreeMap<Addr, T>,
 }
 
-impl TransferBuilder {
+impl<T> TransferBuilder<T> {
     pub fn new() -> Self {
         Self {
             batch: BTreeMap::new(),
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.batch.is_empty()
+    }
+
+    pub fn is_non_empty(&self) -> bool {
+        !self.batch.is_empty()
+    }
+}
+
+impl TransferBuilder<Coins> {
     pub fn insert(&mut self, address: Addr, denom: Denom, amount: Uint128) -> StdResult<()> {
         self.batch
             .entry(address)
@@ -32,19 +42,48 @@ impl TransferBuilder {
             .map(|_| ())
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.batch.is_empty()
-    }
-
-    pub fn is_non_empty(&self) -> bool {
-        !self.batch.is_empty()
-    }
-
     pub fn into_batch(self) -> BTreeMap<Addr, Coins> {
         self.batch
     }
 
     pub fn into_message(self) -> Message {
         Message::Transfer(self.batch)
+    }
+}
+
+impl TransferBuilder<DecCoins> {
+    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Udec128) -> StdResult<()> {
+        self.batch
+            .entry(address)
+            .or_default()
+            .insert(DecCoin { denom, amount })
+            .map(|_| ())
+    }
+
+    pub fn insert_many(&mut self, address: Addr, dec_coins: DecCoins) -> StdResult<()> {
+        self.batch
+            .entry(address)
+            .or_default()
+            .insert_many(dec_coins)
+            .map(|_| ())
+    }
+
+    pub fn into_batch(self) -> BTreeMap<Addr, Coins> {
+        self.batch
+            .into_iter()
+            .filter_map(|(addr, dec_coins)| {
+                // Round _down_ decimal amount to integer.
+                let coins = dec_coins.into_coins_floor();
+                if coins.is_non_empty() {
+                    Some((addr, coins))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn into_message(self) -> Message {
+        Message::Transfer(self.into_batch())
     }
 }

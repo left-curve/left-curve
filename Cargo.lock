@@ -4905,6 +4905,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "test-case",
  "thiserror 2.0.12",
 ]
 

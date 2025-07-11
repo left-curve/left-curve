@@ -104,7 +104,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       const response = await publicClient.ordersByUser({ user: account.address });
       return Object.entries(response).map(([id, order]) => ({
         ...order,
-        id: +id,
+        id,
       }));
     },
     initialData: [],
@@ -131,8 +131,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
 
     return {
-      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toString(),
-      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toString(),
+      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toFixed(),
+      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toFixed(),
     };
   }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
 
@@ -173,7 +173,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
                     direction,
                     price: Decimal(inputs.price.value)
                       .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
-                      .toString(),
+                      .toFixed(),
                   },
                 ],
               };
@@ -205,7 +205,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     setOperation,
     action,
     changeAction,
-    orders,
+    orders: {
+      ...orders,
+      data: orders.data ? orders.data : [],
+    },
     submission,
     type: "spot",
   };

@@ -307,7 +307,8 @@
                   "lp_denom": "dex/pool/dango/usdc",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1"
+                      "order_spacing": "1",
+                      "reserve_ratio": "0"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -320,7 +321,8 @@
                   "lp_denom": "dex/pool/btc/usdc",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1"
+                      "order_spacing": "1",
+                      "reserve_ratio": "0"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -333,7 +335,8 @@
                   "lp_denom": "dex/pool/eth/usdc",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1"
+                      "order_spacing": "1",
+                      "reserve_ratio": "0"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -346,7 +349,8 @@
                   "lp_denom": "dex/pool/sol/usdc",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1"
+                      "order_spacing": "1",
+                      "reserve_ratio": "0"
                     }
                   },
                   "swap_fee_rate": "0.003"

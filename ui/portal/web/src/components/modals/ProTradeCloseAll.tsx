@@ -7,7 +7,7 @@ import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
 export const ProTradeCloseAll = forwardRef(() => {
-  const { hideModal, subscriptions } = useApp();
+  const { hideModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
 

@@ -212,7 +212,7 @@ export type PairSymbols = {
   quoteSymbol: string;
 };
 
-export type OrderId = number;
+export type OrderId = string;
 
 export type CoinPair = [Coin, Coin];
 

@@ -7,7 +7,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Sign, Udec128,
+        Uint128,
     },
     std::ops::Sub,
 };
@@ -271,12 +272,11 @@ impl PassiveLiquidityPool for PairParams {
             );
         };
 
-        let output_amount_after_fee = match self.pool_type {
+        let output_amount_before_fee = match self.pool_type {
             PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_in(
-                input.amount,
                 reserve.amount_of(&input.denom)?,
                 reserve.amount_of(&output_denom)?,
-                self.swap_fee_rate,
+                input.amount,
             )?,
             PassiveLiquidity::Geometric {
                 ratio,
@@ -293,11 +293,25 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        let output = Coin {
-            denom: output_denom,
-            amount: output_amount_after_fee,
-        };
+        // Deduct liquidity fee from the output.
+        // Not to be confused with the protocol fee:
+        // - Liquidity fee (also called "swap fee") is paid into the pool.
+        //   It's equivalent to the bid-ask spread in order books.
+        // - Protocol fee is paid to the Dango protocol (specifically, the taxman
+        //   contract). It's equivalent to the maker/taker fee in order books,
+        //   and handled by `core::router::swap_exact_amount_in`.
+        let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
+        let output_amount = output_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?;
+        let output = Coin::new(output_denom, output_amount)?;
 
+        ensure!(
+            output.amount.is_positive(),
+            "output amount after fee must be positive, got: {output}"
+        );
+
+        // Update the reserve:
+        // - insert the input;
+        // - remove the **after fee** output.
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, output))
@@ -320,20 +334,22 @@ impl PassiveLiquidityPool for PairParams {
         let input_reserve = reserve.amount_of(&input_denom)?;
         let output_reserve = reserve.amount_of(&output.denom)?;
 
+        // Compute the output amount before deducting the liquidity fee.
+        let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
+        let output_amount_before_fee = output.amount.checked_div_dec_ceil(one_sub_fee_rate)?;
+        let output_before_fee = Coin::new(output.denom.clone(), output_amount_before_fee)?;
+
         ensure!(
-            output_reserve > output.amount,
+            output_reserve > output_before_fee.amount,
             "insufficient liquidity: {} <= {}",
             output_reserve,
-            output.amount
+            output_before_fee.amount
         );
 
         let input_amount = match self.pool_type {
-            PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_out(
-                output.amount,
-                input_reserve,
-                output_reserve,
-                self.swap_fee_rate,
-            )?,
+            PassiveLiquidity::Xyk { .. } => {
+                xyk::swap_exact_amount_out(input_reserve, output_reserve, output_before_fee.amount)?
+            },
             PassiveLiquidity::Geometric {
                 ratio,
                 order_spacing,
@@ -341,7 +357,7 @@ impl PassiveLiquidityPool for PairParams {
                 oracle_querier,
                 base_denom,
                 quote_denom,
-                &output,
+                &output_before_fee,
                 &reserve,
                 ratio,
                 order_spacing,
@@ -349,11 +365,16 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        let input = Coin {
-            denom: input_denom,
-            amount: input_amount,
-        };
+        let input = Coin::new(input_denom, input_amount)?;
 
+        ensure!(
+            input.amount.is_positive(),
+            "input amount must be positive, got: {input}"
+        );
+
+        // Update the reserve:
+        // - insert the input;
+        // - remove the **after fee** output.
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, input))
@@ -373,10 +394,14 @@ impl PassiveLiquidityPool for PairParams {
         let quote_reserve = reserve.amount_of(&quote_denom)?;
 
         match self.pool_type {
-            PassiveLiquidity::Xyk { order_spacing } => xyk::reflect_curve(
+            PassiveLiquidity::Xyk {
+                order_spacing,
+                reserve_ratio,
+            } => xyk::reflect_curve(
                 base_reserve,
                 quote_reserve,
                 order_spacing,
+                reserve_ratio,
                 self.swap_fee_rate,
             ),
             PassiveLiquidity::Geometric {
@@ -426,6 +451,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::ONE,
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_permille(5),
         coins! {
@@ -462,6 +488,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::ONE,
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_percent(1),
         coins! {
@@ -498,6 +525,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::new_percent(1),
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_permille(5),
         coins! {
@@ -534,6 +562,7 @@ mod tests {
     #[test_case(
         PassiveLiquidity::Xyk {
             order_spacing: Udec128::new_percent(1),
+            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
         },
         Udec128::new_percent(1),
         coins! {
@@ -714,7 +743,7 @@ mod tests {
 
         assert_eq!(bids_collected.len(), 2);
 
-        for (bid, expected_bid) in bids_collected.into_iter().zip(vec![
+        for (bid, expected_bid) in bids_collected.into_iter().zip([
             (Udec128::new_percent(99), Uint128::from(5050505)),
             (Udec128::new_percent(49), Uint128::from(5102040)),
         ]) {
@@ -912,10 +941,10 @@ mod tests {
         },
         Udec128::new_percent(1),
         Coin::new(usdc::DENOM.clone(), 5050505 + 100000).unwrap(),
-        Coin::new(eth::DENOM.clone(), 5463836).unwrap(),
+        Coin::new(eth::DENOM.clone(), 5463833).unwrap(),
         coin_pair! {
             usdc::DENOM.clone() => 10000000 - 5050505 - 100000,
-            eth::DENOM.clone() => 10000000 + 5463836,
+            eth::DENOM.clone() => 10000000 + 5463833,
         };
         "geometric pool 1:1 price swap out quote denom amount matches first order part of second order"
     )]
@@ -944,10 +973,10 @@ mod tests {
         },
         Udec128::new_percent(1),
         Coin::new(eth::DENOM.clone(), 5100000).unwrap(),
-        Coin::new(usdc::DENOM.clone(), 5050000 + 228790).unwrap(),
+        Coin::new(usdc::DENOM.clone(), 5050000 + 228789).unwrap(),
         coin_pair! {
             eth::DENOM.clone() => 10000000 - 5100000,
-            usdc::DENOM.clone() => 10000000 + 5050000 + 228790,
+            usdc::DENOM.clone() => 10000000 + 5050000 + 228789,
         };
         "geometric pool 1:1 price swap out base denom amount matches first order part of second order"
     )]

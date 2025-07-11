@@ -107,3 +107,7 @@ export type NestedOmit<T, TPath extends string> = TPath extends `${infer TKey}.$
     ? Omit<T, TKey> & { [K in TKey]: NestedOmit<T[K], TRest> }
     : T
   : Omit<T, TPath & keyof T>;
+
+export type WithId<T, Id = string> = T & {
+  id: Id;
+};

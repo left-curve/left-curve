@@ -2,10 +2,28 @@ import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
-  safelist: [{ pattern: /grid-cols-.+/ }],
+  safelist: [
+    {
+      pattern: /grid-cols-.+/,
+    },
+  ],
   theme: {
     extend: {
       colors: {
+        "bg-primary-rice": "var(--color-bg-primary-rice)",
+        "bg-secondary-rice": "var(--color-bg-secondary-rice)",
+        "bg-tertiary-rice": "var(--color-bg-tertiary-rice)",
+        primary: {
+          red: "var(--color-primary-red)",
+          rice: "var(--color-primary-rice)",
+          "900": "var(--color-primary-900)",
+        },
+        secondary: {
+          "700": "var(--color-secondary-700)",
+        },
+        tertiary: {
+          "500": "var(--color-tertiary-500)",
+        },
         transparent: "transparent",
         status: {
           success: "#25B12A",

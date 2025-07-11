@@ -225,7 +225,6 @@ fn provide_liquidity(
         } else {
             None
         }))
-    // TODO: add event
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
@@ -274,7 +273,6 @@ fn withdraw_liquidity(
             )?
         })
         .add_message(Message::transfer(ctx.sender, refunds)?))
-    // TODO: add events
 }
 
 fn swap_exact_amount_in(
@@ -535,6 +533,7 @@ mod tests {
                     lp_denom: Denom::from_str("lp").unwrap(),
                     pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                 },

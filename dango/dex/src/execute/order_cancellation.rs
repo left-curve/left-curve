@@ -5,10 +5,7 @@ use {
     },
     anyhow::{bail, ensure},
     dango_types::dex::{Direction, OrderCanceled, OrderId, OrderKind},
-    grug::{
-        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Order as IterationOrder, StdResult,
-        Storage,
-    },
+    grug::{Addr, Coin, Coins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage},
 };
 
 /// Cancel all orders that belong to the given user.
@@ -135,11 +132,11 @@ fn cancel_limit_order(
     let refund = match direction {
         Direction::Bid => Coin {
             denom: quote_denom,
-            amount: order.remaining.checked_mul_dec_floor(price)?,
+            amount: order.remaining.checked_mul(price)?.into_int(),
         },
         Direction::Ask => Coin {
             denom: base_denom,
-            amount: order.remaining,
+            amount: order.remaining.into_int(),
         },
     };
 
@@ -147,7 +144,7 @@ fn cancel_limit_order(
         user,
         id: order_id,
         kind: OrderKind::Limit,
-        remaining: order.remaining,
+        remaining: order.remaining.into_int(),
         refund: refund.clone(),
     })?;
 

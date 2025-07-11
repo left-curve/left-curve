@@ -445,6 +445,7 @@ mod tests {
         };
 
         let outcome = grug_types::BlockOutcome {
+            height: 1,
             app_hash: grug_types::Hash256::ZERO,
             cron_outcomes: vec![],
             tx_outcomes: vec![],
@@ -594,6 +595,7 @@ mod tests {
             txs: vec![],
         };
         let outcome = grug_types::BlockOutcome {
+            height: 42,
             app_hash: grug_types::Hash256::ZERO,
             cron_outcomes: vec![],
             tx_outcomes: vec![],
