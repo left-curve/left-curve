@@ -21,7 +21,7 @@ async-graphql  = { workspace = true, optional = true, features = ["bigdecimal"] 
 async-stream   = { workspace = true }
 async-trait    = { workspace = true }
 bigdecimal     = { workspace = true }
-bnum           = { workspace = true }
+bnum           = { workspace = true, features = ["serde"] }
 borsh          = { workspace = true }
 chrono         = { workspace = true }
 clickhouse     = { workspace = true, features = ["chrono", "inserter", "time", "uuid"] }
@@ -46,4 +46,5 @@ tracing        = { workspace = true, optional = true }
 [dev-dependencies]
 assertor   = { workspace = true }
 clickhouse = { workspace = true, features = ["test-util"] }
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 test-case  = { workspace = true }

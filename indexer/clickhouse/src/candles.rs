@@ -81,9 +81,9 @@ impl Indexer {
                     let pair_price = pair_prices.entry(pair_id).or_insert(PairPrice {
                         quote_denom: quote_denom.to_string(),
                         base_denom: base_denom.to_string(),
-                        clearing_price,
-                        volume_base: Uint128::ZERO,
-                        volume_quote: Uint128::ZERO,
+                        clearing_price: clearing_price.into(),
+                        volume_base: Uint128::ZERO.into(),
+                        volume_quote: Uint128::ZERO.into(),
                         created_at: DateTime::<Utc>::from_naive_utc_and_offset(
                             block.info.timestamp.to_naive_date_time(),
                             Utc,
@@ -96,13 +96,13 @@ impl Indexer {
                         // TODO: add sentry error reporting
                         #[cfg(feature = "tracing")]
                         tracing::error!("Overflow in volume_base: {pair_price:#?}",);
-                        pair_price.volume_base = Uint128::MAX;
+                        pair_price.volume_base = Uint128::MAX.into();
                     };
                     if pair_price.volume_quote.checked_add(filled_quote).is_err() {
                         // TODO: add sentry error reporting
                         #[cfg(feature = "tracing")]
                         tracing::error!("Overflow in volume_quote: {pair_price:#?}",);
-                        pair_price.volume_quote = Uint128::MAX;
+                        pair_price.volume_quote = Uint128::MAX.into();
                     };
                 }
             }
@@ -123,8 +123,8 @@ impl Indexer {
 
         for (_, mut pair_price) in pair_prices.into_iter() {
             // divide by 2 (because for each buy there's a sell, so it's double counted)
-            pair_price.volume_base /= Uint128::from(2);
-            pair_price.volume_quote /= Uint128::from(2);
+            pair_price.volume_base /= Uint128::from(2).into();
+            pair_price.volume_quote /= Uint128::from(2).into();
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}",);

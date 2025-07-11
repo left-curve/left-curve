@@ -1,7 +1,3 @@
-// -- volume Decimal128(18),
-// -- should be Decimal128(18)
-// -- ENGINE = MergeTree() is efficient for time-series data with the given ORDER BY.
-
 pub const CREATE_TABLES: &str = r#"
             CREATE OR REPLACE TABLE pair_prices (
                 quote_denom String,
@@ -9,9 +5,9 @@ pub const CREATE_TABLES: &str = r#"
                 clearing_price UInt128,
                 volume_base UInt128,
                 volume_quote UInt128,
-                created_at DateTime64(3),
+                created_at DateTime64(6),
                 block_height UInt64
-            ) ENGINE = MergeTree()
+            ) ENGINE = MergeTree() -- ENGINE = MergeTree() is efficient for time-series data with the given ORDER BY.
             ORDER BY (quote_denom, base_denom, created_at)
             "#;
 
@@ -22,7 +18,7 @@ pub const CREATE_MATERIALIZED_VIEWS_1M: &str = r#"
             CREATE TABLE pair_prices_1m (
                 quote_denom String,
                 base_denom String,
-                time_start DateTime64(3), -- Start of the 1m interval
+                time_start DateTime64(6), -- Start of the 1m interval
                 open UInt128,
                 high UInt128,
                 low UInt128,
@@ -43,7 +39,8 @@ pub const CREATE_MATERIALIZED_VIEWS_1M: &str = r#"
                 max(clearing_price) AS high,
                 min(clearing_price) AS low,
                 argMax(clearing_price, created_at) AS close,
-                sum(volume) AS volume
+                sum(volume_base) AS volume_base,
+                sum(volume_quote) AS volume_quote
             FROM pair_prices
             GROUP BY quote_denom, base_denom, time_start
 "#;

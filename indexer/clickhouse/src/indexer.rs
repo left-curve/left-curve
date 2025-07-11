@@ -44,6 +44,16 @@ impl grug_app::Indexer for Indexer {
                         ))
                     })?;
 
+                // clickhouse_client
+                //     .query(crate::migrations::create_tables::CREATE_MATERIALIZED_VIEWS_1M)
+                //     .execute()
+                //     .await
+                //     .map_err(|e| {
+                //         grug_app::IndexerError::Database(format!(
+                //             "Failed to create materialized views: {e}"
+                //         ))
+                //     })?;
+
                 #[cfg(feature = "tracing")]
                 tracing::info!("Created/replaced pair_prices table successfully");
 

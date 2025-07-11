@@ -8,7 +8,105 @@ use {
     clickhouse::Row,
     grug::{Udec128, Uint128},
     serde::{Deserialize, Serialize},
+    std::ops::{Deref, DerefMut, DivAssign},
 };
+
+// Using my own struct so I can use my own serde implementation since grug will serialize as a string
+// and clickhouse expects a number.
+
+/// ClearingPrice is a wrapper around `grug::Udec128`, but serialize as a number.
+/// ClearingPrice -> Udec128 -> Uint128 -> u128
+#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord)]
+pub struct ClearingPrice(Udec128);
+
+impl Deref for ClearingPrice {
+    type Target = Udec128;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ClearingPrice {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl From<Udec128> for ClearingPrice {
+    fn from(value: Udec128) -> Self {
+        Self(value)
+    }
+}
+
+impl serde::ser::Serialize for ClearingPrice {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        self.0.0.0.serialize(serializer)
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for ClearingPrice {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let inner: u128 = <_ as serde::de::Deserialize<'de>>::deserialize(deserializer)?;
+        Ok(Self(grug::Udec128::raw(grug::Uint128::new(inner))))
+    }
+}
+
+/// Volume is a wrapper around `grug::Uint128`, but serialize as a number.
+/// Volume -> Uint128 -> u128
+#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord)]
+pub struct Volume(Uint128);
+
+impl Deref for Volume {
+    type Target = Uint128;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Volume {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl DivAssign for Volume {
+    fn div_assign(&mut self, rhs: Self) {
+        self.0 /= rhs.0;
+    }
+}
+
+impl From<Uint128> for Volume {
+    fn from(value: Uint128) -> Self {
+        Self(value)
+    }
+}
+
+impl serde::ser::Serialize for Volume {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        self.0.0.serialize(serializer)
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for Volume {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let inner = <_ as serde::de::Deserialize<'de>>::deserialize(deserializer)?;
+        Ok(Self(grug::Uint128::new(inner)))
+    }
+}
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
@@ -21,13 +119,13 @@ pub struct PairPrice {
     pub base_denom: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     // #[serde(with = "udec128")]
-    pub clearing_price: Udec128,
+    pub clearing_price: ClearingPrice,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_base: Uint128,
+    pub volume_base: Volume,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_quote: Uint128,
+    pub volume_quote: Volume,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
+    #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub created_at: DateTime<Utc>,
     #[cfg_attr(feature = "async-graphql", graphql(name = "blockHeight"))]
     pub block_height: u64,
@@ -78,3 +176,154 @@ impl PairPrice {
 //         todo!()
 //     }
 // }
+
+#[cfg(test)]
+mod test {
+    use {
+        super::*,
+        assertor::*,
+        grug::{NumberConst, Udec256, Uint256},
+    };
+
+    #[test]
+    #[ignore]
+    fn test_pair_price() {
+        let pair_price = PairPrice {
+            quote_denom: "USDC".to_string(),
+            base_denom: "USDT".to_string(),
+            clearing_price: Udec128::MAX.into(),
+            volume_base: Uint128::from(1000000000000000000).into(),
+            volume_quote: Uint128::from(1000000000000000000).into(),
+            created_at: Utc::now(),
+            block_height: 1000000,
+        };
+
+        let serialized = serde_json::to_string(&pair_price).unwrap();
+        println!("serialized = {serialized}",);
+
+        let deserialized: PairPrice = serde_json::from_str(&serialized).unwrap();
+        println!("deserialized = {deserialized:#?}",);
+
+        assert_that!(pair_price).is_equal_to(deserialized);
+    }
+
+    #[test]
+    fn test_bnum_u128() {
+        let udec128 = serde_json::json!({"max": bnum::types::U128::MAX, "min": bnum::types::U128::MIN, "one": bnum::types::U128::ONE});
+        let serialized = serde_json::to_string(&udec128).unwrap();
+        println!("serialized = {serialized}",);
+
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        println!("deserialized = {deserialized:#?}",);
+    }
+
+    #[test]
+    fn test_bnum_u256() {
+        let udec256 = serde_json::json!({"max": bnum::types::U256::MAX, "min": bnum::types::U256::MIN, "one": bnum::types::U256::ONE});
+        let serialized = serde_json::to_string(&udec256).unwrap();
+        println!("serialized = {serialized}",);
+
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        println!("deserialized = {deserialized:#?}",);
+    }
+
+    #[test]
+    fn test_uint128() {
+        // Uint128 is a Grug wrapper around `bnum::U128, but serialize as a string.
+        let uint128 =
+            serde_json::json!({"max": Uint128::MAX, "min": Uint128::ZERO, "one": Uint128::ONE});
+        let serialized = serde_json::to_string(&uint128).unwrap();
+        println!("serialized = {serialized}",);
+
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        println!("deserialized = {deserialized:#?}",);
+    }
+
+    #[test]
+    fn test_uint256() {
+        // Uint256 is a Grug wrapper around `bnum::U256, but serialize as a string.
+        let uint256 =
+            serde_json::json!({"max": Uint256::MAX, "min": Uint256::ZERO, "one": Uint256::ONE});
+        let serialized = serde_json::to_string(&uint256).unwrap();
+        println!("serialized = {serialized}",);
+
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        println!("deserialized = {deserialized:#?}",);
+    }
+
+    /// This test matters, because it's the only way to test that the serde_json
+    /// implementation is correct. We'll use serde to inject data into clickhouse.
+    /// This requires the `arbitrary_precision` feature to be working.
+    #[test]
+    fn test_u128() {
+        let u128 = serde_json::json!({"u128": u128::MAX});
+        let serialized = serde_json::to_string(&u128).unwrap();
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let deserialized_u128: u128 = serde_json::from_value(deserialized["u128"].clone()).unwrap();
+
+        // println!("serialized = {serialized:?}",);
+        // println!("deserialized = {deserialized:?}",);
+        // println!("u128 = {u128:?}",);
+        // println!("deserialized_u128 = {deserialized_u128:?}",);
+
+        assert_that!(deserialized_u128).is_equal_to(u128::MAX);
+    }
+
+    #[test]
+    fn test_all_types() {
+        let all_types = serde_json::json!({
+            "udec128": Udec128::MAX,
+            "udec256": Udec256::MAX,
+            "uint128": Uint128::MAX,
+            "uint256": Uint256::MAX,
+            "volume": Volume::from(Uint128::ONE),
+            "clearing_price": ClearingPrice::from(Udec128::MAX),
+            "bnum_u128": bnum::types::U128::ONE,
+            "bnum_u256": bnum::types::U256::ONE,
+            "u128": u128::MAX,
+        });
+        let serialized = serde_json::to_string(&all_types).unwrap();
+        println!("serialized = {serialized}",);
+
+        // let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        // println!("deserialized = {deserialized:#?}",);
+
+        // let clearing_price: ClearingPrice =
+        //     serde_json::from_value(deserialized["clearing_price"].clone()).unwrap();
+
+        // println!("clearing_price = {clearing_price:#?}",);
+    }
+
+    #[test]
+    fn serde_volume() {
+        let volume = serde_json::json!({"max": Volume::from(Uint128::MAX)});
+        let serialized = serde_json::to_string(&volume).unwrap();
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let deserialized_volume: Volume =
+            serde_json::from_value(deserialized["max"].clone()).unwrap();
+
+        // println!("serialized = {serialized}",);
+        // println!("deserialized = {deserialized:?}",);
+        // println!("deserialized_volume = {deserialized_volume:?}",);
+
+        assert_that!(deserialized["max"].is_number()).is_true();
+        assert_that!(deserialized_volume).is_equal_to(Volume::from(Uint128::MAX));
+    }
+
+    #[test]
+    fn serde_clearing_price() {
+        let clearing_price = serde_json::json!({"max": ClearingPrice::from(Udec128::MAX)});
+        let serialized = serde_json::to_string(&clearing_price).unwrap();
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let deserialized_clearing_price: ClearingPrice =
+            serde_json::from_value(deserialized["max"].clone()).unwrap();
+
+        // println!("serialized = {serialized}",);
+        // println!("deserialized = {deserialized:#?}",);
+        // println!("deserialized_clearing_price = {deserialized_clearing_price:#?}",);
+
+        // Check that the serialized value is a number, this is needed for clickhouse.
+        assert_that!(deserialized["max"].is_number()).is_true();
+        assert_that!(deserialized_clearing_price).is_equal_to(ClearingPrice::from(Udec128::MAX));
+    }
+}
