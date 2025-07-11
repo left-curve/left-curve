@@ -4,8 +4,8 @@ use {
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, WithdrawalFee,
-            bridge::{self, BridgeMsg},
+            ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, WithdrawalFee,
+            bridge::{self, BridgeMsg, TransferRemoteRequest},
         },
         taxman::{self, FeeType},
     },
@@ -37,7 +37,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
             recipient,
         } => receive_remote(ctx, remote, amount, recipient),
-        ExecuteMsg::TransferRemote { remote, recipient } => transfer_remote(ctx, remote, recipient),
+        ExecuteMsg::TransferRemote(req) => transfer_remote(ctx, req),
     }
 }
 
@@ -146,9 +146,11 @@ fn receive_remote(
     }))
 }
 
-fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
+fn transfer_remote(ctx: MutableCtx, req: TransferRemoteRequest) -> anyhow::Result<Response> {
     // The user must have sent exactly one coin.
     let mut coin = ctx.funds.into_one_coin()?;
+
+    let remote = req.to_remote();
 
     // Find the bridge contract corresponding to the (denom, remote) tuple.
     let bridge = REVERSE_ROUTES.load(ctx.storage, (&coin.denom, remote))?;
@@ -201,9 +203,8 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         .add_message(Message::execute(
             bridge,
             &bridge::ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
-                remote,
+                req,
                 amount: coin.amount,
-                recipient,
             }),
             Coins::new(),
         )?)

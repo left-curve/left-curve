@@ -3,7 +3,10 @@ use {
     anyhow::{bail, ensure},
     dango_types::{
         DangoQuerier,
-        gateway::{self, Remote, bridge::BridgeMsg},
+        gateway::{
+            self, Remote, WarpRemote,
+            bridge::{BridgeMsg, TransferRemoteRequest},
+        },
         warp::{ExecuteMsg, InstantiateMsg, TokenMessage},
     },
     grug::{Coins, HexBinary, Message, MutableCtx, Response, StdResult, Uint128},
@@ -29,27 +32,28 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             sender,
             body,
         }) => handle(ctx, origin_domain, sender, body),
-        ExecuteMsg::Bridge(BridgeMsg::TransferRemote {
-            remote,
-            amount,
-            recipient,
-        }) => transfer_remote(ctx, remote, amount, recipient),
+        ExecuteMsg::Bridge(BridgeMsg::TransferRemote { req, amount }) => {
+            transfer_remote(ctx, req, amount)
+        },
     }
 }
 
 fn transfer_remote(
     ctx: MutableCtx,
-    remote: Remote,
+    req: TransferRemoteRequest,
     amount: Uint128,
-    recipient: Addr32,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_gateway()?,
         "only gateway can call `transfer_remote`"
     );
 
-    let Remote::Warp { domain, contract } = remote else {
-        bail!("incorrect remote type! expecting: warp, found: {remote:?}");
+    let TransferRemoteRequest::Warp {
+        warp_remote,
+        recipient,
+    } = req
+    else {
+        bail!("incorrect TransferRemoteRequest type! expected: Warp, found: {req:?}");
     };
 
     Ok(Response::new().add_message({
@@ -57,9 +61,9 @@ fn transfer_remote(
         Message::execute(
             mailbox,
             &mailbox::ExecuteMsg::Dispatch {
-                destination_domain: domain,
+                destination_domain: warp_remote.domain,
                 // Note, this is the message recipient, not the token recipient.
-                recipient: contract,
+                recipient: warp_remote.contract,
                 body: TokenMessage {
                     recipient,
                     amount,
@@ -92,10 +96,10 @@ fn handle(
         Message::execute(
             gateway,
             &gateway::ExecuteMsg::ReceiveRemote {
-                remote: Remote::Warp {
+                remote: Remote::Warp(WarpRemote {
                     domain: origin_domain,
                     contract: sender,
-                },
+                }),
                 amount: body.amount,
                 recipient: body.recipient.try_into()?,
             },

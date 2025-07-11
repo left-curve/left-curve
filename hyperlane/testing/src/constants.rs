@@ -13,7 +13,7 @@ pub const MOCK_HYPERLANE_REMOTE_MERKLE_TREE: Addr32 =
 
 /// Three Secp256k1 private keys that will act as the validator set for Hyperlane.
 ///
-/// See commenst for the seed phrases used to generate these keys. Do not use
+/// See comments for the seed phrases used to generate these keys. Do not use
 /// these keys in production!
 pub const MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS: [eth_utils::SigningKey; 3] = [
     // swift slow expire warfare tired foster stable knife gasp wrong legal liquid tell obvious horror shadow margin various fiction chief cargo horse gravity goose
