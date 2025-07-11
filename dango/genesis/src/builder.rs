@@ -279,6 +279,7 @@ where
     let contracts = Contracts {
         account_factory,
         bank,
+        bitcoin,
         dex,
         gateway,
         hyperlane: Hyperlane { ism, mailbox, va },
@@ -287,7 +288,6 @@ where
         taxman,
         vesting,
         warp,
-        bitcoin,
     };
 
     let config = Config {
@@ -295,9 +295,9 @@ where
         bank,
         taxman,
         cronjobs: btree_map! {
+            bitcoin => opt.bitcoin.withdraw_timeout,
             dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
             gateway => opt.gateway.rate_limit_refresh_period,
-            bitcoin => opt.bitcoin.withdraw_timeout,
         },
         permissions: Permissions {
             upload: Permission::Nobody,
@@ -309,6 +309,7 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
+            bitcoin,
             dex,
             gateway,
             hyperlane: Hyperlane { ism, mailbox, va },
@@ -316,7 +317,6 @@ where
             oracle,
             taxman,
             warp,
-            bitcoin,
         },
         ..Default::default()
     };

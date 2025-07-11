@@ -20,11 +20,7 @@ fn main() {
 
     println!(
         "genesis_state = {}",
-        genesis_state
-            .to_json_value()
-            .unwrap()
-            .to_json_string_pretty()
-            .unwrap()
+        genesis_state.to_json_string_pretty().unwrap()
     );
     println!(
         "\ncontracts = {}",

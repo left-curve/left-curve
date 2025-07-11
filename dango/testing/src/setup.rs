@@ -230,6 +230,7 @@ pub fn setup_benchmark_hybrid(
         codes.account_multi.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
+        codes.bitcoin.to_bytes().hash256(),
         codes.dex.to_bytes().hash256(),
         codes.gateway.to_bytes().hash256(),
         codes.hyperlane.ism.to_bytes().hash256(),
@@ -240,7 +241,6 @@ pub fn setup_benchmark_hybrid(
         codes.taxman.to_bytes().hash256(),
         codes.vesting.to_bytes().hash256(),
         codes.warp.to_bytes().hash256(),
-        codes.bitcoin.to_bytes().hash256(),
     ]);
 
     setup_suite_with_db_and_vm(

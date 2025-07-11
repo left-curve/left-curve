@@ -87,5 +87,5 @@ mock_user! {
         user9,
         "0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52",
         "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
-    },
+    }
 }

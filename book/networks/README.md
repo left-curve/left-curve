@@ -194,7 +194,7 @@ Dango mainnet, testnets, and devnets.
 
 ## Test accounts
 
-Each devnet comes with 13 genesis users: `owner` and `user{1-9}`. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
+Each devnet comes with 10 genesis users: `owner` and `user{1-9}`. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
 
 **Do NOT use these keys in production!!!**
 

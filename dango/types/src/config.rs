@@ -50,6 +50,7 @@ impl Default for AppConfig {
 #[grug::derive(Serde)]
 pub struct AppAddresses {
     pub account_factory: Addr,
+    pub bitcoin: Addr,
     pub dex: Addr,
     pub gateway: Addr,
     pub hyperlane: Hyperlane<Addr>,
@@ -57,7 +58,6 @@ pub struct AppAddresses {
     pub oracle: Addr,
     pub taxman: Addr,
     pub warp: Addr,
-    pub bitcoin: Addr,
 }
 
 // Default implementation that can be used in tests when the addresses are not
@@ -66,6 +66,7 @@ impl Default for AppAddresses {
     fn default() -> Self {
         AppAddresses {
             account_factory: Addr::mock(0),
+            bitcoin: Addr::mock(0),
             dex: Addr::mock(0),
             gateway: Addr::mock(0),
             hyperlane: Hyperlane::default(),
@@ -73,7 +74,6 @@ impl Default for AppAddresses {
             oracle: Addr::mock(0),
             taxman: Addr::mock(0),
             warp: Addr::mock(0),
-            bitcoin: Addr::mock(0),
         }
     }
 }
