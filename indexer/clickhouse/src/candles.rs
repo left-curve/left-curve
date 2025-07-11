@@ -60,29 +60,25 @@ impl Indexer {
                 // a limit order or a market order.
                 if event.ty == OrderFilled::EVENT_NAME {
                     // Deserialize the event.
-                    let OrderFilled {
-                        base_denom,
-                        quote_denom,
-                        clearing_price,
-                        filled_base,
-                        filled_quote,
-                        ..
-                    } = event.data.clone().deserialize_json()?;
+                    let order_filled = event.data.clone().deserialize_json::<OrderFilled>()?;
 
                     // TODO: look at `cleared` field to determine if the order was
                     // fully filled and cleared from the book. If so, we can add
                     // the volume to the map?
 
-                    let pair_id = (base_denom.clone(), quote_denom.clone());
+                    let pair_id = (
+                        order_filled.base_denom.clone(),
+                        order_filled.quote_denom.clone(),
+                    );
 
                     // If this trading pair doesn't have a clearing price recorded
                     // yet, insert it into the map.
 
                     let pair_price = pair_prices.entry(pair_id).or_insert(PairPrice {
-                        quote_denom: quote_denom.to_string(),
-                        base_denom: base_denom.to_string(),
-                        clearing_price: clearing_price.into(),
-                        volume_base: Uint128::ZERO.into(),
+                        quote_denom: order_filled.quote_denom.to_string(),
+                        base_denom: order_filled.base_denom.to_string(),
+                        clearing_price: order_filled.clearing_price.into(),
+                        volume_base: order_filled.filled_base.into(),
                         volume_quote: Uint128::ZERO.into(),
                         created_at: DateTime::<Utc>::from_naive_utc_and_offset(
                             block.info.timestamp.to_naive_date_time(),
@@ -92,13 +88,21 @@ impl Indexer {
                     });
 
                     // If the volume overflows, set it to the maximum value.
-                    if pair_price.volume_base.checked_add(filled_base).is_err() {
+                    if pair_price
+                        .volume_base
+                        .checked_add(order_filled.filled_base)
+                        .is_err()
+                    {
                         // TODO: add sentry error reporting
                         #[cfg(feature = "tracing")]
                         tracing::error!("Overflow in volume_base: {pair_price:#?}",);
                         pair_price.volume_base = Uint128::MAX.into();
                     };
-                    if pair_price.volume_quote.checked_add(filled_quote).is_err() {
+                    if pair_price
+                        .volume_quote
+                        .checked_add(order_filled.filled_quote)
+                        .is_err()
+                    {
                         // TODO: add sentry error reporting
                         #[cfg(feature = "tracing")]
                         tracing::error!("Overflow in volume_quote: {pair_price:#?}",);

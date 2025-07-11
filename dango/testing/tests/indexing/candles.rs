@@ -11,7 +11,7 @@ use {
         StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::pair_price::{ClearingPrice, PairPrice},
+    indexer_clickhouse::entities::pair_price::{ClearingPrice, PairPrice, Volume},
     tracing::Level,
 };
 
@@ -208,15 +208,17 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .fetch_one::<PairPrice>()
         .await?;
 
-    tracing::info!("clearing_price = {}", pair_price.clearing_price.to_string());
     tracing::info!("pair_price = {pair_price:#?}",);
 
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
     assert_that!(pair_price.clearing_price).is_greater_than::<ClearingPrice>(Udec128::ZERO.into());
-    // assert_that!(pair_price.volume_base).is_greater_than::<Volume>(Uint128::ZERO.into());
+    assert_that!(pair_price.volume_base).is_greater_than::<Volume>(Uint128::ZERO.into());
     // assert_that!(pair_price.volume_quote).is_greater_than::<Volume>(Uint128::ZERO.into());
+
+    // Makes sure we get correct precision: 27.4
+    assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
 
     Ok(())
 }
