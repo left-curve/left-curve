@@ -78,7 +78,7 @@ impl Indexer {
                         quote_denom: order_filled.quote_denom.to_string(),
                         base_denom: order_filled.base_denom.to_string(),
                         clearing_price: order_filled.clearing_price.into(),
-                        volume_base: order_filled.filled_base.into(),
+                        volume_base: Uint128::ZERO.into(),
                         volume_quote: Uint128::ZERO.into(),
                         created_at: DateTime::<Utc>::from_naive_utc_and_offset(
                             block.info.timestamp.to_naive_date_time(),

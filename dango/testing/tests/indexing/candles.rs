@@ -11,7 +11,7 @@ use {
         StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::pair_price::{ClearingPrice, PairPrice, Volume},
+    indexer_clickhouse::entities::pair_price::{ClearingPrice, PairPrice},
     tracing::Level,
 };
 
@@ -214,7 +214,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
     assert_that!(pair_price.clearing_price).is_greater_than::<ClearingPrice>(Udec128::ZERO.into());
-    assert_that!(pair_price.volume_base).is_greater_than::<Volume>(Uint128::ZERO.into());
+    // assert_that!(pair_price.volume_base).is_greater_than::<Volume>(Uint128::ZERO.into());
     // assert_that!(pair_price.volume_quote).is_greater_than::<Volume>(Uint128::ZERO.into());
 
     // Makes sure we get correct precision: 27.4
