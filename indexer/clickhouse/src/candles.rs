@@ -88,26 +88,28 @@ impl Indexer {
                     });
 
                     // If the volume overflows, set it to the maximum value.
-                    if pair_price
-                        .volume_base
-                        .checked_add(order_filled.filled_base)
-                        .is_err()
-                    {
-                        // TODO: add sentry error reporting
-                        #[cfg(feature = "tracing")]
-                        tracing::error!("Overflow in volume_base: {pair_price:#?}",);
-                        pair_price.volume_base = Uint128::MAX.into();
-                    };
-                    if pair_price
+                    match pair_price.volume_base.checked_add(order_filled.filled_base) {
+                        Ok(volume) => pair_price.volume_base = volume.into(),
+                        Err(_) => {
+                            // TODO: add sentry error reporting
+                            #[cfg(feature = "tracing")]
+                            tracing::error!("Overflow in volume_base: {pair_price:#?}",);
+                            pair_price.volume_base = Uint128::MAX.into();
+                        },
+                    }
+
+                    match pair_price
                         .volume_quote
                         .checked_add(order_filled.filled_quote)
-                        .is_err()
                     {
-                        // TODO: add sentry error reporting
-                        #[cfg(feature = "tracing")]
-                        tracing::error!("Overflow in volume_quote: {pair_price:#?}",);
-                        pair_price.volume_quote = Uint128::MAX.into();
-                    };
+                        Ok(volume) => pair_price.volume_quote = volume.into(),
+                        Err(_) => {
+                            // TODO: add sentry error reporting
+                            #[cfg(feature = "tracing")]
+                            tracing::error!("Overflow in volume_quote: {pair_price:#?}",);
+                            pair_price.volume_quote = Uint128::MAX.into();
+                        },
+                    }
                 }
             }
         }
@@ -129,6 +131,7 @@ impl Indexer {
             // divide by 2 (because for each buy there's a sell, so it's double counted)
             pair_price.volume_base /= Uint128::from(2).into();
             pair_price.volume_quote /= Uint128::from(2).into();
+
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}",);
