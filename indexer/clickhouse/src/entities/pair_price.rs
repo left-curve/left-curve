@@ -186,69 +186,36 @@ mod test {
     };
 
     #[test]
-    #[ignore]
-    fn test_pair_price() {
+    fn serde_pair_price() {
         let pair_price = PairPrice {
             quote_denom: "USDC".to_string(),
             base_denom: "USDT".to_string(),
             clearing_price: Udec128::MAX.into(),
-            volume_base: Uint128::from(1000000000000000000).into(),
-            volume_quote: Uint128::from(1000000000000000000).into(),
+            volume_base: Uint128::MAX.into(),
+            volume_quote: Uint128::MAX.into(),
             created_at: Utc::now(),
             block_height: 1000000,
         };
 
         let serialized = serde_json::to_string(&pair_price).unwrap();
-        println!("serialized = {serialized}",);
-
         let deserialized: PairPrice = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {deserialized:#?}",);
+
+        // println!("serialized = {serialized}",);
+        // println!("deserialized = {deserialized:#?}",);
 
         assert_that!(pair_price).is_equal_to(deserialized);
     }
 
-    #[test]
-    fn test_bnum_u128() {
-        let udec128 = serde_json::json!({"max": bnum::types::U128::MAX, "min": bnum::types::U128::MIN, "one": bnum::types::U128::ONE});
-        let serialized = serde_json::to_string(&udec128).unwrap();
-        println!("serialized = {serialized}",);
-
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {deserialized:#?}",);
-    }
-
+    /// For when I'll need to switch to bnum for U256.
+    #[ignore]
     #[test]
     fn test_bnum_u256() {
         let udec256 = serde_json::json!({"max": bnum::types::U256::MAX, "min": bnum::types::U256::MIN, "one": bnum::types::U256::ONE});
         let serialized = serde_json::to_string(&udec256).unwrap();
-        println!("serialized = {serialized}",);
+        let _deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
 
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {deserialized:#?}",);
-    }
-
-    #[test]
-    fn test_uint128() {
-        // Uint128 is a Grug wrapper around `bnum::U128, but serialize as a string.
-        let uint128 =
-            serde_json::json!({"max": Uint128::MAX, "min": Uint128::ZERO, "one": Uint128::ONE});
-        let serialized = serde_json::to_string(&uint128).unwrap();
-        println!("serialized = {serialized}",);
-
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {deserialized:#?}",);
-    }
-
-    #[test]
-    fn test_uint256() {
-        // Uint256 is a Grug wrapper around `bnum::U256, but serialize as a string.
-        let uint256 =
-            serde_json::json!({"max": Uint256::MAX, "min": Uint256::ZERO, "one": Uint256::ONE});
-        let serialized = serde_json::to_string(&uint256).unwrap();
-        println!("serialized = {serialized}",);
-
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        println!("deserialized = {deserialized:#?}",);
+        // println!("serialized = {serialized}",);
+        // println!("deserialized = {_deserialized:#?}",);
     }
 
     /// This test matters, because it's the only way to test that the serde_json
@@ -269,6 +236,7 @@ mod test {
         assert_that!(deserialized_u128).is_equal_to(u128::MAX);
     }
 
+    /// This allows seeing the serialized value of all types.
     #[test]
     fn test_all_types() {
         let all_types = serde_json::json!({
@@ -276,17 +244,17 @@ mod test {
             "udec256": Udec256::MAX,
             "uint128": Uint128::MAX,
             "uint256": Uint256::MAX,
-            "volume": Volume::from(Uint128::ONE),
+            "volume": Volume::from(Uint128::MAX),
             "clearing_price": ClearingPrice::from(Udec128::MAX),
             "bnum_u128": bnum::types::U128::ONE,
             "bnum_u256": bnum::types::U256::ONE,
             "u128": u128::MAX,
         });
         let serialized = serde_json::to_string(&all_types).unwrap();
-        println!("serialized = {serialized}",);
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
 
-        // let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        // println!("deserialized = {deserialized:#?}",);
+        println!("serialized = {serialized}",);
+        println!("deserialized = {deserialized:#?}",);
 
         // let clearing_price: ClearingPrice =
         //     serde_json::from_value(deserialized["clearing_price"].clone()).unwrap();
