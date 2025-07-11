@@ -53,6 +53,44 @@ impl CandleQuery {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
+        // 1m interval query:
+        //         SELECT
+        //       quote_denom,
+        //       base_denom,
+        //       CAST(high AS String) AS high,
+        //       CAST(low AS String) AS low,
+        //       CAST(open AS String) AS open,
+        //       CAST(close AS String) AS close,
+        //       CAST(volume AS String) AS volume,
+        //       toUnixTimestamp64Milli(time_start) AS time_start,
+        //       toUnixTimestamp64Milli(time_start) + 59999 AS time_end  -- For 1m (60000 ms - 1)
+        //   FROM pair_prices_1m
+        //   WHERE quote_denom = {quote:String}
+        //   AND base_denom = {base:String}
+        //   AND time_start >= fromUnixTimestamp64({startTime:UInt64} / 1000, 3)
+        //   AND time_start < fromUnixTimestamp64({endTime:UInt64} / 1000, 3)
+        //   ORDER BY time_start ASC
+
+        // general query
+        // SELECT
+        // {quote:String} AS quote_denom,
+        // {base:String} AS base_denom,
+        // CAST(MIN(clearing_price) AS String) AS low,
+        // CAST(MAX(clearing_price) AS String) AS high,
+        // CAST(argMin(clearing_price, created_at) AS String) AS open,
+        // CAST(argMax(clearing_price, created_at) AS String) AS close,
+        // CAST(SUM(volume) AS String) AS volume,
+        // toStartOfInterval(created_at, INTERVAL {interval:UInt32} SECOND) AS time_start_internal,
+        // toUnixTimestamp64Milli(time_start_internal) AS time_start,
+        // toUnixTimestamp64Milli(time_start_internal) + ({interval:UInt32} * 1000) - 1 AS time_end
+        // FROM pair_prices
+        // WHERE quote_denom = {quote:String}
+        // AND base_denom = {base:String}
+        // AND created_at >= fromUnixTimestamp64({startTime:UInt64} / 1000, 3)
+        // AND created_at < fromUnixTimestamp64({endTime:UInt64} / 1000, 3)
+        // GROUP BY time_start_internal
+        // ORDER BY time_start_internal ASC
+
         todo!()
     }
 }

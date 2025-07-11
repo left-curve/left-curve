@@ -7,7 +7,9 @@ use {
     chrono::{DateTime, Utc},
     clickhouse::Client,
     dango_types::{DangoQuerier, dex::OrderFilled},
-    grug::{CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Udec128},
+    grug::{
+        CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Number, NumberConst, Uint128,
+    },
     grug_types::Denom,
     std::collections::HashMap,
 };
@@ -31,7 +33,7 @@ impl Indexer {
         // (base_denom, quote_denom) -> clearing_price
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
-        let mut clearing_prices = HashMap::<(Denom, Denom), Udec128>::new();
+        let mut pair_prices = HashMap::<(Denom, Denom), PairPrice>::new();
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
@@ -62,51 +64,81 @@ impl Indexer {
                         base_denom,
                         quote_denom,
                         clearing_price,
+                        filled_base,
+                        filled_quote,
                         ..
                     } = event.data.clone().deserialize_json()?;
 
-                    let pair_id = (base_denom, quote_denom);
+                    // TODO: look at `cleared` field to determine if the order was
+                    // fully filled and cleared from the book. If so, we can add
+                    // the volume to the map?
+
+                    let pair_id = (base_denom.clone(), quote_denom.clone());
 
                     // If this trading pair doesn't have a clearing price recorded
                     // yet, insert it into the map.
-                    clearing_prices.entry(pair_id).or_insert(clearing_price);
+
+                    let pair_price = pair_prices.entry(pair_id).or_insert(PairPrice {
+                        quote_denom: quote_denom.to_string(),
+                        base_denom: base_denom.to_string(),
+                        clearing_price,
+                        volume_base: Uint128::ZERO,
+                        volume_quote: Uint128::ZERO,
+                        created_at: DateTime::<Utc>::from_naive_utc_and_offset(
+                            block.info.timestamp.to_naive_date_time(),
+                            Utc,
+                        ),
+                        block_height: block.info.height,
+                    });
+
+                    // If the volume overflows, set it to the maximum value.
+                    if pair_price.volume_base.checked_add(filled_base).is_err() {
+                        // TODO: add sentry error reporting
+                        #[cfg(feature = "tracing")]
+                        tracing::error!("Overflow in volume_base: {pair_price:#?}",);
+                        pair_price.volume_base = Uint128::MAX;
+                    };
+                    if pair_price.volume_quote.checked_add(filled_quote).is_err() {
+                        // TODO: add sentry error reporting
+                        #[cfg(feature = "tracing")]
+                        tracing::error!("Overflow in volume_quote: {pair_price:#?}",);
+                        pair_price.volume_quote = Uint128::MAX;
+                    };
                 }
             }
         }
 
-        let pairs = clearing_prices
-            .into_iter()
-            .map(|(pair_id, clearing_price)| PairPrice {
-                quote_denom: pair_id.1.to_string(),
-                base_denom: pair_id.0.to_string(),
-                clearing_price: clearing_price.to_string(),
-                created_at: DateTime::<Utc>::from_naive_utc_and_offset(
-                    block.info.timestamp.to_naive_date_time(),
-                    Utc,
-                ),
-                block_height: block.info.height,
-            })
-            .collect::<Vec<_>>();
-
         #[cfg(feature = "tracing")]
-        tracing::info!("Saving {} pair prices", pairs.len());
+        tracing::info!("Saving {} pair prices", pair_prices.len());
 
         // Early return if no pairs to insert
-        if pairs.is_empty() {
+        if pair_prices.is_empty() {
             return Ok(());
         }
 
         // Use Row binary inserter with the official clickhouse serde helpers
         let mut inserter = clickhouse_client
             .inserter::<PairPrice>("pair_prices")?
-            .with_max_rows(pairs.len() as u64);
+            .with_max_rows(pair_prices.len() as u64);
 
-        for pair_price in pairs {
-            inserter.write(&pair_price)?;
+        for (_, mut pair_price) in pair_prices.into_iter() {
+            // divide by 2 (because for each buy there's a sell, so it's double counted)
+            pair_price.volume_base /= Uint128::from(2);
+            pair_price.volume_quote /= Uint128::from(2);
+            inserter.write(&pair_price).inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}",);
+            })?;
         }
 
-        inserter.commit().await?;
-        inserter.end().await?;
+        inserter.commit().await.inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            tracing::error!("Failed to commit inserted for pair prices: : {_err}",);
+        })?;
+        inserter.end().await.inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            tracing::error!("Failed to end inserter for pair prices: {_err}",);
+        })?;
 
         Ok(())
     }

@@ -17,9 +17,11 @@ tracing       = ["dep:tracing"]
 
 [dependencies]
 anyhow         = { workspace = true }
-async-graphql  = { workspace = true, optional = true }
+async-graphql  = { workspace = true, optional = true, features = ["bigdecimal"] }
 async-stream   = { workspace = true }
 async-trait    = { workspace = true }
+bigdecimal     = { workspace = true }
+bnum           = { workspace = true }
 borsh          = { workspace = true }
 chrono         = { workspace = true }
 clickhouse     = { workspace = true, features = ["chrono", "inserter", "time", "uuid"] }

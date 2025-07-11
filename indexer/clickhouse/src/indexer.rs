@@ -31,23 +31,11 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        // Create pair_prices table with correct schema (replace if schema is wrong)
-        let create_table_sql = r#"
-            CREATE OR REPLACE TABLE pair_prices (
-                quote_denom String,
-                base_denom String,
-                clearing_price String,
-                created_at DateTime64(3),
-                block_height UInt64
-            ) ENGINE = MergeTree()
-            ORDER BY (quote_denom, base_denom, created_at)
-        "#;
-
         let handle = self.runtime_handler.spawn({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
                 clickhouse_client
-                    .query(create_table_sql)
+                    .query(crate::migrations::create_tables::CREATE_TABLES)
                     .execute()
                     .await
                     .map_err(|e| {

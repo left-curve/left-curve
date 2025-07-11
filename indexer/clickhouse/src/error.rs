@@ -13,6 +13,9 @@ pub enum IndexerError {
 
     #[error("missing block or block outcome")]
     MissingBlockOrBlockOutcome,
+
+    #[error(transparent)]
+    GrugMathError(#[from] grug::MathError),
 }
 
 impl From<IndexerError> for grug_app::IndexerError {
