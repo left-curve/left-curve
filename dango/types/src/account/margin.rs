@@ -22,14 +22,14 @@ pub struct HealthData {
 #[grug::derive(Serde)]
 pub struct HealthResponse {
     /// The margin account's utilization rate.
-    pub utilization_rate: Udec128,
+    pub utilization_rate: Udec256,
     /// The total value of the margin account's debt.
-    pub total_debt_value: Udec128,
+    pub total_debt_value: Udec256,
     /// The total value of the margin account's collateral.
-    pub total_collateral_value: Udec128,
+    pub total_collateral_value: Udec256,
     /// The total value of the margin account's collateral, adjusted for
     /// the collateral power of each denom.
-    pub total_adjusted_collateral_value: Udec128,
+    pub total_adjusted_collateral_value: Udec256,
     /// All of the accounts debts.
     pub debts: Coins,
     /// All of the account's collateral balances.
@@ -75,8 +75,8 @@ pub struct Liquidate {
     pub collateral_denom: Denom,
     pub repay_coins: Coins,
     pub refunds: Coins,
-    pub repaid_debt_value: Udec128,
+    pub repaid_debt_value: Udec256,
     pub claimed_collateral_amount: Uint128,
-    pub liquidation_bonus: Udec128,
-    pub target_health_factor: Udec128,
+    pub liquidation_bonus: Udec256,
+    pub target_health_factor: Udec256,
 }

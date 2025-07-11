@@ -12,8 +12,8 @@ use {
         dex, lending,
     },
     grug::{
-        AuthCtx, AuthResponse, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx, Number,
-        NumberConst, Response, StdResult, Tx, Udec128,
+        AuthCtx, AuthResponse, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
+        NextNumber, Number, NumberConst, Response, StdResult, Tx, Udec256,
     },
     std::cmp::{max, min},
 };
@@ -68,7 +68,7 @@ pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
     }) = health
     {
         ensure!(
-            utilization_rate <= Udec128::ONE,
+            utilization_rate <= Udec256::ONE,
             "this action would make account undercollateralized! utilization rate: {utilization_rate}, total debt: {total_debt_value}, total adjusted collateral: {total_adjusted_collateral_value}"
         );
     }
@@ -109,12 +109,12 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     // Ensure account is undercollateralized
     ensure!(
-        utilization_rate > Udec128::ONE,
+        utilization_rate > Udec256::ONE,
         "account is not undercollateralized! utilization rate: {utilization_rate}"
     );
 
     let health_factor = utilization_rate.checked_inv()?;
-    let target_health_factor = app_cfg.target_utilization_rate.checked_inv()?;
+    let target_health_factor = app_cfg.target_utilization_rate.checked_inv()?.into_next();
     let liquidation_collateral_power = *app_cfg
         .collateral_powers
         .get(&collateral_denom)
@@ -125,13 +125,16 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
 
     // Calculate liquidation bonus.
     let bonus_cap = total_adjusted_collateral_value
-        .checked_div(total_debt_value.checked_mul(liquidation_collateral_power)?)?
-        .saturating_sub(Udec128::ONE);
+        .checked_div(total_debt_value.checked_mul(liquidation_collateral_power.into_next())?)?
+        .saturating_sub(Udec256::ONE);
     let liq_bonus = max(
-        *app_cfg.min_liquidation_bonus,
+        app_cfg.min_liquidation_bonus.into_next(),
         min(
             bonus_cap,
-            min(*app_cfg.max_liquidation_bonus, Udec128::ONE - health_factor),
+            min(
+                app_cfg.max_liquidation_bonus.into_next(),
+                Udec256::ONE - health_factor,
+            ),
         ),
     );
 
@@ -145,15 +148,16 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     //
     // See derivation of the equation in [liquidation-math.md](book/notes/liquidation-math.md).
     let mrd_to_target_health = if target_health_factor
-        <= (Udec128::ONE + liq_bonus) * liquidation_collateral_power
+        <= (Udec256::ONE + liq_bonus) * liquidation_collateral_power.into_next()
     {
         total_debt_value
     } else {
         let numerator = total_debt_value
             .checked_mul(target_health_factor)?
             .checked_sub(total_adjusted_collateral_value)?;
-        let denominator = target_health_factor
-            .checked_sub((Udec128::ONE + liq_bonus).checked_mul(liquidation_collateral_power)?)?;
+        let denominator = target_health_factor.checked_sub(
+            (Udec256::ONE + liq_bonus).checked_mul(liquidation_collateral_power.into_next())?,
+        )?;
         numerator.checked_div(denominator)?
     };
 
@@ -166,7 +170,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
             .checked_add(limit_order_collaterals.amount_of(&collateral_denom))?,
     )?;
     let mrd_from_chosen_collateral =
-        liquidation_collateral_value.checked_div(Udec128::ONE + liq_bonus)?;
+        liquidation_collateral_value.checked_div(Udec256::ONE + liq_bonus)?;
 
     // Calculate the debt value to repay.
     let debt_repay_value = min(
@@ -182,7 +186,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     // Repay the account's debts with the sent funds, up to the maximum value
     // of the repayable debt.
     let mut refunds = Coins::new();
-    let mut repaid_debt_value = Udec128::ZERO;
+    let mut repaid_debt_value = Udec256::ZERO;
     let mut repay_coins = Coins::new();
 
     for coin in ctx.funds {
@@ -213,7 +217,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     // Calculate the amount of collateral to send to the liquidator. We round
     // up so that no dust is left in the account.
     let claimed_collateral_amount = collateral_price
-        .unit_amount_from_value_ceil(repaid_debt_value.checked_mul(Udec128::ONE + liq_bonus)?)?;
+        .unit_amount_from_value_ceil(repaid_debt_value.checked_mul(Udec256::ONE + liq_bonus)?)?;
 
     // Ensure liquidator receives a non-zero amount of collateral
     ensure!(

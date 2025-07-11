@@ -19,7 +19,7 @@ use {
         Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
         JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, NonZero, Number,
         NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Timestamp,
-        Udec128, Uint128, btree_map, coins,
+        Udec128, Udec256, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -169,7 +169,7 @@ fn register_fixed_price(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     denom: Denom,
-    humanized_price: Udec128,
+    humanized_price: Udec256,
     precision: u8,
 ) {
     // Register price source
@@ -226,7 +226,7 @@ fn setup_margin_test_env(
         accounts,
         contracts,
         eth::DENOM.clone(),
-        Udec128::from_str("71319.50295749").unwrap(),
+        Udec256::from_str("71319.50295749").unwrap(),
         18,
     );
 
@@ -469,7 +469,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         })
         .unwrap()
         .unwrap();
-    assert!(health.utilization_rate < Udec128::ONE);
+    assert!(health.utilization_rate < Udec256::ONE);
 
     // Update the oracle price of ETH to go from $71k to $96k, making the account undercollateralised
     register_fixed_price(
@@ -477,7 +477,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         &mut accounts,
         &contracts,
         eth::DENOM.clone(),
-        Udec128::from_str("96319.50295749").unwrap(),
+        Udec256::from_str("96319.50295749").unwrap(),
         18,
     );
 
@@ -488,7 +488,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         })
         .unwrap()
         .unwrap();
-    assert!(health.utilization_rate > Udec128::ONE);
+    assert!(health.utilization_rate > Udec256::ONE);
 
     let debts_before = health.debts;
     // Add one microunit as debt may have increased by the time we liquidate due to interest
@@ -583,7 +583,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
     // Ensure the new utilization rate is equal to the target utilization rate
     assert_approx_eq(
         health.utilization_rate,
-        *app_config.target_utilization_rate,
+        app_config.target_utilization_rate.into_next(),
         "0.0001",
     )
     .unwrap();
@@ -591,7 +591,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
     // Check that the debt after is correct (using manual calculation via equations)
     assert_approx_eq(
         health.total_debt_value,
-        Udec128::from_str("41609.67023").unwrap(),
+        Udec256::from_str("41609.67023").unwrap(),
         "0.006",
     )
     .unwrap();
@@ -608,7 +608,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
     // Check that the collateral value after is correct (using manual calculation via equations)
     assert_approx_eq(
         health.total_adjusted_collateral_value,
-        Udec128::from_str("46232.96693").unwrap(),
+        Udec256::from_str("46232.96693").unwrap(),
         "0.006",
     )
     .unwrap();
@@ -714,7 +714,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         &mut accounts,
         &contracts,
         dango::DENOM.clone(),
-        Udec128::ONE,
+        Udec256::ONE,
         6,
     );
 
@@ -738,7 +738,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: dango_types::dex::Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::ONE,
+                    price: Udec256::ONE,
                 }],
                 cancels: None,
             },
@@ -755,7 +755,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .unwrap();
     assert_eq!(
         health.total_adjusted_collateral_value,
-        Udec128::from_str("100").unwrap(),
+        Udec256::from_str("100").unwrap(),
     );
     assert_eq!(
         health.limit_order_collaterals,
@@ -785,7 +785,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         &mut accounts,
         &contracts,
         eth::DENOM.clone(),
-        Udec128::from_str("96319.50295749").unwrap(),
+        Udec256::from_str("96319.50295749").unwrap(),
         18,
     );
 
@@ -796,7 +796,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         })
         .unwrap()
         .unwrap();
-    assert!(health.utilization_rate > Udec128::ONE);
+    assert!(health.utilization_rate > Udec256::ONE);
 
     // Check liquidator account's USDC and ETH balance before
     let usdc_balance_before = suite
@@ -835,7 +835,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
     assert!(liquidator_usdc_increase > Uint128::new(95_000_000));
     assert_approx_eq(
         liquidator_eth_decrease,
-        eth_price.unit_amount_from_value(Udec128::new(100)).unwrap(),
+        eth_price.unit_amount_from_value(Udec256::new(100)).unwrap(),
         "0.0001",
     )
     .unwrap();
@@ -887,7 +887,7 @@ fn test_denom(index: usize) -> impl Strategy<Value = TestDenom> {
         // Precision between 6-18 decimals
         (6u8..=18u8),
         // Initial price between 0.01 and 10M USD
-        (1u128..1_000_000_000u128).prop_map(Udec128::new_percent),
+        (1u128..1_000_000_000u128).prop_map(Udec256::new_percent),
     )
         .prop_map(|(denom, precision, price)| TestDenom {
             denom,
@@ -913,7 +913,7 @@ fn test_denoms(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<Te
 fn collateral(denom: TestDenom) -> impl Strategy<Value = Collateral> {
     (
         // Value between $20 and $10M
-        (20u128..10_000_000u128).prop_map(Udec128::new),
+        (20u128..10_000_000u128).prop_map(Udec256::new),
         // Collateral power between 30% and 95%
         (30u128..95u128).prop_map(|x| CollateralPower::new(Udec128::new_percent(x)).unwrap()),
     )
@@ -1035,9 +1035,9 @@ fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
                             .initial_price
                             .value_of_unit_amount(c.amount)
                             .unwrap()
-                            * *c.collateral_power
+                            * c.collateral_power.into_next()
                     })
-                    .fold(Udec128::ZERO, |acc, x| acc + x);
+                    .fold(Udec256::ZERO, |acc, x| acc + x);
 
                 let average_debt_collateral_power = debt_denoms
                     .iter()
@@ -1053,7 +1053,8 @@ fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
                     })
                     .fold(Udec128::ZERO, |acc, x| acc + x);
 
-                let total_debt_value = (initial_utilization_rate * total_adjusted_collateral_value)
+                let total_debt_value = (initial_utilization_rate
+                    * total_adjusted_collateral_value.checked_into_prev().unwrap())
                     / (Udec128::ONE - initial_utilization_rate * average_debt_collateral_power);
 
                 let debts: Vec<Debt> = debt_denoms
@@ -1063,7 +1064,10 @@ fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
                         let value = total_debt_value * percentage;
                         Debt {
                             denom: denom.clone(),
-                            amount: denom.initial_price.unit_amount_from_value(value).unwrap(),
+                            amount: denom
+                                .initial_price
+                                .unit_amount_from_value(value.into_next())
+                                .unwrap(),
                         }
                     })
                     .collect();
@@ -1080,6 +1084,8 @@ fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
                         .denom
                         .initial_price
                         .value_of_unit_amount(changed_debt.amount)
+                        .unwrap()
+                        .checked_into_prev()
                         .unwrap();
 
                 // The ajusted value of all debt denoms not including the changed denom
@@ -1092,16 +1098,18 @@ fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
                             .initial_price
                             .value_of_unit_amount(debt.amount)
                             .unwrap()
-                            * *collaterals
+                            * collaterals
                                 .iter()
                                 .find(|c| c.denom.denom == debt.denom.denom)
                                 .unwrap()
                                 .collateral_power
+                                .into_next()
                     })
-                    .fold(Udec128::ZERO, |acc, x| acc + x);
+                    .fold(Udec256::ZERO, |acc, x| acc + x);
 
                 let price_after: Udec128 = ((utilization_rate_after_price_change
-                    * (total_adjusted_collateral_value + other_debt_adjusted_value)
+                    * (total_adjusted_collateral_value.checked_into_prev().unwrap()
+                        + other_debt_adjusted_value.checked_into_prev().unwrap())
                     - other_debt_values)
                     .into_next()
                     / changed_debt.amount.into_next().checked_into_dec().unwrap())
@@ -1264,7 +1272,7 @@ proptest! {
             &mut accounts,
             &contracts,
             scenario.changed_denom.denom.clone(),
-            scenario.new_price,
+            scenario.new_price.into_next(),
             scenario.changed_denom.initial_price.precision(),
         );
 
@@ -1345,12 +1353,12 @@ proptest! {
             .value_of_unit_amount(claimed_collateral_amount)
             .unwrap();
         let liquidation_bonus = (claimed_collateral_value - repaid_debt_value) / repaid_debt_value;
-        let liquidation_bonus_from_event: Udec128 = liquidation_event.liquidation_bonus;
+        let liquidation_bonus_from_event: Udec256 = liquidation_event.liquidation_bonus;
 
         // Property: Liquidation bonus is within the bounds
         prop_assert!(
-            liquidation_bonus_from_event >= *config.min_liquidation_bonus
-                && liquidation_bonus_from_event <= *config.max_liquidation_bonus,
+            liquidation_bonus_from_event >= config.min_liquidation_bonus.into_next()
+                && liquidation_bonus_from_event <= config.max_liquidation_bonus.into_next(),
             "Liquidation bonus should be within the bounds"
         );
 

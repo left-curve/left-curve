@@ -11,8 +11,8 @@ use {
         oracle::PrecisionedPrice,
     },
     grug::{
-        Addr, Coin, Coins, Denom, IsZero, Number, NumberConst, QuerierExt, QuerierWrapper,
-        StorageQuerier, Timestamp, Udec128, Uint128,
+        Addr, Coin, Coins, Denom, IsZero, NextNumber, Number, NumberConst, PrevNumber, QuerierExt,
+        QuerierWrapper, StorageQuerier, Timestamp, Udec256, Uint128,
     },
     std::{
         cmp::min,
@@ -155,7 +155,7 @@ pub fn compute_health(
     // ------------------------------- 1. Debts --------------------------------
 
     let mut debts = Coins::new();
-    let mut total_debt_value = Udec128::ZERO;
+    let mut total_debt_value = Udec256::ZERO;
 
     for (denom, scaled_debt) in &scaled_debts {
         // Get the market for the denom.
@@ -184,8 +184,8 @@ pub fn compute_health(
 
     // ---------------------------- 2. Collaterals -----------------------------
 
-    let mut total_collateral_value = Udec128::ZERO;
-    let mut total_adjusted_collateral_value = Udec128::ZERO;
+    let mut total_collateral_value = Udec256::ZERO;
+    let mut total_adjusted_collateral_value = Udec256::ZERO;
     let mut collaterals = Coins::new();
 
     for (denom, power) in &collateral_powers {
@@ -205,7 +205,7 @@ pub fn compute_health(
             .get(denom)
             .ok_or_else(|| anyhow!("price for denom {denom} not found"))?;
         let value = price.value_of_unit_amount(collateral_balance)?;
-        let adjusted_value = value.checked_mul(**power)?;
+        let adjusted_value = value.checked_mul(power.into_next())?;
 
         collaterals.insert((denom.clone(), collateral_balance))?;
         total_collateral_value.checked_add_assign(value)?;
@@ -233,15 +233,27 @@ pub fn compute_health(
             Direction::Bid => (
                 Coin::new(
                     res.quote_denom.clone(),
-                    res.remaining.checked_mul(res.price)?.into_int(),
+                    res.remaining
+                        .checked_mul(res.price)?
+                        .into_int()
+                        .checked_into_prev()?,
                 )?,
-                Coin::new(res.base_denom.clone(), res.remaining.into_int())?,
+                Coin::new(
+                    res.base_denom.clone(),
+                    res.remaining.into_int().checked_into_prev()?,
+                )?,
             ),
             Direction::Ask => (
-                Coin::new(res.base_denom.clone(), res.remaining.into_int())?,
+                Coin::new(
+                    res.base_denom.clone(),
+                    res.remaining.into_int().checked_into_prev()?,
+                )?,
                 Coin::new(
                     res.quote_denom.clone(),
-                    res.remaining.checked_mul(res.price)?.into_int(),
+                    res.remaining
+                        .checked_mul(res.price)?
+                        .into_int()
+                        .checked_into_prev()?,
                 )?,
             ),
         };
@@ -253,7 +265,7 @@ pub fn compute_health(
             .get(&offer.denom)
             .ok_or_else(|| anyhow!("collateral power for denom {} not found", offer.denom))?;
         let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
-        let offer_adjusted_value = offer_value.checked_mul(**offer_collateral_power)?;
+        let offer_adjusted_value = offer_value.checked_mul(offer_collateral_power.into_next())?;
 
         let ask_price = prices
             .get(&ask.denom)
@@ -262,7 +274,7 @@ pub fn compute_health(
             .get(&ask.denom)
             .ok_or_else(|| anyhow!("collateral power for denom {} not found", ask.denom))?;
         let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
-        let ask_adjusted_value = ask_value.checked_mul(**ask_collateral_power)?;
+        let ask_adjusted_value = ask_value.checked_mul(ask_collateral_power.into_next())?;
 
         let min_value = min(offer_value, ask_value);
         let min_adjusted_value = min(offer_adjusted_value, ask_adjusted_value);
@@ -279,11 +291,11 @@ pub fn compute_health(
     let utilization_rate = if total_debt_value.is_zero() {
         // The account has no debt. Utilization is zero in this case, regardless
         // of collateral value.
-        Udec128::ZERO
+        Udec256::ZERO
     } else if total_adjusted_collateral_value.is_zero() {
         // The account has non-zero debt but zero collateral. This can happen if
         // the account is liquidated. We set utilization to maximum.
-        Udec128::MAX
+        Udec256::MAX
     } else {
         total_debt_value / total_adjusted_collateral_value
     };

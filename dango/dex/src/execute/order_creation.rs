@@ -4,7 +4,7 @@ use {
     dango_types::dex::{
         CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderCreated, OrderKind,
     },
-    grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
+    grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, NextNumber, PrevNumber, Storage},
 };
 
 pub(super) fn create_limit_order(
@@ -25,7 +25,11 @@ pub(super) fn create_limit_order(
     let deposit = match order.direction {
         Direction::Bid => Coin {
             denom: order.quote_denom.clone(),
-            amount: order.amount.checked_mul_dec_ceil(order.price)?,
+            amount: order
+                .amount
+                .into_next()
+                .checked_mul_dec_ceil(order.price)?
+                .checked_into_prev()?,
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
@@ -70,7 +74,7 @@ pub(super) fn create_limit_order(
                 id: order_id,
                 price: order.price,
                 amount: *order.amount,
-                remaining: order.amount.checked_into_dec()?,
+                remaining: order.amount.checked_into_dec()?.into_next(),
                 created_at_block_height: current_block_height,
             },
         ),
@@ -131,7 +135,7 @@ pub(super) fn create_market_order(
             user,
             id: order_id,
             amount: *order.amount,
-            remaining: order.amount.checked_into_dec()?,
+            remaining: order.amount.into_next().checked_into_dec()?,
             max_slippage: order.max_slippage,
         },
     )?;

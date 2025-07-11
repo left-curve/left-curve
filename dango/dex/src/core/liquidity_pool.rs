@@ -7,8 +7,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Sign, Udec128,
-        Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
+        PrevNumber, Sign, Udec128, Udec256, Uint128,
     },
     std::ops::Sub,
 };
@@ -136,8 +136,8 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>, // bids
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>, // asks
+        Box<dyn Iterator<Item = (Udec256, PassiveOrder)>>, // bids
+        Box<dyn Iterator<Item = (Udec256, PassiveOrder)>>, // asks
     )>;
 }
 
@@ -228,7 +228,7 @@ impl PassiveLiquidityPool for PairParams {
 
             abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
                 .checked_div(deposit_value.checked_add(reserve_value)?)?
-                .checked_mul(*self.swap_fee_rate)?
+                .checked_mul(self.swap_fee_rate.into_next())?
                 .checked_div(deposit_value)?
         };
 
@@ -242,13 +242,15 @@ impl PassiveLiquidityPool for PairParams {
         };
 
         let mint_amount = {
-            let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
-            let one_sub_fee_rate = Udec128::ONE.checked_sub(fee_rate)?;
+            let mint_amount_before_fee = lp_token_supply
+                .into_next()
+                .checked_mul_dec_floor(mint_ratio)?;
+            let one_sub_fee_rate = Udec256::ONE.checked_sub(fee_rate)?;
 
             mint_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?
         };
 
-        Ok((reserve, mint_amount))
+        Ok((reserve, mint_amount.checked_into_prev()?))
     }
 
     fn swap_exact_amount_in(
@@ -387,8 +389,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+        Box<dyn Iterator<Item = (Udec256, PassiveOrder)>>,
+        Box<dyn Iterator<Item = (Udec256, PassiveOrder)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
@@ -459,28 +461,28 @@ mod tests {
             usdc::DENOM.clone() => 200 * 10000000,
         },
         vec![
-            (Udec128::new_percent(19900), Uint128::from(50251)),
-            (Udec128::new_percent(19800), Uint128::from(50759)),
-            (Udec128::new_percent(19700), Uint128::from(51274)),
-            (Udec128::new_percent(19600), Uint128::from(51797)),
-            (Udec128::new_percent(19500), Uint128::from(52329)),
-            (Udec128::new_percent(19400), Uint128::from(52868)),
-            (Udec128::new_percent(19300), Uint128::from(53416)),
-            (Udec128::new_percent(19200), Uint128::from(53972)),
-            (Udec128::new_percent(19100), Uint128::from(54538)),
-            (Udec128::new_percent(19000), Uint128::from(55112)),
+            (Udec256::new_percent(19900), Uint128::from(50251)),
+            (Udec256::new_percent(19800), Uint128::from(50759)),
+            (Udec256::new_percent(19700), Uint128::from(51274)),
+            (Udec256::new_percent(19600), Uint128::from(51797)),
+            (Udec256::new_percent(19500), Uint128::from(52329)),
+            (Udec256::new_percent(19400), Uint128::from(52868)),
+            (Udec256::new_percent(19300), Uint128::from(53416)),
+            (Udec256::new_percent(19200), Uint128::from(53972)),
+            (Udec256::new_percent(19100), Uint128::from(54538)),
+            (Udec256::new_percent(19000), Uint128::from(55112)),
         ],
         vec![
-            (Udec128::new_percent(20100), Uint128::from(49751)),
-            (Udec128::new_percent(20200), Uint128::from(49259)),
-            (Udec128::new_percent(20300), Uint128::from(48773)),
-            (Udec128::new_percent(20400), Uint128::from(48295)),
-            (Udec128::new_percent(20500), Uint128::from(47824)),
-            (Udec128::new_percent(20600), Uint128::from(47360)),
-            (Udec128::new_percent(20700), Uint128::from(46902)),
-            (Udec128::new_percent(20800), Uint128::from(46451)),
-            (Udec128::new_percent(20900), Uint128::from(46007)),
-            (Udec128::new_percent(21000), Uint128::from(45568)),
+            (Udec256::new_percent(20100), Uint128::from(49751)),
+            (Udec256::new_percent(20200), Uint128::from(49259)),
+            (Udec256::new_percent(20300), Uint128::from(48773)),
+            (Udec256::new_percent(20400), Uint128::from(48295)),
+            (Udec256::new_percent(20500), Uint128::from(47824)),
+            (Udec256::new_percent(20600), Uint128::from(47360)),
+            (Udec256::new_percent(20700), Uint128::from(46902)),
+            (Udec256::new_percent(20800), Uint128::from(46451)),
+            (Udec256::new_percent(20900), Uint128::from(46007)),
+            (Udec256::new_percent(21000), Uint128::from(45568)),
         ],
         1;
         "xyk pool balance 1:200 tick size 1 0.5% fee"
@@ -496,28 +498,28 @@ mod tests {
             usdc::DENOM.clone() => 200 * 10000000,
         },
         vec![
-            (Udec128::new_percent(19800), Uint128::from(101010)),
-            (Udec128::new_percent(19700), Uint128::from(51274)),
-            (Udec128::new_percent(19600), Uint128::from(51797)),
-            (Udec128::new_percent(19500), Uint128::from(52329)),
-            (Udec128::new_percent(19400), Uint128::from(52868)),
-            (Udec128::new_percent(19300), Uint128::from(53416)),
-            (Udec128::new_percent(19200), Uint128::from(53972)),
-            (Udec128::new_percent(19100), Uint128::from(54538)),
-            (Udec128::new_percent(19000), Uint128::from(55112)),
-            (Udec128::new_percent(18900), Uint128::from(55694)),
+            (Udec256::new_percent(19800), Uint128::from(101010)),
+            (Udec256::new_percent(19700), Uint128::from(51274)),
+            (Udec256::new_percent(19600), Uint128::from(51797)),
+            (Udec256::new_percent(19500), Uint128::from(52329)),
+            (Udec256::new_percent(19400), Uint128::from(52868)),
+            (Udec256::new_percent(19300), Uint128::from(53416)),
+            (Udec256::new_percent(19200), Uint128::from(53972)),
+            (Udec256::new_percent(19100), Uint128::from(54538)),
+            (Udec256::new_percent(19000), Uint128::from(55112)),
+            (Udec256::new_percent(18900), Uint128::from(55694)),
         ],
         vec![
-            (Udec128::new_percent(20200), Uint128::from(99010)),
-            (Udec128::new_percent(20300), Uint128::from(48774)),
-            (Udec128::new_percent(20400), Uint128::from(48295)),
-            (Udec128::new_percent(20500), Uint128::from(47824)),
-            (Udec128::new_percent(20600), Uint128::from(47360)),
-            (Udec128::new_percent(20700), Uint128::from(46902)),
-            (Udec128::new_percent(20800), Uint128::from(46451)),
-            (Udec128::new_percent(20900), Uint128::from(46007)),
-            (Udec128::new_percent(21000), Uint128::from(45568)),
-            (Udec128::new_percent(21100), Uint128::from(45137)),
+            (Udec256::new_percent(20200), Uint128::from(99010)),
+            (Udec256::new_percent(20300), Uint128::from(48774)),
+            (Udec256::new_percent(20400), Uint128::from(48295)),
+            (Udec256::new_percent(20500), Uint128::from(47824)),
+            (Udec256::new_percent(20600), Uint128::from(47360)),
+            (Udec256::new_percent(20700), Uint128::from(46902)),
+            (Udec256::new_percent(20800), Uint128::from(46451)),
+            (Udec256::new_percent(20900), Uint128::from(46007)),
+            (Udec256::new_percent(21000), Uint128::from(45568)),
+            (Udec256::new_percent(21100), Uint128::from(45137)),
         ],
         1;
         "xyk pool balance 1:200 tick size 1 one percent fee"
@@ -533,28 +535,28 @@ mod tests {
             usdc::DENOM.clone() => 10000000,
         },
         vec![
-            (Udec128::new_permille(995), Uint128::from(50251)),
-            (Udec128::new_permille(985), Uint128::from(102033)),
-            (Udec128::new_permille(975), Uint128::from(104126)),
-            (Udec128::new_permille(965), Uint128::from(106284)),
-            (Udec128::new_permille(955), Uint128::from(108510)),
-            (Udec128::new_permille(945), Uint128::from(110806)),
-            (Udec128::new_permille(935), Uint128::from(113177)),
-            (Udec128::new_permille(925), Uint128::from(115624)),
-            (Udec128::new_permille(915), Uint128::from(118151)),
-            (Udec128::new_permille(905), Uint128::from(120762)),
+            (Udec256::new_permille(995), Uint128::from(50251)),
+            (Udec256::new_permille(985), Uint128::from(102033)),
+            (Udec256::new_permille(975), Uint128::from(104126)),
+            (Udec256::new_permille(965), Uint128::from(106284)),
+            (Udec256::new_permille(955), Uint128::from(108510)),
+            (Udec256::new_permille(945), Uint128::from(110806)),
+            (Udec256::new_permille(935), Uint128::from(113177)),
+            (Udec256::new_permille(925), Uint128::from(115624)),
+            (Udec256::new_permille(915), Uint128::from(118151)),
+            (Udec256::new_permille(905), Uint128::from(120762)),
         ],
         vec![
-            (Udec128::new_permille(1005), Uint128::from(49751)),
-            (Udec128::new_permille(1015), Uint128::from(98032)),
-            (Udec128::new_permille(1025), Uint128::from(96119)),
-            (Udec128::new_permille(1035), Uint128::from(94262)),
-            (Udec128::new_permille(1045), Uint128::from(92458)),
-            (Udec128::new_permille(1055), Uint128::from(90705)),
-            (Udec128::new_permille(1065), Uint128::from(89002)),
-            (Udec128::new_permille(1075), Uint128::from(87346)),
-            (Udec128::new_permille(1085), Uint128::from(85736)),
-            (Udec128::new_permille(1095), Uint128::from(84170)),
+            (Udec256::new_permille(1005), Uint128::from(49751)),
+            (Udec256::new_permille(1015), Uint128::from(98032)),
+            (Udec256::new_permille(1025), Uint128::from(96119)),
+            (Udec256::new_permille(1035), Uint128::from(94262)),
+            (Udec256::new_permille(1045), Uint128::from(92458)),
+            (Udec256::new_permille(1055), Uint128::from(90705)),
+            (Udec256::new_permille(1065), Uint128::from(89002)),
+            (Udec256::new_permille(1075), Uint128::from(87346)),
+            (Udec256::new_permille(1085), Uint128::from(85736)),
+            (Udec256::new_permille(1095), Uint128::from(84170)),
         ],
         1;
         "xyk pool balance 1:1 0.5% fee"
@@ -570,28 +572,28 @@ mod tests {
             usdc::DENOM.clone() => 10000000,
         },
         vec![
-            (Udec128::new_percent(99), Uint128::from(101010)),
-            (Udec128::new_percent(98), Uint128::from(103072)),
-            (Udec128::new_percent(97), Uint128::from(105196)),
-            (Udec128::new_percent(96), Uint128::from(107388)),
-            (Udec128::new_percent(95), Uint128::from(109649)),
-            (Udec128::new_percent(94), Uint128::from(111982)),
-            (Udec128::new_percent(93), Uint128::from(114390)),
-            (Udec128::new_percent(92), Uint128::from(116877)),
-            (Udec128::new_percent(91), Uint128::from(119445)),
-            (Udec128::new_percent(90), Uint128::from(122100)),
+            (Udec256::new_percent(99), Uint128::from(101010)),
+            (Udec256::new_percent(98), Uint128::from(103072)),
+            (Udec256::new_percent(97), Uint128::from(105196)),
+            (Udec256::new_percent(96), Uint128::from(107388)),
+            (Udec256::new_percent(95), Uint128::from(109649)),
+            (Udec256::new_percent(94), Uint128::from(111982)),
+            (Udec256::new_percent(93), Uint128::from(114390)),
+            (Udec256::new_percent(92), Uint128::from(116877)),
+            (Udec256::new_percent(91), Uint128::from(119445)),
+            (Udec256::new_percent(90), Uint128::from(122100)),
         ],
         vec![
-            (Udec128::new_percent(101), Uint128::from(99010)),
-            (Udec128::new_percent(102), Uint128::from(97070)),
-            (Udec128::new_percent(103), Uint128::from(95184)),
-            (Udec128::new_percent(104), Uint128::from(93353)),
-            (Udec128::new_percent(105), Uint128::from(91575)),
-            (Udec128::new_percent(106), Uint128::from(89847)),
-            (Udec128::new_percent(107), Uint128::from(88168)),
-            (Udec128::new_percent(108), Uint128::from(86535)),
-            (Udec128::new_percent(109), Uint128::from(84947)),
-            (Udec128::new_percent(110), Uint128::from(83403)),
+            (Udec256::new_percent(101), Uint128::from(99010)),
+            (Udec256::new_percent(102), Uint128::from(97070)),
+            (Udec256::new_percent(103), Uint128::from(95184)),
+            (Udec256::new_percent(104), Uint128::from(93353)),
+            (Udec256::new_percent(105), Uint128::from(91575)),
+            (Udec256::new_percent(106), Uint128::from(89847)),
+            (Udec256::new_percent(107), Uint128::from(88168)),
+            (Udec256::new_percent(108), Uint128::from(86535)),
+            (Udec256::new_percent(109), Uint128::from(84947)),
+            (Udec256::new_percent(110), Uint128::from(83403)),
         ],
         1;
         "xyk pool balance 1:1 one percent fee"
@@ -607,28 +609,28 @@ mod tests {
             usdc::DENOM.clone() => 10000000,
         },
         vec![
-            (Udec128::new_percent(99), Uint128::from(7070707)),
-            (Udec128::new_percent(98), Uint128::from(2142857)),
-            (Udec128::new_percent(97), Uint128::from(649484)),
-            (Udec128::new_percent(96), Uint128::from(196875)),
-            (Udec128::new_percent(95), Uint128::from(59684)),
-            (Udec128::new_percent(94), Uint128::from(18095)),
-            (Udec128::new_percent(93), Uint128::from(5487)),
-            (Udec128::new_percent(92), Uint128::from(1663)),
-            (Udec128::new_percent(91), Uint128::from(504)),
-            (Udec128::new_percent(90), Uint128::from(152)),
+            (Udec256::new_percent(99), Uint128::from(7070707)),
+            (Udec256::new_percent(98), Uint128::from(2142857)),
+            (Udec256::new_percent(97), Uint128::from(649484)),
+            (Udec256::new_percent(96), Uint128::from(196875)),
+            (Udec256::new_percent(95), Uint128::from(59684)),
+            (Udec256::new_percent(94), Uint128::from(18095)),
+            (Udec256::new_percent(93), Uint128::from(5487)),
+            (Udec256::new_percent(92), Uint128::from(1663)),
+            (Udec256::new_percent(91), Uint128::from(504)),
+            (Udec256::new_percent(90), Uint128::from(152)),
         ],
         vec![
-            (Udec128::new_percent(101), Uint128::from(7000000)),
-            (Udec128::new_percent(102), Uint128::from(2100000)),
-            (Udec128::new_percent(103), Uint128::from(630000)),
-            (Udec128::new_percent(104), Uint128::from(189000)),
-            (Udec128::new_percent(105), Uint128::from(56700)),
-            (Udec128::new_percent(106), Uint128::from(17010)),
-            (Udec128::new_percent(107), Uint128::from(5103)),
-            (Udec128::new_percent(108), Uint128::from(1530)),
-            (Udec128::new_percent(109), Uint128::from(459)),
-            (Udec128::new_percent(110), Uint128::from(137)),
+            (Udec256::new_percent(101), Uint128::from(7000000)),
+            (Udec256::new_percent(102), Uint128::from(2100000)),
+            (Udec256::new_percent(103), Uint128::from(630000)),
+            (Udec256::new_percent(104), Uint128::from(189000)),
+            (Udec256::new_percent(105), Uint128::from(56700)),
+            (Udec256::new_percent(106), Uint128::from(17010)),
+            (Udec256::new_percent(107), Uint128::from(5103)),
+            (Udec256::new_percent(108), Uint128::from(1530)),
+            (Udec256::new_percent(109), Uint128::from(459)),
+            (Udec256::new_percent(110), Uint128::from(137)),
         ],
         1;
         "geometric pool balance 1:1 30% ratio"
@@ -637,8 +639,8 @@ mod tests {
         pool_type: PassiveLiquidity,
         swap_fee_rate: Udec128,
         pool_liquidity: Coins,
-        expected_bids: Vec<(Udec128, Uint128)>,
-        expected_asks: Vec<(Udec128, Uint128)>,
+        expected_bids: Vec<(Udec256, Uint128)>,
+        expected_asks: Vec<(Udec256, Uint128)>,
         order_size_tolerance: u128,
     ) {
         let pair = PairParams {
@@ -651,14 +653,14 @@ mod tests {
         // TODO: take prices as test parameters
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -717,14 +719,14 @@ mod tests {
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -744,8 +746,8 @@ mod tests {
         assert_eq!(bids_collected.len(), 2);
 
         for (bid, expected_bid) in bids_collected.into_iter().zip([
-            (Udec128::new_percent(99), Uint128::from(5050505)),
-            (Udec128::new_percent(49), Uint128::from(5102040)),
+            (Udec256::new_percent(99), Uint128::from(5050505)),
+            (Udec256::new_percent(49), Uint128::from(5102040)),
         ]) {
             assert_eq!(bid.0, expected_bid.0);
             assert_eq!(bid.1.amount, expected_bid.1);
@@ -767,14 +769,14 @@ mod tests {
         },
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -799,14 +801,14 @@ mod tests {
         },
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -863,14 +865,14 @@ mod tests {
         },
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256 ::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -895,14 +897,14 @@ mod tests {
         },
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -927,14 +929,14 @@ mod tests {
         },
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -959,14 +961,14 @@ mod tests {
         },
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Udec128::new_percent(100),
+                Udec256::new_percent(100),
+                Udec256::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
