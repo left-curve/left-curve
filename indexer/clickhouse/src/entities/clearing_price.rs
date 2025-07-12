@@ -1,7 +1,11 @@
 use {
+    bigdecimal::BigDecimal,
     grug::Inner,
     serde::{de, ser},
-    std::ops::{Deref, DerefMut},
+    std::{
+        ops::{Deref, DerefMut},
+        str::FromStr,
+    },
 };
 
 // Using my own struct so I can use my own serde implementation since grug will serialize as a string
@@ -56,6 +60,17 @@ where
         let uint = grug::Int::new(inner);
         let dec = grug::Dec::raw(uint);
         Ok(Self(dec))
+    }
+}
+
+// NOTE: I would rather not use `ToString`
+impl<U, const S: u32> From<ClearingPrice<grug::Dec<U, S>>> for BigDecimal
+where
+    U: ToString,
+{
+    fn from(clearing_price: ClearingPrice<grug::Dec<U, S>>) -> Self {
+        let s = clearing_price.0.inner().to_string();
+        BigDecimal::from_str(&s).unwrap()
     }
 }
 

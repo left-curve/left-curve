@@ -8,7 +8,9 @@ use {
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, SimpleObject},
+    bigdecimal::BigDecimal,
     grug_types::Timestamp,
+    std::ops::Deref,
 };
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -43,9 +45,9 @@ impl PairPrice {
     }
 
     // Returns the clearing price of the pair price.
-    // async fn clearing_price(&self) -> BigDecimal {
-    //     BigDecimal::from(self.clearing_price.deref().0)
-    // }
+    async fn clearing_price(&self) -> BigDecimal {
+        BigDecimal::from(self.clearing_price.clone())
+    }
 
     // Returns the volume of the pair price.
     // async fn volume(&self) -> BigDecimal {
