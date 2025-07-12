@@ -72,7 +72,7 @@ impl Indexer for HookedIndexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(
+        tracing::info!(
             "Starting HookedIndexer with {} indexers",
             self.indexer_count()
         );

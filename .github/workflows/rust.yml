@@ -51,6 +51,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -72,13 +74,15 @@ jobs:
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
 
-
   check-no-features:
     needs: [format]
     name: Check compiling without features
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -103,6 +107,10 @@ jobs:
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
+      CLICKHOUSE_HOST: localhost
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_DATABASE: grug_test
+      CLICKHOUSE_USER: default
     services:
       postgres:
         image: postgres:17
@@ -113,9 +121,26 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        env:
+          CLICKHOUSE_DB: grug_test
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          - 8123:8123
+          - 9000:9000
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          --ulimit nofile=262144:262144
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -173,6 +198,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Set build config
         id: config
@@ -319,6 +346,8 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -371,6 +400,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
       - name: Check DEPLOY_KEY is set
         run: |
           if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then

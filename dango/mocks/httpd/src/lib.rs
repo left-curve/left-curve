@@ -87,12 +87,11 @@ where
         })?
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer {
-        runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-            indexer.handle.handle().clone(),
-        ),
-        context: dango_context.clone(),
-    };
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone()),
+        dango_context.clone(),
+    );
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 

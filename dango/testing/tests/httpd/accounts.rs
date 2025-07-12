@@ -19,8 +19,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
@@ -97,8 +97,8 @@ async fn query_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -168,8 +168,8 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -236,8 +236,8 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -331,8 +331,8 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Create 10 accounts to paginate through
@@ -449,8 +449,8 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let _test_account =
@@ -548,8 +548,8 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(false).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =

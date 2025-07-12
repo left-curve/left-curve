@@ -80,6 +80,9 @@ pub enum IndexerError {
     #[error("serialization error: {0}")]
     Serialization(String),
 
+    #[error("deserialization error: {0}")]
+    Deserialization(String),
+
     #[error("I/O error: {0}")]
     Io(String),
 

@@ -47,7 +47,7 @@ stop:
   docker compose down --remove-orphans
 
 logs:
-  docker compose logs -f db -f dango -f cometbft
+  docker compose logs -f db -f dango -f cometbft -f clickhouse
 
 # Delete the generate data in order to restart a new localnet from scratch
 reset:
