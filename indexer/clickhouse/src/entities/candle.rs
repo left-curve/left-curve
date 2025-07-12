@@ -1,5 +1,5 @@
 use {
-    crate::{dec::Dec, entities::volume::Volume},
+    crate::{Dec, Int},
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::{Udec128, Uint128},
@@ -55,7 +55,7 @@ pub struct Candle {
     high: Dec<Udec128>,
     low: Dec<Udec128>,
     close: Dec<Udec128>,
-    volume_base: Volume<Uint128>,
-    volume_quote: Volume<Uint128>,
+    volume_base: Int<Uint128>,
+    volume_quote: Int<Uint128>,
     interval: CandleInterval,
 }

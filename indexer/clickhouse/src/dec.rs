@@ -1,11 +1,12 @@
 use {
-    bigdecimal::{BigDecimal, num_bigint::BigInt},
-    grug::Inner,
-    serde::{de, ser},
-    std::{
-        ops::{Deref, DerefMut},
-        str::FromStr,
+    bigdecimal::{
+        BigDecimal,
+        num_bigint::{BigInt, Sign},
     },
+    bnum::types::U256,
+    grug::{Bytable, Inner},
+    serde::{de, ser},
+    std::ops::{Deref, DerefMut},
 };
 
 // Using my own struct so I can use my own serde implementation since grug will serialize as a string
@@ -62,14 +63,31 @@ where
     }
 }
 
-impl<U, const S: u32> From<Dec<grug::Dec<U, S>>> for BigDecimal
-where
-    U: ToString,
-{
-    fn from(dec: Dec<grug::Dec<U, S>>) -> Self {
-        let inner_value = dec.0.inner();
-        let bigint = BigInt::from_str(&inner_value.to_string()).unwrap();
-        BigDecimal::new(bigint, S as i64)
+// Helper function to convert u128 to BigInt
+fn u128_to_bigint(value: u128) -> BigInt {
+    BigInt::from(value)
+}
+
+// Helper function to convert U256 to BigInt
+fn u256_to_bigint(value: U256) -> BigInt {
+    let bytes = value.to_be_bytes();
+    BigInt::from_bytes_be(Sign::Plus, &bytes)
+}
+
+// Implement conversion for specific types
+impl From<Dec<grug::Dec<u128, 18>>> for BigDecimal {
+    fn from(dec: Dec<grug::Dec<u128, 18>>) -> Self {
+        let inner_value = *dec.0.inner();
+        let bigint = u128_to_bigint(inner_value);
+        BigDecimal::new(bigint, 18)
+    }
+}
+
+impl From<Dec<grug::Dec<U256, 18>>> for BigDecimal {
+    fn from(dec: Dec<grug::Dec<U256, 18>>) -> Self {
+        let inner_value = *dec.0.inner();
+        let bigint = u256_to_bigint(inner_value);
+        BigDecimal::new(bigint, 18)
     }
 }
 

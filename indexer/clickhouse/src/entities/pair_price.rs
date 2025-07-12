@@ -1,5 +1,5 @@
 use {
-    crate::{dec::Dec, entities::volume::Volume},
+    crate::{dec::Dec, int::Int},
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::{Udec128, Uint128},
@@ -22,12 +22,11 @@ pub struct PairPrice {
     #[cfg_attr(feature = "async-graphql", graphql(name = "baseDenom"))]
     pub base_denom: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    // #[serde(with = "udec128")]
     pub clearing_price: Dec<Udec128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_base: Volume<Uint128>,
+    pub volume_base: Int<Uint128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_quote: Volume<Uint128>,
+    pub volume_quote: Int<Uint128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub created_at: DateTime<Utc>,
@@ -153,7 +152,7 @@ mod test {
             "udec256": Udec256::MAX,
             "uint128": Uint128::MAX,
             "uint256": Uint256::MAX,
-            "volume": Volume::from(Uint128::MAX),
+            "volume": Int::from(Uint128::MAX),
             "clearing_price": Dec::<Udec128>::from(Udec128::MAX),
             "bnum_u128": bnum::types::U128::ONE,
             "bnum_u256": bnum::types::U256::ONE,
@@ -173,10 +172,10 @@ mod test {
 
     #[test]
     fn serde_volume() {
-        let volume = serde_json::json!({"max": Volume::from(Uint128::MAX)});
+        let volume = serde_json::json!({"max": Int::from(Uint128::MAX)});
         let serialized = serde_json::to_string(&volume).unwrap();
         let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        let deserialized_volume: Volume<Uint128> =
+        let deserialized_volume: Int<Uint128> =
             serde_json::from_value(deserialized["max"].clone()).unwrap();
 
         // println!("serialized = {serialized}",);
@@ -184,7 +183,7 @@ mod test {
         // println!("deserialized_volume = {deserialized_volume:?}",);
 
         assert_that!(deserialized["max"].is_number()).is_true();
-        assert_that!(deserialized_volume).is_equal_to(Volume::from(Uint128::MAX));
+        assert_that!(deserialized_volume).is_equal_to(Int::from(Uint128::MAX));
     }
 
     #[test]
