@@ -11,8 +11,9 @@ use {
         StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::{
-        candle::Candle, clearing_price::ClearingPrice, pair_price::PairPrice, volume::Volume,
+    indexer_clickhouse::{
+        dec::Dec,
+        entities::{candle::Candle, pair_price::PairPrice, volume::Volume},
     },
     tracing::Level,
 };
@@ -117,8 +118,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price)
-        .is_greater_than::<ClearingPrice<Udec128>>(Udec128::ZERO.into());
+    assert_that!(pair_price.clearing_price).is_greater_than::<Dec<Udec128>>(Udec128::ZERO.into());
 
     Ok(())
 }
@@ -214,8 +214,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price)
-        .is_greater_than::<ClearingPrice<Udec128>>(Udec128::ZERO.into());
+    assert_that!(pair_price.clearing_price).is_greater_than::<Dec<Udec128>>(Udec128::ZERO.into());
     assert_that!(pair_price.volume_base).is_equal_to::<Volume<Uint128>>(Uint128::from(25).into());
     assert_that!(pair_price.volume_quote).is_equal_to::<Volume<Uint128>>(Uint128::from(718).into());
 

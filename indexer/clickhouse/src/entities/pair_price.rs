@@ -1,5 +1,5 @@
 use {
-    crate::entities::{clearing_price::ClearingPrice, volume::Volume},
+    crate::{dec::Dec, entities::volume::Volume},
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::{Udec128, Uint128},
@@ -23,7 +23,7 @@ pub struct PairPrice {
     pub base_denom: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     // #[serde(with = "udec128")]
-    pub clearing_price: ClearingPrice<Udec128>,
+    pub clearing_price: Dec<Udec128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub volume_base: Volume<Uint128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
@@ -154,7 +154,7 @@ mod test {
             "uint128": Uint128::MAX,
             "uint256": Uint256::MAX,
             "volume": Volume::from(Uint128::MAX),
-            "clearing_price": ClearingPrice::<Udec128>::from(Udec128::MAX),
+            "clearing_price": Dec::<Udec128>::from(Udec128::MAX),
             "bnum_u128": bnum::types::U128::ONE,
             "bnum_u256": bnum::types::U256::ONE,
             "u128": u128::MAX,
@@ -189,10 +189,10 @@ mod test {
 
     #[test]
     fn serde_clearing_price() {
-        let clearing_price = serde_json::json!({"max": ClearingPrice::from(Udec128::MAX)});
+        let clearing_price = serde_json::json!({"max": Dec::from(Udec128::MAX)});
         let serialized = serde_json::to_string(&clearing_price).unwrap();
         let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        let deserialized_clearing_price: ClearingPrice<Udec128> =
+        let deserialized_clearing_price: Dec<Udec128> =
             serde_json::from_value(deserialized["max"].clone()).unwrap();
 
         // println!("serialized = {serialized}",);
@@ -201,7 +201,6 @@ mod test {
 
         // Check that the serialized value is a number, this is needed for clickhouse.
         assert_that!(deserialized["max"].is_number()).is_true();
-        assert_that!(deserialized_clearing_price)
-            .is_equal_to(ClearingPrice::<Udec128>::from(Udec128::MAX));
+        assert_that!(deserialized_clearing_price).is_equal_to(Dec::<Udec128>::from(Udec128::MAX));
     }
 }

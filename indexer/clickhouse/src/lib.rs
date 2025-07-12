@@ -1,5 +1,6 @@
 pub mod candles;
 pub mod context;
+pub mod dec;
 pub mod entities;
 pub mod error;
 #[cfg(feature = "async-graphql")]
