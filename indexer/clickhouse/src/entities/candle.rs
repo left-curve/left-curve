@@ -2,6 +2,7 @@ use {
     crate::entities::{clearing_price::ClearingPrice, volume::Volume},
     chrono::{DateTime, Utc},
     clickhouse::Row,
+    grug::{Udec128, Uint128},
     serde::{Deserialize, Deserializer, Serialize, Serializer, de},
     strum_macros::{Display, EnumString},
 };
@@ -50,11 +51,11 @@ pub struct Candle {
     base_denom: String,
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     time_start: DateTime<Utc>,
-    open: ClearingPrice,
-    high: ClearingPrice,
-    low: ClearingPrice,
-    close: ClearingPrice,
-    volume_base: Volume,
-    volume_quote: Volume,
+    open: ClearingPrice<Udec128>,
+    high: ClearingPrice<Udec128>,
+    low: ClearingPrice<Udec128>,
+    close: ClearingPrice<Udec128>,
+    volume_base: Volume<Uint128>,
+    volume_quote: Volume<Uint128>,
     interval: CandleInterval,
 }

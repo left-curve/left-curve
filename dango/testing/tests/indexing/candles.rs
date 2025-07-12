@@ -117,7 +117,8 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price).is_greater_than::<ClearingPrice>(Udec128::ZERO.into());
+    assert_that!(pair_price.clearing_price)
+        .is_greater_than::<ClearingPrice<Udec128>>(Udec128::ZERO.into());
 
     Ok(())
 }
@@ -213,7 +214,8 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price).is_greater_than::<ClearingPrice>(Udec128::ZERO.into());
+    assert_that!(pair_price.clearing_price)
+        .is_greater_than::<ClearingPrice<Udec128>>(Udec128::ZERO.into());
     assert_that!(pair_price.volume_base).is_equal_to::<Volume>(Uint128::from(25).into());
     assert_that!(pair_price.volume_quote).is_equal_to::<Volume>(Uint128::from(718).into());
 
