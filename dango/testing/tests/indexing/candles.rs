@@ -216,8 +216,8 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
     assert_that!(pair_price.clearing_price)
         .is_greater_than::<ClearingPrice<Udec128>>(Udec128::ZERO.into());
-    assert_that!(pair_price.volume_base).is_equal_to::<Volume>(Uint128::from(25).into());
-    assert_that!(pair_price.volume_quote).is_equal_to::<Volume>(Uint128::from(718).into());
+    assert_that!(pair_price.volume_base).is_equal_to::<Volume<Uint128>>(Uint128::from(25).into());
+    assert_that!(pair_price.volume_quote).is_equal_to::<Volume<Uint128>>(Uint128::from(718).into());
 
     // Makes sure we get correct precision: 27.4 without specific number, since this can change.
     assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
