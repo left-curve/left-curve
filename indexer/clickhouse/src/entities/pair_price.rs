@@ -10,7 +10,6 @@ use {
     async_graphql::{ComplexObject, SimpleObject},
     bigdecimal::BigDecimal,
     grug_types::Timestamp,
-    std::ops::Deref,
 };
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
