@@ -185,7 +185,7 @@ where
                 // wider type, perform the addition, and then narrow back
                 // with `checked_into_prev` to catch any overflow when reducing bits.
                 if self.is_negative() == other.is_negative() {
-                    let other = other.conver_precision::<S>()?;
+                    let other = other.convert_precision::<S>()?;
                     self.0.checked_add(other.0).map(Self)
                 } else {
                     let me = self.0.into_next();
@@ -211,7 +211,7 @@ where
                 //   4. Narrow back with `checked_into_prev` to catch any overflow
                 //      when reducing bit‐width.
                 if self.is_negative() != other.is_negative() {
-                    let other = other.conver_precision::<S>()?;
+                    let other = other.convert_precision::<S>()?;
                     self.0.checked_sub(other.0).map(Self)
                 } else {
                     let me = self.0.into_next();
@@ -240,7 +240,7 @@ where
     }
 
     fn checked_rem(self, other: Dec<U, S1>) -> MathResult<Self> {
-        let other = other.conver_precision::<S>()?;
+        let other = other.convert_precision::<S>()?;
         self.0.checked_rem(other.0).map(Self)
     }
 

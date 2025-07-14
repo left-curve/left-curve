@@ -69,7 +69,7 @@ impl<U, const S: u32> Dec<U, S>
 where
     U: Number + UnaryNumber + NumberConst,
 {
-    pub fn conver_precision<const S1: u32>(self) -> MathResult<Dec<U, S1>> {
+    pub fn convert_precision<const S1: u32>(self) -> MathResult<Dec<U, S1>> {
         match S.cmp(&S1) {
             Ordering::Less => {
                 let diff = S1 - S;
@@ -238,13 +238,13 @@ mod dec_tests {
     #[test]
     fn convert_precision() {
         let dec_18: Udec128 = dec("123.123456789012345678");
-        let dec_6 = dec_18.conver_precision::<6>().unwrap();
+        let dec_6 = dec_18.convert_precision::<6>().unwrap();
         assert_eq!(dec_6, dec("123.123456"));
 
         // Try at max
         let dec_18 = Udec128::MAX;
         dec_18.checked_add(Udec128::TICK).unwrap_err();
-        let dec_6 = dec_18.conver_precision::<6>().unwrap();
+        let dec_6 = dec_18.convert_precision::<6>().unwrap();
         dec_6.checked_add(Udec128_6::TICK).unwrap();
     }
 
