@@ -38,7 +38,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-xl relative max-w-[400px]">
+    <div className="flex flex-col bg-bg-primary-rice rounded-xl relative max-w-[400px]">
       <IconButton
         className="hidden lg:block absolute right-2 top-2"
         variant="link"
@@ -52,10 +52,10 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         </div>
         <div className="flex flex-col gap-2">
           <h3 className="h4-bold">{m["settings.keyManagement.management.delete.title"]()}</h3>
-          <p className="text-gray-500 diatype-m-regular">
+          <p className="text-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.delete.description"]()}
           </p>
-          <p className="text-gray-500 diatype-m-regular">
+          <p className="text-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.delete.warning"]()}
           </p>
         </div>

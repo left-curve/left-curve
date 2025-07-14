@@ -21,8 +21,8 @@ import type React from "react";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="rounded-xl bg-rice-25 shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
-      <h3 className="h4-bold text-gray-900 px-2">{m["settings.display"]()}</h3>
+    <div className="rounded-xl bg-bg-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
+      <h3 className="h4-bold text-primary-900 px-2">{m["settings.display"]()}</h3>
       {children}
     </div>
   );
@@ -32,8 +32,8 @@ const LanguageSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconLanguage className="text-gray-500" />
-        <span className="diatype-m-bold text-gray-700">{m["settings.language"]()}</span>
+        <IconLanguage className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700">{m["settings.language"]()}</span>
       </p>
       <Select value={getLocale()} onChange={(key) => setLocale(key as (typeof locales)[number])}>
         {locales.map((locale) => (
@@ -52,8 +52,8 @@ const FormatNumberSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconFormatNumber className="text-gray-500" />
-        <span className="diatype-m-bold text-gray-700"> {m["settings.number"]()}</span>
+        <IconFormatNumber className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700"> {m["settings.number"]()}</span>
       </p>
 
       <Select
@@ -90,8 +90,8 @@ const ThemeSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconTheme className="text-gray-500" />
-        <span className="diatype-m-bold text-gray-700">{m["settings.theme"]()}</span>
+        <IconTheme className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs
         defaultKey={theme}

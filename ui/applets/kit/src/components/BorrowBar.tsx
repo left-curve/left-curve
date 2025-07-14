@@ -13,7 +13,7 @@ export const BorrowBar: React.FC<Props> = ({ borrow, borrowed, total }) => {
   return (
     <div className="w-full flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="diatype-sm-medium text-gray-500">Borrow Capacity</span>
+        <span className="diatype-sm-medium text-tertiary-500">Borrow Capacity</span>
         <span className="diatype-sm-bold">${total}K</span>
       </div>
       <div className="border border-green-bean-500 rounded-full overflow-hidden bg-gray-400 relative z-10 h-3">

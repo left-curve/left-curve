@@ -21,7 +21,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="p-4 shadow-card-shadow bg-bg-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
@@ -73,7 +73,7 @@ const OrderRow: React.FC<
     type === "bid" ? "bg-green-300 lg:-left-4" : "bg-red-300 -right-0 lg:-left-4 lg:right-auto";
 
   return (
-    <div className="relative flex-1 diatype-xs-medium text-gray-700 grid grid-cols-2 lg:grid-cols-3">
+    <div className="relative flex-1 diatype-xs-medium text-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -112,7 +112,7 @@ const OrderBook: React.FC = () => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
         <p className="order-2 lg:order-none text-end lg:text-start">Price</p>
         <p className="text-end hidden lg:block">Size (ETH)</p>
         <p className="lg:text-end order-1 lg:order-none">Total (ETH)</p>
@@ -135,7 +135,7 @@ const OrderBook: React.FC = () => {
             <p className="diatype-xs-bold text-status-success relative z-20">
               {bids[bids.length - 1].price.toFixed(2)}
             </p>
-            <span className="bg-rice-50 w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
+            <span className="bg-bg-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
           </div>
         )}
         <div className="bid-container flex flex-col w-full gap-1">
@@ -158,7 +158,7 @@ const LiveTrades: React.FC = () => {
   const numberOfTrades = isLg ? 24 : 16;
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
         <p>Price</p>
         <p className="text-end">Size (ETH)</p>
         <p className="text-end">Time</p>
@@ -169,7 +169,7 @@ const LiveTrades: React.FC = () => {
             <div
               key={trade.hash}
               className={
-                "grid grid-cols-3 diatype-xs-medium text-gray-700 w-full cursor-pointer group relative"
+                "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
             >
               <p
@@ -186,7 +186,7 @@ const LiveTrades: React.FC = () => {
                 <p>{trade.createdAt}</p>
                 <IconLink className="w-3 h-3" />
               </div>
-              <span className="group-hover:bg-rice-50 h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+              <span className="group-hover:bg-bg-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
             </div>
           );
         })}

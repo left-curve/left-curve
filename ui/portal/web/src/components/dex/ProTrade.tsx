@@ -83,7 +83,7 @@ const ProTradeHeader: React.FC = () => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+    <div className="flex bg-bg-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
@@ -97,12 +97,12 @@ const ProTradeHeader: React.FC = () => {
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <IconChevronDownFill
-              className={twMerge("text-gray-500 w-4 h-4 transition-all", {
+              className={twMerge("text-tertiary-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
           </div>
-          <IconEmptyStar className="w-5 h-5 text-gray-500" />
+          <IconEmptyStar className="w-5 h-5 text-tertiary-500" />
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -117,23 +117,27 @@ const ProTradeHeader: React.FC = () => {
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.price"]()}</p>
-              <p className="diatype-sm-bold text-gray-700">
+              <p className="diatype-xs-medium text-tertiary-500">
+                {m["dex.protrade.spot.price"]()}
+              </p>
+              <p className="diatype-sm-bold text-secondary-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">
+              <p className="diatype-xs-medium text-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.volume"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">
+                {m["dex.protrade.spot.volume"]()}
+              </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.contract"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">{m["dex.contract"]()}</p>
               <AddressVisualizer
                 address={config?.addresses.dex || "0x"}
                 withIcon
@@ -154,7 +158,7 @@ const ProTradeChart: React.FC = () => {
   if (!isLg) return null;
 
   return (
-    <div className="shadow-card-shadow bg-rice-25 h-full">
+    <div className="shadow-card-shadow bg-bg-secondary-rice h-full">
       <TradingViewChart />
     </div>
   );
@@ -189,7 +193,7 @@ const ProTradeOrders: React.FC = () => {
         return (
           <Cell.Text
             text={value}
-            className="diatype-xs-regular text-gray-700 hover:text-black cursor-pointer"
+            className="diatype-xs-regular text-secondary-700 hover:text-black cursor-pointer"
           />
         );
       },
@@ -288,7 +292,7 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-bg-secondary-rice flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
