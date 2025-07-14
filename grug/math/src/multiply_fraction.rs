@@ -132,33 +132,38 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-impl<U, const S: u32> MultiplyFraction<Dec<U, S>, U> for Dec<U, S>
+impl<U, const S: u32, const S1: u32> MultiplyFraction<Dec<U, S1>, U> for Dec<U, S>
 where
-    Dec<U, S>: Fraction<U> + Copy + Number + FixedPoint<U>,
-    Int<U>: MultiplyFraction<Dec<U, S>, U> + MultiplyRatio,
+    Dec<U, S>: Fraction<U> + Copy + Number<Dec<U, S1>> + FixedPoint<U>,
+    Dec<U, S1>: Fraction<U> + Copy,
+    Int<U>: MultiplyFraction<Dec<U, S1>, U> + MultiplyRatio,
 {
-    fn checked_mul_dec(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_mul_dec(self, rhs: Dec<U, S1>) -> MathResult<Self> {
         self.checked_mul(rhs)
     }
 
-    fn checked_mul_dec_floor(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_mul_dec_floor(self, rhs: Dec<U, S1>) -> MathResult<Self> {
         self.0.checked_mul_dec_floor(rhs).map(Self)
     }
 
-    fn checked_mul_dec_ceil(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_mul_dec_ceil(self, rhs: Dec<U, S1>) -> MathResult<Self> {
         self.0.checked_mul_dec_ceil(rhs).map(Self)
     }
 
-    fn checked_div_dec(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_div_dec(self, rhs: Dec<U, S1>) -> MathResult<Self> {
         self.checked_div(rhs)
     }
 
-    fn checked_div_dec_floor(self, rhs: Dec<U, S>) -> MathResult<Self> {
-        Self::checked_from_ratio_floor(self.numerator(), rhs.numerator())
+    fn checked_div_dec_floor(self, rhs: Dec<U, S1>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio_floor(Dec::<U, S1>::denominator(), rhs.numerator())
+            .map(Self)
     }
 
-    fn checked_div_dec_ceil(self, rhs: Dec<U, S>) -> MathResult<Self> {
-        Self::checked_from_ratio_ceil(self.numerator(), rhs.numerator())
+    fn checked_div_dec_ceil(self, rhs: Dec<U, S1>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio_ceil(Dec::<U, S1>::denominator(), rhs.numerator())
+            .map(Self)
     }
 }
 
