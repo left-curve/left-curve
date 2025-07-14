@@ -78,7 +78,7 @@ const BlockSkeleton: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
-      <div className="flex flex-col gap-4 rounded-xl p-4 bg-bg-secondary-rice shadow-account-card text-secondary-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
         <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]({ height: "#" })}</h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
         <img
@@ -119,7 +119,7 @@ const FutureBlock: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[76rem] p-4 flex flex-col gap-6">
-      <div className="flex flex-col gap-6 rounded-md p-4 bg-bg-secondary-rice shadow-account-card relative overflow-hidden text-secondary-700">
+      <div className="flex flex-col gap-6 rounded-md p-4 bg-surface-secondary-rice shadow-account-card relative overflow-hidden text-secondary-700">
         <div className="flex flex-col gap-1">
           <h3 className="h4-heavy text-primary-900">
             {m["explorer.block.futureBlock.targetBlock"]()} {height}
@@ -225,7 +225,7 @@ const BlockDetails: React.FC = () => {
   const { transactions, createdAt, blockHeight, hash } = data.searchBlock;
 
   return (
-    <div className="flex flex-col rounded-md p-4 bg-bg-secondary-rice shadow-account-card text-secondary-700 relative overflow-hidden diatype-sm-medium">
+    <div className="flex flex-col rounded-md p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 relative overflow-hidden diatype-sm-medium">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
         <h1 className="h4-bold">
           {m["explorer.block.details.blockDetails"]({ height: `#${blockHeight}` })}

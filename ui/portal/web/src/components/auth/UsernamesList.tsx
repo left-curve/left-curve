@@ -16,7 +16,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
         return (
           <Fragment key={username}>
             <div
-              className="flex gap-2 w-full hover:bg-bg-tertiary-rice p-2 rounded-xs transition-all cursor-pointer"
+              className="flex gap-2 w-full hover:bg-surface-tertiary-rice p-2 rounded-xs transition-all cursor-pointer"
               onClick={() => onUserSelection(username)}
             >
               <div className="w-12 h-12 bg-[#FDF0F0] rounded-xxs border border-red-bean-100 flex items-center justify-center">

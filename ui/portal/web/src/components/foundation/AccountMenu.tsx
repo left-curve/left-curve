@@ -149,7 +149,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-bg-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray">
+        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray">
           <Menu />
         </div>
       </div>
@@ -162,7 +162,7 @@ const Mobile: React.FC = () => {
 
   return (
     <Sheet isOpen={isSidebarVisible} onClose={() => setSidebarVisibility(false)} rootId="root">
-      <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
+      <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
           <Menu />
@@ -383,7 +383,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
   return (
     <motion.div
       layout="position"
-      className="flex flex-col p-4 hover:bg-bg-tertiary-rice hover:cursor-pointer"
+      className="flex flex-col p-4 hover:bg-surface-tertiary-rice hover:cursor-pointer"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div
@@ -462,7 +462,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
   return (
     <motion.div
       layout="position"
-      className="flex flex-col p-4 hover:bg-bg-tertiary-rice hover:cursor-pointer"
+      className="flex flex-col p-4 hover:bg-surface-tertiary-rice hover:cursor-pointer"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div

@@ -49,7 +49,7 @@ function OverviewComponent() {
       </div>
       {/*   <div
         ref={topYieldsRef}
-        className="bg-bg-secondary-rice shadow-account-card flex flex-col rounded-xl w-full pt-4"
+        className="bg-surface-secondary-rice shadow-account-card flex flex-col rounded-xl w-full pt-4"
       >
         <p className="h3-heavy font-extrabold px-4 py-3">Top Yields</p>
 

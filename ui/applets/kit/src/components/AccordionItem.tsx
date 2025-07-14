@@ -34,7 +34,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
   return (
     <div
       className={twMerge(
-        "flex w-full flex-col bg-bg-tertiary-rice rounded-md p-4 shadow-account-card overflow-hidden",
+        "flex w-full flex-col bg-surface-tertiary-rice rounded-md p-4 shadow-account-card overflow-hidden",
         classNames?.container,
       )}
     >

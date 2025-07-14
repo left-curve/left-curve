@@ -61,7 +61,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-bg-primary-rice rounded-xl relative">
+    <div className="flex flex-col bg-surface-primary-rice rounded-xl relative">
       <IconButton
         className="hidden md:block absolute right-2 top-2"
         variant="link"
@@ -83,7 +83,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
       <span className="w-full h-[1px] bg-gray-100 my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
-          className="bg-bg-primary-rice"
+          className="bg-surface-primary-rice"
           isLoading={isLoadingDataChannel || isLoadingCredential}
           data={`${document.location.origin}/signin?socketId=${dataChannel?.getSocketId()}`}
         />

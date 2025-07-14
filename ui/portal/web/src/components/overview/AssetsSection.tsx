@@ -24,7 +24,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   });
 
   return (
-    <div className="flex-col bg-bg-secondary-rice shadow-account-card lg:flex rounded-xl p-4 gap-2 w-full h-full  min-h-[10rem] lg:justify-between">
+    <div className="flex-col bg-surface-secondary-rice shadow-account-card lg:flex rounded-xl p-4 gap-2 w-full h-full  min-h-[10rem] lg:justify-between">
       <div className="flex items-center justify-between w-full">
         <p className="h4-bold">{m["common.assets"]()}</p>
         {showAllAssets ? (

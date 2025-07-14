@@ -10,9 +10,10 @@ export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
       colors: {
-        "bg-primary-rice": "var(--color-bg-primary-rice)",
-        "bg-secondary-rice": "var(--color-bg-secondary-rice)",
-        "bg-tertiary-rice": "var(--color-bg-tertiary-rice)",
+        "surface-primary-rice": "var(--color-surface-primary-rice)",
+        "surface-secondary-rice": "var(--color-surface-secondary-rice)",
+        "surface-secondary-blue": "var(--color-surface-secondary-blue)",
+        "surface-tertiary-rice": "var(--color-surface-tertiary-rice)",
         "button-green": "var(--color-button-green)",
         primary: {
           blue: "var(--color-primary-blue)",
@@ -31,7 +32,7 @@ export const tailwindConfig: Partial<Config> = {
           "500": "var(--color-tertiary-500)",
         },
         quaternary: {
-          rice: "var(--color-bg-quaternary-rice)",
+          rice: "var(--color-surface-quaternary-rice)",
         },
         transparent: "transparent",
         status: {

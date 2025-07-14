@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --color-bg-primary-rice: #FFFCF6;
-  --color-bg-secondary-rice: #FFF9F0;
-  --color-bg-tertiary-rice: #FFF3E1;
-  --color-bg-quaternary-rice: #F3E5BF;
+  --color-surface-primary-rice: #FFFCF6;
+  --color-surface-secondary-rice: #FFF9F0;
+  --color-surface-secondary-blue: #F0F1F7;
+  --color-surface-tertiary-rice: #FFF3E1;
+  --color-surface-quaternary-rice: #F3E5BF;
   --color-button-green: #BDBF5C;
   --color-primary-red: #FEF1F1;
   --color-primary-blue: #F7F8FB;
@@ -25,10 +26,11 @@
 }
 
 html.dark {
-  --color-bg-primary-rice: #2D2C2A;
-  --color-bg-secondary-rice: #363432;
-  --color-bg-tertiary-rice: #4D4B48;
-  --color-bg-quaternary-rice: #594F3C;
+  --color-surface-primary-rice: #2D2C2A;
+  --color-surface-secondary-rice: #363432;
+  --color-surface-secondary-blue: #646273;
+  --color-surface-tertiary-rice: #4D4B48;
+  --color-surface-quaternary-rice: #594F3C;
   --color-button-green: #D2D184;
   --color-primary-red: #423C3B;
   --color-primary-blue: #595763;

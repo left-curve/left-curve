@@ -16,7 +16,7 @@ export const QRScan: React.FC<QRScanProps> = ({ onScan }) => {
         allowMultiple={false}
         components={{ audio: false }}
         formats={["qr_code"]}
-        classNames={{ container: "qr-container", video: "bg-bg-primary-rice" }}
+        classNames={{ container: "qr-container", video: "bg-surface-primary-rice" }}
       />
       <div className="py-20 flex items-center justify-center">
         <p className="text-tertiary-500 diatype-m-medium" />
