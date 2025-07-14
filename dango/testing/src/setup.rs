@@ -230,6 +230,7 @@ pub fn setup_benchmark_hybrid(
         codes.account_multi.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
+        codes.bitcoin.to_bytes().hash256(),
         codes.dex.to_bytes().hash256(),
         codes.gateway.to_bytes().hash256(),
         codes.hyperlane.ism.to_bytes().hash256(),
@@ -343,13 +344,13 @@ where
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {
-            Remote::Warp { domain, contract } => {
+            Remote::Warp(warp_remote) => {
                 genesis_state.msgs.push(build_genesis_warp_msg(
                     &contracts,
                     &validator_sets,
-                    domain,
+                    warp_remote.domain,
                     local_domain,
-                    contract,
+                    warp_remote.contract,
                     op.amount,
                     op.recipient,
                 ));
