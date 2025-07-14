@@ -1198,6 +1198,7 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
+
     use crate::{
         Dec, FixedPoint, MathError, Number, NumberConst, UnaryNumber, dec_test, dts,
         test_utils::{bt, dec},
@@ -2059,4 +2060,72 @@ mod dec_tests {
             }
         }
     );
+
+    #[test]
+    fn check_add_different_precision() {
+        let a = dec::<_, 6>("1.123456");
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_add(b).unwrap(), dec("2.246912"));
+
+        // Dec128::MAX: 170141183460469231731.687303715884105727
+        // Dec128::MIN: -170141183460469231731.687303715884105728
+        let exceed_dec128_128_max = dec::<i128, 18>("170141183460469231731.5")
+            .convert_precision::<6>()
+            .unwrap()
+            + Dec::ONE;
+
+        exceed_dec128_128_max.convert_precision::<18>().unwrap_err();
+        let a = dec::<_, 18>("-170141183460469231731.6")
+            .checked_add(exceed_dec128_128_max)
+            .unwrap();
+
+        assert_eq!(a, dec("0.9"));
+    }
+
+    #[test]
+    fn check_sub_different_precision() {
+        let a = dec::<_, 6>("1.123456");
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_sub(b).unwrap(), dec("0"));
+
+        // Dec128::MAX: 170141183460469231731.687303715884105727
+        // Dec128::MIN: -170141183460469231731.687303715884105728
+        let exceed_dec128_128_max = dec::<i128, 18>("170141183460469231731.5")
+            .convert_precision::<6>()
+            .unwrap()
+            + Dec::ONE;
+
+        exceed_dec128_128_max.convert_precision::<18>().unwrap_err();
+        let a = dec::<_, 18>("170141183460469231731.6")
+            .checked_sub(exceed_dec128_128_max)
+            .unwrap();
+
+        assert_eq!(a, dec("-0.9"));
+    }
+
+    #[test]
+    fn check_mul_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_mul(b).unwrap(), dec("561.866185"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_mul(b).unwrap(), dec("561.866579"));
+    }
+
+    #[test]
+    fn check_div_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_div(b).unwrap(), dec("445.164741"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_div(b).unwrap(), dec("445.164429"));
+    }
 }
