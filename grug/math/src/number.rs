@@ -2076,11 +2076,11 @@ mod dec_tests {
             + Dec::ONE;
 
         exceed_dec128_128_max.convert_precision::<18>().unwrap_err();
-        let a = dec::<_, 18>("-170141183460469231731.6")
+        let result = dec::<_, 18>("-170141183460469231731.6")
             .checked_add(exceed_dec128_128_max)
             .unwrap();
 
-        assert_eq!(a, dec("0.9"));
+        assert_eq!(result, dec("0.9"));
     }
 
     #[test]
@@ -2098,11 +2098,11 @@ mod dec_tests {
             + Dec::ONE;
 
         exceed_dec128_128_max.convert_precision::<18>().unwrap_err();
-        let a = dec::<_, 18>("170141183460469231731.6")
+        let result = dec::<_, 18>("170141183460469231731.6")
             .checked_sub(exceed_dec128_128_max)
             .unwrap();
 
-        assert_eq!(a, dec("-0.9"));
+        assert_eq!(result, dec("-0.9"));
     }
 
     #[test]
