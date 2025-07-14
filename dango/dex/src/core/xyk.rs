@@ -2,7 +2,7 @@ use {
     crate::PassiveOrder,
     grug::{
         Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
-        NumberConst, Udec128, Uint64, Uint128, ZeroExclusiveOneExclusive,
+        NumberConst, Udec128, Uint64, Uint128, UnaryNumber, ZeroExclusiveOneExclusive,
         ZeroInclusiveOneExclusive,
     },
     std::{cmp, iter},

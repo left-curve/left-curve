@@ -19,7 +19,7 @@ use {
         Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
         JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, NonZero, Number,
         NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Timestamp,
-        Udec128, Uint128, btree_map, coins,
+        Udec128, Uint128, UnaryNumber, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},

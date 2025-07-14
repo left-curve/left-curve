@@ -1,7 +1,7 @@
 use {
     crate::{
         FixedPoint, Int, Int128, Int256, IsZero, MathError, MathResult, MultiplyRatio, Number,
-        NumberConst, Sign, Uint128, Uint256,
+        NumberConst, Sign, Uint128, Uint256, UnaryNumber,
     },
     bnum::types::{I256, U256},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -47,7 +47,7 @@ impl<U, const S: u32> Dec<U, S> {
 
 impl<U, const S: u32> Dec<U, S>
 where
-    Int<U>: NumberConst + Number,
+    Int<U>: NumberConst + UnaryNumber + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
     where
@@ -176,7 +176,7 @@ where
 impl<U, const S: u32> FromStr for Dec<U, S>
 where
     Self: FixedPoint<U>,
-    Int<U>: NumberConst + Number + Sign + Display + FromStr,
+    Int<U>: NumberConst + Number + UnaryNumber + Sign + Display + FromStr,
 {
     type Err = MathError;
 
@@ -536,6 +536,15 @@ generate_decimal! {
     inner_type        = U256,
     inner_constructor = Uint256::new_from_u128,
     doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
+}
+
+generate_decimal! {
+    type              = Signed,
+    name              = Dec128_6,
+    precision         = 6,
+    inner_type        = i128,
+    inner_constructor = Int128::new,
+    doc               = "128-bit signed fixed-point number with 18 decimal places.",
 }
 
 generate_decimal! {

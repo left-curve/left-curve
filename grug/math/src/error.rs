@@ -126,9 +126,10 @@ impl MathError {
         }
     }
 
-    pub fn overflow_mul<T>(a: T, b: T) -> Self
+    pub fn overflow_mul<T, T1>(a: T, b: T1) -> Self
     where
         T: ToString,
+        T1: ToString,
     {
         Self::OverflowMul {
             ty: type_name::<T>(),
