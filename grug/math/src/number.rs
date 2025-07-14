@@ -244,8 +244,6 @@ where
         self.0.checked_rem(other.0).map(Self)
     }
 
-    // TODO: Check if this is the best way to implement this
-
     fn saturating_add(self, other: Dec<U, S1>) -> Self {
         match self.checked_add(other) {
             Ok(val) => val,
