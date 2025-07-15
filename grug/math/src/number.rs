@@ -393,12 +393,9 @@ macro_rules! impl_number {
             fn saturating_mul(self, other: Self) -> Self {
                 self.saturating_mul(other)
             }
-
-
         }
 
-        impl UnaryNumber for $t
-        {
+        impl UnaryNumber for $t {
             fn checked_pow(self, exp: u32) -> MathResult<Self> {
                 self.checked_pow(exp)
                     .ok_or_else(|| MathError::overflow_pow(self, exp))
@@ -1198,7 +1195,6 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
-
     use crate::{
         Dec, FixedPoint, MathError, Number, NumberConst, UnaryNumber, dec_test, dts,
         test_utils::{bt, dec},
