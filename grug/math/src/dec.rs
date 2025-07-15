@@ -464,6 +464,18 @@ macro_rules! generate_decimal {
                 }
             }
 
+            impl crate::FixedPoint<$inner> for $name {
+                const PRECISION: Int<$inner> = $constructor($base_constructor::TEN.pow($precision));
+                const TICK: Self = Self::raw(Int::<$inner>::ONE);
+            }
+
+            impl crate::NumberConst for $name {
+                const MIN: Self = Self::raw(Int::<$inner>::MIN);
+                const MAX: Self = Self::raw(Int::<$inner>::MAX);
+                const ONE: Self = Self::raw(Self::PRECISION);
+                const TEN: Self = Self::raw($constructor($base_constructor::TEN.pow(Self::DECIMAL_PLACES + 1)));
+                const ZERO: Self = Self::raw(Int::<$inner>::ZERO);
+            }
         }
     };
     (
@@ -531,11 +543,29 @@ generate_decimal! {
 
 generate_decimal! {
     type              = Unsigned,
+    name              = Udec128_24,
+    precision         = 24,
+    inner_type        = u128,
+    inner_constructor = Uint128::new,
+    doc               = "128-bit unsigned fixed-point number with 24 decimal places.",
+}
+
+generate_decimal! {
+    type              = Unsigned,
     name              = Udec256,
     precision         = 18,
     inner_type        = U256,
     inner_constructor = Uint256::new_from_u128,
     doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
+}
+
+generate_decimal! {
+    type              = Unsigned,
+    name              = Udec256_24,
+    precision         = 24,
+    inner_type        = U256,
+    inner_constructor = Uint256::new_from_u128,
+    doc               = "256-bit unsigned fixed-point number with 24 decimal places.",
 }
 
 generate_decimal! {
