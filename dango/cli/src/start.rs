@@ -234,7 +234,7 @@ impl StartCmd {
 
         let clickhouse_indexer = indexer_clickhouse::Indexer::new(
             indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
-            clickhouse_context,
+            clickhouse_context.clone(),
         );
 
         hooked_indexer.add_indexer(sql_indexer)?;
@@ -248,8 +248,11 @@ impl StartCmd {
             indexer_path,
         );
 
-        let dango_httpd_context =
-            dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+        let dango_httpd_context = dango_httpd::context::Context::new(
+            indexer_httpd_context.clone(),
+            clickhouse_context.clone(),
+            dango_context,
+        );
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }

@@ -226,8 +226,11 @@ pub async fn setup_test_with_indexer(
         indexer_path,
     );
 
-    let dango_httpd_context =
-        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+    let dango_httpd_context = dango_httpd::context::Context::new(
+        indexer_httpd_context.clone(),
+        clickhouse_context.clone(),
+        dango_context,
+    );
 
     (
         suite,

@@ -221,18 +221,29 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     // Makes sure we get correct precision: 27.4 without specific number, since this can change.
     assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
 
-    let pair_price_1m: Candle = clickhouse_context
+    let candle_1m: Candle = clickhouse_context
         .clickhouse_client()
         .query("SELECT *, '1m' as interval FROM pair_prices_1m")
         .fetch_one()
         .await?;
 
-    tracing::info!("pair_price_1m = {:#?}", pair_price_1m);
+    let expected_candle = serde_json::json!({
+        "quote_denom": "bridge/usdc",
+        "base_denom": "dango",
+        "close": 2.74e19,
+        "high": 2.74e19,
+        "interval": "1m",
+        "low": 2.74e19,
+        "open": 2.74e19,
+        "time_start": serde_json::Number::from(31536000000000_u64),
+        "volume_base": 25,
+        "volume_quote": 718,
+    });
 
-    tracing::info!(
-        "pair_price_1m = {:#?}",
-        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&pair_price_1m).unwrap())
-    );
+    let candle_1m_serde =
+        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
+            .unwrap();
+    assert_that!(candle_1m_serde).is_equal_to(expected_candle);
 
     Ok(())
 }

@@ -1,5 +1,9 @@
-pub const MIGRATIONS: [&str; 22] = [
+pub const MIGRATIONS: [&str; 25] = [
     CREATE_TABLES,
+    // 1 second
+    CREATE_PAIR_PRICES_1S_TABLE,
+    DROP_PAIR_PRICES_1S_MV,
+    CREATE_PAIR_PRICES_1S_MV,
     // 1 minute
     CREATE_PAIR_PRICES_1M_TABLE,
     DROP_PAIR_PRICES_1M_MV,
@@ -42,6 +46,44 @@ pub const CREATE_TABLES: &str = r#"
             ) ENGINE = MergeTree() -- ENGINE = MergeTree() is efficient for time-series data with the given ORDER BY.
             ORDER BY (quote_denom, base_denom, created_at)
             "#;
+
+pub const CREATE_PAIR_PRICES_1S_TABLE: &str = r#"
+            -- 1s target table: Pre-aggregated OHLCV data for 1-second intervals.
+            -- This is populated automatically by the materialized view.
+            CREATE OR REPLACE TABLE pair_prices_1s (
+                quote_denom String,
+                base_denom String,
+                time_start DateTime64(6), -- Start of the 1s interval
+                open UInt128,
+                high UInt128,
+                low UInt128,
+                close UInt128,
+                volume_base UInt128,
+                volume_quote UInt128
+            ) ENGINE = MergeTree()
+            ORDER BY (quote_denom, base_denom, time_start)
+"#;
+
+pub const DROP_PAIR_PRICES_1S_MV: &str = r#"
+            DROP VIEW IF EXISTS pair_prices_1s_mv
+"#;
+
+pub const CREATE_PAIR_PRICES_1S_MV: &str = r#"
+            -- 1s materialized view: Automatically aggregates from pair_prices into pair_prices_1s.
+            CREATE MATERIALIZED VIEW pair_prices_1s_mv TO pair_prices_1s AS
+            SELECT
+                quote_denom,
+                base_denom,
+                toStartOfSecond(created_at) AS time_start,
+                argMin(clearing_price, created_at) AS open,
+                max(clearing_price) AS high,
+                min(clearing_price) AS low,
+                argMax(clearing_price, created_at) AS close,
+                sum(volume_base) AS volume_base,
+                sum(volume_quote) AS volume_quote
+            FROM pair_prices
+            GROUP BY quote_denom, base_denom, time_start
+"#;
 
 pub const CREATE_PAIR_PRICES_1M_TABLE: &str = r#"
             -- 1m target table: Pre-aggregated OHLCV data for 1-minute intervals.

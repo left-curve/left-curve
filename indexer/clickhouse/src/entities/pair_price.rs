@@ -1,5 +1,5 @@
 use {
-    crate::{dec::Dec, int::Int},
+    crate::{Dec, Int},
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::{Udec128, Uint128},
@@ -46,11 +46,6 @@ impl PairPrice {
     async fn clearing_price(&self) -> BigDecimal {
         BigDecimal::from(self.clearing_price.clone())
     }
-
-    // Returns the volume of the pair price.
-    // async fn volume(&self) -> BigDecimal {
-    //     BigDecimal::from(self.volume)
-    // }
 }
 
 // pub mod udec128 {
