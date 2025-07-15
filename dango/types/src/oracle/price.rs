@@ -1,8 +1,8 @@
 use {
     bnum::types::U256,
     grug::{
-        Dec, Defined, Exponentiate, FixedPoint, MaybeDefined, MultiplyFraction, NextNumber, Number,
-        NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Uint128, Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MaybeDefined, MultiplyFraction, Number,
+        NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Uint128, Uint256, Undefined,
     },
     pyth_types::PriceFeed,
 };
@@ -102,19 +102,34 @@ impl PrecisionedPrice {
     pub fn value_of_dec_amount<const S1: u32, const S2: u32>(
         &self,
         dec_amount: Dec<u128, S1>,
-    ) -> StdResult<Dec<u128, S2>>
-    where
-        Dec<U256, S1>: FixedPoint<U256> + NumberConst,
-    {
-        let factor = Dec::<U256, S1>::TEN.checked_pow(self.precision.into_inner() as u32)?;
+    ) -> StdResult<Dec<u128, S2>> {
+        let num = dec_amount.0.checked_full_mul(self.humanized_price.0)?;
 
-        Ok(self
-            .humanized_price
-            .into_next()
-            .checked_mul(dec_amount.into_next())?
-            .checked_div(factor)?
-            .checked_into_prev()?
-            .convert_precision::<S2>()?)
+        if S1 > S2 {
+            let diff = Uint256::TEN.checked_pow(S1 - S2)?;
+
+            Ok(Dec::raw(
+                num.checked_div(diff)?
+                    .checked_div(Dec::<U256, 18>::PRECISION)?
+                    .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
+            )
+            .checked_into_prev()?)
+        } else if S1 == S2 {
+            Ok(Dec::raw(
+                num.checked_div(Dec::<U256, 18>::PRECISION)?
+                    .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
+            )
+            .checked_into_prev()?)
+        } else {
+            let diff = Uint256::TEN.checked_pow(S2 - S1)?;
+
+            Ok(Dec::raw(
+                num.checked_mul(diff)?
+                    .checked_div(Dec::<U256, 18>::PRECISION)?
+                    .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
+            )
+            .checked_into_prev()?)
+        }
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
