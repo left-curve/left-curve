@@ -544,7 +544,7 @@ generate_decimal! {
     precision         = 6,
     inner_type        = i128,
     inner_constructor = Int128::new,
-    doc               = "128-bit signed fixed-point number with 18 decimal places.",
+    doc               = "128-bit signed fixed-point number with 6 decimal places.",
 }
 
 generate_decimal! {
