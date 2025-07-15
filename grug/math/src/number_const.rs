@@ -35,7 +35,7 @@ where
     const MAX: Self = Self::raw(Int::<u128>::MAX);
     const MIN: Self = Self::raw(Int::<u128>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Int::<u128>::new(u128::TEN.pow(Self::DECIMAL_PLACES)));
+    const TEN: Self = Self::raw(Int::<u128>::new(u128::TEN.pow(Self::DECIMAL_PLACES + 1)));
     const ZERO: Self = Self::raw(Int::<u128>::ZERO);
 }
 
@@ -47,7 +47,7 @@ where
     const MIN: Self = Self::raw(Int::<U256>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
     const TEN: Self = Self::raw(Int::<U256>::new_from_u128(
-        u128::TEN.pow(Self::DECIMAL_PLACES),
+        u128::TEN.pow(Self::DECIMAL_PLACES + 1),
     ));
     const ZERO: Self = Self::raw(Int::<U256>::ZERO);
 }
@@ -59,7 +59,7 @@ where
     const MAX: Self = Self::raw(Int::<i128>::MAX);
     const MIN: Self = Self::raw(Int::<i128>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Int::<i128>::new(i128::TEN.pow(Self::DECIMAL_PLACES)));
+    const TEN: Self = Self::raw(Int::<i128>::new(i128::TEN.pow(Self::DECIMAL_PLACES + 1)));
     const ZERO: Self = Self::raw(Int::<i128>::ZERO);
 }
 
@@ -71,7 +71,7 @@ where
     const MIN: Self = Self::raw(Int::<I256>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
     const TEN: Self = Self::raw(Int::<I256>::new_from_i128(
-        i128::TEN.pow(Self::DECIMAL_PLACES),
+        i128::TEN.pow(Self::DECIMAL_PLACES + 1),
     ));
     const ZERO: Self = Self::raw(Int::<I256>::ZERO);
 }
