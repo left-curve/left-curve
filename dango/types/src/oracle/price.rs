@@ -235,7 +235,7 @@ mod tests {
 
         // Value of 1 unit of token at 0.000001 USD = 0.000001 / 10^18 USD
         let value: Udec128_24 = price.value_of_unit_amount(Uint128::new(1)).unwrap();
-        println!("value: {}", value);
+        println!("value: {value}");
         assert!(value.is_non_zero());
         assert_eq!(
             value,

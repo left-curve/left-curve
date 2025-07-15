@@ -224,7 +224,7 @@ mod tests {
         let quote_reserve = Uint128::new(1_000_000_000 * 10u128.pow(6));
 
         let marginal_price = Udec128_24::checked_from_ratio(quote_reserve, base_reserve).unwrap();
-        println!("marginal_price: {}", marginal_price);
+        println!("marginal_price: {marginal_price}");
         assert!(marginal_price.is_non_zero());
 
         let (mut bids, mut asks) = reflect_curve(
