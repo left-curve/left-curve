@@ -203,3 +203,37 @@ pub fn normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
 
     a.checked_mul(b)?.checked_sqrt()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn marginal_price_is_non_zero_with_low_price_and_high_recision_token() {
+        // 0.00000001 USD per whole token
+        let humanized_price = Udec128::checked_from_ratio(1, 100_000_000).unwrap();
+
+        // $1B worth of base asset at 0.00000001 USD per whole token with 18 decimals precision
+        let base_reserve = Uint128::new(1_000_000_000 * 10u128.pow(18))
+            .checked_div_dec(humanized_price)
+            .unwrap();
+
+        // $1B worth of quote asset at 1 USD per whole token with 6 decimals precision
+        let quote_reserve = Uint128::new(1_000_000_000 * 10u128.pow(6));
+
+        let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve).unwrap();
+        assert!(marginal_price.is_non_zero());
+
+        let (mut bids, mut asks) = reflect_curve(
+            base_reserve,
+            quote_reserve,
+            Udec128::ONE,
+            Bounded::new_unchecked(Udec128::ZERO),
+            Bounded::new_unchecked(Udec128::new_bps(30)),
+        )
+        .unwrap();
+
+        assert!(bids.next().is_some());
+        assert!(asks.next().is_some());
+    }
+}

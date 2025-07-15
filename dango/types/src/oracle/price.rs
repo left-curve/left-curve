@@ -151,7 +151,10 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::NumberConst};
+    use {
+        super::*,
+        grug::{IsZero, NumberConst},
+    };
 
     #[test]
     fn value_of_unit_amount_does_not_overflow_with_large_precision() {
@@ -185,5 +188,24 @@ mod tests {
             .unit_amount_from_value(Udec128::new(10_000_000_000_000_000u128))
             .unwrap();
         assert_eq!(unit_amount, Uint128::new(100_000_000u128 * 10u128.pow(18)));
+    }
+
+    #[test]
+    fn value_of_unit_amount_works_with_large_precision_and_small_price() {
+        // 0.000001 USD per token
+        let price = PrecisionedPrice {
+            humanized_price: Udec128::checked_from_ratio(1, 1_000_000).unwrap(),
+            humanized_ema: Udec128::ONE,
+            timestamp: Timestamp::from_seconds(0),
+            precision: Defined::new(18),
+        };
+
+        // Value of 1 unit of token at 0.000001 USD = 0.000001 / 10^18 USD
+        let value = price.value_of_unit_amount(Uint128::new(1)).unwrap();
+        assert!(value.is_non_zero());
+        assert_eq!(
+            value,
+            Udec128::checked_from_ratio(1, 1_000_000 * 10u128.pow(18)).unwrap()
+        );
     }
 }
