@@ -464,6 +464,19 @@ macro_rules! generate_decimal {
                 }
             }
 
+            impl crate::FixedPoint<$inner> for $name {
+                const PRECISION: Int<$inner> = $constructor($base_constructor::TEN.pow($precision));
+                const TICK: Self = Self::raw(Int::<$inner>::ONE);
+            }
+
+            impl crate::NumberConst for $name {
+                const MIN: Self = Self::raw(Int::<$inner>::MIN);
+                const MAX: Self = Self::raw(Int::<$inner>::MAX);
+                const ONE: Self = Self::raw(Self::PRECISION);
+                const TEN: Self = Self::raw($constructor($base_constructor::TEN.pow(Self::DECIMAL_PLACES + 1)));
+                const ZERO: Self = Self::raw(Int::<$inner>::ZERO);
+            }
+
         }
     };
     (

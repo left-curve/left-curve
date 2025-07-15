@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec128, Dec256, Int64, Int128, Int256, Int512, MathError, MathResult, Sign, Udec128,
-        Udec256, Uint64, Uint128, Uint256, Uint512,
+        Dec, Int, Int64, Int128, Int256, Int512, MathError, MathResult, Sign, Uint64, Uint128,
+        Uint256, Uint512,
     },
     bnum::cast::As,
 };
@@ -11,6 +11,8 @@ pub trait Signed {
 
     fn checked_into_unsigned(self) -> MathResult<Self::Unsigned>;
 }
+
+// ------------------------------------ int ------------------------------------
 
 macro_rules! impl_checked_into_unsigned_std {
     ($signed:ty => $unsigned:ty) => {
@@ -64,26 +66,17 @@ impl_checked_into_unsigned_bnum! {
     Int512 => Uint512,
 }
 
-macro_rules! impl_checked_into_unsigned_dec {
-    ($signed:ty => $unsigned:ty) => {
-        impl Signed for $signed {
-            type Unsigned = $unsigned;
+// ------------------------------------ dec ------------------------------------
 
-            fn checked_into_unsigned(self) -> MathResult<$unsigned> {
-                self.0.checked_into_unsigned().map(<$unsigned>::raw)
-            }
-        }
-    };
-    ($($signed:ty => $unsigned:ty),+ $(,)?) => {
-        $(
-            impl_checked_into_unsigned_dec!($signed => $unsigned);
-        )+
-    };
-}
+impl<U, UU, const S: u32> Signed for Dec<U, S>
+where
+    Int<U>: Signed<Unsigned = Int<UU>>,
+{
+    type Unsigned = Dec<UU, S>;
 
-impl_checked_into_unsigned_dec! {
-    Dec128 => Udec128,
-    Dec256 => Udec256,
+    fn checked_into_unsigned(self) -> MathResult<Self::Unsigned> {
+        self.0.checked_into_unsigned().map(Dec::raw)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

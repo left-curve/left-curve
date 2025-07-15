@@ -1,8 +1,5 @@
 use {
-    crate::{
-        Bytable, Dec128, Dec256, Int64, Int128, Int256, Int512, Udec128, Udec256, Uint64, Uint128,
-        Uint256, Uint512,
-    },
+    crate::{Bytable, Dec, Int, Int64, Int128, Int256, Int512, Uint64, Uint128, Uint256, Uint512},
     bnum::types::{I512, U512},
 };
 
@@ -71,26 +68,15 @@ impl_next_bnum! {
 
 // ----------------------------------- dec -------------------------------------
 
-macro_rules! impl_next_udec {
-    ($this:ty => $next:ty) => {
-        impl NextNumber for $this {
-            type Next = $next;
+impl<U, NP, const S: u32> NextNumber for Dec<U, S>
+where
+    Int<U>: NextNumber<Next = Int<NP>>,
+{
+    type Next = Dec<NP, S>;
 
-            fn into_next(self) -> Self::Next {
-                <$next>::raw(self.0.into_next())
-            }
-        }
-    };
-    ($($this:ty => $next:ty),+ $(,)?) => {
-        $(
-            impl_next_udec!($this => $next);
-        )+
-    };
-}
-
-impl_next_udec! {
-    Udec128 => Udec256,
-    Dec128  => Dec256,
+    fn into_next(self) -> Self::Next {
+        Dec::raw(self.0.into_next())
+    }
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -165,7 +151,6 @@ mod dec_tests {
         }
         method = |_0d:  Dec<_, 18>, samples| {
             for (current, next) in samples {
-                // let current = bt(_0, Dec::new(current));
                 dt(_0d, current);
                 assert_eq!(current.into_next(), next);
             }
