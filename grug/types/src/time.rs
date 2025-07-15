@@ -3,7 +3,7 @@ use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use {
     crate::Inner,
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Dec, Int, IsZero, NumberConst, Udec128_9, Uint128},
+    grug_math::{Dec, Int, IsZero, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Mul, Sub},
 };
@@ -159,7 +159,7 @@ impl From<NaiveDateTime> for Timestamp {
 }
 
 impl Inner for Duration {
-    type U = Udec128_9;
+    type U = Dec<u128, 9>;
 
     fn inner(&self) -> &Self::U {
         &self.0

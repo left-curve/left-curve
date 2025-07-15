@@ -170,7 +170,7 @@ mod dec_tests {
     use {
         crate::{
             Dec, Dec128, Dec256, FixedPoint, Int, Int128, IsZero, Number, NumberConst, Sign,
-            Udec128, Udec128_6, Udec256, Uint128, dec_test,
+            Udec128, Udec256, Uint128, dec_test,
             test_utils::{bt, dec, dt},
         },
         bnum::types::{I256, U256},
@@ -246,7 +246,7 @@ mod dec_tests {
         let dec_18 = Udec128::MAX;
         dec_18.checked_add(Udec128::TICK).unwrap_err();
         let dec_6 = dec_18.convert_precision::<6>().unwrap();
-        dec_6.checked_add(Udec128_6::TICK).unwrap();
+        dec_6.checked_add(Dec::<_, 6>::TICK).unwrap();
     }
 
     #[test_case(

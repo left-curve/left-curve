@@ -1667,7 +1667,7 @@ mod dec_tests {
 
     #[test]
     fn check_add_different_precision() {
-        let a = dec::<_, 6>("1.123456");
+        let a = dec::<u128, 6>("1.123456");
         let b = dec::<_, 9>("1.123456789");
 
         assert_eq!(a.checked_add(b).unwrap(), dec("2.246912"));
@@ -1689,7 +1689,7 @@ mod dec_tests {
 
     #[test]
     fn check_sub_different_precision() {
-        let a = dec::<_, 6>("1.123456");
+        let a = dec::<u128, 6>("1.123456");
         let b = dec::<_, 9>("1.123456789");
 
         assert_eq!(a.checked_sub(b).unwrap(), dec("0"));
