@@ -14,10 +14,10 @@ export const NotFound: React.FC = () => {
         className="w-full max-w-[14.75rem] md:max-w-[22.5rem] opacity-60"
       />
       <div className="flex flex-col gap-2">
-        <h1 className="text-center font-exposure text-[30px] md:text-[60px] font-extrabold text-gray-700 italic">
+        <h1 className="text-center font-exposure text-[30px] md:text-[60px] font-extrabold text-secondary-700 italic">
           {m["notFound.title"]()}
         </h1>
-        <p className="text-gray-500 diatype-m-regular">{m["notFound.description"]()}</p>
+        <p className="text-tertiary-500 diatype-m-regular">{m["notFound.description"]()}</p>
       </div>
       <Button onClick={() => navigate({ to: "/" })}>{m["notFound.goToHome"]()}</Button>
     </div>
