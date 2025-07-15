@@ -1,12 +1,12 @@
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-
 use {
-    crate::{entities::pair_price::PairPrice, httpd::graphql::subscription::MAX_PAST_BLOCKS},
+    crate::{
+        entities::candle::{Candle, CandleInterval},
+        httpd::graphql::subscription::MAX_PAST_CANDLES,
+    },
     async_graphql::{futures_util::stream::Stream, *},
+    chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
-    itertools::Itertools,
-    std::ops::RangeInclusive,
+    grug::Timestamp,
 };
 
 #[derive(Default)]
@@ -15,9 +15,47 @@ pub struct CandleSubscription;
 impl CandleSubscription {
     async fn get_candles(
         app_ctx: &crate::context::Context,
-        block_heights: RangeInclusive<i64>,
-    ) -> Vec<PairPrice> {
-        todo!()
+        base_denom: String,
+        quote_denom: String,
+        interval: CandleInterval,
+        later_than: Option<DateTime<Utc>>,
+        limit: usize,
+    ) -> Result<Vec<Candle>> {
+        let table_name = match interval {
+            CandleInterval::OneSecond => "pair_prices_1s",
+            CandleInterval::OneMinute => "pair_prices_1m",
+            CandleInterval::FiveMinutes => "pair_prices_5m",
+            CandleInterval::FifteenMinutes => "pair_prices_15m",
+            CandleInterval::OneHour => "pair_prices_1h",
+            CandleInterval::FourHours => "pair_prices_4h",
+            CandleInterval::OneDay => "pair_prices_1d",
+            CandleInterval::OneWeek => "pair_prices_1w",
+        };
+
+        let interval_str = interval.to_string();
+
+        let mut query = format!(
+            "SELECT quote_denom, base_denom, time_start, open, high, low, close, volume_base, volume_quote, '{interval_str}' as interval
+            FROM {table_name}
+            WHERE quote_denom = ? AND base_denom = ?",
+        );
+
+        let mut params: Vec<String> = vec![quote_denom.clone(), base_denom.clone()];
+
+        if let Some(later_than_start_time) = later_than {
+            query.push_str(" AND time_start >= ?");
+            params.push(Timestamp::from(later_than_start_time.naive_utc()).to_rfc3339_string());
+        }
+
+        query.push_str(" ORDER BY time_start DESC");
+        query.push_str(&format!(" LIMIT {limit}",));
+
+        Ok(app_ctx
+            .clickhouse_client()
+            .query(&query)
+            .bind(params)
+            .fetch_all::<Candle>()
+            .await?)
     }
 }
 
@@ -26,37 +64,59 @@ impl CandleSubscription {
     async fn candle<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
-        pair_id: Option<String>,
-        // This is used to get the older candles in case of disconnection
-        since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<PairPrice>> + 'a> {
+        base_denom: String,
+        quote_denom: String,
+        interval: CandleInterval,
+        later_than: Option<DateTime<Utc>>,
+        limit: Option<usize>,
+    ) -> Result<impl Stream<Item = Vec<Candle>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        let latest_block_height = 0; // latest_block_height(&app_ctx.clickhouse_client).await?.unwrap_or_default();
+        let base_denom_clone = base_denom.clone();
+        let quote_denom_clone = quote_denom.clone();
 
-        let block_range = match since_block_height {
-            Some(block_height) => block_height as i64..=latest_block_height,
-            None => latest_block_height..=latest_block_height,
-        };
-
-        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
-            return Err(async_graphql::Error::new("`since_block_height` is too old"));
-        }
-
-        Ok(
-            once(async move { Self::get_candles(app_ctx, block_range).await })
-                .chain(app_ctx.pubsub.subscribe_block_minted().await?.then(
-                    move |block_height| async move {
-                        Self::get_candles(app_ctx, block_height as i64..=block_height as i64).await
-                    },
-                ))
-                .filter_map(|pair_prices| async move {
-                    if pair_prices.is_empty() {
-                        None
-                    } else {
-                        Some(pair_prices)
+        Ok(once(async move {
+            Self::get_candles(
+                app_ctx,
+                base_denom_clone,
+                quote_denom_clone,
+                interval,
+                later_than,
+                std::cmp::min(limit.unwrap_or(MAX_PAST_CANDLES), MAX_PAST_CANDLES),
+            )
+            .await
+        })
+        .chain(
+            app_ctx
+                .pubsub
+                .subscribe_block_minted()
+                .await?
+                .then(move |_| {
+                    let base_denom = base_denom.clone();
+                    let quote_denom = quote_denom.clone();
+                    let interval = interval;
+                    let later_than = later_than;
+                    async move {
+                        Self::get_candles(app_ctx, base_denom, quote_denom, interval, later_than, 1)
+                            .await
                     }
                 }),
         )
+        .filter_map(|candles| async move {
+            match candles {
+                Ok(candles) => {
+                    if candles.is_empty() {
+                        None
+                    } else {
+                        Some(candles)
+                    }
+                },
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("Error getting candles: {:?}", e);
+                    None
+                },
+            }
+        }))
     }
 }
