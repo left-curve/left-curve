@@ -48,7 +48,7 @@ impl CandleSubscription {
         }
 
         query.push_str(" ORDER BY time_start DESC");
-        query.push_str(&format!(" LIMIT {limit}",));
+        query.push_str(&format!(" LIMIT {limit}"));
 
         Ok(app_ctx
             .clickhouse_client()
@@ -61,6 +61,11 @@ impl CandleSubscription {
 
 #[Subscription]
 impl CandleSubscription {
+    /// Get candles for a given base and quote denom, interval, and later than time.
+    /// If `limit` is provided, it will be used to limit the number of candles returned.
+    /// If `limit` is not provided, it will default to MAX_PAST_CANDLES.
+    /// If `limit` is greater than MAX_PAST_CANDLES, it will be set to MAX_PAST_CANDLES.
+    /// If `later_than` is provided, it will be used to filter the candles returned.
     async fn candle<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
@@ -111,9 +116,9 @@ impl CandleSubscription {
                         Some(candles)
                     }
                 },
-                Err(e) => {
+                Err(_err) => {
                     #[cfg(feature = "tracing")]
-                    tracing::error!("Error getting candles: {:?}", e);
+                    tracing::error!("Error getting candles: {:?}", _err);
                     None
                 },
             }
