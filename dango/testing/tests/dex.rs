@@ -3483,7 +3483,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
 
     // Query the volume for username user2, should be 300
     suite
@@ -3491,7 +3491,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
 
     // Query the volume for user1 address, should be 300
     suite
@@ -3499,7 +3499,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
 
     // Query the volume for user2 address, should be 300
     suite
@@ -3507,7 +3507,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.0001467784").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
 
     // Query the volume for both usernames since timestamp after first trade, should be zero
     suite
@@ -3612,7 +3612,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.00042").unwrap());
 
     // Query the volume for username user2, should be 700
     suite
@@ -3620,7 +3620,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.00043").unwrap());
 
     // Query the volume for user1 address, should be 700
     suite
@@ -3628,7 +3628,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.00042").unwrap());
 
     // Query the volume for user2 address, should be 700
     suite
@@ -3636,7 +3636,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.0004403352").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.00043").unwrap());
 
     // Query the volume for both usernames since timestamp after second trade, should be zero
     suite
@@ -3658,13 +3658,13 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::from_str("400.0002935568").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("400.00028").unwrap());
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: accounts.user2.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::from_str("400.0002935568").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("400.00029").unwrap());
 }
 
 #[test_case(

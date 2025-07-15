@@ -570,6 +570,15 @@ generate_decimal! {
 
 generate_decimal! {
     type              = Unsigned,
+    name              = Udec256_5,
+    precision         = 5,
+    inner_type        = U256,
+    inner_constructor = Uint256::new_from_u128,
+    doc               = "256-bit unsigned fixed-point number with 5 decimal places.",
+}
+
+generate_decimal! {
+    type              = Unsigned,
     name              = Udec256_24,
     precision         = 24,
     inner_type        = U256,

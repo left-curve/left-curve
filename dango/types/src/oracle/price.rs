@@ -1,7 +1,8 @@
 use {
+    bnum::types::U256,
     grug::{
-        Dec, Defined, Exponentiate, FixedPoint, Fraction, MaybeDefined, MultiplyFraction,
-        MultiplyRatio, Number, NumberConst, StdResult, Timestamp, Udec128, Uint128, Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MaybeDefined, MultiplyFraction, NextNumber, Number,
+        NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Uint128, Undefined,
     },
     pyth_types::PriceFeed,
 };
@@ -103,54 +104,18 @@ impl PrecisionedPrice {
         dec_amount: Dec<u128, S1>,
     ) -> StdResult<Dec<u128, S2>>
     where
-        Dec<u128, S1>: FixedPoint<u128> + NumberConst,
-        Dec<u128, S2>: FixedPoint<u128> + NumberConst,
+        Dec<U256, S1>: FixedPoint<U256> + NumberConst,
     {
-        let factor = Dec::<u128, S1>::TEN.checked_pow(self.precision.into_inner() as u32)?;
+        let factor = Dec::<U256, S1>::TEN.checked_pow(self.precision.into_inner() as u32)?;
+
         Ok(self
             .humanized_price
-            .checked_mul(dec_amount.checked_div(factor)?)?
+            .into_next()
+            .checked_mul(dec_amount.into_next())?
+            .checked_div(factor)?
+            .checked_into_prev()?
             .convert_precision::<S2>()?)
     }
-
-    // pub fn value_of_dec_amount(&self, dec_amount: Udec128) -> StdResult<Udec128> {
-    //     let factor = Udec128::TEN.checked_pow(self.precision.into_inner() as u32)?;
-    //     Ok(self
-    //         .humanized_price
-    //         .checked_mul(dec_amount.checked_div(factor)?)?)
-    // }
-
-    // pub fn value_of_dec_amount<const S: u32>(&self, dec_amount: Dec<u128, S>) -> StdResult<Udec128>
-    // where
-    //     Dec<u128, S>: FixedPoint<u128> + NumberConst,
-    // {
-    //     let factor = Dec::<u128, 18>::TEN.checked_pow(self.precision.into_inner() as u32)?;
-    //     println!("factor: {}", factor);
-    //     println!("humanized_price: {}", self.humanized_price);
-    //     println!("dec_amount: {}", dec_amount);
-    //     let temp = dec_amount.checked_7div(factor.convert_precision()?)?;
-    //     println!("temp: {}", temp);
-
-    //     let dec_amount_18 = dec_amount.convert_precision::<18>()?;
-    //     println!("dec_amount_18: {}", dec_amount_18);
-
-    //     println!("dec_amount.numerator(): {}", dec_amount.numerator());
-    //     println!("Dec::<u128, S>::PRECISION: {}", Dec::<u128, S>::PRECISION);
-    //     println!("factor.numerator(): {}", factor.numerator());
-
-    //     let temp2: Udec128 = Udec128::raw(dec_amount.numerator().checked_multiply_ratio(
-    //         Udec128::PRECISION - Dec::<u128, S>::PRECISION,
-    //         factor.numerator(),
-    //     )?);
-    //     println!("temp2: {}", temp2);
-    //     let res = self.humanized_price.checked_mul(temp)?;
-    //     println!("res: {}", res);
-
-    //     let res2 = grug::Number::<Dec<u128, 18>>::checked_mul(self.humanized_price, temp2)?;
-
-    //     println!("res2: {}", res2);
-    //     Ok(res)
-    // }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
     /// the price in USD of one ATOM, then this function will return the amount
@@ -206,7 +171,7 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
 mod tests {
     use {
         super::*,
-        grug::{IsZero, NumberConst},
+        grug::{IsZero, NumberConst, Udec128_24},
     };
 
     #[test]
@@ -254,12 +219,12 @@ mod tests {
         };
 
         // Value of 1 unit of token at 0.000001 USD = 0.000001 / 10^18 USD
-        let value = price.value_of_unit_amount(Uint128::new(1)).unwrap();
+        let value: Udec128_24 = price.value_of_unit_amount(Uint128::new(1)).unwrap();
         println!("value: {}", value);
         assert!(value.is_non_zero());
         assert_eq!(
             value,
-            Udec128::checked_from_ratio(1, 1_000_000 * 10u128.pow(18)).unwrap()
+            Udec128_24::checked_from_ratio(1, 1_000_000 * 10u128.pow(18)).unwrap()
         );
     }
 }

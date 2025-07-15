@@ -18,6 +18,7 @@ sea-orm = ["dep:sea-orm"]
 [dependencies]
 anyhow          = { workspace = true }
 async-graphql   = { workspace = true, optional = true }
+bnum            = { workspace = true }
 grug            = { workspace = true }
 hyperlane-types = { workspace = true }
 paste           = { workspace = true }

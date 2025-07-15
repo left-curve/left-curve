@@ -3633,6 +3633,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-graphql",
+ "bnum",
  "grug",
  "hyperlane-types",
  "paste",

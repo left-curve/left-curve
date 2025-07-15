@@ -511,17 +511,8 @@ fn update_trading_volumes(
         Ok(price) => price,
     };
 
-    println!("base_asset_price: {:?}", base_asset_price);
-    println!(
-        "base_asset_humanized_price: {}",
-        base_asset_price.humanized_price
-    );
-    println!("base_asset_precision: {}", base_asset_price.precision());
-    println!("filled: {}", filled);
-
     // Calculate the volume in USD for the filled order.
     let new_volume: Udec128_5 = base_asset_price.value_of_dec_amount(filled)?;
-    println!("new_volume: {}", new_volume);
 
     // Record trading volume for the user's address
     {
