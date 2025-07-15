@@ -1,13 +1,13 @@
 use {
     crate::{LimitOrder, Order, PassiveOrder},
-    grug::{Order as IterationOrder, StdResult, Udec128},
+    grug::{Order as IterationOrder, StdResult, Udec128_24},
     std::{cmp::Ordering, iter::Peekable},
 };
 
 pub struct MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
-    B: Iterator<Item = (Udec128, PassiveOrder)>,
+    A: Iterator<Item = StdResult<(Udec128_24, LimitOrder)>>,
+    B: Iterator<Item = (Udec128_24, PassiveOrder)>,
 {
     /// Iterator that returns real orders in the form of `(price, limit_order)`.
     real: Peekable<A>,
@@ -19,8 +19,8 @@ where
 
 impl<A, B> MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
-    B: Iterator<Item = (Udec128, PassiveOrder)>,
+    A: Iterator<Item = StdResult<(Udec128_24, LimitOrder)>>,
+    B: Iterator<Item = (Udec128_24, PassiveOrder)>,
 {
     pub fn new(real: A, passive: B, iteration_order: IterationOrder) -> Self {
         Self {
@@ -30,7 +30,7 @@ where
         }
     }
 
-    fn next_real(&mut self) -> Option<StdResult<(Udec128, Order)>> {
+    fn next_real(&mut self) -> Option<StdResult<(Udec128_24, Order)>> {
         self.real.next().map(|res| {
             let (price, limit_order) = res?;
             let order = Order::Limit(limit_order);
@@ -38,7 +38,7 @@ where
         })
     }
 
-    fn next_passive(&mut self) -> Option<StdResult<(Udec128, Order)>> {
+    fn next_passive(&mut self) -> Option<StdResult<(Udec128_24, Order)>> {
         self.passive.next().map(|(price, passive_order)| {
             let order = Order::Passive(passive_order);
             Ok((price, order))
@@ -48,10 +48,10 @@ where
 
 impl<A, B> Iterator for MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<(Udec128, LimitOrder)>>,
-    B: Iterator<Item = (Udec128, PassiveOrder)>,
+    A: Iterator<Item = StdResult<(Udec128_24, LimitOrder)>>,
+    B: Iterator<Item = (Udec128_24, PassiveOrder)>,
 {
-    type Item = StdResult<(Udec128, Order)>;
+    type Item = StdResult<(Udec128_24, Order)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.real.peek(), self.passive.peek()) {

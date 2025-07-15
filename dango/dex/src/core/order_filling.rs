@@ -1,7 +1,7 @@
 use {
     crate::{Order, OrderTrait},
     dango_types::dex::Direction,
-    grug::{IsZero, Number, NumberConst, StdResult, Udec128},
+    grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_24},
 };
 
 #[derive(Debug)]
@@ -25,9 +25,9 @@ pub struct FillingOutcome {
 
 /// Clear the orders given a clearing price and volume.
 pub fn fill_orders(
-    bids: Vec<(Udec128, Order)>,
-    asks: Vec<(Udec128, Order)>,
-    clearing_price: Udec128,
+    bids: Vec<(Udec128_24, Order)>,
+    asks: Vec<(Udec128_24, Order)>,
+    clearing_price: Udec128_24,
     volume: Udec128,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -58,8 +58,8 @@ pub fn fill_orders(
 
 /// Fill the BUY orders given a clearing price and volume.
 fn fill_bids(
-    bids: Vec<(Udec128, Order)>,
-    clearing_price: Udec128,
+    bids: Vec<(Udec128_24, Order)>,
+    clearing_price: Udec128_24,
     mut volume: Udec128,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -120,8 +120,8 @@ fn fill_bids(
 
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
-    asks: Vec<(Udec128, Order)>,
-    clearing_price: Udec128,
+    asks: Vec<(Udec128_24, Order)>,
+    clearing_price: Udec128_24,
     mut volume: Udec128,
     current_block_height: u64,
     maker_fee_rate: Udec128,

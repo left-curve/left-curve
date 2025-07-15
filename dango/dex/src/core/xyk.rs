@@ -2,7 +2,7 @@ use {
     crate::PassiveOrder,
     grug::{
         Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
-        Number, NumberConst, Udec128, Uint64, Uint128, ZeroExclusiveOneExclusive,
+        Number, NumberConst, Udec128, Udec128_24, Uint64, Uint128, ZeroExclusiveOneExclusive,
         ZeroInclusiveOneExclusive,
     },
     std::{cmp, iter},
@@ -17,7 +17,7 @@ pub fn add_initial_liquidity(deposit: &CoinPair) -> MathResult<Uint128> {
 pub fn add_subsequent_liquidity(
     reserve: &mut CoinPair,
     deposit: CoinPair,
-) -> anyhow::Result<Udec128> {
+) -> anyhow::Result<Udec128_24> {
     let invariant_before = normalized_invariant(reserve)?;
 
     // Add the used funds to the pool reserves.
@@ -25,12 +25,12 @@ pub fn add_subsequent_liquidity(
 
     // Compute the proportional increase in the invariant.
     let invariant_after = normalized_invariant(reserve)?;
-    let invariant_ratio = Udec128::checked_from_ratio(invariant_after, invariant_before)?;
+    let invariant_ratio = Udec128_24::checked_from_ratio(invariant_after, invariant_before)?;
 
     // Compute the mint ratio from the invariant ratio based on the curve type.
     // This ensures that an unbalances provision will be equivalent to a swap
     // followed by a balancedliquidity provision.
-    Ok(invariant_ratio.checked_sub(Udec128::ONE)?)
+    Ok(invariant_ratio.checked_sub(Udec128_24::ONE)?)
 }
 
 /// Note: this function does not concern the liquidity fee.
@@ -76,8 +76,8 @@ pub fn reflect_curve(
     reserve_ratio: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
-    Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
-    Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
+    Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
 )> {
     // Withhold the funds corresponding to the reserve requirement.
     // These funds will not be used to place orders.
@@ -86,7 +86,7 @@ pub fn reflect_curve(
     quote_reserve.checked_mul_dec_floor_assign(one_sub_reserve_ratio)?;
 
     // Compute the marginal price. We will place orders above and below this price.
-    let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve)?;
+    let marginal_price = Udec128_24::checked_from_ratio(quote_reserve, base_reserve)?;
 
     // Construct the bid order iterator.
     // Start from the marginal price minus the swap fee rate.
@@ -206,14 +206,16 @@ pub fn normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
 
 #[cfg(test)]
 mod tests {
+    use grug::Udec128_24;
+
     use super::*;
 
     #[test]
-    fn marginal_price_is_non_zero_with_low_price_and_high_recision_token() {
-        // 0.00000001 USD per whole token
-        let humanized_price = Udec128::checked_from_ratio(1, 100_000_000).unwrap();
+    fn marginal_price_is_non_zero_with_low_price_and_high_precision_token() {
+        // 0.000001 USD per whole token
+        let humanized_price = Udec128::checked_from_ratio(1, 1_000_000).unwrap();
 
-        // $1B worth of base asset at 0.00000001 USD per whole token with 18 decimals precision
+        // $1B worth of base asset at 0.000001 USD per whole token with 18 decimals precision
         let base_reserve = Uint128::new(1_000_000_000 * 10u128.pow(18))
             .checked_div_dec(humanized_price)
             .unwrap();
@@ -221,7 +223,8 @@ mod tests {
         // $1B worth of quote asset at 1 USD per whole token with 6 decimals precision
         let quote_reserve = Uint128::new(1_000_000_000 * 10u128.pow(6));
 
-        let marginal_price = Udec128::checked_from_ratio(quote_reserve, base_reserve).unwrap();
+        let marginal_price = Udec128_24::checked_from_ratio(quote_reserve, base_reserve).unwrap();
+        println!("marginal_price: {}", marginal_price);
         assert!(marginal_price.is_non_zero());
 
         let (mut bids, mut asks) = reflect_curve(

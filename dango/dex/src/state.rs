@@ -6,7 +6,7 @@ use {
     },
     grug::{
         Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, NumberConst, Timestamp,
-        Udec128, Uint64, UniqueIndex,
+        Udec128, Udec128_24, Uint64, UniqueIndex,
     },
 };
 
@@ -55,7 +55,7 @@ pub type MarketOrderKey = ((Denom, Denom), Direction, OrderId);
 /// ```plain
 /// ((base_denom, quote_denom), direction, price, order_id)
 /// ```
-pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
+pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
 
 #[grug::index_list(MarketOrderKey, MarketOrder)]
 pub struct MarketOrderIndex<'a> {

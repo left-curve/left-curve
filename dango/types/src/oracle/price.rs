@@ -1,7 +1,7 @@
 use {
     grug::{
-        Defined, Exponentiate, MaybeDefined, MultiplyFraction, Number, NumberConst, StdResult,
-        Timestamp, Udec128, Uint128, Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MaybeDefined, MultiplyFraction, Number,
+        NumberConst, StdResult, Timestamp, Udec128, Uint128, Undefined,
     },
     pyth_types::PriceFeed,
 };
@@ -83,13 +83,19 @@ impl PrecisionedPrice {
     /// precision: 18
     /// unit amount: 1*10^18
     /// value: 3000 * 1*10^18 / 10^18 = 3000
-    pub fn value_of_unit_amount(&self, unit_amount: Uint128) -> StdResult<Udec128> {
-        Ok(self
-            .humanized_price
-            .checked_mul(Udec128::checked_from_ratio(
+    pub fn value_of_unit_amount<const S: u32>(
+        &self,
+        unit_amount: Uint128,
+    ) -> StdResult<Dec<u128, S>>
+    where
+        Dec<u128, S>: FixedPoint<u128> + NumberConst,
+    {
+        Ok(self.humanized_price.convert_precision()?.checked_mul(
+            Dec::<u128, S>::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
-            )?)?)
+            )?,
+        )?)
     }
 
     pub fn value_of_dec_amount(&self, dec_amount: Udec128) -> StdResult<Udec128> {
@@ -202,6 +208,7 @@ mod tests {
 
         // Value of 1 unit of token at 0.000001 USD = 0.000001 / 10^18 USD
         let value = price.value_of_unit_amount(Uint128::new(1)).unwrap();
+        println!("value: {}", value);
         assert!(value.is_non_zero());
         assert_eq!(
             value,

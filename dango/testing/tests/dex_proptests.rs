@@ -13,9 +13,9 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128, Denom, Inner, IsZero, MaxLength, Message,
+        Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
         MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
-        Udec128, Uint128, UniqueVec, btree_map, coins,
+        Udec128, Udec128_24, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -173,7 +173,7 @@ pub enum DexAction {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-        price: Udec128,
+        price: Udec128_24,
     },
     CreateMarketOrder {
         base_denom: Denom,
@@ -468,9 +468,9 @@ fn amount() -> impl Strategy<Value = Uint128> {
 }
 
 /// Proptest strategy for generating a price as [-3, 3] permille from 1.0
-fn price() -> impl Strategy<Value = Udec128> {
+fn price() -> impl Strategy<Value = Udec128_24> {
     (-3i128..3i128).prop_map(|price_diff| {
-        (Dec128::ONE - Dec128::new_permille(price_diff))
+        (Dec128_24::ONE - Dec128_24::new_permille(price_diff))
             .checked_into_unsigned()
             .unwrap()
     })

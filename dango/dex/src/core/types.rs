@@ -1,6 +1,6 @@
 use {
     dango_types::dex::{OrderId, OrderKind},
-    grug::{Addr, MathResult, Number, NumberConst, Udec128, Uint64, Uint128},
+    grug::{Addr, MathResult, Number, NumberConst, Udec128, Udec128_24, Uint64, Uint128},
 };
 
 /// An identifier type that is extended to represent both real orders from users
@@ -118,7 +118,7 @@ pub struct LimitOrder {
     /// The order's identifier.
     pub id: OrderId,
     /// The order's limit price, measured in quote asset per base asset.
-    pub price: Udec128,
+    pub price: Udec128_24,
     /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.
@@ -199,7 +199,7 @@ impl OrderTrait for MarketOrder {
 #[derive(Copy)]
 pub struct PassiveOrder {
     pub id: OrderId,
-    pub price: Udec128,
+    pub price: Udec128_24,
     pub amount: Uint128,
     pub remaining: Udec128,
 }

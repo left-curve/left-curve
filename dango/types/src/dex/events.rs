@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId},
-    grug::{Addr, Coin, Denom, Udec128, Uint128},
+    grug::{Addr, Coin, Denom, Udec128, Udec128_24, Uint128},
 };
 
 #[grug::derive(Serde)]
@@ -20,7 +20,7 @@ pub struct OrderCreated {
     pub quote_denom: Denom,
     pub direction: Direction,
     /// `None` for market orders.
-    pub price: Option<Udec128>,
+    pub price: Option<Udec128_24>,
     /// Amount denominated in the base asset for limit orders and market SELL orders.
     /// Amount denominated in the quote asset for market BUY orders.
     pub amount: Uint128,
@@ -46,7 +46,7 @@ pub struct OrderCanceled {
 pub struct LimitOrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
-    pub clearing_price: Udec128,
+    pub clearing_price: Udec128_24,
     /// Amount matched denominated in the base asset.
     pub volume: Udec128,
 }
