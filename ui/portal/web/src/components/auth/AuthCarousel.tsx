@@ -73,7 +73,7 @@ export const AuthCarousel: React.FC = () => {
       </div>
       <div
         className={twMerge(
-          "bg-[url('./images/frame-rounded-mobile.svg')] min-h-[5rem] h-[5rem] w-full bg-no-repeat bg-[center_1rem] xl:hidden",
+          "min-h-[5rem] h-[5rem] w-full bg-no-repeat bg-[center_1rem] xl:hidden",
           isDarkTheme
             ? "bg-[url('./images/dark-frame-rounded-mobile.svg')]"
             : "bg-[url('./images/frame-rounded-mobile.svg')]",
