@@ -16,6 +16,7 @@ mod number_const;
 mod prev;
 mod sign;
 mod signed;
+mod unary_number;
 mod unsigned;
 mod utils;
 
@@ -25,5 +26,5 @@ mod test_utils;
 pub use {
     bytable::*, dec::*, decimal::*, error::*, fixed_point::*, fraction::*, int::*, integer::*,
     is_zero::*, multiply_fraction::*, multiply_ratio::*, next::*, number::*, number_const::*,
-    prev::*, sign::*, signed::*, unsigned::*,
+    prev::*, sign::*, signed::*, unary_number::*, unsigned::*,
 };
