@@ -76,7 +76,7 @@ const buttonVariants = tv(
         primary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         secondary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+          "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         tertiary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
@@ -119,7 +119,7 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         class:
-          "bg-primary-blue hover:bg-blue-100 text-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-primary-blue hover:bg-surface-secondary-blue  text-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
@@ -134,23 +134,23 @@ const buttonVariants = tv(
       {
         variant: "link",
         isDisabled: true,
-        class: "text-gray-200",
+        class: "text-foreground-disabled-gray",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-blue-50 text-blue-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         isDisabled: true,
-        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "utility",
