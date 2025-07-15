@@ -15,7 +15,7 @@ use {
     grug::{
         Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
         Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128,
+        Udec128, Udec128_5,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -38,11 +38,11 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
-    let mut refunds = TransferBuilder::<DecCoins>::new();
-    let mut volumes = HashMap::<Addr, Udec128>::new();
-    let mut volumes_by_username = HashMap::<Username, Udec128>::new();
-    let mut fees = DecCoins::new();
-    let mut fee_payments = TransferBuilder::<DecCoins>::new();
+    let mut refunds = TransferBuilder::<DecCoins<5>>::new();
+    let mut volumes = HashMap::<Addr, Udec128_5>::new();
+    let mut volumes_by_username = HashMap::<Username, Udec128_5>::new();
+    let mut fees = DecCoins::<5>::new();
+    let mut fee_payments = TransferBuilder::<DecCoins<5>>::new();
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
@@ -143,11 +143,11 @@ fn clear_orders_of_pair(
     base_denom: Denom,
     quote_denom: Denom,
     events: &mut EventBuilder,
-    refunds: &mut TransferBuilder<DecCoins>,
-    fees: &mut DecCoins,
-    fee_payments: &mut TransferBuilder<DecCoins>,
-    volumes: &mut HashMap<Addr, Udec128>,
-    volumes_by_username: &mut HashMap<Username, Udec128>,
+    refunds: &mut TransferBuilder<DecCoins<5>>,
+    fees: &mut DecCoins<5>,
+    fee_payments: &mut TransferBuilder<DecCoins<5>>,
+    volumes: &mut HashMap<Addr, Udec128_5>,
+    volumes_by_username: &mut HashMap<Username, Udec128_5>,
 ) -> anyhow::Result<()> {
     // --------------------------- 1. Prepare orders ---------------------------
 
@@ -335,7 +335,7 @@ fn clear_orders_of_pair(
                 fee_payments,
             )?;
 
-            let clearing_price = filled_quote.checked_div(filled_base)?;
+            let clearing_price = filled_quote.checked_div(filled_base)?.convert_precision()?;
             let cleared = order.remaining().is_zero();
 
             // Emit event for filled user orders to be used by the frontend
@@ -435,13 +435,13 @@ fn fill_user_order(
     user: Addr,
     base_denom: &Denom,
     quote_denom: &Denom,
-    refund_base: Udec128,
-    refund_quote: Udec128,
-    fee_base: Udec128,
-    fee_quote: Udec128,
-    refunds: &mut TransferBuilder<DecCoins>,
-    fees: &mut DecCoins,
-    fee_payments: &mut TransferBuilder<DecCoins>,
+    refund_base: Udec128_5,
+    refund_quote: Udec128_5,
+    fee_base: Udec128_5,
+    fee_quote: Udec128_5,
+    refunds: &mut TransferBuilder<DecCoins<5>>,
+    fees: &mut DecCoins<5>,
+    fee_payments: &mut TransferBuilder<DecCoins<5>>,
 ) -> StdResult<()> {
     // Handle fees.
     if fee_base.is_non_zero() {
@@ -463,10 +463,10 @@ fn fill_passive_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     order_direction: Direction,
-    filled_base: Udec128,
-    filled_quote: Udec128,
-    inflows: &mut DecCoins,
-    outflows: &mut DecCoins,
+    filled_base: Udec128_5,
+    filled_quote: Udec128_5,
+    inflows: &mut DecCoins<5>,
+    outflows: &mut DecCoins<5>,
 ) -> StdResult<()> {
     // The order only exists in the storage if it's not owned by the dex, since
     // the passive orders are "virtual". If it is virtual, we need to update the
@@ -493,10 +493,10 @@ fn update_trading_volumes(
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
     base_denom: &Denom,
-    filled: Udec128,
+    filled: Udec128_5,
     order_user: Addr,
-    volumes: &mut HashMap<Addr, Udec128>,
-    volumes_by_username: &mut HashMap<Username, Udec128>,
+    volumes: &mut HashMap<Addr, Udec128_5>,
+    volumes_by_username: &mut HashMap<Username, Udec128_5>,
 ) -> anyhow::Result<()> {
     // Query the base asset's oracle price.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
@@ -511,8 +511,17 @@ fn update_trading_volumes(
         Ok(price) => price,
     };
 
+    println!("base_asset_price: {:?}", base_asset_price);
+    println!(
+        "base_asset_humanized_price: {}",
+        base_asset_price.humanized_price
+    );
+    println!("base_asset_precision: {}", base_asset_price.precision());
+    println!("filled: {}", filled);
+
     // Calculate the volume in USD for the filled order.
-    let new_volume = base_asset_price.value_of_dec_amount(filled)?;
+    let new_volume: Udec128_5 = base_asset_price.value_of_dec_amount(filled)?;
+    println!("new_volume: {}", new_volume);
 
     // Record trading volume for the user's address
     {
@@ -526,7 +535,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Udec128::ZERO)
+                    .unwrap_or(Udec128_5::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
@@ -550,7 +559,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Udec128::ZERO)
+                    .unwrap_or(Udec128_5::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);

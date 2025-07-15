@@ -17,8 +17,8 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_24, Uint128, UniqueVec,
-        btree_map, coin_pair, coins,
+        ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_5, Udec128_24, Uint128,
+        UniqueVec, btree_map, coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
     pyth_types::constants::USDC_USD_ID,
@@ -473,7 +473,7 @@ fn dex_works(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128::new(100),
+            remaining: Udec128_5::new(100),
         },
     };
     "one submission no cancellations"
@@ -520,7 +520,7 @@ fn dex_works(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128::new(100),
+            remaining: Udec128_5::new(100),
         },
     };
     "two submission cancels one order"
@@ -687,7 +687,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128::new(100),
+            remaining: Udec128_5::new(100),
         },
     };
     "submit one order then cancel it and submit it again"
@@ -719,7 +719,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(50),
-            remaining: Udec128::new(50),
+            remaining: Udec128_5::new(50),
         },
     };
     "submit one order then cancel it and place a new order using half of the funds"
@@ -751,7 +751,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(200),
-            remaining: Udec128::new(200),
+            remaining: Udec128_5::new(200),
         },
     };
     "submit one order then cancel it and place a new order using more funds"
@@ -783,7 +783,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(200),
-            remaining: Udec128::new(200),
+            remaining: Udec128_5::new(200),
         },
     }
     => panics "insufficient funds";
@@ -816,7 +816,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(150),
-            remaining: Udec128::new(150),
+            remaining: Udec128_5::new(150),
         },
     };
     "submit one order then cancel it and place a new order excess funds are returned"
@@ -3011,7 +3011,7 @@ fn curve_on_orderbook(
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
                 assert_eq!(order.price, price.convert_precision().unwrap());
-                assert_eq!(order.remaining, remaining);
+                assert_eq!(order.remaining, remaining.convert_precision().unwrap());
                 assert_eq!(order.direction, direction);
             }
             true

@@ -1,7 +1,9 @@
 use {
     crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
     dango_types::dex::{Direction, OrderId},
-    grug::{IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_24, Unsigned},
+    grug::{
+        IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_5, Udec128_24, Unsigned,
+    },
     std::{cmp::Ordering, collections::HashMap, iter::Peekable},
 };
 
@@ -257,7 +259,7 @@ fn update_filling_outcome(
     filling_outcomes: &mut HashMap<ExtendedOrderId, FillingOutcome>,
     order: Order,
     order_direction: Direction,
-    filled_base: Udec128,
+    filled_base: Udec128_5,
     price: Udec128_24,
     fee_rate: Udec128,
 ) -> StdResult<()> {
@@ -266,12 +268,12 @@ fn update_filling_outcome(
         .or_insert_with(|| FillingOutcome {
             order_direction,
             order,
-            filled_base: Udec128::ZERO,
-            filled_quote: Udec128::ZERO,
-            refund_base: Udec128::ZERO,
-            refund_quote: Udec128::ZERO,
-            fee_base: Udec128::ZERO,
-            fee_quote: Udec128::ZERO,
+            filled_base: Udec128_5::ZERO,
+            filled_quote: Udec128_5::ZERO,
+            refund_base: Udec128_5::ZERO,
+            refund_quote: Udec128_5::ZERO,
+            fee_base: Udec128_5::ZERO,
+            fee_quote: Udec128_5::ZERO,
         });
 
     let filled_quote = filled_base.checked_mul(price)?;

@@ -1,6 +1,6 @@
 use {
     crate::{Addr, Coin, Coins, DecCoin, DecCoins, Denom, Message, StdResult},
-    grug_math::{Udec128, Uint128},
+    grug_math::{Udec128_5, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -51,8 +51,8 @@ impl TransferBuilder<Coins> {
     }
 }
 
-impl TransferBuilder<DecCoins> {
-    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Udec128) -> StdResult<()> {
+impl TransferBuilder<DecCoins<5>> {
+    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Udec128_5) -> StdResult<()> {
         self.batch
             .entry(address)
             .or_default()
@@ -60,7 +60,7 @@ impl TransferBuilder<DecCoins> {
             .map(|_| ())
     }
 
-    pub fn insert_many(&mut self, address: Addr, dec_coins: DecCoins) -> StdResult<()> {
+    pub fn insert_many(&mut self, address: Addr, dec_coins: DecCoins<5>) -> StdResult<()> {
         self.batch
             .entry(address)
             .or_default()

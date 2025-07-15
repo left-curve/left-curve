@@ -1,6 +1,8 @@
 use {
     dango_types::dex::{OrderId, OrderKind},
-    grug::{Addr, MathResult, Number, NumberConst, Udec128, Udec128_24, Uint64, Uint128},
+    grug::{
+        Addr, MathResult, Number, NumberConst, Udec128, Udec128_5, Udec128_24, Uint64, Uint128,
+    },
 };
 
 /// An identifier type that is extended to represent both real orders from users
@@ -33,21 +35,21 @@ pub trait OrderTrait {
     fn created_at_block_height(&self) -> Option<u64>;
 
     /// Return the order's remaining amount as an immutable reference.
-    fn remaining(&self) -> &Udec128;
+    fn remaining(&self) -> &Udec128_5;
 
     /// Return the order's remaining amount as a mutable reference.
-    fn remaining_mut(&mut self) -> &mut Udec128;
+    fn remaining_mut(&mut self) -> &mut Udec128_5;
 
     /// Subtract a given amount from the order's remaining amount.
-    fn fill(&mut self, amount: Udec128) -> MathResult<()> {
+    fn fill(&mut self, amount: Udec128_5) -> MathResult<()> {
         self.remaining_mut().checked_sub_assign(amount)
     }
 
     /// Set the order's remaining amount to zero.
     /// Return the remaining amount prior to clearing.
-    fn clear(&mut self) -> Udec128 {
+    fn clear(&mut self) -> Udec128_5 {
         let remaining = *self.remaining();
-        *self.remaining_mut() = Udec128::ZERO;
+        *self.remaining_mut() = Udec128_5::ZERO;
         remaining
     }
 }
@@ -94,7 +96,7 @@ impl OrderTrait for Order {
         }
     }
 
-    fn remaining(&self) -> &Udec128 {
+    fn remaining(&self) -> &Udec128_5 {
         match self {
             Order::Limit(limit_order) => limit_order.remaining(),
             Order::Market(market_order) => market_order.remaining(),
@@ -102,7 +104,7 @@ impl OrderTrait for Order {
         }
     }
 
-    fn remaining_mut(&mut self) -> &mut Udec128 {
+    fn remaining_mut(&mut self) -> &mut Udec128_5 {
         match self {
             Order::Limit(limit_order) => limit_order.remaining_mut(),
             Order::Market(market_order) => market_order.remaining_mut(),
@@ -122,7 +124,7 @@ pub struct LimitOrder {
     /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.
-    pub remaining: Udec128,
+    pub remaining: Udec128_5,
     /// The block height at which the order was submitted.
     pub created_at_block_height: u64,
 }
@@ -144,11 +146,11 @@ impl OrderTrait for LimitOrder {
         Some(self.created_at_block_height)
     }
 
-    fn remaining(&self) -> &Udec128 {
+    fn remaining(&self) -> &Udec128_5 {
         &self.remaining
     }
 
-    fn remaining_mut(&mut self) -> &mut Udec128 {
+    fn remaining_mut(&mut self) -> &mut Udec128_5 {
         &mut self.remaining
     }
 }
@@ -164,7 +166,7 @@ pub struct MarketOrder {
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the unit as the
     /// `amount` field.
-    pub remaining: Udec128,
+    pub remaining: Udec128_5,
     /// Max slippage percentage.
     pub max_slippage: Udec128,
 }
@@ -186,11 +188,11 @@ impl OrderTrait for MarketOrder {
         None
     }
 
-    fn remaining(&self) -> &Udec128 {
+    fn remaining(&self) -> &Udec128_5 {
         &self.remaining
     }
 
-    fn remaining_mut(&mut self) -> &mut Udec128 {
+    fn remaining_mut(&mut self) -> &mut Udec128_5 {
         &mut self.remaining
     }
 }
@@ -201,7 +203,7 @@ pub struct PassiveOrder {
     pub id: OrderId,
     pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Udec128,
+    pub remaining: Udec128_5,
 }
 
 impl OrderTrait for PassiveOrder {
@@ -221,11 +223,11 @@ impl OrderTrait for PassiveOrder {
         None
     }
 
-    fn remaining(&self) -> &Udec128 {
+    fn remaining(&self) -> &Udec128_5 {
         &self.remaining
     }
 
-    fn remaining_mut(&mut self) -> &mut Udec128 {
+    fn remaining_mut(&mut self) -> &mut Udec128_5 {
         &mut self.remaining
     }
 }

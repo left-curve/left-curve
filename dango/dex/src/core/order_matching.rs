@@ -1,6 +1,6 @@
 use {
     crate::{Order, OrderTrait},
-    grug::{Number, NumberConst, StdResult, Udec128, Udec128_24},
+    grug::{Number, NumberConst, StdResult, Udec128_5, Udec128_24},
 };
 
 pub struct MatchingOutcome {
@@ -11,7 +11,7 @@ pub struct MatchingOutcome {
     /// to decide which price to use: the lowest, the highest, or the midpoint.
     pub range: Option<(Udec128_24, Udec128_24)>,
     /// The amount of trading volume, measured as the amount of the base asset.
-    pub volume: Udec128,
+    pub volume: Udec128_5,
     /// The BUY orders that have found a match.
     pub bids: Vec<(Udec128_24, Order)>,
     /// The SELL orders that have found a match.
@@ -37,11 +37,11 @@ where
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();
     let mut bid_is_new = true;
-    let mut bid_volume = Udec128::ZERO;
+    let mut bid_volume = Udec128_5::ZERO;
     let mut ask = ask_iter.next().transpose()?;
     let mut asks = Vec::new();
     let mut ask_is_new = true;
-    let mut ask_volume = Udec128::ZERO;
+    let mut ask_volume = Udec128_5::ZERO;
     let mut range = None;
 
     loop {
