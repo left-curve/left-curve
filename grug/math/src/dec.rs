@@ -588,6 +588,15 @@ generate_decimal! {
 
 generate_decimal! {
     type              = Signed,
+    name              = Dec128_24,
+    precision         = 24,
+    inner_type        = i128,
+    inner_constructor = Int128::new,
+    doc               = "128-bit signed fixed-point number with 24 decimal places.",
+}
+
+generate_decimal! {
+    type              = Signed,
     name              = Dec256,
     precision         = 18,
     inner_type        = I256,
