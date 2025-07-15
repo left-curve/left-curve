@@ -1,7 +1,7 @@
 use {
     grug::{
-        Defined, MaybeDefined, MultiplyFraction, Number, NumberConst, StdResult, Timestamp,
-        Udec128, Uint128, Undefined,
+        Defined, Exponentiate, MaybeDefined, MultiplyFraction, Number, NumberConst, StdResult,
+        Timestamp, Udec128, Uint128, Undefined,
     },
     pyth_types::PriceFeed,
 };

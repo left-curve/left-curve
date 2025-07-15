@@ -1,8 +1,8 @@
 use {
     crate::PassiveOrder,
     grug::{
-        Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, Number,
-        NumberConst, Udec128, Uint64, Uint128, ZeroExclusiveOneExclusive,
+        Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
+        Number, NumberConst, Udec128, Uint64, Uint128, ZeroExclusiveOneExclusive,
         ZeroInclusiveOneExclusive,
     },
     std::{cmp, iter},

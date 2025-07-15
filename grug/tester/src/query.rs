@@ -1,6 +1,6 @@
 use {
     crate::QueryStackOverflowRequest,
-    grug::{Binary, ImmutableCtx, Number, QuerierExt, StdResult, Uint128},
+    grug::{Binary, Exponentiate, ImmutableCtx, Number, QuerierExt, StdResult, Uint128},
 };
 
 pub fn query_loop(iterations: u64) -> StdResult<()> {

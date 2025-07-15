@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec128, Dec256, FixedPoint, Int, Int128, Int256, Udec128, Udec128_6, Udec128_9, Udec256,
-        Uint128, Uint256,
+        Dec128, Dec128_6, Dec256, FixedPoint, Int, Int128, Int256, Udec128, Udec128_6, Udec128_9,
+        Udec256, Uint128, Uint256,
     },
     bnum::types::{I256, I512, U256, U512},
 };
@@ -63,6 +63,14 @@ impl NumberConst for Udec256 {
         10_u128.pow(Self::DECIMAL_PLACES + 1),
     ));
     const ZERO: Self = Self::raw(Uint256::ZERO);
+}
+
+impl NumberConst for Dec128_6 {
+    const MAX: Self = Self::raw(Int128::MAX);
+    const MIN: Self = Self::raw(Int128::MIN);
+    const ONE: Self = Self::raw(Self::PRECISION);
+    const TEN: Self = Self::raw(Int128::new(10_i128.pow(Self::DECIMAL_PLACES + 1)));
+    const ZERO: Self = Self::raw(Int128::ZERO);
 }
 
 impl NumberConst for Dec128 {
