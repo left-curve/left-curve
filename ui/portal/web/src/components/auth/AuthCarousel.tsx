@@ -1,4 +1,4 @@
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge, useTheme } from "@left-curve/applets-kit";
 
 import { Button, Carousel } from "@left-curve/applets-kit";
 
@@ -10,19 +10,32 @@ import { useApp } from "~/hooks/useApp";
 export const AuthCarousel: React.FC = () => {
   const { settings, changeSettings } = useApp();
   const { isFirstVisit } = settings;
+  const { theme } = useTheme();
+
+  const isDarkTheme = theme === "dark";
 
   return (
     <div
       className={twMerge(
         "custom-width h-svh xl:min-w-[720px] xl:w-[720px] bg-surface-primary-rice overflow-hidden",
         "items-start xl:pt-0 xl:items-center justify-center",
-        "xl:bg-[url('./images/frame-rounded.svg')] bg-no-repeat bg-cover bg-center",
+        " bg-no-repeat bg-cover bg-center",
+        isDarkTheme
+          ? "xl:bg-[url('./images/dark-frame-rounded.svg')]"
+          : "xl:bg-[url('./images/frame-rounded.svg')]",
         isFirstVisit
           ? "fixed z-30 top-0 left-0 flex xl:relative w-screen gap-4 justify-between items-center flex-col xl:flex-row"
           : "hidden xl:flex",
       )}
     >
-      <div className="bg-[url('./images/frame-rounded-mobile.svg')] min-h-[5rem] h-[5rem] w-full bg-no-repeat bg-[center_-1.5rem] xl:hidden" />
+      <div
+        className={twMerge(
+          "min-h-[5rem] h-[5rem] w-full bg-no-repeat bg-[center_-1.5rem] xl:hidden",
+          isDarkTheme
+            ? "bg-[url('./images/dark-frame-rounded-mobile.svg')]"
+            : "bg-[url('./images/frame-rounded-mobile.svg')]",
+        )}
+      />
       <Carousel className="gap-2 sm:gap-4 xl:gap-6 w-full h-full md:max-h-[60%]">
         {["stonk", "leverage", "smaug"].map((img, index) => {
           const title = m["signup.carousel.title"]({ step: index });
@@ -58,7 +71,14 @@ export const AuthCarousel: React.FC = () => {
           Continue
         </Button>
       </div>
-      <div className="bg-[url('./images/frame-rounded-mobile.svg')] min-h-[5rem] h-[5rem] w-full bg-no-repeat bg-[center_1rem] xl:hidden" />
+      <div
+        className={twMerge(
+          "bg-[url('./images/frame-rounded-mobile.svg')] min-h-[5rem] h-[5rem] w-full bg-no-repeat bg-[center_1rem] xl:hidden",
+          isDarkTheme
+            ? "bg-[url('./images/dark-frame-rounded-mobile.svg')]"
+            : "bg-[url('./images/frame-rounded-mobile.svg')]",
+        )}
+      />
     </div>
   );
 };
