@@ -153,7 +153,7 @@ impl Candle {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use {super::*, grug::Timestamp};
 
     #[test]
     fn test_time_start_with_microseconds() {
