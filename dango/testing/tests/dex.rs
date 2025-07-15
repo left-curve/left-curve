@@ -17,7 +17,7 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_5, Udec128_24, Uint128,
+        ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24, Uint128,
         UniqueVec, btree_map, coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
@@ -473,7 +473,7 @@ fn dex_works(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128_5::new(100),
+            remaining: Udec128_6::new(100),
         },
     };
     "one submission no cancellations"
@@ -520,7 +520,7 @@ fn dex_works(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128_5::new(100),
+            remaining: Udec128_6::new(100),
         },
     };
     "two submission cancels one order"
@@ -687,7 +687,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(100),
-            remaining: Udec128_5::new(100),
+            remaining: Udec128_6::new(100),
         },
     };
     "submit one order then cancel it and submit it again"
@@ -719,7 +719,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(50),
-            remaining: Udec128_5::new(50),
+            remaining: Udec128_6::new(50),
         },
     };
     "submit one order then cancel it and place a new order using half of the funds"
@@ -751,7 +751,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(200),
-            remaining: Udec128_5::new(200),
+            remaining: Udec128_6::new(200),
         },
     };
     "submit one order then cancel it and place a new order using more funds"
@@ -783,7 +783,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(200),
-            remaining: Udec128_5::new(200),
+            remaining: Udec128_6::new(200),
         },
     }
     => panics "insufficient funds";
@@ -816,7 +816,7 @@ fn submit_and_cancel_orders(
             direction: Direction::Bid,
             price: Udec128_24::new(1),
             amount: Uint128::new(150),
-            remaining: Udec128_5::new(150),
+            remaining: Udec128_6::new(150),
         },
     };
     "submit one order then cancel it and place a new order excess funds are returned"
@@ -3483,7 +3483,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
 
     // Query the volume for username user2, should be 300
     suite
@@ -3491,7 +3491,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
 
     // Query the volume for user1 address, should be 300
     suite
@@ -3499,7 +3499,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
 
     // Query the volume for user2 address, should be 300
     suite
@@ -3507,7 +3507,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.00014").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
 
     // Query the volume for both usernames since timestamp after first trade, should be zero
     suite
@@ -3612,7 +3612,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.00042").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.000438").unwrap());
 
     // Query the volume for username user2, should be 700
     suite
@@ -3620,7 +3620,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.00043").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.000439").unwrap());
 
     // Query the volume for user1 address, should be 700
     suite
@@ -3628,7 +3628,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.00042").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.000438").unwrap());
 
     // Query the volume for user2 address, should be 700
     suite
@@ -3636,7 +3636,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.00043").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("700.000439").unwrap());
 
     // Query the volume for both usernames since timestamp after second trade, should be zero
     suite
@@ -3658,13 +3658,13 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::from_str("400.00028").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("400.000292").unwrap());
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: accounts.user2.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::from_str("400.00029").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("400.000293").unwrap());
 }
 
 #[test_case(

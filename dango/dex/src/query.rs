@@ -15,7 +15,7 @@ use {
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_5, Uint128,
+        Timestamp, Udec128_6, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -277,13 +277,13 @@ fn query_orders_by_user(
 }
 
 #[inline]
-fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Udec128_5> {
+fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Udec128_6> {
     let volume_now = VOLUMES
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
-        .unwrap_or(Udec128_5::ZERO);
+        .unwrap_or(Udec128_6::ZERO);
 
     let volume_since = if let Some(since) = since {
         VOLUMES
@@ -296,9 +296,9 @@ fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdR
             )
             .next()
             .transpose()?
-            .unwrap_or(Udec128_5::ZERO)
+            .unwrap_or(Udec128_6::ZERO)
     } else {
-        Udec128_5::ZERO
+        Udec128_6::ZERO
     };
 
     Ok(volume_now.checked_sub(volume_since)?)
@@ -308,13 +308,13 @@ fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
     since: Option<Timestamp>,
-) -> StdResult<Udec128_5> {
+) -> StdResult<Udec128_6> {
     let volume_now = VOLUMES_BY_USER
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
-        .unwrap_or(Udec128_5::ZERO);
+        .unwrap_or(Udec128_6::ZERO);
 
     let volume_since = if let Some(since) = since {
         VOLUMES_BY_USER
@@ -327,9 +327,9 @@ fn query_volume_by_user(
             )
             .next()
             .transpose()?
-            .unwrap_or(Udec128_5::ZERO)
+            .unwrap_or(Udec128_6::ZERO)
     } else {
-        Udec128_5::ZERO
+        Udec128_6::ZERO
     };
 
     Ok(volume_now.checked_sub(volume_since)?)

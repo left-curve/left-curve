@@ -4,7 +4,7 @@ use {
         dex::{Direction, OrderId, PairParams, PairUpdate},
     },
     grug::{
-        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_5, Udec128_24,
+        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
         Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
@@ -272,7 +272,7 @@ pub struct OrderResponse {
     pub direction: Direction,
     pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Udec128_5,
+    pub remaining: Udec128_6,
 }
 
 /// Response type of the `QueryMsg::OrdersByPair` query.
@@ -282,7 +282,7 @@ pub struct OrdersByPairResponse {
     pub direction: Direction,
     pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Udec128_5,
+    pub remaining: Udec128_6,
 }
 
 /// Response type of the `QueryMsg::OrdersByUser` query.
@@ -293,5 +293,5 @@ pub struct OrdersByUserResponse {
     pub direction: Direction,
     pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Udec128_5,
+    pub remaining: Udec128_6,
 }
