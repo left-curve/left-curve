@@ -152,7 +152,7 @@ impl_integer! {
 mod tests {
     use {
         crate::{
-            Bytable, Int, Integer, MathError, NumberConst, Uint128, Uint256, Exponentiate, dts,
+            Bytable, Exponentiate, Int, Integer, MathError, NumberConst, Uint128, Uint256, dts,
             int_test, test_utils::bt,
         },
         bnum::types::{I256, U256},

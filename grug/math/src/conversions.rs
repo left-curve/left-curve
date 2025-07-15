@@ -1,6 +1,7 @@
 use {
     crate::{
-        Dec, FixedPoint, Int, IsZero, MathError, MathResult, Number, NumberConst, Sign, Exponentiate,
+        Dec, Exponentiate, FixedPoint, Int, IsZero, MathError, MathResult, Number, NumberConst,
+        Sign,
     },
     std::cmp::Ordering,
 };
