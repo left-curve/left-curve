@@ -154,27 +154,27 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-fn scale_precision<const S: u32, const S1: u32, U>(other: U) -> MathResult<U>
+fn scale_precision<const S1: u32, const S2: u32, U>(other: U) -> MathResult<U>
 where
     U: Number + UnaryNumber + NumberConst,
 {
-    match S.cmp(&S1) {
-        Ordering::Less => other.checked_div(U::TEN.checked_pow(S1 - S)?),
+    match S1.cmp(&S2) {
+        Ordering::Less => other.checked_div(U::TEN.checked_pow(S2 - S1)?),
         Ordering::Equal => Ok(other),
-        Ordering::Greater => other.checked_mul(U::TEN.checked_pow(S - S1)?),
+        Ordering::Greater => other.checked_mul(U::TEN.checked_pow(S1 - S2)?),
     }
 }
 
-impl<U, const S: u32, const S1: u32> Number<Dec<U, S1>> for Dec<U, S>
+impl<U, const S1: u32, const S2: u32> Number<Dec<U, S2>> for Dec<U, S1>
 where
-    Dec<U, S1>: FixedPoint<U> + NumberConst + Sign,
+    Dec<U, S2>: FixedPoint<U> + NumberConst + Sign,
     Self: FixedPoint<U> + NumberConst + Sign,
     U: NumberConst + UnaryNumber + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
     Int<U>: NextNumber + Sign + MultiplyRatio,
     <Int<U> as NextNumber>::Next: Number + UnaryNumber + NumberConst + PrevNumber<Prev = Int<U>>,
 {
-    fn checked_add(self, other: Dec<U, S1>) -> MathResult<Self> {
-        match S.cmp(&S1) {
+    fn checked_add(self, other: Dec<U, S2>) -> MathResult<Self> {
+        match S1.cmp(&S2) {
             Ordering::Equal => self.0.checked_add(other.0).map(Self),
             _ => {
                 // If both operands have the same sign, any overflow that happens
@@ -185,19 +185,19 @@ where
                 // wider type, perform the addition, and then narrow back
                 // with `checked_into_prev` to catch any overflow when reducing bits.
                 if self.is_negative() == other.is_negative() {
-                    let other = other.convert_precision::<S>()?;
+                    let other = other.convert_precision::<S1>()?;
                     self.0.checked_add(other.0).map(Self)
                 } else {
                     let me = self.0.into_next();
-                    let other = scale_precision::<S, S1, _>(other.0.into_next())?;
+                    let other = scale_precision::<S1, S2, _>(other.0.into_next())?;
                     me.checked_add(other)?.checked_into_prev().map(Self)
                 }
             },
         }
     }
 
-    fn checked_sub(self, other: Dec<U, S1>) -> MathResult<Self> {
-        match S.cmp(&S1) {
+    fn checked_sub(self, other: Dec<U, S2>) -> MathResult<Self> {
+        match S1.cmp(&S2) {
             Ordering::Equal => self.0.checked_sub(other.0).map(Self),
             _ => {
                 // If operands have different signs, subtraction becomes addition
@@ -211,40 +211,40 @@ where
                 //   4. Narrow back with `checked_into_prev` to catch any overflow
                 //      when reducing bit‐width.
                 if self.is_negative() != other.is_negative() {
-                    let other = other.convert_precision::<S>()?;
+                    let other = other.convert_precision::<S1>()?;
                     self.0.checked_sub(other.0).map(Self)
                 } else {
                     let me = self.0.into_next();
-                    let other = scale_precision::<S, S1, _>(other.0.into_next())?;
+                    let other = scale_precision::<S1, S2, _>(other.0.into_next())?;
                     me.checked_sub(other)?.checked_into_prev().map(Self)
                 }
             },
         }
     }
 
-    fn checked_mul(self, other: Dec<U, S1>) -> MathResult<Self> {
+    fn checked_mul(self, other: Dec<U, S2>) -> MathResult<Self> {
         (|| {
             self.0
                 .checked_full_mul(other.numerator())?
-                .checked_div(Dec::<U, S1>::PRECISION.into_next())?
+                .checked_div(Dec::<U, S2>::PRECISION.into_next())?
                 .checked_into_prev()
                 .map(Self)
         })()
         .map_err(|_| MathError::overflow_mul(self, other))
     }
 
-    fn checked_div(self, other: Dec<U, S1>) -> MathResult<Self> {
+    fn checked_div(self, other: Dec<U, S2>) -> MathResult<Self> {
         self.numerator()
-            .checked_multiply_ratio(Dec::<U, S1>::PRECISION, other.numerator())
+            .checked_multiply_ratio(Dec::<U, S2>::PRECISION, other.numerator())
             .map(Self)
     }
 
-    fn checked_rem(self, other: Dec<U, S1>) -> MathResult<Self> {
-        let other = other.convert_precision::<S>()?;
+    fn checked_rem(self, other: Dec<U, S2>) -> MathResult<Self> {
+        let other = other.convert_precision::<S1>()?;
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn saturating_add(self, other: Dec<U, S1>) -> Self {
+    fn saturating_add(self, other: Dec<U, S2>) -> Self {
         match self.checked_add(other) {
             Ok(val) => val,
             Err(_) => {
@@ -257,7 +257,7 @@ where
         }
     }
 
-    fn saturating_sub(self, other: Dec<U, S1>) -> Self {
+    fn saturating_sub(self, other: Dec<U, S2>) -> Self {
         match self.checked_sub(other) {
             Ok(val) => val,
             Err(_) => {
@@ -270,7 +270,7 @@ where
         }
     }
 
-    fn saturating_mul(self, other: Dec<U, S1>) -> Self {
+    fn saturating_mul(self, other: Dec<U, S2>) -> Self {
         match self.checked_mul(other) {
             Ok(val) => val,
             Err(_) => {
