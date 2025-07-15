@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec, FixedPoint, Fraction, Int, Integer, IsZero, MathError, MathResult, MultiplyRatio,
-        NextNumber, NumberConst, PrevNumber, Sign, UnaryNumber,
+        Dec, Exponentiate, FixedPoint, Fraction, Int, Integer, IsZero, MathError, MathResult,
+        MultiplyRatio, NextNumber, NumberConst, PrevNumber, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
     std::{cmp::Ordering, fmt::Display},
@@ -114,7 +114,7 @@ where
 
 fn scale_precision<const S1: u32, const S2: u32, U>(other: U) -> MathResult<U>
 where
-    U: Number + UnaryNumber + NumberConst,
+    U: Number + NumberConst + Exponentiate,
 {
     match S1.cmp(&S2) {
         Ordering::Less => other.checked_div(U::TEN.checked_pow(S2 - S1)?),
@@ -127,9 +127,9 @@ impl<U, const S1: u32, const S2: u32> Number<Dec<U, S2>> for Dec<U, S1>
 where
     Dec<U, S2>: FixedPoint<U> + NumberConst + Sign,
     Self: FixedPoint<U> + NumberConst + Sign,
-    U: NumberConst + UnaryNumber + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
+    U: NumberConst + Number + Exponentiate + IsZero + Copy + PartialEq + PartialOrd + Display,
     Int<U>: NextNumber + Sign + MultiplyRatio,
-    <Int<U> as NextNumber>::Next: Number + UnaryNumber + NumberConst + PrevNumber<Prev = Int<U>>,
+    <Int<U> as NextNumber>::Next: Number + NumberConst + Exponentiate + PrevNumber<Prev = Int<U>>,
 {
     fn checked_add(self, other: Dec<U, S2>) -> MathResult<Self> {
         match S1.cmp(&S2) {
@@ -306,7 +306,7 @@ impl_number! {
 mod int_tests {
     use {
         crate::{
-            Int, MathError, Number, NumberConst, UnaryNumber, dts, int_test,
+            Exponentiate, Int, MathError, Number, NumberConst, dts, int_test,
             test_utils::{bt, int},
         },
         bnum::types::{I256, U256},
@@ -926,7 +926,7 @@ mod int_tests {
 #[cfg(test)]
 mod dec_tests {
     use crate::{
-        Dec, FixedPoint, MathError, Number, NumberConst, UnaryNumber, dec_test, dts,
+        Dec, Exponentiate, FixedPoint, MathError, Number, NumberConst, dec_test, dts,
         test_utils::{bt, dec},
     };
 

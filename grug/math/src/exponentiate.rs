@@ -4,7 +4,7 @@ use {
     std::fmt::Display,
 };
 
-pub trait UnaryNumber: Sized + Copy {
+pub trait Exponentiate: Sized + Copy {
     fn checked_pow(self, exponent: u32) -> MathResult<Self>;
 
     fn checked_sqrt(self) -> MathResult<Self>;
@@ -31,9 +31,9 @@ pub trait UnaryNumber: Sized + Copy {
 
 // ------------------------------------ int ------------------------------------
 
-impl<U> UnaryNumber for Int<U>
+impl<U> Exponentiate for Int<U>
 where
-    U: UnaryNumber,
+    U: Exponentiate,
 {
     fn checked_pow(self, exp: u32) -> MathResult<Self> {
         self.0.checked_pow(exp).map(Self)
@@ -50,9 +50,9 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-impl<U, const S: u32> UnaryNumber for Dec<U, S>
+impl<U, const S: u32> Exponentiate for Dec<U, S>
 where
-    U: Number + UnaryNumber + NumberConst + PartialOrd,
+    U: Number + Exponentiate + NumberConst + PartialOrd,
     Self: Copy + Number + NumberConst + Display + Sign,
 {
     fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
@@ -117,9 +117,9 @@ where
 
 // ------------------------------ primitive types ------------------------------
 
-macro_rules! impl_unary_number {
+macro_rules! impl_exponentiate {
     ($t:ty) => {
-        impl UnaryNumber for $t {
+        impl Exponentiate for $t {
             fn checked_pow(self, exp: u32) -> MathResult<Self> {
                 self.checked_pow(exp)
                     .ok_or_else(|| MathError::overflow_pow(self, exp))
@@ -159,12 +159,12 @@ macro_rules! impl_unary_number {
     };
     ($($t:ty),+ $(,)?) => {
         $(
-            impl_unary_number!($t);
+            impl_exponentiate!($t);
         )+
     };
 }
 
-impl_unary_number! {
+impl_exponentiate! {
     u8, u16, u32, u64, u128, U256, U512,
     i8, i16, i32, i64, i128, I256, I512,
 }
@@ -174,7 +174,7 @@ impl_unary_number! {
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{Int, MathError, UnaryNumber, dts, int_test, test_utils::bt},
+        crate::{Exponentiate, Int, MathError, dts, int_test, test_utils::bt},
         bnum::types::{I256, U256},
     };
 
@@ -306,7 +306,7 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
-    use crate::{Dec, MathError, NumberConst, UnaryNumber, dec_test, dts, test_utils::dec};
+    use crate::{Dec, Exponentiate, MathError, NumberConst, dec_test, dts, test_utils::dec};
 
     dec_test!( checked_pow
         inputs = {

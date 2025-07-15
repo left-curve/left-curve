@@ -1,7 +1,7 @@
 use {
     crate::{
-        FixedPoint, Int, Int128, Int256, IsZero, MathError, MathResult, MultiplyRatio, Number,
-        NumberConst, Sign, Uint128, Uint256, UnaryNumber,
+        Exponentiate, FixedPoint, Int, Int128, Int256, IsZero, MathError, MathResult,
+        MultiplyRatio, Number, NumberConst, Sign, Uint128, Uint256,
     },
     bnum::types::{I256, U256},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -47,7 +47,7 @@ impl<U, const S: u32> Dec<U, S> {
 
 impl<U, const S: u32> Dec<U, S>
 where
-    Int<U>: NumberConst + UnaryNumber + Number,
+    Int<U>: NumberConst + Exponentiate + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
     where
@@ -176,7 +176,7 @@ where
 impl<U, const S: u32> FromStr for Dec<U, S>
 where
     Self: FixedPoint<U>,
-    Int<U>: NumberConst + Number + UnaryNumber + Sign + Display + FromStr,
+    Int<U>: NumberConst + Number + Exponentiate + Sign + Display + FromStr,
 {
     type Err = MathError;
 

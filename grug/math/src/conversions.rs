@@ -1,6 +1,6 @@
 use {
     crate::{
-        Dec, FixedPoint, Int, IsZero, MathError, MathResult, Number, NumberConst, Sign, UnaryNumber,
+        Dec, FixedPoint, Int, IsZero, MathError, MathResult, Number, NumberConst, Sign, Exponentiate,
     },
     std::cmp::Ordering,
 };
@@ -67,7 +67,7 @@ where
 
 impl<U, const S: u32> Dec<U, S>
 where
-    U: Number + UnaryNumber + NumberConst,
+    U: Number + Exponentiate + NumberConst,
 {
     pub fn convert_precision<const S1: u32>(self) -> MathResult<Dec<U, S1>> {
         match S.cmp(&S1) {
