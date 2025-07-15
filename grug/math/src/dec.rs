@@ -476,7 +476,6 @@ macro_rules! generate_decimal {
                 const TEN: Self = Self::raw($constructor($base_constructor::TEN.pow(Self::DECIMAL_PLACES + 1)));
                 const ZERO: Self = Self::raw(Int::<$inner>::ZERO);
             }
-
         }
     };
     (
