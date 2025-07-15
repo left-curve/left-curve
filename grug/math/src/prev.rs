@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec128, Dec256, Int64, Int128, Int256, Int512, MathError, MathResult, Udec128, Udec256,
-        Uint64, Uint128, Uint256, Uint512,
+        Dec, Int, Int64, Int128, Int256, Int512, MathError, MathResult, Uint64, Uint128, Uint256,
+        Uint512,
     },
     bnum::{
         BTryFrom,
@@ -76,26 +76,15 @@ impl_prev_bnum! {
 
 // ----------------------------------- dec -------------------------------------
 
-macro_rules! impl_prev_dec {
-    ($this:ty => $prev:ty) => {
-        impl PrevNumber for $this {
-            type Prev = $prev;
+impl<U, PU, const S: u32> PrevNumber for Dec<U, S>
+where
+    Int<U>: PrevNumber<Prev = Int<PU>>,
+{
+    type Prev = Dec<PU, S>;
 
-            fn checked_into_prev(self) -> MathResult<Self::Prev> {
-                self.0.checked_into_prev().map(<$prev>::raw)
-            }
-        }
-    };
-    ($($this:ty => $prev:ty),+ $(,)?) => {
-        $(
-            impl_prev_dec!($this => $prev);
-        )+
-    };
-}
-
-impl_prev_dec! {
-    Udec256 => Udec128,
-    Dec256  => Dec128,
+    fn checked_into_prev(self) -> MathResult<Self::Prev> {
+        self.0.checked_into_prev().map(Dec::raw)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

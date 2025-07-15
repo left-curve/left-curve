@@ -1,10 +1,4 @@
-use {
-    crate::{
-        Dec128, Dec128_6, Dec256, Int, Int128, Int256, NumberConst, Udec128, Udec128_6, Udec128_9,
-        Udec256, Uint128, Uint256,
-    },
-    bnum::types::{I256, U256},
-};
+use crate::Int;
 
 /// Describes a [fixed-point decimal](https://en.wikipedia.org/wiki/Fixed-point_arithmetic)
 /// number.
@@ -20,40 +14,9 @@ pub trait FixedPoint<U> {
     const TICK: Self;
 }
 
-impl FixedPoint<u128> for Udec128_6 {
-    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint128::ONE);
-}
+// ------------------------------------ dec ------------------------------------
 
-impl FixedPoint<u128> for Udec128_9 {
-    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint128::ONE);
-}
-
-impl FixedPoint<u128> for Udec128 {
-    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint128::ONE);
-}
-
-impl FixedPoint<U256> for Udec256 {
-    const PRECISION: Uint256 = Uint256::new_from_u128(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint256::ONE);
-}
-
-impl FixedPoint<i128> for Dec128_6 {
-    const PRECISION: Int128 = Int128::new(10_i128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Int128::ONE);
-}
-
-impl FixedPoint<i128> for Dec128 {
-    const PRECISION: Int128 = Int128::new(10_i128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Int128::ONE);
-}
-
-impl FixedPoint<I256> for Dec256 {
-    const PRECISION: Int256 = Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Int256::ONE);
-}
+// Trait auto-impl for all decimals via `generate_decimals` macro.
 
 // ----------------------------------- tests -----------------------------------
 
