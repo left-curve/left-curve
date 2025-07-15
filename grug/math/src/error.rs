@@ -30,9 +30,10 @@ pub enum MathError {
         b: String,
     },
 
-    #[error("multiplication overflow: {a} * {b} (type: {ty})")]
+    #[error("multiplication overflow: {a} (type: {t1}) * {b} (type: {t2})")]
     OverflowMul {
-        ty: &'static str,
+        t1: &'static str,
+        t2: &'static str,
         a: String,
         b: String,
     },
@@ -126,13 +127,14 @@ impl MathError {
         }
     }
 
-    pub fn overflow_mul<T, T1>(a: T, b: T1) -> Self
+    pub fn overflow_mul<T1, T2>(a: T1, b: T2) -> Self
     where
-        T: ToString,
         T1: ToString,
+        T2: ToString,
     {
         Self::OverflowMul {
-            ty: type_name::<T>(),
+            t1: type_name::<T1>(),
+            t2: type_name::<T2>(),
             a: a.to_string(),
             b: b.to_string(),
         }
