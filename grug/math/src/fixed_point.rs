@@ -1,6 +1,7 @@
-use bnum::types::{I256, U256};
-
-use crate::{Dec, Int, NumberConst};
+use {
+    crate::{Dec, Int, NumberConst},
+    bnum::types::{I256, U256},
+};
 
 /// Describes a [fixed-point decimal](https://en.wikipedia.org/wiki/Fixed-point_arithmetic)
 /// number.
