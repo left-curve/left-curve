@@ -1,4 +1,4 @@
-import { Badge } from "@left-curve/applets-kit";
+import { Input } from "@left-curve/applets-kit";
 import { createLazyFileRoute } from "@tanstack/react-router";
 
 import { MobileTitle } from "~/components/foundation/MobileTitle";
@@ -28,12 +28,6 @@ function SettingsApplet() {
         <DisplaySection.Theme />
       </DisplaySection>
       <KeyManagementSection />
-      <Badge text="test" color="blue" />
-      <Badge text="test" color="red" />
-      <Badge text="test" color="green" />
-      <Badge text="test" color="blue" size="s" />
-      <Badge text="test" color="red" size="s" />
-      <Badge text="test" color="green" size="s" />
     </div>
   );
 }
