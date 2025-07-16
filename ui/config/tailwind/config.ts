@@ -17,11 +17,13 @@ export const tailwindConfig: Partial<Config> = {
         "surface-disabled-gray": "var(--color-surface-disabled-gray)",
         "foreground-disabled-gray": "var(--color-foreground-disabled-gray)",
         "button-green": "var(--color-button-green)",
+        "foreground-tertiary": "var(--color-foreground-tertiary)",
         primary: {
           blue: "var(--color-primary-blue)",
           red: "var(--color-primary-red)",
           rice: "var(--color-primary-rice)",
           "900": "var(--color-primary-900)",
+          gray: "var(--color-primary-gray)",
         },
         secondary: {
           "700": "var(--color-secondary-700)",
