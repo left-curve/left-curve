@@ -37,6 +37,8 @@ jobs:
 
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Website
         run: pnpm build:website

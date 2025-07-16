@@ -24,6 +24,8 @@ jobs:
 
       - name: Install SDK dependencies
         run: pnpm i --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Linter checks
         run: pnpm lint:sdk
