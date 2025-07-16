@@ -183,14 +183,17 @@ fn ask_exact_amount_out(
     let mut input_amount = Udec128::ZERO;
 
     for (price, order) in passive_bids {
-        let remaining_ask = remaining_ask_in_quote.checked_div_dec_ceil(price)?;
+        let remaining_ask = remaining_ask_in_quote.checked_div_dec_floor(price)?;
         let matched_amount = cmp::min(order.remaining, remaining_ask);
         input_amount.checked_add_assign(matched_amount)?;
 
-        let matched_amount_in_quote = matched_amount.checked_mul_dec_floor(price)?;
+        let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
         remaining_ask_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
-        if remaining_ask_in_quote.is_zero() {
+        if remaining_ask_in_quote.is_zero()
+            || remaining_ask.is_zero()
+            || matched_amount_in_quote.is_zero()
+        {
             return Ok(input_amount.into_int());
         }
     }
