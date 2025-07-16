@@ -114,17 +114,17 @@ const buttonVariants = tv(
       {
         variant: "primary",
         class:
-          "bg-red-bean-400 hover:bg-red-bean-600 text-bg-primary-rice focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-red-bean-400 hover:bg-red-bean-600 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "secondary",
         class:
-          "bg-primary-blue hover:bg-surface-secondary-blue  text-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-primary-blue hover:bg-surface-secondary-blue text-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         class:
-          "bg-button-green hover:bg-green-bean-500 text-bg-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-button-green hover:bg-green-bean-500 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "link",
@@ -134,23 +134,23 @@ const buttonVariants = tv(
       {
         variant: "link",
         isDisabled: true,
-        class: "text-foreground-disabled-gray",
+        class: "text-surface-disabled-gray",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         isDisabled: true,
-        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "utility",

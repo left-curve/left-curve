@@ -66,7 +66,7 @@ export const KeyManagementSection: React.FC = () => {
           return (
             <div
               key={uid()}
-              className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-surface-tertiary-rice transition-all p-4"
+              className="flex items-center justify-between rounded-2xl border border-surface-quaternary-rice hover:bg-surface-tertiary-rice transition-all p-4"
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">

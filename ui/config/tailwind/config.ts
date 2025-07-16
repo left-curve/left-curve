@@ -2,6 +2,7 @@ import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
+  darkMode: "class",
   safelist: [
     {
       pattern: /grid-cols-.+/,
@@ -10,14 +11,20 @@ export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
       colors: {
-        "surface-primary-rice": "var(--color-surface-primary-rice)",
-        "surface-secondary-rice": "var(--color-surface-secondary-rice)",
-        "surface-secondary-blue": "var(--color-surface-secondary-blue)",
-        "surface-tertiary-rice": "var(--color-surface-tertiary-rice)",
-        "surface-disabled-gray": "var(--color-surface-disabled-gray)",
-        "foreground-disabled-gray": "var(--color-foreground-disabled-gray)",
+        surface: {
+          "primary-rice": "var(--color-surface-primary-rice)",
+          "secondary-rice": "var(--color-surface-secondary-rice)",
+          "secondary-blue": "var(--color-surface-secondary-blue)",
+          "tertiary-rice": "var(--color-surface-tertiary-rice)",
+          "quaternary-rice": "var(--color-surface-quaternary-rice)",
+          "disabled-gray": "var(--color-surface-disabled-gray)",
+        },
+        foreground: {
+          "disabled-gray": "var(--color-foreground-disabled-gray)",
+          tertiary: "var(--color-foreground-tertiary)",
+          "secondary-rice": "var(--color-foreground-secondary-rice)",
+        },
         "button-green": "var(--color-button-green)",
-        "foreground-tertiary": "var(--color-foreground-tertiary)",
         primary: {
           blue: "var(--color-primary-blue)",
           red: "var(--color-primary-red)",
@@ -156,7 +163,7 @@ export const tailwindConfig: Partial<Config> = {
           "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
         "account-card": "var(--shadow-card)",
         "btn-shadow-gradient": "var(--shadow-btn-shadow-gradient)",
-        "shadow-btn-secondary-shadow-gradient": "var(--shadow-btn-secondary-shadow-gradient)",
+        "btn-secondary-shadow-gradient": "var(--shadow-btn-secondary-shadow-gradient)",
         "btn-shadow-disabled":
           "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
         "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",

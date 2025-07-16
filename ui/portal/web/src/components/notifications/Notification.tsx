@@ -75,7 +75,7 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   };
 
   return (
-    <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100 max-w-full group">
+    <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-surface-quaternary-rice max-w-full group">
       <div
         className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer"
         onClick={(event) => {
@@ -153,7 +153,7 @@ const NotificationAccount: React.FC<NotificationAccountProps> = ({ notification 
   };
 
   return (
-    <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-rice-100 max-w-full group">
+    <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-surface-quaternary-rice max-w-full group">
       <div className="flex items-start gap-2 max-w-full overflow-hidden">
         <IconInfo className="text-secondary-700 w-5 h-5 flex-shrink-0" />
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">

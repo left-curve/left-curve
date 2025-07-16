@@ -11,6 +11,7 @@
   --color-surface-disabled-gray: #F5F4F4;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
+  --color-foreground-secondary-rice: #FFF9F0;
   --color-button-green: #BDBF5C;
   --color-primary-red: #FEF1F1;
   --color-primary-blue: #F7F8FB;
@@ -43,6 +44,7 @@ html.dark {
   --color-surface-disabled-gray:#363432;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
+  --color-foreground-secondary-rice: #363432;
   --color-button-green: #D2D184;
   --color-primary-red: #423C3B;
   --color-primary-blue: #595763;
@@ -60,8 +62,8 @@ html.dark {
   --color-tertiary-rice: #474237;
   --color-tertiary-green: #3F3B35;
   --shadow-card:0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
-  --shadow-btn-shadow-gradient: 0px 1px 1px -0.5px rgba(0, 0, 0, 0.04), inset 0px 2px 3px -1px rgba(255, 255, 255, 0.07), inset 0px -1px 3px -2px rgba(0, 0, 0, 0.07), 0px 1px 1px -0.5px rgba(0, 0, 0, 0.04), 0px 3px 3px -1.5px rgba(0, 0, 0, 0.04);
-  --shadow-btn-secondary-shadow-gradient: 0px 1px 1px -0.5px rgba(0, 0, 0, 0.04), 0px 3px 3px -1.5px rgba(0, 0, 0, 0.04) ;
+  --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
+  --shadow-btn-secondary-shadow-gradient: 0px -1px 3px -2px #00000012 inset, 0px 2px 3px -1px #FFFFFF12 inset, 0px 1px 1px -0.5px #0000000A;
   --color-bg-card-red:linear-gradient(98.89deg, #494443 11.21%, #584D4E 46.73%, #322F2F 88.96%);
   --color-bg-card-green:linear-gradient(98.89deg, #373634 18.76%, #666654 46.73%, #373634 87.62%);
 }
