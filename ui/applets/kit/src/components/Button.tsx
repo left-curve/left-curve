@@ -161,7 +161,7 @@ const buttonVariants = tv(
         variant: "utility",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: ["utility", "link"],

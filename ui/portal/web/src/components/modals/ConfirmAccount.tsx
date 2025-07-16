@@ -43,7 +43,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
           <p className="text-primary-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
         </div>
 
-        <span className="h-[1px] w-full bg-gray-100" />
+        <span className="h-[1px] w-full bg-secondary-gray" />
 
         <div className=" flex flex-col gap-4 p-4 py-0 md:p-6 md:py-0">
           <div className="flex flex-col gap-2 w-full">

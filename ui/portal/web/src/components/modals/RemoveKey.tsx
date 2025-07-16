@@ -60,7 +60,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-gray-100 my-2 lg:block hidden" />
+      <span className="w-full h-[1px] bg-secondary-gray my-2 lg:block hidden" />
       <div className="p-4 flex gap-4 flex-col-reverse lg:flex-row">
         <Button fullWidth variant="secondary" onClick={() => hideModal()} isDisabled={isPending}>
           {m["common.cancel"]()}

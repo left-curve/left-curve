@@ -80,7 +80,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-gray-100 my-2" />
+      <span className="w-full h-[1px] bg-secondary-gray my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
           className="bg-surface-primary-rice"

@@ -203,7 +203,7 @@ const selectVariants = tv({
   variants: {
     isDisabled: {
       true: {
-        trigger: "bg-gray-200 text-tertiary-500 cursor-not-allowed",
+        trigger: "bg-secondary-gray text-tertiary-500 cursor-not-allowed",
       },
     },
   },

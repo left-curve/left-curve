@@ -33,7 +33,7 @@ export const NotificationsMenu: React.FC<Props> = ({ buttonRef }) => {
           : "scale-0 -translate-y-1/2 translate-x-16",
       )}
     >
-      <div className="p-4 flex items-center justify-between border-b border-b-gray-100">
+      <div className="p-4 flex items-center justify-between border-b border-b-surface-secondary-blue">
         <h2 className="diatype-m-heavy">{m["notifications.title"]()}</h2>
         <Button
           variant="link"

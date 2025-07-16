@@ -22,7 +22,7 @@ export const WelcomeModal: React.FC = () => {
       )}
     >
       <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-secondary-gray max-w-2xl">
-        <div className="flex flex-col gap-4 p-4 border-b border-b-gray-100">
+        <div className="flex flex-col gap-4 p-4 border-b border-b-secondary-gray">
           <div className="w-12 h-12 rounded-full flex items-center justify-center">
             <img
               src="/favicon.svg"
