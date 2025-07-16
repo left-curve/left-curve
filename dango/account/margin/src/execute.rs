@@ -188,7 +188,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     for coin in ctx.funds {
         let debt_amount = debts.amount_of(&coin.denom);
         let price = oracle_querier.query_price(&coin.denom, None)?;
-        let debt_value = price.value_of_unit_amount(debt_amount)?;
+        let debt_value: Udec128 = price.value_of_unit_amount(debt_amount)?;
 
         let max_repay_for_denom = if repaid_debt_value.checked_add(debt_value)? > debt_repay_value {
             price.unit_amount_from_value(debt_repay_value.checked_sub(repaid_debt_value)?)?
@@ -204,7 +204,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         };
 
         repay_coins.insert((coin.denom.clone(), repay_amount))?;
-        repaid_debt_value.checked_add_assign(price.value_of_unit_amount(repay_amount)?)?;
+        repaid_debt_value.checked_add_assign(price.value_of_unit_amount::<18>(repay_amount)?)?;
     }
 
     // Ensure repaid debt value is not zero

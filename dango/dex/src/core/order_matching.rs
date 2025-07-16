@@ -1,6 +1,6 @@
 use {
     crate::{Order, OrderTrait},
-    grug::{Number, NumberConst, StdResult, Udec128},
+    grug::{Number, NumberConst, StdResult, Udec128_6, Udec128_24},
 };
 
 pub struct MatchingOutcome {
@@ -9,13 +9,13 @@ pub struct MatchingOutcome {
     ///
     /// All prices in this range achieve the same volume. It's up to the caller
     /// to decide which price to use: the lowest, the highest, or the midpoint.
-    pub range: Option<(Udec128, Udec128)>,
+    pub range: Option<(Udec128_24, Udec128_24)>,
     /// The amount of trading volume, measured as the amount of the base asset.
-    pub volume: Udec128,
+    pub volume: Udec128_6,
     /// The BUY orders that have found a match.
-    pub bids: Vec<(Udec128, Order)>,
+    pub bids: Vec<(Udec128_24, Order)>,
     /// The SELL orders that have found a match.
-    pub asks: Vec<(Udec128, Order)>,
+    pub asks: Vec<(Udec128_24, Order)>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -31,17 +31,17 @@ pub struct MatchingOutcome {
 ///   follows the price-time priority.
 pub fn match_limit_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<(Udec128, Order)>>,
-    A: Iterator<Item = StdResult<(Udec128, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();
     let mut bid_is_new = true;
-    let mut bid_volume = Udec128::ZERO;
+    let mut bid_volume = Udec128_6::ZERO;
     let mut ask = ask_iter.next().transpose()?;
     let mut asks = Vec::new();
     let mut ask_is_new = true;
-    let mut ask_volume = Udec128::ZERO;
+    let mut ask_volume = Udec128_6::ZERO;
     let mut range = None;
 
     loop {

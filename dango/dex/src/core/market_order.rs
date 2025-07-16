@@ -1,7 +1,9 @@
 use {
     crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
     dango_types::dex::{Direction, OrderId},
-    grug::{IsZero, Number, NumberConst, Signed, StdResult, Udec128, Unsigned},
+    grug::{
+        IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_6, Udec128_24, Unsigned,
+    },
     std::{cmp::Ordering, collections::HashMap, iter::Peekable},
 };
 
@@ -18,7 +20,7 @@ pub fn match_and_fill_market_orders<M, L>(
 ) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
-    L: Iterator<Item = StdResult<(Udec128, Order)>>,
+    L: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     let mut filling_outcomes = HashMap::new();
 
@@ -55,10 +57,10 @@ where
 
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
-            Direction::Bid => Udec128::ONE
+            Direction::Bid => Udec128_24::ONE
                 .saturating_add(market_order.max_slippage)
                 .saturating_mul(best_price),
-            Direction::Ask => Udec128::ONE
+            Direction::Ask => Udec128_24::ONE
                 .saturating_sub(market_order.max_slippage)
                 .saturating_mul(best_price),
         };
@@ -100,7 +102,8 @@ where
             // TODO: optimize the math here. See the jupyter notebook.
             let current_avg_price = filling_outcome
                 .filled_quote
-                .checked_div(filling_outcome.filled_base)?;
+                .checked_div(filling_outcome.filled_base)?
+                .convert_precision::<24>()?; // TODO: Use other precision for amounts?
             let price_ratio = current_avg_price
                 .checked_into_signed()?
                 .checked_sub(cutoff_price.checked_into_signed()?)?
@@ -256,8 +259,8 @@ fn update_filling_outcome(
     filling_outcomes: &mut HashMap<ExtendedOrderId, FillingOutcome>,
     order: Order,
     order_direction: Direction,
-    filled_base: Udec128,
-    price: Udec128,
+    filled_base: Udec128_6,
+    price: Udec128_24,
     fee_rate: Udec128,
 ) -> StdResult<()> {
     let filling_outcome = filling_outcomes
@@ -265,12 +268,12 @@ fn update_filling_outcome(
         .or_insert_with(|| FillingOutcome {
             order_direction,
             order,
-            filled_base: Udec128::ZERO,
-            filled_quote: Udec128::ZERO,
-            refund_base: Udec128::ZERO,
-            refund_quote: Udec128::ZERO,
-            fee_base: Udec128::ZERO,
-            fee_quote: Udec128::ZERO,
+            filled_base: Udec128_6::ZERO,
+            filled_quote: Udec128_6::ZERO,
+            refund_base: Udec128_6::ZERO,
+            refund_quote: Udec128_6::ZERO,
+            fee_base: Udec128_6::ZERO,
+            fee_quote: Udec128_6::ZERO,
         });
 
     let filled_quote = filled_base.checked_mul(price)?;

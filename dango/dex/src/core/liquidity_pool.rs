@@ -8,7 +8,7 @@ use {
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Sign, Udec128,
-        Uint128,
+        Udec128_24, Uint128,
     },
     std::ops::Sub,
 };
@@ -136,8 +136,8 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>, // bids
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>, // asks
+        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>, // bids
+        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>, // asks
     )>;
 }
 
@@ -216,12 +216,12 @@ impl PassiveLiquidityPool for PairParams {
         // Our oracle approach is more generalizable to different pool types.
         let fee_rate = {
             let price = oracle_querier.query_price(reserve.first().denom, None)?;
-            let a = price.value_of_unit_amount(*deposit.first().amount)?;
-            let reserve_a = price.value_of_unit_amount(*reserve.first().amount)?;
+            let a: Udec128_24 = price.value_of_unit_amount(*deposit.first().amount)?;
+            let reserve_a: Udec128_24 = price.value_of_unit_amount(*reserve.first().amount)?;
 
             let price = oracle_querier.query_price(reserve.second().denom, None)?;
-            let b = price.value_of_unit_amount(*deposit.second().amount)?;
-            let reserve_b = price.value_of_unit_amount(*reserve.second().amount)?;
+            let b: Udec128_24 = price.value_of_unit_amount(*deposit.second().amount)?;
+            let reserve_b: Udec128_24 = price.value_of_unit_amount(*reserve.second().amount)?;
 
             let deposit_value = a.checked_add(b)?;
             let reserve_value = reserve_a.checked_add(reserve_b)?;
@@ -387,8 +387,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
-        Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
+        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
@@ -682,14 +682,14 @@ mod tests {
 
         // Assert that the orders are correct.
         for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
-            assert_eq!(ask.0, expected_ask.0);
+            assert_eq!(ask.0, expected_ask.0.convert_precision().unwrap());
             assert!(
                 ask.1.amount.inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
             );
         }
 
         for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
-            assert_eq!(bid.0, expected_bid.0);
+            assert_eq!(bid.0, expected_bid.0.convert_precision().unwrap());
             assert!(
                 bid.1.amount.inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
             );
@@ -747,7 +747,7 @@ mod tests {
             (Udec128::new_percent(99), Uint128::from(5050505)),
             (Udec128::new_percent(49), Uint128::from(5102040)),
         ]) {
-            assert_eq!(bid.0, expected_bid.0);
+            assert_eq!(bid.0, expected_bid.0.convert_precision().unwrap());
             assert_eq!(bid.1.amount, expected_bid.1);
         }
 

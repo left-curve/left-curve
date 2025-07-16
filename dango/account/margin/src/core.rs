@@ -171,7 +171,7 @@ pub fn compute_health(
         let price = prices
             .get(denom)
             .ok_or_else(|| anyhow!("price for denom {denom} not found"))?;
-        let value = price.value_of_unit_amount(debt)?;
+        let value: Udec128 = price.value_of_unit_amount(debt)?;
 
         total_debt_value.checked_add_assign(value)?;
     }
@@ -204,7 +204,7 @@ pub fn compute_health(
         let price = prices
             .get(denom)
             .ok_or_else(|| anyhow!("price for denom {denom} not found"))?;
-        let value = price.value_of_unit_amount(collateral_balance)?;
+        let value: Udec128 = price.value_of_unit_amount(collateral_balance)?;
         let adjusted_value = value.checked_mul(**power)?;
 
         collaterals.insert((denom.clone(), collateral_balance))?;
@@ -252,7 +252,7 @@ pub fn compute_health(
         let offer_collateral_power = collateral_powers
             .get(&offer.denom)
             .ok_or_else(|| anyhow!("collateral power for denom {} not found", offer.denom))?;
-        let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
+        let offer_value: Udec128 = offer_price.value_of_unit_amount(offer.amount)?;
         let offer_adjusted_value = offer_value.checked_mul(**offer_collateral_power)?;
 
         let ask_price = prices
@@ -261,7 +261,7 @@ pub fn compute_health(
         let ask_collateral_power = collateral_powers
             .get(&ask.denom)
             .ok_or_else(|| anyhow!("collateral power for denom {} not found", ask.denom))?;
-        let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
+        let ask_value: Udec128 = ask_price.value_of_unit_amount(ask.amount)?;
         let ask_adjusted_value = ask_value.checked_mul(**ask_collateral_power)?;
 
         let min_value = min(offer_value, ask_value);

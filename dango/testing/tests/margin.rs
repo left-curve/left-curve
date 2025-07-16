@@ -19,7 +19,7 @@ use {
         Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Exponentiate, Inner, IsZero,
         JsonDeExt, JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty,
         NonZero, Number, NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt,
-        SearchEvent, Timestamp, Udec128, Uint128, btree_map, coins,
+        SearchEvent, Timestamp, Udec128, Udec128_24, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -738,7 +738,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: dango_types::dex::Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::ONE,
+                    price: Udec128_24::ONE,
                 }],
                 cancels: None,
             },
@@ -1286,7 +1286,7 @@ proptest! {
                         denom: coin.denom,
                     })
                     .unwrap();
-                price.value_of_unit_amount(coin.amount).unwrap()
+                price.value_of_unit_amount::<18>(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
             .unwrap();

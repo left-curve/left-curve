@@ -4,7 +4,7 @@ use {
     dango_oracle::OracleQuerier,
     grug::{
         Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
-        Uint64, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Udec128_24, Uint64, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
     },
     std::{cmp, iter},
 };
@@ -26,7 +26,7 @@ pub fn add_subsequent_liquidity(
     oracle_querier: &mut OracleQuerier,
     reserve: &mut CoinPair,
     deposit: CoinPair,
-) -> anyhow::Result<Udec128> {
+) -> anyhow::Result<Udec128_24> {
     let deposit_value = oracle_value(oracle_querier, &deposit)?;
     let reserve_value = oracle_value(oracle_querier, reserve)?;
 
@@ -75,7 +75,7 @@ pub fn swap_exact_amount_in(
 // NOTE: Always round down (floor) the output amount; always round up (ceil) the input amount.
 fn bid_exact_amount_in(
     bid_amount_in_quote: Uint128,
-    passive_asks: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    passive_asks: Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_bid_in_quote = bid_amount_in_quote.checked_into_dec()?;
     let mut output_amount = Udec128::ZERO;
@@ -98,7 +98,7 @@ fn bid_exact_amount_in(
 
 fn ask_exact_amount_in(
     ask_amount: Uint128,
-    passive_bids: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    passive_bids: Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_ask = ask_amount.checked_into_dec()?;
     let mut output_amount_in_quote = Udec128::ZERO;
@@ -155,7 +155,7 @@ pub fn swap_exact_amount_out(
 
 fn bid_exact_amount_out(
     bid_amount: Uint128,
-    passive_asks: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    passive_asks: Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_bid = bid_amount.checked_into_dec()?;
     let mut input_amount = Udec128::ZERO;
@@ -177,7 +177,7 @@ fn bid_exact_amount_out(
 
 fn ask_exact_amount_out(
     ask_amount_in_quote: Uint128,
-    passive_bids: Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    passive_bids: Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_ask_in_quote = ask_amount_in_quote.checked_into_dec()?;
     let mut input_amount = Udec128::ZERO;
@@ -208,8 +208,8 @@ pub fn reflect_curve(
     order_spacing: Udec128,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
-    Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
-    Box<dyn Iterator<Item = (Udec128, PassiveOrder)>>,
+    Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
+    Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
 )> {
     // Compute the price of the base asset denominated in the quote asset.
     // We will place orders above and below this price.
@@ -220,10 +220,10 @@ pub fn reflect_curve(
     let marginal_price = {
         const PRECISION: Uint128 = Uint128::new(1_000_000);
 
-        let base_price = oracle_querier
+        let base_price: Udec128_24 = oracle_querier
             .query_price(base_denom, None)?
             .value_of_unit_amount(PRECISION)?;
-        let quote_price = oracle_querier
+        let quote_price: Udec128_24 = oracle_querier
             .query_price(quote_denom, None)?
             .value_of_unit_amount(PRECISION)?;
 
@@ -298,14 +298,14 @@ pub fn reflect_curve(
 fn oracle_value(
     oracle_querier: &mut OracleQuerier,
     coin_pair: &CoinPair,
-) -> anyhow::Result<Udec128> {
+) -> anyhow::Result<Udec128_24> {
     let first = coin_pair.first();
     let first_price = oracle_querier.query_price(first.denom, None)?;
     let first_value = first_price.value_of_unit_amount(*first.amount)?;
 
     let second = coin_pair.second();
     let second_price = oracle_querier.query_price(second.denom, None)?;
-    let second_value = second_price.value_of_unit_amount(*second.amount)?;
+    let second_value: Udec128_24 = second_price.value_of_unit_amount(*second.amount)?;
 
     Ok(first_value.checked_add(second_value)?)
 }

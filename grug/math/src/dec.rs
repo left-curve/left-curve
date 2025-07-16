@@ -510,23 +510,53 @@ generate_dec_constructor! {
 
 // ---------------------------------- aliases ----------------------------------
 
-/// 128-bit unsigned fixed-point number with 18 decimal places.
-pub type Udec128 = Dec<u128, 18>;
-
 /// 128-bit unsigned fixed-point number with 6 decimal places.
 pub type Udec128_6 = Dec<u128, 6>;
+
+/// 128-bit unsigned fixed-point number with 12 decimal places.
+pub type Udec128_12 = Dec<u128, 12>;
+
+/// 128-bit unsigned fixed-point number with 18 decimal places.
+pub type Udec128 = Dec<u128, 18>;
 
 /// 128-bit unsigned fixed-point number with 24 decimal places.
 pub type Udec128_24 = Dec<u128, 24>;
 
+/// 256-bit unsigned fixed-point number with 6 decimal places.
+pub type Udec256_6 = Dec<U256, 6>;
+
+/// 256-bit unsigned fixed-point number with 12 decimal places.
+pub type Udec256_12 = Dec<U256, 12>;
+
 /// 256-bit unsigned fixed-point number with 18 decimal places.
 pub type Udec256 = Dec<U256, 18>;
+
+/// 256-bit unsigned fixed-point number with 24 decimal places.
+pub type Udec256_24 = Dec<U256, 24>;
+
+/// 128-bit signed fixed-point number with 6 decimal places.
+pub type Dec128_6 = Dec<i128, 6>;
+
+/// 128-bit signed fixed-point number with 12 decimal places.
+pub type Dec128_12 = Dec<i128, 12>;
 
 /// 128-bit signed fixed-point number with 18 decimal places.
 pub type Dec128 = Dec<i128, 18>;
 
+/// 128-bit signed fixed-point number with 24 decimal places.
+pub type Dec128_24 = Dec<i128, 24>;
+
+/// 256-bit signed fixed-point number with 6 decimal places.
+pub type Dec256_6 = Dec<I256, 6>;
+
+/// 256-bit signed fixed-point number with 12 decimal places.
+pub type Dec256_12 = Dec<I256, 12>;
+
 /// 256-bit signed fixed-point number with 18 decimal places.
 pub type Dec256 = Dec<I256, 18>;
+
+/// 256-bit signed fixed-point number with 24 decimal places.
+pub type Dec256_24 = Dec<I256, 24>;
 
 // ----------------------------------- tests -----------------------------------
 
