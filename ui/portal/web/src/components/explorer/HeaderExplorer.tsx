@@ -7,7 +7,7 @@ export const HeaderExplorer: React.FC<PropsWithChildren> = ({ children }) => {
       <img
         src="/images/emojis/simple/map.svg"
         alt="map-emoji"
-        className="max-w-full h-[154px] object-contain w-auto opacity-50"
+        className="max-w-full h-[154px] object-contain w-auto"
       />
       {children}
     </div>

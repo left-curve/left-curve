@@ -146,7 +146,7 @@ const Details: React.FC = () => {
       <img
         src="/images/emojis/detailed/map-explorer.svg"
         alt="map-emoji"
-        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] mix-blend-multiply hidden md:block"
+        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] hidden md:block"
       />
     </div>
   );
@@ -197,7 +197,7 @@ const NotFound: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
-        <div className="flex flex-col gap-2 items-center border border-red-bean-50">
+        <div className="flex flex-col gap-2 items-center">
           <h3 className="exposure-m-italic text-secondary-700">
             {m["explorer.txs.notFound.title"]()}
           </h3>

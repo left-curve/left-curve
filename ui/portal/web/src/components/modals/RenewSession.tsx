@@ -21,7 +21,7 @@ export const RenewSession = forwardRef<undefined>(() => {
   return (
     <div className="flex flex-col bg-surface-primary-rice rounded-xl relative max-w-[400px]">
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-green-bean-100 flex items-center justify-center text-green-bean-600">
+        <div className="w-12 h-12 rounded-full bg-secondary-green flex items-center justify-center text-green-bean-600">
           <IconKey />
         </div>
         <p className="text-secondary-700 h4-bold">{m["modals.renewSession.title"]()}</p>

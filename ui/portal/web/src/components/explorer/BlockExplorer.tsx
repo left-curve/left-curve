@@ -86,7 +86,7 @@ const BlockSkeleton: React.FC = () => {
         <img
           src="/images/emojis/detailed/map-explorer.svg"
           alt="map-emoji"
-          className="hidden md:block w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply"
+          className="hidden md:block w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem]"
         />
       </div>
     </div>
@@ -181,7 +181,7 @@ const FutureBlock: React.FC = () => {
         <img
           src="/images/emojis/detailed/map-explorer.svg"
           alt="map-emoji"
-          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute right-[2rem] mix-blend-multiply hidden lg:flex"
+          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute right-[2rem] hidden lg:flex"
         />
       </div>
       <HeaderExplorer>
@@ -267,7 +267,7 @@ const BlockDetails: React.FC = () => {
         <img
           src="/images/emojis/detailed/map-explorer.svg"
           alt="map-emoji"
-          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] mix-blend-multiply hidden md:flex"
+          className="w-[16.25rem] h-[16.25rem] opacity-40 absolute top-[-2rem] right-[2rem] hidden md:flex"
         />
       </div>
     </div>
@@ -280,7 +280,7 @@ const BlockNotFound: React.FC = () => {
   if (data?.isInvalidBlock) {
     return (
       <HeaderExplorer>
-        <div className="flex flex-col gap-2 items-center border border-red-bean-50">
+        <div className="flex flex-col gap-2 items-center">
           <h3 className="exposure-m-italic text-secondary-700">
             {m["explorer.block.notFound.title"]()}
           </h3>

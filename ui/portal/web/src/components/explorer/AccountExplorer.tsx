@@ -133,7 +133,7 @@ const NotFound: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
-        <div className="flex flex-col gap-2 items-center border border-red-bean-50">
+        <div className="flex flex-col gap-2 items-center">
           <h3 className="exposure-m-italic text-secondary-700">
             {m["explorer.accounts.notFound.title"]()}
           </h3>

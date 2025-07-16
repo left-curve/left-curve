@@ -38,7 +38,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
 
         <div className="flex flex-col gap-4 p-6 pb-0 pt-0 md:pt-6">
           <div className="h-12 w-12 bg-surface-quaternary-green rounded-full flex items-center justify-center">
-            <IconChecked className="h-6 w-6 text-green-bean-100" />
+            <IconChecked className="h-6 w-6 text-secondary-green" />
           </div>
           <p className="text-primary-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
         </div>
