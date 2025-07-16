@@ -70,20 +70,22 @@ const OrderRow: React.FC<
     maxCumulativeTotal > 0 ? (cumulativeTotal / maxCumulativeTotal) * 100 : 0;
 
   const depthBarClass =
-    type === "bid" ? "bg-green-300 lg:-left-4" : "bg-red-300 -right-0 lg:-left-4 lg:right-auto";
+    type === "bid"
+      ? "bg-status-success lg:-left-4"
+      : "bg-status-fail -right-0 lg:-left-4 lg:right-auto";
 
   return (
     <div className="relative flex-1 diatype-xs-medium text-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
-        className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
+        className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
       />
       <div
         className={twMerge(
           "z-10",
           type === "bid"
-            ? "text-green-700 text-left"
-            : "text-red-bean-700 order-2 lg:order-none text-end lg:text-left",
+            ? "text-status-success text-left"
+            : "text-status-fail order-2 lg:order-none text-end lg:text-left",
         )}
       >
         {price.toFixed(1)}

@@ -24,6 +24,9 @@ export const tailwindConfig: Partial<Config> = {
           "quaternary-rice-hover": "var(--color-surface-quaternary-rice-hover)",
           "disabled-gray": "var(--color-surface-disabled-gray)",
         },
+        overlay: {
+          rice: "var(--color-overlay-rice)",
+        },
         foreground: {
           "disabled-gray": "var(--color-foreground-disabled-gray)",
           tertiary: "var(--color-foreground-tertiary)",
@@ -60,8 +63,8 @@ export const tailwindConfig: Partial<Config> = {
         },
         transparent: "transparent",
         status: {
-          success: "#25B12A",
-          fail: "#E71818",
+          success: "var(--color-status-success)",
+          fail: "var(--color-status-fail)",
         },
         black: {
           DEFAULT: "#000000",

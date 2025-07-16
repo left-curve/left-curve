@@ -14,6 +14,7 @@
   --color-surface-quaternary-rice: #F3E5BF;
   --color-surface-quaternary-rice-hover: #EFDAA4;
   --color-surface-disabled-gray: #F5F4F4;
+  --color-overlay-rice:#F2E2B8CC;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
   --color-foreground-secondary-rice: #FFF9F0;
@@ -37,6 +38,8 @@
   --color-tertiary-rice: #F3E5BF;
   --color-tertiary-green: #E5E4B1;
   --color-tertiary-blue: #E2E3F2;
+  --color-status-fail: #E71818;
+  --color-status-success: #25B12A;
 
   --shadow-card:0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
   --shadow-btn-shadow-gradient:0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
@@ -62,6 +65,7 @@ html.dark {
   --color-surface-quaternary-rice: #594F3C;
   --color-surface-quaternary-rice-hover: #6A5D42;
   --color-surface-disabled-gray:#363432;
+  --color-overlay-rice:#F2E2B84D;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
   --color-foreground-secondary-rice: #363432;
@@ -85,6 +89,8 @@ html.dark {
   --color-tertiary-rice: #474237;
   --color-tertiary-green: #3F3B35;
   --color-tertiary-blue: #646273;
+  --color-status-fail: #FF6B6B;
+  --color-status-success: #66C86A;
 
   --shadow-card:0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
   --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
