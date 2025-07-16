@@ -321,7 +321,7 @@ fn clear_orders_of_pair(
         .chain(market_ask_filling_outcomes.into_values())
         .chain(limit_order_filling_outcomes)
     {
-        if let Some((order_id, user)) = order.id_and_user() {
+        let (user, id) = if let Some((order_id, user)) = order.id_and_user() {
             fill_user_order(
                 user,
                 &base_denom,
@@ -334,27 +334,6 @@ fn clear_orders_of_pair(
                 fees,
                 fee_payments,
             )?;
-
-            let clearing_price = filled_quote.checked_div(filled_base)?.convert_precision()?;
-            let cleared = order.remaining().is_zero();
-
-            // Emit event for filled user orders to be used by the frontend
-            events.push(OrderFilled {
-                user,
-                id: order_id,
-                kind: order.kind(),
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: order_direction,
-                filled_base,
-                filled_quote,
-                refund_base,
-                refund_quote,
-                fee_base,
-                fee_quote,
-                clearing_price,
-                cleared,
-            })?;
 
             if let Order::Limit(limit_order) = order {
                 if limit_order.remaining.is_zero() {
@@ -381,6 +360,8 @@ fn clear_orders_of_pair(
                     )?;
                 }
             }
+
+            (user, Some(order_id))
         } else {
             fill_passive_order(
                 &base_denom,
@@ -391,8 +372,32 @@ fn clear_orders_of_pair(
                 &mut inflows,
                 &mut outflows,
             )?;
-        }
 
+            (dex_addr, None)
+        };
+
+        let clearing_price = filled_quote.checked_div(filled_base)?.convert_precision()?;
+        let cleared = order.remaining().is_zero();
+
+        // Emit event for filled orders to be used by the frontend.
+        events.push(OrderFilled {
+            user,
+            id,
+            kind: order.kind(),
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction: order_direction,
+            filled_base,
+            filled_quote,
+            refund_base,
+            refund_quote,
+            fee_base,
+            fee_quote,
+            clearing_price,
+            cleared,
+        })?;
+
+        // Record the order's trading volume.
         update_trading_volumes(
             storage,
             api,
