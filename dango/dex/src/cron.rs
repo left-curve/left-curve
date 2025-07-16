@@ -397,7 +397,7 @@ fn clear_orders_of_pair(
             cleared,
         })?;
 
-        // Record the trader's trading volume.
+        // Record the order's trading volume.
         update_trading_volumes(
             storage,
             api,
