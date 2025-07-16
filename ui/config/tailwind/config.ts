@@ -194,12 +194,10 @@ export const tailwindConfig: Partial<Config> = {
       backgroundImage: {
         "account-card-red": "var(--color-bg-card-red)",
         "account-card-red-2": "var(--color-bg-card-red-2)",
-        "account-card-blue":
-          "linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%)",
+        "account-card-blue": "var(--color-bg-card-blue)",
         "account-card-green": "var(--color-bg-card-green)",
         "account-card-green-2": "var(--color-bg-card-green-2)",
-        "account-card-contract":
-          "linear-gradient(98.89deg,#fff5e6 18.66%,#fce5c4 46.73%,#fff5e6 86%)",
+        "account-card-contract": "var(--color-bg-card-rice)",
         "borrow-bar-green": "linear-gradient(321.22deg, #D2D184 26.16%, #F9F8EC 111.55%)",
         "borrow-bar-red": "linear-gradient(321.25deg, #F57589 26.85%, #FFF2E2 111.56%)",
         "margin-header":
