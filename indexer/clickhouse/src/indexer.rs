@@ -55,7 +55,7 @@ impl grug_app::Indexer for Indexer {
 
         self.runtime_handler
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
 
         Ok(())
     }
@@ -84,7 +84,7 @@ impl grug_app::Indexer for Indexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height, "`post_indexing` work started");
+        tracing::info!(block_height, "`post_indexing` work started");
 
         let clickhouse_client = self.context.clickhouse_client().clone();
         let querier = querier.clone();
@@ -111,14 +111,14 @@ impl grug_app::Indexer for Indexer {
             }
 
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, "`post_indexing` async work finished");
+            tracing::info!(block_height, "`post_indexing` async work finished");
 
             Ok::<(), grug_app::IndexerError>(())
         });
 
         self.runtime_handler
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
 
         Ok(())
     }

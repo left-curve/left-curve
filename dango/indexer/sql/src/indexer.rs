@@ -89,7 +89,7 @@ impl grug_app::Indexer for Indexer {
 
         let block_to_index = ctx
             .get::<BlockToIndex>()
-            .ok_or(grug_app::IndexerError::Database(
+            .ok_or(grug_app::IndexerError::Hook(
                 "BlockToIndex not found".to_string(),
             ))?;
 
@@ -112,7 +112,7 @@ impl grug_app::Indexer for Indexer {
         self.runtime_handler.block_on(async {
             handle
                 .await
-                .map_err(|e| grug_app::IndexerError::Database(e.to_string()))?
+                .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))?
         })?;
 
         #[cfg(feature = "metrics")]

@@ -79,8 +79,6 @@ impl CandleQuery {
                 if let Some(earlier_than_start_time) = earlier_than   {
                     query.push_str(" AND time_start <= ?");
                     params.push(Timestamp::from(earlier_than_start_time.naive_utc()).to_rfc3339_string());
-
-
                 }
 
                 if let Some(later_than_start_time) = later_than {

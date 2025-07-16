@@ -573,7 +573,7 @@ impl IndexerTrait for Indexer {
 
         self.handle
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
 
         Ok(())
     }

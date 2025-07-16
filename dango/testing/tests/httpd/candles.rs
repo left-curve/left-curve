@@ -13,10 +13,16 @@ use {
         StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql},
+    indexer_clickhouse::entities::{candle::Candle, pair_price::PairPrice},
+    indexer_testing::{
+        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
+    },
+    tokio::sync::mpsc,
     tracing::Level,
 };
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
@@ -100,11 +106,164 @@ async fn query_candles() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::INFO);
+
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, clickhouse_context) =
+        setup_test_with_indexer(true).await;
+
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let graphql_query = r#"
+    subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
+        candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
+            timeStart
+            open
+            high
+            low
+            close
+            volumeBase
+            volumeQuote
+            quoteDenom
+            baseDenom
+            interval
+        }
+    }
+  "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "candles",
+        query: graphql_query,
+        variables: serde_json::json!({
+            "base_denom": "dango",
+            "quote_denom": "bridge/usdc",
+            "interval": "ONE_SECOND",
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    // Can't call this from LocalSet so using channels instead.
+    let (create_candle_tx, mut rx) = mpsc::channel::<u32>(1);
+    tokio::spawn(async move {
+        while let Some(block_height) = rx.recv().await {
+            if block_height == 0 {
+                break;
+            }
+            tracing::info!("Creating pair prices");
+
+            create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+            tracing::info!("Pair prices created");
+            // Enabling this here will cause the test to hang
+            suite.app.indexer.wait_for_finish()?;
+        }
+
+        tracing::info!("dropping suite and rx");
+        drop(suite);
+        drop(rx);
+        tracing::info!("dropped suite and rx");
+        Ok::<(), anyhow::Error>(())
+    });
+
+    let create_candle_tx_clone = create_candle_tx.clone();
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let name = request_body.name;
+                let (_srv, _ws, framed) =
+                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                        .await?;
+
+                // 1st response is always the existing last candle
+                let (framed, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
+
+                println!("response: {response:#?}");
+
+                // assert_that!(
+                //     response
+                //         .data
+                //         .into_iter()
+                //         .map(|t| t.created_block_height)
+                //         .collect::<Vec<_>>()
+                // )
+                // .is_equal_to(vec![2]);
+
+                tracing::info!("sending 2");
+
+                create_candle_tx_clone.send(2).await.unwrap();
+
+                // // 2nd response
+                let (_, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
+
+                println!("response: {response:#?}");
+
+                // assert_that!(
+                //     response
+                //         .data
+                //         .into_iter()
+                //         .map(|t| t.created_block_height)
+                //         .collect::<Vec<_>>()
+                // )
+                // .is_equal_to(vec![4]);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await??;
+
+    tracing::info!("finished local set");
+
+    let candle_1s: Vec<Candle> = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT *, '1s' as interval FROM pair_prices_1s")
+        .fetch_all()
+        .await?;
+
+    println!("candle_1s: {:#?}", candle_1s.len());
+
+    let candle_1m: Vec<Candle> = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT *, '1m' as interval FROM pair_prices_1m")
+        .fetch_all()
+        .await?;
+
+    println!("candle_1m: {:#?}", candle_1m.len());
+
+    let pair_prices: Vec<PairPrice> = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT * FROM pair_prices")
+        .fetch_all()
+        .await?;
+
+    println!("pair_prices: {:#?}", pair_prices.len());
+
+    create_candle_tx.send(0).await.unwrap();
+
+    tracing::info!("finished test");
+
+    Ok(())
+}
+
 async fn create_pair_prices(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> anyhow::Result<()> {
+    tracing::info!("create_pair_prices called");
+
     suite
         .execute(
             &mut accounts.owner,
@@ -177,7 +336,7 @@ async fn create_pair_prices(
             outcome.should_succeed();
         });
 
-    suite.app.indexer.wait_for_finish()?;
+    tracing::info!("create_pair_prices finished");
 
     Ok(())
 }

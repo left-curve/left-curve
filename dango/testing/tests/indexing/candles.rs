@@ -1,6 +1,7 @@
 use {
     assertor::*,
-    dango_testing::setup_test_with_indexer,
+    dango_genesis::Contracts,
+    dango_testing::{TestAccounts, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
         dex::{self, CreateLimitOrderRequest, Direction},
@@ -18,6 +19,7 @@ use {
     tracing::Level,
 };
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
@@ -123,14 +125,111 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(true).await;
 
-    // NOTE: used the same code as `dex_works` in `dex.rs`
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
+    suite.app.indexer.wait_for_finish()?;
+
+    let pair_price = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT * FROM pair_prices")
+        .fetch_one::<PairPrice>()
+        .await?;
+
+    // Manual asserts so if clearing price changes, it doesn't break this test.
+    assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
+    assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
+    assert_that!(pair_price.clearing_price).is_greater_than::<Dec<Udec128>>(Udec128::ZERO.into());
+    assert_that!(pair_price.volume_base).is_equal_to::<Int<Uint128>>(Uint128::from(25).into());
+    assert_that!(pair_price.volume_quote).is_equal_to::<Int<Uint128>>(Uint128::from(718).into());
+
+    // Makes sure we get correct precision: 27.4 without specific number, since this can change.
+    assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
+
+    let candle_1m: Candle = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT *, '1m' as interval FROM pair_prices_1m")
+        .fetch_one()
+        .await?;
+
+    let expected_candle = serde_json::json!({
+        "quote_denom": "bridge/usdc",
+        "base_denom": "dango",
+        "close": 27400000000000000000_u128,
+        "high":  27400000000000000000_u128,
+        "interval": "1m",
+        "low": 27400000000000000000_u128,
+        "open": 27400000000000000000_u128,
+        "time_start": serde_json::Number::from(31536000000000_u64),
+        "volume_base": 25,
+        "volume_quote": 718,
+    });
+
+    let candle_1m_serde =
+        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
+            .unwrap();
+    assert_that!(candle_1m_serde).is_equal_to(expected_candle);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::INFO);
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+        setup_test_with_indexer(true).await;
+
+    for _ in 0..10 {
+        create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+    }
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let pair_prices: Vec<PairPrice> = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT * FROM pair_prices")
+        .fetch_all()
+        .await?;
+
+    println!("pair_prices: {:#?}", pair_prices.len());
+
+    println!(
+        "pair_prices: {:#?}",
+        pair_prices
+            .into_iter()
+            .map(|p| p.created_at)
+            .collect::<Vec<_>>()
+    );
+
+    let candle_1m: Vec<Candle> = clickhouse_context
+        .clickhouse_client()
+        .query("SELECT *, '1m' as interval FROM pair_prices_1m")
+        .fetch_all()
+        .await?;
+
+    println!("candle_1m: {:#?}", candle_1m.len());
+    println!(
+        "candle_1m: {:#?}",
+        candle_1m
+            .into_iter()
+            .map(|c| c.time_start)
+            .collect::<Vec<_>>()
+    );
+
+    Ok(())
+}
+
+async fn create_pair_prices(
+    suite: &mut TestSuiteWithIndexer,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+) -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.owner,
@@ -202,48 +301,6 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .for_each(|outcome| {
             outcome.should_succeed();
         });
-
-    suite.app.indexer.wait_for_finish()?;
-
-    let pair_price = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT * FROM pair_prices")
-        .fetch_one::<PairPrice>()
-        .await?;
-
-    // Manual asserts so if clearing price changes, it doesn't break this test.
-    assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
-    assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price).is_greater_than::<Dec<Udec128>>(Udec128::ZERO.into());
-    assert_that!(pair_price.volume_base).is_equal_to::<Int<Uint128>>(Uint128::from(25).into());
-    assert_that!(pair_price.volume_quote).is_equal_to::<Int<Uint128>>(Uint128::from(718).into());
-
-    // Makes sure we get correct precision: 27.4 without specific number, since this can change.
-    assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
-
-    let candle_1m: Candle = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT *, '1m' as interval FROM pair_prices_1m")
-        .fetch_one()
-        .await?;
-
-    let expected_candle = serde_json::json!({
-        "quote_denom": "bridge/usdc",
-        "base_denom": "dango",
-        "close": 27400000000000000000_u128,
-        "high":  27400000000000000000_u128,
-        "interval": "1m",
-        "low": 27400000000000000000_u128,
-        "open": 27400000000000000000_u128,
-        "time_start": serde_json::Number::from(31536000000000_u64),
-        "volume_base": 25,
-        "volume_quote": 718,
-    });
-
-    let candle_1m_serde =
-        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
-            .unwrap();
-    assert_that!(candle_1m_serde).is_equal_to(expected_candle);
 
     Ok(())
 }

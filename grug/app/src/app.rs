@@ -411,7 +411,11 @@ where
 
             let mut indexer_ctx = crate::IndexerContext::new();
             self.indexer
-                .post_indexing(block_height, querier, &mut indexer_ctx)?;
+                .post_indexing(block_height, querier, &mut indexer_ctx)
+                .inspect_err(|err| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %err, "Error in post_indexing");
+                })?;
         }
 
         Ok(())

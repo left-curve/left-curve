@@ -17,6 +17,6 @@ pub enum Error {
 
 impl From<Error> for grug_app::IndexerError {
     fn from(error: Error) -> Self {
-        grug_app::IndexerError::Database(error.to_string())
+        grug_app::IndexerError::Hook(error.to_string())
     }
 }

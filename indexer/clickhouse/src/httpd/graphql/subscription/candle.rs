@@ -50,12 +50,12 @@ impl CandleSubscription {
         query.push_str(" ORDER BY time_start DESC");
         query.push_str(&format!(" LIMIT {limit}"));
 
-        Ok(app_ctx
-            .clickhouse_client()
-            .query(&query)
-            .bind(params)
-            .fetch_all::<Candle>()
-            .await?)
+        let mut cursor_query = app_ctx.clickhouse_client().query(&query);
+        for param in params {
+            cursor_query = cursor_query.bind(param);
+        }
+
+        Ok(cursor_query.fetch_all::<Candle>().await?)
     }
 }
 
@@ -66,7 +66,7 @@ impl CandleSubscription {
     /// If `limit` is not provided, it will default to MAX_PAST_CANDLES.
     /// If `limit` is greater than MAX_PAST_CANDLES, it will be set to MAX_PAST_CANDLES.
     /// If `later_than` is provided, it will be used to filter the candles returned.
-    async fn candle<'a>(
+    async fn candles<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
         base_denom: String,
