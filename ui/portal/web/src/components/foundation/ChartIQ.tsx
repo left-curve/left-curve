@@ -15,6 +15,7 @@ getLicenseKey(CIQ);
 import { useEffect, useRef, useState } from "react";
 
 import "@left-curve/chartiq/examples/translations/translationSample";
+import quotefeed from "@left-curve/chartiq/examples/feeds/quoteFeedSimulator.js";
 
 import "@left-curve/chartiq/css/normalize.css";
 import "@left-curve/chartiq/css/stx-chart.css";
@@ -62,7 +63,10 @@ export const ChartIQ = () => {
 
   useEffect(() => {
     if (loading.current) {
-      const config = getDefaultConfig({});
+      const config = getDefaultConfig({
+        quoteFeed: quotefeed,
+      });
+
       const {
         onNewSymbolLoad,
         hotkeyConfig,
@@ -200,13 +204,6 @@ export const ChartIQ = () => {
                 label: "Range Selector",
                 setget: "Layout.RangeSlider",
                 feature: "rangeslider",
-                menuPersist: true,
-              },
-              {
-                type: "switch",
-                label: "Extended Hours",
-                setget: "Layout.ExtendedHours",
-                feature: "extendedhours",
                 menuPersist: true,
               },
               {
@@ -369,6 +366,11 @@ export const ChartIQ = () => {
             currentPriceLine: true,
             currentPriceLabel: true,
             whitespace: 0,
+          },
+          chart: {
+            yAxis: {
+              position: "right",
+            },
           },
         },
         quoteFeeds,
@@ -635,31 +637,15 @@ export const ChartIQ = () => {
         config: customConfig,
       });
 
-      stx.loadChart(
-        "BTC-USDC",
-        {
-          masterData: sample5min,
-          periodicity: {
-            period: 1,
-            interval: 5,
-            timeUnit: "minute",
-          },
-        },
-        () => {
-          stx.chart.yAxis.zoom = -0.0000001;
-          stx.chart.yAxis.position = "right";
-          stx.setStyle("stx_candle_up", "color", "#27AE60");
-          stx.setStyle("stx_candle_down", "color", "#EB5757");
-          stx.setStyle("stx_current_hr_down", "backgroundColor", "#EB5757");
-          stx.setStyle("stx_current_hr_up", "backgroundColor", "#27AE60");
-          stx.animations.zoom = new CIQ.EaseMachine("easeOutCubic", 1);
+      stx.chart.yAxis.zoom = -0.0000001;
+      stx.controls.mSticky = false;
 
-          stx.swipeRelease = () => {};
+      stx.animations.zoom = new CIQ.EaseMachine("easeOutCubic", 1);
+      stx.swipeRelease = () => {};
 
-          stx.controls.chartControls.style.display = "none";
-          stx.controls.chartControls = null;
-        },
-      );
+      stx.controls.chartControls.style.display = "none";
+      stx.controls.chartControls = null;
+      stx.layout.smartzoom = false;
 
       setStx(stx);
       Object.assign(window, { stx, CIQ });
@@ -776,7 +762,7 @@ export const ChartIQ = () => {
           </div>
         </nav>
 
-        <div className="ciq-chart-area h-full">
+        <div className="ciq-chart-area">
           <div className="ciq-chart">
             <cq-palette-dock>
               <div className="palette-dock-container">
