@@ -45,14 +45,24 @@ pub fn swap_exact_amount_in(
     // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
     // => output_amount = B - (A * B) / (A + input_amount)
     // Round so that user takes the loss.
-    let output_amount =
+    let output_amount_before_fee =
         output_reserve.checked_sub(input_reserve.checked_multiply_ratio_ceil(
             output_reserve,
             input_reserve.checked_add(input_amount)?,
         )?)?;
 
-    let one_sub_fee_rate = Udec128::ONE - *fee_rate;
-    output_amount.checked_mul_dec_floor(one_sub_fee_rate)
+    // Deduct liquidity fee from the output amount. Not to be confused with the
+    // protocol fee:
+    //
+    // - Liquidity fee (also called "swap fee") is paid into the pool.
+    //   It's equivalent to the bid-ask spread in order books.
+    // - Protocol fee is paid to the Dango protocol (specifically, the taxman
+    //   contract). It's equivalent to the maker/taker fee in order books,
+    //   and handled by `core::router::swap_exact_amount_in`.
+    //
+    // For the geometric pool, the liquidity fee is implicit in the spread of the
+    // order reflection.
+    output_amount_before_fee.checked_mul_dec_floor(Udec128::ONE - *fee_rate)
 }
 
 /// Note: this function does not concern the liquidity fee.
