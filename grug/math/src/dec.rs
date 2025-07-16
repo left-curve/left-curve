@@ -516,15 +516,6 @@ macro_rules! generate_decimal {
 
 generate_decimal! {
     type              = Unsigned,
-    name              = Udec128_5,
-    precision         = 5,
-    inner_type        = u128,
-    inner_constructor = Uint128::new,
-    doc               = "128-bit unsigned fixed-point number with 5 decimal places.",
-}
-
-generate_decimal! {
-    type              = Unsigned,
     name              = Udec128_6,
     precision         = 6,
     inner_type        = u128,
@@ -584,15 +575,6 @@ generate_decimal! {
     inner_type        = U256,
     inner_constructor = Uint256::new_from_u128,
     doc               = "256-bit unsigned fixed-point number with 24 decimal places.",
-}
-
-generate_decimal! {
-    type              = Signed,
-    name              = Dec128_5,
-    precision         = 5,
-    inner_type        = i128,
-    inner_constructor = Int128::new,
-    doc               = "128-bit signed fixed-point number with 5 decimal places.",
 }
 
 generate_decimal! {
