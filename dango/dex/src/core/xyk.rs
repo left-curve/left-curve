@@ -204,11 +204,11 @@ pub fn normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
     a.checked_mul(b)?.checked_sqrt()
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-    use grug::Udec128_24;
-
-    use super::*;
+    use {super::*, grug::Udec128_24};
 
     #[test]
     fn marginal_price_is_non_zero_with_low_price_and_high_precision_token() {
