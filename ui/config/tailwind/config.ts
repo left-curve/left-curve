@@ -24,16 +24,20 @@ export const tailwindConfig: Partial<Config> = {
           rice: "var(--color-primary-rice)",
           "900": "var(--color-primary-900)",
           gray: "var(--color-primary-gray)",
+          green: "var(--color-primary-green)",
         },
         secondary: {
           "700": "var(--color-secondary-700)",
           blue: "var(--color-secondary-blue)",
           rice: "var(--color-secondary-rice)",
           gray: "var(--color-secondary-gray)",
+          red: "var(--color-secondary-red)",
+          green: "var(--color-secondary-green)",
         },
         tertiary: {
           rice: "var(--color-tertiary-rice)",
           "500": "var(--color-tertiary-500)",
+          green: "var(--color-tertiary-green)",
         },
         quaternary: {
           rice: "var(--color-surface-quaternary-rice)",
