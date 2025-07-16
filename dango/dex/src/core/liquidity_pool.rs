@@ -272,12 +272,27 @@ impl PassiveLiquidityPool for PairParams {
             );
         };
 
-        let output_amount_before_fee = match self.pool_type {
-            PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_in(
-                reserve.amount_of(&input.denom)?,
-                reserve.amount_of(&output_denom)?,
-                input.amount,
-            )?,
+        // Compute the output amount. For XYK we need to deduct the liquidity fee
+        // from the output. Not to be confused with the protocol fee:
+        // - Liquidity fee (also called "swap fee") is paid into the pool.
+        //   It's equivalent to the bid-ask spread in order books.
+        // - Protocol fee is paid to the Dango protocol (specifically, the taxman
+        //   contract). It's equivalent to the maker/taker fee in order books,
+        //   and handled by `core::router::swap_exact_amount_in`.
+        //
+        // For Geometric swap the liquidity fee is implicit in the spread of the
+        // order reflection.
+        let output_amount = match self.pool_type {
+            PassiveLiquidity::Xyk { .. } => {
+                let output_amount_before_fee = xyk::swap_exact_amount_in(
+                    reserve.amount_of(&input.denom)?,
+                    reserve.amount_of(&output_denom)?,
+                    input.amount,
+                )?;
+
+                let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
+                output_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?
+            },
             PassiveLiquidity::Geometric {
                 ratio,
                 order_spacing,
@@ -293,15 +308,6 @@ impl PassiveLiquidityPool for PairParams {
             )?,
         };
 
-        // Deduct liquidity fee from the output.
-        // Not to be confused with the protocol fee:
-        // - Liquidity fee (also called "swap fee") is paid into the pool.
-        //   It's equivalent to the bid-ask spread in order books.
-        // - Protocol fee is paid to the Dango protocol (specifically, the taxman
-        //   contract). It's equivalent to the maker/taker fee in order books,
-        //   and handled by `core::router::swap_exact_amount_in`.
-        let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
-        let output_amount = output_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?;
         let output = Coin::new(output_denom, output_amount)?;
 
         ensure!(
