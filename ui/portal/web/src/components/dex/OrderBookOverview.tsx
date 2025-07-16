@@ -21,7 +21,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-bg-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="p-4 shadow-card-shadow bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
@@ -70,20 +70,22 @@ const OrderRow: React.FC<
     maxCumulativeTotal > 0 ? (cumulativeTotal / maxCumulativeTotal) * 100 : 0;
 
   const depthBarClass =
-    type === "bid" ? "bg-green-300 lg:-left-4" : "bg-red-300 -right-0 lg:-left-4 lg:right-auto";
+    type === "bid"
+      ? "bg-status-success lg:-left-4"
+      : "bg-status-fail -right-0 lg:-left-4 lg:right-auto";
 
   return (
     <div className="relative flex-1 diatype-xs-medium text-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
-        className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
+        className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
       />
       <div
         className={twMerge(
           "z-10",
           type === "bid"
-            ? "text-green-700 text-left"
-            : "text-red-bean-700 order-2 lg:order-none text-end lg:text-left",
+            ? "text-status-success text-left"
+            : "text-status-fail order-2 lg:order-none text-end lg:text-left",
         )}
       >
         {price.toFixed(1)}
@@ -135,7 +137,7 @@ const OrderBook: React.FC = () => {
             <p className="diatype-xs-bold text-status-success relative z-20">
               {bids[bids.length - 1].price.toFixed(2)}
             </p>
-            <span className="bg-bg-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
+            <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
           </div>
         )}
         <div className="bid-container flex flex-col w-full gap-1">
@@ -186,7 +188,7 @@ const LiveTrades: React.FC = () => {
                 <p>{trade.createdAt}</p>
                 <IconLink className="w-3 h-3" />
               </div>
-              <span className="group-hover:bg-bg-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+              <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
             </div>
           );
         })}

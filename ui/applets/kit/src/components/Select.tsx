@@ -136,7 +136,7 @@ const Item: React.FC<PropsWithChildren<SelectItemProps>> = ({ value, children })
       value={value}
       onClick={() => setSelected(value)}
       className={twMerge(
-        "rounded-sm py-2 px-3 text-base outline-none cursor-pointer flex items-center transition-all diatype-m-medium bg-bg-secondary-rice leading-none hover:bg-bg-tertiary-rice",
+        "rounded-sm py-2 px-3 text-base outline-none cursor-pointer flex items-center transition-all diatype-m-medium bg-surface-secondary-rice leading-none hover:bg-surface-tertiary-rice",
       )}
     >
       {children}
@@ -195,15 +195,15 @@ const selectVariants = tv({
   slots: {
     base: "group inline-flex flex-col relative w-fit min-w-[9rem] transition-all  duration-500 leading-none",
     listboxWrapper:
-      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-bg-secondary-rice absolute",
+      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-surface-secondary-rice absolute",
     trigger:
-      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-bg-secondary-rice",
+      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-surface-secondary-rice",
     icon: "top-1/2 -translate-y-1/2 right-4 absolute pointer-events-none w-4 h-4 transition-all duration-300",
   },
   variants: {
     isDisabled: {
       true: {
-        trigger: "bg-gray-200 text-tertiary-500 cursor-not-allowed",
+        trigger: "bg-secondary-gray text-tertiary-500 cursor-not-allowed",
       },
     },
   },

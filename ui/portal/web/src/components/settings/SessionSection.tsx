@@ -21,7 +21,7 @@ import type { PropsWithChildren } from "react";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="rounded-xl bg-bg-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
+    <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
       <h3 className="h4-bold text-primary-900 px-2">{m["settings.session.title"]()}</h3>
       {children}
     </div>
@@ -162,7 +162,7 @@ const ConnectMobileSection: React.FC = () => {
     <div className="flex w-full pr-2">
       <button
         type="button"
-        className="flex items-center justify-between pl-2 py-4 rounded-md hover:bg-bg-tertiary-rice transition-all cursor-pointer w-full"
+        className="flex items-center justify-between pl-2 py-4 rounded-md hover:bg-surface-tertiary-rice transition-all cursor-pointer w-full"
         onClick={() => showModal(Modals.QRConnect)}
       >
         <span className="flex items-center justify-center gap-2">

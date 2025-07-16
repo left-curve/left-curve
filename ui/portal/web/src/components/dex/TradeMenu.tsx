@@ -197,7 +197,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             </p>
           </div>
         </div>
-        {/*  <span className="w-full h-[1px] bg-gray-100" />
+        {/*  <span className="w-full h-[1px] bg-secondary-gray" />
         <div className="px-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Account Equity</p>
@@ -383,7 +383,7 @@ const MenuMobile: React.FC<TradeMenuProps> = (props) => {
 
   return (
     <Sheet isOpen={isTradeBarVisible} onClose={() => setTradeBarVisibility(false)} rootId="root">
-      <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
+      <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none">
         <Sheet.Header />
         <Sheet.Content>
           <Menu className="overflow-y-auto h-full" {...props} />

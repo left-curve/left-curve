@@ -6,7 +6,7 @@ import type { ToastProps } from "#utils/toaster.js";
 
 const Icon = {
   success: (
-    <div className="min-h-6 min-w-6 rounded-full bg-green-bean-300 text-green-bean-100 flex items-center justify-center">
+    <div className="min-h-6 min-w-6 rounded-full bg-surface-quaternary-green text-secondary-green flex items-center justify-center">
       <IconChecked className="w-3 h-3" />
     </div>
   ),
@@ -24,7 +24,7 @@ const Icon = {
 
 export const Toast: React.FC<ToastProps> = ({ title, description, type, close }) => {
   return (
-    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-bg-primary-rice border border-secondary-gray transition-all duration-500 shadow-account-card flex items-start gap-2 relative">
+    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-surface-primary-rice border border-secondary-gray transition-all duration-500 shadow-account-card flex items-start gap-2 relative">
       {Icon[type]}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <p className="text-primary-900 diatype-sm-medium">{title}</p>

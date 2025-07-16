@@ -111,19 +111,19 @@ const tabsVariants = tv({
     },
     color: {
       green: {
-        base: "bg-green-bean-200",
+        base: "bg-secondary-green",
         "animated-element":
-          "bg-green-bean-50 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       red: {
-        base: "bg-red-100",
+        base: "bg-secondary-red",
         "animated-element":
           "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "light-green": {
-        base: "bg-green-bean-100",
+        base: " bg-tertiary-green",
         "animated-element":
-          "bg-green-bean-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-primary-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "line-red": {
         base: "p-0",
@@ -189,32 +189,32 @@ const tabVariants = tv({
     {
       isActive: true,
       color: "green",
-      class: "text-black",
+      class: "text-surface-primary-rice",
     },
     {
       isActive: true,
       color: "red",
-      class: "text-white-100",
+      class: "text-surface-primary-rice",
     },
     {
       isActive: false,
       color: "red",
-      class: "text-gray-300",
+      class: "text-foreground-tertiary",
     },
     {
       isActive: false,
       color: "green",
-      class: "text-gray-300",
+      class: "text-foreground-tertiary",
     },
     {
       isActive: true,
       color: "light-green",
-      class: "text-white-100",
+      class: "text-secondary-700",
     },
     {
       isActive: false,
       color: "light-green",
-      class: "text-gray-300",
+      class: "text-foreground-tertiary",
     },
     {
       isActive: true,
@@ -224,7 +224,7 @@ const tabVariants = tv({
     {
       isActive: false,
       color: "line-red",
-      class: "text-gray-300",
+      class: "text-foreground-tertiary",
     },
   ],
 });

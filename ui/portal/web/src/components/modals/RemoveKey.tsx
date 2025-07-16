@@ -38,7 +38,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   });
 
   return (
-    <div className="flex flex-col bg-bg-primary-rice rounded-xl relative max-w-[400px]">
+    <div className="flex flex-col bg-surface-primary-rice rounded-xl relative max-w-[400px]">
       <IconButton
         className="hidden lg:block absolute right-2 top-2"
         variant="link"
@@ -51,7 +51,9 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
           <IconTrash />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">{m["settings.keyManagement.management.delete.title"]()}</h3>
+          <h3 className="h4-bold text-primary-900">
+            {m["settings.keyManagement.management.delete.title"]()}
+          </h3>
           <p className="text-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.delete.description"]()}
           </p>
@@ -60,7 +62,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-gray-100 my-2 lg:block hidden" />
+      <span className="w-full h-[1px] bg-secondary-gray my-2 lg:block hidden" />
       <div className="p-4 flex gap-4 flex-col-reverse lg:flex-row">
         <Button fullWidth variant="secondary" onClick={() => hideModal()} isDisabled={isPending}>
           {m["common.cancel"]()}

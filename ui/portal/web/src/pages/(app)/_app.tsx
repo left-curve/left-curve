@@ -17,7 +17,7 @@ export const Route = createFileRoute("/(app)/_app")({
     const { theme } = useTheme();
 
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-bg-primary-rice">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice">
         <img
           src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
           alt="bg-image"
@@ -50,7 +50,7 @@ function LayoutApp() {
   const { theme } = useTheme();
 
   return (
-    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-bg-primary-rice text-secondary-700">
+    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-secondary-700">
       <img
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"

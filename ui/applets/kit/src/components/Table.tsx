@@ -168,16 +168,16 @@ const tabsVariants = tv({
   variants: {
     style: {
       default: {
-        base: "bg-bg-secondary-rice shadow-account-card px-4 pt-4 gap-4",
+        base: "bg-surface-secondary-rice shadow-account-card px-4 pt-4 gap-4",
         header:
-          "p-4 last:text-end bg-green-bean-100 text-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
+          "p-4 last:text-end bg-secondary-green text-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
         row: "border-b border-secondary-gray last:border-b-0",
       },
       simple: {
         base: "text-tertiary-500 border-separate gap-2",
         header: "p-2 text-tertiary-500 diatype-xs-regular last:text-end text-start",
-        cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-bg-tertiary-rice",
+        cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-surface-tertiary-rice",
         row: "rounded-xl group",
       },
     },

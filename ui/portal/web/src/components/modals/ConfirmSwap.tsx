@@ -44,7 +44,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
     const outputAmount = formatUnits(output.amount, outputCoin.decimals);
 
     return (
-      <div className="flex flex-col bg-bg-primary-rice md:border border-secondary-gray rounded-xl relative gap-4 w-full md:max-w-[25rem] p-6 pt-4">
+      <div className="flex flex-col bg-surface-primary-rice md:border border-secondary-gray rounded-xl relative gap-4 w-full md:max-w-[25rem] p-6 pt-4">
         <IconButton
           className="hidden md:block absolute right-5 top-5"
           variant="link"

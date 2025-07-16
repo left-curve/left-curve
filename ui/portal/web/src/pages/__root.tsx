@@ -29,7 +29,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   errorComponent: () => {
     const { theme } = useTheme();
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-bg-primary-rice">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-surface-primary-rice">
         <img
           src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
           alt="bg-image"

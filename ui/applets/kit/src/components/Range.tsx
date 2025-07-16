@@ -203,7 +203,7 @@ export const Range: React.FC<RangeProps> = ({
             ref={sliderRef}
             className={twMerge(
               "relative h-1 rounded-full",
-              isDisabled ? "bg-gray-200" : "bg-neutral-200 cursor-pointer",
+              isDisabled ? "bg-surface-disabled-gray" : "bg-secondary-gray cursor-pointer",
             )}
             onMouseDown={handleSliderMouseDown}
             onTouchStart={handleSliderMouseDown}

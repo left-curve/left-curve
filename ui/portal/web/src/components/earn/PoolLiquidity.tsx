@@ -82,7 +82,7 @@ const PoolLiquidityHeader: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-bg-tertiary-rice relative w-full overflow-hidden",
+        "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative w-full overflow-hidden",
         { "lg:flex-row": userHasLiquidity },
       )}
     >
@@ -157,7 +157,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   });
 
   return (
-    <div className="flex p-4 flex-col gap-4 rounded-xl bg-bg-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
+    <div className="flex p-4 flex-col gap-4 rounded-xl bg-surface-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
         <p className="exposure-sm-italic text-tertiary-500">{m["poolLiquidity.liquidity"]()}</p>
         <p className="h4-bold text-primary-900">{totalPrice}</p>
@@ -208,7 +208,7 @@ const PoolLiquidityDeposit: React.FC = () => {
     <>
       <div className="flex flex-col gap-2">
         <p className="exposure-sm-italic text-secondary-700">{m["poolLiquidity.deposit"]()}</p>
-        <div className="flex flex-col rounded-xl bg-bg-secondary-rice shadow-account-card">
+        <div className="flex flex-col rounded-xl bg-surface-secondary-rice shadow-account-card">
           <Input
             {...register("baseAmount", {
               validate: (v) => {
@@ -254,7 +254,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               </div>
             }
           />
-          <span className="w-full h-[1px] bg-gray-100" />
+          <span className="w-full h-[1px] bg-secondary-gray" />
           <Input
             {...register("quoteAmount", {
               mask: numberMask,
@@ -352,7 +352,7 @@ const PoolLiquidityWithdraw: React.FC = () => {
           <p className="exposure-sm-italic text-secondary-700">
             {m["poolLiquidity.withdrawAmount"]()}
           </p>
-          <div className="flex rounded-xl bg-bg-secondary-rice shadow-account-card flex-col gap-2 p-4 items-center">
+          <div className="flex rounded-xl bg-surface-secondary-rice shadow-account-card flex-col gap-2 p-4 items-center">
             <p className="h1-regular text-secondary-700">{withdrawPercent}%</p>
             <Range
               isDisabled={withdraw.isPending}

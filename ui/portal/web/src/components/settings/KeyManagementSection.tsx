@@ -39,7 +39,7 @@ export const KeyManagementSection: React.FC = () => {
   if (status !== ConnectionStatus.Connected) return null;
 
   return (
-    <div className="rounded-xl bg-bg-secondary-rice shadow-account-card flex flex-col w-full p-4 gap-4">
+    <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-4 max-w-lg">
           <h3 className="h4-bold text-primary-900">{m["settings.keyManagement.title"]()}</h3>
@@ -66,7 +66,7 @@ export const KeyManagementSection: React.FC = () => {
           return (
             <div
               key={uid()}
-              className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-bg-tertiary-rice transition-all p-4"
+              className="flex items-center justify-between rounded-2xl border border-surface-quaternary-rice hover:bg-surface-tertiary-rice transition-all p-4"
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">

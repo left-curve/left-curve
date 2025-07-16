@@ -66,8 +66,8 @@ const Details: React.FC = () => {
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
   return (
-    <div className="flex flex-col gap-4 rounded-xl p-4 bg-bg-secondary-rice shadow-account-card text-secondary-700 diatype-sm-medium relative overflow-hidden">
-      <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
+    <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 diatype-sm-medium relative overflow-hidden">
+      <h1 className="h4-bold text-primary-900">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
@@ -146,7 +146,7 @@ const Details: React.FC = () => {
       <img
         src="/images/emojis/detailed/map-explorer.svg"
         alt="map-emoji"
-        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] mix-blend-multiply hidden md:block"
+        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] hidden md:block"
       />
     </div>
   );
@@ -161,8 +161,8 @@ const Messages: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full gap-6">
-      <div className="w-full shadow-account-card bg-bg-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold">{m["explorer.txs.messages"]()}</p>
+      <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold text-primary-900">{m["explorer.txs.messages"]()}</p>
         {messages.map(({ data, methodName, orderIdx }) => {
           const message = data[methodName];
           return (
@@ -179,8 +179,8 @@ const Messages: React.FC = () => {
           );
         })}
       </div>
-      <div className="w-full shadow-account-card bg-bg-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold">{m["explorer.txs.events"]()}</p>
+      <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold text-primary-900">{m["explorer.txs.events"]()}</p>
         <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
           <JsonVisualizer json={nestedEvents} collapsed={1} />
         </div>
@@ -197,7 +197,7 @@ const NotFound: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
-        <div className="flex flex-col gap-2 items-center border border-red-bean-50">
+        <div className="flex flex-col gap-2 items-center">
           <h3 className="exposure-m-italic text-secondary-700">
             {m["explorer.txs.notFound.title"]()}
           </h3>

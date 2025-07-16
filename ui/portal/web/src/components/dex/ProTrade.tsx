@@ -83,7 +83,7 @@ const ProTradeHeader: React.FC = () => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-bg-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
@@ -158,7 +158,7 @@ const ProTradeChart: React.FC = () => {
   if (!isLg) return null;
 
   return (
-    <div className="shadow-card-shadow bg-bg-secondary-rice h-full">
+    <div className="shadow-card-shadow bg-surface-secondary-rice h-full">
       <TradingViewChart />
     </div>
   );
@@ -193,7 +193,7 @@ const ProTradeOrders: React.FC = () => {
         return (
           <Cell.Text
             text={value}
-            className="diatype-xs-regular text-secondary-700 hover:text-black cursor-pointer"
+            className="diatype-xs-regular text-secondary-700 hover:text-primary-900 cursor-pointer"
           />
         );
       },
@@ -292,7 +292,7 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-bg-secondary-rice flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -303,7 +303,7 @@ const ProTradeOrders: React.FC = () => {
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         />
 
-        <span className="w-full absolute h-[2px] bg-gray-100 bottom-[0px] z-0" />
+        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
         {activeTab === "open order" ? (

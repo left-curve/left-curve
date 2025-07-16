@@ -84,8 +84,10 @@ const Details: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <AccountCard account={account} balance={totalBalance} />
-      <div className="flex flex-col gap-4 rounded-xl p-4 bg-bg-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
-        <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
+      <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
+        <h4 className="h4-bold text-primary-900">
+          {m["explorer.contracts.details.contractDetails"]()}
+        </h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
@@ -131,7 +133,7 @@ const NotFound: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
-        <div className="flex flex-col gap-2 items-center border border-red-bean-50">
+        <div className="flex flex-col gap-2 items-center">
           <h3 className="exposure-m-italic text-secondary-700">
             {m["explorer.accounts.notFound.title"]()}
           </h3>

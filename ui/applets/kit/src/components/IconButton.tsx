@@ -74,9 +74,9 @@ const buttonVariants = tv(
     variants: {
       variant: {
         primary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-red-bean-400 hover:bg-red-bean-600 text-bg-primary-rice",
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-red-bean-400 hover:bg-red-bean-600 text-surface-primary-rice",
         secondary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+          "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility:
           "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-quaternary-rice hover:bg-rice-200 text-secondary-rice",
         link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-gray-600 text-tertiary-500",
@@ -129,29 +129,29 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "green",
-        class: "bg-button-green hover:bg-green-bean-100 text-bg-primary-rice",
+        class: "bg-button-green hover:bg-secondary-green text-surface-primary-rice",
       },
       {
         variant: "link",
         isDisabled: true,
-        class: "text-gray-200",
+        class: "text-surface-disabled-gray",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled  border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled  border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "utility",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-disabled-gray text-surface-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: ["utility", "link"],

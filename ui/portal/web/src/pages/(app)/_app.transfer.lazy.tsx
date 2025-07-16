@@ -230,7 +230,7 @@ function TransferApplet() {
               </Button>
             </form>
           ) : (
-            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-bg-secondary-rice rounded-xl shadow-account-card p-4">
+            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-surface-secondary-rice rounded-xl shadow-account-card p-4">
               <div className="flex flex-col gap-1 items-center">
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">

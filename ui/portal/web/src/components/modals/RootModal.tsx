@@ -179,7 +179,7 @@ export const RootModal: React.FC = () => {
         detent="content-height"
         rootId="root"
       >
-        <Sheet.Container className="!bg-bg-primary-rice !rounded-t-2xl !shadow-none">
+        <Sheet.Container className="!bg-surface-primary-rice !rounded-t-2xl !shadow-none">
           <Sheet.Header>
             {options.header ? (
               <div className="flex items-center justify-between w-full">

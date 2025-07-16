@@ -70,7 +70,7 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
   const quoteCoin = coins[quoteDenom];
 
   return (
-    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-bg-tertiary-rice shadow-account-card rounded-xl overflow-hidden">
+    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-surface-tertiary-rice shadow-account-card rounded-xl overflow-hidden">
       <img
         src={images[index].character}
         alt={images[index].alt}
@@ -107,7 +107,7 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           >
             {labels.select}
           </Button>
-          <div className="p-2 rounded-xl bg-rice-100/80 flex items-center justify-between">
+          <div className="p-2 rounded-xl bg-overlay-rice flex items-center justify-between">
             <div className="flex gap-2 items-center">
               <span className="text-tertiary-500 diatype-xs-medium">{labels.apy}</span>
               <span className="text-secondary-700 diatype-sm-bold">-</span>

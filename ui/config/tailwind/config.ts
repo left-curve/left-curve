@@ -2,6 +2,7 @@ import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
+  darkMode: "class",
   safelist: [
     {
       pattern: /grid-cols-.+/,
@@ -10,33 +11,62 @@ export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
       colors: {
-        "bg-primary-rice": "var(--color-bg-primary-rice)",
-        "bg-secondary-rice": "var(--color-bg-secondary-rice)",
-        "bg-tertiary-rice": "var(--color-bg-tertiary-rice)",
+        surface: {
+          "primary-rice": "var(--color-surface-primary-rice)",
+          "primary-green": "var(--color-surface-primary-green)",
+          "secondary-rice": "var(--color-surface-secondary-rice)",
+          "secondary-blue": "var(--color-surface-secondary-blue)",
+          "secondary-red": "var(--color-surface-secondary-red)",
+          "tertiary-rice": "var(--color-surface-tertiary-rice)",
+          "tertiary-green": "var(--color-surface-tertiary-green)",
+          "quaternary-rice": "var(--color-surface-quaternary-rice)",
+          "quaternary-green": "var(--color-surface-quaternary-green)",
+          "quaternary-rice-hover": "var(--color-surface-quaternary-rice-hover)",
+          "disabled-gray": "var(--color-surface-disabled-gray)",
+        },
+        overlay: {
+          rice: "var(--color-overlay-rice)",
+        },
+        foreground: {
+          "primary-blue": "var(--color-foreground-primary-blue)",
+          "primary-red": "var(--color-foreground-primary-red)",
+          "primary-green": "var(--color-foreground-primary-green)",
+          "disabled-gray": "var(--color-foreground-disabled-gray)",
+          "secondary-rice": "var(--color-foreground-secondary-rice)",
+          tertiary: "var(--color-foreground-tertiary)",
+          "tertiary-rice": "var(--color-foreground-tertiary-rice)",
+          "quaternary-rice": "var(--color-foreground-quaternary-rice)",
+        },
         "button-green": "var(--color-button-green)",
         primary: {
           blue: "var(--color-primary-blue)",
           red: "var(--color-primary-red)",
           rice: "var(--color-primary-rice)",
           "900": "var(--color-primary-900)",
+          gray: "var(--color-primary-gray)",
+          green: "var(--color-primary-green)",
         },
         secondary: {
           "700": "var(--color-secondary-700)",
           blue: "var(--color-secondary-blue)",
           rice: "var(--color-secondary-rice)",
           gray: "var(--color-secondary-gray)",
+          red: "var(--color-secondary-red)",
+          green: "var(--color-secondary-green)",
         },
         tertiary: {
           rice: "var(--color-tertiary-rice)",
           "500": "var(--color-tertiary-500)",
+          green: "var(--color-tertiary-green)",
+          blue: "var(--color-tertiary-blue)",
         },
         quaternary: {
-          rice: "var(--color-bg-quaternary-rice)",
+          rice: "var(--color-surface-quaternary-rice)",
         },
         transparent: "transparent",
         status: {
-          success: "#25B12A",
-          fail: "#E71818",
+          success: "var(--color-status-success)",
+          fail: "var(--color-status-fail)",
         },
         black: {
           DEFAULT: "#000000",
@@ -147,6 +177,7 @@ export const tailwindConfig: Partial<Config> = {
           "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
         "account-card": "var(--shadow-card)",
         "btn-shadow-gradient": "var(--shadow-btn-shadow-gradient)",
+        "btn-secondary-shadow-gradient": "var(--shadow-btn-secondary-shadow-gradient)",
         "btn-shadow-disabled":
           "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
         "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",
@@ -167,11 +198,11 @@ export const tailwindConfig: Partial<Config> = {
       },
       backgroundImage: {
         "account-card-red": "var(--color-bg-card-red)",
-        "account-card-blue":
-          "linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%)",
+        "account-card-red-2": "var(--color-bg-card-red-2)",
+        "account-card-blue": "var(--color-bg-card-blue)",
         "account-card-green": "var(--color-bg-card-green)",
-        "account-card-contract":
-          "linear-gradient(98.89deg,#fff5e6 18.66%,#fce5c4 46.73%,#fff5e6 86%)",
+        "account-card-green-2": "var(--color-bg-card-green-2)",
+        "account-card-contract": "var(--color-bg-card-rice)",
         "borrow-bar-green": "linear-gradient(321.22deg, #D2D184 26.16%, #F9F8EC 111.55%)",
         "borrow-bar-red": "linear-gradient(321.25deg, #F57589 26.85%, #FFF2E2 111.56%)",
         "margin-header":

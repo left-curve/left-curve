@@ -33,12 +33,12 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
 
   return (
     <motion.div
-      className="w-full p-2 flex items-center justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
+      className="w-full p-2 flex items-center justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={title}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
@@ -62,7 +62,7 @@ type SearchAssetProps = WithPrice<AnyCoin>;
 const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={symbol}
     >
@@ -89,12 +89,12 @@ type SearchBlockItemProps = {
 const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={height}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
@@ -114,12 +114,12 @@ type SearchTransactionItemProps = {
 const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={height}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
@@ -141,12 +141,12 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   const { isMd } = useMediaQuery();
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={address}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
@@ -178,12 +178,12 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
 
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-bg-tertiary-rice rounded-xs group-data-[selected=true]:bg-bg-tertiary-rice cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={address}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src={`/images/emojis/simple/${type}.svg`} alt={type} className="w-12 h-12" />
         </div>
         <div className="flex flex-col">

@@ -90,14 +90,14 @@ export const DotsIndicator: React.FC<Props> = ({ cardVisible, setCardVisible }) 
         onClick={() => setCardVisible(0)}
         className={twMerge(
           "w-[10px] h-[10px] rounded-full cursor-pointer transition-colors",
-          cardVisible === 0 ? "bg-rice-300" : "bg-rice-200",
+          cardVisible === 0 ? "bg-foreground-tertiary-rice" : "bg-foreground-quaternary-rice",
         )}
       />
       <div
         onClick={() => setCardVisible(1)}
         className={twMerge(
           "w-[10px] h-[10px] rounded-full cursor-pointer transition-colors",
-          cardVisible === 1 ? "bg-rice-300" : "bg-rice-200",
+          cardVisible === 1 ? "bg-foreground-tertiary-rice" : "bg-foreground-quaternary-rice",
         )}
       />
     </div>

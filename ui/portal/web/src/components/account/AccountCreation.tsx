@@ -120,12 +120,10 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
         { "cursor-pointer": onClick },
         { " border border-red-bean-400": isSelected },
         {
-          "bg-[linear-gradient(98.89deg,_rgba(255,_251,_245,_0.5)_5.88%,_rgba(249,_226,_226,_0.5)_46.73%,_rgba(255,_251,_244,_0.5)_94.73%)]":
-            accountType === "spot",
+          "bg-account-card-red-2": accountType === "spot",
         },
         {
-          "bg-[linear-gradient(0deg,_#FFFCF6,_#FFFCF6),linear-gradient(98.89deg,_rgba(248,_249,_239,_0.5)_5.88%,_rgba(239,_240,_195,_0.5)_46.73%,_rgba(248,_249,_239,_0.5)_94.73%)]":
-            accountType === "margin",
+          "bg-account-card-green-2": accountType === "margin",
         },
       )}
       onClick={onClick}
