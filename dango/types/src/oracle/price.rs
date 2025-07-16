@@ -4,6 +4,7 @@ use {
         NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Uint128, Uint256, Undefined,
     },
     pyth_types::PriceFeed,
+    std::cmp::Ordering,
 };
 
 pub type Precision = u8;
@@ -102,33 +103,25 @@ impl PrecisionedPrice {
         &self,
         dec_amount: Dec<u128, S1>,
     ) -> StdResult<Dec<u128, S2>> {
-        let num = dec_amount.0.checked_full_mul(self.humanized_price.0)?;
+        let mut num = dec_amount.0.checked_full_mul(self.humanized_price.0)?;
 
-        if S1 > S2 {
-            let diff = Uint256::TEN.checked_pow(S1 - S2)?;
-
-            Ok(Dec::raw(
-                num.checked_div(diff)?
-                    .checked_div(Dec::<_, 18>::PRECISION)?
-                    .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
-            )
-            .checked_into_prev()?)
-        } else if S1 == S2 {
-            Ok(Dec::raw(
-                num.checked_div(Dec::<_, 18>::PRECISION)?
-                    .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
-            )
-            .checked_into_prev()?)
-        } else {
-            let diff = Uint256::TEN.checked_pow(S2 - S1)?;
-
-            Ok(Dec::raw(
-                num.checked_mul(diff)?
-                    .checked_div(Dec::<_, 18>::PRECISION)?
-                    .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
-            )
-            .checked_into_prev()?)
+        match S1.cmp(&S2) {
+            Ordering::Less => {
+                let diff = Uint256::TEN.checked_pow(S2 - S1)?;
+                num.checked_mul_assign(diff)?;
+            },
+            Ordering::Greater => {
+                let diff = Uint256::TEN.checked_pow(S1 - S2)?;
+                num.checked_div_assign(diff)?;
+            },
+            Ordering::Equal => {},
         }
+
+        Ok(Dec::raw(
+            num.checked_div(Dec::<_, 18>::PRECISION)?
+                .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
+        )
+        .checked_into_prev()?)
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
