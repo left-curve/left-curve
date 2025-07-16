@@ -1,5 +1,6 @@
 use {
     crate::PassiveOrder,
+    anyhow::ensure,
     grug::{
         Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
         Number, NumberConst, Udec128, Udec128_24, Uint64, Uint128, ZeroExclusiveOneExclusive,
@@ -39,16 +40,29 @@ pub fn swap_exact_amount_in(
     input_reserve: Uint128,
     output_reserve: Uint128,
     input_amount: Uint128,
+    fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> MathResult<Uint128> {
     // Solve A * B = (A + input_amount) * (B - output_amount) for output_amount
     // => output_amount = B - (A * B) / (A + input_amount)
     // Round so that user takes the loss.
-    output_reserve.checked_sub(
-        input_reserve.checked_multiply_ratio_ceil(
+    let output_amount_before_fee =
+        output_reserve.checked_sub(input_reserve.checked_multiply_ratio_ceil(
             output_reserve,
             input_reserve.checked_add(input_amount)?,
-        )?,
-    )
+        )?)?;
+
+    // Deduct liquidity fee from the output amount. Not to be confused with the
+    // protocol fee:
+    //
+    // - Liquidity fee (also called "swap fee") is paid into the pool.
+    //   It's equivalent to the bid-ask spread in order books.
+    // - Protocol fee is paid to the Dango protocol (specifically, the taxman
+    //   contract). It's equivalent to the maker/taker fee in order books,
+    //   and handled by `core::router::swap_exact_amount_in`.
+    //
+    // For the geometric pool, the liquidity fee is implicit in the spread of the
+    // order reflection.
+    output_amount_before_fee.checked_mul_dec_floor(Udec128::ONE - *fee_rate)
 }
 
 /// Note: this function does not concern the liquidity fee.
@@ -57,16 +71,28 @@ pub fn swap_exact_amount_out(
     input_reserve: Uint128,
     output_reserve: Uint128,
     output_amount: Uint128,
-) -> MathResult<Uint128> {
+    fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+) -> anyhow::Result<Uint128> {
+    // Compute the output amount before deducting the liquidity fee.
+    let one_sub_fee_rate = Udec128::ONE - *fee_rate;
+    let output_amount_before_fee = output_amount.checked_div_dec_ceil(one_sub_fee_rate)?;
+
+    ensure!(
+        output_reserve > output_amount_before_fee,
+        "insufficient liquidity: {} <= {}",
+        output_reserve,
+        output_amount_before_fee
+    );
+
     // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
     // => input_amount = (A * B) / (B - output_amount) - A
     // Round so that user takes the loss.
-    Uint128::ONE
+    Ok(Uint128::ONE
         .checked_multiply_ratio_floor(
             input_reserve.checked_mul(output_reserve)?,
-            output_reserve.checked_sub(output_amount)?,
+            output_reserve.checked_sub(output_amount_before_fee)?,
         )?
-        .checked_sub(input_reserve)
+        .checked_sub(input_reserve)?)
 }
 
 pub fn reflect_curve(
