@@ -12,7 +12,7 @@ type PoolWithdrawLiquidityProps = {
 
 export const PoolWithdrawLiquidity = forwardRef(
   ({ confirmWithdrawal, rejectWithdrawal }: PoolWithdrawLiquidityProps, ref) => {
-    const { hideModal, settings } = useApp();
+    const { hideModal } = useApp();
 
     useImperativeHandle(ref, () => ({
       triggerOnClose: () => {
@@ -27,7 +27,9 @@ export const PoolWithdrawLiquidity = forwardRef(
             <IconAlert />
           </div>
           <div className="flex flex-col gap-2">
-            <h3 className="h4-bold">{m["poolLiquidity.modal.withdrawalConfirmation"]()}</h3>
+            <h3 className="h4-bold text-primary-900">
+              {m["poolLiquidity.modal.withdrawalConfirmation"]()}
+            </h3>
             <p className="text-tertiary-500 diatype-m-regular">
               {m["poolLiquidity.modal.withdrawPenaltyAdvice"]()}
             </p>

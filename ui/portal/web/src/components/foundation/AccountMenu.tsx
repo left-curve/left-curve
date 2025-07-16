@@ -87,7 +87,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
             <div className="w-full flex gap-2">
               <IconButton variant="link" onClick={() => history.go(-1)}>
                 <IconChevronDown className="rotate-90" />
-                <span className="h4-bold">{m["common.accounts"]()} </span>
+                <span className="h4-bold text-primary-900">{m["common.accounts"]()} </span>
               </IconButton>
             </div>
           ) : null}
@@ -403,7 +403,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ coin }) => {
         <div className="flex flex-col items-end">
           <p className="text-primary-900 diatype-m-bold">{totalPrice}</p>
           <IconChevronDownFill
-            className={twMerge("w-4 h-4 text-gray-200 transition-all", {
+            className={twMerge("w-4 h-4 textsecondary-gray transition-all", {
               "rotate-180": isExpanded,
             })}
           />
@@ -483,7 +483,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
         </div>
         <div className="flex flex-col items-end">
           <IconChevronDownFill
-            className={twMerge("w-4 h-4 text-gray-200 transition-all", {
+            className={twMerge("w-4 h-4 textsecondary-gray transition-all", {
               "rotate-180": isExpanded,
             })}
           />

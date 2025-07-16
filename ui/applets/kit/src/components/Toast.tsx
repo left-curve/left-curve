@@ -6,7 +6,7 @@ import type { ToastProps } from "#utils/toaster.js";
 
 const Icon = {
   success: (
-    <div className="min-h-6 min-w-6 rounded-full bg-green-bean-300 text-green-bean-100 flex items-center justify-center">
+    <div className="min-h-6 min-w-6 rounded-full bg-surface-quaternary-green text-green-bean-100 flex items-center justify-center">
       <IconChecked className="w-3 h-3" />
     </div>
   ),

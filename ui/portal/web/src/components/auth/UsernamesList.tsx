@@ -19,7 +19,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
               className="flex gap-2 w-full hover:bg-surface-tertiary-rice p-2 rounded-xs transition-all cursor-pointer"
               onClick={() => onUserSelection(username)}
             >
-              <div className="w-12 h-12 bg-primary-red rounded-xxs border border-secondary-red flex items-center justify-center">
+              <div className="w-12 h-12 bg-primary-red rounded-xxs border border-surface-secondary-red flex items-center justify-center">
                 <img
                   src="/images/emojis/simple/username.svg"
                   alt="username"

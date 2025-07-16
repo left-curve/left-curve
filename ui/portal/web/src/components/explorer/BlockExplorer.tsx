@@ -79,7 +79,9 @@ const BlockSkeleton: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
       <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 diatype-m-bold relative overflow-hidden md:min-h-[177.63px] min-h-[208.5px]">
-        <h1 className="h4-bold">{m["explorer.block.details.blockDetails"]({ height: "#" })}</h1>
+        <h1 className="h4-bold text-primary-900">
+          {m["explorer.block.details.blockDetails"]({ height: "#" })}
+        </h1>
         <Skeleton className="h-full w-full max-w-[75%]" />
         <img
           src="/images/emojis/detailed/map-explorer.svg"
@@ -227,7 +229,7 @@ const BlockDetails: React.FC = () => {
   return (
     <div className="flex flex-col rounded-md p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 relative overflow-hidden diatype-sm-medium">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
-        <h1 className="h4-bold">
+        <h1 className="h4-bold text-primary-900">
           {m["explorer.block.details.blockDetails"]({ height: `#${blockHeight}` })}
         </h1>
         <div className="grid grid-cols-1 gap-3 md:gap-2">

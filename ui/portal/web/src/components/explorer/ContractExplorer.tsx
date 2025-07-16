@@ -88,7 +88,9 @@ const Details: React.FC = () => {
     <div className="flex flex-col gap-4 lg:flex-row">
       <ContractCard address={address} balance={totalBalance} />
       <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
-        <h4 className="h4-bold">{m["explorer.contracts.details.contractDetails"]()}</h4>
+        <h4 className="h4-bold text-primary-900">
+          {m["explorer.contracts.details.contractDetails"]()}
+        </h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">

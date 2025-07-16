@@ -146,7 +146,7 @@ const Mobile: React.FC = () => {
           <div className="w-12 h-12 bg-error-100 rounded-full flex items-center justify-center">
             <IconAlert className="w-6 h-6 text-error-500" />
           </div>
-          <p className="h4-bold">{m["signup.mobileModal.title"]()}</p>
+          <p className="h4-bold text-primary-900">{m["signup.mobileModal.title"]()}</p>
           <p className="diatype-m-medium text-tertiary-500">
             {m["signup.mobileModal.description"]()}
           </p>

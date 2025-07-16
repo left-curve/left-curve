@@ -67,7 +67,7 @@ const Details: React.FC = () => {
     tx;
   return (
     <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 diatype-sm-medium relative overflow-hidden">
-      <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
+      <h1 className="h4-bold text-primary-900">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
@@ -162,7 +162,7 @@ const Messages: React.FC = () => {
   return (
     <div className="flex flex-col w-full gap-6">
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold">{m["explorer.txs.messages"]()}</p>
+        <p className="h4-bold text-primary-900">{m["explorer.txs.messages"]()}</p>
         {messages.map(({ data, methodName, orderIdx }) => {
           const message = data[methodName];
           return (
@@ -180,7 +180,7 @@ const Messages: React.FC = () => {
         })}
       </div>
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold">{m["explorer.txs.events"]()}</p>
+        <p className="h4-bold text-primary-900">{m["explorer.txs.events"]()}</p>
         <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
           <JsonVisualizer json={nestedEvents} collapsed={1} />
         </div>

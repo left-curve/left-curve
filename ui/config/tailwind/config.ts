@@ -13,10 +13,14 @@ export const tailwindConfig: Partial<Config> = {
       colors: {
         surface: {
           "primary-rice": "var(--color-surface-primary-rice)",
+          "primary-green": "var(--color-surface-primary-green)",
           "secondary-rice": "var(--color-surface-secondary-rice)",
           "secondary-blue": "var(--color-surface-secondary-blue)",
+          "secondary-red": "var(--color-surface-secondary-red)",
           "tertiary-rice": "var(--color-surface-tertiary-rice)",
+          "tertiary-green": "var(--color-surface-tertiary-green)",
           "quaternary-rice": "var(--color-surface-quaternary-rice)",
+          "quaternary-green": "var(--color-surface-quaternary-green)",
           "quaternary-rice-hover": "var(--color-surface-quaternary-rice-hover)",
           "disabled-gray": "var(--color-surface-disabled-gray)",
         },
@@ -24,6 +28,9 @@ export const tailwindConfig: Partial<Config> = {
           "disabled-gray": "var(--color-foreground-disabled-gray)",
           tertiary: "var(--color-foreground-tertiary)",
           "secondary-rice": "var(--color-foreground-secondary-rice)",
+          "primary-blue": "var(--color-foreground-primary-blue)",
+          "primary-red": "var(--color-foreground-primary-red)",
+          "primary-green": "var(--color-foreground-primary-green)",
         },
         "button-green": "var(--color-button-green)",
         primary: {
@@ -46,6 +53,7 @@ export const tailwindConfig: Partial<Config> = {
           rice: "var(--color-tertiary-rice)",
           "500": "var(--color-tertiary-500)",
           green: "var(--color-tertiary-green)",
+          blue: "var(--color-tertiary-blue)",
         },
         quaternary: {
           rice: "var(--color-surface-quaternary-rice)",
@@ -185,9 +193,11 @@ export const tailwindConfig: Partial<Config> = {
       },
       backgroundImage: {
         "account-card-red": "var(--color-bg-card-red)",
+        "account-card-red-2": "var(--color-bg-card-red-2)",
         "account-card-blue":
           "linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%)",
         "account-card-green": "var(--color-bg-card-green)",
+        "account-card-green-2": "var(--color-bg-card-green-2)",
         "account-card-contract":
           "linear-gradient(98.89deg,#fff5e6 18.66%,#fce5c4 46.73%,#fff5e6 86%)",
         "borrow-bar-green": "linear-gradient(321.22deg, #D2D184 26.16%, #F9F8EC 111.55%)",

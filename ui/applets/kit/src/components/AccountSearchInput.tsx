@@ -84,7 +84,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
               key={address}
             >
               <div className="flex items-center gap-4">
-                <div className="p-1 bg-primary-red rounded-xxs border border-secondary-red w-fit">
+                <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red w-fit">
                   <img
                     src="/images/emojis/simple/hamster.svg"
                     alt={address}

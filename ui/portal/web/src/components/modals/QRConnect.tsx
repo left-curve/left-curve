@@ -74,7 +74,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
           <IconMobile />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">{m["modals.qrconnect.title"]()}</h3>
+          <h3 className="h4-bold text-primary-900">{m["modals.qrconnect.title"]()}</h3>
           <p className="text-tertiary-500 diatype-m-regular">
             {m["modals.qrconnect.description"]()}
           </p>

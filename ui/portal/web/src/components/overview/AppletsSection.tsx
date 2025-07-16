@@ -15,7 +15,7 @@ export function AppletsSection() {
         <div key={applet.title} className="flex flex-col items-center gap-2">
           <Link
             to={applet.path}
-            className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-primary-red hover:bg-secondary-red transition-all rounded-xl p-[10px]"
+            className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
           >
             <img src={applet.img} alt={applet.title} className="w-full h-full" />
           </Link>

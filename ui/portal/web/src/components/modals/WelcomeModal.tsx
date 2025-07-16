@@ -30,7 +30,7 @@ export const WelcomeModal: React.FC = () => {
               className={"h-11 order-1 cursor-pointer flex rounded-full shadow-btn-shadow-gradient"}
             />
           </div>
-          <p className="h4-bold">{m["common.testnet.title"]()}</p>
+          <p className="h4-bold text-primary-900">{m["common.testnet.title"]()}</p>
           <div className="flex flex-col diatype-m-medium text-tertiary-500 gap-2">
             <p>Hey guys,</p>
             <p>We have launched testnet-1.5!</p>
