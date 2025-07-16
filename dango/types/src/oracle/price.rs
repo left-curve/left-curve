@@ -1,5 +1,4 @@
 use {
-    bnum::types::U256,
     grug::{
         Dec, Defined, Exponentiate, FixedPoint, MaybeDefined, MultiplyFraction, Number,
         NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Uint128, Uint256, Undefined,
@@ -110,13 +109,13 @@ impl PrecisionedPrice {
 
             Ok(Dec::raw(
                 num.checked_div(diff)?
-                    .checked_div(Dec::<U256, 18>::PRECISION)?
+                    .checked_div(Dec::<_, 18>::PRECISION)?
                     .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
             )
             .checked_into_prev()?)
         } else if S1 == S2 {
             Ok(Dec::raw(
-                num.checked_div(Dec::<U256, 18>::PRECISION)?
+                num.checked_div(Dec::<_, 18>::PRECISION)?
                     .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
             )
             .checked_into_prev()?)
@@ -125,7 +124,7 @@ impl PrecisionedPrice {
 
             Ok(Dec::raw(
                 num.checked_mul(diff)?
-                    .checked_div(Dec::<U256, 18>::PRECISION)?
+                    .checked_div(Dec::<_, 18>::PRECISION)?
                     .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
             )
             .checked_into_prev()?)
