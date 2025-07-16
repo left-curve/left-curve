@@ -234,11 +234,11 @@ const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
       className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-secondary-700"
       onClick={navigate}
     >
-      <div className="flex items-center hover:text-black">
+      <div className="flex items-center hover:text-primary-900">
         <p className="truncate max-w-36">{hash}</p>
         <IconLink className="h-4 w-4" />
       </div>
-      <TextCopy copyText={hash} className="h-4 w-4 text-gray-300 hover:text-black" />
+      <TextCopy copyText={hash} className="h-4 w-4 text-primary-gray hover:text-primary-900" />
     </div>
   );
 };

@@ -193,7 +193,7 @@ const ProTradeOrders: React.FC = () => {
         return (
           <Cell.Text
             text={value}
-            className="diatype-xs-regular text-secondary-700 hover:text-black cursor-pointer"
+            className="diatype-xs-regular text-secondary-700 hover:text-primary-900 cursor-pointer"
           />
         );
       },
