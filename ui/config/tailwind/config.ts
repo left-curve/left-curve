@@ -17,6 +17,7 @@ export const tailwindConfig: Partial<Config> = {
           "secondary-blue": "var(--color-surface-secondary-blue)",
           "tertiary-rice": "var(--color-surface-tertiary-rice)",
           "quaternary-rice": "var(--color-surface-quaternary-rice)",
+          "quaternary-rice-hover": "var(--color-surface-quaternary-rice-hover)",
           "disabled-gray": "var(--color-surface-disabled-gray)",
         },
         foreground: {

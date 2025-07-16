@@ -172,7 +172,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
           animate={{ height: "auto" }}
           exit={{ height: 0 }}
           transition={{ duration: 0.1 }}
-          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-rice-100 scrollbar-track-transparent"
+          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-secondary-gray scrollbar-track-transparent"
         >
           <motion.div
             className="lg:p-1 w-full flex items-center flex-col gap-1"
