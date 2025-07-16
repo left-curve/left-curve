@@ -283,16 +283,12 @@ impl PassiveLiquidityPool for PairParams {
         // For Geometric swap the liquidity fee is implicit in the spread of the
         // order reflection.
         let output_amount = match self.pool_type {
-            PassiveLiquidity::Xyk { .. } => {
-                let output_amount_before_fee = xyk::swap_exact_amount_in(
-                    reserve.amount_of(&input.denom)?,
-                    reserve.amount_of(&output_denom)?,
-                    input.amount,
-                )?;
-
-                let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
-                output_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?
-            },
+            PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_in(
+                reserve.amount_of(&input.denom)?,
+                reserve.amount_of(&output_denom)?,
+                input.amount,
+                self.swap_fee_rate,
+            )?,
             PassiveLiquidity::Geometric {
                 ratio,
                 order_spacing,
@@ -341,44 +337,25 @@ impl PassiveLiquidityPool for PairParams {
         let output_reserve = reserve.amount_of(&output.denom)?;
 
         let input_amount = match self.pool_type {
-            PassiveLiquidity::Xyk { .. } => {
-                // Compute the output amount before deducting the liquidity fee.
-                let one_sub_fee_rate = Udec128::ONE - *self.swap_fee_rate;
-                let output_amount_before_fee =
-                    output.amount.checked_div_dec_ceil(one_sub_fee_rate)?;
-                let output_before_fee = Coin::new(output.denom.clone(), output_amount_before_fee)?;
-
-                ensure!(
-                    output_reserve > output_before_fee.amount,
-                    "insufficient liquidity: {} <= {}",
-                    output_reserve,
-                    output_before_fee.amount
-                );
-
-                xyk::swap_exact_amount_out(input_reserve, output_reserve, output_before_fee.amount)?
-            },
+            PassiveLiquidity::Xyk { .. } => xyk::swap_exact_amount_out(
+                input_reserve,
+                output_reserve,
+                output.amount,
+                self.swap_fee_rate,
+            )?,
             PassiveLiquidity::Geometric {
                 ratio,
                 order_spacing,
-            } => {
-                ensure!(
-                    output_reserve > output.amount,
-                    "insufficient liquidity: {} <= {}",
-                    output_reserve,
-                    output.amount
-                );
-
-                geometric::swap_exact_amount_out(
-                    oracle_querier,
-                    base_denom,
-                    quote_denom,
-                    &output,
-                    &reserve,
-                    ratio,
-                    order_spacing,
-                    self.swap_fee_rate,
-                )?
-            },
+            } => geometric::swap_exact_amount_out(
+                oracle_querier,
+                base_denom,
+                quote_denom,
+                &output,
+                &reserve,
+                ratio,
+                order_spacing,
+                self.swap_fee_rate,
+            )?,
         };
 
         let input = Coin::new(input_denom, input_amount)?;
