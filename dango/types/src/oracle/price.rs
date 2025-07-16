@@ -1,7 +1,7 @@
 use {
     grug::{
-        Dec, Defined, Exponentiate, FixedPoint, MaybeDefined, MultiplyFraction, Number,
-        NumberConst, PrevNumber, StdResult, Timestamp, Udec128, Uint128, Uint256, Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction, Number,
+        NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256, Undefined,
     },
     pyth_types::PriceFeed,
     std::cmp::Ordering,
@@ -87,22 +87,22 @@ impl PrecisionedPrice {
     pub fn value_of_unit_amount<const S: u32>(
         &self,
         unit_amount: Uint128,
-    ) -> StdResult<Dec<u128, S>>
+    ) -> MathResult<Dec<u128, S>>
     where
         Dec<u128, S>: FixedPoint<u128> + NumberConst,
     {
-        Ok(self.humanized_price.convert_precision()?.checked_mul(
-            Dec::<u128, S>::checked_from_ratio(
+        self.humanized_price
+            .convert_precision()?
+            .checked_mul(Dec::<u128, S>::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
-            )?,
-        )?)
+            )?)
     }
 
     pub fn value_of_dec_amount<const S1: u32, const S2: u32>(
         &self,
         dec_amount: Dec<u128, S1>,
-    ) -> StdResult<Dec<u128, S2>> {
+    ) -> MathResult<Dec<u128, S2>> {
         let mut num = dec_amount.0.checked_full_mul(self.humanized_price.0)?;
 
         match S1.cmp(&S2) {
@@ -117,11 +117,11 @@ impl PrecisionedPrice {
             Ordering::Equal => {},
         }
 
-        Ok(Dec::raw(
+        Dec::raw(
             num.checked_div(Dec::<_, 18>::PRECISION)?
                 .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
         )
-        .checked_into_prev()?)
+        .checked_into_prev()
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
@@ -133,15 +133,15 @@ impl PrecisionedPrice {
     /// precision: 18
     /// value: 1000
     /// unit amount: 1000 / 3000 * 10^18 = 1000*10^18 / 3000 = 3.33*10^17
-    pub fn unit_amount_from_value(&self, value: Udec128) -> StdResult<Uint128> {
-        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
-            .checked_mul_dec(value.checked_div(self.humanized_price)?)?)
+    pub fn unit_amount_from_value(&self, value: Udec128) -> MathResult<Uint128> {
+        Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec(value.checked_div(self.humanized_price)?)
     }
 
     /// Returns the unit amount of a given value, rounded up.
-    pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> StdResult<Uint128> {
-        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
-            .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)?)
+    pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> MathResult<Uint128> {
+        Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)
     }
 }
 
