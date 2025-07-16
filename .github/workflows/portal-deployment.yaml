@@ -23,6 +23,7 @@ jobs:
   deploy:
     permissions:
       contents: read
+      packages: read
       deployments: write
       pull-requests: write
     runs-on: ubuntu-22.04
