@@ -420,198 +420,113 @@ where
     }
 }
 
-// ------------------------------ concrete types -------------------------------
+// ------------------------------- constructors --------------------------------
 
-macro_rules! generate_decimal {
+macro_rules! generate_dec_constructor {
     (
-        name              = $name:ident,
-        precision         = $precision:expr,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
         base_constructor  = $base_constructor:expr,
-        doc               = $doc:literal,
     ) => {
         paste::paste! {
-            #[doc = $doc]
-            pub type $name = Dec<$inner, $precision>;
-
-            impl $name {
-                /// Create a new [`Dec`] adding decimal places.
-                ///
-                /// ```rust
-                /// use {
-                ///     grug_math::{Udec128, Uint128},
-                ///     std::str::FromStr,
-                /// };
-                ///
-                /// let decimal = Udec128::new(100);
-                /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
-                /// ```
+            impl<const S: u32> Dec<$inner, S> {
+                // / Create a new [`Dec`] adding decimal places.
+                // /
+                // / ```rust
+                // / use {
+                // /     grug_math::{Udec128, Uint128},
+                // /     std::str::FromStr,
+                // / };
+                // /
+                // / let decimal = Udec128::new(100);
+                // / assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
+                // / ```
                 pub const fn new(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow($precision)))
+                    Self($constructor(x * [<10_$base_constructor>].pow(S)))
                 }
 
                 pub const fn new_percent(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow($precision - 2)))
+                    Self($constructor(x * [<10_$base_constructor>].pow(S - 2)))
                 }
 
                 pub const fn new_permille(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow($precision - 3)))
+                    Self($constructor(x * [<10_$base_constructor>].pow(S - 3)))
                 }
 
                 pub const fn new_bps(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow($precision - 4)))
+                    Self($constructor(x * [<10_$base_constructor>].pow(S - 4)))
                 }
             }
 
-            impl crate::FixedPoint<$inner> for $name {
-                const PRECISION: Int<$inner> = $constructor($base_constructor::TEN.pow($precision));
-                const TICK: Self = Self::raw(Int::<$inner>::ONE);
-            }
-
-            impl crate::NumberConst for $name {
-                const MIN: Self = Self::raw(Int::<$inner>::MIN);
-                const MAX: Self = Self::raw(Int::<$inner>::MAX);
-                const ONE: Self = Self::raw(Self::PRECISION);
-                const TEN: Self = Self::raw($constructor($base_constructor::TEN.pow(Self::DECIMAL_PLACES + 1)));
-                const ZERO: Self = Self::raw(Int::<$inner>::ZERO);
-            }
         }
     };
     (
         type              = Signed,
-        name              = $name:ident,
-        precision         = $precision:expr,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
-        doc               = $doc:literal,
     ) => {
-        generate_decimal! {
-            name              = $name,
-            precision         = $precision,
+        generate_dec_constructor! {
             inner_type        = $inner,
             inner_constructor = $constructor,
             base_constructor  = i128,
-            doc               = $doc,
         }
     };
     (
         type              = Unsigned,
-        name              = $name:ident,
-        precision         = $precision:expr,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
-        doc               = $doc:literal,
     ) => {
-        generate_decimal! {
-            name              = $name,
-            precision         = $precision,
+        generate_dec_constructor! {
             inner_type        = $inner,
             inner_constructor = $constructor,
             base_constructor  = u128,
-            doc               = $doc,
         }
     };
 }
 
-generate_decimal! {
+generate_dec_constructor! {
     type              = Unsigned,
-    name              = Udec128_6,
-    precision         = 6,
     inner_type        = u128,
     inner_constructor = Uint128::new,
-    doc               = "128-bit unsigned fixed-point number with 6 decimal places.",
 }
 
-generate_decimal! {
+generate_dec_constructor! {
     type              = Unsigned,
-    name              = Udec128_9,
-    precision         = 9,
-    inner_type        = u128,
-    inner_constructor = Uint128::new,
-    doc               = "128-bit unsigned fixed-point number with 9 decimal places.",
-}
-
-generate_decimal! {
-    type              = Unsigned,
-    name              = Udec128,
-    precision         = 18,
-    inner_type        = u128,
-    inner_constructor = Uint128::new,
-    doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
-}
-
-generate_decimal! {
-    type              = Unsigned,
-    name              = Udec128_24,
-    precision         = 24,
-    inner_type        = u128,
-    inner_constructor = Uint128::new,
-    doc               = "128-bit unsigned fixed-point number with 24 decimal places.",
-}
-
-generate_decimal! {
-    type              = Unsigned,
-    name              = Udec256,
-    precision         = 18,
     inner_type        = U256,
     inner_constructor = Uint256::new_from_u128,
-    doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
 }
 
-generate_decimal! {
-    type              = Unsigned,
-    name              = Udec256_6,
-    precision         = 6,
-    inner_type        = U256,
-    inner_constructor = Uint256::new_from_u128,
-    doc               = "256-bit unsigned fixed-point number with 6 decimal places.",
-}
-
-generate_decimal! {
-    type              = Unsigned,
-    name              = Udec256_24,
-    precision         = 24,
-    inner_type        = U256,
-    inner_constructor = Uint256::new_from_u128,
-    doc               = "256-bit unsigned fixed-point number with 24 decimal places.",
-}
-
-generate_decimal! {
+generate_dec_constructor! {
     type              = Signed,
-    name              = Dec128_6,
-    precision         = 6,
     inner_type        = i128,
     inner_constructor = Int128::new,
-    doc               = "128-bit signed fixed-point number with 6 decimal places.",
 }
 
-generate_decimal! {
+generate_dec_constructor! {
     type              = Signed,
-    name              = Dec128,
-    precision         = 18,
-    inner_type        = i128,
-    inner_constructor = Int128::new,
-    doc               = "128-bit signed fixed-point number with 18 decimal places.",
-}
-
-generate_decimal! {
-    type              = Signed,
-    name              = Dec128_24,
-    precision         = 24,
-    inner_type        = i128,
-    inner_constructor = Int128::new,
-    doc               = "128-bit signed fixed-point number with 24 decimal places.",
-}
-
-generate_decimal! {
-    type              = Signed,
-    name              = Dec256,
-    precision         = 18,
     inner_type        = I256,
     inner_constructor = Int256::new_from_i128,
-    doc               = "256-bit signed fixed-point number with 18 decimal places.",
 }
+
+// ---------------------------------- aliases ----------------------------------
+
+/// 128-bit unsigned fixed-point number with 18 decimal places.
+pub type Udec128 = Dec<u128, 18>;
+
+/// 128-bit unsigned fixed-point number with 6 decimal places.
+pub type Udec128_6 = Dec<u128, 6>;
+
+/// 128-bit unsigned fixed-point number with 24 decimal places.
+pub type Udec128_24 = Dec<u128, 24>;
+
+/// 256-bit unsigned fixed-point number with 18 decimal places.
+pub type Udec256 = Dec<U256, 18>;
+
+/// 128-bit signed fixed-point number with 18 decimal places.
+pub type Dec128 = Dec<i128, 18>;
+
+/// 256-bit signed fixed-point number with 18 decimal places.
+pub type Dec256 = Dec<I256, 18>;
 
 // ----------------------------------- tests -----------------------------------
 
