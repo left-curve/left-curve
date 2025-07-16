@@ -145,11 +145,28 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const direction = Direction[capitalize(action) as keyof typeof Direction];
         const { baseDenom, quoteDenom } = pairId;
 
-        const amount = (
-          baseCoin.denom === availableCoin.denom
-            ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
-            : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals)
-        ).toString();
+        const limitAmount = Decimal(orderAmount.baseAmount)
+          .times(Decimal(10).pow(baseCoin.decimals))
+          .toFixed(0, 0);
+
+        const price = Decimal(inputs.price.value)
+          .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
+          .toFixed();
+
+        const amount = (() => {
+          if (operation === "market") {
+            return (
+              baseCoin.denom === availableCoin.denom
+                ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
+                : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals)
+            ).toString();
+          }
+
+          if (baseCoin.denom === availableCoin.denom)
+            return parseUnits(orderAmount.baseAmount, baseCoin.decimals).toString();
+
+          return Decimal(limitAmount).mulCeil(price).toFixed(0, 3);
+        })();
 
         const order =
           operation === "market"
@@ -167,13 +184,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
             : {
                 createsLimit: [
                   {
-                    amount: parseUnits(orderAmount.baseAmount, baseCoin.decimals).toString(),
+                    amount: limitAmount,
                     baseDenom,
                     quoteDenom,
                     direction,
-                    price: Decimal(inputs.price.value)
-                      .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
-                      .toFixed(),
+                    price,
                   },
                 ],
               };
