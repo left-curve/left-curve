@@ -767,7 +767,7 @@ export const ChartIQ = () => {
             <cq-palette-dock>
               <div className="palette-dock-container">
                 <cq-drawing-palette
-                  className="palette-drawing grid palette-hide"
+                  class="palette-drawing palette-hide !flex pb-2"
                   docked="true"
                   orientation="vertical"
                   min-height="300"

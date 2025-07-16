@@ -38,7 +38,7 @@
   --color-secondary-green: #F1F0D6;
   --color-tertiary-500: #6E6865;
   --color-tertiary-rice: #F3E5BF;
-  <<<<<<< HEAD --color-tertiary-green: #E5E4B1;
+  --color-tertiary-green: #E5E4B1;
   --color-tertiary-blue: #E2E3F2;
   --color-status-fail: #E71818;
   --color-status-success: #25B12A;
@@ -53,11 +53,6 @@
   --color-bg-card-red-2: linear-gradient(0deg, #FFFBF5, #FFFBF5), linear-gradient(98.89deg, rgba(255, 251, 245, 0.2) 5.88%, rgba(249, 212, 214, 0.2) 46.73%, rgba(255, 251, 244, 0.2) 94.73%);
   --color-bg-card-green: linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%);
   --color-bg-card-green-2: linear-gradient(0deg, #F8F9EF, #F8F9EF), linear-gradient(98.89deg, rgba(248, 249, 239, 0.05) 5.88%, rgba(235, 236, 183, 0.05) 46.73%, rgba(248, 249, 239, 0.05) 94.73%);
-  =======--shadow-card: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
-  --shadow-btn-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
-  --color-bg-card-red: linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%);
-  --color-bg-card-green: linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%);
-  >>>>>>>108a6ed3 (fix: smart zoom)
 }
 
 html.dark {
