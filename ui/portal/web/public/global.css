@@ -163,3 +163,57 @@ body {
   /* biome-ignore lint/correctness/noUnknownFunction: <explanation> */
   color: theme("colors.white.100") !important;
 }
+
+/* ChartIQ */
+.ciq-day .ciq-nav,
+.ciq-day .chartContainer,
+.ciq-day cq-chart-title {
+  color: #6E6865 !important;
+  background: rgb(255 249 240 / var(--tw-bg-opacity)) !important;
+  border: none;
+}
+
+.ciq-day cq-menu .menu-clickable:not(cq-help) {
+  color: #6E6865;
+}
+
+.stx-subholder {
+  border: none;
+}
+
+.ciq-day .ciq-chart:first-of-type,
+.ciq-day cq-dropdown .content {
+  background: rgb(255 249 240 / var(--tw-bg-opacity));
+}
+
+cq-heading {
+  color: rgb(46 37 33);
+}
+
+cq-dropdown .content>.item.ciq-active .ciq-switch,
+:host(cq-dropdown) .content>.item.ciq-active:hover .ciq-switch,
+cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
+.ciq-active .ciq-radio span:after,
+.ciq-radio.ciq-active span:after {
+  background: rgb(249 112 102);
+}
+
+.ciq-active .ciq-radio span:after,
+.ciq-radio.ciq-active span:after {
+  bottom: initial;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+:host(cq-dropdown:not([last-interaction="touch"])) .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):hover>*,
+:host(cq-dropdown) .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):active>*,
+:host(cq-dropdown) .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)) [cq-focused],
+html:not([ciq-last-interaction="touch"]) cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):hover>*,
+cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):active>*,
+cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)) [cq-focused],
+cq-drawing-palette,
+:host(cq-menu.nav-dropdown):before,
+cq-menu.nav-dropdown:before {
+  background: rgb(255 243 225 / var(--tw-bg-opacity))
+}

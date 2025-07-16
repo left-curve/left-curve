@@ -2,12 +2,12 @@ import { useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
-import { TradingViewChart } from "./TradingViewChart";
 
 import type React from "react";
 
 import { mockTrades } from "~/mock";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
+import { ChartIQ } from "../foundation/ChartIQ";
 
 export const OrderBookOverview: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
@@ -32,7 +32,7 @@ export const OrderBookOverview: React.FC = () => {
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
       />
-      {activeTab === "graph" && <TradingViewChart />}
+      {activeTab === "graph" && <ChartIQ />}
       {activeTab === "order book" && <OrderBook />}
       {activeTab === "trades" && <LiveTrades />}
     </ResizerContainer>
