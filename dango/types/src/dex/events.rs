@@ -55,7 +55,8 @@ pub struct LimitOrdersMatched {
 #[grug::event("order_filled")]
 pub struct OrderFilled {
     pub user: Addr,
-    pub id: OrderId,
+    // `None` if the order if from the passive liquidity pool.
+    pub id: Option<OrderId>,
     pub kind: OrderKind,
     pub base_denom: Denom,
     pub quote_denom: Denom,
