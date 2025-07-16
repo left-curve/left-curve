@@ -28,12 +28,14 @@ export const tailwindConfig: Partial<Config> = {
           rice: "var(--color-overlay-rice)",
         },
         foreground: {
-          "disabled-gray": "var(--color-foreground-disabled-gray)",
-          tertiary: "var(--color-foreground-tertiary)",
-          "secondary-rice": "var(--color-foreground-secondary-rice)",
           "primary-blue": "var(--color-foreground-primary-blue)",
           "primary-red": "var(--color-foreground-primary-red)",
           "primary-green": "var(--color-foreground-primary-green)",
+          "disabled-gray": "var(--color-foreground-disabled-gray)",
+          "secondary-rice": "var(--color-foreground-secondary-rice)",
+          tertiary: "var(--color-foreground-tertiary)",
+          "tertiary-rice": "var(--color-foreground-tertiary-rice)",
+          "quaternary-rice": "var(--color-foreground-quaternary-rice)",
         },
         "button-green": "var(--color-button-green)",
         primary: {

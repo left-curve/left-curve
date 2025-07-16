@@ -17,6 +17,8 @@
   --color-overlay-rice:#F2E2B8CC;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
+  --color-foreground-tertiary-rice: #E3BD66;
+  --color-foreground-quaternary-rice: #F3E5BF;
   --color-foreground-secondary-rice: #FFF9F0;
   --color-foreground-primary-blue: #595763;
   --color-foreground-primary-red: #9A183D;
@@ -68,6 +70,8 @@ html.dark {
   --color-overlay-rice:#F2E2B84D;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
+  --color-foreground-tertiary-rice: #807660;
+  --color-foreground-quaternary-rice: #594F3C;
   --color-foreground-secondary-rice: #363432;
   --color-foreground-primary-blue: #F7F8FB;
   --color-foreground-primary-red: #FEF1F1;
