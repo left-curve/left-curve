@@ -507,8 +507,11 @@
           "selectors": ["quest"],
           "match": {
             "quest=0": "Connect your Ethereum wallet",
-            "quest=1": "Create a subaccount",
-            "quest=2": "Make a transfer of tokens"
+            "quest=1": "Complete 10 txs in Ethereum",
+            "quest=2": "Complete a limit order",
+            "quest=3": "Complete a market order",
+            "quest=4": "Swap at least in pairs",
+            "quest=5": "Swap at least for USD"
           }
         }
       ]
