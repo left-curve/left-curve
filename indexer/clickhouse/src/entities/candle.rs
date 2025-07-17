@@ -4,6 +4,7 @@ use {
     clickhouse::Row,
     grug::{Udec128, Uint128},
     serde::{Deserialize, Deserializer, Serialize, Serializer, de},
+    strum::EnumIter,
     strum_macros::{Display, EnumString},
 };
 #[cfg(feature = "async-graphql")]
@@ -13,7 +14,7 @@ use {
     grug::Timestamp,
 };
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, EnumString)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, EnumString, EnumIter)]
 #[cfg_attr(feature = "async-graphql", derive(Enum))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "CandleInterval"))]
 pub enum CandleInterval {

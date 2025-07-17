@@ -46,7 +46,7 @@ impl grug_app::Indexer for Indexer {
                         })?;
 
                     #[cfg(feature = "tracing")]
-                    tracing::info!("ran migration: {migration}");
+                    tracing::debug!("ran migration: {migration}");
                 }
 
                 #[cfg(feature = "tracing")]

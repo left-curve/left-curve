@@ -1,3 +1,5 @@
+use {crate::entities::candle::CandleInterval, strum::IntoEnumIterator};
+
 pub const CREATE_TABLES: &str = r#"
             CREATE OR REPLACE TABLE pair_prices (
                 quote_denom String,
@@ -97,14 +99,24 @@ fn drop_materialized_view(timeframe: &str) -> String {
 }
 
 pub fn migrations() -> Vec<String> {
-    MigrationBuilder::default()
-        .add_timeframe("1s", "toStartOfSecond(created_at)")
-        .add_timeframe("1m", "toStartOfMinute(created_at)")
-        .add_timeframe("5m", "toStartOfFiveMinute(created_at)")
-        .add_timeframe("15m", "toStartOfFifteenMinutes(created_at)")
-        .add_timeframe("1h", "toStartOfHour(created_at)")
-        .add_timeframe("4h", "toStartOfInterval(created_at, INTERVAL 4 HOUR)")
-        .add_timeframe("1d", "toStartOfDay(created_at)")
-        .add_timeframe("1w", "toStartOfWeek(created_at)")
-        .build()
+    let mut migration = MigrationBuilder::default();
+
+    // NOTE: looping through all intervals on purpose, so when a new interval is
+    // added, the migration fails if the method is not implemented
+    for interval in CandleInterval::iter() {
+        let method = match interval {
+            CandleInterval::OneSecond => "toStartOfSecond(created_at)",
+            CandleInterval::OneMinute => "toStartOfMinute(created_at)",
+            CandleInterval::FiveMinutes => "toStartOfFiveMinute(created_at)",
+            CandleInterval::FifteenMinutes => "toStartOfFifteenMinutes(created_at)",
+            CandleInterval::OneHour => "toStartOfHour(created_at)",
+            CandleInterval::FourHours => "toStartOfInterval(created_at, INTERVAL 4 HOUR)",
+            CandleInterval::OneDay => "toStartOfDay(created_at)",
+            CandleInterval::OneWeek => "toStartOfWeek(created_at)",
+        };
+
+        migration = migration.add_timeframe(interval.to_string().as_str(), method);
+    }
+
+    migration.build()
 }
