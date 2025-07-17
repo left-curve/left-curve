@@ -88,18 +88,18 @@ pub struct Candle {
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub time_start: DateTime<Utc>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    open: Dec<Udec128>,
+    pub open: Dec<Udec128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    high: Dec<Udec128>,
+    pub high: Dec<Udec128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    low: Dec<Udec128>,
+    pub low: Dec<Udec128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    close: Dec<Udec128>,
+    pub close: Dec<Udec128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    volume_base: Int<Uint128>,
+    pub volume_base: Int<Uint128>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    volume_quote: Int<Uint128>,
-    interval: CandleInterval,
+    pub volume_quote: Int<Uint128>,
+    pub interval: CandleInterval,
 }
 
 #[cfg(feature = "async-graphql")]

@@ -3,11 +3,13 @@
 use {
     crate::{
         context::Context,
-        entities::candle::{Candle, CandleInterval},
+        entities::{
+            candle::{Candle, CandleInterval},
+            candle_query::CandleQueryBuilder,
+        },
     },
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},
-    grug::Timestamp,
     serde::{Deserialize, Serialize},
 };
 
@@ -23,8 +25,6 @@ impl From<Candle> for CandleCursor {
         }
     }
 }
-
-const MAX_ITEMS: u64 = 100;
 
 #[derive(Default, Debug)]
 pub struct CandleQuery;
@@ -63,63 +63,35 @@ impl CandleQuery {
             first,
             None,
             |after, before, first, last| async move {
-                let mut limit = MAX_ITEMS;
-                let mut has_previous_page = false;
+                let mut query_builder =
+                    CandleQueryBuilder::new(interval, base_denom.clone(), quote_denom.clone());
 
-                let interval_str = interval.to_string();
-
-                let mut query = format!(
-                    "SELECT quote_denom, base_denom, time_start, open, high, low, close, volume_base, volume_quote, '{interval_str}' as interval
-                    FROM {table_name}
-                    WHERE quote_denom = ? AND base_denom = ?",
-                );
-
-                let mut params: Vec<String> = vec![quote_denom.clone(), base_denom.clone()];
-
-                if let Some(earlier_than_start_time) = earlier_than   {
-                    query.push_str(" AND time_start <= ?");
-                    params.push(Timestamp::from(earlier_than_start_time.naive_utc()).to_rfc3339_string());
+                if let Some(earlier_than) = earlier_than {
+                    query_builder = query_builder.with_earlier_than(earlier_than);
                 }
 
-                if let Some(later_than_start_time) = later_than {
-                    query.push_str(" AND time_start >= ?");
-                    params.push(Timestamp::from(later_than_start_time.naive_utc()).to_rfc3339_string());
+                if let Some(later_than) = later_than {
+                    query_builder = query_builder.with_later_than(later_than);
                 }
 
                 if let Some(after) = after {
-                    query.push_str(" AND time_start < ?");
-                    params.push(Timestamp::from(after.time_start.naive_utc()).to_rfc3339_string());
-                    has_previous_page = true;
+                    query_builder = query_builder.with_after(after.time_start);
                 }
 
-                if let Some(first) = first {
-                    limit = std::cmp::min(first as u64, MAX_ITEMS);
-                }
+                let result = query_builder.fetch_all(clickhouse_client).await?;
 
-                query.push_str(" ORDER BY time_start DESC");
-                query.push_str(&format!(" LIMIT {}", limit + 1));
+                let mut connection =
+                    Connection::new(result.has_previous_page, result.has_next_page);
 
-                let mut cursor_query = clickhouse_client.query(&query);
-                for param in params {
-                    cursor_query = cursor_query.bind(param);
-                }
-
-                let mut rows: Vec<Candle> = cursor_query.fetch_all().await?;
-
-                let has_next_page = rows.len() > limit as usize - 1;
-                if has_next_page {
-                    rows.pop();
-                }
-
-                let mut connection = Connection::new(has_previous_page, has_next_page);
-
-                connection.edges.extend(rows.into_iter().map(|candle| {
-                    Edge::with_additional_fields(
-                        OpaqueCursor(candle.clone().into()),
-                        candle,
-                        EmptyFields,
-                    )
-                }));
+                connection
+                    .edges
+                    .extend(result.candles.into_iter().map(|candle| {
+                        Edge::with_additional_fields(
+                            OpaqueCursor(candle.clone().into()),
+                            candle,
+                            EmptyFields,
+                        )
+                    }));
 
                 Ok::<_, async_graphql::Error>(connection)
             },

@@ -34,9 +34,9 @@ impl grug_app::Indexer for Indexer {
         let handle = self.runtime_handler.spawn({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
-                for migration in crate::migrations::create_tables::MIGRATIONS {
+                for migration in crate::migrations::candle_builder::migrations() {
                     clickhouse_client
-                        .query(migration)
+                        .query(&migration)
                         .execute()
                         .await
                         .map_err(|e| {
@@ -44,6 +44,9 @@ impl grug_app::Indexer for Indexer {
                                 "Failed to run migration: {e}"
                             ))
                         })?;
+
+                    #[cfg(feature = "tracing")]
+                    tracing::info!("ran migration: {migration}");
                 }
 
                 #[cfg(feature = "tracing")]

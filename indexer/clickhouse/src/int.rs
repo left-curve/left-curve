@@ -5,7 +5,7 @@ use {
 };
 
 /// Int is a wrapper around `grug::Int<U>`, but serialize as a number.
-#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord)]
+#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord, Hash)]
 pub struct Int<U>(U);
 
 impl<U> Deref for Int<U> {

@@ -1,12 +1,11 @@
 use {
-    crate::{
-        entities::candle::{Candle, CandleInterval},
-        httpd::graphql::subscription::MAX_PAST_CANDLES,
+    crate::entities::{
+        candle::{Candle, CandleInterval},
+        candle_query::CandleQueryBuilder,
     },
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
-    grug::Timestamp,
 };
 
 #[derive(Default)]
@@ -19,43 +18,22 @@ impl CandleSubscription {
         quote_denom: String,
         interval: CandleInterval,
         later_than: Option<DateTime<Utc>>,
-        limit: usize,
+        limit: Option<usize>,
     ) -> Result<Vec<Candle>> {
-        let table_name = match interval {
-            CandleInterval::OneSecond => "pair_prices_1s",
-            CandleInterval::OneMinute => "pair_prices_1m",
-            CandleInterval::FiveMinutes => "pair_prices_5m",
-            CandleInterval::FifteenMinutes => "pair_prices_15m",
-            CandleInterval::OneHour => "pair_prices_1h",
-            CandleInterval::FourHours => "pair_prices_4h",
-            CandleInterval::OneDay => "pair_prices_1d",
-            CandleInterval::OneWeek => "pair_prices_1w",
-        };
+        let mut query_builder =
+            CandleQueryBuilder::new(interval, base_denom.clone(), quote_denom.clone());
 
-        let interval_str = interval.to_string();
-
-        let mut query = format!(
-            "SELECT quote_denom, base_denom, time_start, open, high, low, close, volume_base, volume_quote, '{interval_str}' as interval
-            FROM {table_name}
-            WHERE quote_denom = ? AND base_denom = ?",
-        );
-
-        let mut params: Vec<String> = vec![quote_denom.clone(), base_denom.clone()];
-
-        if let Some(later_than_start_time) = later_than {
-            query.push_str(" AND time_start >= ?");
-            params.push(Timestamp::from(later_than_start_time.naive_utc()).to_rfc3339_string());
+        if let Some(later_than) = later_than {
+            query_builder = query_builder.with_later_than(later_than);
         }
 
-        query.push_str(" ORDER BY time_start DESC");
-        query.push_str(&format!(" LIMIT {limit}"));
-
-        let mut cursor_query = app_ctx.clickhouse_client().query(&query);
-        for param in params {
-            cursor_query = cursor_query.bind(param);
+        if let Some(limit) = limit {
+            query_builder = query_builder.with_limit(limit);
         }
 
-        Ok(cursor_query.fetch_all::<Candle>().await?)
+        let result = query_builder.fetch_all(app_ctx.clickhouse_client()).await?;
+
+        Ok(result.candles)
     }
 }
 
@@ -87,7 +65,7 @@ impl CandleSubscription {
                 quote_denom_clone,
                 interval,
                 later_than,
-                std::cmp::min(limit.unwrap_or(MAX_PAST_CANDLES), MAX_PAST_CANDLES),
+                limit,
             )
             .await
         })
@@ -102,8 +80,15 @@ impl CandleSubscription {
                     let interval = interval;
                     let later_than = later_than;
                     async move {
-                        Self::get_candles(app_ctx, base_denom, quote_denom, interval, later_than, 1)
-                            .await
+                        Self::get_candles(
+                            app_ctx,
+                            base_denom,
+                            quote_denom,
+                            interval,
+                            later_than,
+                            Some(1),
+                        )
+                        .await
                     }
                 }),
         )

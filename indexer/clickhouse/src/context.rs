@@ -124,18 +124,18 @@ impl Context {
             return Ok(());
         }
 
-        let drop_sql = format!("DROP DATABASE IF EXISTS `{}`", self.clickhouse_database);
+        // let drop_sql = format!("DROP DATABASE IF EXISTS `{}`", self.clickhouse_database);
 
-        self.clickhouse_client
-            .query(&drop_sql)
-            .execute()
-            .await
-            .map_err(|e| {
-                format!(
-                    "Failed to drop test database {}: {e}",
-                    self.clickhouse_database,
-                )
-            })?;
+        // self.clickhouse_client
+        //     .query(&drop_sql)
+        //     .execute()
+        //     .await
+        //     .map_err(|e| {
+        //         format!(
+        //             "Failed to drop test database {}: {e}",
+        //             self.clickhouse_database,
+        //         )
+        //     })?;
 
         #[cfg(feature = "tracing")]
         tracing::info!("Cleaned up test database: {}", self.clickhouse_database);

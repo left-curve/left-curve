@@ -13,7 +13,7 @@ use {
 // and clickhouse expects a number.
 
 /// Dec is a wrapper around `grug::Dec`, but serialize as a number.
-#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord)]
+#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord, Hash)]
 pub struct Dec<U>(U);
 
 impl<U> Deref for Dec<U> {
