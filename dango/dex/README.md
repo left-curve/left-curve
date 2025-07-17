@@ -25,7 +25,7 @@ At Dango, we choose an alternative solution: periodic auctions. This works as fo
 
 This approach has the same effect as Hyperliquid's, in that a market maker can always update his stale quote, as long as he isn't more than one block slower than the fastest arbitrageur. Additionally, as all orders are matched together, their sequence of submission is irrelevant; this minimizes MEV.
 
-We plan to set our block time (that is, simultaneously the auction period) to 200 ms, which is fast enough to feel instanteous for retail users, while providing a large enough leeway that even the slowest market maker is protected against toxic flow.
+We plan to set our block time (that is, simultaneously the auction period) to 200 ms, which is fast enough to feel instantaneous for retail users, while providing a large enough leeway that even the slowest market maker is protected against toxic flow.
 
 ### Passive market making vaults
 
@@ -61,7 +61,7 @@ For an oracle-guided market making policy, [it's vital that the oracle price is 
 We take the following measures to reduce the likelihood of this:
 
 - **Low latency**: we utilize [Pyth](https://www.pyth.network/price-feeds)'s 400 ms price feed. We have plans to upgrade to its [50 ms or 1 ms feed](https://www.pyth.network/blog/introducing-pyth-lazer-launching-defi-into-real-time) in the future.
-- **Priority**: oracle data are feeded directly by validators using the [ABCI++](https://docs.cometbft.com/main/tutorials/forum-application/1.abci-intro) `PrepareProposal` method, and is pinned to the top of the block. In other words, oracle update is always the first thing that ever happens in a block; everything else in the block always happen according to the most recent price data.
+- **Priority**: oracle data are fed directly by validators using the [ABCI++](https://docs.cometbft.com/main/tutorials/forum-application/1.abci-intro) `PrepareProposal` method, and is pinned to the top of the block. In other words, oracle update is always the first thing that ever happens in a block; everything else in the block always happen according to the most recent price data.
 - **Circuit breakers**: if an anomaly is detected, the vault automatically halts: stops placing any order, until the oracle is recovered. We currently monitor one anomaly: _outage_ (the most recent oracle price is older than a threshold). In the future, we also plan to monitor _irregular price movements_: price jumping too bigly given its normal level of volatility; e.g. BTC going from $100k to $1k within a minute.
 
 ### Market orders
@@ -122,7 +122,7 @@ Continue on the topic of rounding, another question is how do we round a number:
 
 Throughout out the contract, we employ the following principle: _always round to the advantage of the protocol, and to the disadvantage to the user_. Empirically, this is a necessary (although [not always sufficient](https://osec.io/blog/2024-01-18-rounding-bugs)) condition for deterring exploits.
 
-Specifically, we always _round up_ inflows into the contract (e.g. user deposits), and _round down_ outflows from the contract (e.g. transfering the proceeds of a trade to user).
+Specifically, we always _round up_ inflows into the contract (e.g. user deposits), and _round down_ outflows from the contract (e.g. transferring the proceeds of a trade to user).
 
 It's also notable that our DEX contracts automatically reject any "donations" by sending tokens directly into it, as it doesn't implement a `receive` function. This already makes a few other types of exploits impossible.
 
@@ -144,7 +144,7 @@ Whereas many CLOB DEXs employ passive market making vaults, they are mostly for 
 
 Core exchange logics, such as order matching and filling, are implemented as (mostly) **pure functions**, found in the [`core`](./src/core.rs) module.
 
-Non-pure part of the the contract logics--writing data to storage, transferring tokens, and emitting events--are found in the [`execute`](./src/execute.rs) and [`cron`](./src/core.rs) modules. Notably, the `cron_execute` function, which is automatically invoked at the end of each block, contains the logics for the periodic auctions.
+Non-pure part of the contract logics--writing data to storage, transferring tokens, and emitting events--are found in the [`execute`](./src/execute.rs) and [`cron`](./src/core.rs) modules. Notably, the `cron_execute` function, which is automatically invoked at the end of each block, contains the logics for the periodic auctions.
 
 Tests are found in the [dango-testing](../testing) crate, in the following files:
 
