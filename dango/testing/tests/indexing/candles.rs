@@ -23,7 +23,6 @@ use {
     tracing::Level,
 };
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
@@ -129,7 +128,6 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
@@ -165,30 +163,28 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     let candle_1m = candle_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
         .await?;
-    println!("candle_1m: {candle_1m:#?}",);
 
-    // let expected_candle = serde_json::json!({
-    //     "quote_denom": "bridge/usdc",
-    //     "base_denom": "dango",
-    //     "close": 27400000000000000000_u128,
-    //     "high":  27400000000000000000_u128,
-    //     "interval": "1m",
-    //     "low": 27400000000000000000_u128,
-    //     "open": 27400000000000000000_u128,
-    //     "time_start": serde_json::Number::from(31536000000000_u64),
-    //     "volume_base": 25,
-    //     "volume_quote": 718,
-    // });
+    let expected_candle = serde_json::json!({
+        "quote_denom": "bridge/usdc",
+        "base_denom": "dango",
+        "close": 27400000000000000000_u128,
+        "high":  27400000000000000000_u128,
+        "interval": "1m",
+        "low": 27400000000000000000_u128,
+        "open": 27400000000000000000_u128,
+        "time_start": serde_json::Number::from(31536000000000_u64),
+        "volume_base": 25,
+        "volume_quote": 718,
+    });
 
-    // let candle_1m_serde =
-    //     serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
-    //         .unwrap();
-    // assert_that!(candle_1m_serde).is_equal_to(expected_candle);
+    let candle_1m_serde =
+        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
+            .unwrap();
+    assert_that!(candle_1m_serde).is_equal_to(expected_candle);
 
     Ok(())
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
