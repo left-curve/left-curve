@@ -4,7 +4,10 @@ use {
     futures_util::stream::{StreamExt, once},
     indexer_sql::entity,
     itertools::Itertools,
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
+    sea_orm::{
+        ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, prelude::Expr,
+        sea_query::extension::postgres::PgExpr,
+    },
     std::{collections::VecDeque, ops::RangeInclusive},
 };
 
@@ -45,69 +48,151 @@ enum ParsedCheckValue {
     Contains(Vec<serde_json::Value>),
 }
 
-fn verify_json(json: &serde_json::Value, filter: &ParsedFilterData) -> bool {
-    fn recursive(
-        mut keys: VecDeque<String>,
-        value: &ParsedCheckValue,
-        json: &serde_json::Value,
-    ) -> bool {
-        let Some(key) = keys.pop_front() else {
-            return match value {
-                ParsedCheckValue::Equal(value) => value == json,
-                ParsedCheckValue::Contains(values) => values.contains(json),
-            };
-        };
-
-        match json {
-            serde_json::Value::Array(values) => {
-                let Ok(key) = key.parse::<usize>() else {
-                    return false;
-                };
-
-                let Some(json) = values.get(key) else {
-                    return false;
-                };
-
-                recursive(keys, value, json)
-            },
-            serde_json::Value::Object(map) => {
-                let Some(json) = map.get(&key) else {
-                    return false;
-                };
-
-                recursive(keys, value, json)
-            },
-            _ => false,
-        }
-    }
-
-    recursive(filter.path.clone(), &filter.value, json)
-}
-
 #[derive(Default)]
 pub struct EventSubscription;
 
-impl EventSubscription {
-    async fn get_events(
-        app_ctx: &crate::context::Context,
-        block_heights: RangeInclusive<i64>,
-        filter: Option<Vec<ParsedFilter>>,
-    ) -> Vec<entity::events::Model> {
-        let mut query = entity::events::Entity::find()
-            .order_by_asc(entity::events::Column::BlockHeight)
-            .order_by_asc(entity::events::Column::EventIdx)
-            .filter(entity::events::Column::BlockHeight.is_in(block_heights));
+fn precompute_query(
+    filters_opt: Option<Vec<ParsedFilter>>,
+) -> sea_orm::Select<entity::events::Entity> {
+    let mut query = entity::events::Entity::find()
+        .order_by_asc(entity::events::Column::BlockHeight)
+        .order_by_asc(entity::events::Column::EventIdx);
 
-        if let Some(filters) = &filter {
-            for filter in filters {
-                if let Some(r#type) = &filter.r#type {
-                    query = query.filter(entity::events::Column::Type.eq(r#type));
+    if let Some(filters) = filters_opt {
+        // 1) Build an OR across all filters
+        let mut or_filter_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+
+        for filter in filters {
+            // 2) For each filter, build an inner AND expression
+            let mut filter_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+
+            // ---- type filter, if present ----
+            if let Some(r#type) = filter.r#type.clone() {
+                let expr = Expr::col(entity::events::Column::Type).eq(r#type);
+                filter_expr = Some(match filter_expr {
+                    Some(prev) => prev.and(expr),
+                    None => expr,
+                });
+            }
+
+            // ---- data filter, if present ----
+            if let Some(data_checks) = filter.data.clone() {
+                for check in data_checks {
+                    // derive all values to match
+                    let to_match: Vec<serde_json::Value> = match check.value {
+                        ParsedCheckValue::Equal(v) => vec![v.clone()],
+                        ParsedCheckValue::Contains(vs) => vs.clone(),
+                    };
+
+                    // OR across all to_match values for this check
+                    let mut check_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+
+                    for val in to_match {
+                        // build nested JSON { path[0]: { path[1]: ... val } }
+                        let mut json_obj = serde_json::Map::new();
+                        for (i, key) in check.path.iter().rev().enumerate() {
+                            if i == 0 {
+                                json_obj.insert(key.clone(), val.clone());
+                            } else {
+                                let mut tmp = serde_json::Map::new();
+                                tmp.insert(key.clone(), serde_json::Value::Object(json_obj));
+                                json_obj = tmp;
+                            }
+                        }
+
+                        // the JSONB containment expression
+                        let expr = Expr::col(entity::events::Column::Data)
+                            .contains(serde_json::Value::Object(json_obj));
+
+                        check_expr = Some(match check_expr {
+                            Some(prev) => prev.or(expr),
+                            None => expr,
+                        });
+                    }
+
+                    // combine this check’s result into filter_expr (with AND)
+                    if let Some(ce) = check_expr {
+                        filter_expr = Some(match filter_expr {
+                            Some(prev) => prev.and(ce),
+                            None => ce,
+                        });
+                    }
                 }
+            }
+
+            // 3) Now combine each `filter_expr` into the `or_filter_expr` (with OR)
+            if let Some(fe) = filter_expr {
+                or_filter_expr = Some(match or_filter_expr {
+                    Some(prev) => prev.or(fe),
+                    None => fe,
+                });
             }
         }
 
+        // 4) Finally apply the combined OR filter
+        if let Some(final_expr) = or_filter_expr {
+            query = query.filter(final_expr);
+        }
+    }
+
+    query
+}
+
+fn parse_filter(filter: Vec<Filter>) -> Result<Vec<ParsedFilter>, async_graphql::Error> {
+    filter
+        .into_iter()
+        .map(|filter| {
+            Ok(ParsedFilter {
+                r#type: filter.r#type,
+                data: filter
+                    .data
+                    .map(|data| {
+                        data.into_iter()
+                            .map(|data| {
+                                Ok(ParsedFilterData {
+                                    path: data.path,
+                                    value: match data.check_mode {
+                                        CheckValue::Equal => {
+                                            let mut i = data.value.into_iter();
+                                            if let (Some(value), None) =
+                                                (i.next(), i.next())
+                                            {
+                                                ParsedCheckValue::Equal(value)
+                                            } else {
+                                                return Err(async_graphql::Error::new(
+                                                    "checkMode::EQUAL must have exactly one value",
+                                                ));
+                                            }
+                                        },
+                                        CheckValue::Contains => {
+                                            if data.value.is_empty() {
+                                                return Err(async_graphql::Error::new(
+                                                    "checkMode::CONTAINS must have at least one value",
+                                                ));
+                                            }
+
+                                            ParsedCheckValue::Contains(data.value)
+                                        },
+                                    },
+                                })
+                            })
+                            .collect::<Result<Vec<_>, _>>()
+                    })
+                    .transpose()?,
+            })
+        })
+        .collect::<Result<Vec<_>, async_graphql::Error>>()
+}
+
+impl EventSubscription {
+    async fn get_events(
+        db: &DatabaseConnection,
+        block_range: RangeInclusive<i64>,
+        query: sea_orm::Select<entity::events::Entity>,
+    ) -> Vec<entity::events::Model> {
+        let query = query.filter(entity::events::Column::BlockHeight.is_in(block_range));
         let events = query
-            .all(&app_ctx.db)
+            .all(db)
             .await
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
@@ -115,34 +200,7 @@ impl EventSubscription {
             })
             .unwrap_or_default();
 
-        if let Some(filters) = filter {
-            events
-                .into_iter()
-                .filter(|event| {
-                    'a: for filter in &filters {
-                        if let Some(r#type) = &filter.r#type {
-                            if &event.r#type != r#type {
-                                continue;
-                            }
-                        }
-
-                        if let Some(data) = &filter.data {
-                            for data in data {
-                                if !verify_json(&event.data, data) {
-                                    continue 'a;
-                                }
-                            }
-                        }
-
-                        return true;
-                    }
-
-                    false
-                })
-                .collect()
-        } else {
-            events
-        }
+        events
     }
 }
 
@@ -173,72 +231,26 @@ impl EventSubscription {
             return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
-        let filter = if let Some(filter) = filter {
-            Some(
-                filter
-                    .into_iter()
-                    .map(|filter| {
-                        Ok(ParsedFilter {
-                            r#type: filter.r#type,
-                            data: filter
-                                .data
-                                .map(|data| {
-                                    data.into_iter()
-                                        .map(|data| {
-                                            Ok(ParsedFilterData {
-                                                path: data.path,
-                                                value: match data.check_mode {
-                                                    CheckValue::Equal => {
-                                                        let mut i = data.value.into_iter();
-                                                        if let (Some(value), None) =
-                                                            (i.next(), i.next())
-                                                        {
-                                                            ParsedCheckValue::Equal(value)
-                                                        } else {
-                                                            return Err(async_graphql::Error::new(
-                                                                "checkMode::EQUAL must have exactly one value",
-                                                            ));
-                                                        }
-                                                    },
-                                                    CheckValue::Contains => {
-                                                        if data.value.is_empty() {
-                                                            return Err(async_graphql::Error::new(
-                                                                "checkMode::CONTAINS must have at least one value",
-                                                            ));
-                                                        }
+        let filter = filter.map(|filter| parse_filter(filter)).transpose()?;
 
-                                                        ParsedCheckValue::Contains(data.value)
-                                                    },
-                                                },
-                                            })
-                                        })
-                                        .collect::<Result<Vec<_>, _>>()
-                                })
-                                .transpose()?,
-                        })
-                    })
-                    .collect::<Result<Vec<_>, async_graphql::Error>>()?,
-            )
-        } else {
-            None
-        };
+        let query = precompute_query(filter);
 
-        let f_filter = filter.clone();
+        let once_query = query.clone();
 
         Ok(
-            once(async move { Self::get_events(app_ctx, block_range, f_filter).await })
+            once(async move { Self::get_events(&app_ctx.db, block_range, once_query).await })
                 .chain(
                     app_ctx
                         .pubsub
                         .subscribe_block_minted()
                         .await?
                         .then(move |block_height| {
-                            let filter = filter.clone();
+                            let query = query.clone();
                             async move {
                                 Self::get_events(
-                                    app_ctx,
+                                    &app_ctx.db,
                                     block_height as i64..=block_height as i64,
-                                    filter,
+                                    query,
                                 )
                                 .await
                             }
@@ -257,91 +269,274 @@ impl EventSubscription {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, serde_json::json};
+    use {
+        super::*, chrono::NaiveDateTime, sea_orm::ActiveValue::Set, serde_json::json, uuid::Uuid,
+    };
 
-    fn filterdata(path: &[&str], value: serde_json::Value) -> ParsedFilterData {
-        ParsedFilterData {
-            path: path.iter().map(|s| s.to_string()).collect(),
-            value: ParsedCheckValue::Equal(value),
+    mod pgb {
+        use {
+            indexer_sql_migration::MigratorTrait,
+            pg_embed::{
+                pg_enums::PgAuthMethod,
+                pg_fetch::PgFetchSettings,
+                postgres::{PgEmbed, PgSettings},
+            },
+            sea_orm::{Database, DatabaseConnection},
+            std::{net::TcpListener, ops::Deref},
+        };
+
+        pub async fn migrate_db<M: MigratorTrait>(
+            db_connection: &DatabaseConnection,
+        ) -> anyhow::Result<()> {
+            println!("🔄 Starting migration with URL: {:?}", db_connection);
+            M::up(db_connection, None).await?;
+            println!("✅ Migration completed!");
+            Ok(())
         }
-    }
 
-    fn filterdata_contains(path: &[&str], value: &[serde_json::Value]) -> ParsedFilterData {
-        ParsedFilterData {
-            path: path.iter().map(|s| s.to_string()).collect(),
-            value: ParsedCheckValue::Contains(value.to_vec()),
-        }
-    }
+        pub async fn create_db() -> anyhow::Result<PgInstance> {
+            let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind");
+            let port = listener.local_addr().unwrap().port();
+            drop(listener);
 
-    #[test]
-    fn test_verify() {
-        let json = json!({
-            "a": {
-                "b": {
-                    "c": 1
+            let mut pg = PgEmbed::new(
+                PgSettings {
+                    database_dir: format!("./pg_data_{}", port).into(),
+                    port,
+                    user: "postgres".into(),
+                    password: "postgres".into(),
+                    persistent: false,
+                    timeout: None,
+                    migration_dir: None,
+                    auth_method: PgAuthMethod::Plain,
                 },
-                "d": [1,2,3],
-                "e" : "hello",
+                PgFetchSettings {
+                    version: pg_embed::pg_fetch::PG_V15,
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+            pg.setup().await?;
+
+            pg.start_db().await?;
+
+            let db_name = format!("test_db_{}", port);
+
+            pg.create_database(&db_name).await?;
+
+            let uri = pg.full_db_uri(&db_name);
+
+            Ok(PgInstance {
+                connection: Database::connect(&uri).await?,
+                _pg: pg,
+            })
+        }
+
+        pub struct PgInstance {
+            connection: DatabaseConnection,
+            _pg: PgEmbed,
+        }
+
+        impl PgInstance {
+            pub fn db_connection(&self) -> &DatabaseConnection {
+                &self.connection
             }
-        });
+        }
 
-        // True
+        impl Deref for PgInstance {
+            type Target = DatabaseConnection;
 
-        let filter = filterdata(&["a", "b", "c"], json!(1));
-        assert!(verify_json(&json, &filter));
+            fn deref(&self) -> &Self::Target {
+                &self.connection
+            }
+        }
+    }
 
-        let filter = filterdata(&["a", "e"], json!("hello"));
-        assert!(verify_json(&json, &filter));
+    fn filter<const A: usize>(
+        r#type: Option<&str>,
+        data: [(&[&str], ParsedCheckValue); A],
+    ) -> ParsedFilter {
+        ParsedFilter {
+            r#type: r#type.map(|s| s.to_string()),
+            data: Some(
+                data.iter()
+                    .map(|(path, value)| ParsedFilterData {
+                        path: path.iter().map(|s| s.to_string()).collect(),
+                        value: value.clone(),
+                    })
+                    .collect(),
+            ),
+        }
+    }
 
-        let filter = filterdata(&["a", "d"], json!([1, 2, 3]));
-        assert!(verify_json(&json, &filter));
+    fn filters<const A: usize>(
+        filters: [ParsedFilter; A],
+    ) -> sea_orm::Select<entity::events::Entity> {
+        precompute_query(Some(filters.to_vec()))
+    }
 
-        let filter = filterdata(&["a", "d", "0"], json!(1));
-        assert!(verify_json(&json, &filter));
+    #[tokio::test]
+    async fn show_query() {
+        let db = pgb::create_db().await.unwrap();
 
-        let filter = filterdata(&["a", "d", "2"], json!(3));
-        assert!(verify_json(&json, &filter));
+        pgb::migrate_db::<indexer_sql_migration::Migrator>(&db.db_connection())
+            .await
+            .unwrap();
 
-        let filter = filterdata(
-            &["a", "b"],
-            json!({
-                "c": 1
-            }),
-        );
-        assert!(verify_json(&json, &filter));
+        let entities = [
+            (
+                "contract_event",
+                json!({
+                    "type": "order_filled",
+                    "data": {
+                      "user": "rhaki"
+                    }
+                }),
+            ),
+            (
+                "contract_event",
+                json!({
+                    "type": "order_filled",
+                    "data": {
+                      "user": "larry"
+                    }
+                }),
+            ),
+            (
+                "contract_event",
+                json!({
+                    "type": "order_created",
+                    "data": {
+                      "user": "foo"
+                    }
+                }),
+            ),
+            (
+                "contract_event",
+                json!({
+                    "type": "order_created",
+                    "data": {
+                      "user": "rhaki"
+                    }
+                }),
+            ),
+            (
+                "transfer",
+                json!({
+                    "to": "rhaki",
+                    "coins": {
+                      "usdc": "1000",
+                      "btc": "200"
+                    }
+                }),
+            ),
+        ]
+        .into_iter()
+        .map(|(r#type, data)| entity::events::ActiveModel {
+            id: Set(Uuid::new_v4()),
+            parent_id: Set(None),
+            transaction_id: Set(None),
+            message_id: Set(None),
+            created_at: Set(NaiveDateTime::default()),
+            r#type: Set(r#type.to_string()),
+            method: Set(None),
+            event_status: Set(entity::events::EventStatus::Ok),
+            commitment_status: Set(grug_types::FlatCommitmentStatus::Committed),
+            transaction_type: Set(0),
+            transaction_idx: Set(0),
+            message_idx: Set(None),
+            event_idx: Set(0),
+            data: Set(data),
+            block_height: Set(1),
+        })
+        .collect::<Vec<_>>();
 
-        let filter = filterdata(
-            &[],
-            json!({
-                "a": {
-                    "b": {
-                        "c": 1
-                    },
-                    "d": [1,2,3],
-                    "e" : "hello",
-                }
-            }),
-        );
-        assert!(verify_json(&json, &filter));
+        entity::events::Entity::insert_many(entities)
+            .exec(db.db_connection())
+            .await
+            .unwrap();
 
-        let filter = filterdata_contains(&["a", "b", "c"], &[json!(1), json!(2)]);
-        assert!(verify_json(&json, &filter));
+        let f = filters([filter(Some("contract_event"), [(
+            &["type"],
+            ParsedCheckValue::Equal(json!("order_filled")),
+        )])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 2);
 
-        // False
+        let f = filters([filter(Some("contract_event"), [(
+            &["type"],
+            ParsedCheckValue::Equal(json!("order_created")),
+        )])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 2);
 
-        let filter = filterdata(&["a", "b", "c"], json!("1"));
-        assert!(!verify_json(&json, &filter));
+        let f = filters([filter(Some("contract_event"), [(
+            &["type"],
+            ParsedCheckValue::Equal(json!("order_matched")),
+        )])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 0);
 
-        let filter = filterdata(&["a", "b", "c"], json!(2));
-        assert!(!verify_json(&json, &filter));
+        let f = filters([filter(Some("contract_event"), [(
+            &["type"],
+            ParsedCheckValue::Contains(vec![json!("order_created"), json!("order_filled")]),
+        )])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 4);
 
-        let filter = filterdata(&["a", "b", "c", "f"], json!(2));
-        assert!(!verify_json(&json, &filter));
+        let f = filters([filter(Some("contract_event"), [
+            (&["type"], ParsedCheckValue::Equal(json!("order_filled"))),
+            (&["data", "user"], ParsedCheckValue::Equal(json!("rhaki"))),
+        ])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 1);
 
-        let filter = filterdata(&["a", "d", "0"], json!(2));
-        assert!(!verify_json(&json, &filter));
+        let f = filters([filter(Some("contract_event"), [
+            (&["type"], ParsedCheckValue::Equal(json!("order_filled"))),
+            (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
+        ])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 0);
 
-        let filter = filterdata_contains(&["a", "b", "c"], &[json!(2), json!(3)]);
-        assert!(!verify_json(&json, &filter));
+        let f = filters([filter(Some("contract_event"), [
+            (&["type"], ParsedCheckValue::Equal(json!("order_created"))),
+            (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
+        ])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 1);
+
+        let f = filters([
+            filter(Some("contract_event"), [
+                (&["type"], ParsedCheckValue::Equal(json!("order_created"))),
+                (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
+            ]),
+            filter(Some("contract_event"), [
+                (&["type"], ParsedCheckValue::Equal(json!("order_filled"))),
+                (&["data", "user"], ParsedCheckValue::Equal(json!("rhaki"))),
+            ]),
+        ]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 2);
+
+        let f = filters([
+            filter(Some("contract_event"), [
+                (&["type"], ParsedCheckValue::Equal(json!("order_created"))),
+                (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
+            ]),
+            filter(Some("transfer"), [(
+                &["coins", "usdc"],
+                ParsedCheckValue::Equal(json!("1000")),
+            )]),
+        ]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 2);
+
+        let f = filters([filter(None, [(
+            &["data", "user"],
+            ParsedCheckValue::Equal(json!("rhaki")),
+        )])]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 2);
     }
 }
