@@ -19,7 +19,6 @@ use {
             candle::CandleInterval, candle_query::CandleQueryBuilder, pair_price::PairPrice,
         },
     },
-    itertools::Itertools,
     std::str::FromStr,
     tracing::Level,
 };
