@@ -17,10 +17,10 @@
     username: "{{ ghcr_user }}"
     password: "{{ ghcr_token }}"
 
-- name: Deploy bots container
+- name: Deploy faucet container
   docker_container:
-    name: "{{ dango_network }}_bots"
-    image: "ghcr.io/left-curve/bots/bots:{{ bot_version }}"
+    name: "{{ dango_network }}_faucet"
+    image: "ghcr.io/left-curve/bots/faucet:{{ faucet_version }}"
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always
     recreate: true
