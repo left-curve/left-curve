@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
@@ -34,7 +34,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
 
-  const { convertAmount } = usePrices();
+  const { convertAmount, getPrice } = usePrices();
 
   const [sizeCoin, setSizeCoin] = useState(coins[pairId.quoteDenom]);
   const [operation, setOperation] = useState<"market" | "limit">("market");
@@ -136,6 +136,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     };
   }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
 
+  useEffect(() => {
+    setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
+  }, []);
+
   const submission = useSubmitTx({
     mutation: {
       mutationFn: async () => {
@@ -149,7 +153,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           .times(Decimal(10).pow(baseCoin.decimals))
           .toFixed(0, 0);
 
-        const price = Decimal(inputs.price.value)
+        const price = Decimal(priceValue)
           .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
           .toFixed();
 
