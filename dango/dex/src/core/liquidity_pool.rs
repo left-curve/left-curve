@@ -248,6 +248,8 @@ impl PassiveLiquidityPool for PairParams {
             mint_amount_before_fee.checked_mul_dec_floor(one_sub_fee_rate)?
         };
 
+        ensure!(mint_amount.is_non_zero(), "mint amount must be non-zero");
+
         Ok((reserve, mint_amount))
     }
 
