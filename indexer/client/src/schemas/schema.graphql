@@ -53,6 +53,11 @@ enum BlockSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
+enum CheckValue {
+	EQUAL
+	CONTAINS
+}
+
 type Event {
 	type: String!
 	method: String
@@ -110,6 +115,17 @@ enum EventStatus {
 	failed
 	nested_failed
 	handled
+}
+
+input Filter {
+	type: String
+	data: [FilterData!]
+}
+
+input FilterData {
+	path: [String!]!
+	checkMode: CheckValue!
+	value: [JSON!]!
 }
 
 enum FlatCategory {
@@ -347,7 +363,7 @@ type Subscription {
 	block: Block!
 	transactions(sinceBlockHeight: Int): [Transaction!]!
 	messages(sinceBlockHeight: Int): [Message!]!
-	events(sinceBlockHeight: Int): [Event!]!
+	events(sinceBlockHeight: Int, filter: [Filter!]): [Event!]!
 }
 
 type Transaction {

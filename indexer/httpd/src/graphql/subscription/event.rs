@@ -196,11 +196,17 @@ impl EventSubscription {
                                                             ParsedCheckValue::Equal(value)
                                                         } else {
                                                             return Err(async_graphql::Error::new(
-                                                                "`filter` is invalid",
+                                                                "checkMode::EQUAL must have exactly one value",
                                                             ));
                                                         }
                                                     },
                                                     CheckValue::Contains => {
+                                                        if data.value.is_empty() {
+                                                            return Err(async_graphql::Error::new(
+                                                                "checkMode::CONTAINS must have at least one value",
+                                                            ));
+                                                        }
+
                                                         ParsedCheckValue::Contains(data.value)
                                                     },
                                                 },
