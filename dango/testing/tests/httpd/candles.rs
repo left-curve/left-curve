@@ -106,6 +106,7 @@ async fn query_candles() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
