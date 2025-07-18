@@ -261,12 +261,33 @@ export const ChartIQ = () => {
                 menuPersist: true,
               },
               {
+                type: "heading",
+                label: "Chart Preferences",
+                menuPersist: true,
+              },
+              {
+                type: "radio",
+                label: "Hide Heads-Up Display",
+                setget: "Layout.HeadsUp",
+                value: "crosshair",
+              },
+              {
+                type: "radio",
+                label: "Show Heads-Up Display",
+                setget: "Layout.HeadsUp",
+                value: "static",
+              },
+              {
+                type: "separator",
+                menuPersist: true,
+              },
+              /*        {
                 type: "item",
                 label: "Shortcuts / Hotkeys",
                 tap: "Layout.showShortcuts",
                 value: true,
                 feature: "shortcuts",
-              },
+              }, */
               {
                 type: "heading",
                 label: "Locale",
@@ -902,7 +923,6 @@ export const ChartIQ = () => {
             <cq-drawing-context />
           </cq-dialog>
         </cq-dialogs>
-
         <cq-side-panel />
       </cq-context>
     </div>
