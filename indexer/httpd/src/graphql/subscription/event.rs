@@ -191,16 +191,14 @@ impl EventSubscription {
         query: sea_orm::Select<entity::events::Entity>,
     ) -> Vec<entity::events::Model> {
         let query = query.filter(entity::events::Column::BlockHeight.is_in(block_range));
-        let events = query
+        query
             .all(db)
             .await
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(%_e, "`get_events` error");
             })
-            .unwrap_or_default();
-
-        events
+            .unwrap_or_default()
     }
 }
 
@@ -231,7 +229,7 @@ impl EventSubscription {
             return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
-        let filter = filter.map(|filter| parse_filter(filter)).transpose()?;
+        let filter = filter.map(parse_filter).transpose()?;
 
         let query = precompute_query(filter);
 
@@ -273,7 +271,7 @@ mod tests {
         super::*, chrono::NaiveDateTime, sea_orm::ActiveValue::Set, serde_json::json, uuid::Uuid,
     };
 
-    mod pgb {
+    mod db_utils {
         use {
             indexer_sql_migration::MigratorTrait,
             pg_embed::{
@@ -301,7 +299,7 @@ mod tests {
 
             let mut pg = PgEmbed::new(
                 PgSettings {
-                    database_dir: format!("./pg_data_{}", port).into(),
+                    database_dir: format!("./pg_data_{port}").into(),
                     port,
                     user: "postgres".into(),
                     password: "postgres".into(),
@@ -321,7 +319,7 @@ mod tests {
 
             pg.start_db().await?;
 
-            let db_name = format!("test_db_{}", port);
+            let db_name = format!("test_db_{port}");
 
             pg.create_database(&db_name).await?;
 
@@ -377,10 +375,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn show_query() {
-        let db = pgb::create_db().await.unwrap();
+    async fn events_filter() {
+        let db = db_utils::create_db().await.unwrap();
 
-        pgb::migrate_db::<indexer_sql_migration::Migrator>(&db.db_connection())
+        db_utils::migrate_db::<indexer_sql_migration::Migrator>(db.db_connection())
             .await
             .unwrap();
 

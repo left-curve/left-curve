@@ -65,4 +65,5 @@ uuid                        = { workspace = true }
 [dev-dependencies]
 assertor              = { workspace = true }
 indexer-sql-migration = { workspace = true }
-pg-embed              = "0.7"
+# TODO: remove this once we will setup a real postgres instance for testing
+pg-embed = "0.7"
