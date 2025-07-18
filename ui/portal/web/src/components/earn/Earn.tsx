@@ -30,7 +30,7 @@ const EarnHeader: React.FC = () => {
       <img
         src="/images/emojis/detailed/pig.svg"
         alt="pig-detailed"
-        className="w-[148px] h-[148px]"
+        className="w-[148px] h-[148px] drag-none select-none"
       />
       <h1 className="exposure-h1-italic text-primary-900">{m["earn.title"]()}</h1>
       <p className="text-tertiary-500 diatype-lg-medium">{m["earn.description"]()}</p>
