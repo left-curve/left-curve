@@ -28,9 +28,7 @@ pub fn deposit(
         // Ensure that the user receives at least one LP token
         ensure!(
             amount_scaled.is_non_zero(),
-            "deposit of {} {} is too small to receive any LP tokens",
-            coin.amount,
-            coin.denom
+            "deposit is too small to receive any LP token: {coin}"
         );
 
         lp_tokens.insert((market.supply_lp_denom.clone(), amount_scaled))?;
