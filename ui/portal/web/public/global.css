@@ -4,7 +4,7 @@
 
 :root {
   --color-surface-primary-rice: #FFFCF6;
-  --color-surface-primary-green:#D2D184;
+  --color-surface-primary-green: #D2D184;
   --color-surface-secondary-rice: #FFF9F0;
   --color-surface-secondary-blue: #F0F1F7;
   --color-surface-secondary-red: #FEE6E8;
@@ -14,7 +14,7 @@
   --color-surface-quaternary-rice: #F3E5BF;
   --color-surface-quaternary-rice-hover: #EFDAA4;
   --color-surface-disabled-gray: #F5F4F4;
-  --color-overlay-rice:#F2E2B8CC;
+  --color-overlay-rice: #F2E2B8CC;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
   --color-foreground-tertiary-rice: #E3BD66;
@@ -43,21 +43,21 @@
   --color-status-fail: #E71818;
   --color-status-success: #25B12A;
 
-  --shadow-card:0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
-  --shadow-btn-shadow-gradient:0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
+  --shadow-card: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
+  --shadow-btn-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
   --shadow-btn-secondary-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
 
-  --color-bg-card-blue:linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%);
-  --color-bg-card-rice:linear-gradient(98.89deg,#fff5e6 18.66%,#fce5c4 46.73%,#fff5e6 86%);
-  --color-bg-card-red:linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%);
-  --color-bg-card-red-2:linear-gradient(0deg, #FFFBF5, #FFFBF5), linear-gradient(98.89deg, rgba(255, 251, 245, 0.2) 5.88%, rgba(249, 212, 214, 0.2) 46.73%, rgba(255, 251, 244, 0.2) 94.73%);
-  --color-bg-card-green:linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%);
-  --color-bg-card-green-2:linear-gradient(0deg, #F8F9EF, #F8F9EF), linear-gradient(98.89deg, rgba(248, 249, 239, 0.05) 5.88%, rgba(235, 236, 183, 0.05) 46.73%, rgba(248, 249, 239, 0.05) 94.73%);
+  --color-bg-card-blue: linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%);
+  --color-bg-card-rice: linear-gradient(98.89deg, #fff5e6 18.66%, #fce5c4 46.73%, #fff5e6 86%);
+  --color-bg-card-red: linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%);
+  --color-bg-card-red-2: linear-gradient(0deg, #FFFBF5, #FFFBF5), linear-gradient(98.89deg, rgba(255, 251, 245, 0.2) 5.88%, rgba(249, 212, 214, 0.2) 46.73%, rgba(255, 251, 244, 0.2) 94.73%);
+  --color-bg-card-green: linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%);
+  --color-bg-card-green-2: linear-gradient(0deg, #F8F9EF, #F8F9EF), linear-gradient(98.89deg, rgba(248, 249, 239, 0.05) 5.88%, rgba(235, 236, 183, 0.05) 46.73%, rgba(248, 249, 239, 0.05) 94.73%);
 }
 
 html.dark {
   --color-surface-primary-rice: #2D2C2A;
-  --color-surface-primary-green:#7C7A65;
+  --color-surface-primary-green: #7C7A65;
   --color-surface-secondary-rice: #363432;
   --color-surface-secondary-blue: #646273;
   --color-surface-secondary-red: #6B5D5D;
@@ -66,8 +66,8 @@ html.dark {
   --color-surface-quaternary-green: #6B6958;
   --color-surface-quaternary-rice: #594F3C;
   --color-surface-quaternary-rice-hover: #6A5D42;
-  --color-surface-disabled-gray:#363432;
-  --color-overlay-rice:#F2E2B84D;
+  --color-surface-disabled-gray: #363432;
+  --color-overlay-rice: #F2E2B84D;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
   --color-foreground-tertiary-rice: #807660;
@@ -96,16 +96,16 @@ html.dark {
   --color-status-fail: #FF6B6B;
   --color-status-success: #66C86A;
 
-  --shadow-card:0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
+  --shadow-card: 0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
   --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
   --shadow-btn-secondary-shadow-gradient: 0px -1px 3px -2px #00000012 inset, 0px 2px 3px -1px #FFFFFF12 inset, 0px 1px 1px -0.5px #0000000A;
 
-  --color-bg-card-blue:linear-gradient(98.89deg, #373634 18.66%, #6E6D77 46.73%, #373634 86%);
-  --color-bg-card-rice:linear-gradient(98.89deg, #383633 18.66%, #615A51 46.73%, #383633 86%);
-  --color-bg-card-red:linear-gradient(98.89deg, #494443 11.21%, #584D4E 46.73%, #322F2F 88.96%);
-  --color-bg-card-red-2:linear-gradient(0deg, #494443, #494443), linear-gradient(98.89deg, rgba(73, 68, 67, 0.2) 5.88%, rgba(88, 77, 78, 0.2) 46.73%, rgba(50, 47, 47, 0.2) 94.73%);
-  --color-bg-card-green:linear-gradient(98.89deg, #373634 18.76%, #666654 46.73%, #373634 87.62%);
-  --color-bg-card-green-2:linear-gradient(0deg, #373634, #373634), linear-gradient(98.89deg, rgba(55, 54, 52, 0.05) 5.88%, rgba(102, 102, 84, 0.05) 46.73%, rgba(55, 54, 52, 0.05) 94.73%);
+  --color-bg-card-blue: linear-gradient(98.89deg, #373634 18.66%, #6E6D77 46.73%, #373634 86%);
+  --color-bg-card-rice: linear-gradient(98.89deg, #383633 18.66%, #615A51 46.73%, #383633 86%);
+  --color-bg-card-red: linear-gradient(98.89deg, #494443 11.21%, #584D4E 46.73%, #322F2F 88.96%);
+  --color-bg-card-red-2: linear-gradient(0deg, #494443, #494443), linear-gradient(98.89deg, rgba(73, 68, 67, 0.2) 5.88%, rgba(88, 77, 78, 0.2) 46.73%, rgba(50, 47, 47, 0.2) 94.73%);
+  --color-bg-card-green: linear-gradient(98.89deg, #373634 18.76%, #666654 46.73%, #373634 87.62%);
+  --color-bg-card-green-2: linear-gradient(0deg, #373634, #373634), linear-gradient(98.89deg, rgba(55, 54, 52, 0.05) 5.88%, rgba(102, 102, 84, 0.05) 46.73%, rgba(55, 54, 52, 0.05) 94.73%);
 }
 
 body {
@@ -162,4 +162,121 @@ body {
 .react-json-view .variable-value div {
   /* biome-ignore lint/correctness/noUnknownFunction: <explanation> */
   color: theme("colors.white.100") !important;
+}
+
+/* ChartIQ */
+.ciq-day .ciq-nav,
+.ciq-day .chartContainer,
+.ciq-day cq-chart-title {
+  color: #6E6865 !important;
+  background: rgb(255 249 240) !important;
+  border: none;
+}
+
+.ciq-day cq-menu .menu-clickable:not(cq-help) {
+  color: #6E6865;
+}
+
+.stx-subholder {
+  border: none;
+}
+
+.ciq-day .ciq-chart:first-of-type,
+.ciq-day cq-dropdown .content,
+cq-drawing-palette .ciq-tool:before,
+cq-drawing-palette .ciq-mini-widget:before {
+  background: rgb(255 249 240);
+}
+
+cq-heading {
+  color: rgb(46 37 33);
+}
+
+cq-dropdown .content>.item.ciq-active .ciq-switch,
+cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
+.ciq-active .ciq-radio span:after,
+.ciq-radio.ciq-active span:after {
+  background: rgb(249 112 102);
+}
+
+.ciq-active .ciq-radio span:after,
+.ciq-radio.ciq-active span:after {
+  bottom: initial;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+
+cq-drawing-palette.list .mini-widget-group .ciq-mini-widget[cq-view="list"] .icon,
+cq-drawing-palette.grid .mini-widget-group .ciq-mini-widget[cq-view="grid"] .icon,
+cq-drawing-palette .ciq-mini-widget.active .icon,
+cq-drawing-palette .ciq-mini-widget .active .icon,
+cq-drawing-palette .ciq-mini-widget:active .icon,
+cq-drawing-palette .ciq-mini-widget .active+.icon {
+  filter: brightness(0) saturate(100%) invert(35%) sepia(25%) saturate(1655%) hue-rotate(339deg) brightness(91%) contrast(89%);
+}
+
+cq-drawing-palette .ciq-tool.active .icon,
+cq-drawing-palette .ciq-tool:active .icon {
+  filter: brightness(0) saturate(100%) invert(35%) sepia(25%) saturate(1655%) hue-rotate(339deg) brightness(91%) contrast(89%);
+}
+
+cq-drawing-palette .ciq-tool label,
+cq-drawing-palette .ciq-tool span[label],
+cq-drawing-palette .ciq-mini-widget label,
+cq-drawing-palette .ciq-mini-widget span[label] {
+  background: var(--color-primary-rice);
+}
+
+
+cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):hover>*,
+cq-drawing-palette,
+cq-menu.nav-dropdown:before,
+.ciq-nav cq-toggle:before,
+cq-views .item:hover {
+  background: rgb(255 243 225) !important
+}
+
+:host(cq-toggle.active),
+cq-toggle.active {
+  border-bottom: 3px solid var(--color-primary-rice)
+}
+
+.stx_current_hr_up,
+.stx_candle_up {
+  background-color: #27AE60;
+}
+
+.stx_current_hr_down,
+.stx_candle_down {
+  background-color: #EB5757;
+}
+
+.cq-down,
+.stx_candle_down {
+  color: #EB5757;
+}
+
+.cq-up,
+.stx_candle_up {
+  color: #27AE60;
+}
+
+[cq-tooltip],
+*>[cq-tooltip] {
+  background: var(--color-primary-rice);
+}
+
+.ciq-chart-area,
+cq-side-panel {
+  bottom: 0;
+}
+
+.cq-dialogs {
+  z-index: 99999999;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }

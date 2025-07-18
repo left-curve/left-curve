@@ -13,6 +13,7 @@ jobs:
   deploy:
     permissions:
       contents: read
+      packages: read
       deployments: write
       pull-requests: write
     runs-on: ubuntu-22.04
@@ -32,6 +33,8 @@ jobs:
 
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
 
       - name: Build Library dependencies
         run: pnpm turbo "build" "-F=./ui/store/**"
