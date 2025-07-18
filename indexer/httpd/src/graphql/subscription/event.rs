@@ -286,7 +286,7 @@ mod tests {
         pub async fn migrate_db<M: MigratorTrait>(
             db_connection: &DatabaseConnection,
         ) -> anyhow::Result<()> {
-            println!("🔄 Starting migration with URL: {:?}", db_connection);
+            println!("🔄 Starting migration with URL: {db_connection:?}");
             M::up(db_connection, None).await?;
             println!("✅ Migration completed!");
             Ok(())
