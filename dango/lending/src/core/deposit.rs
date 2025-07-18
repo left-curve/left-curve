@@ -1,7 +1,8 @@
 use {
     crate::{MARKETS, core},
+    anyhow::ensure,
     dango_types::lending::Market,
-    grug::{Coins, Denom, QuerierWrapper, Storage, Timestamp},
+    grug::{Coins, Denom, IsZero, QuerierWrapper, Storage, Timestamp},
     std::collections::BTreeMap,
 };
 
@@ -23,6 +24,13 @@ pub fn deposit(
 
         // Compute the amount of LP tokens to mint
         let amount_scaled = core::into_scaled_collateral(coin.amount, &market)?;
+
+        // Ensure that the user receives at least one LP token
+        ensure!(
+            amount_scaled.is_non_zero(),
+            "deposit is too small to receive any LP token: {coin}"
+        );
+
         lp_tokens.insert((market.supply_lp_denom.clone(), amount_scaled))?;
 
         // Save the updated market state.
