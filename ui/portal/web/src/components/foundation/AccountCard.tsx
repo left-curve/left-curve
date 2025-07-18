@@ -63,7 +63,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-secondary-700",
         bgColor,
       )}
     >
@@ -149,9 +149,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 cursor-pointer",
-        "mb-[-6.2rem]",
-        "flex-shrink-0",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] mb-[-6.2rem] flex-shrink-0 h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 cursor-pointer text-secondary-700",
         bgColor,
       )}
       onClick={() => onAccountSelect(account)}
