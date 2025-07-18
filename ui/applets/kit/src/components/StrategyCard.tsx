@@ -75,7 +75,7 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
         src={images[index].character}
         alt={images[index].alt}
         className={twMerge(
-          "absolute z-0 opacity-10 pointer-events-none select-none",
+          "absolute z-0 opacity-10 pointer-events-none select-none drag-none",
           images[index].className,
         )}
       />

@@ -137,7 +137,9 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
       <img
         src={`/images/account-creation/${accountType}.svg`}
         alt={`create-account-${accountType}`}
-        className={twMerge("absolute right-0 bottom-0", { "right-2": accountType === "margin" })}
+        className={twMerge("absolute right-0 bottom-0  drag-none select-none", {
+          "right-2": accountType === "margin",
+        })}
       />
       <IconCheckedCircle
         className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {
