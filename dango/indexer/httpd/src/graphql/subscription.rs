@@ -1,6 +1,7 @@
 use {
     account::AccountSubscription,
     async_graphql::*,
+    indexer_clickhouse::httpd::graphql::subscription::candle::CandleSubscription,
     indexer_httpd::graphql::subscription::{
         block::BlockSubscription, event::EventSubscription, message::MessageSubscription,
         transaction::TransactionSubscription,
@@ -19,4 +20,5 @@ pub struct Subscription(
     TransactionSubscription,
     MessageSubscription,
     EventSubscription,
+    CandleSubscription,
 );

@@ -19,6 +19,16 @@
     <path>/var/lib/clickhouse/</path>
     <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
 
+    <!-- User files path for file() and URL functions -->
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+
+    <!-- User directories configuration -->
+    <user_directories>
+        <users_xml>
+            <path>/etc/clickhouse-server/users.xml</path>
+        </users_xml>
+    </user_directories>
+
     <!-- User configuration -->
     <users_config>users.xml</users_config>
 

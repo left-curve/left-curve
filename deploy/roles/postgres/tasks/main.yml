@@ -19,6 +19,7 @@
     fail_msg: "DB_PASSWORD must be set and non-empty, aborting deployment."
 
 - name: Ensure backend network exists
+  # TODO: Check the new network name with devnet/testnet
   community.docker.docker_network:
     name: backend
     driver: bridge

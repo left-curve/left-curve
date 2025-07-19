@@ -49,6 +49,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/clickhouse",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -101,6 +102,8 @@ async-trait                 = "0"
 awc                         = "3"
 axum                        = "0.8"
 base64                      = "0.22"
+bb8                         = "0.9"
+bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
 blake3                      = "1"
@@ -109,6 +112,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
+clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" }
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -133,6 +137,7 @@ http                        = "1"
 ics23                       = "0.12"
 itertools                   = "0.14"
 k256                        = "0.13"
+klickhouse                  = { version = "0.14", features = ["bb8", "refinery"] }
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
@@ -148,6 +153,7 @@ pyth-sdk                    = "0.8"
 pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
+refinery                    = { version = "0.8.14" }
 reqwest                     = { version = "0.12", features = ["stream"] }
 reqwest-eventsource         = "0.6.0"
 ripemd                      = "0.1"
@@ -237,6 +243,7 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

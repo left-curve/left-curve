@@ -321,7 +321,7 @@ where
                     serde_json::from_slice(&text)?;
 
                 // When I need to debug the response
-                // println!("response: \n{:#?}", graphql_response);
+                // println!("response: \n{graphql_response:#?}");
 
                 if let Some(data) = graphql_response.payload.data.remove(name) {
                     return Ok((framed, GraphQLCustomResponse {

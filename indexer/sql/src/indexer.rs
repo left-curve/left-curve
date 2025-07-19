@@ -7,7 +7,7 @@ use {
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
     sea_orm::DatabaseConnection,
     std::{
@@ -167,7 +167,7 @@ where
         Ok(context)
     }
 
-    pub fn build(self) -> error::Result<NonBlockingIndexer> {
+    pub fn build(self) -> error::Result<Indexer> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self.handle.block_on(async {
                 Context::connect_db_with_url(&url, self.db_max_connections).await
@@ -207,7 +207,7 @@ where
             PubSubType::Memory => {},
         }
 
-        Ok(NonBlockingIndexer {
+        Ok(Indexer {
             indexer_path,
             context,
             handle: self.handle,
@@ -234,7 +234,7 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
-pub struct NonBlockingIndexer {
+pub struct Indexer {
     pub indexer_path: IndexerPath,
     pub context: Context,
     pub handle: RuntimeHandler,
@@ -248,7 +248,7 @@ pub struct NonBlockingIndexer {
     id: u64,
 }
 
-impl NonBlockingIndexer {
+impl Indexer {
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
         &self,
@@ -311,7 +311,7 @@ impl NonBlockingIndexer {
 
 // ------------------------------- DB Related ----------------------------------
 
-impl NonBlockingIndexer {
+impl Indexer {
     /// Index all previous blocks not yet indexed.
     fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
@@ -378,7 +378,7 @@ impl NonBlockingIndexer {
     }
 }
 
-impl Indexer for NonBlockingIndexer {
+impl IndexerTrait for Indexer {
     fn start(&mut self, storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
@@ -519,8 +519,12 @@ impl Indexer for NonBlockingIndexer {
 
         let id = self.id;
 
+        // TODO: remove this once we extracted the caching to its own crate
         ctx.insert(block_to_index.clone());
+
         ctx.insert(context.pubsub.clone());
+        ctx.insert(block_to_index.block.clone());
+        ctx.insert(block_to_index.block_outcome.clone());
 
         let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
@@ -607,7 +611,7 @@ impl Indexer for NonBlockingIndexer {
 
         self.handle
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
 
         Ok(())
     }
@@ -641,7 +645,7 @@ impl Indexer for NonBlockingIndexer {
     }
 }
 
-impl Drop for NonBlockingIndexer {
+impl Drop for Indexer {
     fn drop(&mut self) {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
@@ -759,7 +763,7 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer: NonBlockingIndexer = IndexerBuilder::default()
+        let mut indexer: Indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;
@@ -777,7 +781,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn build_without_hooks() -> anyhow::Result<()> {
-        let mut indexer: NonBlockingIndexer = IndexerBuilder::default()
+        let mut indexer: Indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;

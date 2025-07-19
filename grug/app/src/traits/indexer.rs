@@ -1,6 +1,6 @@
 use {
     grug_types::{Block, BlockOutcome, Storage},
-    std::sync::Arc,
+    std::{any::type_name, sync::Arc},
 };
 
 use crate::{IndexerError, QuerierProvider};
@@ -65,13 +65,19 @@ impl IndexerContext {
 
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
 pub trait Indexer {
+    fn name(&self) -> &'static str {
+        type_name::<Self>()
+    }
+
     /// Called when initializing the indexer, allowing for DB migration if needed
     fn start(&mut self, _storage: &dyn Storage) -> IndexerResult<()> {
         Ok(())
     }
 
     /// Called when terminating the indexer, allowing for DB transactions to be committed
-    fn shutdown(&mut self) -> IndexerResult<()>;
+    fn shutdown(&mut self) -> IndexerResult<()> {
+        Ok(())
+    }
 
     /// Called when indexing a block, allowing to create a new DB transaction
     fn pre_indexing(&self, block_height: u64, ctx: &mut IndexerContext) -> IndexerResult<()>;
@@ -94,5 +100,7 @@ pub trait Indexer {
     ) -> IndexerResult<()>;
 
     /// Wait for the indexer to finish indexing
-    fn wait_for_finish(&self) -> IndexerResult<()>;
+    fn wait_for_finish(&self) -> IndexerResult<()> {
+        Ok(())
+    }
 }
