@@ -1,7 +1,10 @@
 use {
     crate::entities::candle::{Candle, CandleInterval},
     chrono::{DateTime, Utc},
+    clickhouse::Row,
     grug::Timestamp,
+    itertools::Itertools,
+    serde::Deserialize,
 };
 
 const MAX_ITEMS: usize = 100;
@@ -57,10 +60,16 @@ impl CandleQueryBuilder {
     }
 
     pub async fn fetch_all(
-        self,
+        &self,
         clickhouse_client: &clickhouse::Client,
     ) -> Result<CandleResult, crate::error::IndexerError> {
         let (query, params, has_previous_page) = self.query_string();
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            params = params.iter().map(|p| p.to_string()).join(", "),
+            "Fetching candles: {query}"
+        );
 
         let mut cursor_query = clickhouse_client.query(&query);
         for param in params {
@@ -82,9 +91,9 @@ impl CandleQueryBuilder {
     }
 
     pub async fn fetch_one(
-        self,
+        &self,
         clickhouse_client: &clickhouse::Client,
-    ) -> Result<Candle, crate::error::IndexerError> {
+    ) -> Result<Option<Candle>, crate::error::IndexerError> {
         let (query, params, _) = self.query_string();
 
         let mut cursor_query = clickhouse_client.query(&query);
@@ -92,14 +101,38 @@ impl CandleQueryBuilder {
             cursor_query = cursor_query.bind(param);
         }
 
-        Ok(cursor_query.fetch_one().await?)
+        Ok(cursor_query.fetch_optional().await?)
     }
 
-    fn query_string(&self) -> (String, Vec<String>, bool) {
-        let interval_str = self.interval.to_string();
-        let mut has_previous_page = false;
+    pub async fn get_max_block_height(
+        &self,
+        clickhouse_client: &clickhouse::Client,
+    ) -> Result<u64, crate::error::IndexerError> {
+        let query = format!(
+            r#"SELECT
+                maxMerge(block_height) as block_height
+               FROM {}
+               WHERE quote_denom = ? AND base_denom = ?"#,
+            self.table_name()
+        );
 
-        let table_name = match self.interval {
+        #[derive(Row, Deserialize)]
+        struct BlockHeight {
+            block_height: u64,
+        }
+
+        let result: BlockHeight = clickhouse_client
+            .query(&query)
+            .bind(self.quote_denom.clone())
+            .bind(self.base_denom.clone())
+            .fetch_one()
+            .await?;
+
+        Ok(result.block_height)
+    }
+
+    pub fn table_name(&self) -> &str {
+        match self.interval {
             CandleInterval::OneSecond => "pair_prices_1s",
             CandleInterval::OneMinute => "pair_prices_1m",
             CandleInterval::FiveMinutes => "pair_prices_5m",
@@ -108,7 +141,25 @@ impl CandleQueryBuilder {
             CandleInterval::FourHours => "pair_prices_4h",
             CandleInterval::OneDay => "pair_prices_1d",
             CandleInterval::OneWeek => "pair_prices_1w",
-        };
+        }
+    }
+
+    pub fn materialized_table_name(&self) -> &str {
+        match self.interval {
+            CandleInterval::OneSecond => "pair_prices_1s_mv",
+            CandleInterval::OneMinute => "pair_prices_1m_mv",
+            CandleInterval::FiveMinutes => "pair_prices_5m_mv",
+            CandleInterval::FifteenMinutes => "pair_prices_15m_mv",
+            CandleInterval::OneHour => "pair_prices_1h_mv",
+            CandleInterval::FourHours => "pair_prices_4h_mv",
+            CandleInterval::OneDay => "pair_prices_1d_mv",
+            CandleInterval::OneWeek => "pair_prices_1w_mv",
+        }
+    }
+
+    fn query_string(&self) -> (String, Vec<String>, bool) {
+        let interval_str = self.interval.to_string();
+        let mut has_previous_page = false;
 
         let mut query = format!(
             r#"SELECT
@@ -121,9 +172,11 @@ impl CandleQueryBuilder {
                         argMaxMerge(close) AS close,
                         sumMerge(volume_base) AS volume_base,
                         sumMerge(volume_quote) as volume_quote,
+                        maxMerge(block_height) as block_height,
                         '{interval_str}' as interval
-                       FROM {table_name}
+                       FROM {}
                        WHERE quote_denom = ? AND base_denom = ?"#,
+            self.table_name()
         );
 
         let mut params: Vec<String> = vec![self.quote_denom.clone(), self.base_denom.clone()];
@@ -144,12 +197,10 @@ impl CandleQueryBuilder {
             has_previous_page = true;
         }
 
-        query.push_str(
-            r#" GROUP BY
-    quote_denom,
-    base_denom,
-    time_start ORDER BY time_start DESC"#,
-        );
+        query.push_str(" GROUP BY quote_denom, base_denom, time_start");
+
+        query.push_str(" ORDER BY time_start DESC");
+
         query.push_str(&format!(" LIMIT {}", self.limit + 1));
 
         (query, params, has_previous_page)

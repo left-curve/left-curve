@@ -2,6 +2,7 @@ use {
     crate::entities::{
         candle::{Candle, CandleInterval},
         candle_query::CandleQueryBuilder,
+        pair_price_query::PairPriceQueryBuilder,
     },
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
@@ -12,6 +13,7 @@ use {
 pub struct CandleSubscription;
 
 impl CandleSubscription {
+    /// Get candles for a given base and quote denom, interval, and later than time.
     async fn get_candles(
         app_ctx: &crate::context::Context,
         base_denom: String,
@@ -19,7 +21,25 @@ impl CandleSubscription {
         interval: CandleInterval,
         later_than: Option<DateTime<Utc>>,
         limit: Option<usize>,
+        block_height: Option<u64>,
     ) -> Result<Vec<Candle>> {
+        // We will be called for every block minted, so we need to check if there
+        // is a new pair price later than the given block height. If there is no new
+        // pair price, we don't want to return any candles.
+        if let Some(block_height) = block_height {
+            let pair_price_query_builder =
+                PairPriceQueryBuilder::new(base_denom.clone(), quote_denom.clone())
+                    .with_later_block_height(block_height);
+
+            let pair_price = pair_price_query_builder
+                .fetch_one(app_ctx.clickhouse_client())
+                .await?;
+
+            if pair_price.is_none() {
+                return Ok(vec![]);
+            }
+        }
+
         let mut query_builder =
             CandleQueryBuilder::new(interval, base_denom.clone(), quote_denom.clone());
 
@@ -66,6 +86,7 @@ impl CandleSubscription {
                 interval,
                 later_than,
                 limit,
+                None,
             )
             .await
         })
@@ -74,11 +95,12 @@ impl CandleSubscription {
                 .pubsub
                 .subscribe_block_minted()
                 .await?
-                .then(move |_| {
+                .then(move |block_height| {
                     let base_denom = base_denom.clone();
                     let quote_denom = quote_denom.clone();
                     let interval = interval;
                     let later_than = later_than;
+
                     async move {
                         Self::get_candles(
                             app_ctx,
@@ -86,7 +108,8 @@ impl CandleSubscription {
                             quote_denom,
                             interval,
                             later_than,
-                            Some(1),
+                            limit,
+                            Some(block_height),
                         )
                         .await
                     }

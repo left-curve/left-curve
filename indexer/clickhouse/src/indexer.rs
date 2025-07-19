@@ -1,4 +1,7 @@
-use {crate::context::Context, indexer_sql::indexer::RuntimeHandler};
+use {
+    crate::context::Context, grug_app::Indexer as IndexerTrait,
+    indexer_sql::indexer::RuntimeHandler,
+};
 
 #[cfg(feature = "metrics")]
 use {
@@ -9,6 +12,7 @@ use {
 pub struct Indexer {
     context: Context,
     pub runtime_handler: RuntimeHandler,
+    indexing: bool,
 }
 
 impl Indexer {
@@ -16,6 +20,7 @@ impl Indexer {
         Self {
             context,
             runtime_handler,
+            indexing: false,
         }
     }
 }
@@ -60,6 +65,30 @@ impl grug_app::Indexer for Indexer {
             .block_on(handle)
             .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
 
+        self.indexing = true;
+
+        Ok(())
+    }
+
+    fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
+        // Avoid running this twice when called manually and from `Drop`
+        if !self.indexing {
+            return Ok(());
+        }
+
+        self.indexing = false;
+
+        #[cfg(feature = "testing")]
+        {
+            let context = self.context.clone();
+            self.runtime_handler.block_on(async move {
+                if let Err(_err) = context.cleanup_test_database().await {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(err = %_err, "Failed to cleanup test database");
+                }
+            });
+        }
+
         Ok(())
     }
 
@@ -86,6 +115,10 @@ impl grug_app::Indexer for Indexer {
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
+        if !self.indexing {
+            return Err(grug_app::IndexerError::NotRunning);
+        }
+
         #[cfg(feature = "tracing")]
         tracing::info!(block_height, "`post_indexing` work started");
 
@@ -126,17 +159,10 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 }
-#[cfg(feature = "testing")]
+
 impl Drop for Indexer {
     fn drop(&mut self) {
-        let context = self.context.clone();
-
-        self.runtime_handler.block_on(async move {
-            if let Err(_err) = context.cleanup_test_database().await {
-                #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, "Failed to cleanup test database");
-            }
-        })
+        self.shutdown().expect("can't shutdown indexer");
     }
 }
 #[cfg(feature = "metrics")]

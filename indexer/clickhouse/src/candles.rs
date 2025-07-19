@@ -1,6 +1,8 @@
 use {
     crate::{
-        entities::pair_price::PairPrice,
+        entities::{
+            candle::CandleInterval, candle_query::CandleQueryBuilder, pair_price::PairPrice,
+        },
         error::{IndexerError, Result},
         indexer::Indexer,
     },
@@ -11,7 +13,9 @@ use {
         CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Number, NumberConst, Uint128,
     },
     grug_types::Denom,
-    std::collections::HashMap,
+    std::{collections::HashMap, time::Duration},
+    strum::IntoEnumIterator,
+    tokio::time::sleep,
 };
 
 impl Indexer {
@@ -127,7 +131,7 @@ impl Indexer {
             .inserter::<PairPrice>("pair_prices")?
             .with_max_rows(pair_prices.len() as u64);
 
-        for (_, mut pair_price) in pair_prices.into_iter() {
+        for (_, mut pair_price) in pair_prices.clone().into_iter() {
             // divide by 2 (because for each buy there's a sell, so it's double counted)
             pair_price.volume_base /= Uint128::from(2).into();
             pair_price.volume_quote /= Uint128::from(2).into();
@@ -146,6 +150,37 @@ impl Indexer {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to end inserter for pair prices: {_err}",);
         })?;
+
+        // NOTE: we need to check if the materialized view is up to date before we keep going
+        // since the notifications are sent based on the materialized view
+        for (_, pair_price) in pair_prices.clone().into_iter() {
+            for interval in CandleInterval::iter() {
+                loop {
+                    let max_block_height = CandleQueryBuilder::new(
+                        interval,
+                        pair_price.base_denom.clone(),
+                        pair_price.quote_denom.clone(),
+                    )
+                    .get_max_block_height(clickhouse_client)
+                    .await?;
+
+                    if max_block_height >= block.info.height {
+                        break;
+                    }
+
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(
+                        base_denom = pair_price.base_denom,
+                        quote_denom = pair_price.quote_denom,
+                        mv_block_height = max_block_height,
+                        block_height = block.info.height,
+                        "Materialized view for {interval} is not up to date, waiting for it to be updated",
+                    );
+
+                    sleep(Duration::from_millis(10)).await;
+                }
+            }
+        }
 
         Ok(())
     }

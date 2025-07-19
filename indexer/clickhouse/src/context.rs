@@ -118,7 +118,7 @@ impl Context {
     }
 
     #[cfg(feature = "testing")]
-    pub async fn cleanup_test_database(&self) -> Result<(), String> {
+    pub async fn cleanup_test_database(&self) -> Result<(), crate::error::IndexerError> {
         if self.is_mocked() {
             // No cleanup needed for mocked databases
             return Ok(());
@@ -126,19 +126,19 @@ impl Context {
 
         let drop_sql = format!("DROP DATABASE IF EXISTS `{}`", self.clickhouse_database);
 
-        self.clickhouse_client
-            .query(&drop_sql)
-            .execute()
-            .await
-            .map_err(|e| {
-                format!(
-                    "Failed to drop test database {}: {e}",
-                    self.clickhouse_database,
-                )
-            })?;
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            database = self.clickhouse_database,
+            "Cleaning up test database"
+        );
+
+        self.clickhouse_client.query(&drop_sql).execute().await?;
 
         #[cfg(feature = "tracing")]
-        tracing::info!("Cleaned up test database: {}", self.clickhouse_database);
+        tracing::info!(
+            database = self.clickhouse_database,
+            "Cleaned up test database"
+        );
 
         Ok(())
     }

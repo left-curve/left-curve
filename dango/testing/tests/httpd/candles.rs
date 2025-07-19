@@ -1,6 +1,6 @@
 use {
     crate::build_actix_app,
-    assertor::*,
+    assert_json_diff::assert_json_include,
     dango_genesis::Contracts,
     dango_testing::{TestAccounts, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
@@ -13,16 +13,18 @@ use {
         StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::{candle::Candle, pair_price::PairPrice},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
-    tokio::sync::mpsc,
+    std::{sync::Arc, time::Duration},
+    tokio::{
+        sync::{Mutex, mpsc},
+        time::sleep,
+    },
     tracing::Level,
 };
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
@@ -46,8 +48,9 @@ async fn query_candles() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             interval
+            blockHeight
           }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom }  cursor }
+          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -71,16 +74,29 @@ async fn query_candles() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let app = build_actix_app(dango_httpd_context);
+                let mut received_candles: Vec<serde_json::Value> = vec![];
 
-                let response: PaginatedResponse<serde_json::Value> =
-                    call_paginated_graphql(app, request_body).await?;
+                for _ in 0..10 {
+                    let app = build_actix_app(dango_httpd_context.clone());
 
-                let received_candles = response
-                    .edges
-                    .into_iter()
-                    .map(|e| e.node)
-                    .collect::<Vec<_>>();
+                    let response: PaginatedResponse<serde_json::Value> =
+                        call_paginated_graphql(app, request_body.clone()).await?;
+
+                    received_candles = response
+                        .edges
+                        .into_iter()
+                        .map(|e| e.node)
+                        .collect::<Vec<_>>();
+
+                    // I have to use a loop because the candles are filled up
+                    // through async materialized views and it can take a few
+                    // milliseconds.
+                    if !received_candles.is_empty() {
+                        break;
+                    }
+
+                    sleep(Duration::from_millis(100)).await;
+                }
 
                 let expected_candle = serde_json::json!({
                     "timeStart": "1971-01-01T00:00:00Z",
@@ -95,7 +111,7 @@ async fn query_candles() -> anyhow::Result<()> {
                     "quoteDenom": "bridge/usdc",
                 });
 
-                assert_that!(received_candles).is_equal_to(vec![expected_candle]);
+                assert_json_include!(actual: received_candles, expected: [expected_candle]);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -106,12 +122,11 @@ async fn query_candles() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
 
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(true).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -132,6 +147,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             interval
+            blockHeight
         }
     }
   "#;
@@ -142,7 +158,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         variables: serde_json::json!({
             "base_denom": "dango",
             "quote_denom": "bridge/usdc",
-            "interval": "ONE_SECOND",
+            "interval": "ONE_MINUTE",
         })
         .as_object()
         .unwrap()
@@ -150,27 +166,20 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     };
 
     let local_set = tokio::task::LocalSet::new();
+    let suite = Arc::new(Mutex::new(suite));
+    let suite_clone = suite.clone();
 
     // Can't call this from LocalSet so using channels instead.
     let (create_candle_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
-        while let Some(block_height) = rx.recv().await {
-            if block_height == 0 {
-                break;
-            }
-            tracing::info!("Creating pair prices");
+        while rx.recv().await.is_some() {
+            let mut suite_guard = suite_clone.lock().await;
 
-            create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+            create_pair_prices(&mut suite_guard, &mut accounts, &contracts).await?;
 
-            tracing::info!("Pair prices created");
             // Enabling this here will cause the test to hang
-            suite.app.indexer.wait_for_finish()?;
+            // suite.app.indexer.wait_for_finish()?;
         }
-
-        tracing::info!("dropping suite and rx");
-        drop(suite);
-        drop(rx);
-        tracing::info!("dropped suite and rx");
         Ok::<(), anyhow::Error>(())
     });
 
@@ -188,36 +197,26 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
                         .await?;
 
-                println!("response: {response:#?}");
+                let expected_json = serde_json::json!([{
+                    "volumeBase": "50",
+                    "volumeQuote": "1436"
+                }]);
 
-                // assert_that!(
-                //     response
-                //         .data
-                //         .into_iter()
-                //         .map(|t| t.created_block_height)
-                //         .collect::<Vec<_>>()
-                // )
-                // .is_equal_to(vec![2]);
-
-                tracing::info!("sending 2");
+                assert_json_include!(actual: response.data, expected: expected_json);
 
                 create_candle_tx_clone.send(2).await.unwrap();
 
-                // // 2nd response
+                // 2nd response
                 let (_, response) =
                     parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
                         .await?;
 
-                println!("response: {response:#?}");
+                let expected_json = serde_json::json!([{
+                    "volumeBase": "75",
+                    "volumeQuote": "2154"
+                }]);
 
-                // assert_that!(
-                //     response
-                //         .data
-                //         .into_iter()
-                //         .map(|t| t.created_block_height)
-                //         .collect::<Vec<_>>()
-                // )
-                // .is_equal_to(vec![4]);
+                assert_json_include!(actual: response.data, expected: expected_json);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -227,33 +226,12 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     tracing::info!("finished local set");
 
-    let candle_1s: Vec<Candle> = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT *, '1s' as interval FROM pair_prices_1s")
-        .fetch_all()
-        .await?;
-
-    println!("candle_1s: {:#?}", candle_1s.len());
-
-    let candle_1m: Vec<Candle> = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT *, '1m' as interval FROM pair_prices_1m")
-        .fetch_all()
-        .await?;
-
-    println!("candle_1m: {:#?}", candle_1m.len());
-
-    let pair_prices: Vec<PairPrice> = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT * FROM pair_prices")
-        .fetch_all()
-        .await?;
-
-    println!("pair_prices: {:#?}", pair_prices.len());
-
-    create_candle_tx.send(0).await.unwrap();
-
-    tracing::info!("finished test");
+    let mut suite_guard = suite.lock().await;
+    suite_guard
+        .app
+        .indexer
+        .shutdown()
+        .expect("Can't shutdown indexer");
 
     Ok(())
 }
@@ -263,8 +241,6 @@ async fn create_pair_prices(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> anyhow::Result<()> {
-    tracing::info!("create_pair_prices called");
-
     suite
         .execute(
             &mut accounts.owner,
@@ -336,8 +312,6 @@ async fn create_pair_prices(
         .for_each(|outcome| {
             outcome.should_succeed();
         });
-
-    tracing::info!("create_pair_prices finished");
 
     Ok(())
 }

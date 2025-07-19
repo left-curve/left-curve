@@ -10,7 +10,7 @@ pub const CREATE_TABLES: &str = r#"
                 created_at DateTime64(6),
                 block_height UInt64
             ) ENGINE = MergeTree()
-            ORDER BY (quote_denom, base_denom, created_at)
+            ORDER BY (quote_denom, base_denom, block_height)
             "#;
 
 #[derive(Default)]
@@ -67,7 +67,8 @@ impl MigrationBuilder {
                 minState(clearing_price) AS low,
                 argMaxState(clearing_price, created_at) AS close,
                 sumState(volume_base) AS volume_base,
-                sumState(volume_quote) AS volume_quote
+                sumState(volume_quote) AS volume_quote,
+                maxState(block_height) AS block_height
             FROM pair_prices
             GROUP BY quote_denom, base_denom, time_start
 "#,
@@ -87,7 +88,8 @@ fn create_aggregated_table(timeframe: &str) -> String {
                 low AggregateFunction(min, UInt128),
                 close AggregateFunction(argMax, UInt128, DateTime64(6)),
                 volume_base AggregateFunction(sum, UInt128),
-                volume_quote AggregateFunction(sum, UInt128)
+                volume_quote AggregateFunction(sum, UInt128),
+                block_height AggregateFunction(max, UInt64)
             ) ENGINE = AggregatingMergeTree()
             ORDER BY (quote_denom, base_denom, time_start)
 "#

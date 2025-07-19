@@ -101,6 +101,7 @@ pub struct Candle {
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub volume_quote: Int<Uint128>,
     pub interval: CandleInterval,
+    pub block_height: u64,
 }
 
 #[cfg(feature = "async-graphql")]
