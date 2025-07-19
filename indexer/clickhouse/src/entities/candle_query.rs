@@ -1,9 +1,11 @@
+#[cfg(feature = "tracing")]
+use itertools::Itertools;
+
 use {
     crate::entities::candle::{Candle, CandleInterval},
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::Timestamp,
-    itertools::Itertools,
     serde::Deserialize,
 };
 

@@ -1,11 +1,13 @@
 use {
     super::build_actix_app,
     assert_json_diff::*,
+    assertor::*,
     dango_testing::{
         HyperlaneTestSuite, add_user_public_key, create_user_and_account, setup_test_with_indexer,
     },
     grug_app::Indexer,
     indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
+    std::collections::HashMap,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -115,20 +117,40 @@ async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
                 .await?;
 
                 let expected_data = serde_json::json!({
-                    "username": test_account.username.to_string(),
-                    "publicKeys": [
-                        {
-                            "publicKey": test_account.first_key().to_string(),
-                            "keyHash": test_account.first_key_hash().to_string(),
-                        },
-                        {
-                            "publicKey": pk.to_string(),
-                            "keyHash": key_hash.to_string(),
-                        },
-                    ],
+                    "username": test_account.username.to_string()
                 });
 
                 assert_json_include!(actual: response.data.edges[0].node, expected: expected_data);
+
+                let received_public_keys: Vec<HashMap<String, String>> = serde_json::from_value(
+                    response.data.edges[0]
+                        .node
+                        .as_object()
+                        .and_then(|o| o.get("publicKeys"))
+                        .unwrap()
+                        .clone(),
+                )
+                .unwrap();
+
+                // Manually check the public keys because the order is not guaranteed
+
+                assert_that!(received_public_keys).contains(
+                    serde_json::from_value::<HashMap<String, String>>(
+                        serde_json::json!({"publicKey": pk.to_string(),
+                            "keyHash": key_hash.to_string(),}),
+                    )
+                    .unwrap()
+                    .clone(),
+                );
+
+                assert_that!(received_public_keys).contains(
+                    serde_json::from_value::<HashMap<String, String>>(
+                        serde_json::json!({"publicKey": test_account.first_key().to_string(),
+                            "keyHash": test_account.first_key_hash().to_string()}),
+                    )
+                    .unwrap()
+                    .clone(),
+                );
 
                 Ok::<(), anyhow::Error>(())
             })
