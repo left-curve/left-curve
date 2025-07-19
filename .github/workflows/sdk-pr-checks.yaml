@@ -8,6 +8,8 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -24,6 +26,8 @@ jobs:
 
       - name: Install SDK dependencies
         run: pnpm i --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
 
       - name: Linter checks
         run: pnpm lint:sdk

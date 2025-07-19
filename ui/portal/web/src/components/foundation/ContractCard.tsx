@@ -13,12 +13,7 @@ type ContractCardProps = {
 
 export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, balanceChange }) => {
   return (
-    <div
-      className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4",
-        "bg-account-card-contract",
-      )}
-    >
+    <div className="shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 bg-account-card-contract">
       <img
         src="/images/emojis/detailed/factory.svg"
         alt="factory"
@@ -35,11 +30,11 @@ export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, ba
         <div className="flex gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-gray-500"
+            className="diatype-xs-medium text-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-gray-500" />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
         </div>
       </div>
 

@@ -225,7 +225,6 @@ fn provide_liquidity(
         } else {
             None
         }))
-    // TODO: add event
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
@@ -274,7 +273,6 @@ fn withdraw_liquidity(
             )?
         })
         .add_message(Message::transfer(ctx.sender, refunds)?))
-    // TODO: add events
 }
 
 fn swap_exact_amount_in(
@@ -404,7 +402,7 @@ mod tests {
             constants::{dango, usdc},
             dex::{Direction, PairParams, PassiveLiquidity},
         },
-        grug::{Addr, Bounded, MockContext, NumberConst, Udec128},
+        grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
         std::str::FromStr,
         test_case::test_case,
     };
@@ -419,7 +417,7 @@ mod tests {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
                 amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: Udec128::new(2),
+                price: Udec128_24::new(2),
             }],
             cancels: None,
         },
@@ -435,7 +433,7 @@ mod tests {
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Ask,
                 amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: Udec128::new(2),
+                price: Udec128_24::new(2),
             }],
             cancels: None,
         },
@@ -499,14 +497,14 @@ mod tests {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: Udec128::new(2),
+                    price: Udec128_24::new(2),
                 },
                 CreateLimitOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: Udec128::new(2),
+                    price: Udec128_24::new(2),
                 },
             ],
             cancels: None,
@@ -535,6 +533,7 @@ mod tests {
                     lp_denom: Denom::from_str("lp").unwrap(),
                     pool_type: PassiveLiquidity::Xyk {
                         order_spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                 },

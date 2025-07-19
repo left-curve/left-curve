@@ -2,6 +2,7 @@ use {
     crate::context::Context,
     actix_web::{Error, HttpResponse, error::ErrorInternalServerError, get, web},
     indexer_sql::block_to_index::BlockToIndex,
+    std::path::PathBuf,
 };
 
 #[get("/info")]
@@ -27,10 +28,7 @@ pub async fn block_info_by_height(
 fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
-    if !BlockToIndex::exists(block_filename.clone()) {
-        println!("Block not found: {block_filename:?}");
-        return Ok(HttpResponse::NotFound().body("Block not found"));
-    }
+    check_block_exists(block_filename.clone(), block_height)?;
 
     match BlockToIndex::load_from_disk(block_filename) {
         Ok(data) => Ok(HttpResponse::Ok().json(data.block)),
@@ -61,8 +59,20 @@ pub async fn block_result_by_height(
 fn _block_results_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse, Error> {
     let block_filename = app_ctx.indexer_path.block_path(block_height);
 
+    check_block_exists(block_filename.clone(), block_height)?;
+
     match BlockToIndex::load_from_disk(block_filename) {
         Ok(data) => Ok(HttpResponse::Ok().json(data.block_outcome)),
         Err(_err) => Ok(HttpResponse::InternalServerError().body("Failed to load block file")),
+    }
+}
+
+fn check_block_exists(block_filename: PathBuf, height: u64) -> Result<(), Error> {
+    if !BlockToIndex::exists(block_filename) {
+        Err(actix_web::error::ErrorNotFound(format!(
+            "block not found: {height}",
+        )))
+    } else {
+        Ok(())
     }
 }

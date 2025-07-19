@@ -157,19 +157,19 @@ const HamburgerButton: React.FC<HamburgerButtonProps> = ({ isOpen, className, on
         >
           <div
             className={twMerge(
-              "bg-rice-700 h-[2px] w-4 rounded-xl transform transition-all duration-200 origin-left",
+              "bg-secondary-rice h-[2px] w-4 rounded-xl transform transition-all duration-200 origin-left",
               { "translate-x-10": isOpen },
             )}
           />
           <div
             className={twMerge(
-              "bg-rice-700 h-[2px] w-4 rounded-xl transform transition-all duration-200 delay-75",
+              "bg-secondary-rice h-[2px] w-4 rounded-xl transform transition-all duration-200 delay-75",
               { "translate-x-10": isOpen },
             )}
           />
           <div
             className={twMerge(
-              "bg-rice-700 h-[2px] w-4 rounded-xl transform transition-all duration-200 origin-left delay-150",
+              "bg-secondary-rice h-[2px] w-4 rounded-xl transform transition-all duration-200 origin-left delay-150",
               { "translate-x-10": isOpen },
             )}
           />
@@ -182,13 +182,13 @@ const HamburgerButton: React.FC<HamburgerButtonProps> = ({ isOpen, className, on
           >
             <div
               className={twMerge(
-                "absolute bg-rice-700 h-[2px] w-5 rounded-full transform transition-all duration-300 rotate-0 delay-200",
+                "absolute bg-secondary-rice h-[2px] w-5 rounded-full transform transition-all duration-300 rotate-0 delay-200",
                 { "rotate-45": isOpen },
               )}
             />
             <div
               className={twMerge(
-                "absolute bg-rice-700 h-[2px] w-5 rounded-full transform transition-all duration-300 -rotate-0 delay-200",
+                "absolute bg-secondary-rice h-[2px] w-5 rounded-full transform transition-all duration-300 -rotate-0 delay-200",
                 { "-rotate-45": isOpen },
               )}
             />

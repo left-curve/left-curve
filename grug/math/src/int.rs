@@ -11,8 +11,8 @@ use {
         iter::Sum,
         marker::PhantomData,
         ops::{
-            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign,
-            Shr, ShrAssign, Sub, SubAssign,
+            Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl,
+            ShlAssign, Shr, ShrAssign, Sub, SubAssign,
         },
         str::FromStr,
     },
@@ -283,6 +283,17 @@ where
 {
     fn shr_assign(&mut self, rhs: u32) {
         *self = *self >> rhs;
+    }
+}
+
+impl<U> Not for Int<U>
+where
+    U: Not<Output = U>,
+{
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0)
     }
 }
 

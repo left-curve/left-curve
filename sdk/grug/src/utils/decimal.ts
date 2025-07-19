@@ -47,6 +47,14 @@ class Decimal {
     return new Decimal(result);
   }
 
+  mulCeil(num: string | number | Decimal): Decimal {
+    const previousRm = Big.RM;
+    Big.RM = Big.roundUp;
+    const result = this.mul(num);
+    Big.RM = previousRm;
+    return result;
+  }
+
   times(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
     const result = this.inner.times(other.inner);
@@ -55,9 +63,7 @@ class Decimal {
 
   div(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
-    if (other.isZero()) {
-      throw new Error("Cannot divide by zero.");
-    }
+    if (other.isZero()) return new Decimal(0);
     const result = this.inner.div(other.inner);
     return new Decimal(result);
   }
@@ -126,8 +132,8 @@ class Decimal {
     return this.inner.toString();
   }
 
-  toFixed(decimalPlaces?: number): string {
-    return this.inner.toFixed(decimalPlaces);
+  toFixed(decimalPlaces?: number, rm?: number): string {
+    return this.inner.toFixed(decimalPlaces, rm as Big.RoundingMode);
   }
 
   toNumber(): number {

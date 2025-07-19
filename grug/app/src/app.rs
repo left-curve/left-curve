@@ -379,6 +379,7 @@ where
         );
 
         let block_outcome = BlockOutcome {
+            height: block.info.height,
             app_hash: app_hash.unwrap(),
             cron_outcomes,
             tx_outcomes,

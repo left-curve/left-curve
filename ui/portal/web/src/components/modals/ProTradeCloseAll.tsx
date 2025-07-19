@@ -7,7 +7,7 @@ import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
 export const ProTradeCloseAll = forwardRef(() => {
-  const { hideModal, subscriptions } = useApp();
+  const { hideModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
 
@@ -26,9 +26,11 @@ export const ProTradeCloseAll = forwardRef(() => {
   });
 
   return (
-    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-      <h2 className="text-gray-900 h4-bold w-full">{m["modals.protradeCloseAllOrders.title"]()}</h2>
-      <p className="text-gray-500 diatype-sm-regular">
+    <div className="flex flex-col bg-surface-primary-rice md:border border-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+      <h2 className="text-primary-900 h4-bold w-full">
+        {m["modals.protradeCloseAllOrders.title"]()}
+      </h2>
+      <p className="text-tertiary-500 diatype-sm-regular">
         {m["modals.protradeCloseAllOrders.description"]()}
       </p>
       {/* <RadioGroup name="close-positions-all" defaultValue="market-close">

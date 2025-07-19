@@ -28,6 +28,7 @@
     "signinWithSession": "Sign in with session key",
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
+    "overview": "Overview",
     "testnet": {
       "title": "Message from the founder",
       "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
@@ -272,8 +273,13 @@
     },
     "protradeCloseAllOrders": {
       "title": "Close All Orders",
-      "description": "This will close all your positions and cancel their associated TP/SL orders.",
+      "description": "This will close all your open orders.",
       "action": "Confirm Close Orders"
+    },
+    "proTradeCloseOrder": {
+      "title": "Close Order",
+      "description": "This will close the order.",
+      "action": "Confirm Close Order"
     }
   },
   "signin": {
@@ -534,6 +540,7 @@
     "networkFee": "Network fee",
     "24hVol": "24h vol",
     "tvl": "TVL",
+    "pool": "Pool",
     "liquidity": "Liquidity",
     "deposit": "You deposit",
     "withdrawAmount": "Withdrawal amount",
@@ -550,6 +557,7 @@
     "title": "Settings",
     "display": "Display",
     "language": "Language",
+    "theme": "Theme",
     "session": {
       "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
@@ -628,7 +636,9 @@
     "accounts": {
       "otherAccounts": "Other Accounts",
       "addAccount": "Add Account"
-    }
+    },
+    "noVaults": "You don't have any vaults yet",
+    "noWalletCoins": "You don't have any coins yet"
   },
   "dex": {
     "fee": "Fee",
@@ -654,12 +664,13 @@
       "allOrdersCancelled": "All orders cancelled",
       "spot": {
         "noOpenOrders": "No open orders yet",
-        "price": "Price",
+        "price": "Limit Price",
         "ordersTable": {
-          "coin": "Coin",
-          "size": "Size",
+          "id": "ID",
+          "pair": "Pair",
+          "remaining": "Remaining ({symbol})",
           "type": "Type",
-          "originalSize": "Original Size",
+          "size": "Size ({symbol})",
           "direction": "Direction"
         },
         "24hChange": "24h Change",

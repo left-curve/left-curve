@@ -279,3 +279,12 @@ impl BorshDeserialize for CoinPair {
         <[Coin; 2] as BorshDeserialize>::deserialize_reader(reader).map(CoinPair)
     }
 }
+
+impl IntoIterator for CoinPair {
+    type IntoIter = std::array::IntoIter<Coin, 2>;
+    type Item = Coin;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}

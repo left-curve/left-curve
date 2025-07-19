@@ -17,7 +17,7 @@ export const MobileTitle: React.FC<MobileTitleProps> = ({ title, className }) =>
         <IconChevronDown className="rotate-90" />
       </IconButton>
 
-      <h2 className="h3-bold text-gray-900">{title}</h2>
+      <h2 className="h3-bold text-primary-900">{title}</h2>
     </div>
   );
 };

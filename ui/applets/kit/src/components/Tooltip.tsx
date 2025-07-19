@@ -96,7 +96,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
 };
 
 export const tooltipVariants = tv({
-  base: "bg-rice-25 text-gray-700 p-2 rounded-xl shadow-account-card max-w-lg text-center min-w-[8rem] diatype-sm-regular",
+  base: "bg-surface-secondary-rice text-secondary-700 p-2 rounded-xl shadow-account-card max-w-lg text-center min-w-[8rem] diatype-sm-regular",
   variants: {
     placement: {
       top: "absolute bottom-full left-1/2 !-translate-x-1/2 mb-2 z-50",

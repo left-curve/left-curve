@@ -195,7 +195,7 @@ export const Range: React.FC<RangeProps> = ({
     <div
       className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, classNames?.base)}
     >
-      {label && <div className="text-gray-500 exposure-xs-italic">{label}</div>}
+      {label && <div className="text-tertiary-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
         <div className="flex flex-col flex-1 px-[10px]">
@@ -203,7 +203,7 @@ export const Range: React.FC<RangeProps> = ({
             ref={sliderRef}
             className={twMerge(
               "relative h-1 rounded-full",
-              isDisabled ? "bg-gray-200" : "bg-neutral-200 cursor-pointer",
+              isDisabled ? "bg-surface-disabled-gray" : "bg-secondary-gray cursor-pointer",
             )}
             onMouseDown={handleSliderMouseDown}
             onTouchStart={handleSliderMouseDown}
@@ -250,7 +250,7 @@ export const Range: React.FC<RangeProps> = ({
                 return (
                   <span
                     key={`stepper-${s.value}`}
-                    className="text-gray-500 diatype-xs-regular cursor-pointer"
+                    className="text-tertiary-500 diatype-xs-regular cursor-pointer"
                     onClick={() => setValue(s.value)}
                   >
                     {s.label}
@@ -270,7 +270,7 @@ export const Range: React.FC<RangeProps> = ({
             disabled={isDisabled}
             placeholder={minValue.toString()}
             endContent={
-              inputEndContent ? <span className="text-gray-500">{inputEndContent}</span> : null
+              inputEndContent ? <span className="text-tertiary-500">{inputEndContent}</span> : null
             }
             onChange={(e) => {
               const rawValue = e.target.value;

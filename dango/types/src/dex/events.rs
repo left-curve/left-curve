@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId},
-    grug::{Addr, Coin, Denom, Udec128, Uint128},
+    grug::{Addr, Coin, Denom, Udec128_6, Udec128_24, Uint128},
 };
 
 #[grug::derive(Serde)]
@@ -20,7 +20,7 @@ pub struct OrderCreated {
     pub quote_denom: Denom,
     pub direction: Direction,
     /// `None` for market orders.
-    pub price: Option<Udec128>,
+    pub price: Option<Udec128_24>,
     /// Amount denominated in the base asset for limit orders and market SELL orders.
     /// Amount denominated in the quote asset for market BUY orders.
     pub amount: Uint128,
@@ -46,28 +46,29 @@ pub struct OrderCanceled {
 pub struct LimitOrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
-    pub clearing_price: Udec128,
+    pub clearing_price: Udec128_24,
     /// Amount matched denominated in the base asset.
-    pub volume: Uint128,
+    pub volume: Udec128_6,
 }
 
 #[grug::derive(Serde)]
 #[grug::event("order_filled")]
 pub struct OrderFilled {
     pub user: Addr,
-    pub id: OrderId,
+    // `None` if the order is from the passive liquidity pool.
+    pub id: Option<OrderId>,
     pub kind: OrderKind,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub filled_base: Uint128,
-    pub filled_quote: Uint128,
-    pub refund_base: Uint128,
-    pub refund_quote: Uint128,
-    pub fee_base: Uint128,
-    pub fee_quote: Uint128,
+    pub filled_base: Udec128_6,
+    pub filled_quote: Udec128_6,
+    pub refund_base: Udec128_6,
+    pub refund_quote: Udec128_6,
+    pub fee_base: Udec128_6,
+    pub fee_quote: Udec128_6,
     /// The price at which the order was executed.
-    pub clearing_price: Udec128,
+    pub clearing_price: Udec128_24,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
 }

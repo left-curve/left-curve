@@ -80,9 +80,9 @@ const SearchMenu: React.FC = () => {
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
-            "flex-col bg-rice-25 rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:top-[-22px] flex-1 lg:shadow-account-card transition-all duration-300",
+            "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:top-[-22px] flex-1 lg:shadow-account-card transition-all duration-300",
             !isLg && isSearchBarVisible
-              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-white-100 p-4 gap-4"
+              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4"
               : "",
           )}
         >
@@ -92,18 +92,21 @@ const SearchMenu: React.FC = () => {
                 <IconChevronDown className="rotate-90" />
               </IconButton>
             ) : null}
-            <div className="flex-col bg-rice-25 shadow-account-card lg:shadow-none rounded-md w-full flex items-center">
+            <div className="flex-col bg-surface-secondary-rice shadow-account-card lg:shadow-none rounded-md w-full flex items-center">
               <motion.div className="w-full flex items-center gap-2 px-3 py-2 rounded-md">
-                <IconSearch className="w-5 h-5 text-gray-500" />
+                <IconSearch className="w-5 h-5 text-tertiary-500" />
                 <Command.Input
                   ref={inputRef}
                   onValueChange={setSearchText}
                   value={searchText}
-                  className="bg-rice-25 pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
+                  className="bg-surface-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-tertiary-500"
                 />
 
                 {!isLg && searchText ? (
-                  <IconClose className="w-6 h-6 text-gray-500" onClick={() => setSearchText("")} />
+                  <IconClose
+                    className="w-6 h-6 text-tertiary-500"
+                    onClick={() => setSearchText("")}
+                  />
                 ) : null}
               </motion.div>
               {!isSearchBarVisible && (
@@ -169,7 +172,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
           animate={{ height: "auto" }}
           exit={{ height: 0 }}
           transition={{ duration: 0.1 }}
-          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-rice-100 scrollbar-track-transparent"
+          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-secondary-gray scrollbar-track-transparent"
         >
           <motion.div
             className="lg:p-1 w-full flex items-center flex-col gap-1"
@@ -192,7 +195,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
                     <Spinner color="pink" size="lg" />
                   </div>
                 ) : (
-                  <p className="text-gray-500 diatype-m-regular p-2 text-center">
+                  <p className="text-tertiary-500 diatype-m-regular p-2 text-center">
                     {m["searchBar.noResult"]()}
                   </p>
                 )}

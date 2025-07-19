@@ -76,7 +76,7 @@ const buttonVariants = tv(
         primary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         secondary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+          "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         tertiary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
@@ -114,49 +114,54 @@ const buttonVariants = tv(
       {
         variant: "primary",
         class:
-          "bg-red-bean-400 hover:bg-red-bean-600 text-white-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-red-bean-400 hover:bg-red-bean-600 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "secondary",
         class:
-          "bg-blue-50 hover:bg-blue-100 text-blue-500 focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-primary-blue hover:bg-surface-secondary-blue text-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         class:
-          "bg-green-bean-400 hover:bg-green-bean-500 text-white-100 focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-button-green hover:bg-green-bean-500 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "link",
         class:
-          "bg-transparent hover:text-blue-600 text-blue-500 focus:bg-blue-50 focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
+          "bg-transparent hover:text-blue-600 text-secondary-blue focus:bg-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
       },
       {
         variant: "link",
         isDisabled: true,
-        class: "text-gray-200",
+        class: "text-foreground-disabled-gray",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-blue-50 text-blue-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+      },
+      {
+        variant: "tertiary",
+        isDisabled: true,
+        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
       },
       {
         variant: "utility",
         class:
-          "bg-rice-100 hover:bg-rice-200 text-rice-700 focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] data-[status=active]:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-quaternary-rice hover:bg-surface-quaternary-rice-hover text-secondary-rice focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] data-[status=active]:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: "utility",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: ["utility", "link"],

@@ -33,17 +33,17 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
 
   return (
     <motion.div
-      className="w-full p-2 flex items-center justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 flex items-center justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={title}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
-          <p className="diatype-lg-medium text-gray-700">{title}</p>
-          <p className="diatype-m-regular text-gray-500">{description}</p>
+          <p className="diatype-lg-medium text-secondary-700">{title}</p>
+          <p className="diatype-m-regular text-tertiary-500">{description}</p>
         </div>
       </div>
       <div onClick={onClickStar}>
@@ -62,7 +62,7 @@ type SearchAssetProps = WithPrice<AnyCoin>;
 const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={symbol}
     >
@@ -70,8 +70,8 @@ const AssetItem: React.FC<SearchAssetProps> = ({ logoURI, symbol, price }) => {
         <img src={logoURI} alt={symbol} className="w-8 h-8" />
         <div className="flex flex-col gap-1">
           <p className="diatype-m-bold">{symbol}</p>
-          <p className="diatype-m-regular text-gray-500">{symbol}</p>
-          {/* <p className="diatype-m-regular text-gray-500">{link}</p> */}
+          <p className="diatype-m-regular text-tertiary-500">{symbol}</p>
+          {/* <p className="diatype-m-regular text-tertiary-500">{link}</p> */}
         </div>
       </div>
       <div className="flex flex-col gap-1">
@@ -89,17 +89,17 @@ type SearchBlockItemProps = {
 const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={height}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="diatype-m-medium">#{height} Block</p>
-          <TruncateText className="diatype-sm-regular text-gray-500" text={hash} end={20} />
+          <TruncateText className="diatype-sm-regular text-tertiary-500" text={hash} end={20} />
         </div>
       </div>
     </motion.div>
@@ -114,18 +114,18 @@ type SearchTransactionItemProps = {
 const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={height}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <TruncateText className="flex gap-2 diatype-m-medium" text={hash} end={20} />
 
-          <p className="diatype-sm-regular text-gray-500">Block: #{height}</p>
+          <p className="diatype-sm-regular text-tertiary-500">Block: #{height}</p>
         </div>
       </div>
     </motion.div>
@@ -141,20 +141,24 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   const { isMd } = useMediaQuery();
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={address}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
           {isMd ? (
-            <p className="diatype-sm-regular text-gray-500">{address}</p>
+            <p className="diatype-sm-regular text-tertiary-500">{address}</p>
           ) : (
-            <TruncateText className="diatype-sm-regular text-gray-500" text={address} end={20} />
+            <TruncateText
+              className="diatype-sm-regular text-tertiary-500"
+              text={address}
+              end={20}
+            />
           )}
         </div>
       </div>
@@ -174,20 +178,24 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
 
   return (
     <motion.div
-      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-rice-50 rounded-xs group-data-[selected=true]:bg-rice-50 cursor-pointer"
+      className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
       key={address}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-[#FDF0F0] rounded-xxs border border-red-bean-100">
+        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
           <img src={`/images/emojis/simple/${type}.svg`} alt={type} className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
           <p className="flex gap-2 diatype-m-medium">{name}</p>
           {isMd ? (
-            <p className="diatype-sm-regular text-gray-500">{address}</p>
+            <p className="diatype-sm-regular text-tertiary-500">{address}</p>
           ) : (
-            <TruncateText className="diatype-sm-regular text-gray-500" text={address} end={20} />
+            <TruncateText
+              className="diatype-sm-regular text-tertiary-500"
+              text={address}
+              end={20}
+            />
           )}
         </div>
       </div>

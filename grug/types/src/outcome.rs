@@ -268,6 +268,8 @@ impl Default for TxEvents {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 /// Outcome of executing a block.
 pub struct BlockOutcome {
+    /// The block height.
+    pub height: u64,
     /// The Merkle root hash after executing this block.
     pub app_hash: Hash256,
     /// Results of executing the cronjobs.

@@ -57,7 +57,7 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
               <ResizerContainer
                 layoutId={`popover-menu-${id}`}
                 className={twMerge(
-                  "bg-rice-25 rounded-xl h-fit p-4 shadow-account-card",
+                  "bg-surface-secondary-rice rounded-xl h-fit p-4 shadow-account-card",
                   classNames?.menu,
                 )}
               >

@@ -18,7 +18,7 @@ function NotificationApplet() {
       <Notifications
         maxNotifications={isMd ? 10 : 5}
         withPagination
-        className="!shadow-account-card bg-rice-25"
+        className="!shadow-account-card bg-surface-secondary-rice"
       />
     </div>
   );

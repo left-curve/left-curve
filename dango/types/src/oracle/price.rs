@@ -1,9 +1,10 @@
 use {
     grug::{
-        Defined, MaybeDefined, MultiplyFraction, Number, StdResult, Timestamp, Udec128, Uint128,
-        Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction, Number,
+        NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256, Undefined,
     },
     pyth_types::PriceFeed,
+    std::cmp::Ordering,
 };
 
 pub type Precision = u8;
@@ -83,13 +84,44 @@ impl PrecisionedPrice {
     /// precision: 18
     /// unit amount: 1*10^18
     /// value: 3000 * 1*10^18 / 10^18 = 3000
-    pub fn value_of_unit_amount(&self, unit_amount: Uint128) -> StdResult<Udec128> {
-        Ok(self
-            .humanized_price
-            .checked_mul(Udec128::checked_from_ratio(
+    pub fn value_of_unit_amount<const S: u32>(
+        &self,
+        unit_amount: Uint128,
+    ) -> MathResult<Dec<u128, S>>
+    where
+        Dec<u128, S>: FixedPoint<u128> + NumberConst,
+    {
+        self.humanized_price
+            .convert_precision()?
+            .checked_mul(Dec::<u128, S>::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
-            )?)?)
+            )?)
+    }
+
+    pub fn value_of_dec_amount<const S1: u32, const S2: u32>(
+        &self,
+        dec_amount: Dec<u128, S1>,
+    ) -> MathResult<Dec<u128, S2>> {
+        let mut num = dec_amount.0.checked_full_mul(self.humanized_price.0)?;
+
+        match S1.cmp(&S2) {
+            Ordering::Less => {
+                let diff = Uint256::TEN.checked_pow(S2 - S1)?;
+                num.checked_mul_assign(diff)?;
+            },
+            Ordering::Greater => {
+                let diff = Uint256::TEN.checked_pow(S1 - S2)?;
+                num.checked_div_assign(diff)?;
+            },
+            Ordering::Equal => {},
+        }
+
+        Dec::raw(
+            num.checked_div(Dec::<_, 18>::PRECISION)?
+                .checked_div(Uint256::TEN.checked_pow(self.precision.into_inner() as u32)?)?,
+        )
+        .checked_into_prev()
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
@@ -101,15 +133,15 @@ impl PrecisionedPrice {
     /// precision: 18
     /// value: 1000
     /// unit amount: 1000 / 3000 * 10^18 = 1000*10^18 / 3000 = 3.33*10^17
-    pub fn unit_amount_from_value(&self, value: Udec128) -> StdResult<Uint128> {
-        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
-            .checked_mul_dec(value.checked_div(self.humanized_price)?)?)
+    pub fn unit_amount_from_value(&self, value: Udec128) -> MathResult<Uint128> {
+        Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec(value.checked_div(self.humanized_price)?)
     }
 
     /// Returns the unit amount of a given value, rounded up.
-    pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> StdResult<Uint128> {
-        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
-            .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)?)
+    pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> MathResult<Uint128> {
+        Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)
     }
 }
 
@@ -144,7 +176,10 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::NumberConst};
+    use {
+        super::*,
+        grug::{IsZero, NumberConst, Udec128_24},
+    };
 
     #[test]
     fn value_of_unit_amount_does_not_overflow_with_large_precision() {
@@ -178,5 +213,25 @@ mod tests {
             .unit_amount_from_value(Udec128::new(10_000_000_000_000_000u128))
             .unwrap();
         assert_eq!(unit_amount, Uint128::new(100_000_000u128 * 10u128.pow(18)));
+    }
+
+    #[test]
+    fn value_of_unit_amount_works_with_large_precision_and_small_price() {
+        // 0.000001 USD per token
+        let price = PrecisionedPrice {
+            humanized_price: Udec128::checked_from_ratio(1, 1_000_000).unwrap(),
+            humanized_ema: Udec128::ONE,
+            timestamp: Timestamp::from_seconds(0),
+            precision: Defined::new(18),
+        };
+
+        // Value of 1 unit of token at 0.000001 USD = 0.000001 / 10^18 USD
+        let value: Udec128_24 = price.value_of_unit_amount(Uint128::new(1)).unwrap();
+        println!("value: {value}");
+        assert!(value.is_non_zero());
+        assert_eq!(
+            value,
+            Udec128_24::checked_from_ratio(1, 1_000_000 * 10u128.pow(18)).unwrap()
+        );
     }
 }
