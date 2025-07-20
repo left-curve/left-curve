@@ -49,7 +49,19 @@ export default defineConfig({
       include: [/.*\.woff2$/],
     },
   },
-  output: { distPath: { root: "build" } },
+  output: {
+    distPath: {
+      root: "build",
+    },
+    minify: {
+      jsOptions: {
+        exclude: [],
+        minimizerOptions: {
+          compress: false,
+        },
+      },
+    },
+  },
   plugins: [pluginReact()],
   tools: {
     rspack: {

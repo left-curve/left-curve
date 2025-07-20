@@ -54,8 +54,6 @@ declare global {
   }
 }
 
-import sample5min from "@left-curve/chartiq/examples/data/STX_SAMPLE_5MIN";
-
 export const ChartIQ = () => {
   const [stx, setStx] = useState<CIQ.ChartEngine | null>(null);
   const container = useRef<HTMLElement | null>(null);
@@ -102,7 +100,6 @@ export const ChartIQ = () => {
         ...rest
       } = config;
 
-      console.log(config);
       const customConfig = {
         ...rest,
         chartId: "BTC-USDC",
@@ -314,7 +311,6 @@ export const ChartIQ = () => {
           name: "Bitcoin",
           exchDisp: "Dango",
         },
-        initialData: sample5min,
         enabledAddOns: {
           tooltip: {
             ohl: true,
