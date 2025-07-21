@@ -42,7 +42,7 @@ type ProTradeProps = {
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
   orderType: "limit" | "market";
-  onChangeOrderType: (order_type: "limit" | "market") => void;
+  onChangeOrderType: (orderType: "limit" | "market") => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
