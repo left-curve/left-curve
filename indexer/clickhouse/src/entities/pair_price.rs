@@ -84,7 +84,6 @@ pub mod dec {
 mod test {
     use {
         super::*,
-        crate::Dec,
         assertor::*,
         chrono::SubsecRound,
         grug::{Dec128_6, NumberConst, Udec128, Udec256, Uint128, Uint256},
@@ -126,25 +125,10 @@ mod test {
         // println!("deserialized = {_deserialized:#?}",);
     }
 
+    /// This allows seeing the serialized value of all types.
     /// This test matters, because it's the only way to test that the serde_json
     /// implementation is correct. We'll use serde to inject data into clickhouse.
     /// This requires the `arbitrary_precision` feature to be working.
-    #[test]
-    fn test_u128() {
-        let u128 = serde_json::json!({"u128": u128::MAX});
-        let serialized = serde_json::to_string(&u128).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        let deserialized_u128: u128 = serde_json::from_value(deserialized["u128"].clone()).unwrap();
-
-        // println!("serialized = {serialized:?}",);
-        // println!("deserialized = {deserialized:?}",);
-        // println!("u128 = {u128:?}",);
-        // println!("deserialized_u128 = {deserialized_u128:?}",);
-
-        assert_that!(deserialized_u128).is_equal_to(u128::MAX);
-    }
-
-    /// This allows seeing the serialized value of all types.
     #[test]
     fn test_all_types() {
         let all_types = serde_json::json!({
@@ -152,8 +136,8 @@ mod test {
             "udec256": Udec256::MAX,
             "uint128": Uint128::MAX,
             "uint256": Uint256::MAX,
-            "volume": Dec::from(Dec128_6::MAX),
-            "clearing_price": Dec::<Udec128>::from(Udec128::MAX),
+            "volume": Dec128_6::MAX,
+            "clearing_price": Udec128::MAX,
             "bnum_u128": bnum::types::U128::ONE,
             "bnum_u256": bnum::types::U256::ONE,
             "u128": u128::MAX,
@@ -168,39 +152,5 @@ mod test {
         //     serde_json::from_value(deserialized["clearing_price"].clone()).unwrap();
 
         // println!("clearing_price = {clearing_price:#?}",);
-    }
-
-    #[test]
-    fn serde_volume() {
-        let volume =
-            serde_json::json!({"dec": Dec::from(Dec128_6::MAX), "dec128_6": Dec128_6::MAX});
-        let serialized = serde_json::to_string(&volume).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        let deserialized_volume: Dec<Dec128_6> =
-            serde_json::from_value(deserialized["dec"].clone()).unwrap();
-
-        // println!("serialized = {serialized}",);
-        // println!("deserialized = {deserialized:?}",);
-        // println!("deserialized_volume = {deserialized_volume:?}",);
-
-        assert_that!(deserialized["dec"].is_number()).is_true();
-        assert_that!(deserialized_volume).is_equal_to(Dec::<Dec128_6>::from(Dec128_6::MAX));
-    }
-
-    #[test]
-    fn serde_clearing_price() {
-        let clearing_price = serde_json::json!({"max": Dec::from(Udec128::MAX)});
-        let serialized = serde_json::to_string(&clearing_price).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        let deserialized_clearing_price: Dec<Udec128> =
-            serde_json::from_value(deserialized["max"].clone()).unwrap();
-
-        // println!("serialized = {serialized}",);
-        // println!("deserialized = {deserialized:#?}",);
-        // println!("deserialized_clearing_price = {deserialized_clearing_price:#?}",);
-
-        // Check that the serialized value is a number, this is needed for clickhouse.
-        assert_that!(deserialized["max"].is_number()).is_true();
-        assert_that!(deserialized_clearing_price).is_equal_to(Dec::<Udec128>::from(Udec128::MAX));
     }
 }
