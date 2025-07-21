@@ -37,10 +37,13 @@ function LayoutApp() {
 
   useEffect(() => {
     const handleScroll = () => {
+      const isProSwap = location.pathname.includes("trade");
+      const headerThreshold = isProSwap ? 20 : 70;
+
       const scrollTop =
         window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
 
-      setIsScrolled(scrollTop > 70);
+      setIsScrolled(scrollTop > headerThreshold);
     };
 
     window.addEventListener("scroll", handleScroll);
