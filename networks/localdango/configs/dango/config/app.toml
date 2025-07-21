@@ -42,7 +42,7 @@ max_connections = 10
 [indexer.clickhouse]
 
 # URL to the Clickhouse database to be used by the indexer.
-url = "http://clickhouse:8123"
+url = "http://localhost:11123"
 
 user = "default"
 
