@@ -2,19 +2,26 @@ import { useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { ChartIQ } from "../foundation/ChartIQ";
 
 import { m } from "~/paraglide/messages";
 
-import type React from "react";
-
 import { mockTrades } from "~/mock";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
-import { ChartIQ } from "../foundation/ChartIQ";
 
-export const OrderBookOverview: React.FC = () => {
+import type { useProTradeState } from "@left-curve/store";
+import type React from "react";
+
+type OrderBookOverviewProps = {
+  state: ReturnType<typeof useProTradeState>;
+};
+
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg } = useMediaQuery();
+
+  const { baseCoin, quoteCoin } = state;
 
   useEffect(() => {
     setActiveTab(isLg ? "order book" : "graph");
@@ -34,7 +41,7 @@ export const OrderBookOverview: React.FC = () => {
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
       />
-      {activeTab === "graph" && <ChartIQ />}
+      {activeTab === "graph" && <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />}
       <div className="relative w-full h-full">
         {activeTab === "order book" && <OrderBook />}
         {activeTab === "trades" && <LiveTrades />}

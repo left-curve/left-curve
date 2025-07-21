@@ -22,45 +22,20 @@ import "@left-curve/chartiq/css/stx-chart.css";
 import "@left-curve/chartiq/css/chartiq.css";
 import "@left-curve/chartiq/css/webcomponents.css";
 
+import { useConfig } from "@left-curve/store";
 import type React from "react";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "cq-chart-instructions": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      >;
-      "cq-context": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-side-panel": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-dialogs": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-dialog": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-drawing-context": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-abstract-marker": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-attribution": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-loader": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-palette-dock": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-drawing-palette": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-drawing-settings": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      >;
-      "cq-toggle": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-menu": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-side-nav": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-chart-title": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      "cq-marker": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-    }
-  }
-}
-
-export const ChartIQ = () => {
-  const [stx, setStx] = useState<CIQ.ChartEngine | null>(null);
+export const ChartIQ = ({ coins }) => {
+  const [context, setContext] = useState<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
-  const loading = useRef(true);
+  const isMounted = useRef(false);
+
+  const { base, quote } = coins;
+
+  const pairSymbol = `${base.symbol}-${quote.symbol}`;
 
   useEffect(() => {
-    if (loading.current) {
+    if (!isMounted.current) {
       const config = getDefaultConfig({
         quoteFeed: quotefeed,
       });
@@ -102,7 +77,7 @@ export const ChartIQ = () => {
 
       const customConfig = {
         ...rest,
-        chartId: "BTC-USDC",
+        chartId: pairSymbol,
         menus: {
           ...menus,
           events: {
@@ -307,8 +282,8 @@ export const ChartIQ = () => {
         },
         root,
         initialSymbol: {
-          symbol: "BTC-USDC",
-          name: "Bitcoin",
+          symbol: pairSymbol,
+          name: pairSymbol,
           exchDisp: "Dango",
         },
         enabledAddOns: {
@@ -649,10 +624,14 @@ export const ChartIQ = () => {
         updateFromQueryString,
       };
 
-      const { stx } = new CIQ.UI.Chart().createChartAndUI({
+      const uiContext = new CIQ.UI.Chart().createChartAndUI({
         container: container.current!,
         config: customConfig,
       });
+
+      setContext(uiContext);
+
+      const { stx } = uiContext;
 
       stx.chart.yAxis.zoom = -0.0000001;
       stx.controls.mSticky = false;
@@ -663,20 +642,25 @@ export const ChartIQ = () => {
       stx.controls.chartControls.style.display = "none";
       stx.controls.chartControls = null;
       stx.layout.smartzoom = false;
-
-      setStx(stx);
+      stx.highlightPrimarySeries = false;
       Object.assign(window, { stx, CIQ });
-      loading.current = false;
+
+      isMounted.current = true;
     }
 
     return () => {
-      if (stx) {
-        stx.destroy();
-        stx.draw = () => {};
-        setStx(null);
+      if (context) {
+        context.stx.destroy();
+        context.stx.draw = () => {};
+        setContext(null);
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMounted.current || !context) return;
+    context.changeSymbol({ symbol: pairSymbol });
+  }, [pairSymbol]);
 
   return (
     <div className="w-full lg:min-h-[52vh] h-full relative">
