@@ -108,7 +108,7 @@ jobs:
       PGDATABASE: grug_test
       DB_HOST: postgres
       CLICKHOUSE_HOST: localhost
-      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_PORT: 10123
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
     services:
@@ -127,9 +127,8 @@ jobs:
           CLICKHOUSE_DB: grug_test
           CLICKHOUSE_USER: default
           CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        # ports:
-        #   - 8123:8123
-        #   - 9000:9000
+        ports:
+          - 10123:8123
         options: >-
           --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping"
           --health-interval 10s
