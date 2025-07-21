@@ -10,7 +10,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { ProTrade } from "~/components/dex/ProTrade";
 
 import type { PairId } from "@left-curve/dango/types";
-import { ChartIQ } from "~/components/foundation/ChartIQ";
 
 export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
   head: () => ({
@@ -31,16 +30,18 @@ export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
       });
   },
   validateSearch: z.object({
+    order_type: z.enum(["limit", "market"]).default("market"),
     action: z.enum(["buy", "sell"]).default("buy"),
   }),
   component: ProTradeApplet,
+  wrapInSuspense: true,
 });
 
 function ProTradeApplet() {
   const navigate = useNavigate();
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
-  const { action = "buy" } = Route.useSearch();
+  const { action = "buy", order_type = "market" } = Route.useSearch();
 
   const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
     const baseSymbol = coins[baseDenom]?.symbol;
@@ -58,7 +59,16 @@ function ProTradeApplet() {
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
       replace: false,
-      search: { action },
+      search: { order_type, action },
+    });
+  };
+
+  const onChangeOrderType = (order_type: "limit" | "market") => {
+    navigate({
+      to: "/trade/$pairSymbols",
+      params: { pairSymbols },
+      replace: false,
+      search: { order_type, action },
     });
   };
 
@@ -76,6 +86,8 @@ function ProTradeApplet() {
         onChangePairId={onChangePairId}
         action={action}
         onChangeAction={onChangeAction}
+        orderType={order_type}
+        onChangeOrderType={onChangeOrderType}
       >
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
@@ -87,7 +99,7 @@ function ProTradeApplet() {
           </div>
           <ProTrade.Orders />
         </div>
-        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] lg:bg-bg-secondary-rice shadow-card-shadow z-20 max-h-[calc(100vh-76px)] md:sticky top-[76px]">
+        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] lg:bg-surface-secondary-rice shadow-account-card z-20 max-h-[calc(100vh-76px)] md:sticky top-[76px]">
           <ProTrade.TradeMenu />
         </div>
       </ProTrade>

@@ -3,11 +3,11 @@ import {
   AddressVisualizer,
   Badge,
   Cell,
-  createContext,
   IconChevronDownFill,
   IconEmptyStar,
   Table,
   Tabs,
+  createContext,
   twMerge,
   useInputs,
   useMediaQuery,
@@ -26,6 +26,7 @@ import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
+import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 
 const [ProTradeProvider, useProTrade] = createContext<{
@@ -40,6 +41,8 @@ type ProTradeProps = {
   onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (orderType: "limit" | "market") => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
@@ -47,16 +50,22 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   onChangeAction,
   pairId,
   onChangePairId,
+  orderType,
+  onChangeOrderType,
   children,
 }) => {
   const controllers = useInputs();
+
   const state = useProTradeState({
     controllers,
     pairId,
     onChangePairId,
     action,
     onChangeAction,
+    orderType,
+    onChangeOrderType,
   });
+
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 
@@ -97,7 +106,7 @@ const ProTradeHeader: React.FC = () => {
               })}
             />
           </div>
-          <IconEmptyStar className="w-5 h-5 text-tertiary-500" />
+          {/*   <IconEmptyStar className="w-5 h-5 text-tertiary-500" /> */}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -147,21 +156,34 @@ const ProTradeHeader: React.FC = () => {
   );
 };
 
+const ProTradeOverview: React.FC = () => {
+  const { state } = useProTrade();
+  return <OrderBookOverview state={state} />;
+};
+
 const ProTradeChart: React.FC = () => {
+  const { state } = useProTrade();
   const { isLg } = useMediaQuery();
+  const { baseCoin, quoteCoin } = state;
 
   if (!isLg) return null;
 
   return (
     <div className="shadow-card-shadow bg-surface-secondary-rice h-full">
-      <ChartIQ />
+      <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />
     </div>
   );
 };
 
 const ProTradeMenu: React.FC = () => {
+  const { isLg } = useMediaQuery();
   const { state, controllers } = useProTrade();
-  return <TradeMenu state={state} controllers={controllers} />;
+  return (
+    <>
+      <TradeMenu state={state} controllers={controllers} />
+      {!isLg ? <TradeButtons state={state} /> : null}
+    </>
+  );
 };
 
 const ProTradeOrders: React.FC = () => {
@@ -341,6 +363,6 @@ export const ProTrade = Object.assign(ProTradeContainer, {
   Header: ProTradeHeader,
   Chart: ProTradeChart,
   Orders: ProTradeOrders,
-  OrderBook: OrderBookOverview,
+  OrderBook: ProTradeOverview,
   TradeMenu: ProTradeMenu,
 });
