@@ -1,4 +1,4 @@
-use {crate::entities::candle::CandleInterval, strum::IntoEnumIterator};
+use {crate::entities::CandleInterval, strum::IntoEnumIterator};
 
 pub const CREATE_TABLES: &str = r#"
             CREATE OR REPLACE TABLE pair_prices (

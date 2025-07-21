@@ -1,15 +1,13 @@
-use {
-    crate::{Dec, Int},
-    chrono::{DateTime, Utc},
-    clickhouse::Row,
-    grug::{Udec128, Uint128},
-    serde::{Deserialize, Serialize},
-};
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, SimpleObject},
-    bigdecimal::BigDecimal,
     grug_types::Timestamp,
+};
+use {
+    chrono::{DateTime, Utc},
+    clickhouse::Row,
+    grug::{Udec128_6, Udec128_24},
+    serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -22,11 +20,14 @@ pub struct PairPrice {
     #[cfg_attr(feature = "async-graphql", graphql(name = "baseDenom"))]
     pub base_denom: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub clearing_price: Dec<Udec128>,
+    #[serde(with = "dec")]
+    pub clearing_price: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_base: Int<Uint128>,
+    #[serde(with = "dec")]
+    pub volume_base: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_quote: Int<Uint128>,
+    #[serde(with = "dec")]
+    pub volume_quote: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub created_at: DateTime<Utc>,
@@ -41,47 +42,52 @@ impl PairPrice {
     async fn created_at(&self) -> String {
         Timestamp::from(self.created_at.naive_utc()).to_rfc3339_string()
     }
-
-    // Returns the clearing price of the pair price.
-    async fn clearing_price(&self) -> BigDecimal {
-        BigDecimal::from(self.clearing_price.clone())
-    }
 }
 
-// pub mod udec128 {
-//     use {
-//         grug::Udec128,
-//         serde::{
-//             de::{Deserialize, Deserializer},
-//             ser::{Serialize, Serializer},
-//         },
-//     };
+/// This will serialize and deserialize the decimals as u128, which is needed
+/// for clickhouse.
+pub mod dec {
+    use {
+        grug::Inner,
+        serde::{
+            de::{self, Deserializer},
+            ser::{Serialize, Serializer},
+        },
+    };
 
-//     /// evm U256 is represented in big-endian, but ClickHouse expects little-endian
-//     pub fn serialize<S: Serializer>(u: &Udec128, serializer: S) -> Result<S::Ok, S::Error> {
-//         // let buf: [u8; 32] = u.to_le_bytes();
-//         // buf.serialize(serializer)
-//         todo!()
-//     }
+    pub fn serialize<S, U, const D: u32>(
+        dec: &grug::Dec<U, D>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        U: Serialize,
+    {
+        dec.inner().serialize(serializer)
+    }
 
-//     /// ClickHouse stores U256 in little-endian
-//     pub fn deserialize<'de, D>(deserializer: D) -> Result<Udec128, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         // let buf: [u8; 32] = Deserialize::deserialize(deserializer)?;
-//         // Ok(Udec128::from_le_bytes(buf))
-//         todo!()
-//     }
-// }
+    pub fn deserialize<'de, D, U, const S: u32>(
+        deserializer: D,
+    ) -> Result<grug::Dec<U, S>, D::Error>
+    where
+        D: Deserializer<'de>,
+        U: de::Deserialize<'de>,
+    {
+        let inner: U = <_ as de::Deserialize<'de>>::deserialize(deserializer)?;
+        let uint = grug::Int::new(inner);
+        let dec = grug::Dec::raw(uint);
+        Ok(dec)
+    }
+}
 
 #[cfg(test)]
 mod test {
     use {
         super::*,
+        crate::Dec,
         assertor::*,
         chrono::SubsecRound,
-        grug::{NumberConst, Udec128, Udec256, Uint128, Uint256},
+        grug::{Dec128_6, NumberConst, Udec128, Udec256, Uint128, Uint256},
     };
 
     #[test]
@@ -89,9 +95,9 @@ mod test {
         let pair_price = PairPrice {
             quote_denom: "USDC".to_string(),
             base_denom: "USDT".to_string(),
-            clearing_price: Udec128::MAX.into(),
-            volume_base: Uint128::MAX.into(),
-            volume_quote: Uint128::MAX.into(),
+            clearing_price: Udec128_24::MAX,
+            volume_base: Udec128_6::MAX,
+            volume_quote: Udec128_6::MAX,
             // On the CI I saw nanoseconds (9), on my computer it's milliseconds (6).
             created_at: Utc::now().trunc_subsecs(6),
             block_height: 1000000,
@@ -110,7 +116,6 @@ mod test {
     }
 
     /// For when I'll need to switch to bnum for U256.
-    #[ignore]
     #[test]
     fn test_bnum_u256() {
         let udec256 = serde_json::json!({"max": bnum::types::U256::MAX, "min": bnum::types::U256::MIN, "one": bnum::types::U256::ONE});
@@ -147,17 +152,17 @@ mod test {
             "udec256": Udec256::MAX,
             "uint128": Uint128::MAX,
             "uint256": Uint256::MAX,
-            "volume": Int::from(Uint128::MAX),
+            "volume": Dec::from(Dec128_6::MAX),
             "clearing_price": Dec::<Udec128>::from(Udec128::MAX),
             "bnum_u128": bnum::types::U128::ONE,
             "bnum_u256": bnum::types::U256::ONE,
             "u128": u128::MAX,
         });
         let serialized = serde_json::to_string(&all_types).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let _deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
 
-        println!("serialized = {serialized}",);
-        println!("deserialized = {deserialized:#?}",);
+        // println!("serialized = {serialized}",);
+        // println!("deserialized = {deserialized:#?}",);
 
         // let clearing_price: ClearingPrice =
         //     serde_json::from_value(deserialized["clearing_price"].clone()).unwrap();
@@ -167,18 +172,19 @@ mod test {
 
     #[test]
     fn serde_volume() {
-        let volume = serde_json::json!({"max": Int::from(Uint128::MAX)});
+        let volume =
+            serde_json::json!({"dec": Dec::from(Dec128_6::MAX), "dec128_6": Dec128_6::MAX});
         let serialized = serde_json::to_string(&volume).unwrap();
         let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
-        let deserialized_volume: Int<Uint128> =
-            serde_json::from_value(deserialized["max"].clone()).unwrap();
+        let deserialized_volume: Dec<Dec128_6> =
+            serde_json::from_value(deserialized["dec"].clone()).unwrap();
 
         // println!("serialized = {serialized}",);
         // println!("deserialized = {deserialized:?}",);
         // println!("deserialized_volume = {deserialized_volume:?}",);
 
-        assert_that!(deserialized["max"].is_number()).is_true();
-        assert_that!(deserialized_volume).is_equal_to(Int::from(Uint128::MAX));
+        assert_that!(deserialized["dec"].is_number()).is_true();
+        assert_that!(deserialized_volume).is_equal_to(Dec::<Dec128_6>::from(Dec128_6::MAX));
     }
 
     #[test]

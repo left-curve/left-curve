@@ -1,7 +1,6 @@
 use {
     crate::entities::{
-        candle::{Candle, CandleInterval},
-        candle_query::CandleQueryBuilder,
+        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
         pair_price_query::PairPriceQueryBuilder,
     },
     async_graphql::{futures_util::stream::Stream, *},

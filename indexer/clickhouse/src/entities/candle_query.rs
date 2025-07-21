@@ -2,7 +2,7 @@
 use itertools::Itertools;
 
 use {
-    crate::entities::candle::{Candle, CandleInterval},
+    crate::entities::{CandleInterval, candle::Candle},
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::Timestamp,

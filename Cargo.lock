@@ -2792,7 +2792,7 @@ dependencies = [
  "serde",
  "static_assertions",
  "thiserror 2.0.12",
- "time",
+ "time 0.3.41",
  "tokio",
  "url",
  "uuid",

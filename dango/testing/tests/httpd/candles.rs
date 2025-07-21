@@ -10,7 +10,7 @@ use {
     },
     grug::{
         Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt, Signer,
-        StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
+        StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map, setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -100,12 +100,12 @@ async fn query_candles() -> anyhow::Result<()> {
 
                 let expected_candle = serde_json::json!({
                     "timeStart": "1971-01-01T00:00:00Z",
-                    "open": "27.4",
-                    "high": "27.4",
-                    "low": "27.4",
-                    "close": "27.4",
+                    "open": "27.5",
+                    "high": "27.5",
+                    "low": "27.5",
+                    "close": "27.5",
                     "volumeBase": "25",
-                    "volumeQuote": "718",
+                    "volumeQuote": "687.5",
                     "interval": "ONE_SECOND",
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
@@ -199,7 +199,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 let expected_json = serde_json::json!([{
                     "volumeBase": "50",
-                    "volumeQuote": "1436"
+                    "volumeQuote": "1375"
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
@@ -213,7 +213,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 let expected_json = serde_json::json!([{
                     "volumeBase": "75",
-                    "volumeQuote": "2154"
+                    "volumeQuote": "2062.5"
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
@@ -270,7 +270,7 @@ async fn create_pair_prices(
         .into_iter()
         .zip(accounts.users_mut())
         .map(|((direction, price, amount), signer)| {
-            let price = Udec128::new(price);
+            let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
             let funds = match direction {

@@ -3,10 +3,7 @@
 use {
     crate::{
         context::Context,
-        entities::{
-            candle::{Candle, CandleInterval},
-            candle_query::CandleQueryBuilder,
-        },
+        entities::{CandleInterval, candle::Candle, candle_query::CandleQueryBuilder},
     },
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},

@@ -83,11 +83,28 @@ impl From<Dec<grug::Dec<u128, 18>>> for BigDecimal {
     }
 }
 
+// Implement conversion for specific types
+impl From<Dec<grug::Dec<u128, 6>>> for BigDecimal {
+    fn from(dec: Dec<grug::Dec<u128, 6>>) -> Self {
+        let inner_value = *dec.0.inner();
+        let bigint = u128_to_bigint(inner_value);
+        BigDecimal::new(bigint, 6)
+    }
+}
+
 impl From<Dec<grug::Dec<U256, 18>>> for BigDecimal {
     fn from(dec: Dec<grug::Dec<U256, 18>>) -> Self {
         let inner_value = *dec.0.inner();
         let bigint = u256_to_bigint(inner_value);
         BigDecimal::new(bigint, 18)
+    }
+}
+
+impl From<Dec<grug::Dec<u128, 24>>> for BigDecimal {
+    fn from(dec: Dec<grug::Dec<u128, 24>>) -> Self {
+        let inner_value = *dec.0.inner();
+        let bigint = u128_to_bigint(inner_value);
+        BigDecimal::new(bigint, 24)
     }
 }
 

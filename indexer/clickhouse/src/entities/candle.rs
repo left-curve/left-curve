@@ -1,83 +1,18 @@
 use {
-    crate::{Dec, Int},
-    chrono::{DateTime, Duration, Utc},
+    crate::entities::CandleInterval,
+    chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug::{Udec128, Uint128},
-    serde::{Deserialize, Deserializer, Serialize, Serializer, de},
-    strum::EnumIter,
-    strum_macros::{Display, EnumString},
+    grug::{Udec128_6, Udec128_24},
+    serde::{Deserialize, Serialize},
 };
 #[cfg(feature = "async-graphql")]
 use {
-    async_graphql::{ComplexObject, Enum, SimpleObject},
+    async_graphql::{ComplexObject, SimpleObject},
     bigdecimal::BigDecimal,
+    bigdecimal::num_bigint::BigInt,
+    grug::Inner,
     grug::Timestamp,
 };
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, EnumString, EnumIter)]
-#[cfg_attr(feature = "async-graphql", derive(Enum))]
-#[cfg_attr(feature = "async-graphql", graphql(name = "CandleInterval"))]
-pub enum CandleInterval {
-    #[strum(serialize = "1s")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "ONE_SECOND"))]
-    OneSecond,
-    #[strum(serialize = "1m")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "ONE_MINUTE"))]
-    OneMinute,
-    #[strum(serialize = "5m")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "FIVE_MINUTES"))]
-    FiveMinutes,
-    #[strum(serialize = "15m")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "FIFTEEN_MINUTES"))]
-    FifteenMinutes,
-    #[strum(serialize = "1h")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "ONE_HOUR"))]
-    OneHour,
-    #[strum(serialize = "4h")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "FOUR_HOURS"))]
-    FourHours,
-    #[strum(serialize = "1d")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "ONE_DAY"))]
-    OneDay,
-    #[strum(serialize = "1w")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "ONE_WEEK"))]
-    OneWeek,
-}
-
-impl CandleInterval {
-    pub fn duration(&self) -> Duration {
-        match self {
-            CandleInterval::OneSecond => Duration::seconds(1),
-            CandleInterval::OneMinute => Duration::seconds(60),
-            CandleInterval::FiveMinutes => Duration::seconds(300),
-            CandleInterval::FifteenMinutes => Duration::seconds(900),
-            CandleInterval::OneHour => Duration::seconds(3600),
-            CandleInterval::FourHours => Duration::seconds(14400),
-            CandleInterval::OneDay => Duration::seconds(86400),
-            CandleInterval::OneWeek => Duration::seconds(604800),
-        }
-    }
-}
-
-impl Serialize for CandleInterval {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> de::Deserialize<'de> for CandleInterval {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse::<Self>()
-            .map_err(|e| de::Error::custom(e.to_string()))
-    }
-}
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
@@ -89,17 +24,23 @@ pub struct Candle {
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub time_start: DateTime<Utc>,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub open: Dec<Udec128>,
+    #[serde(with = "super::pair_price::dec")]
+    pub open: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub high: Dec<Udec128>,
+    #[serde(with = "super::pair_price::dec")]
+    pub high: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub low: Dec<Udec128>,
+    #[serde(with = "super::pair_price::dec")]
+    pub low: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub close: Dec<Udec128>,
+    #[serde(with = "super::pair_price::dec")]
+    pub close: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_base: Int<Uint128>,
+    #[serde(with = "super::pair_price::dec")]
+    pub volume_base: Udec128_6,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub volume_quote: Int<Uint128>,
+    #[serde(with = "super::pair_price::dec")]
+    pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
     pub block_height: u64,
 }
@@ -107,6 +48,42 @@ pub struct Candle {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Candle {
+    async fn open(&self) -> BigDecimal {
+        let inner_value = self.open.inner();
+        let bigint = BigInt::from(*inner_value);
+        BigDecimal::new(bigint, 24).normalized()
+    }
+
+    async fn high(&self) -> BigDecimal {
+        let inner_value = self.high.inner();
+        let bigint = BigInt::from(*inner_value);
+        BigDecimal::new(bigint, 24).normalized()
+    }
+
+    async fn low(&self) -> BigDecimal {
+        let inner_value = self.low.inner();
+        let bigint = BigInt::from(*inner_value);
+        BigDecimal::new(bigint, 24).normalized()
+    }
+
+    async fn close(&self) -> BigDecimal {
+        let inner_value = self.close.inner();
+        let bigint = BigInt::from(*inner_value);
+        BigDecimal::new(bigint, 24).normalized()
+    }
+
+    async fn volume_base(&self) -> BigDecimal {
+        let inner_value = self.volume_base.inner();
+        let bigint = BigInt::from(*inner_value);
+        BigDecimal::new(bigint, 6).normalized()
+    }
+
+    async fn volume_quote(&self) -> BigDecimal {
+        let inner_value = self.volume_quote.inner();
+        let bigint = BigInt::from(*inner_value);
+        BigDecimal::new(bigint, 6).normalized()
+    }
+
     /// Return time_start in ISO 8601 format with time zone.
     async fn time_start(&self) -> String {
         // TODO: check why microseconds are not included
@@ -116,30 +93,6 @@ impl Candle {
     /// Return time_start as a unix timestamp
     async fn time_start_unix(&self) -> i64 {
         self.time_start.timestamp_millis()
-    }
-
-    async fn open(&self) -> BigDecimal {
-        BigDecimal::from(self.open.clone()).normalized()
-    }
-
-    async fn high(&self) -> BigDecimal {
-        BigDecimal::from(self.high.clone()).normalized()
-    }
-
-    async fn low(&self) -> BigDecimal {
-        BigDecimal::from(self.low.clone()).normalized()
-    }
-
-    async fn close(&self) -> BigDecimal {
-        BigDecimal::from(self.close.clone()).normalized()
-    }
-
-    async fn volume_base(&self) -> String {
-        self.volume_base.to_string()
-    }
-
-    async fn volume_quote(&self) -> String {
-        self.volume_quote.to_string()
     }
 
     /// Return time_end in ISO 8601 format with time zone.

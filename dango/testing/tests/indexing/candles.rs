@@ -11,30 +11,23 @@ use {
     },
     grug::{
         Coins, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, ResultExt,
-        Signer, StdResult, Timestamp, Udec128, Uint128, btree_map, setup_tracing_subscriber,
+        Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_clickhouse::{
-        Dec, Int,
-        entities::{
-            candle::CandleInterval, candle_query::CandleQueryBuilder, pair_price::PairPrice,
-        },
+    indexer_clickhouse::entities::{
+        CandleInterval, candle_query::CandleQueryBuilder, pair_price::PairPrice,
+        pair_price_query::PairPriceQueryBuilder,
     },
     std::str::FromStr,
     tracing::Level,
 };
 
-#[ignore = "This test is now hanging, should be fixed"]
+#[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(false).await;
-
-    // SetupBuilder::new()
-    //     .with_mocked_clickhouse()
-    //     .with_dango_indexer()
-    //     .with_hyperlane()
-    //     .build();
 
     let recording = clickhouse_context
         .mock()
@@ -71,7 +64,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
         .into_iter()
         .zip(accounts.users_mut())
         .map(|((direction, price, amount), signer)| {
-            let price = Udec128::new(price);
+            let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
             let funds = match direction {
@@ -125,7 +118,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price).is_greater_than::<Dec<Udec128>>(Udec128::ZERO.into());
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
 
     Ok(())
 }
@@ -140,18 +133,22 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 
     suite.app.indexer.wait_for_finish()?;
 
-    let pair_price = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT * FROM pair_prices")
-        .fetch_one::<PairPrice>()
-        .await?;
+    let pair_price_query_builder =
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string());
+
+    let pair_price = pair_price_query_builder
+        .fetch_one(clickhouse_context.clickhouse_client())
+        .await?
+        .unwrap();
 
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.clearing_price).is_greater_than::<Dec<Udec128>>(Udec128::ZERO.into());
-    assert_that!(pair_price.volume_base).is_equal_to::<Int<Uint128>>(Uint128::from(25).into());
-    assert_that!(pair_price.volume_quote).is_equal_to::<Int<Uint128>>(Uint128::from(718).into());
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.volume_base)
+        .is_equal_to::<Udec128_6>(Udec128_6::from_str("25.0").unwrap());
+    assert_that!(pair_price.volume_quote)
+        .is_equal_to::<Udec128_6>(Udec128_6::from_str("687.5").unwrap());
 
     // Makes sure we get correct precision: 27.4 without specific number, since this can change.
     assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
@@ -164,19 +161,20 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 
     let candle_1m = candle_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
-        .await?;
+        .await?
+        .unwrap();
 
     let expected_candle = serde_json::json!({
         "quote_denom": "bridge/usdc",
         "base_denom": "dango",
-        "close": 27400000000000000000_u128,
-        "high":  27400000000000000000_u128,
+        "close": 27500000000000000000000000_u128,
+        "high":  27500000000000000000000000_u128,
         "interval": "1m",
-        "low": 27400000000000000000_u128,
-        "open": 27400000000000000000_u128,
+        "low": 27500000000000000000000000_u128,
+        "open": 27500000000000000000000000_u128,
         "time_start": serde_json::Number::from(31536000000000_u64),
-        "volume_base": 25,
-        "volume_quote": 718,
+        "volume_base": 25000000,
+        "volume_quote": 687500000,
     });
 
     let candle_1m_serde =
@@ -200,11 +198,10 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
     suite.app.indexer.wait_for_finish()?;
 
-    let pair_prices: Vec<PairPrice> = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT * FROM pair_prices")
-        .fetch_all()
-        .await?;
+    let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string())
+        .fetch_all(clickhouse_context.clickhouse_client())
+        .await?
+        .pair_prices;
 
     assert_that!(pair_prices.clone()).has_length(10);
 
@@ -233,21 +230,19 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
     assert_that!(candle_1m.candles[0].high).is_equal_to(pair_prices[0].clone().clearing_price);
     assert_that!(candle_1m.candles[0].low).is_equal_to(pair_prices[0].clone().clearing_price);
     assert_that!(candle_1m.candles[0].close).is_equal_to(pair_prices[0].clone().clearing_price);
-    assert_that!(candle_1m.candles[0].volume_base).is_equal_to::<Int<Uint128>>(
+    assert_that!(candle_1m.candles[0].volume_base).is_equal_to(
         pair_prices[0]
             .clone()
             .volume_base
-            .checked_mul(10.into())
-            .unwrap()
-            .into(),
+            .checked_mul(Udec128_6::from_str("10.0").unwrap())
+            .unwrap(),
     );
-    assert_that!(candle_1m.candles[0].volume_quote).is_equal_to::<Int<Uint128>>(
+    assert_that!(candle_1m.candles[0].volume_quote).is_equal_to(
         pair_prices[0]
             .clone()
             .volume_quote
-            .checked_mul(10.into())
-            .unwrap()
-            .into(),
+            .checked_mul(Udec128_6::from_str("10.0").unwrap())
+            .unwrap(),
     );
 
     Ok(())
@@ -265,11 +260,10 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
     suite.app.indexer.wait_for_finish()?;
 
-    let pair_prices: Vec<PairPrice> = clickhouse_context
-        .clickhouse_client()
-        .query("SELECT * FROM pair_prices")
-        .fetch_all()
-        .await?;
+    let pair_prices = PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string())
+        .fetch_all(clickhouse_context.clickhouse_client())
+        .await?
+        .pair_prices;
 
     assert_that!(pair_prices.clone()).has_length(10);
 
@@ -308,12 +302,12 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             .collect::<Vec<_>>()
     )
     .is_equal_to(vec![
-        &Uint128::from(718).into(),
-        &Uint128::from(1436).into(),
-        &Uint128::from(1436).into(),
-        &Uint128::from(1436).into(),
-        &Uint128::from(1436).into(),
-        &Uint128::from(718).into(),
+        &Udec128_6::from_str("687.5").unwrap(),
+        &Udec128_6::from_str("1375").unwrap(),
+        &Udec128_6::from_str("1375").unwrap(),
+        &Udec128_6::from_str("1375").unwrap(),
+        &Udec128_6::from_str("1375").unwrap(),
+        &Udec128_6::from_str("687.5").unwrap(),
     ]);
 
     assert_that!(
@@ -324,23 +318,19 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             .collect::<Vec<_>>()
     )
     .is_equal_to(vec![
-        &Uint128::from(25).into(),
-        &Uint128::from(50).into(),
-        &Uint128::from(50).into(),
-        &Uint128::from(50).into(),
-        &Uint128::from(50).into(),
-        &Uint128::from(25).into(),
+        &Udec128_6::from_str("25").unwrap(),
+        &Udec128_6::from_str("50").unwrap(),
+        &Udec128_6::from_str("50").unwrap(),
+        &Udec128_6::from_str("50").unwrap(),
+        &Udec128_6::from_str("50").unwrap(),
+        &Udec128_6::from_str("25").unwrap(),
     ]);
 
     for candle in candle_1s.candles.into_iter() {
-        assert_that!(candle.open)
-            .is_equal_to::<Dec<Udec128>>(Udec128::from_str("27.4").unwrap().into());
-        assert_that!(candle.high)
-            .is_equal_to::<Dec<Udec128>>(Udec128::from_str("27.4").unwrap().into());
-        assert_that!(candle.low)
-            .is_equal_to::<Dec<Udec128>>(Udec128::from_str("27.4").unwrap().into());
-        assert_that!(candle.close)
-            .is_equal_to::<Dec<Udec128>>(Udec128::from_str("27.4").unwrap().into());
+        assert_that!(candle.open).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(candle.high).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(candle.low).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(candle.close).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
     }
 
     Ok(())
@@ -380,7 +370,7 @@ async fn create_pair_prices(
         .into_iter()
         .zip(accounts.users_mut())
         .map(|((direction, price, amount), signer)| {
-            let price = Udec128::new(price);
+            let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
             let funds = match direction {
