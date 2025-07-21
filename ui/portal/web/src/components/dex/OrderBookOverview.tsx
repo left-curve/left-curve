@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
 
+import { m } from "~/paraglide/messages";
+
 import type React from "react";
 
 import { mockTrades } from "~/mock";
@@ -33,8 +35,15 @@ export const OrderBookOverview: React.FC = () => {
         classNames={{ button: "exposure-xs-italic" }}
       />
       {activeTab === "graph" && <ChartIQ />}
-      {activeTab === "order book" && <OrderBook />}
-      {activeTab === "trades" && <LiveTrades />}
+      <div className="relative w-full h-full">
+        {activeTab === "order book" && <OrderBook />}
+        {activeTab === "trades" && <LiveTrades />}
+        {(activeTab === "trades" || activeTab === "order book") && (
+          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[2px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center exposure-l-italic">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        )}
+      </div>
     </ResizerContainer>
   );
 };
