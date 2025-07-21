@@ -80,11 +80,12 @@
   loop_control:
     loop_var: dango_network
 
-- name: Connect Postgres container to extra network
+- name: Connect Postgres and Clickhouse container to extra network
   community.docker.docker_network:
     name: "{{ dango_network }}_backend"
     connected:
       - "{{ docker_db_host }}"
+      - "{{ docker_clickhouse_host }}"
     appends: true
   loop: "{{ dango_networks }}"
   loop_control:

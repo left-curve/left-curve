@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <users>
+        <!-- Default user with full access for local development -->
+        <default>
+            <password>{{ clickhouse_password }}</password>
+
+            <!-- Allow access from any network for local development -->
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+
+            <!-- Profile settings -->
+            <profile>default</profile>
+
+            <!-- Quota settings -->
+            <quota>default</quota>
+        </default>
+
+        <dango>
+            <password>{{ dango_clickhouse_password }}</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+        </dango>
+    </users>
+
+    <!-- User profiles -->
+    <profiles>
+        <default>
+            <max_threads>0</max_threads>
+
+            <!-- Maximum memory usage per query (4 GB) -->
+            <max_memory_usage>4000000000</max_memory_usage>
+
+            <!-- Use all CPU cores -->
+            <use_uncompressed_cache>0</use_uncompressed_cache>
+
+            <!-- Load balancing -->
+            <load_balancing>random</load_balancing>
+
+            <allow_experimental_window_functions>0</allow_experimental_window_functions>
+            <allow_experimental_projection_optimization>0</allow_experimental_projection_optimization>
+
+            <!-- Query execution settings -->
+            <max_execution_time>60</max_execution_time>
+            <timeout_before_checking_execution_speed>10</timeout_before_checking_execution_speed>
+
+            <!-- Network settings -->
+            <max_concurrent_queries_for_user>100</max_concurrent_queries_for_user>
+
+            <!-- Allow DDL -->
+            <allow_ddl>1</allow_ddl>
+
+            <!-- Allow introspection functions -->
+            <allow_introspection_functions>1</allow_introspection_functions>
+        </default>
+    </profiles>
+
+    <!-- Quotas -->
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+    </quotas>
+</clickhouse>

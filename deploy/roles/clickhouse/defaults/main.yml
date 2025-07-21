@@ -1,0 +1,10 @@
+---
+clickhouse_version: "latest"
+clickhouse_user: "clickhouse"
+clickhouse_password: "{{ lookup('env','CLICKHOUSE_PASSWORD') }}"
+dango_clickhouse_user: "dango"
+dango_clickhouse_password: "{{ lookup('env','DANGO_CLICKHOUSE_PASSWORD') }}"
+data_dir: "/home/{{ deploy_user }}/clickhouse/data"
+logs_dir: "/home/{{ deploy_user }}/clickhouse/logs"
+config_dir: "/home/{{ deploy_user }}/clickhouse/config"
+container_name: "clickhouse"

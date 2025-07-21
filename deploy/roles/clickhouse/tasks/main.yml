@@ -1,0 +1,54 @@
+- name: Ensure config dir exists
+  file:
+    path: "{{ config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Abort if password is empty
+  assert:
+    that:
+      - clickhouse_password is defined
+      - clickhouse_password | length > 0
+    fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
+
+- name: Copy config files
+  template:
+    src: "{{ item }}"
+    dest: "{{ config_dir }}/{{ item }}"
+  loop:
+    - config.xml
+    - users.xml
+
+- name: Deploy clickhouse container
+  docker_container:
+    name: "{{ container_name }}"
+    image: "clickhouse/clickhouse-server:{{ clickhouse_version }}"
+    restart_policy: unless-stopped
+    state: started
+    env:
+      CLICKHOUSE_DB: dango_prod
+      CLICKHOUSE_USER: "{{ clickhouse_user }}"
+      CLICKHOUSE_PASSWORD: "{{ clickhouse_password }}"
+    ports:
+      - "127.0.0.1:8123:8123" # HTTP interface
+      - "127.0.0.1:9000:9000" # Native TCP interface
+      - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
+      - "127.0.0.1:9004:9004" # MySQL compatibility interface
+    volumes:
+      - "{{ data_dir }}:/var/lib/clickhouse"
+      - "{{ logs_dir }}:/var/log/clickhouse-server"
+      - "{{ config_dir }}/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "{{ config_dir }}/users.xml:/etc/clickhouse-server/users.xml:ro"
+    ulimits:
+      - "nofile:262144:262144"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "clickhouse-client",
+          "--query",
+          "SELECT 1"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
