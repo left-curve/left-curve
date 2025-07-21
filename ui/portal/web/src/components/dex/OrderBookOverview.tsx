@@ -30,7 +30,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
