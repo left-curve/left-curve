@@ -141,7 +141,7 @@ const SimpleSwapHeader: React.FC = () => {
       <img
         src="/images/characters/hippo.svg"
         alt=""
-        className="absolute right-[-2.8rem] top-[-0.5rem] opacity-10"
+        className="absolute right-[-2.8rem] top-[-0.5rem] opacity-10 select-none drag-none"
       />
     </div>
   );

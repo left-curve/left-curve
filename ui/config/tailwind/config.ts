@@ -173,8 +173,6 @@ export const tailwindConfig: Partial<Config> = {
         },
       },
       boxShadow: {
-        "card-shadow":
-          "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
         "account-card": "var(--shadow-card)",
         "btn-shadow-gradient": "var(--shadow-btn-shadow-gradient)",
         "btn-secondary-shadow-gradient": "var(--shadow-btn-secondary-shadow-gradient)",

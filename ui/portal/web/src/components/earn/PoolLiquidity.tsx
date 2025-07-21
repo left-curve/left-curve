@@ -126,7 +126,7 @@ const PoolLiquidityHeader: React.FC = () => {
       <img
         src="/images/characters/hippo.svg"
         alt="dango-hippo"
-        className="max-w-[298px] absolute opacity-10 left-[8.75rem] top-0"
+        className="max-w-[298px] absolute opacity-10 left-[8.75rem] top-0 select-none drag-none"
       />
     </div>
   );
