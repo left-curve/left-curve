@@ -281,3 +281,18 @@ cq-side-panel {
   left: 50%;
   transform: translate(-50%, -50%);
 }
+
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 99999px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 99999px;
+  background: var(--color-secondary-gray);
+}
