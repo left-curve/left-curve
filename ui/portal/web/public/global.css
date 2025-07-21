@@ -160,7 +160,7 @@ body {
 }
 
 .react-json-view .variable-value div {
-  /* biome-ignore lint/correctness/noUnknownFunction: <explanation> */
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
   color: theme("colors.white.100") !important;
 }
 
@@ -196,7 +196,7 @@ cq-dropdown .content>.item.ciq-active .ciq-switch,
 cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
 .ciq-active .ciq-radio span:after,
 .ciq-radio.ciq-active span:after {
-  /* biome-ignore lint/correctness/noUnknownFunction: <explanation> */
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
   background: theme("colors.red-bean.600");
 }
 
