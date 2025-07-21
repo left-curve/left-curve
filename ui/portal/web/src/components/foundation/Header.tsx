@@ -47,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
+        { "lg:bg-surface-primary-rice": isProSwap },
       )}
     >
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
