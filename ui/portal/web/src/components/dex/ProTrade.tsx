@@ -353,7 +353,11 @@ const ProTradeOrders: React.FC = () => {
               ) : null
             }
           />
-        ) : null}
+        ) : (
+          <div className="min-h-[88.8px] w-full backdrop-blur-[8px] flex items-center justify-center exposure-l-italic text-primary-rice">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        )}
       </div>
     </div>
   );
