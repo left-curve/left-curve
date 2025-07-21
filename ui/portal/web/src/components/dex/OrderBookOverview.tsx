@@ -42,15 +42,15 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
         classNames={{ button: "exposure-xs-italic" }}
       />
       {activeTab === "graph" && <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />}
-      <div className="relative w-full h-full">
-        {activeTab === "order book" && <OrderBook />}
-        {activeTab === "trades" && <LiveTrades />}
-        {(activeTab === "trades" || activeTab === "order book") && (
-          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[2px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center exposure-l-italic">
+      {(activeTab === "trades" || activeTab === "order book") && (
+        <div className="relative w-full h-full">
+          {activeTab === "order book" && <OrderBook />}
+          {activeTab === "trades" && <LiveTrades />}
+          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[8px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center diatype-mono-lg-bold text-primary-rice">
             {m["dex.protrade.underDevelopment"]()}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </ResizerContainer>
   );
 };
