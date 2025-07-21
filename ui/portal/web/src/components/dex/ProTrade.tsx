@@ -40,6 +40,8 @@ type ProTradeProps = {
   onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (order_type: "limit" | "market") => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
@@ -47,16 +49,22 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   onChangeAction,
   pairId,
   onChangePairId,
+  orderType,
+  onChangeOrderType,
   children,
 }) => {
   const controllers = useInputs();
+
   const state = useProTradeState({
     controllers,
     pairId,
     onChangePairId,
     action,
     onChangeAction,
+    orderType,
+    onChangeOrderType,
   });
+
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 
