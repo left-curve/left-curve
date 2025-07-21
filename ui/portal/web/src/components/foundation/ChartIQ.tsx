@@ -663,7 +663,7 @@ export const ChartIQ = ({ coins }) => {
   }, [pairSymbol]);
 
   return (
-    <div className="w-full lg:min-h-[52vh] h-full relative">
+    <div className="w-full min-h-[23.1375rem] lg:min-h-[52vh] h-full relative">
       <cq-context ref={container} className="chart-context">
         <cq-chart-instructions />
 

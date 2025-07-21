@@ -160,7 +160,7 @@ body {
 }
 
 .react-json-view .variable-value div {
-  /* biome-ignore lint/correctness/noUnknownFunction: <explanation> */
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
   color: theme("colors.white.100") !important;
 }
 
@@ -168,13 +168,13 @@ body {
 .ciq-day .ciq-nav,
 .ciq-day .chartContainer,
 .ciq-day cq-chart-title {
-  color: #6E6865 !important;
-  background: rgb(255 249 240) !important;
+  color: var(--color-tertiary-500) !important;
+  background: var(--color-surface-secondary-rice) !important;
   border: none;
 }
 
 .ciq-day cq-menu .menu-clickable:not(cq-help) {
-  color: #6E6865;
+  color: var(--color-tertiary-500);
 }
 
 .stx-subholder {
@@ -185,18 +185,19 @@ body {
 .ciq-day cq-dropdown .content,
 cq-drawing-palette .ciq-tool:before,
 cq-drawing-palette .ciq-mini-widget:before {
-  background: rgb(255 249 240);
+  background: var(--color-surface-secondary-rice);
 }
 
 cq-heading {
-  color: rgb(46 37 33);
+  color:  var(--color-secondary-700);
 }
 
 cq-dropdown .content>.item.ciq-active .ciq-switch,
 cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
 .ciq-active .ciq-radio span:after,
 .ciq-radio.ciq-active span:after {
-  background: rgb(249 112 102);
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
+  background: theme("colors.red-bean.600");
 }
 
 .ciq-active .ciq-radio span:after,
@@ -235,7 +236,7 @@ cq-drawing-palette,
 cq-menu.nav-dropdown:before,
 .ciq-nav cq-toggle:before,
 cq-views .item:hover {
-  background: rgb(255 243 225) !important
+  background: var(--color-surface-tertiary-rice)!important
 }
 
 :host(cq-toggle.active),
@@ -245,22 +246,22 @@ cq-toggle.active {
 
 .stx_current_hr_up,
 .stx_candle_up {
-  background-color: #27AE60;
+  background-color: var(--color-status-success);
 }
 
 .stx_current_hr_down,
 .stx_candle_down {
-  background-color: #EB5757;
+  background-color: var(--color-status-fail);
 }
 
 .cq-down,
 .stx_candle_down {
-  color: #EB5757;
+  color: var(--color-status-fail);
 }
 
 .cq-up,
 .stx_candle_up {
-  color: #27AE60;
+  color: var(--color-status-success);
 }
 
 [cq-tooltip],
