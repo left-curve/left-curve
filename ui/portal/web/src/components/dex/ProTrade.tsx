@@ -26,6 +26,7 @@ import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
+import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 
 const [ProTradeProvider, useProTrade] = createContext<{
@@ -175,8 +176,14 @@ const ProTradeChart: React.FC = () => {
 };
 
 const ProTradeMenu: React.FC = () => {
+  const { isLg } = useMediaQuery();
   const { state, controllers } = useProTrade();
-  return <TradeMenu state={state} controllers={controllers} />;
+  return (
+    <>
+      <TradeMenu state={state} controllers={controllers} />
+      {!isLg ? <TradeButtons state={state} /> : null}
+    </>
+  );
 };
 
 const ProTradeOrders: React.FC = () => {

@@ -34,7 +34,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     pairId,
     onChangePairId,
     onChangeAction,
-    action,
+    action: initialAction,
     orderType,
     onChangeOrderType,
   } = parameters;
@@ -44,10 +44,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
 
-  const { convertAmount, getPrice } = usePrices();
+  const { convertAmount, getPrice, isFetched } = usePrices();
 
   const [sizeCoin, setSizeCoin] = useState(coins[pairId.quoteDenom]);
   const [operation, setOperation] = useState(orderType);
+  const [action, setAction] = useState(initialAction);
 
   const { data: balances = {}, refetch: updateBalance } = useBalances({
     address: account?.address,
@@ -61,6 +62,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const changeAction = useCallback((action: "buy" | "sell") => {
     onChangeAction(action);
+    setAction(action);
     setValue("size", "0");
   }, []);
 
@@ -148,9 +150,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
-  }, [pairId]);
-
-  console.log(getPrice(1, pairId.baseDenom).toFixed(4));
+  }, [isFetched, pairId]);
 
   useEffect(() => {
     onChangeOrderType(operation);
