@@ -12,6 +12,8 @@ import getLicenseKey from "@left-curve/chartiq/license/key";
 
 getLicenseKey(CIQ);
 
+import { useTheme } from "@left-curve/applets-kit";
+import { useConfig } from "@left-curve/store";
 import { useEffect, useRef, useState } from "react";
 
 import "@left-curve/chartiq/examples/translations/translationSample";
@@ -22,13 +24,14 @@ import "@left-curve/chartiq/css/stx-chart.css";
 import "@left-curve/chartiq/css/chartiq.css";
 import "@left-curve/chartiq/css/webcomponents.css";
 
-import { useConfig } from "@left-curve/store";
 import type React from "react";
 
 export const ChartIQ = ({ coins }) => {
   const [context, setContext] = useState<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const isMounted = useRef(false);
+
+  const { theme } = useTheme();
 
   const { base, quote } = coins;
 
@@ -374,7 +377,7 @@ export const ChartIQ = ({ coins }) => {
             "ciq-night": "Night",
             "ciq-night.redgreen": "Night (red-green friendly)",
           },
-          defaultTheme: "ciq-day",
+          defaultTheme: theme === "light" ? "ciq-day" : "ciq-night",
         },
         menuPeriodicity: [
           {
@@ -641,6 +644,7 @@ export const ChartIQ = ({ coins }) => {
 
       stx.controls.chartControls.style.display = "none";
       stx.controls.chartControls = null;
+      stx.setCandleWidth(stx.layout.candleWidth * 10.1);
       stx.layout.smartzoom = false;
       stx.highlightPrimarySeries = false;
       Object.assign(window, { stx, CIQ });
