@@ -223,7 +223,18 @@ cq-drawing-palette .ciq-mini-widget:before {
   background: var(--color-surface-secondary-rice);
 }
 
+.ciq-night cq-drawing-palette .ciq-tool:before, .ciq-night cq-drawing-palette .ciq-mini-widget:before,
+.ciq-night .ciq-select:hover,
+.ciq-day cq-drawing-palette .ciq-tool:before, .ciq-day cq-drawing-palette .ciq-mini-widget:before,
+.ciq-day .ciq-select:hover {
+  background: var(--color-surface-tertiary-rice);
+  border: transparent;
+  color: var(--color-primary-900);
+}
+
 cq-heading {
+  @apply exposure-xs-italic;
+  text-transform: capitalize;
   color:  var(--color-secondary-700);
 }
 
@@ -265,6 +276,13 @@ cq-drawing-palette .ciq-mini-widget span[label],
   color: var(--color-foreground-primary-rice);
   border-radius: 8px;
   border: 1px solid var(--color-border-secondary-rice) !important;
+  @apply diatype-xs-medium;
+  font-size: 10px;
+}
+
+:host(cq-dropdown.ciq-night) .item.separator-item hr, .ciq-night cq-dropdown .item.separator-item hr,
+:host(cq-dropdown.ciq-day) .item.separator-item hr, .ciq-day cq-dropdown .item.separator-item hr {
+  border-bottom-color: var(--color-border-secondary-rice);
 }
 
 
@@ -318,7 +336,97 @@ cq-side-panel {
 :host(cq-dropdown.ciq-day) .content, .ciq-day cq-dropdown .content, cq-dropdown.ciq-day .content {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
   box-shadow: theme("boxShadow.account-card");
+  @apply diatype-xs-medium;
 }
+
+cq-menu .ciq-screen-reader {
+  @apply diatype-xs-medium;
+}
+
+.chartContainer {
+  @apply diatype-xs-medium;
+  font-size: 10px;
+}
+
+cq-dialog.ciq-night,
+cq-dialog.ciq-day {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.account-card");
+  margin-top: 0;
+  background: var(--color-surface-primary-rice);
+  color: var(--color-primary-900);
+  border-radius: 20px;
+}
+
+cq-context.ciq-night input,
+[cq-context].ciq-night input,
+cq-dialog.ciq-night input,
+.ciq-night .share-copy .share-link-div,
+cq-context.ciq-day input,
+[cq-context].ciq-day input,
+cq-dialog.ciq-day input,
+.ciq-day .share-copy .share-link-div{
+  color: var(--color-secondary-700);
+  background-color: var(--color-surface-secondary-rice);
+  border: transparent;
+  outline: none;
+  border-radius: 14px;
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.account-card");
+  padding: 13px 8px;
+  height: 46px;
+  @apply diatype-xs-medium;
+}
+
+cq-chart-title cq-symbol {
+  @apply exposure-h2-italic;
+}
+
+cq-dialog.ciq-night input:hover,
+cq-dialog.ciq-day input:hover {
+  background: var(--color-surface-tertiary-rice);
+}
+
+.ciq-night .ciq-btn,
+.ciq-night .ciq-btn-negative,
+.ciq-night .annotationCancel,
+.ciq-night .annotationSave,
+.ciq-day .ciq-btn,
+.ciq-day .ciq-btn-negative,
+.ciq-day .annotationCancel,
+.ciq-day .annotationSave {
+  height: 40px;
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.btn-shadow-gradient");
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
+  background: theme("colors.red-bean.400");
+  color: var(--color-surface-primary-rice);
+  border-image-source:linear-gradient(180deg, rgba(0,0,0,0.04) 8%,rgba(0,0,0,0.07) 100%);
+  border-radius: 14px;
+   text-transform: capitalize;
+   padding: 10px 12px;
+   @apply exposure-sm-italic;
+}
+
+
+
+.ciq-night .ciq-btn:hover,
+.ciq-night .ciq-btn-negative:hover,
+.ciq-night .annotationCancel:hover,
+.ciq-night .annotationSave:hover,
+.ciq-day .ciq-btn:hover,
+.ciq-day .ciq-btn-negative:hover,
+.ciq-day .annotationCancel:hover,
+.ciq-day .annotationSave:hover,
+html:not([ciq-last-interaction="touch"]) .ciq-btn:hover {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
+ background: theme("colors.red-bean.600");
+ color: var(--color-surface-primary-rice);
+ /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+ box-shadow: theme("boxShadow.btn-shadow-gradient");
+ border-image-source:linear-gradient(180deg, rgba(0,0,0,0.04) 8%,rgba(0,0,0,0.07) 100%);
+}
+
 
 /* Scrollbar styles */
 ::-webkit-scrollbar {
