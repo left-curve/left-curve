@@ -115,6 +115,12 @@ where
 {
     let app = actix_web::test::init_service(app).await;
 
+    // When I need to debug the request body
+    // println!(
+    //     "request_body: {}",
+    //     serde_json::to_string_pretty(&requests_body).unwrap()
+    // );
+
     let request = actix_web::test::TestRequest::post()
         .uri("/graphql")
         .set_json(&requests_body)
@@ -123,7 +129,7 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    println!("text response: \n{graphql_response:#?}");
+    // println!("text response: \n{graphql_response:#?}");
 
     let graphql_responses: Vec<GraphQLResponse> = serde_json::from_slice(&graphql_response)
         .inspect_err(|err| {
@@ -137,7 +143,7 @@ where
         })?;
 
     // When I need to debug the response
-    println!("GraphQLResponses: {:#?}", graphql_responses);
+    // println!("GraphQLResponses: {:#?}", graphql_responses);
 
     graphql_responses
         .into_iter()

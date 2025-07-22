@@ -17,7 +17,6 @@ use {
     tokio::sync::mpsc,
 };
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -96,7 +95,6 @@ async fn query_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -168,7 +166,6 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -237,7 +234,6 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -333,7 +329,6 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -452,7 +447,6 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -551,7 +545,6 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
@@ -671,7 +664,7 @@ async fn graphql_returns_account_factory_nonces() -> anyhow::Result<()> {
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let _user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
 
     suite.app.indexer.wait_for_finish()?;
 
@@ -682,7 +675,7 @@ async fn graphql_returns_account_factory_nonces() -> anyhow::Result<()> {
     "#;
 
     let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
-        contract: contracts.account_factory.address(),
+        contract: user.address(),
         msg: Json::from_inner(serde_json::json!({
             "seen_nonces": {}
         })),
@@ -702,11 +695,6 @@ async fn graphql_returns_account_factory_nonces() -> anyhow::Result<()> {
         variables,
     };
 
-    println!(
-        "request_body: {}",
-        serde_json::to_string_pretty(&request_body).unwrap()
-    );
-
     let local_set = tokio::task::LocalSet::new();
 
     local_set
@@ -717,14 +705,9 @@ async fn graphql_returns_account_factory_nonces() -> anyhow::Result<()> {
                 let received_data: GraphQLCustomResponse<serde_json::Value> =
                     call_graphql(app, request_body).await?;
 
-                let expected_data = serde_json::json!([]);
+                let expected_data = serde_json::json!({"wasm_smart": []});
 
-                // assert_json_include!(actual: received_data, expected: expected_data);
-
-                println!(
-                    "Received data: {}",
-                    serde_json::to_string_pretty(&received_data.data).unwrap()
-                );
+                assert_json_include!(actual: received_data.data, expected: expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
