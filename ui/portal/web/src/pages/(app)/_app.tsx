@@ -1,7 +1,7 @@
 import { twMerge, useTheme } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
-import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 import { QuestBanner } from "~/components/foundation/QuestBanner";
@@ -34,10 +34,14 @@ export const Route = createFileRoute("/(app)/_app")({
 
 function LayoutApp() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const router = useRouter();
+
+  const isProSwap = useMemo(() => {
+    return router.state.location.pathname.includes("trade");
+  }, [router.state.location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
-      const isProSwap = location.pathname.includes("trade");
       const headerThreshold = isProSwap ? 20 : 70;
 
       const scrollTop =
@@ -48,7 +52,7 @@ function LayoutApp() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isProSwap]);
 
   const { theme } = useTheme();
 
