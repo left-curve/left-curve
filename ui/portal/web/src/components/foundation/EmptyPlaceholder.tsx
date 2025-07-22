@@ -26,10 +26,7 @@ export const EmptyPlaceholder: React.FC<PropsWithChildren<Props>> = ({
 
   return (
     <div
-      className={twMerge(
-        "flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-surface-tertiary-rice",
-        className,
-      )}
+      className={twMerge("flex flex-col gap-1 items-center justify-center p-2 w-full", className)}
     >
       {hasChildren ? children : renderedComponent}
     </div>

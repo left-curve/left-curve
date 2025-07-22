@@ -30,7 +30,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
@@ -46,7 +46,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
         <div className="relative w-full h-full">
           {activeTab === "order book" && <OrderBook />}
           {activeTab === "trades" && <LiveTrades />}
-          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[8px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center diatype-mono-lg-bold text-primary-rice">
+          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[8px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center exposure-l-italic text-primary-rice">
             {m["dex.protrade.underDevelopment"]()}
           </div>
         </div>

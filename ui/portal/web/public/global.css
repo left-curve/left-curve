@@ -15,6 +15,7 @@
   --color-surface-quaternary-rice-hover: #EFDAA4;
   --color-surface-disabled-gray: #F5F4F4;
   --color-overlay-rice: #F2E2B8CC;
+  --color-border-secondary-rice: #EFDAA4;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
   --color-foreground-tertiary-rice: #E3BD66;
@@ -23,6 +24,7 @@
   --color-foreground-primary-blue: #595763;
   --color-foreground-primary-red: #9A183D;
   --color-foreground-primary-green: #606427;
+  --color-foreground-primary-rice: #9C4D21;
   --color-button-green: #BDBF5C;
   --color-primary-red: #FEF1F1;
   --color-primary-blue: #F7F8FB;
@@ -47,6 +49,8 @@
   --shadow-btn-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
   --shadow-btn-secondary-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
 
+  --chartiq-filter: brightness(0) saturate(72%) invert(35%) sepia(25%) saturate(1469%) hue-rotate(332deg) brightness(78%) contrast(89%);
+
   --color-bg-card-blue: linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%);
   --color-bg-card-rice: linear-gradient(98.89deg, #fff5e6 18.66%, #fce5c4 46.73%, #fff5e6 86%);
   --color-bg-card-red: linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%);
@@ -68,6 +72,7 @@ html.dark {
   --color-surface-quaternary-rice-hover: #6A5D42;
   --color-surface-disabled-gray: #363432;
   --color-overlay-rice: #F2E2B84D;
+  --color-border-secondary-rice: #594F3C;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
   --color-foreground-tertiary-rice: #807660;
@@ -76,6 +81,7 @@ html.dark {
   --color-foreground-primary-blue: #F7F8FB;
   --color-foreground-primary-red: #FEF1F1;
   --color-foreground-primary-green: #DCDBAB;
+  --color-foreground-primary-rice: #E3BD66;
   --color-button-green: #D2D184;
   --color-primary-red: #423C3B;
   --color-primary-blue: #595763;
@@ -99,6 +105,8 @@ html.dark {
   --shadow-card: 0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
   --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
   --shadow-btn-secondary-shadow-gradient: 0px -1px 3px -2px #00000012 inset, 0px 2px 3px -1px #FFFFFF12 inset, 0px 1px 1px -0.5px #0000000A;
+
+  --chartiq-filter: brightness(0) saturate(1710%) invert(35%) sepia(20%) saturate(1000%) hue-rotate(360deg) brightness(235%) contrast(89%);
 
   --color-bg-card-blue: linear-gradient(98.89deg, #373634 18.66%, #6E6D77 46.73%, #373634 86%);
   --color-bg-card-rice: linear-gradient(98.89deg, #383633 18.66%, #615A51 46.73%, #383633 86%);
@@ -167,13 +175,30 @@ body {
 /* ChartIQ */
 .ciq-day .ciq-nav,
 .ciq-day .chartContainer,
-.ciq-day cq-chart-title {
+.ciq-day cq-chart-title,
+.ciq-night .ciq-nav,
+.ciq-night .chartContainer,
+.ciq-night cq-chart-title {
   color: var(--color-tertiary-500) !important;
   background: var(--color-surface-secondary-rice) !important;
   border: none;
 }
 
-.ciq-day cq-menu .menu-clickable:not(cq-help) {
+cq-palette-dock [orientation="vertical"] {
+  border-right: var(--color-secondary-gray) 1px solid;
+}
+
+cq-separator {
+  border-color: var(--color-secondary-gray);
+}
+
+.palette-container {
+  background: var(--color-surface-secondary-rice);
+  border: none;
+}
+
+.ciq-day cq-menu .menu-clickable:not(cq-help) ,
+.ciq-night cq-menu .menu-clickable:not(cq-help){
   color: var(--color-tertiary-500);
 }
 
@@ -181,8 +206,18 @@ body {
   border: none;
 }
 
+.ciq-chart {
+  box-shadow: none;
+}
+
+cq-drawing-palette .tool-group .drawing-tools-group {
+  margin:0;
+}
+
 .ciq-day .ciq-chart:first-of-type,
 .ciq-day cq-dropdown .content,
+.ciq-night .ciq-chart:first-of-type,
+.ciq-night cq-dropdown .content,
 cq-drawing-palette .ciq-tool:before,
 cq-drawing-palette .ciq-mini-widget:before {
   background: var(--color-surface-secondary-rice);
@@ -214,20 +249,22 @@ cq-drawing-palette.grid .mini-widget-group .ciq-mini-widget[cq-view="grid"] .ico
 cq-drawing-palette .ciq-mini-widget.active .icon,
 cq-drawing-palette .ciq-mini-widget .active .icon,
 cq-drawing-palette .ciq-mini-widget:active .icon,
-cq-drawing-palette .ciq-mini-widget .active+.icon {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(25%) saturate(1655%) hue-rotate(339deg) brightness(91%) contrast(89%);
-}
-
+cq-drawing-palette .ciq-mini-widget .active+.icon,
 cq-drawing-palette .ciq-tool.active .icon,
 cq-drawing-palette .ciq-tool:active .icon {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(25%) saturate(1655%) hue-rotate(339deg) brightness(91%) contrast(89%);
+  filter: var(--chartiq-filter);
 }
 
 cq-drawing-palette .ciq-tool label,
 cq-drawing-palette .ciq-tool span[label],
 cq-drawing-palette .ciq-mini-widget label,
-cq-drawing-palette .ciq-mini-widget span[label] {
-  background: var(--color-primary-rice);
+cq-drawing-palette .ciq-mini-widget span[label],
+[cq-tooltip],
+*>[cq-tooltip] {
+  background: var(--color-surface-quaternary-rice);
+  color: var(--color-foreground-primary-rice);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-secondary-rice) !important;
 }
 
 
@@ -264,11 +301,6 @@ cq-toggle.active {
   color: var(--color-status-success);
 }
 
-[cq-tooltip],
-*>[cq-tooltip] {
-  background: var(--color-primary-rice);
-}
-
 .ciq-chart-area,
 cq-side-panel {
   bottom: 0;
@@ -280,4 +312,30 @@ cq-side-panel {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+:host(cq-dropdown.ciq-night) .content, .ciq-night cq-dropdown .content, cq-dropdown.ciq-night .content,
+:host(cq-dropdown.ciq-day) .content, .ciq-day cq-dropdown .content, cq-dropdown.ciq-day .content {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.account-card");
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 99999px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 99999px;
+  background: var(--color-secondary-gray);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-gray) transparent;
 }

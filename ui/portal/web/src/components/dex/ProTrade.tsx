@@ -169,7 +169,7 @@ const ProTradeChart: React.FC = () => {
   if (!isLg) return null;
 
   return (
-    <div className="shadow-card-shadow bg-surface-secondary-rice h-full">
+    <div className="shadow-account-card bg-surface-secondary-rice h-full">
       <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />
     </div>
   );
@@ -317,7 +317,7 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -353,7 +353,11 @@ const ProTradeOrders: React.FC = () => {
               ) : null
             }
           />
-        ) : null}
+        ) : (
+          <div className="min-h-[88.8px] w-full backdrop-blur-[8px] flex items-center justify-center exposure-l-italic text-primary-rice">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        )}
       </div>
     </div>
   );
