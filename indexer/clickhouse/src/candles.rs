@@ -147,7 +147,7 @@ impl Indexer {
 
         inserter.commit().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
-            tracing::error!("Failed to commit inserted for pair prices: : {_err}",);
+            tracing::error!("Failed to commit inserter for pair prices: {_err}",);
         })?;
         inserter.end().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]

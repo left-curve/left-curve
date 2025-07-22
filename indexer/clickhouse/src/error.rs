@@ -31,13 +31,3 @@ impl From<IndexerError> for grug_app::IndexerError {
 }
 
 pub type Result<T> = core::result::Result<T, IndexerError>;
-
-#[macro_export]
-macro_rules! bail {
-    ($variant:path, $msg:expr) => {
-        return Err($variant($msg.into()).into());
-    };
-    ($($arg:tt)*) => {
-        return Err($crate::error::IndexerError::Indexing(format!($($arg)*)));
-    };
-}
