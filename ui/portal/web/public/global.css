@@ -173,12 +173,25 @@ body {
   border: none;
 }
 
+cq-palette-dock [orientation="vertical"] {
+  border-right: var(--color-secondary-gray) 1px solid;
+}
+
+.palette-container {
+  background: var(--color-surface-secondary-rice);
+  border: none;
+}
+
 .ciq-day cq-menu .menu-clickable:not(cq-help) {
   color: var(--color-tertiary-500);
 }
 
 .stx-subholder {
   border: none;
+}
+
+.ciq-chart {
+  box-shadow: none;
 }
 
 .ciq-day .ciq-chart:first-of-type,
@@ -282,7 +295,13 @@ cq-side-panel {
   transform: translate(-50%, -50%);
 }
 
+.chart-context > *,
+cq-chart-title{
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
+  font: theme("fontFamily.diatype-rounded") !important;
+}
 
+/* Scrollbar styles */
 ::-webkit-scrollbar {
   width: 6px;
 }
