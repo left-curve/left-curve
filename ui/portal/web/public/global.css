@@ -229,7 +229,7 @@ cq-drawing-palette .ciq-mini-widget:before {
 .ciq-day .ciq-select:hover {
   background: var(--color-surface-tertiary-rice);
   border: transparent;
-  color: var(--color-primary-900)
+  color: var(--color-primary-900);
 }
 
 cq-heading {
@@ -362,12 +362,10 @@ cq-context.ciq-night input,
 [cq-context].ciq-night input,
 cq-dialog.ciq-night input,
 .ciq-night .share-copy .share-link-div,
-.ciq-night .share-copy .share-link-div,
 cq-context.ciq-day input,
 [cq-context].ciq-day input,
 cq-dialog.ciq-day input,
-.ciq-day .share-copy .share-link-div,
-.ciq-day .share-copy .share-link-div {
+.ciq-day .share-copy .share-link-div{
   color: var(--color-secondary-700);
   background-color: var(--color-surface-secondary-rice);
   border: transparent;
