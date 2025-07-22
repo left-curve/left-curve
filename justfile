@@ -40,7 +40,7 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p indexer-httpd build_graphql_schema -- \
+  cargo run -p dango-httpd build_graphql_schema -- \
     ./indexer/client/src/schemas/schema.graphql
 
 # Update wasm artifacts used in tests
