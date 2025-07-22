@@ -659,7 +659,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_returns_account_factory_nonces() -> anyhow::Result<()> {
+async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
