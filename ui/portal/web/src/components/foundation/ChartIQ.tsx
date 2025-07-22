@@ -644,7 +644,6 @@ export const ChartIQ = ({ coins }) => {
 
       stx.controls.chartControls.style.display = "none";
       stx.controls.chartControls = null;
-      stx.setCandleWidth(stx.layout.candleWidth * 10.1);
       stx.layout.smartzoom = false;
       stx.highlightPrimarySeries = false;
       Object.assign(window, { stx, CIQ });
