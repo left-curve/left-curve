@@ -142,27 +142,6 @@ impl Context {
 
         Ok(())
     }
-
-    #[cfg(feature = "testing")]
-    pub async fn create_test_database(&self, database_name: &str) -> Result<(), String> {
-        if self.is_mocked() {
-            // No database creation needed for mocked databases
-            return Ok(());
-        }
-
-        let create_sql = format!("CREATE DATABASE IF NOT EXISTS `{database_name}`",);
-
-        self.clickhouse_client
-            .query(&create_sql)
-            .execute()
-            .await
-            .map_err(|e| format!("Failed to create test database {database_name}: {e}"))?;
-
-        #[cfg(feature = "tracing")]
-        tracing::info!("Created test database: {database_name}",);
-
-        Ok(())
-    }
 }
 
 #[cfg(feature = "testing")]

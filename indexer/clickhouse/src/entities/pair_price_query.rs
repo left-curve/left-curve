@@ -85,7 +85,7 @@ impl PairPriceQueryBuilder {
                         volume_base,
                         volume_quote,
                         created_at,
-                        block_height,
+                        block_height
                        FROM pair_prices
                        WHERE quote_denom = ? AND base_denom = ?"#
             .to_string();

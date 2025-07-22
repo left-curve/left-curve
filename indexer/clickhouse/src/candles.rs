@@ -118,7 +118,7 @@ impl Indexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!("Saving {} pair prices", pair_prices.len());
+        tracing::debug!("Saving {} pair prices", pair_prices.len());
 
         // Early return if no pairs to insert
         if pair_prices.is_empty() {
@@ -156,7 +156,7 @@ impl Indexer {
 
         // NOTE: we need to check if the materialized view is up to date before we keep going
         // since the notifications are sent based on the materialized view
-        for (_, pair_price) in pair_prices.clone().into_iter() {
+        for (_, pair_price) in pair_prices.into_iter() {
             for interval in CandleInterval::iter() {
                 loop {
                     let max_block_height = CandleQueryBuilder::new(
@@ -172,7 +172,7 @@ impl Indexer {
                     }
 
                     #[cfg(feature = "tracing")]
-                    tracing::info!(
+                    tracing::debug!(
                         base_denom = pair_price.base_denom,
                         quote_denom = pair_price.quote_denom,
                         mv_block_height = max_block_height,

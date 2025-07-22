@@ -164,6 +164,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .await?
         .unwrap();
 
+    // `PairPrice` is serialized as u128 for clickhouse
     let expected_candle = serde_json::json!({
         "quote_denom": "bridge/usdc",
         "base_denom": "dango",

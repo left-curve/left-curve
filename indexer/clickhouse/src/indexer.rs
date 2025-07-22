@@ -120,7 +120,7 @@ impl grug_app::Indexer for Indexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height, "`post_indexing` work started");
+        tracing::debug!(block_height, "`post_indexing` work started");
 
         let clickhouse_client = self.context.clickhouse_client().clone();
         let querier = querier.clone();
@@ -147,7 +147,7 @@ impl grug_app::Indexer for Indexer {
             }
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "`post_indexing` async work finished");
+            tracing::debug!(block_height, "`post_indexing` async work finished");
 
             Ok::<(), grug_app::IndexerError>(())
         });

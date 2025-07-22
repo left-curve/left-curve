@@ -21,17 +21,7 @@ use {
 // ------------------------------- generic type --------------------------------
 
 #[derive(
-    BorshSerialize,
-    BorshDeserialize,
-    Default,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
+    BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
 pub struct Dec<U, const S: u32>(pub Int<U>);
 
