@@ -7,7 +7,8 @@ use {
         HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug::{Addressable, Json},
+    dango_types::{account::spot::QuerySeenNoncesRequest, constants::dango},
+    grug::{Addressable, Coins, Json, QuerierExt, ResultExt},
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
     indexer_testing::{
@@ -660,13 +661,25 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context) =
         setup_test_with_indexer().await;
-    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
-    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+    // copied from `tracked_nonces_works``
+    for _ in 0..20 {
+        suite
+            .transfer(
+                &mut accounts.owner,
+                accounts.user1.address(),
+                Coins::one(dango::DENOM.clone(), 123).unwrap(),
+            )
+            .should_succeed();
+    }
 
     suite.app.indexer.wait_for_finish()?;
+
+    suite
+        .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
+        .should_succeed_and(|seen_nonces| seen_nonces.last() == Some(&19));
 
     let graphql_query = r#"
       query QueryApp($request: String!, $height: Int) {
@@ -674,8 +687,17 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
       }
     "#;
 
+    // This fails because `QuerySeenNoncesRequest` doesn't serialize as `{"seen_nonces": {}}`
+    // let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
+    //     contract: accounts.owner.address(),
+    //     msg: QuerySeenNoncesRequest {}
+    //         .to_json_value()
+    //         .expect("Failed to serialize QuerySeenNoncesRequest"),
+    // })
+    // .to_json_value()?;
+
     let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
-        contract: user.address(),
+        contract: accounts.owner.address(),
         msg: Json::from_inner(serde_json::json!({
             "seen_nonces": {}
         })),
@@ -687,7 +709,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
     })
     .as_object()
     .unwrap()
-    .clone();
+    .to_owned();
 
     let request_body = GraphQLCustomRequest {
         name: "queryApp",
