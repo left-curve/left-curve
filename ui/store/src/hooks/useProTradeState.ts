@@ -17,6 +17,8 @@ import type { AnyCoin, WithAmount } from "../types/coin.js";
 export type UseProTradeStateParameters = {
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (order_type: "limit" | "market") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
   controllers: {
@@ -27,17 +29,26 @@ export type UseProTradeStateParameters = {
 };
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
-  const { controllers, pairId, onChangePairId, onChangeAction, action } = parameters;
+  const {
+    controllers,
+    pairId,
+    onChangePairId,
+    onChangeAction,
+    action: initialAction,
+    orderType,
+    onChangeOrderType,
+  } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
   const { coins } = useConfig();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
 
-  const { convertAmount, getPrice } = usePrices();
+  const { convertAmount, getPrice, isFetched } = usePrices();
 
   const [sizeCoin, setSizeCoin] = useState(coins[pairId.quoteDenom]);
-  const [operation, setOperation] = useState<"market" | "limit">("market");
+  const [operation, setOperation] = useState(orderType);
+  const [action, setAction] = useState(initialAction);
 
   const { data: balances = {}, refetch: updateBalance } = useBalances({
     address: account?.address,
@@ -51,6 +62,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const changeAction = useCallback((action: "buy" | "sell") => {
     onChangeAction(action);
+    setAction(action);
     setValue("size", "0");
   }, []);
 
@@ -138,7 +150,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
-  }, []);
+  }, [isFetched, pairId]);
+
+  useEffect(() => {
+    onChangeOrderType(operation);
+  }, [operation]);
 
   const submission = useSubmitTx({
     mutation: {

@@ -661,6 +661,7 @@
       }
     },
     "protrade": {
+      "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
       "spot": {
         "noOpenOrders": "No open orders yet",

@@ -26,6 +26,7 @@ grug-client             = { workspace = true }
 grug-crypto             = { workspace = true }
 grug-db-disk-lite       = { workspace = true }
 grug-db-memory          = { workspace = true }
+grug-types              = { workspace = true, features = ["async-graphql"] }
 grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 grug-vm-wasm            = { workspace = true }

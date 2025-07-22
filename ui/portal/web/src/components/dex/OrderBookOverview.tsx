@@ -2,17 +2,26 @@ import { useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { ChartIQ } from "../foundation/ChartIQ";
 
-import type React from "react";
+import { m } from "~/paraglide/messages";
 
 import { mockTrades } from "~/mock";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
-import { ChartIQ } from "../foundation/ChartIQ";
 
-export const OrderBookOverview: React.FC = () => {
+import type { useProTradeState } from "@left-curve/store";
+import type React from "react";
+
+type OrderBookOverviewProps = {
+  state: ReturnType<typeof useProTradeState>;
+};
+
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg } = useMediaQuery();
+
+  const { baseCoin, quoteCoin } = state;
 
   useEffect(() => {
     setActiveTab(isLg ? "order book" : "graph");
@@ -21,7 +30,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
@@ -32,9 +41,16 @@ export const OrderBookOverview: React.FC = () => {
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
       />
-      {activeTab === "graph" && <ChartIQ />}
-      {activeTab === "order book" && <OrderBook />}
-      {activeTab === "trades" && <LiveTrades />}
+      {activeTab === "graph" && <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />}
+      {(activeTab === "trades" || activeTab === "order book") && (
+        <div className="relative w-full h-full">
+          {activeTab === "order book" && <OrderBook />}
+          {activeTab === "trades" && <LiveTrades />}
+          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[8px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center exposure-l-italic text-primary-rice">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        </div>
+      )}
     </ResizerContainer>
   );
 };

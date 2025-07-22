@@ -65,7 +65,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          {isProSwap && !isLg ? <TradeButtons /> : <SearchMenu />}
+          {isProSwap && !isLg ? (
+            <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" />
+          ) : (
+            <SearchMenu />
+          )}
           <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">

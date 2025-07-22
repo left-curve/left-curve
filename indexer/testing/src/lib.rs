@@ -115,6 +115,12 @@ where
 {
     let app = actix_web::test::init_service(app).await;
 
+    // When I need to debug the request body
+    // println!(
+    //     "request_body: {}",
+    //     serde_json::to_string_pretty(&requests_body).unwrap()
+    // );
+
     let request = actix_web::test::TestRequest::post()
         .uri("/graphql")
         .set_json(&requests_body)

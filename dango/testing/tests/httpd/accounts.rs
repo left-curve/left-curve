@@ -7,14 +7,14 @@ use {
         HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug::setup_tracing_subscriber,
+    grug::{Addressable, Json},
     grug_app::Indexer,
+    grug_types::{JsonSerExt, QueryWasmSmartRequest},
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_paginated_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        GraphQLCustomRequest, GraphQLCustomResponse, PaginatedResponse, call_graphql,
+        call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     tokio::sync::mpsc,
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -547,7 +547,6 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
@@ -651,6 +650,64 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                     .expect("Expected at least one account");
 
                 assert_json_include!(actual: account, expected: expected_data);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
+    let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
+
+    let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let graphql_query = r#"
+      query QueryApp($request: String!, $height: Int) {
+        queryApp(request: $request, height: $height)
+      }
+    "#;
+
+    let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
+        contract: user.address(),
+        msg: Json::from_inner(serde_json::json!({
+            "seen_nonces": {}
+        })),
+    })
+    .to_json_value()?;
+
+    let variables = serde_json::json!({
+        "request": body_request,
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let request_body = GraphQLCustomRequest {
+        name: "queryApp",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(dango_httpd_context);
+
+                let received_data: GraphQLCustomResponse<serde_json::Value> =
+                    call_graphql(app, request_body).await?;
+
+                let expected_data = serde_json::json!({"wasm_smart": []});
+
+                assert_json_include!(actual: received_data.data, expected: expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
