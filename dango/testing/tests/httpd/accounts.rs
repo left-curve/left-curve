@@ -4,12 +4,14 @@ use {
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{
-        add_account_with_existing_user, create_user_and_account, setup_test_with_indexer, HyperlaneTestSuite, TestOption
+        HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
+        setup_test_with_indexer,
     },
     grug::setup_tracing_subscriber,
     grug_app::Indexer,
     indexer_testing::{
-        call_graphql, call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse
+        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_paginated_graphql,
+        call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     tokio::sync::mpsc,
     tracing::Level,

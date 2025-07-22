@@ -3,10 +3,11 @@ use {
     assert_json_diff::*,
     assertor::*,
     dango_testing::{
-        add_user_public_key, create_user_and_account, setup_test_with_indexer, HyperlaneTestSuite, TestOption
+        HyperlaneTestSuite, TestOption, add_user_public_key, create_user_and_account,
+        setup_test_with_indexer,
     },
     grug_app::Indexer,
-    indexer_testing::{call_graphql, GraphQLCustomRequest, PaginatedResponse},
+    indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
     std::collections::HashMap,
 };
 

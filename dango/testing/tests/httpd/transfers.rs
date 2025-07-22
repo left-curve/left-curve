@@ -2,7 +2,9 @@ use {
     crate::{build_actix_app, paginate_models},
     assertor::*,
     dango_indexer_sql::entity,
-    dango_testing::{create_user_and_account, setup_test_with_indexer, HyperlaneTestSuite, TestOption},
+    dango_testing::{
+        HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
+    },
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
@@ -11,7 +13,8 @@ use {
     grug::{Addressable, Coins, Message, NonEmpty, ResultExt},
     grug_app::Indexer,
     indexer_testing::{
-        call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse
+        GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response,
     },
     itertools::Itertools,
     serde_json::json,

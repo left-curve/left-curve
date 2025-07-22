@@ -2,7 +2,8 @@ use {
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{
-        add_account_with_existing_user, create_user_and_account, setup_test_with_indexer, HyperlaneTestSuite, TestOption
+        HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
+        setup_test_with_indexer,
     },
     grug::Inner,
     grug_app::Indexer,
