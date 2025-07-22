@@ -16,6 +16,8 @@ pub mod pubsub;
 pub mod scalars;
 pub mod serde_iso8601;
 
+pub mod event_address;
+
 pub use {
     context::Context,
     error::{IndexerError, Result},

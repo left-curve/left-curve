@@ -1,5 +1,7 @@
+use crate::event_address::AddressFinder;
 #[cfg(feature = "metrics")]
 use metrics::counter;
+
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -32,6 +34,7 @@ impl BlockToIndex {
     /// Takes care of inserting the data in the database in a single DB transaction
     pub async fn save(
         &self,
+        address_finder: &mut AddressFinder,
         db: DatabaseConnection,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
@@ -42,7 +45,7 @@ impl BlockToIndex {
             "Indexing block"
         );
 
-        let models = Models::build(&self.block, &self.block_outcome)?;
+        let models = Models::build(address_finder, &self.block, &self.block_outcome)?;
 
         let db = db.begin().await?;
 

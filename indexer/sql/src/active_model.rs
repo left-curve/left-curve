@@ -1,5 +1,5 @@
 use {
-    crate::{entity, error::Result},
+    crate::{entity, error::Result, event_address::AddressFinder},
     grug_types::{
         Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
         Inner, JsonSerExt, flatten_commitment_status,
@@ -17,7 +17,11 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
+    pub fn build(
+        address_finder: &mut AddressFinder,
+        block: &Block,
+        block_outcome: &BlockOutcome,
+    ) -> Result<Self> {
         let created_at = block.info.timestamp.to_naive_date_time();
 
         let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
@@ -32,6 +36,7 @@ impl Models {
                 event_id.category_index = cron_idx as u32;
 
                 let active_models = flatten_events(
+                    address_finder,
                     block,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
@@ -78,6 +83,7 @@ impl Models {
                 event_id.category_index = transaction_idx as u32;
 
                 let active_models = flatten_events(
+                    address_finder,
                     block,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
@@ -89,6 +95,7 @@ impl Models {
                 events.extend(active_models);
 
                 let active_models = flatten_events(
+                    address_finder,
                     block,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
@@ -138,6 +145,7 @@ impl Models {
                 // 4. Storing events
                 {
                     let active_models = flatten_events(
+                        address_finder,
                         block,
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
@@ -149,6 +157,7 @@ impl Models {
                     events.extend(active_models);
 
                     let active_models = flatten_events(
+                        address_finder,
                         block,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
@@ -181,6 +190,7 @@ impl Models {
 }
 
 fn flatten_events<T>(
+    address_finder: &mut AddressFinder,
     block: &Block,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
