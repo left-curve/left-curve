@@ -177,6 +177,10 @@ cq-palette-dock [orientation="vertical"] {
   border-right: var(--color-secondary-gray) 1px solid;
 }
 
+cq-separator {
+  border-color: var(--color-secondary-gray);
+}
+
 .palette-container {
   background: var(--color-surface-secondary-rice);
   border: none;
@@ -192,6 +196,10 @@ cq-palette-dock [orientation="vertical"] {
 
 .ciq-chart {
   box-shadow: none;
+}
+
+cq-drawing-palette .tool-group .drawing-tools-group {
+  margin:0;
 }
 
 .ciq-day .ciq-chart:first-of-type,
