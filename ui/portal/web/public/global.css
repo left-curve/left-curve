@@ -303,12 +303,6 @@ cq-side-panel {
   transform: translate(-50%, -50%);
 }
 
-.chart-context > *,
-cq-chart-title{
-  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
-  font: theme("fontFamily.diatype-rounded") !important;
-}
-
 /* Scrollbar styles */
 ::-webkit-scrollbar {
   width: 6px;
@@ -322,4 +316,9 @@ cq-chart-title{
 ::-webkit-scrollbar-thumb {
   border-radius: 99999px;
   background: var(--color-secondary-gray);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-gray) transparent;
 }
