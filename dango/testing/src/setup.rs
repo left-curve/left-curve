@@ -37,6 +37,16 @@ pub struct TestOption {
     /// returns a list of incoming bridge transfers to be appended to the
     /// genesis state.
     pub bridge_ops: fn(&TestAccounts) -> Vec<BridgeOp>,
+    pub mocked_clickhouse: bool,
+}
+
+impl TestOption {
+    pub fn with_mocked_clickhouse(self) -> Self {
+        Self {
+            mocked_clickhouse: true,
+            ..Self::default()
+        }
+    }
 }
 
 impl Default for TestOption {
@@ -134,7 +144,7 @@ pub fn setup_test_naive_with_custom_genesis(
 /// Used for running tests that require an indexer.
 /// Synchronous wrapper for setup_test_with_indexer_async
 pub async fn setup_test_with_indexer(
-    real_clickhouse: bool,
+    options: TestOption,
 ) -> (
     TestSuiteWithIndexer,
     TestAccounts,
@@ -189,7 +199,7 @@ pub async fn setup_test_with_indexer(
         std::env::var("CLICKHOUSE_PASSWORD").unwrap_or("".to_string()),
     );
 
-    if real_clickhouse {
+    if !options.mocked_clickhouse {
         clickhouse_context = clickhouse_context.with_test_database().await.unwrap();
     } else {
         clickhouse_context = clickhouse_context.with_mock();
@@ -213,7 +223,7 @@ pub async fn setup_test_with_indexer(
         ProposalPreparer::new_with_cache(),
         hooked_indexer,
         RustVm::genesis_codes(),
-        TestOption::default(),
+        options,
         GenesisOption::preset_test(),
     );
 

@@ -2,7 +2,7 @@ use {
     crate::build_actix_app,
     assert_json_diff::assert_json_include,
     dango_genesis::Contracts,
-    dango_testing::{TestAccounts, TestSuiteWithIndexer, setup_test_with_indexer},
+    dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
         dex::{self, CreateLimitOrderRequest, Direction},
@@ -30,7 +30,7 @@ async fn query_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
 
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
-        setup_test_with_indexer(true).await;
+        setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
@@ -127,7 +127,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
 
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
-        setup_test_with_indexer(true).await;
+        setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;

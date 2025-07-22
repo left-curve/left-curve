@@ -4,14 +4,12 @@ use {
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{
-        HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
-        setup_test_with_indexer,
+        add_account_with_existing_user, create_user_and_account, setup_test_with_indexer, HyperlaneTestSuite, TestOption
     },
     grug::setup_tracing_subscriber,
     grug_app::Indexer,
     indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_paginated_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+        call_graphql, call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse
     },
     tokio::sync::mpsc,
     tracing::Level,
@@ -20,7 +18,7 @@ use {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user1 = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "foo");
@@ -98,7 +96,7 @@ async fn query_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -169,7 +167,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -237,7 +235,7 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
@@ -332,7 +330,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     // Create 10 accounts to paginate through
@@ -450,7 +448,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let _test_account =
@@ -549,7 +547,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =

@@ -3,7 +3,7 @@ use {
     assertor::*,
     chrono::DateTime,
     dango_genesis::Contracts,
-    dango_testing::{TestAccounts, TestSuiteWithIndexer, setup_test_with_indexer},
+    dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
         dex::{self, CreateLimitOrderRequest, Direction},
@@ -27,7 +27,7 @@ use {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default().with_mocked_clickhouse()).await;
 
     let recording = clickhouse_context
         .mock()
@@ -127,7 +127,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
-        setup_test_with_indexer(true).await;
+        setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
@@ -190,7 +190,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
-        setup_test_with_indexer(true).await;
+        setup_test_with_indexer(TestOption::default()).await;
 
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
@@ -252,7 +252,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
-        setup_test_with_indexer(true).await;
+        setup_test_with_indexer(TestOption::default()).await;
 
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;

@@ -3,17 +3,17 @@ use {
     assert_json_diff::*,
     assertor::*,
     dango_testing::{
-        HyperlaneTestSuite, add_user_public_key, create_user_and_account, setup_test_with_indexer,
+        add_user_public_key, create_user_and_account, setup_test_with_indexer, HyperlaneTestSuite, TestOption
     },
     grug_app::Indexer,
-    indexer_testing::{GraphQLCustomRequest, PaginatedResponse, call_graphql},
+    indexer_testing::{call_graphql, GraphQLCustomRequest, PaginatedResponse},
     std::collections::HashMap,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -74,7 +74,7 @@ async fn query_user() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_single_user_multiple_public_keys() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account =

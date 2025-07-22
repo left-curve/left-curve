@@ -1,7 +1,7 @@
 use {
     assertor::*,
     dango_gateway::REVERSE_ROUTES,
-    dango_testing::{HyperlaneTestSuite, setup_test, setup_test_with_indexer},
+    dango_testing::{HyperlaneTestSuite, TestOption, setup_test, setup_test_with_indexer},
     dango_types::{
         constants::{sol, usdc},
         gateway::{self, Remote},
@@ -55,7 +55,7 @@ fn receiving_remote() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn sending_remote() {
     let (mut suite, mut accounts, _, contracts, _, context, ..) =
-        setup_test_with_indexer(false).await;
+        setup_test_with_indexer(TestOption::default()).await;
 
     const RECIPIENT: Addr32 =
         addr32!("0000000000000000000000000000000000000000000000000000000000000000");

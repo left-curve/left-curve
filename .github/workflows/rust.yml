@@ -109,6 +109,7 @@ jobs:
       DB_HOST: postgres
       CLICKHOUSE_HOST: localhost
       CLICKHOUSE_PORT: 10123
+      POSTGRES_PORT: 6432
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
     services:
@@ -116,6 +117,9 @@ jobs:
         image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
+        ports:
+          # Using a different port to not mess with the currently running psql
+          - 127.0.0.1:6432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -128,12 +132,13 @@ jobs:
           CLICKHOUSE_USER: default
           CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
         ports:
-          - 10123:8123
+          # Using a different port to not mess with the currently running clickhouse
+          - 127.0.0.1:10123:8123
         options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping"
-          --health-interval 10s
+          --health-cmd "clickhouse-client --query 'SELECT 1'"
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
           --ulimit nofile=262144:262144
     steps:
       - name: Checkout sources
@@ -360,6 +365,7 @@ jobs:
         env:
           DANGO_TAG: ${{ env.GIT_COMMIT }}
           POSTGRES_PORT: 0
+          CLICKHOUSE_PORT: 0
           DANGO_PORT: 0
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.17
