@@ -167,7 +167,10 @@ body {
 /* ChartIQ */
 .ciq-day .ciq-nav,
 .ciq-day .chartContainer,
-.ciq-day cq-chart-title {
+.ciq-day cq-chart-title,
+.ciq-night .ciq-nav,
+.ciq-night .chartContainer,
+.ciq-night cq-chart-title {
   color: var(--color-tertiary-500) !important;
   background: var(--color-surface-secondary-rice) !important;
   border: none;
@@ -186,7 +189,8 @@ cq-separator {
   border: none;
 }
 
-.ciq-day cq-menu .menu-clickable:not(cq-help) {
+.ciq-day cq-menu .menu-clickable:not(cq-help) ,
+.ciq-night cq-menu .menu-clickable:not(cq-help){
   color: var(--color-tertiary-500);
 }
 
@@ -204,6 +208,8 @@ cq-drawing-palette .tool-group .drawing-tools-group {
 
 .ciq-day .ciq-chart:first-of-type,
 .ciq-day cq-dropdown .content,
+.ciq-night .ciq-chart:first-of-type,
+.ciq-night cq-dropdown .content,
 cq-drawing-palette .ciq-tool:before,
 cq-drawing-palette .ciq-mini-widget:before {
   background: var(--color-surface-secondary-rice);
@@ -301,6 +307,12 @@ cq-side-panel {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+:host(cq-dropdown.ciq-night) .content, .ciq-night cq-dropdown .content, cq-dropdown.ciq-night .content,
+:host(cq-dropdown.ciq-day) .content, .ciq-day cq-dropdown .content, cq-dropdown.ciq-day .content {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.account-card");
 }
 
 /* Scrollbar styles */
