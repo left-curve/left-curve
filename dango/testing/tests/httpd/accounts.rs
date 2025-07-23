@@ -7,14 +7,23 @@ use {
         HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
-    grug::setup_tracing_subscriber,
-    grug_app::Indexer,
-    indexer_testing::{
-        GraphQLCustomRequest, PaginatedResponse, call_graphql, call_paginated_graphql,
-        call_ws_graphql_stream, parse_graphql_subscription_response,
+    dango_types::{
+        account::spot::{QueryMsg, QuerySeenNoncesRequest},
+        auth::Nonce,
+        constants::dango,
     },
+    grug::{
+        Addressable, Coin, Coins, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
+        QueryResponse, ResultExt,
+    },
+    grug_app::Indexer,
+    grug_types::{JsonSerExt, QueryWasmSmartRequest},
+    indexer_testing::{
+        GraphQLCustomRequest, GraphQLCustomResponse, PaginatedResponse, call_graphql,
+        call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
+    },
+    std::collections::BTreeSet,
     tokio::sync::mpsc,
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -547,7 +556,6 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
         setup_test_with_indexer().await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
@@ -651,6 +659,154 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                     .expect("Expected at least one account");
 
                 assert_json_include!(actual: account, expected: expected_data);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
+
+    // copied from `tracked_nonces_works``
+    for _ in 0..20 {
+        suite
+            .transfer(
+                &mut accounts.owner,
+                accounts.user1.address(),
+                Coins::one(dango::DENOM.clone(), 123).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    suite.app.indexer.wait_for_finish()?;
+
+    suite
+        .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
+        .should_succeed_and_equal((0..20).collect());
+
+    let graphql_query = r#"
+      query QueryApp($request: String!, $height: Int) {
+        queryApp(request: $request, height: $height)
+      }
+    "#;
+
+    // This fails because `QuerySeenNoncesRequest` doesn't serialize as `{"seen_nonces": {}}`
+    let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
+        contract: accounts.owner.address(),
+        msg: (QueryMsg::SeenNonces {}).to_json_value()?,
+    })
+    .to_json_value()?;
+
+    let variables = serde_json::json!({
+        "request": body_request,
+    })
+    .as_object()
+    .unwrap()
+    .to_owned();
+
+    let request_body = GraphQLCustomRequest {
+        name: "queryApp",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(dango_httpd_context);
+
+                let received_data: GraphQLCustomResponse<serde_json::Value> =
+                    call_graphql(app, request_body).await?;
+
+                let expected_data =
+                    QueryResponse::WasmSmart((0..20).collect::<BTreeSet<Nonce>>().to_json_value()?)
+                        .to_json_value()?;
+
+                assert_json_eq!(received_data.data, expected_data);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_address_balance() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, _, _, _, dango_httpd_context) =
+        setup_test_with_indexer().await;
+
+    // copied from `tracked_nonces_works``
+    for _ in 0..20 {
+        suite
+            .transfer(
+                &mut accounts.owner,
+                accounts.user1.address(),
+                Coins::one(dango::DENOM.clone(), 123).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    let balance = suite
+        .app
+        .do_query_app(
+            Query::balance(accounts.user1.address(), dango::DENOM.clone()),
+            20,
+            false,
+        )
+        .unwrap()
+        .as_balance();
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let graphql_query = r#"
+      query QueryApp($request: String!, $height: Int) {
+        queryApp(request: $request, height: $height)
+      }
+    "#;
+
+    let body_request = grug_types::Query::Balance(QueryBalanceRequest {
+        address: accounts.user1.address(),
+        denom: dango::DENOM.clone(),
+    })
+    .to_json_value()?;
+
+    let variables = serde_json::json!({
+        "request": body_request,
+    })
+    .as_object()
+    .unwrap()
+    .to_owned();
+
+    let request_body = GraphQLCustomRequest {
+        name: "queryApp",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(dango_httpd_context);
+
+                let received_data: GraphQLCustomResponse<serde_json::Value> =
+                    call_graphql(app, request_body).await?;
+
+                let httpd_balance: Coin =
+                    Json::from_inner(received_data.data.get("balance").unwrap().to_owned())
+                        .deserialize_json()
+                        .unwrap();
+
+                assert_that!(httpd_balance).is_equal_to(balance);
 
                 Ok::<(), anyhow::Error>(())
             })

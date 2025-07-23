@@ -3634,6 +3634,7 @@ dependencies = [
  "grug-db-disk-lite",
  "grug-db-memory",
  "grug-testing",
+ "grug-types",
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
