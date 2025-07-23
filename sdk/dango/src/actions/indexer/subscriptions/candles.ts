@@ -70,5 +70,8 @@ export function candlesSubscription<
       }
     }
   `;
-  return client.subscribe({ query }, parameters);
+  return client.subscribe(
+    { query, variables: { baseDenom, quoteDenom, interval, laterThan, limit } },
+    callbacks,
+  );
 }
