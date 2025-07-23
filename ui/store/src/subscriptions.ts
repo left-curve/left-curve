@@ -1,4 +1,4 @@
-import type { IndexedTransferEvent, PublicClient } from "@left-curve/dango/types";
+import type { PublicClient } from "@left-curve/dango/types";
 
 import type {
   GetSubscriptionDef,
@@ -107,14 +107,29 @@ const accountSubscriptionExecutor: SubscriptionExecutor<"account"> = ({
   });
 };
 
+const candlesSubscriptionExecutor: SubscriptionExecutor<"candles"> = ({
+  client,
+  params,
+  getListeners,
+}) => {
+  return client.candlesSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+  });
+};
+
 const submitTxSubscriptionExecutor: SubscriptionExecutor<"submitTx"> = () => {
   // This execute is a noop function for submitTx subscription.
   return () => {};
 };
 
 const SubscriptionExecutors = {
-  block: blockSubscriptionExecutor,
-  transfer: transferSubscriptionExecutor,
   account: accountSubscriptionExecutor,
+  block: blockSubscriptionExecutor,
+  candles: candlesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
+  transfer: transferSubscriptionExecutor,
 };
