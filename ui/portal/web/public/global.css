@@ -339,6 +339,16 @@ cq-side-panel {
   @apply diatype-xs-medium;
 }
 
+html:not([ciq-last-interaction="touch"]) cq-palette-dock .ciq-select:hover {
+  color: var(--color-secondary-700);
+}
+
+.ciq-select {
+  background: var(--color-surface-secondary-rice);
+  border-radius: 8px;
+  border: 1px solid var(--color-surface-tertiary-rice) !important;
+}
+
 cq-menu .ciq-screen-reader {
   @apply diatype-xs-medium;
 }
