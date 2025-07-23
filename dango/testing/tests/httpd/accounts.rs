@@ -7,7 +7,11 @@ use {
         HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
-    dango_types::{account::spot::QuerySeenNoncesRequest, constants::dango},
+    dango_types::{
+        account::spot::{QueryMsg, QuerySeenNoncesRequest},
+        auth::Nonce,
+        constants::dango,
+    },
     grug::{
         Addressable, Coin, Coins, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
         QueryResponse, ResultExt,
@@ -18,6 +22,7 @@ use {
         GraphQLCustomRequest, GraphQLCustomResponse, PaginatedResponse, call_graphql,
         call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
+    std::collections::BTreeSet,
     tokio::sync::mpsc,
 };
 
@@ -682,7 +687,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
 
     suite
         .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
-        .should_succeed_and(|seen_nonces| seen_nonces.last() == Some(&19));
+        .should_succeed_and_equal((0..20).collect());
 
     let graphql_query = r#"
       query QueryApp($request: String!, $height: Int) {
@@ -691,19 +696,9 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
     "#;
 
     // This fails because `QuerySeenNoncesRequest` doesn't serialize as `{"seen_nonces": {}}`
-    // let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
-    //     contract: accounts.owner.address(),
-    //     msg: QuerySeenNoncesRequest {}
-    //         .to_json_value()
-    //         .expect("Failed to serialize QuerySeenNoncesRequest"),
-    // })
-    // .to_json_value()?;
-
     let body_request = grug_types::Query::WasmSmart(QueryWasmSmartRequest {
         contract: accounts.owner.address(),
-        msg: Json::from_inner(serde_json::json!({
-            "seen_nonces": {}
-        })),
+        msg: (QueryMsg::SeenNonces {}).to_json_value()?,
     })
     .to_json_value()?;
 
@@ -730,9 +725,11 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
                 let received_data: GraphQLCustomResponse<serde_json::Value> =
                     call_graphql(app, request_body).await?;
 
-                let expected_data = serde_json::json!({"wasm_smart": []});
+                let expected_data =
+                    QueryResponse::WasmSmart((0..20).collect::<BTreeSet<Nonce>>().to_json_value()?)
+                        .to_json_value()?;
 
-                assert_json_include!(actual: received_data.data, expected: expected_data);
+                assert_json_eq!(received_data.data, expected_data);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -764,11 +761,8 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
             20,
             false,
         )
-        .unwrap();
-
-    let QueryResponse::Balance(balance) = balance else {
-        panic!("Expected balance response, got: {balance:?}");
-    };
+        .unwrap()
+        .as_balance();
 
     suite.app.indexer.wait_for_finish()?;
 
