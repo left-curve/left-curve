@@ -6,7 +6,7 @@ import type { GraphqlQueryResult } from "#types/graphql.js";
 
 export type QueryCandlesParameters = {
   after?: string;
-  first: number;
+  first?: number;
   baseDenom: string;
   quoteDenom: string;
   interval: CandleIntervals;
@@ -14,7 +14,7 @@ export type QueryCandlesParameters = {
   laterThan?: Date;
 };
 
-export type QueryCandlesReturnType = Promise<GraphqlQueryResult<Candle[]>>;
+export type QueryCandlesReturnType = Promise<GraphqlQueryResult<Candle>>;
 
 export async function queryCandles<transport extends Transport>(
   client: Client<transport>,
@@ -65,7 +65,7 @@ export async function queryCandles<transport extends Transport>(
     }
   `;
 
-  const { candles } = await queryIndexer<{ candles: GraphqlQueryResult<Candle[]> }>(client, {
+  const { candles } = await queryIndexer<{ candles: GraphqlQueryResult<Candle> }>(client, {
     document,
     variables: parameters,
   });

@@ -12,12 +12,14 @@ import getLicenseKey from "@left-curve/chartiq/license/key";
 
 getLicenseKey(CIQ);
 
-import { useTheme } from "@left-curve/applets-kit";
-import { useConfig } from "@left-curve/store";
+import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useConfig, usePublicClient } from "@left-curve/store";
 import { useEffect, useRef, useState } from "react";
+import { useApp } from "~/hooks/useApp";
+
+import { createChartIQDataFeed } from "~/chartiq";
 
 import "@left-curve/chartiq/examples/translations/translationSample";
-import quotefeed from "@left-curve/chartiq/examples/feeds/quoteFeedSimulator.js";
 
 import "@left-curve/chartiq/css/normalize.css";
 import "@left-curve/chartiq/css/stx-chart.css";
@@ -30,6 +32,20 @@ export const ChartIQ = ({ coins }) => {
   const [context, setContext] = useState<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const isMounted = useRef(false);
+  const { isMd } = useMediaQuery();
+
+  const publicClient = usePublicClient();
+  const { subscriptions } = useApp();
+  const { coins: allCoins } = useConfig();
+
+  const { current: dataFeed } = useRef(
+    createChartIQDataFeed({
+      client: publicClient,
+      subscriptions,
+      updateChartData: (params) => context?.stx?.updateChartData(params),
+      coins: allCoins,
+    }),
+  );
 
   const { theme } = useTheme();
 
@@ -39,17 +55,13 @@ export const ChartIQ = ({ coins }) => {
 
   useEffect(() => {
     if (!isMounted.current) {
-      const config = getDefaultConfig({
-        quoteFeed: quotefeed,
-      });
-
+      const config = getDefaultConfig({});
       const {
         onNewSymbolLoad,
         hotkeyConfig,
         lookupDriver,
         systemMessages,
         marketFactory,
-        quoteFeeds,
         selector,
         themes,
         menuChartStyle,
@@ -81,6 +93,14 @@ export const ChartIQ = ({ coins }) => {
       const customConfig = {
         ...rest,
         chartId: pairSymbol,
+        attributions: {
+          sources: {
+            dango: '<a target="_blank" href="https://dango.exchange/">Dango</a>',
+          },
+          exchanges: {
+            "REAL-TIME": "Data is real-time.",
+          },
+        },
         menus: {
           ...menus,
           events: {
@@ -336,7 +356,7 @@ export const ChartIQ = ({ coins }) => {
               { period: 1, interval: 1, timeUnit: "second" },
             ],
             boundaries: {
-              maxCandleWidth: 15,
+              maxCandleWidth: 150,
               minCandleWidth: 3,
             },
             enabled: false,
@@ -368,7 +388,12 @@ export const ChartIQ = ({ coins }) => {
             },
           },
         },
-        quoteFeeds,
+        quoteFeeds: [
+          {
+            quoteFeed: dataFeed,
+            behavior: { refreshInterval: 0 },
+          },
+        ],
         selector,
         themes: {
           builtInThemes: {
@@ -636,6 +661,12 @@ export const ChartIQ = ({ coins }) => {
 
       const { stx } = uiContext;
 
+      if (isMd) {
+        const { channelWrite } = CIQ.UI.BaseComponent.prototype;
+        channelWrite(stx.uiContext.config.channels.drawing, true, stx);
+      }
+
+      stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
       stx.controls.mSticky = false;
 
@@ -671,53 +702,17 @@ export const ChartIQ = ({ coins }) => {
         <cq-chart-instructions />
 
         <nav className="ciq-nav full-screen-hide">
-          <div className="sidenav-toggle ciq-toggles">
-            <cq-toggle
-              class="ciq-sidenav"
-              member="sidenav"
-              toggles="sidenavOn,sidenavOff"
-              toggle-classes="active,"
-              reader="More Options"
-              tooltip="More"
-              icon="morenav"
-            />
-          </div>
-
           <cq-side-nav cq-on="sidenavOn">
-            <cq-toggle
-              class="ciq-draw"
-              member="drawing"
-              reader="Draw"
-              tooltip="Draw"
-              icon="draw"
-              help-id="drawing_tools_toggle"
-            />
-            {/*      <cq-toggle
-              class="ciq-CH"
-              config="crosshair"
-              reader="Crosshair"
-              tooltip="Crosshair (Alt + \)"
-              icon="crosshair"
-            />
-            <cq-menu
-              class="nav-dropdown toggle-options"
-              reader="Crosshair Options"
-              config="crosshair"
-            /> */}
-            {/*    <cq-toggle
-              class="ciq-HU"
-              feature="tooltip"
-              config="info"
-              reader="Info"
-              tooltip="Info"
-              icon="info"
-            />
-            <cq-menu
-              feature="tooltip"
-              class="nav-dropdown toggle-options"
-              reader="Info Options"
-              config="info"
-            /> */}
+            {!isMd ? (
+              <cq-toggle
+                class="ciq-draw"
+                member="drawing"
+                reader="Draw"
+                tooltip="Draw"
+                icon="draw"
+                help-id="drawing_tools_toggle"
+              />
+            ) : null}
 
             <cq-menu
               class="nav-dropdown ciq-display"
@@ -743,14 +738,14 @@ export const ChartIQ = ({ coins }) => {
               responsive=""
               tooltip="Views"
             />
-            <cq-menu
+            {/*   <cq-menu
               class="nav-dropdown ciq-markers alignright"
               config="markers"
               text="Events"
               icon="events"
               responsive=""
               tooltip="Events"
-            />
+            /> */}
           </cq-side-nav>
 
           <div className="ciq-menu-section">
@@ -813,56 +808,6 @@ export const ChartIQ = ({ coins }) => {
                 cq-browser-tab=""
                 cq-activate-symbol-search-on-click=""
               />
-
-              <cq-marker class="chart-control-group full-screen-show">
-                <cq-toggle
-                  class="ciq-lookup-icon"
-                  config="symbolsearch"
-                  reader="Symbol Search"
-                  tooltip="Symbol Search"
-                  icon="search"
-                  help-id="search_symbol_lookup"
-                />
-                <cq-toggle
-                  class="ciq-comparison-icon"
-                  config="symbolsearch"
-                  reader="Add Comparison"
-                  tooltip="Add Comparison"
-                  icon="compare"
-                  help-id="add_comparison"
-                  comparison="true"
-                />
-                <cq-toggle
-                  class="ciq-draw"
-                  member="drawing"
-                  reader="Draw"
-                  icon="draw"
-                  tooltip="Draw"
-                  help-id="drawing_tools_toggle"
-                />
-                <cq-toggle
-                  class="ciq-CH"
-                  config="crosshair"
-                  reader="Crosshair"
-                  icon="crosshair"
-                  tooltip="Crosshair (Alt + \)"
-                />
-                <cq-toggle
-                  class="ciq-DT"
-                  feature="tableview"
-                  member="tableView"
-                  reader="Table View"
-                  icon="tableview"
-                  tooltip="Table View"
-                />
-                <cq-menu
-                  class="nav-dropdown ciq-period full-screen"
-                  config="period"
-                  text=""
-                  binding="Layout.periodicity"
-                />
-              </cq-marker>
-
               <cq-loader />
             </div>
           </div>
@@ -871,35 +816,6 @@ export const ChartIQ = ({ coins }) => {
         <cq-abstract-marker cq-type="helicopter" />
 
         <cq-attribution />
-        {/*       <div role="complementary" className="ciq-footer full-screen-hide">
-        <cq-share-button
-          class="ciq-share-button bottom"
-          reader="Share Chart"
-          icon="share"
-          tooltip="Share"
-        ></cq-share-button>
-        <cq-toggle
-          feature="shortcuts"
-          class="ciq-shortcut-button bottom"
-          stxtap="Layout.showShortcuts()"
-          reader="Toggle Shortcut Legend"
-          icon="shortcuts"
-          tooltip="Shortcuts"
-        ></cq-toggle>
-        <cq-toggle
-          feature="help"
-          class="ciq-help-button bottom"
-          stxtap="Layout.toggleHelp()"
-          reader="Toggle Interactive Help"
-          icon="help"
-          tooltip="Interactive Help"
-        ></cq-toggle>
-        <cq-show-range
-          config="range"
-          role="group"
-          aria-labelledby="label_showRange"
-        ></cq-show-range>
-      </div> */}
 
         <cq-dialogs>
           <cq-dialog>
