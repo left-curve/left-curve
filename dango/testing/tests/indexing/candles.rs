@@ -204,7 +204,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
         .await?
         .pair_prices;
 
-    assert_that!(pair_prices.clone()).has_length(10);
+    assert_that!(pair_prices.clone()).has_length(18); // 10 paire_prices when not filling
 
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
@@ -266,7 +266,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         .await?
         .pair_prices;
 
-    assert_that!(pair_prices.clone()).has_length(10);
+    assert_that!(pair_prices.clone()).has_length(18); // 10 paire_prices when not filling with empty prices
 
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneSecond,

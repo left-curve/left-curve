@@ -120,10 +120,20 @@ impl Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!("Saving {} pair prices", pair_prices.len());
 
-        // Early return if no pairs to insert
-        if pair_prices.is_empty() {
-            return Ok(());
-        }
+        let last_prices = PairPrice::last_prices(clickhouse_client)
+            .await?
+            .into_iter()
+            .map(|price| {
+                Ok((
+                    (
+                        Denom::from_str(&price.base_denom)?,
+                        Denom::from_str(&price.quote_denom)?,
+                    ),
+                    price,
+                ))
+            })
+            .filter_map(Result::ok)
+            .collect::<HashMap<(Denom, Denom), PairPrice>>();
 
         // Use Row binary inserter with the official clickhouse serde helpers
         let mut inserter = clickhouse_client
@@ -138,6 +148,26 @@ impl Indexer {
             pair_price.volume_quote = pair_price
                 .volume_quote
                 .checked_div(Udec128_6::from_str("2.0")?)?;
+
+            inserter.write(&pair_price).inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}",);
+            })?;
+        }
+
+        for (_, mut pair_price) in last_prices.into_iter() {
+            if pair_prices.contains_key(&(
+                Denom::from_str(&pair_price.base_denom)?,
+                Denom::from_str(&pair_price.quote_denom)?,
+            )) {
+                // If the pair price already exists, skip it.
+                continue;
+            }
+
+            pair_price.volume_base = Udec128_6::ZERO;
+            pair_price.volume_quote = Udec128_6::ZERO;
+            pair_price.created_at = block.info.timestamp.to_utc_date_time();
+            pair_price.block_height = block.info.height;
 
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
@@ -184,6 +214,14 @@ impl Indexer {
                 }
             }
         }
+
+        // TODO: backfill the candles for the missing pairs instead of just inserting the last price
+        // in `pair_prices` table
+        // let price_back_filler = PriceBackfiller::new(clickhouse_client.clone());
+
+        // price_back_filler
+        //     .backfill_intervals(block.info.height, block.info.timestamp.to_utc_date_time())
+        //     .await?;
 
         Ok(())
     }

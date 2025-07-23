@@ -6,5 +6,6 @@ pub mod error;
 pub mod httpd;
 pub mod indexer;
 pub mod migrations;
+pub mod price_back_filler;
 
 pub use indexer::Indexer;

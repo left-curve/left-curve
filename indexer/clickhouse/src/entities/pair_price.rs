@@ -1,13 +1,14 @@
-#[cfg(feature = "async-graphql")]
 use {
-    async_graphql::{ComplexObject, SimpleObject},
-    grug_types::Timestamp,
-};
-use {
+    crate::error::Result,
     chrono::{DateTime, Utc},
     clickhouse::Row,
     grug::{Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
+};
+#[cfg(feature = "async-graphql")]
+use {
+    async_graphql::{ComplexObject, SimpleObject},
+    grug_types::Timestamp,
 };
 
 #[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -41,6 +42,32 @@ impl PairPrice {
     /// Returns the block timestamp in ISO 8601 format with time zone.
     async fn created_at(&self) -> String {
         Timestamp::from(self.created_at.naive_utc()).to_rfc3339_string()
+    }
+}
+
+impl PairPrice {
+    pub async fn last_prices(clickhouse_client: &clickhouse::Client) -> Result<Vec<PairPrice>> {
+        let query = r#"
+          SELECT
+            quote_denom,
+            base_denom,
+            clearing_price,
+            volume_base,
+            volume_quote,
+            created_at,
+            block_height
+          FROM (
+              SELECT *,
+                  row_number() OVER (
+                      PARTITION BY quote_denom, base_denom
+                      ORDER BY block_height DESC
+                  ) AS rn
+              FROM pair_prices
+          )
+          WHERE rn = 1
+        "#;
+
+        Ok(clickhouse_client.query(query).fetch_all().await?)
     }
 }
 
