@@ -129,6 +129,8 @@ export type {
   GetDexExecuteMsg,
   GetDexQueryMsg,
   OrderId,
+  Candle,
+  CandleIntervals,
 } from "./dex.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
@@ -143,4 +145,4 @@ export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
 
-export { Direction } from "./dex.js";
+export { Direction, CandleInterval } from "./dex.js";
