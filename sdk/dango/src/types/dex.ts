@@ -337,3 +337,33 @@ export type CreateMarketOrderRequest = {
    */
   maxSlippage: string;
 };
+
+export const CandleInterval = {
+  OneSecond: "ONE_SECOND",
+  OneMinute: "ONE_MINUTE",
+  FiveMinutes: "FIVE_MINUTES",
+  FifteenMinutes: "FIFTEEN_MINUTES",
+  OneHour: "ONE_HOUR",
+  FourHours: "FOUR_HOURS",
+  OneDay: "ONE_DAY",
+  OneWeek: "ONE_WEEK",
+} as const;
+
+export type CandleIntervals = (typeof CandleInterval)[keyof typeof CandleInterval];
+
+export type Candle = {
+  quoteDenom: Denom;
+  baseDenom: Denom;
+  interval: CandleIntervals;
+  blockHeight: number;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volumeBase: string;
+  volumeQuote: string;
+  timeStart: string;
+  timeStartUnix: number;
+  timeEnd: string;
+  timeEndUnix: number;
+};

@@ -55,6 +55,12 @@ import {
 } from "./queries/ordersByUser.js";
 
 import {
+  type QueryCandlesParameters,
+  type QueryCandlesReturnType,
+  queryCandles,
+} from "./queries/candles.js";
+
+import {
   type SimulateWithdrawLiquidityParameters,
   type SimulateWithdrawLiquidityReturnType,
   simulateWithdrawLiquidity,
@@ -64,6 +70,7 @@ export type DexQueryActions = {
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
   ordersByUser: (args: OrdersByUserParameters) => OrdersByUserReturnType;
+  queryCandles: (args: QueryCandlesParameters) => QueryCandlesReturnType;
   simulateWithdrawLiquidity: (
     args: SimulateWithdrawLiquidityParameters,
   ) => SimulateWithdrawLiquidityReturnType;
@@ -82,6 +89,7 @@ export function dexQueryActions<transport extends Transport = Transport>(
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
     ordersByUser: (args) => ordersByUser(client, args),
+    queryCandles: (args) => queryCandles(client, args),
     simulateWithdrawLiquidity: (args) => simulateWithdrawLiquidity(client, args),
     simulateSwapExactAmountOut: (args) => simulateSwapExactAmountOut(client, args),
     simulateSwapExactAmountIn: (args) => simulateSwapExactAmountIn(client, args),

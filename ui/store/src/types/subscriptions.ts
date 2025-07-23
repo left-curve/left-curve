@@ -1,4 +1,7 @@
 import type {
+  Candle,
+  CandleIntervals,
+  Denom,
   IndexedAccountEvent,
   IndexedBlock,
   IndexedTransferEvent,
@@ -21,6 +24,17 @@ export type SubscriptionSchema = [
     key: "account";
     params: { username: Username; sinceBlockHeight?: number };
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
+  },
+  {
+    key: "candles";
+    params: {
+      baseDenom: Denom;
+      quoteDenom: Denom;
+      interval: CandleIntervals;
+      laterThan?: Date;
+      limit?: number;
+    };
+    listener: (event: { candles: Candle[] }) => void;
   },
   {
     key: "submitTx";
