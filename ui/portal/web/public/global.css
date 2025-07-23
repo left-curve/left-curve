@@ -379,7 +379,7 @@ cq-dialog.ciq-day input,
 }
 
 cq-chart-title cq-symbol {
-  @apply exposure-h2-italic;
+  @apply h3-heavy;
 }
 
 cq-dialog.ciq-night input:hover,
