@@ -16,27 +16,35 @@ import {
 } from "./subscriptions/account.js";
 
 import {
+  type CandlesSubscriptionParameters,
+  type CandlesSubscriptionReturnType,
+  candlesSubscription,
+} from "./subscriptions/candles.js";
+
+import {
   type TransferSubscriptionParameters,
   type TransferSubscriptionReturnType,
   transferSubscription,
 } from "./subscriptions/transfer.js";
 
 export type IndexerActions = {
-  queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
-  searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
-  blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
-  transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
+  blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
+  candlesSubscription: (args: CandlesSubscriptionParameters) => CandlesSubscriptionReturnType;
+  searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
+  transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
+  queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
 };
 
 export function indexerActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): IndexerActions {
   return {
-    searchTxs: (args) => searchTxs(client, args),
-    queryBlock: (args) => queryBlock(client, args),
     blockSubscription: (args) => blockSubscription(client, args),
-    transferSubscription: (args) => transferSubscription(client, args),
     accountSubscription: (args) => accountSubscription(client, args),
+    candlesSubscription: (args) => candlesSubscription(client, args),
+    searchTxs: (args) => searchTxs(client, args),
+    transferSubscription: (args) => transferSubscription(client, args),
+    queryBlock: (args) => queryBlock(client, args),
   };
 }
