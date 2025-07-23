@@ -122,7 +122,6 @@ async fn query_candles() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
@@ -207,17 +206,37 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 create_candle_tx_clone.send(2).await.unwrap();
 
-                // 2nd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let mut framed = framed;
 
-                let expected_json = serde_json::json!([{
-                    "volumeBase": "75",
-                    "volumeQuote": "2062.5"
-                }]);
+                loop {
+                    // 2nd response
+                    let (f, response) =
+                        parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                            .await?;
 
-                assert_json_include!(actual: response.data, expected: expected_json);
+                    framed = f;
+
+                    if response
+                        .data
+                        .first()
+                        .unwrap()
+                        .get("blockHeight")
+                        .and_then(|v| v.as_u64())
+                        .unwrap()
+                        < 6
+                    {
+                        continue;
+                    }
+
+                    let expected_json = serde_json::json!([{
+                        "volumeBase": "75",
+                        "volumeQuote": "2062.5"
+                    }]);
+
+                    assert_json_include!(actual: response.data, expected: expected_json);
+
+                    break;
+                }
 
                 Ok::<(), anyhow::Error>(())
             })
