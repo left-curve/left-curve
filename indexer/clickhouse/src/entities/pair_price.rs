@@ -69,6 +69,19 @@ impl PairPrice {
 
         Ok(clickhouse_client.query(query).fetch_all().await?)
     }
+
+    pub async fn cleanup_old_synthetic_data(
+        clickhouse_client: &clickhouse::Client,
+        current_block: u64,
+    ) -> Result<()> {
+        let query = "DELETE FROM pair_prices WHERE volume_base = 0 AND volume_quote = 0 AND block_height = ?";
+        clickhouse_client
+            .query(query)
+            .bind(current_block - 1)
+            .execute()
+            .await?;
+        Ok(())
+    }
 }
 
 /// This will serialize and deserialize the decimals as u128, which is needed

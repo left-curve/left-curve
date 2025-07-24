@@ -215,13 +215,7 @@ impl Indexer {
             }
         }
 
-        // TODO: backfill the candles for the missing pairs instead of just inserting the last price
-        // in `pair_prices` table
-        // let price_back_filler = PriceBackfiller::new(clickhouse_client.clone());
-
-        // price_back_filler
-        //     .backfill_intervals(block.info.height, block.info.timestamp.to_utc_date_time())
-        //     .await?;
+        PairPrice::cleanup_old_synthetic_data(clickhouse_client, block.info.height).await?;
 
         Ok(())
     }

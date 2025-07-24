@@ -12,7 +12,6 @@ use {
     grug::{
         Coins, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24, Uint128, btree_map,
-        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::{
@@ -20,7 +19,6 @@ use {
         pair_price_query::PairPriceQueryBuilder,
     },
     std::str::FromStr,
-    tracing::Level,
 };
 
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
@@ -125,7 +123,6 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -189,7 +186,6 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -251,7 +247,6 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
 

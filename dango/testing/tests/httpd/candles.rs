@@ -9,8 +9,8 @@ use {
         oracle::{self, PriceSource},
     },
     grug::{
-        Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt, Signer,
-        StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map, setup_tracing_subscriber,
+        Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
+        Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -22,13 +22,10 @@ use {
         sync::{Mutex, mpsc},
         time::sleep,
     },
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_candles() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -124,8 +121,6 @@ async fn query_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -237,6 +232,131 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     break;
                 }
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await??;
+
+    tracing::info!("finished local set");
+
+    let mut suite_guard = suite.lock().await;
+    suite_guard
+        .app
+        .indexer
+        .shutdown()
+        .expect("Can't shutdown indexer");
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let graphql_query = r#"
+    subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
+        candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
+            timeStart
+            open
+            high
+            low
+            close
+            volumeBase
+            volumeQuote
+            quoteDenom
+            baseDenom
+            interval
+            blockHeight
+        }
+    }
+  "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "candles",
+        query: graphql_query,
+        variables: serde_json::json!({
+            "base_denom": "dango",
+            "quote_denom": "bridge/usdc",
+            "interval": "ONE_MINUTE",
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+    let suite = Arc::new(Mutex::new(suite));
+    let suite_clone = suite.clone();
+
+    // Can't call this from LocalSet so using channels instead.
+    // Creating a block without creating a candle (no new pair prices).
+    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+    tokio::spawn(async move {
+        while let Some(_idx) = rx.recv().await {
+            let msgs = vec![Message::transfer(
+                accounts.user2.address(),
+                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+            )?];
+
+            let mut suite_guard = suite_clone.lock().await;
+
+            suite_guard
+                .send_messages_with_gas(
+                    &mut accounts.user1,
+                    50_000_000,
+                    NonEmpty::new_unchecked(msgs),
+                )
+                .should_succeed();
+
+            // Enabling this here will cause the test to hang
+            // suite.app.indexer.wait_for_finish();
+        }
+        Ok::<(), anyhow::Error>(())
+    });
+
+    let crate_block_tx_clone = crate_block_tx.clone();
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let name = request_body.name;
+                let (_srv, _ws, framed) =
+                    call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
+                        .await?;
+
+                // 1st response is always the existing last candle
+                let (framed, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
+
+                let expected_json = serde_json::json!([{
+                    "volumeBase": "25",
+                    "volumeQuote": "687.5",
+                    "blockHeight": 2,
+                }]);
+
+                assert_json_include!(actual: response.data, expected: expected_json);
+
+                crate_block_tx_clone.send(2).await.unwrap();
+
+                // 2nd response
+                let (_, response) =
+                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                        .await?;
+
+                let expected_json = serde_json::json!([{
+                    "volumeBase": "25",
+                    "volumeQuote": "687.5",
+                    "blockHeight": 3,
+                }]);
+
+                assert_json_include!(actual: response.data, expected: expected_json);
 
                 Ok::<(), anyhow::Error>(())
             })
