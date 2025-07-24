@@ -221,10 +221,7 @@ impl StartCmd {
                 .with_separate_pubsub()
                 .await
                 .map_err(|e| {
-                    anyhow!(
-                        "Failed to create separate context for clickhouse indexer: {}",
-                        e
-                    )
+                    anyhow!("failed to create separate context for clickhouse indexer: {e}")
                 })?,
             cfg.indexer.clickhouse.url.clone(),
             cfg.indexer.clickhouse.database.clone(),

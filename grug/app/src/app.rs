@@ -415,7 +415,7 @@ where
                 .post_indexing(block_height, querier, &mut indexer_ctx)
                 .inspect_err(|_err| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(err = %_err, "Error in post_indexing");
+                    tracing::error!(err = %_err, "Error in `post_indexing`");
                 })?;
         }
 

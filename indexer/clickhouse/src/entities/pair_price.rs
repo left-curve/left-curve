@@ -85,6 +85,7 @@ impl PairPrice {
             .bind(current_block - 1)
             .execute()
             .await?;
+
         Ok(())
     }
 }
@@ -124,6 +125,8 @@ pub mod dec {
         Ok(dec)
     }
 }
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod test {

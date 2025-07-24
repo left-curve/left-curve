@@ -118,7 +118,7 @@ impl Indexer for HookedIndexer {
         {
             if let Err(err) = indexer.shutdown() {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %err, indexer_name = indexer.name(),"Error in shutdown");
+                tracing::error!(err = %err, indexer_name = indexer.name(), "Error in shutdown");
 
                 errors.push(err.to_string());
             }
@@ -237,9 +237,10 @@ impl Indexer for HookedIndexer {
                     tracing::error!(
                         indexer = indexer.name(),
                         err = %err,
-                        block_height = block_height,
+                        block_height,
                         "Error post_indexing"
                     );
+
                     errors.push(err.to_string());
                 }
             }

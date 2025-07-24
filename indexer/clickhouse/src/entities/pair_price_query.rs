@@ -78,17 +78,19 @@ impl PairPriceQueryBuilder {
     fn query_string(&self) -> (String, Vec<String>, bool) {
         let has_previous_page = false;
 
-        let mut query = r#"SELECT
-                        quote_denom,
-                        base_denom,
-                        clearing_price,
-                        volume_base,
-                        volume_quote,
-                        created_at,
-                        block_height
-                       FROM pair_prices
-                       WHERE quote_denom = ? AND base_denom = ?"#
-            .to_string();
+        let mut query = r#"
+          SELECT
+            quote_denom,
+            base_denom,
+            clearing_price,
+            volume_base,
+            volume_quote,
+            created_at,
+            block_height
+          FROM pair_prices
+          WHERE quote_denom = ? AND base_denom = ?
+        "#
+        .to_string();
 
         let mut params: Vec<String> = vec![self.quote_denom.clone(), self.base_denom.clone()];
 
@@ -98,7 +100,6 @@ impl PairPriceQueryBuilder {
         }
 
         query.push_str(" ORDER BY block_height DESC");
-
         query.push_str(&format!(" LIMIT {}", self.limit + 1));
 
         (query, params, has_previous_page)

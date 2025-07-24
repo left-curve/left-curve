@@ -137,20 +137,22 @@ impl CandleQueryBuilder {
         let mut has_previous_page = false;
 
         let mut query = format!(
-            r#"SELECT
-                        quote_denom,
-                        base_denom,
-                        time_start,
-                        argMinMerge(open) AS open,
-                        maxMerge(high) AS high,
-                        minMerge(low) AS low,
-                        argMaxMerge(close) AS close,
-                        sumMerge(volume_base) AS volume_base,
-                        sumMerge(volume_quote) as volume_quote,
-                        maxMerge(block_height) as block_height,
-                        '{interval_str}' as interval
-                       FROM {}
-                       WHERE quote_denom = ? AND base_denom = ?"#,
+            r#"
+              SELECT
+                quote_denom,
+                base_denom,
+                time_start,
+                argMinMerge(open) AS open,
+                maxMerge(high) AS high,
+                minMerge(low) AS low,
+                argMaxMerge(close) AS close,
+                sumMerge(volume_base) AS volume_base,
+                sumMerge(volume_quote) AS volume_quote,
+                maxMerge(block_height) AS block_height,
+                '{interval_str}' AS interval
+              FROM {}
+              WHERE quote_denom = ? AND base_denom = ?
+            "#,
             self.interval.table_name()
         );
 
@@ -173,9 +175,7 @@ impl CandleQueryBuilder {
         }
 
         query.push_str(" GROUP BY quote_denom, base_denom, time_start");
-
         query.push_str(" ORDER BY time_start DESC");
-
         query.push_str(&format!(" LIMIT {}", self.limit + 1));
 
         (query, params, has_previous_page)

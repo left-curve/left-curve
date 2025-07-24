@@ -125,7 +125,8 @@ impl CandleSubscription {
                 },
                 Err(_err) => {
                     #[cfg(feature = "tracing")]
-                    tracing::error!("Error getting candles: {:?}", _err);
+                    tracing::error!("Error getting candles: {_err:?}");
+
                     None
                 },
             }

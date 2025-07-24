@@ -114,9 +114,7 @@ async fn query_candles() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -210,9 +208,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -226,22 +222,22 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-    subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
-        candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
-            timeStart
-            open
-            high
-            low
-            close
-            volumeBase
-            volumeQuote
-            quoteDenom
-            baseDenom
-            interval
-            blockHeight
-        }
-    }
-  "#;
+      subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
+          candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
+              timeStart
+              open
+              high
+              low
+              close
+              volumeBase
+              volumeQuote
+              quoteDenom
+              baseDenom
+              interval
+              blockHeight
+          }
+      }
+    "#;
 
     let request_body = GraphQLCustomRequest {
         name: "candles",
@@ -271,6 +267,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             // Enabling this here will cause the test to hang
             // suite.app.indexer.wait_for_finish()?;
         }
+
         Ok::<(), anyhow::Error>(())
     });
 
@@ -357,22 +354,22 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
-    subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
-        candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
-            timeStart
-            open
-            high
-            low
-            close
-            volumeBase
-            volumeQuote
-            quoteDenom
-            baseDenom
-            interval
-            blockHeight
-        }
-    }
-  "#;
+      subscription Candles($base_denom: String!, $quote_denom: String!, $interval: String, $later_than: String) {
+          candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, laterThan: $later_than) {
+              timeStart
+              open
+              high
+              low
+              close
+              volumeBase
+              volumeQuote
+              quoteDenom
+              baseDenom
+              interval
+              blockHeight
+          }
+      }
+    "#;
 
     let request_body = GraphQLCustomRequest {
         name: "candles",
@@ -414,6 +411,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
             // Enabling this here will cause the test to hang
             // suite.app.indexer.wait_for_finish();
         }
+
         Ok::<(), anyhow::Error>(())
     });
 

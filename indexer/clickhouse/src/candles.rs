@@ -96,7 +96,7 @@ impl Indexer {
                         Err(_) => {
                             // TODO: add sentry error reporting
                             #[cfg(feature = "tracing")]
-                            tracing::error!("Overflow in volume_base: {pair_price:#?}",);
+                            tracing::error!("Overflow in volume_base: {pair_price:#?}");
                             pair_price.volume_base = Udec128_6::MAX;
                         },
                     }
@@ -109,7 +109,7 @@ impl Indexer {
                         Err(_) => {
                             // TODO: add sentry error reporting
                             #[cfg(feature = "tracing")]
-                            tracing::error!("Overflow in volume_quote: {pair_price:#?}",);
+                            tracing::error!("Overflow in volume_quote: {pair_price:#?}");
                             pair_price.volume_quote = Udec128_6::MAX;
                         },
                     }
@@ -151,7 +151,7 @@ impl Indexer {
 
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}",);
+                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
         }
 
@@ -171,17 +171,17 @@ impl Indexer {
 
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}",);
+                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
         }
 
         inserter.commit().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
-            tracing::error!("Failed to commit inserter for pair prices: {_err}",);
+            tracing::error!("Failed to commit inserter for pair prices: {_err}");
         })?;
         inserter.end().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
-            tracing::error!("Failed to end inserter for pair prices: {_err}",);
+            tracing::error!("Failed to end inserter for pair prices: {_err}");
         })?;
 
         // NOTE: we need to check if the materialized view is up to date before we keep going

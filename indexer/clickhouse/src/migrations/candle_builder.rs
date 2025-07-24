@@ -1,17 +1,17 @@
 use {crate::entities::CandleInterval, strum::IntoEnumIterator};
 
 pub const CREATE_TABLES: &str = r#"
-            CREATE OR REPLACE TABLE pair_prices (
-                quote_denom String,
-                base_denom String,
-                clearing_price UInt128,
-                volume_base UInt128,
-                volume_quote UInt128,
-                created_at DateTime64(6),
-                block_height UInt64
-            ) ENGINE = MergeTree()
-            ORDER BY (quote_denom, base_denom, block_height)
-            "#;
+  CREATE OR REPLACE TABLE pair_prices (
+    quote_denom String,
+    base_denom String,
+    clearing_price UInt128,
+    volume_base UInt128,
+    volume_quote UInt128,
+    created_at DateTime64(6),
+    block_height UInt64
+  ) ENGINE = MergeTree()
+  ORDER BY (quote_denom, base_denom, block_height)
+"#;
 
 #[derive(Default)]
 pub struct MigrationBuilder {
@@ -57,8 +57,8 @@ impl MigrationBuilder {
     fn create_view(&self, timeframe: &str, time_function: &str) -> String {
         format!(
             r#"
-            CREATE MATERIALIZED VIEW pair_prices_{timeframe}_mv TO pair_prices_{timeframe} AS
-            SELECT
+              CREATE MATERIALIZED VIEW pair_prices_{timeframe}_mv TO pair_prices_{timeframe} AS
+              SELECT
                 quote_denom,
                 base_denom,
                 {time_function} AS time_start,
@@ -69,9 +69,9 @@ impl MigrationBuilder {
                 sumState(volume_base) AS volume_base,
                 sumState(volume_quote) AS volume_quote,
                 maxState(block_height) AS block_height
-            FROM pair_prices
-            GROUP BY quote_denom, base_denom, time_start
-"#,
+              FROM pair_prices
+              GROUP BY quote_denom, base_denom, time_start
+            "#
         )
     }
 }
@@ -79,20 +79,20 @@ impl MigrationBuilder {
 fn create_aggregated_table(timeframe: &str) -> String {
     format!(
         r#"
-            CREATE OR REPLACE TABLE pair_prices_{timeframe} (
-                quote_denom String,
-                base_denom String,
-                time_start DateTime64(6),
-                open AggregateFunction(argMin, UInt128, DateTime64(6)),
-                high AggregateFunction(max, UInt128),
-                low AggregateFunction(min, UInt128),
-                close AggregateFunction(argMax, UInt128, DateTime64(6)),
-                volume_base AggregateFunction(sum, UInt128),
-                volume_quote AggregateFunction(sum, UInt128),
-                block_height AggregateFunction(max, UInt64)
-            ) ENGINE = AggregatingMergeTree()
-            ORDER BY (quote_denom, base_denom, time_start)
-"#
+          CREATE OR REPLACE TABLE pair_prices_{timeframe} (
+            quote_denom String,
+            base_denom String,
+            time_start DateTime64(6),
+            open AggregateFunction(argMin, UInt128, DateTime64(6)),
+            high AggregateFunction(max, UInt128),
+            low AggregateFunction(min, UInt128),
+            close AggregateFunction(argMax, UInt128, DateTime64(6)),
+            volume_base AggregateFunction(sum, UInt128),
+            volume_quote AggregateFunction(sum, UInt128),
+            block_height AggregateFunction(max, UInt64)
+          ) ENGINE = AggregatingMergeTree()
+          ORDER BY (quote_denom, base_denom, time_start)
+        "#
     )
 }
 

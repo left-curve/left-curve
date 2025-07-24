@@ -761,11 +761,8 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
             20,
             false,
         )
-        .unwrap();
-
-    let QueryResponse::Balance(balance) = balance else {
-        panic!("Expected balance response, got: {balance:?}");
-    };
+        .unwrap()
+        .as_balance();
 
     suite.app.indexer.wait_for_finish()?;
 

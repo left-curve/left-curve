@@ -190,6 +190,8 @@ impl Candle {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod test {
     use {super::*, grug::Timestamp};

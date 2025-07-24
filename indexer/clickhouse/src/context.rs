@@ -1,7 +1,6 @@
-use {clickhouse::Client, indexer_sql::pubsub::PubSub, std::sync::Arc};
-
 #[cfg(feature = "testing")]
 use clickhouse::test;
+use {clickhouse::Client, indexer_sql::pubsub::PubSub, std::sync::Arc};
 
 #[derive(Clone)]
 pub struct Context {
@@ -143,6 +142,8 @@ impl Context {
         Ok(())
     }
 }
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(feature = "testing")]
 pub mod testing {
