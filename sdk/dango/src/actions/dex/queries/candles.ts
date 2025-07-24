@@ -1,6 +1,6 @@
 import { queryIndexer } from "#actions/indexer/queryIndexer.js";
 
-import type { Client, Transport } from "@left-curve/sdk/types";
+import type { Client, DateTime, Transport } from "@left-curve/sdk/types";
 import type { Candle, CandleIntervals } from "#types/dex.js";
 import type { GraphqlQueryResult } from "#types/graphql.js";
 
@@ -10,8 +10,8 @@ export type QueryCandlesParameters = {
   baseDenom: string;
   quoteDenom: string;
   interval: CandleIntervals;
-  earlierThan?: Date;
-  laterThan?: Date;
+  earlierThan?: DateTime;
+  laterThan?: DateTime;
 };
 
 export type QueryCandlesReturnType = Promise<GraphqlQueryResult<Candle>>;
@@ -23,10 +23,10 @@ export async function queryCandles<transport extends Transport>(
   const document = /* GraphQL */ `
     query candles(
       $after: String
-      $first: Int!
+      $first: Int
       $baseDenom: String!
       $quoteDenom: String!
-      $interval: CandleIntervals!
+      $interval: CandleInterval!
       $earlierThan: DateTime
       $laterThan: DateTime
     ) {
