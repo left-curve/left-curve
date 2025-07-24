@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use {
     crate::{
         context::Context,
@@ -43,23 +41,12 @@ impl CandleQuery {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let table_name = match interval {
-            CandleInterval::OneSecond => "pair_prices_1s",
-            CandleInterval::OneMinute => "pair_prices_1m",
-            CandleInterval::FiveMinutes => "pair_prices_5m",
-            CandleInterval::FifteenMinutes => "pair_prices_15m",
-            CandleInterval::OneHour => "pair_prices_1h",
-            CandleInterval::FourHours => "pair_prices_4h",
-            CandleInterval::OneDay => "pair_prices_1d",
-            CandleInterval::OneWeek => "pair_prices_1w",
-        };
-
         query_with::<OpaqueCursor<CandleCursor>, _, _, _, _>(
             after,
             None,
             first,
             None,
-            |after, before, first, last| async move {
+            |after, _, first, _| async move {
                 let mut query_builder =
                     CandleQueryBuilder::new(interval, base_denom.clone(), quote_denom.clone());
 
@@ -69,6 +56,10 @@ impl CandleQuery {
 
                 if let Some(later_than) = later_than {
                     query_builder = query_builder.with_later_than(later_than);
+                }
+
+                if let Some(first) = first {
+                    query_builder = query_builder.with_limit(first);
                 }
 
                 if let Some(after) = after {
