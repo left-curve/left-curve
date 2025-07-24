@@ -74,6 +74,11 @@ impl PairPrice {
         clickhouse_client: &clickhouse::Client,
         current_block: u64,
     ) -> Result<()> {
+        // Avoid underflowing the block height.
+        if current_block < 1 {
+            return Ok(());
+        }
+
         let query = "DELETE FROM pair_prices WHERE volume_base = 0 AND volume_quote = 0 AND block_height = ?";
         clickhouse_client
             .query(query)
