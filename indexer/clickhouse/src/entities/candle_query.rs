@@ -5,7 +5,6 @@ use {
     crate::entities::{CandleInterval, candle::Candle},
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    grug::Timestamp,
     serde::Deserialize,
 };
 
@@ -158,18 +157,18 @@ impl CandleQueryBuilder {
         let mut params: Vec<String> = vec![self.quote_denom.clone(), self.base_denom.clone()];
 
         if let Some(earlier_than) = self.earlier_than {
-            query.push_str(" AND time_start <= ?");
-            params.push(Timestamp::from(earlier_than.naive_utc()).to_rfc3339_string());
+            query.push_str(" AND time_start <= toDateTime64(?, 6)");
+            params.push(earlier_than.timestamp_micros().to_string());
         }
 
         if let Some(later_than) = self.later_than {
-            query.push_str(" AND time_start >= ?");
-            params.push(Timestamp::from(later_than.naive_utc()).to_rfc3339_string());
+            query.push_str(" AND time_start >= toDateTime64(?, 6)");
+            params.push(later_than.timestamp_micros().to_string());
         }
 
         if let Some(after) = self.after {
-            query.push_str(" AND time_start < ?");
-            params.push(Timestamp::from(after.naive_utc()).to_rfc3339_string());
+            query.push_str(" AND time_start < toDateTime64(?, 6)");
+            params.push(after.timestamp_micros().to_string());
             has_previous_page = true;
         }
 

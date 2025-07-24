@@ -119,6 +119,102 @@ async fn query_candles() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn query_candles_with_dates() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    let graphql_query = r#"
+      query Candles($base_denom: String!, $quote_denom: String!, $interval: String, $earlierThan: DateTime) {
+      candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, earlierThan: $earlierThan) {
+          nodes {
+            timeStart
+            open
+            high
+            low
+            close
+            volumeBase
+            volumeQuote
+            quoteDenom
+            baseDenom
+            interval
+            blockHeight
+          }
+          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom blockHeight }  cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "candles",
+        query: graphql_query,
+        variables: serde_json::json!({
+            "base_denom": "dango",
+            "quote_denom": "bridge/usdc",
+            "interval": "ONE_SECOND",
+            "earlierThan": "2025-07-24T07:00:00.000Z",
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut received_candles: Vec<serde_json::Value> = vec![];
+
+                for _ in 0..10 {
+                    let app = build_actix_app(dango_httpd_context.clone());
+
+                    let response: PaginatedResponse<serde_json::Value> =
+                        call_paginated_graphql(app, request_body.clone()).await?;
+
+                    received_candles = response
+                        .edges
+                        .into_iter()
+                        .map(|e| e.node)
+                        .collect::<Vec<_>>();
+
+                    // I have to use a loop because the candles are filled up
+                    // through async materialized views and it can take a few
+                    // milliseconds.
+                    if !received_candles.is_empty() {
+                        break;
+                    }
+
+                    sleep(Duration::from_millis(100)).await;
+                }
+
+                let expected_candle = serde_json::json!({
+                    "timeStart": "1971-01-01T00:00:00Z",
+                    "open": "27.5",
+                    "high": "27.5",
+                    "low": "27.5",
+                    "close": "27.5",
+                    "volumeBase": "25",
+                    "volumeQuote": "687.5",
+                    "interval": "ONE_SECOND",
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                });
+
+                assert_json_include!(actual: received_candles, expected: [expected_candle]);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await??;
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
