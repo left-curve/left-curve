@@ -106,8 +106,8 @@ export const ChartIQ = ({ coins }) => {
         <cq-chart-instructions />
 
         <nav className="ciq-nav full-screen-hide">
-          <cq-side-nav cq-on="sidenavOn">
-            {!isMd ? (
+          {!isMd ? (
+            <>
               <cq-toggle
                 class="ciq-draw"
                 member="drawing"
@@ -116,41 +116,33 @@ export const ChartIQ = ({ coins }) => {
                 icon="draw"
                 help-id="drawing_tools_toggle"
               />
-            ) : null}
+            </>
+          ) : null}
 
-            <cq-menu
-              class="nav-dropdown ciq-display"
-              reader="Display"
-              config="display"
-              binding="Layout.chartType"
-              icon=""
-              help-id="display_dropdown"
-              tooltip=""
-            />
-            <cq-menu
-              class="nav-dropdown ciq-period"
-              reader="Periodicity"
-              config="period"
-              text=""
-              binding="Layout.periodicity"
-            />
-            <cq-menu
-              class="nav-dropdown ciq-views alignright-md alignright-sm"
-              config="views"
-              text="Views"
-              icon="views"
-              responsive=""
-              tooltip="Views"
-            />
-            {/*   <cq-menu
-              class="nav-dropdown ciq-markers alignright"
-              config="markers"
-              text="Events"
-              icon="events"
-              responsive=""
-              tooltip="Events"
-            /> */}
-          </cq-side-nav>
+          <cq-menu
+            class="nav-dropdown ciq-display"
+            reader="Display"
+            config="display"
+            binding="Layout.chartType"
+            icon=""
+            help-id="display_dropdown"
+            tooltip=""
+          />
+          <cq-menu
+            class="nav-dropdown ciq-period"
+            reader="Periodicity"
+            config="period"
+            text=""
+            binding="Layout.periodicity"
+          />
+          <cq-menu
+            class="nav-dropdown ciq-views alignright-md alignright-sm"
+            config="views"
+            text="Views"
+            icon="views"
+            responsive=""
+            tooltip="Views"
+          />
 
           <div className="ciq-menu-section">
             <div className="ciq-dropdowns">
@@ -170,7 +162,7 @@ export const ChartIQ = ({ coins }) => {
             <cq-palette-dock>
               <div className="palette-dock-container">
                 <cq-drawing-palette
-                  class="palette-drawing palette-hide !flex pb-2"
+                  class="palette-drawing palette-hide pb-2 !block w-[72px]"
                   docked="true"
                   orientation="vertical"
                   min-height="300"
