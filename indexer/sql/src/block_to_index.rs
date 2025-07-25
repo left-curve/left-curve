@@ -1,9 +1,8 @@
-use crate::event_address::AddressFinder;
 #[cfg(feature = "metrics")]
 use metrics::counter;
 
 use {
-    crate::{active_model::Models, entity, error},
+    crate::{AddressFinder, active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
@@ -34,7 +33,7 @@ impl BlockToIndex {
     /// Takes care of inserting the data in the database in a single DB transaction
     pub async fn save(
         &self,
-        address_finder: &mut AddressFinder,
+        address_finder: &AddressFinder,
         db: DatabaseConnection,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {

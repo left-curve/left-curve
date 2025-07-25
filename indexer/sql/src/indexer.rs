@@ -4,7 +4,7 @@ use {
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
-        event_address::AddressFinder,
+        event_addresses::{AddressFinder, NaiveJsonAddressesFinder},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
@@ -215,7 +215,7 @@ where
             blocks: Default::default(),
             indexing: false,
             keep_blocks: self.keep_blocks,
-            address_finder: Default::default(),
+            address_finder: Arc::new(AddressFinder::new(NaiveJsonAddressesFinder)),
             id,
         })
     }
@@ -246,7 +246,7 @@ pub struct NonBlockingIndexer {
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
     keep_blocks: bool,
-    address_finder: Arc<tokio::sync::Mutex<AddressFinder>>,
+    address_finder: Arc<AddressFinder>,
     // Add unique ID field, used for debugging and tracing
     id: u64,
 }
@@ -351,11 +351,7 @@ impl NonBlockingIndexer {
 
             self.handle.block_on(async {
                 block_to_index
-                    .save(
-                        &mut *self.address_finder.lock().await,
-                        self.context.db.clone(),
-                        self.id,
-                    )
+                    .save(&self.address_finder, self.context.db.clone(), self.id)
                     .await?;
 
                 Ok::<(), error::IndexerError>(())
@@ -541,7 +537,7 @@ impl Indexer for NonBlockingIndexer {
 
             #[allow(clippy::map_identity)]
             if let Err(_err) = block_to_index
-                .save(&mut *address_finder.lock().await, context.db.clone(), id)
+                .save(&address_finder, context.db.clone(), id)
                 .await
             {
                 #[cfg(feature = "tracing")]

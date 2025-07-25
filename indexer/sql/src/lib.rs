@@ -6,6 +6,7 @@ pub mod context;
 pub mod dataloaders;
 pub mod entity;
 pub mod error;
+pub mod event_addresses;
 pub mod hooks;
 pub mod indexer;
 pub mod indexer_path;
@@ -16,10 +17,9 @@ pub mod pubsub;
 pub mod scalars;
 pub mod serde_iso8601;
 
-pub mod event_address;
-
 pub use {
     context::Context,
     error::{IndexerError, Result},
+    event_addresses::*,
     indexer::{IndexerBuilder, NonBlockingIndexer},
 };

@@ -1,5 +1,5 @@
 use {
-    crate::{entity, error::Result, event_address::AddressFinder},
+    crate::{AddressFinder, entity, error::Result},
     grug_types::{
         Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
         Inner, JsonSerExt, flatten_commitment_status,
@@ -18,7 +18,7 @@ pub struct Models {
 
 impl Models {
     pub fn build(
-        address_finder: &mut AddressFinder,
+        address_finder: &AddressFinder,
         block: &Block,
         block_outcome: &BlockOutcome,
     ) -> Result<Self> {
@@ -190,7 +190,7 @@ impl Models {
 }
 
 fn flatten_events<T>(
-    address_finder: &mut AddressFinder,
+    address_finder: &AddressFinder,
     block: &Block,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
