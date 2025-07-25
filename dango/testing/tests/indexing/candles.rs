@@ -1,5 +1,5 @@
 use {
-    assert_json_diff::assert_json_include,
+    assert_json_diff::assert_json_eq,
     assertor::*,
     chrono::DateTime,
     dango_genesis::Contracts,
@@ -161,25 +161,26 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .await?
         .unwrap();
 
-    // `PairPrice` is serialized as u128 for clickhouse
-    let expected_candle = serde_json::json!({
-        "quote_denom": "bridge/usdc",
-        "base_denom": "dango",
-        "close": 27500000000000000000000000_u128,
-        "high":  27500000000000000000000000_u128,
-        "interval": "1m",
-        "low": 27500000000000000000000000_u128,
-        "open": 27500000000000000000000000_u128,
-        "time_start": serde_json::Number::from(31536000000000_u64),
-        "volume_base": 25000000,
-        "volume_quote": 687500000,
-    });
-
     let candle_1m_serde =
         serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
             .unwrap();
 
-    assert_json_include!(actual: candle_1m_serde, expected: expected_candle);
+    // `PairPrice` is serialized as u128 for clickhouse
+    let expected_candle = serde_json::json!({
+        "quote_denom": "bridge/usdc",
+        "base_denom": "dango",
+        "close": 2.75e25,
+        "high":  2.75e25,
+        "interval": "1m",
+        "low": 2.75e25,
+        "open": 2.75e25,
+        "time_start": serde_json::Number::from(31536000000000_u64),
+        "volume_base": 25000000,
+        "volume_quote": 687500000,
+        "block_height": 2,
+    });
+
+    assert_json_eq!(candle_1m_serde, expected_candle);
 
     Ok(())
 }
