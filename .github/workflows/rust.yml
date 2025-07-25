@@ -442,4 +442,4 @@ jobs:
             -e dango_image_tag=${{ env.GIT_COMMIT }} \
             -e "dango_db_password=$DANGO_DB_PASSWORD" \
             -e '{"dango_networks":["devnet"]}'
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e bot_version=0.1.5
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=0.1.5
