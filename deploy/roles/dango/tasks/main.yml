@@ -144,6 +144,12 @@
   loop_control:
     loop_var: dango_network
 
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+
 - name: Deploy dango container
   vars:
     dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
