@@ -48,5 +48,4 @@ tracing        = { workspace = true, optional = true }
 [dev-dependencies]
 assertor   = { workspace = true }
 clickhouse = { workspace = true, features = ["test-util"] }
-serde_json = { workspace = true, features = ["arbitrary_precision"] }
 test-case  = { workspace = true }
