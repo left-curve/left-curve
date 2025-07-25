@@ -7,5 +7,6 @@
     dango_image_tag: "{{ lookup('pipe','git rev-parse HEAD') }}"
   collections:
     - community.docker
+    - community.clickhouse
   roles:
     - dango
