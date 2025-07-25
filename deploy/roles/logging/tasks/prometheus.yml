@@ -1,0 +1,28 @@
+- name: Ensure dir exists
+  file:
+    path: "{{ prometheus_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Copy prometheus config
+  become: true
+  become_user: root
+  template:
+    src: "{{ playbook_dir }}/roles/logging/templates/prometheus-config.yml"
+    dest: "{{ prometheus_dir }}/config/prometheus-config.yml"
+    owner: "{{ deploy_user }}"
+    mode: '0644'
+
+- name: Deploy prometheus container
+  docker_container:
+    name: "prometheus"
+    image: "prom/prometheus:latest"
+    restart_policy: unless-stopped
+    state: started
+    ports:
+      - "{{ tailscale_ip }}:{{ prometheus_port }}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts
+      - prometheus_data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus-config.yml
