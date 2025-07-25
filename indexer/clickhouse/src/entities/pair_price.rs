@@ -176,7 +176,6 @@ mod test {
     /// This allows seeing the serialized value of all types.
     /// This test matters, because it's the only way to test that the serde_json
     /// implementation is correct. We'll use serde to inject data into clickhouse.
-    /// This requires the `arbitrary_precision` feature to be working.
     #[test]
     fn test_all_types() {
         let all_types = serde_json::json!({
@@ -185,10 +184,10 @@ mod test {
             "uint128": Uint128::MAX,
             "uint256": Uint256::MAX,
             "volume": Dec128_6::MAX,
+            "a": Udec128_24::MAX,
             "clearing_price": Udec128::MAX,
             "bnum_u128": bnum::types::U128::ONE,
             "bnum_u256": bnum::types::U256::ONE,
-            "u128": u128::MAX,
         });
         let serialized = serde_json::to_string(&all_types).unwrap();
         let _deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
