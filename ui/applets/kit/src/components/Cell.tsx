@@ -50,7 +50,7 @@ const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
         <img
           src={coin.logoURI}
           alt={coin.symbol}
-          className="w-6 h-6 rounded-full object-cover"
+          className="w-7 h-7 select-none drag-none"
           loading="lazy"
         />
       )}
