@@ -19,3 +19,22 @@
     - { src: "{{ dango_network}}/config/cometbft/priv_validator_key.json", dest: "cometbft/priv_validator_key.json" }
     - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
     - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
+
+- name: Generate docker-compose.yml
+  become: true
+  become_user: root
+  template:
+    src: docker-compose.yml
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+
+- name: Deploy stack
+  community.docker.docker_compose_v2:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"

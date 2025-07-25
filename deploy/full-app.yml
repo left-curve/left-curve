@@ -16,6 +16,7 @@
     COMETBFT_VALIDATOR_PRIVATE_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_PRIVATE_KEY') }}"
     dango_host: "dango"
     cometbft_host: "cometbft"
+    deploy_env: "staging"
   collections:
     - community.docker
     - community.clickhouse

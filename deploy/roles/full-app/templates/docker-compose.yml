@@ -1,0 +1,93 @@
+x-common-labels: &common-labels
+  environment: "{{ deploy_env }}"
+  project: "{{ deployment_name }}"
+
+services:
+  db:
+    image: postgres:17
+    shm_size: 1gb
+    labels:
+      <<: *common-labels
+    environment:
+      - POSTGRES_DB=dango_prod
+      - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
+      - POSTGRES_PASSWORD={{ db_password }}
+    tty: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    restart: unless-stopped
+    volumes:
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "clickhouse-client",
+          "--user",
+          "default",
+          "--password",
+          "{{ clickhouse_password }}",
+          "--query",
+          "SELECT 1"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dango:
+    image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
+    labels:
+      <<: *common-labels
+    depends_on:
+      db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
+    environment:
+      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@db:5432/dango_prod}
+      - INDEXER__CLICKHOUSE__USER=default
+      - INDEXER__CLICKHOUSE__PASSWORD={{ clickhouse_password }}
+      - INDEXER__CLICKHOUSE__DATABASE=default
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  cometbft:
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    labels:
+      <<: *common-labels
+    depends_on:
+      - dango
+    volumes:
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    entrypoint: >
+      sh -c "
+      mkdir -p /root/.cometbft/data &&
+      [ -f /root/.cometbft/data/priv_validator_state.json ] ||
+      printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
+      exec cometbft start
+      "
