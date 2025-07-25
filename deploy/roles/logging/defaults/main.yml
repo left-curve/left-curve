@@ -1,0 +1,3 @@
+---
+loki_port: 3100
+loki_dir: "/home/{{ deploy_user }}/loki"

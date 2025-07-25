@@ -1,0 +1,27 @@
+- name: Ensure dir exists
+  file:
+    path: "{{ loki_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Copy Loki config
+  become: true
+  become_user: root
+  template:
+    src: "{{ playbook_dir }}/roles/logging/templates/loki-config.yml"
+    dest: "{{ loki_dir }}/config/loki-config.yml"
+    owner: "{{ deploy_user }}"
+    mode: '0644'
+
+- name: Deploy Loki container
+  docker_container:
+    name: "loki"
+    image: "grafana/loki:latest"
+    restart_policy: unless-stopped
+    state: started
+    ports:
+      - "{{ tailscale_ip }}:{{ loki_port }}:3100"
+    volumes:
+      - "{{ loki_dir }}/config:/etc/loki"
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
