@@ -111,7 +111,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
-clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" }
+clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" } # TODO: use crates.io once the latest version is published
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
