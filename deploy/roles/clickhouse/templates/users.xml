@@ -4,6 +4,7 @@
         <!-- Default user with full access for local development -->
         <default>
             <password>{{ clickhouse_password }}</password>
+            <access_management>1</access_management>
 
             <!-- Allow access from any network for local development -->
             <networks>
@@ -16,15 +17,6 @@
             <!-- Quota settings -->
             <quota>default</quota>
         </default>
-
-        <dango>
-            <password>{{ dango_clickhouse_password }}</password>
-            <networks>
-                <ip>::/0</ip>
-            </networks>
-            <profile>default</profile>
-            <quota>default</quota>
-        </dango>
     </users>
 
     <!-- User profiles -->

@@ -16,7 +16,7 @@
     name: python3-psycopg2
     state: present
 
-- name: Create Dango DB user
+- name: Create psql Dango DB user
   tags: setup
   community.postgresql.postgresql_user:
     name: "{{ dango_db_user }}"
@@ -27,7 +27,7 @@
     login_port: "{{ db_port }}"
     state: present
 
-- name: Create Dango production database
+- name: Create psql Dango production database
   tags: setup
   community.postgresql.postgresql_db:
     name: "{{ dango_network }}_{{ dango_db_name }}"
@@ -41,7 +41,7 @@
   loop_control:
     loop_var: dango_network
 
-- name: Grant ALL privileges on the Dango database to the Dango user
+- name: Grant psql ALL privileges on the Dango database to the Dango user
   tags: setup
   community.postgresql.postgresql_privs:
     type: database
@@ -57,23 +57,40 @@
   loop_control:
     loop_var: dango_network
 
+- name: Debug variables
+  debug:
+    msg: "Network: {{ dango_network }}, DB name: {{ dango_network }}_{{ dango_clickhouse_name }} {{ clickhouse_password }}"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
 - name: Create clickhouse database
-  clickhouse_db:
+  community.clickhouse.clickhouse_db:
     name: "{{ dango_network }}_{{ dango_clickhouse_name }}"
     state: present
     login_host: 127.0.0.1
-    login_port: 8123
+    login_port: 9000
     login_user: default
     login_password: "{{ clickhouse_password }}"
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network
 
-- name: Grant database access to user
-  clickhouse_client:
+- name: Create clickhouse dango user
+  community.clickhouse.clickhouse_user:
+    login_host: 127.0.0.1
+    login_port: 9000
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
+    name: dango
+    password: "{{ dango_clickhouse_password }}"
+    update_password: always
+
+- name: Grant clickhouse database access to user
+  community.clickhouse.clickhouse_client:
     execute: "GRANT ALL ON {{ dango_network }}_{{ dango_clickhouse_name }}.* TO {{ dango_clickhouse_user }}"
     login_host: 127.0.0.1
-    login_port: 8123
+    login_port: 9000
     login_user: default
     login_password: "{{ clickhouse_password }}"
   loop: "{{ dango_networks }}"
