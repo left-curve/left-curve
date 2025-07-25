@@ -6,6 +6,11 @@ concurrency:
 
 on:
   workflow_dispatch:
+    inputs:
+      faucet_version:
+        required: false
+        description: "Define faucet version for deployment"
+        default: "latest"
 
 jobs:
   deploy-faucet:
@@ -42,4 +47,4 @@ jobs:
         run: |
           cd deploy
           pipx ensurepath
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=0.1.5
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=${{ github.event.inputs.faucet_version }}
