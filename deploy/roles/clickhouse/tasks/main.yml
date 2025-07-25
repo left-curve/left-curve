@@ -12,9 +12,12 @@
     fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
 
 - name: Copy config files
+  become: true
+  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ config_dir }}/{{ item }}"
+    owner: "{{ deploy_user }}"
   loop:
     - config.xml
     - users.xml
@@ -28,11 +31,6 @@
     recreate: true
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
-    ports:
-      - "127.0.0.1:8123:8123" # HTTP interface
-      - "127.0.0.1:9000:9000" # Native TCP interface
-      - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
-      - "127.0.0.1:9004:9004" # MySQL compatibility interface
     volumes:
       - "{{ data_dir }}:/var/lib/clickhouse"
       - "{{ logs_dir }}:/var/log/clickhouse-server"
@@ -45,6 +43,10 @@
         [
           "CMD",
           "clickhouse-client",
+          "--user",
+          "default",
+          "--password",
+          "{{ clickhouse_password }}",
           "--query",
           "SELECT 1"
         ]

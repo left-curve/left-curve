@@ -1,0 +1,26 @@
+- name: Deploy Traefik
+  community.docker.docker_compose_v2:
+    project_name: traefik
+    definition:
+      services:
+        traefik:
+          image: traefik:v3.5
+          ports:
+            - "8080:8080"
+            - "{{ tailscale_ip }}:8888:8888"
+            - "26656:26656"
+            - "{{ tailscale_ip }}:26657:26657"
+          labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.dashboard.rule=Host(`{{ tailscale_ip }}`)"
+            - "traefik.http.routers.dashboard.entrypoints=dashboard"
+            - "traefik.http.routers.dashboard.service=api@internal"
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+          command:
+            - --api.dashboard=true
+            - --providers.docker=true
+            - --entrypoints.dashboard.address=:8888
+            - --entrypoints.dango.address=:8080
+            - --entrypoints.cometbftp2p.address=:26656
+            - --entrypoints.cometbft.address=:26657

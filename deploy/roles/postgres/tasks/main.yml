@@ -27,7 +27,5 @@
     env:
       POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
       POSTGRES_PASSWORD: "{{ db_password }}"
-    ports:
-      - "127.0.0.1:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
