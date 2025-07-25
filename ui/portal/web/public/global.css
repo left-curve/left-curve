@@ -173,6 +173,31 @@ body {
 }
 
 /* ChartIQ */
+cq-drawing-palette cq-separator {
+  opacity: .4;
+  border-color: var(--color-secondary-700);
+}
+
+cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
+  margin: 5px 4px ;
+}
+
+cq-drawing-palette cq-scroll {
+  scrollbar-width: none;
+  scrollbar-color:initial;
+}
+
+cq-drawing-palette cq-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+cq-drawing-palette cq-scroll:hover {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-gray) var(--color-surface-primary-rice);
+}
+
+
 .ciq-day .ciq-nav,
 .ciq-day .chartContainer,
 .ciq-day cq-chart-title,
