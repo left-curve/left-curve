@@ -42,7 +42,7 @@ export function candlesSubscription<
     subscription (
       $baseDenom: String!
       $quoteDenom: String!
-      $interval: CandleIntervals!
+      $interval: CandleInterval!
       $laterThan: DateTime
       $limit: Int
     ) {
