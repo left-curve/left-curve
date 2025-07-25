@@ -64,7 +64,7 @@
             <timeout_before_checking_execution_speed>10</timeout_before_checking_execution_speed>
 
             <!-- Network settings -->
-            <max_concurrent_queries_for_user>10</max_concurrent_queries_for_user>
+            <max_concurrent_queries_for_user>100</max_concurrent_queries_for_user>
 
             <!-- Allow DDL -->
             <allow_ddl>1</allow_ddl>

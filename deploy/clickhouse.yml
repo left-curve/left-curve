@@ -1,0 +1,5 @@
+- hosts: clickhouse
+  become: true
+  become_user: "{{ deploy_user }}"
+  roles:
+    - clickhouse

@@ -87,12 +87,11 @@ where
         })?
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer {
-        runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-            indexer.handle.handle().clone(),
-        ),
-        context: dango_context.clone(),
-    };
+    let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone()),
+        dango_context.clone(),
+    );
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
@@ -115,14 +114,25 @@ where
     let app = suite.lock().await.app.clone_without_indexer();
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
-        indexer_context,
+        indexer_context.clone(),
         Arc::new(Mutex::new(app)),
         Arc::new(mock_client),
         indexer_path,
     );
 
-    let dango_httpd_context =
-        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+    let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
+        indexer_context.clone(),
+        "http://localhost:8123".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+        "default".to_string(),
+    );
+
+    let dango_httpd_context = dango_httpd::context::Context::new(
+        indexer_httpd_context.clone(),
+        indexer_clickhouse_context.clone(),
+        dango_context,
+    );
 
     dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)
         .await

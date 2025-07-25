@@ -49,6 +49,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/clickhouse",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -101,6 +102,7 @@ async-trait                 = "0"
 awc                         = "3"
 axum                        = "0.8"
 base64                      = "0.22"
+bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
 blake3                      = "1"
@@ -109,6 +111,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
+clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" }
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -237,6 +240,7 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

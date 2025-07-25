@@ -1,13 +1,14 @@
 use {
     async_graphql::Schema,
-    indexer_httpd::graphql::{mutation, query, subscription},
+    dango_httpd::graphql::{query::Query, subscription::Subscription},
+    indexer_httpd::graphql::mutation::Mutation,
 };
 
 fn main() {
     let schema = Schema::build(
-        query::Query::default(),
-        mutation::Mutation::default(),
-        subscription::Subscription::default(),
+        Query::default(),
+        Mutation::default(),
+        Subscription::default(),
     )
     .finish();
 

@@ -116,11 +116,11 @@ impl Indexer for HookedIndexer {
             .iter_mut()
             .rev()
         {
-            if let Err(e) = indexer.shutdown() {
+            if let Err(err) = indexer.shutdown() {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Error in shutdown: {:?}", e);
+                tracing::error!(err = %err, indexer_name = indexer.name(), "Error in shutdown");
 
-                errors.push(e.to_string());
+                errors.push(err.to_string());
             }
         }
 
@@ -234,7 +234,13 @@ impl Indexer for HookedIndexer {
             {
                 if let Err(err) = indexer.post_indexing(block_height, querier.clone(), &mut ctx) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!("Error in post_indexing: {:?}", err);
+                    tracing::error!(
+                        indexer = indexer.name(),
+                        err = %err,
+                        block_height,
+                        "Error post_indexing"
+                    );
+
                     errors.push(err.to_string());
                 }
             }
@@ -305,9 +311,6 @@ impl Indexer for HookedIndexer {
 
 impl Drop for HookedIndexer {
     fn drop(&mut self) {
-        // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
-        // expects a Tokio context. We must call `commit` manually on it within our Tokio
-        // context.
         self.shutdown().expect("can't shutdown hooked_indexer");
     }
 }

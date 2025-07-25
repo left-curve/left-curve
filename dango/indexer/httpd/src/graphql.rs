@@ -84,6 +84,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
     }
 
     schema_builder
+        .data(dango_httpd_context.indexer_clickhouse_context.clone())
         .data(dango_httpd_context.indexer_httpd_context.base.clone())
         .data(dango_httpd_context.indexer_httpd_context.clone())
         .data(dango_httpd_context.db.clone())

@@ -1,3 +1,73 @@
+type Account {
+	accountIndex: Int!
+	address: String!
+	accountType: AccountType!
+	createdBlockHeight: Int!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	users: [User!]!
+}
+
+type AccountConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [AccountEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Account!]!
+}
+
+"""
+An edge in a connection.
+"""
+type AccountEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Account!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum AccountSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
+"""
+Types of accounts the protocol supports.
+"""
+enum AccountType {
+	"""
+	A single-signature account that cannot borrow margin loans.
+	"""
+	spot
+	"""
+	A single-signature account that can borrow margin loans.
+	
+	The loans are collateralized by assets held in the account. The account
+	is capable of rejecting transactions that may cause it to become
+	insolvent, and carrying out liquidations if necessary.
+	"""
+	margin
+	"""
+	A multi-signature account. Cannot borrow margin loans.
+	"""
+	multi
+}
+
+scalar BigDecimal
+
 type Block {
 	blockHeight: Int!
 	hash: String!
@@ -53,10 +123,86 @@ enum BlockSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
+type Candle {
+	quoteDenom: String!
+	baseDenom: String!
+	interval: CandleInterval!
+	blockHeight: Int!
+	open: BigDecimal!
+	high: BigDecimal!
+	low: BigDecimal!
+	close: BigDecimal!
+	volumeBase: BigDecimal!
+	volumeQuote: BigDecimal!
+	"""
+	Return time_start in ISO 8601 format with time zone.
+	"""
+	timeStart: String!
+	"""
+	Return time_start as a unix timestamp
+	"""
+	timeStartUnix: Int!
+	"""
+	Return time_end in ISO 8601 format with time zone.
+	"""
+	timeEnd: String!
+	"""
+	Return time_end as a unix timestamp
+	"""
+	timeEndUnix: Int!
+}
+
+type CandleConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [CandleEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Candle!]!
+}
+
+"""
+An edge in a connection.
+"""
+type CandleEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Candle!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum CandleInterval {
+	ONE_SECOND
+	ONE_MINUTE
+	FIVE_MINUTES
+	FIFTEEN_MINUTES
+	ONE_HOUR
+	FOUR_HOURS
+	ONE_DAY
+	ONE_WEEK
+}
+
 enum CheckValue {
 	EQUAL
 	CONTAINS
 }
+
+"""
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
 
 type Event {
 	type: String!
@@ -146,6 +292,12 @@ A scalar that can represent any JSON value.
 """
 scalar JSON
 
+enum KeyType {
+	SECP_25_6R_1
+	SECP_25_6K_1
+	ETHEREUM
+}
+
 type Message {
 	orderIdx: Int!
 	data: JSON!
@@ -231,6 +383,19 @@ type PageInfo {
 	When paginating forwards, the cursor to continue.
 	"""
 	endCursor: String
+}
+
+type PublicKey {
+	username: String!
+	keyHash: String!
+	publicKey: String!
+	keyType: KeyType!
+	createdBlockHeight: Int!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	users: [User!]!
 }
 
 type Query {
@@ -322,6 +487,27 @@ type Query {
 		"""
 		last: Int,		sortBy: EventSortBy
 	): EventConnection!
+	"""
+	Get paginated transfers
+	"""
+	transfers(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: TransferSortBy,		blockHeight: Int,		fromAddress: String,		toAddress: String,		username: String
+	): TransferConnection!
 	queryApp(
 		"""
 		Request as JSON
@@ -341,6 +527,54 @@ type Query {
 		"""
 		tx: UnsignedTx!
 	): JSON!
+	"""
+	Get paginated accounts.
+	"""
+	accounts(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		before: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Cursor based pagination
+		"""
+		last: Int,		sortBy: AccountSortBy,		blockHeight: Int,		username: String,		address: String
+	): AccountConnection!
+	user(username: String!): User
+	users(after: String, before: String, first: Int, last: Int, blockHeight: Int, publicKey: String, publicKeyHash: String): UserConnection!
+	"""
+	Get paginated candles
+	"""
+	candles(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Base denom
+		"""
+		baseDenom: String!,
+		"""
+		Quote denom
+		"""
+		quoteDenom: String!,
+		"""
+		Interval
+		"""
+		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
+	): CandleConnection!
 }
 
 type Status {
@@ -360,10 +594,20 @@ type Store {
 }
 
 type Subscription {
+	accounts(username: String, sinceBlockHeight: Int): [Account!]!
+	transfers(address: String, username: String, sinceBlockHeight: Int): [Transfer!]!
 	block: Block!
 	transactions(sinceBlockHeight: Int): [Transaction!]!
 	messages(sinceBlockHeight: Int): [Message!]!
 	events(sinceBlockHeight: Int, filter: [Filter!]): [Event!]!
+	"""
+	Get candles for a given base and quote denom, interval, and later than time.
+	If `limit` is provided, it will be used to limit the number of candles returned.
+	If `limit` is not provided, it will default to MAX_PAST_CANDLES.
+	If `limit` is greater than MAX_PAST_CANDLES, it will be set to MAX_PAST_CANDLES.
+	If `later_than` is provided, it will be used to filter the candles returned.
+	"""
+	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime, limit: Int): [Candle!]!
 }
 
 type Transaction {
@@ -427,6 +671,57 @@ enum TransactionSortBy {
 	BLOCK_HEIGHT_DESC
 }
 
+type Transfer {
+	idx: Int!
+	blockHeight: Int!
+	txHash: String!
+	fromAddress: String!
+	toAddress: String!
+	amount: String!
+	denom: String!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	accounts: [Account!]!
+	fromAccount: Account
+	toAccount: Account
+}
+
+type TransferConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TransferEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Transfer!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TransferEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Transfer!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
+enum TransferSortBy {
+	BLOCK_HEIGHT_ASC
+	BLOCK_HEIGHT_DESC
+}
+
 """
 A transaction that can be sent to the chain.
 
@@ -451,6 +746,46 @@ See [UnsignedTx](https://github.com/left-curve/left-curve/blob/main/grug/types/s
 """
 scalar UnsignedTx
 
+type User {
+	username: String!
+	createdBlockHeight: Int!
+	"""
+	Returns the account creation timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	publicKeys: [PublicKey!]!
+	accounts: [Account!]!
+}
+
+type UserConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [UserEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [User!]!
+}
+
+"""
+An edge in a connection.
+"""
+type UserEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: User!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
+}
+
 """
 Directs the executor to include this field or fragment only when the `if` argument is true.
 """
@@ -459,6 +794,10 @@ directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
 Directs the executor to skip this field or fragment when the `if` argument is true.
 """
 directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Provides a scalar specification URL for specifying the behavior of custom scalar types.
+"""
+directive @specifiedBy(url: String!) on SCALAR
 schema {
 	query: Query
 	mutation: Mutation

@@ -57,6 +57,29 @@
   loop_control:
     loop_var: dango_network
 
+- name: Create clickhouse database
+  clickhouse_db:
+    name: "{{ dango_network }}_{{ dango_clickhouse_name }}"
+    state: present
+    login_host: 127.0.0.1
+    login_port: 8123
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
+- name: Grant database access to user
+  clickhouse_client:
+    execute: "GRANT ALL ON {{ dango_network }}_{{ dango_clickhouse_name }}.* TO {{ dango_clickhouse_user }}"
+    login_host: 127.0.0.1
+    login_port: 8123
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
 - name: Copy app.toml
   vars:
     dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
@@ -80,11 +103,12 @@
   loop_control:
     loop_var: dango_network
 
-- name: Connect Postgres container to extra network
+- name: Connect Postgres and Clickhouse container to extra network
   community.docker.docker_network:
     name: "{{ dango_network }}_backend"
     connected:
       - "{{ docker_db_host }}"
+      - "{{ docker_clickhouse_host }}"
     appends: true
   loop: "{{ dango_networks }}"
   loop_control:
@@ -118,6 +142,9 @@
     env:
       HOME: /app
       INDEXER__DATABASE__URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ docker_db_host }}:{{ db_port }}/{{ dango_network }}_{{ dango_db_name }}"
+      INDEXER__CLICKHOUSE__USER: "{{ dango_clickhouse_user }}"
+      INDEXER__CLICKHOUSE__PASSWORD: "{{ dango_clickhouse_password }}"
+      INDEXER__CLICKHOUSE__DATABASE: "{{ dango_network }}_{{ dango_clickhouse_name }}"
       SENTRY__ENABLED: "true"
       SENTRY__DSN: "{{ lookup('env','SENTRY__DSN') }}"
       SENTRY__ENVIRONMENT: "production-{{ dango_network }}"

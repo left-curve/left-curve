@@ -53,6 +53,7 @@ impl Preset for TestOption {
                 height: GENESIS_BLOCK_HEIGHT,
                 timestamp: MOCK_GENESIS_TIMESTAMP,
             },
+            mocked_clickhouse: false,
             // By default, give the owner and each user 100k USDC from Ethereum.
             bridge_ops: |accounts| {
                 vec![
