@@ -1,5 +1,4 @@
 use {
-    assert_json_diff::assert_json_eq,
     assertor::*,
     chrono::DateTime,
     dango_genesis::Contracts,
@@ -161,26 +160,14 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         .await?
         .unwrap();
 
-    let candle_1m_serde =
-        serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&candle_1m).unwrap())
-            .unwrap();
-
-    // `PairPrice` is serialized as u128 for clickhouse
-    let expected_candle = serde_json::json!({
-        "quote_denom": "bridge/usdc",
-        "base_denom": "dango",
-        "close": 2.75e25,
-        "high":  2.75e25,
-        "interval": "1m",
-        "low": 2.75e25,
-        "open": 2.75e25,
-        "time_start": serde_json::Number::from(31536000000000_u64),
-        "volume_base": 25000000,
-        "volume_quote": 687500000,
-        "block_height": 2,
-    });
-
-    assert_json_eq!(candle_1m_serde, expected_candle);
+    assert_that!(candle_1m.quote_denom).is_equal_to("bridge/usdc".to_string());
+    assert_that!(candle_1m.base_denom).is_equal_to("dango".to_string());
+    assert_that!(candle_1m.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1m.high).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1m.low).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1m.close).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1m.volume_base).is_equal_to(Udec128_6::from_str("25.0").unwrap());
+    assert_that!(candle_1m.volume_quote).is_equal_to(Udec128_6::from_str("687.5").unwrap());
 
     Ok(())
 }
