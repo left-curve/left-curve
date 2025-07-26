@@ -70,6 +70,8 @@ export const ChartIQ = ({ coins }) => {
         channelWrite(stx.uiContext.config.channels.drawing, true, stx);
       }
 
+      CIQ.Studies.addStudy(stx, "volume", { id: "Volume" });
+
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
       stx.controls.mSticky = false;
@@ -143,7 +145,15 @@ export const ChartIQ = ({ coins }) => {
             responsive=""
             tooltip="Views"
           />
-
+          <cq-menu
+            class="nav-dropdown ciq-studies alignright"
+            cq-focus="input"
+            config="studies"
+            text="Studies"
+            icon="studies"
+            responsive=""
+            tooltip="Studies"
+          />
           <div className="ciq-menu-section">
             <div className="ciq-dropdowns">
               <cq-menu
