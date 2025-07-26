@@ -179,12 +179,12 @@ cq-drawing-palette cq-separator {
 }
 
 cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
-  margin: 5px 4px ;
+  margin: 5px 4px;
 }
 
 cq-drawing-palette cq-scroll {
   scrollbar-width: none;
-  scrollbar-color:initial;
+  scrollbar-color: initial;
 }
 
 cq-drawing-palette cq-scroll::-webkit-scrollbar {
@@ -268,9 +268,12 @@ cq-heading {
 cq-dropdown .content>.item.ciq-active .ciq-switch,
 cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
 .ciq-active .ciq-radio span:after,
-.ciq-radio.ciq-active span:after {
+.ciq-radio.ciq-active span:after,
+.ciq-active>.ciq-switch,
+.ciq-switch:checked,
+.ciq-active>.ciq-switch:hover {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
-  background: theme("colors.red-bean.600");
+  background: theme("colors.red-bean.500");
 }
 
 .ciq-active .ciq-radio span:after,
@@ -319,7 +322,9 @@ cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-ite
 cq-drawing-palette,
 cq-menu.nav-dropdown:before,
 .ciq-nav cq-toggle:before,
-cq-views .item:hover {
+cq-views .item:hover,
+cq-study-legend.shaded .item:hover,
+html:not([ciq-last-interaction="touch"]) cq-studies .item:hover {
   background: var(--color-surface-tertiary-rice) !important
 }
 
@@ -405,25 +410,6 @@ cq-dialog.ciq-day {
   border-radius: 20px;
 }
 
-cq-context.ciq-night input,
-[cq-context].ciq-night input,
-cq-dialog.ciq-night input,
-.ciq-night .share-copy .share-link-div,
-cq-context.ciq-day input,
-[cq-context].ciq-day input,
-cq-dialog.ciq-day input,
-.ciq-day .share-copy .share-link-div {
-  color: var(--color-secondary-700);
-  background-color: var(--color-surface-secondary-rice);
-  border: transparent;
-  outline: none;
-  border-radius: 14px;
-  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
-  box-shadow: theme("boxShadow.account-card");
-  padding: 13px 8px;
-  height: 46px;
-  @apply diatype-xs-medium;
-}
 
 cq-chart-title cq-symbol {
   @apply h3-heavy;
@@ -441,8 +427,14 @@ cq-dialog.ciq-day input:hover {
 .ciq-day .ciq-btn,
 .ciq-day .ciq-btn-negative,
 .ciq-day .annotationCancel,
-.ciq-day .annotationSave {
-  height: 40px;
+.ciq-day .annotationSave,
+cq-study-legend .item.ciq-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  max-width: fit-content;
+  height: 25px;
+  min-width: 100px;
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
   box-shadow: theme("boxShadow.btn-shadow-gradient");
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
@@ -451,11 +443,23 @@ cq-dialog.ciq-day input:hover {
   border-image-source: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 8%, rgba(0, 0, 0, 0.07) 100%);
   border-radius: 14px;
   text-transform: capitalize;
-  padding: 10px 12px;
-  @apply exposure-sm-italic;
+  padding: 6px 8px;
+  @apply exposure-xs-italic;
 }
 
+cq-study-legend.shaded [section-dynamic] {
+  background: var(--color-surface-secondary-rice);
+}
 
+.ciq-dialog-cntrls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+cq-clickable {
+  margin: 8px auto 0;
+}
 
 .ciq-night .ciq-btn:hover,
 .ciq-night .ciq-btn-negative:hover,
@@ -465,13 +469,35 @@ cq-dialog.ciq-day input:hover {
 .ciq-day .ciq-btn-negative:hover,
 .ciq-day .annotationCancel:hover,
 .ciq-day .annotationSave:hover,
-html:not([ciq-last-interaction="touch"]) .ciq-btn:hover {
+cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn:hover {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
-  background: theme("colors.red-bean.600");
-  color: var(--color-surface-primary-rice);
+  background: theme("colors.red-bean.600") !important;
+  color: var(--color-surface-primary-rice) !important;
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
   box-shadow: theme("boxShadow.btn-shadow-gradient");
   border-image-source: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 8%, rgba(0, 0, 0, 0.07) 100%);
+}
+
+
+cq-heading.dropdown input {
+  border: 0px solid transparent;
+  padding-left: 8px;
+  outline: none;
+  overflow: hidden;
+  background-color: var(--color-surface-primary-rice);
+  border-radius: 10px;
+  transition: all 0.5s;
+  @apply diatype-xs-medium;
+  font-style: normal;
+}
+
+cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn {
+  display: flex;
+  margin: 6px auto 0;
+}
+
+cq-dropdown[config="studies"] .content {
+  padding-top: 16px;
 }
 
 
