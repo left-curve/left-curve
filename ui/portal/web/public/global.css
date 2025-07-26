@@ -179,12 +179,12 @@ cq-drawing-palette cq-separator {
 }
 
 cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
-  margin: 5px 4px ;
+  margin: 5px 4px;
 }
 
 cq-drawing-palette cq-scroll {
   scrollbar-width: none;
-  scrollbar-color:initial;
+  scrollbar-color: initial;
 }
 
 cq-drawing-palette cq-scroll::-webkit-scrollbar {

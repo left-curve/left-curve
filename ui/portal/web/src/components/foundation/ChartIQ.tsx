@@ -70,7 +70,15 @@ export const ChartIQ = ({ coins }) => {
         channelWrite(stx.uiContext.config.channels.drawing, true, stx);
       }
 
-      CIQ.Studies.addStudy(stx, "volume", { id: "Volume" });
+      const volumeColor =
+        theme === "dark" ? { up: "#66C86A", down: "#FF6B6B" } : { up: "#25B12A", down: "#E71818" };
+
+      CIQ.Studies.addStudy(
+        stx,
+        "volume",
+        { id: "Volume" },
+        { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
+      );
 
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;

@@ -3,6 +3,7 @@ import { CandleInterval } from "@left-curve/dango/types";
 
 import { CIQ } from "@left-curve/chartiq";
 import getLicenseKey from "@left-curve/chartiq/license/key";
+import { Decimal } from "@left-curve/dango/utils";
 
 getLicenseKey(CIQ);
 
@@ -108,7 +109,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
 
   function candlesToChartIQData(candles: Candle[]) {
     return candles.reverse().map((candle) => ({
-      Volume: +candle.volumeQuote,
+      Volume: +Decimal(candle.volumeQuote).div(Decimal(10).pow(6)).toFixed(0, 0),
       DT: new Date(candle.timeStart),
       Open: +candle.open,
       High: +candle.high,
