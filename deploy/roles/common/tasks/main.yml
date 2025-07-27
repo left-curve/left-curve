@@ -89,6 +89,12 @@
     proto: udp
   # Tailscale
   with_items: ['41641']
+- ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  with_items: ['8081']
 - ufw: logging=low
   tags: setup
 - ufw: state=enabled
