@@ -31,3 +31,8 @@
       - "127.0.0.1:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
