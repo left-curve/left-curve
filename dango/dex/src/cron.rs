@@ -1,6 +1,6 @@
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
+        FillingOutcome, HALF, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
         MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, RESERVES,
         VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
     },
@@ -239,13 +239,24 @@ fn clear_orders_of_pair(
 
     // ------------------------- 3. Match limit orders -------------------------
 
+    // Find the mid price at this point.
+    let mid_price = match (merged_bid_iter.peek(), merged_ask_iter.peek()) {
+        (Some(Ok((bid_price, _))), Some(Ok((ask_price, _)))) => {
+            Some(bid_price.checked_add(*ask_price)?.checked_mul(HALF)?)
+        },
+        (Some(Ok((bid_price, _))), None) => Some(*bid_price),
+        (None, Some(Ok((ask_price, _)))) => Some(*ask_price),
+        (Some(Err(err)), _) | (_, Some(Err(err))) => return Err(err.clone().into()),
+        (None, None) => None,
+    };
+
     // Run the limit order matching algorithm.
     let MatchingOutcome {
         clearing_price,
         volume,
         bids,
         asks,
-    } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
+    } = match_limit_orders(merged_bid_iter, merged_ask_iter, mid_price)?;
 
     // ------------------------- 4. Fill limit orders --------------------------
 

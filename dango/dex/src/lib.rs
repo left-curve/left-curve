@@ -23,3 +23,5 @@ pub const MAX_ORACLE_STALENESS: grug::Duration = grug::Duration::from_seconds(5)
 /// contract rejects unexpected transfers, but it is still a good idea to
 /// implement this, just in case.
 pub const MINIMUM_LIQUIDITY: grug::Uint128 = grug::Uint128::new(1_000);
+
+const HALF: grug::Udec128_24 = grug::Udec128_24::new_percent(50);

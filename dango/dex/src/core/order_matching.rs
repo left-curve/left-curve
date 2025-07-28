@@ -1,9 +1,7 @@
 use {
-    crate::{Order, OrderTrait},
+    crate::{HALF, Order, OrderTrait},
     grug::{Number, NumberConst, StdResult, Udec128_6, Udec128_24},
 };
-
-const HALF: Udec128_24 = Udec128_24::new_percent(50);
 
 pub struct MatchingOutcome {
     /// The single clearing price for all matched limit orders determined by the
@@ -28,7 +26,16 @@ pub struct MatchingOutcome {
 ///   for orders the same price, the oldest one first.
 /// - `ask_iter`: An iterator over the SELL orders in the book that similarly
 ///   follows the price-time priority.
-pub fn match_limit_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
+/// - `mid_price`: The mid price of the order book _before_ the incoming orders
+///   are merged in. This is defined as follows: if there are orders are both
+///   sides, the mid point of the best bid and the best ask; if there are only
+///   orders on one side, the best price on that side; if there are no orders,
+///   `None`.
+pub fn match_limit_orders<B, A>(
+    mut bid_iter: B,
+    mut ask_iter: A,
+    mid_price: Option<Udec128_24>,
+) -> StdResult<MatchingOutcome>
 where
     B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
     A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
@@ -42,25 +49,6 @@ where
     let mut ask_is_new = true;
     let mut ask_volume = Udec128_6::ZERO;
     let mut range = None;
-
-    // Find the current mid price, if order exists on both sides of the book.
-    // If there are only orders on one side, take the price of this side.
-    // If there is no order, then nothing to do, return.
-    let mid_price = match (bid, ask) {
-        (Some((bid_price, _)), Some((ask_price, _))) => {
-            Some(bid_price.checked_add(ask_price)?.checked_mul(HALF)?)
-        },
-        (Some((bid_price, _)), None) => Some(bid_price),
-        (None, Some((ask_price, _))) => Some(ask_price),
-        (None, None) => {
-            return Ok(MatchingOutcome {
-                clearing_price: None,
-                volume: Udec128_6::ZERO,
-                bids,
-                asks,
-            });
-        },
-    };
 
     loop {
         let Some((bid_price, bid_order)) = bid else {
@@ -102,7 +90,8 @@ where
         }
     }
 
-    // Select the clearing price.
+    // Select the clearing price. If the mid price is within the range, choose it;
+    // otherwise, choose the last bid or ask price.
     let clearing_price = if let Some((ask_price, bid_price)) = range {
         if let Some(mid_price) = mid_price {
             if bid_price <= mid_price {
