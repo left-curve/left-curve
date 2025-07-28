@@ -29,3 +29,9 @@ export type Binary = Uint8Array;
 export type Encoder = {
   encode(): Uint8Array;
 };
+
+/*
+ * Represents a date-time string in ISO 8601 format.
+ * Example: "2023-10-01T12:00:00Z"
+ */
+export type DateTime = string;

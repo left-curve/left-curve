@@ -98,6 +98,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           label="Size"
           {...register("size", {
             strategy: "onChange",
+            mask: numberMask,
             validate: (v) => {
               if (Number(v) > Number(maxSizeAmount))
                 return m["errors.validations.insufficientFunds"]();

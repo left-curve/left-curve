@@ -5,6 +5,7 @@ import type { Config } from "@left-curve/store/types";
 const chain = local;
 
 export const FAUCET_URI = "http://localhost:8082/mint";
+export const QUEST_URI = "http://localhost:8081/check_username";
 
 export const coins = {
   dango: {

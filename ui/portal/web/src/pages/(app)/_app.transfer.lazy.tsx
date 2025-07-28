@@ -124,7 +124,7 @@ function TransferApplet() {
       onSuccess: () => {
         reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });

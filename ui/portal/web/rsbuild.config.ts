@@ -27,6 +27,7 @@ export default defineConfig({
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": storePath[(process.env.CONFIG_ENVIRONMENT || "local") as keyof typeof storePath],
+      "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },

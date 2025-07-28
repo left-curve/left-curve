@@ -23,8 +23,8 @@ use {
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
 pub struct Candle {
-    quote_denom: String,
-    base_denom: String,
+    pub quote_denom: String,
+    pub base_denom: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "clickhouse::serde::chrono::datetime64::micros")]
     pub time_start: DateTime<Utc>,
