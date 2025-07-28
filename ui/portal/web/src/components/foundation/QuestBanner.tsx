@@ -1,5 +1,6 @@
 import { Button, twMerge } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
@@ -29,40 +30,33 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
 
 export const QuestBanner: React.FC = () => {
   const { account, isConnected } = useAccount();
-  const { isQuestBannerVisible, setQuestBannerVisibility } = useApp();
+  const { isQuestBannerVisible, setQuestBannerVisibility, settings } = useApp();
+  const { formatNumberOptions } = settings;
 
-  const { data: quests } = useQuery({
+  const { data: quests, isLoading } = useQuery({
     queryKey: ["quests", account?.username],
     enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
       fetch(`https://devnet.dango.exchange/quests/check_username/${account?.username}`).then(
         (res) => res.json(),
       ),
-    initialData: () => ({
-      eth_address: null,
-      tx_count: null,
-      limit_orders: false,
-      market_orders: false,
-      trading_pairs: Number.MAX_SAFE_INTEGER,
-      trading_volumes: Number.MAX_SAFE_INTEGER.toString(),
-    }),
   });
 
-  const isTxCountCompleted = quests.tx_count >= 10;
-  const isLimitOrdersCompleted = quests.limit_orders;
-  const isMarketOrdersCompleted = quests.market_orders;
-  const isTradingPairsCompleted = quests.trading_pairs === 0;
-  const isTradingVolumesCompleted = quests.trading_volumes === 0;
+  const isTxCountCompleted = quests?.tx_count >= 10;
+  const isLimitOrdersCompleted = quests?.limit_orders;
+  const isMarketOrdersCompleted = quests?.market_orders;
+  const isTradingPairsCompleted = quests?.trading_pairs === 0;
+  const isTradingVolumesCompleted = quests?.trading_volumes === 0;
 
   const areQuestsCompleted =
-    quests.eth_address &&
+    quests?.eth_address &&
     isTxCountCompleted &&
     isLimitOrdersCompleted &&
     isMarketOrdersCompleted &&
     isTradingPairsCompleted &&
     isTradingVolumesCompleted;
 
-  if (!isQuestBannerVisible) return null;
+  if (!isQuestBannerVisible || isLoading) return null;
 
   return (
     <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
@@ -81,11 +75,23 @@ export const QuestBanner: React.FC = () => {
             completed={!!quests.eth_address}
           />
           <Quest
-            text={m["quests.galxeQuest.quest.swapAtLeastForUSD"]({ number: 1 })}
+            text={m["quests.galxeQuest.quest.swapAtLeastForUSD"]({
+              number: formatNumber(
+                formatUnits(
+                  Decimal(1000000000000)
+                    .minus(quests?.trading_volumes || 0)
+                    .toFixed(0, 0),
+                  6,
+                ),
+                { ...formatNumberOptions, currency: "USD" },
+              ),
+            })}
             completed={isTxCountCompleted}
           />
           <Quest
-            text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({ number: 2 })}
+            text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({
+              number: quests?.trading_pairs,
+            })}
             completed={isLimitOrdersCompleted}
           />
           <Quest
