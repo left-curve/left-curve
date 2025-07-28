@@ -70,6 +70,23 @@ services:
       timeout: 5s
       retries: 3
 
+  faucet-bot:
+    image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    labels:
+      <<: *common-labels
+    depends_on:
+      dango:
+        condition: service_healthy
+    environment:
+      - HOME=/app
+    tty: true
+    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "{{ chain_id }}"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     labels:
