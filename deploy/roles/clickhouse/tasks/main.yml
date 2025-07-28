@@ -45,6 +45,10 @@
         [
           "CMD",
           "clickhouse-client",
+          "--user",
+          "default",
+          "--password",
+          "{{ clickhouse_password }}",
           "--query",
           "SELECT 1"
         ]
