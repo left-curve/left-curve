@@ -77,7 +77,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       earlierThan: endDate.toJSON(),
     });
 
-    return candlesToChartIQData(nodes);
+    return candlesToChartIQData(nodes, baseCoin, quoteCoin);
   }
 
   async function fetchInitialData(
@@ -111,14 +111,22 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
     });
   }
 
-  function candlesToChartIQData(candles: Candle[]) {
+  function candlesToChartIQData(candles: Candle[], baseCoin: AnyCoin, quoteCoin: AnyCoin) {
     return candles.reverse().map((candle) => ({
       Volume: +Decimal(candle.volumeQuote).div(Decimal(10).pow(6)).toFixed(0, 0),
       DT: new Date(candle.timeStart),
-      Open: +candle.open,
-      High: +candle.high,
-      Low: +candle.low,
-      Close: +candle.close,
+      Open: +Decimal(candle.open)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+      High: +Decimal(candle.high)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+      Low: +Decimal(candle.low)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+      Close: +Decimal(candle.close)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
     }));
   }
 
@@ -143,7 +151,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
         limit: 1,
       },
       listener: ({ candles }) => {
-        const chartData = candlesToChartIQData(candles);
+        const chartData = candlesToChartIQData(candles, baseCoin, quoteCoin);
         context?.updateChartData(chartData);
         updateChartData(chartData);
       },
