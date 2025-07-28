@@ -82,7 +82,7 @@ export const WelcomeModal: React.FC = () => {
                 target="_blank"
                 rel="noreferrer"
                 variant="link"
-                className="p-0 h-fit"
+                className="p-0 pr-1 h-fit"
               >
                 Discord
               </Button>
