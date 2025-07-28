@@ -11,6 +11,8 @@ pub trait Index<K, T> {
     fn save(&self, storage: &mut dyn Storage, pk: K, data: &T) -> StdResult<()>;
 
     fn remove(&self, storage: &mut dyn Storage, pk: K, old_data: &T);
+
+    fn clear_all(&self, storage: &mut dyn Storage);
 }
 
 pub struct IndexedMap<'a, K, T, I, C = Borsh>
@@ -161,10 +163,6 @@ where
         self.primary.values(storage, min, max, order)
     }
 
-    pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
-        self.primary.clear(storage, min, max)
-    }
-
     // ------------------- iteration methods (prefix bound) --------------------
 
     pub fn prefix_range_raw<'b>(
@@ -234,6 +232,20 @@ where
         max: Option<PrefixBound<K>>,
     ) {
         self.primary.prefix_clear(storage, min, max)
+    }
+}
+
+impl<K, T, I, C> IndexedMap<'_, K, T, I, C>
+where
+    K: PrimaryKey,
+    C: Codec<T>,
+    I: IndexList<K, T>,
+{
+    pub fn clear_all(&self, storage: &mut dyn Storage) {
+        self.primary.clear(storage, None, None);
+        for index in self.idx.get_indexes() {
+            index.clear_all(storage);
+        }
     }
 }
 
@@ -2067,13 +2079,14 @@ mod cosmwasm_tests {
     #[test]
     fn clear_works() {
         let mut storage = MockStorage::new();
-        let (pks, _) = save_data(&mut storage);
+        save_data(&mut storage);
 
-        DATA.clear(&mut storage, None, None);
+        DATA.clear_all(&mut storage);
 
-        for key in pks {
-            assert!(!DATA.has(&storage, key));
-        }
+        assert!(DATA.is_empty(&storage));
+        assert!(DATA.idx.age.is_empty(&storage));
+        assert!(DATA.idx.name.is_empty(&storage));
+        assert!(DATA.idx.name_lastname.is_empty(&storage));
     }
 
     #[test]
