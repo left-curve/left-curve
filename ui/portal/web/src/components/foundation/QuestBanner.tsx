@@ -46,7 +46,7 @@ export const QuestBanner: React.FC = () => {
   const isLimitOrdersCompleted = quests.limit_orders;
   const isMarketOrdersCompleted = quests.market_orders;
   const isTradingPairsCompleted = quests.trading_pairs === 0;
-  const isTradingVolumesCompleted = quests.trading_volumes === 0;
+  const isTradingVolumesCompleted = Number(quests.trading_volumes) === 0;
 
   const areQuestsCompleted =
     quests.eth_address &&
