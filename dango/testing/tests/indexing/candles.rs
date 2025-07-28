@@ -5,12 +5,13 @@ use {
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
-        Coins, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, ResultExt,
-        Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24, Uint128, btree_map,
+        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
+        Uint128, btree_map, coins,
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::{
@@ -396,6 +397,211 @@ async fn create_pair_prices(
         .for_each(|outcome| {
             outcome.should_succeed();
         });
+
+    Ok(())
+}
+
+/// A comprehensive test that covers all cases:
+/// - limit bid matched against limit ask
+/// - limit bid matched against market ask
+/// - limit ask matched against limit bid
+/// - limit ask matched against market bid
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -> anyhow::Result<()>
+{
+    let (mut suite, mut accounts, _, contracts, _, _, _, _clickhouse_context) =
+        setup_test_with_indexer(TestOption {
+            // Start at block 0 at 1 second, with a block time of 20 seconds.
+            block_time: Duration::from_seconds(20),
+            genesis_block: BlockInfo {
+                height: 0,
+                timestamp: Timestamp::from_seconds(1),
+                hash: Hash256::ZERO,
+            },
+            ..Default::default()
+        })
+        .await;
+
+    // Update dango's oracle price. It isn't used in this test but is required
+    // for the contract to function.
+    // Block time 21.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(200),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Make an empty block at timestamps 41.
+    suite.make_empty_block();
+
+    // -------------------------------- block 1 --------------------------------
+
+    // Block 1
+    // Block time: 61 seconds
+    // Place the following orders:
+    // - limit, sell, price 100000 USDC per DANGO, size 2 DANGO
+    // - limit, buy, price 100000, size 1 DANGO
+    // - market, buy, size 1 DANGO
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100_000)), // price 100_000 * size 1
+                    max_slippage: Udec128::ZERO,
+                }],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        price: Udec128_24::new(100_000),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        price: Udec128_24::new(100_000),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => Uint128::new(2),
+                usdc::DENOM.clone() => Uint128::new(200_000), // market 100_000 + limit 100_000
+            },
+        )
+        .should_succeed();
+
+    // TODO: ensure there is one candle:
+    // time 60-120, open 100_000, high 100_000, low 100_000, close 100_000, volume 200_000 USD
+
+    // -------------------------------- block 2 --------------------------------
+
+    // Block 2
+    // Block time: 81 seconds
+    // Place the following orders:
+    // - limit, sell, price 99999, size 2
+    // - limit, buy, price 100000, size 1
+    // - market, buy, size 1
+    // The market order should fill at 99999 (volume: 99999 USD), limit orders should fill at 99999.5 (volume: 99999.5 USD).
+    // Total volume: 99999 + 99999.5 = 199998.5 USD.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(99_999)), // price 99_999 * size 1
+                    max_slippage: Udec128::ZERO,
+                }],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        price: Udec128_24::new(99_999),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        price: Udec128_24::new(100_000),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => Uint128::new(2),
+                usdc::DENOM.clone() => Uint128::new(199_999), // market 99_999 + limit 100_000
+            },
+        )
+        .should_succeed();
+
+    // TODO: ensure there is one candle:
+    // time 60-120, open 100_000, high 100_000, low 99_999, close 99_999.5, volume 399_998.5 (200_000 + 199_998.5)
+
+    // -------------------------------- block 3 --------------------------------
+
+    // Block 3
+    // Block time: 101 seconds
+    // Place the following orders:
+    // - limit, sell, price 100000, size 1
+    // - limit, buy, price 100001, size 2
+    // - market, sell, size 1
+    // The market order should fill at 100_001 (volume: 100_001 USD), limit orders should fill at 100_000.5 (volume: 100_000.5 USD).
+    // Total volume: 100_001 + 100_000.5 = 200_001.5 USD.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                    max_slippage: Udec128::ZERO,
+                }],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        price: Udec128_24::new(100_000),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        price: Udec128_24::new(100_001),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => Uint128::new(2), // market 1 + limit 1
+                usdc::DENOM.clone() => Uint128::new(200_002), // price 100_001 * size 2
+            },
+        )
+        .should_succeed();
+
+    // TODO: ensure there is one candle:
+    // time 60-120, open 100_000, high 100_001, low 99_999, close 100_000.5, volume 600_000 (399_998.5 + 200_001.5)
+
+    // -------------------------------- block 4 --------------------------------
+
+    // Block 4
+    // Block time: 121 seconds
+    // Do nothing.
+    suite.make_empty_block();
+
+    // TODO: ensure there are two candles:
+    // time 60-120, open 100_000, high 100_001, low 99_999, close 100_000.5, volume 600_000
+    // time 120-180, open 100_000.5, high 100_000.5, low 100_000.5, close 100_000.5, volume 0
+    // (All numbers inherited from the previous candle's close price, since no trade happened during this interval yet.)
 
     Ok(())
 }
