@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
+import { QUEST_URI } from "~/store";
 
 const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text }) => {
   return (
@@ -36,10 +37,7 @@ export const QuestBanner: React.FC = () => {
   const { data: quests, isLoading } = useQuery({
     queryKey: ["quests", account?.username],
     enabled: isConnected && isQuestBannerVisible,
-    queryFn: () =>
-      fetch(`https://devnet.dango.exchange/quests/check_username/${account?.username}`).then(
-        (res) => res.json(),
-      ),
+    queryFn: () => fetch(`${QUEST_URI}/${account?.username}`).then((res) => res.json()),
   });
 
   const isTxCountCompleted = quests?.tx_count >= 10;
