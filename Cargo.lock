@@ -3664,6 +3664,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-scripts"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-client",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "hex-literal",
+ "indexer-client",
+ "tokio",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
