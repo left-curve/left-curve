@@ -7,18 +7,19 @@
 - name: Copy config files
   become: true
   become_user: root
-  template:
-    src: "{{ item.src }}"
-    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item.dest }}"
-    owner: "{{ deploy_user }}"
-  loop:
-    - { src: "{{ dango_network}}/config/dango/app.toml", dest: "dango/app.toml" }
-    - { src: "{{ dango_network}}/config/cometbft/config.toml", dest: "cometbft/config.toml" }
-    - { src: "{{ dango_network}}/config/cometbft/genesis.json", dest: "cometbft/genesis.json" }
-    - { src: "{{ dango_network}}/config/cometbft/node_key.json", dest: "cometbft/node_key.json" }
-    - { src: "{{ dango_network}}/config/cometbft/priv_validator_key.json", dest: "cometbft/priv_validator_key.json" }
-    - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
-    - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ dango_network}}/config/dango/app.toml", dest: "dango/app.toml" }
+        - { src: "{{ dango_network}}/config/cometbft/config.toml", dest: "cometbft/config.toml" }
+        - { src: "{{ dango_network}}/config/cometbft/genesis.json", dest: "cometbft/genesis.json" }
+        - { src: "{{ dango_network}}/config/cometbft/node_key.json", dest: "cometbft/node_key.json" }
+        - { src: "{{ dango_network}}/config/cometbft/priv_validator_key.json", dest: "cometbft/priv_validator_key.json" }
+        - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
+        - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
 
 - name: Generate docker-compose.yml
   become: true
