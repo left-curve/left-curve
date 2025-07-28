@@ -1,4 +1,4 @@
-- hosts: dango
+- hosts: traefik
   become: true
   become_user: "{{ deploy_user }}"
   vars:

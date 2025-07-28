@@ -56,6 +56,8 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+    ports:
+      - "{{ tailscale_ip }}:${DANGO_PORT:-0}:8080"
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
     environment:
@@ -77,6 +79,8 @@ services:
     depends_on:
       dango:
         condition: service_healthy
+    ports:
+      - "{{ tailscale_ip }}:${FAUCET_PORT:-0}:8082"
     environment:
       - HOME=/app
     tty: true

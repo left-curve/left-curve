@@ -40,3 +40,37 @@
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     pull: always
     recreate: always
+
+- name: Get assigned ports
+  shell: |
+    docker port {{ deployment_name }}-dango-1 8080 | cut -d: -f2
+    docker port {{ deployment_name }}-faucet-bot-1 8082 | cut -d: -f2
+  register: assigned_ports
+
+- name: Set port facts
+  set_fact:
+    dango_port: "{{ assigned_ports.stdout_lines[0] }}"
+    faucet_port: "{{ assigned_ports.stdout_lines[1] }}"
+
+- name: Comment on PR
+  uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/issues/{{ github_pr_number }}/comments"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+    body_format: json
+    body:
+      body: |
+        🚀 **PR Preview Deploy Ready!**
+
+        - **Dango**: http://{{ tailscale_ip }}:{{ dango_port }}
+        - **Faucet**: http://{{ tailscale_ip }}:{{ faucet_port }}
+  when: github_pr_number is defined
+
+- name: Display URLs (manual deploy)
+  debug:
+    msg:
+      - "🚀 Preview Deploy Ready!"
+      - "Dango: http://{{ tailscale_ip }}:{{ dango_port }}"
+      - "Faucet: http://{{ tailscale_ip }}:{{ faucet_port }}"
+  when: github_pr_number is not defined

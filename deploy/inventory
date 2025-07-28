@@ -32,3 +32,5 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [full-app]
 100.122.37.57 ansible_user=debian
+
+[traefik]
