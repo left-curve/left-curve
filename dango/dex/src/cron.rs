@@ -155,15 +155,20 @@ fn clear_orders_of_pair(
     let mut market_bids = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .drain(storage, None, None)?
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?
         .into_iter()
         .peekable();
     let mut market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .drain(storage, None, None)?
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?
         .into_iter()
         .peekable();
+
+    // Delete all market orders, as they are immediate-or-cancel.
+    MARKET_ORDERS.clear(storage, None, None);
 
     // Create iterators over user orders.
     //
