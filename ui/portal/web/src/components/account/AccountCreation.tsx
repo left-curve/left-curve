@@ -206,7 +206,7 @@ export const Deposit: React.FC = () => {
       },
       onSuccess: async () => {
         await refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
         navigate({ to: "/" });
       },
     },

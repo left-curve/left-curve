@@ -501,17 +501,14 @@
   "quests": {
     "galxeQuest": {
       "title": "Galxe Quest",
-      "quest": [
-        {
-          "declarations": ["input quest"],
-          "selectors": ["quest"],
-          "match": {
-            "quest=0": "Connect your Ethereum wallet",
-            "quest=1": "Create a subaccount",
-            "quest=2": "Make a transfer of tokens"
-          }
-        }
-      ]
+      "quest": {
+        "connectEthereumWallet": "Connect your Ethereum wallet",
+        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more transactions on Ethereum mainnet",
+        "completeLimitOrder": "Complete a limit order",
+        "completeMarketOrder": "Complete a market order",
+        "swapAtLeastInPairs": "Trade in {number} different token pairs",
+        "swapAtLeastForUSD": "Trade $1M in volume (current: {number})"
+      }
     }
   },
   "transfer": {

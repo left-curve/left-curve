@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
@@ -41,6 +41,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
   const { coins } = useConfig();
+  const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
 
@@ -218,10 +219,12 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           ...order,
           funds: { [availableCoin.denom]: amount },
         });
-
-        await orders.refetch();
-        await updateBalance();
+      },
+      onSuccess: () => {
+        orders.refetch();
+        updateBalance();
         controllers.reset();
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });
