@@ -1,4 +1,4 @@
-import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import { type AppletMetadata, twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -25,7 +25,8 @@ import type { SearchBarResult } from "~/hooks/useSearchBar";
 const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
-  const { searchText, setSearchText, isLoading, searchResult, isRefetching } = useSearchBar();
+  const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
+    useSearchBar();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -144,6 +145,8 @@ const SearchMenu: React.FC = () => {
             isVisible={isSearchBarVisible}
             hideMenu={hideMenu}
             searchResult={searchResult}
+            isSearching={!!searchText}
+            allApplets={allNotFavApplets}
             isLoading={isLoading || isRefetching}
           />
         </div>
@@ -154,12 +157,21 @@ const SearchMenu: React.FC = () => {
 
 type SearchMenuBodyProps = {
   isVisible: boolean;
+  isSearching: boolean;
   hideMenu: () => void;
+  allApplets: AppletMetadata[];
   searchResult: SearchBarResult;
   isLoading: boolean;
 };
 
-const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult, isLoading }) => {
+const Body: React.FC<SearchMenuBodyProps> = ({
+  isVisible,
+  hideMenu,
+  searchResult,
+  isLoading,
+  isSearching,
+  allApplets,
+}) => {
   const navigate = useNavigate();
   const { applets, block, txs, account, contract } = searchResult;
 
@@ -201,8 +213,22 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
                 )}
               </Command.Empty>
               {applets.length ? (
-                <Command.Group heading="Applets">
+                <Command.Group heading="Favorite Applets">
                   {applets.map((applet) => (
+                    <Command.Item
+                      key={applet.title}
+                      value={applet.title}
+                      className="group"
+                      onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
+                    >
+                      <SearchItem.Applet key={applet.title} {...applet} />
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ) : null}
+              {!isSearching && allApplets.length ? (
+                <Command.Group heading="Applets">
+                  {allApplets.map((applet) => (
                     <Command.Item
                       key={applet.title}
                       value={applet.title}
