@@ -121,6 +121,7 @@ body {
   overflow-y: scroll;
   min-height: 100svh;
   scrollbar-gutter: stable;
+  background: var(--color-surface-primary-rice);
 }
 
 #root {
@@ -141,6 +142,7 @@ body {
 
 
 @layer utilities {
+
   @media (min-height: 1000px) and (min-width: 1280px) {
     div.custom-width {
       width: calc(720px + (100vh - 1000px) * 0.8);
