@@ -149,6 +149,12 @@ body {
     }
   }
 
+  input:is(:-webkit-autofill, :autofill) {
+    /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
+    -webkit-text-fill-color: theme('colors.secondary.700') !important;
+  }
+
+
   .qr-container {
     display: flex;
     height: 100%;
