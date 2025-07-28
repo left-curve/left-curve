@@ -235,6 +235,10 @@ export function createChartIQConfig(params: CreateChartIQConfigParameters) {
     },
   };
 
+  config.chartId = pairSymbol;
+
+  config.restore = false;
+
   config.initialSymbol = {
     symbol: pairSymbol,
     name: pairSymbol,
