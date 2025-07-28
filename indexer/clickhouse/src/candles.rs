@@ -174,7 +174,8 @@ impl Indexer {
         // Manually injecting synthetic pair prices for pairs that
         // didn't have any trades in this block.
         // This is needed to ensure that the materialized views are up to date.
-        // We set the open price to zero, and the volume to zero.
+        // We set the open price, lowest price, and highest price to previous
+        // closing price, and the volume to zero.
         // The created_at and block_height are set to the current block.
         for (_, mut pair_price) in last_prices.into_iter() {
             if pair_prices.contains_key(&(&pair_price).try_into()?) {
@@ -186,6 +187,9 @@ impl Indexer {
             pair_price.volume_quote = Udec128_6::ZERO;
             pair_price.created_at = block.info.timestamp.to_utc_date_time();
             pair_price.block_height = block.info.height;
+            pair_price.open_price = pair_price.close_price;
+            pair_price.lowest_price = pair_price.close_price;
+            pair_price.highest_price = pair_price.close_price;
 
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]

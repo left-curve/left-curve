@@ -409,7 +409,7 @@ async fn create_pair_prices(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -> anyhow::Result<()>
 {
-    let (mut suite, mut accounts, _, contracts, _, _, _, _clickhouse_context) =
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption {
             // Start at block 0 at 1 second, with a block time of 20 seconds.
             block_time: Duration::from_seconds(20),
@@ -488,8 +488,35 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         )
         .should_succeed();
 
-    // TODO: ensure there is one candle:
+    suite.app.indexer.wait_for_finish()?;
+
+    let candle_query_builder = CandleQueryBuilder::new(
+        CandleInterval::OneMinute,
+        "dango".to_string(),
+        "bridge/usdc".to_string(),
+    );
+
+    let candle_1m = candle_query_builder
+        .fetch_all(clickhouse_context.clickhouse_client())
+        .await?;
+
+    assert_that!(candle_1m.candles).has_length(1);
+
+    let candle = &candle_1m.candles[0];
+
     // time 60-120, open 100_000, high 100_000, low 100_000, close 100_000, volume 200_000 USD
+
+    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.close).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.low).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.high).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(2));
+    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(200000));
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
+        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
+            .unwrap()
+            .naive_utc(),
+    );
 
     // -------------------------------- block 2 --------------------------------
 
@@ -538,8 +565,29 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         )
         .should_succeed();
 
-    // TODO: ensure there is one candle:
+    suite.app.indexer.wait_for_finish()?;
+
     // time 60-120, open 100_000, high 100_000, low 99_999, close 99_999.5, volume 399_998.5 (200_000 + 199_998.5)
+
+    let candle_1m = candle_query_builder
+        .fetch_all(clickhouse_context.clickhouse_client())
+        .await?;
+
+    assert_that!(candle_1m.candles).has_length(1);
+
+    let candle = &candle_1m.candles[0];
+
+    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("99999.5").unwrap());
+    assert_that!(candle.low).is_equal_to(Udec128_24::new(99_999));
+    assert_that!(candle.high).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(4));
+    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::from_str("399998.5").unwrap());
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
+        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
+            .unwrap()
+            .naive_utc(),
+    );
 
     // -------------------------------- block 3 --------------------------------
 
@@ -588,8 +636,28 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         )
         .should_succeed();
 
-    // TODO: ensure there is one candle:
+    suite.app.indexer.wait_for_finish()?;
+
+    let candle_1m = candle_query_builder
+        .fetch_all(clickhouse_context.clickhouse_client())
+        .await?;
+
+    assert_that!(candle_1m.candles).has_length(1);
+
+    let candle = &candle_1m.candles[0];
+
     // time 60-120, open 100_000, high 100_001, low 99_999, close 100_000.5, volume 600_000 (399_998.5 + 200_001.5)
+    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
+    assert_that!(candle.low).is_equal_to(Udec128_24::new(99_999));
+    assert_that!(candle.high).is_equal_to(Udec128_24::new(100001));
+    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(6));
+    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(600000));
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
+        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
+            .unwrap()
+            .naive_utc(),
+    );
 
     // -------------------------------- block 4 --------------------------------
 
@@ -598,10 +666,47 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
     // Do nothing.
     suite.make_empty_block();
 
-    // TODO: ensure there are two candles:
+    suite.app.indexer.wait_for_finish()?;
+
+    let candle_1m = candle_query_builder
+        .fetch_all(clickhouse_context.clickhouse_client())
+        .await?;
+
+    // ensure there are two candles
+    assert_that!(candle_1m.candles).has_length(2);
+
+    // Most recent is first, oldest is last.
+    let candle = &candle_1m.candles[1];
+
+    // Oldest candle
     // time 60-120, open 100_000, high 100_001, low 99_999, close 100_000.5, volume 600_000
+    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
+    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
+    assert_that!(candle.low).is_equal_to(Udec128_24::new(99_999));
+    assert_that!(candle.high).is_equal_to(Udec128_24::new(100001));
+    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(6));
+    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(600000));
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
+        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
+            .unwrap()
+            .naive_utc(),
+    );
+
+    let candle = &candle_1m.candles[0];
+
+    // Most recent candle
     // time 120-180, open 100_000.5, high 100_000.5, low 100_000.5, close 100_000.5, volume 0
-    // (All numbers inherited from the previous candle's close price, since no trade happened during this interval yet.)
+    assert_that!(candle.open).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
+    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
+    assert_that!(candle.low).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
+    assert_that!(candle.high).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
+    assert_that!(candle.volume_base).is_equal_to(Udec128_6::ZERO);
+    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::ZERO);
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
+        DateTime::parse_from_rfc3339("1970-01-01T00:02:00Z")
+            .unwrap()
+            .naive_utc(),
+    );
 
     Ok(())
 }
