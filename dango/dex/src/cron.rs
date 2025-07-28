@@ -23,8 +23,6 @@ use {
     },
 };
 
-const HALF: Udec128 = Udec128::new_percent(50);
-
 /// Match and fill orders using the uniform price auction strategy.
 ///
 /// Implemented according to:
@@ -243,7 +241,7 @@ fn clear_orders_of_pair(
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
-        range,
+        clearing_price,
         volume,
         bids,
         asks,
@@ -253,17 +251,7 @@ fn clear_orders_of_pair(
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filled at the clearing price.
-    let limit_order_filling_outcomes = if let Some((lower_price, higher_price)) = range {
-        // Choose the clearing price. Any price within `range` gives the same
-        // volume (measured in the base asset). We can either take
-        //
-        // - the lower end,
-        // - the higher end, or
-        // - the midpoint of the range.
-        //
-        // Here we choose the midpoint.
-        let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
-
+    let limit_order_filling_outcomes = if let Some(clearing_price) = clearing_price {
         events.push(LimitOrdersMatched {
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),

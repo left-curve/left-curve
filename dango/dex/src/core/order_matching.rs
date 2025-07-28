@@ -3,13 +3,12 @@ use {
     grug::{Number, NumberConst, StdResult, Udec128_6, Udec128_24},
 };
 
+const HALF: Udec128_24 = Udec128_24::new_percent(50);
+
 pub struct MatchingOutcome {
-    /// The range of prices that achieve the biggest trading volume.
-    /// `None` if no match is found.
-    ///
-    /// All prices in this range achieve the same volume. It's up to the caller
-    /// to decide which price to use: the lowest, the highest, or the midpoint.
-    pub range: Option<(Udec128_24, Udec128_24)>,
+    /// The single clearing price for all matched limit orders determined by the
+    /// batch auction.
+    pub clearing_price: Option<Udec128_24>,
     /// The amount of trading volume, measured as the amount of the base asset.
     pub volume: Udec128_6,
     /// The BUY orders that have found a match.
@@ -43,6 +42,25 @@ where
     let mut ask_is_new = true;
     let mut ask_volume = Udec128_6::ZERO;
     let mut range = None;
+
+    // Find the current mid price, if order exists on both sides of the book.
+    // If there are only orders on one side, take the price of this side.
+    // If there is no order, then nothing to do, return.
+    let mid_price = match (bid, ask) {
+        (Some((bid_price, _)), Some((ask_price, _))) => {
+            Some(bid_price.checked_add(ask_price)?.checked_mul(HALF)?)
+        },
+        (Some((bid_price, _)), None) => Some(bid_price),
+        (None, Some((ask_price, _))) => Some(ask_price),
+        (None, None) => {
+            return Ok(MatchingOutcome {
+                clearing_price: None,
+                volume: Udec128_6::ZERO,
+                bids,
+                asks,
+            });
+        },
+    };
 
     loop {
         let Some((bid_price, bid_order)) = bid else {
@@ -84,8 +102,25 @@ where
         }
     }
 
+    // Select the clearing price.
+    let clearing_price = if let Some((ask_price, bid_price)) = range {
+        if let Some(mid_price) = mid_price {
+            if bid_price <= mid_price {
+                Some(bid_price)
+            } else if ask_price >= mid_price {
+                Some(ask_price)
+            } else {
+                Some(mid_price)
+            }
+        } else {
+            Some(bid_price.checked_add(ask_price)?.checked_mul(HALF)?)
+        }
+    } else {
+        None
+    };
+
     Ok(MatchingOutcome {
-        range,
+        clearing_price,
         volume: bid_volume.min(ask_volume),
         bids,
         asks,
