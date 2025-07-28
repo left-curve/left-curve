@@ -84,13 +84,13 @@ export const QuestBanner: React.FC = () => {
                 { ...formatNumberOptions, currency: "USD" },
               ),
             })}
-            completed={isTxCountCompleted}
+            completed={isTradingVolumesCompleted}
           />
           <Quest
             text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({
               number: quests?.trading_pairs,
             })}
-            completed={isLimitOrdersCompleted}
+            completed={isTradingPairsCompleted}
           />
           <Quest
             text={m["quests.galxeQuest.quest.completeMarketOrder"]()}
@@ -98,11 +98,11 @@ export const QuestBanner: React.FC = () => {
           />
           <Quest
             text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
-            completed={isTradingPairsCompleted}
+            completed={isLimitOrdersCompleted}
           />
           <Quest
             text={m["quests.galxeQuest.quest.completeTxsInEthereum"]()}
-            completed={isTradingVolumesCompleted}
+            completed={isTxCountCompleted}
           />
         </div>
         {areQuestsCompleted ? (
