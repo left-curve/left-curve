@@ -56,7 +56,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
 
   const allNotFavApplets = useMemo(() => {
     return Object.values(APPLETS).filter((applet) => !favApplets[applet.id]);
-  }, [APPLETS, favApplets]);
+  }, [favApplets]);
 
   const { data, ...query } = useQuery({
     queryKey: ["searchBar", searchText],
