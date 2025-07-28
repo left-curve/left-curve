@@ -89,7 +89,7 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
     currency,
     maxFractionDigits = 2,
     minFractionDigits = 2,
-    maxSignificantDigits,
+    maxSignificantDigits = 3,
     minSignificantDigits = 1,
     notation = "standard",
     mask = 1,

@@ -285,7 +285,7 @@ const ProTradeOrders: React.FC = () => {
                 ),
               )
               .toFixed(),
-            formatNumberOptions,
+            { ...formatNumberOptions, maxSignificantDigits: 10 },
           )}
         />
       ),
