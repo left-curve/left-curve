@@ -17,6 +17,7 @@ import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { Modals } from "../modals/RootModal";
+import { format } from "date-fns";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
@@ -33,7 +34,7 @@ export const KeyManagementSection: React.FC = () => {
   const { data: keys = [], isPending } = useQuery({
     enabled: !!signingClient && !!username,
     queryKey: ["user_keys", username],
-    queryFn: async () => await signingClient?.getKeysByUsername({ username: username as string }),
+    queryFn: async () => await signingClient?.getUserKeys({ username: username as string }),
   });
 
   if (status !== ConnectionStatus.Connected) return null;
@@ -55,13 +56,12 @@ export const KeyManagementSection: React.FC = () => {
       {isPending ? (
         <Spinner color="gray" size="md" />
       ) : (
-        Object.entries(keys).map(([keyHash, key]) => {
-          const isActive = keyHash === currentKeyHash;
-          const [[keyType, keyValue]] = Object.entries(key);
-          const isEthereumKey = keyType === "ethereum";
+        keys.map((key) => {
+          const isActive = key.keyHash === currentKeyHash;
+          const isEthereumKey = key.keyType === "ETHEREUM";
           const keyRepresentation = isEthereumKey
-            ? keyValue
-            : `0x${encodeHex(decodeBase64(keyValue))}`;
+            ? key.publicKey
+            : `0x${encodeHex(decodeBase64(key.publicKey))}`;
 
           return (
             <div
@@ -76,13 +76,18 @@ export const KeyManagementSection: React.FC = () => {
                   </div>
 
                   <p className="text-tertiary-500 diatype-sm-medium">
-                    {KeyTranslation[keyType as keyof typeof KeyTranslation]}
+                    {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
+                  </p>
+                  <p className="text-tertiary-500 diatype-sm-medium">
+                    {format(key.createdAt, "dd/MM/yyyy hh:mm a")}
                   </p>
                 </div>
                 <div className="flex gap-1">
                   <TextCopy className="w-5 h-5 cursor-pointer" copyText={keyRepresentation} />
                   <IconTrash
-                    onClick={() => (isActive ? null : showModal(Modals.RemoveKey, { keyHash }))}
+                    onClick={() =>
+                      isActive ? null : showModal(Modals.RemoveKey, { keyHash: key.keyHash })
+                    }
                     className={twMerge("w-5 h-5 cursor-pointer", {
                       "text-gray-300 cursor-default": isActive,
                     })}
