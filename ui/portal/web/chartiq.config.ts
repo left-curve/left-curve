@@ -36,7 +36,11 @@ type CreateChartIQDataFeedParameters = {
 export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameters) {
   const { client, subscriptions, coins, updateChartData } = parameters;
 
-  let unsubscribe: () => void = () => {};
+  let _unsubscribe: () => void = () => {};
+
+  const unsubscribe: () => void = () => {
+    _unsubscribe();
+  };
 
   let context: CIQ.ChartEngine;
 
@@ -131,7 +135,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       period,
       timeUnit: timeUnit,
     });
-    unsubscribe = subscriptions.subscribe("candles", {
+    _unsubscribe = subscriptions.subscribe("candles", {
       params: {
         baseDenom: baseCoin.denom,
         quoteDenom: quoteCoin.denom,
