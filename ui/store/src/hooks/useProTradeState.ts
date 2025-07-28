@@ -62,7 +62,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   }, []);
 
   const changeAction = useCallback((action: "buy" | "sell") => {
-    onChangeAction(action);
     setAction(action);
     setValue("size", "0");
   }, []);
@@ -156,6 +155,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   useEffect(() => {
     onChangeOrderType(operation);
   }, [operation]);
+
+  useEffect(() => {
+    onChangeAction(action);
+  }, [action]);
 
   const submission = useSubmitTx({
     mutation: {

@@ -47,7 +47,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
 
   const {
     operation,
-    setOperation,
     action,
     changeSizeCoin,
     sizeCoin,
