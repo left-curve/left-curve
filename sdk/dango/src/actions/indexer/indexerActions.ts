@@ -22,6 +22,12 @@ import {
 } from "./subscriptions/candles.js";
 
 import {
+  type EventsSubscriptionParameters,
+  type EventsSubscriptionReturnType,
+  eventsSubscription,
+} from "./subscriptions/events.js";
+
+import {
   type TransferSubscriptionParameters,
   type TransferSubscriptionReturnType,
   transferSubscription,
@@ -31,6 +37,7 @@ export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
   candlesSubscription: (args: CandlesSubscriptionParameters) => CandlesSubscriptionReturnType;
+  eventsSubscription: (args: EventsSubscriptionParameters) => EventsSubscriptionReturnType;
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
   queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
@@ -43,6 +50,7 @@ export function indexerActions<transport extends Transport = Transport>(
     blockSubscription: (args) => blockSubscription(client, args),
     accountSubscription: (args) => accountSubscription(client, args),
     candlesSubscription: (args) => candlesSubscription(client, args),
+    eventsSubscription: (args) => eventsSubscription(client, args),
     searchTxs: (args) => searchTxs(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
     queryBlock: (args) => queryBlock(client, args),
