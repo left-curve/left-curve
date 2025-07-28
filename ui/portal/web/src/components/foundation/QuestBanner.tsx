@@ -44,7 +44,7 @@ export const QuestBanner: React.FC = () => {
       limit_orders: false,
       market_orders: false,
       trading_pairs: Number.MAX_SAFE_INTEGER,
-      trading_volumes: Number.MAX_SAFE_INTEGER,
+      trading_volumes: Number.MAX_SAFE_INTEGER.toString(),
     }),
   });
 
@@ -68,7 +68,7 @@ export const QuestBanner: React.FC = () => {
     <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
-        href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
+        href="https://app.galxe.com/quest/dango/GCMTJtfErm"
         target="_blank"
         rel="noreferrer"
       >
@@ -77,31 +77,34 @@ export const QuestBanner: React.FC = () => {
       <div className="flex flex-col lg:flex-row w-full justify-between gap-2">
         <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
           <Quest
-            text={`${m["quests.galxeQuest.quest"]({ quest: 0 })} ${quests.eth_address ? `(${quests.eth_address})` : ""}`}
+            text={`${m["quests.galxeQuest.quest.connectEthereumWallet"]()} ${quests.eth_address ? `(${quests.eth_address})` : ""}`}
             completed={!!quests.eth_address}
           />
-          <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={isTxCountCompleted} />
           <Quest
-            text={m["quests.galxeQuest.quest"]({ quest: 2 })}
+            text={m["quests.galxeQuest.quest.swapAtLeastForUSD"]({ number: 1 })}
+            completed={isTxCountCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({ number: 2 })}
             completed={isLimitOrdersCompleted}
           />
           <Quest
-            text={m["quests.galxeQuest.quest"]({ quest: 3 })}
+            text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
             completed={isMarketOrdersCompleted}
           />
           <Quest
-            text={m["quests.galxeQuest.quest"]({ quest: 4 })}
+            text={m["quests.galxeQuest.quest.completeMarketOrder"]()}
             completed={isTradingPairsCompleted}
           />
           <Quest
-            text={m["quests.galxeQuest.quest"]({ quest: 5 })}
+            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]()}
             completed={isTradingVolumesCompleted}
           />
         </div>
         {areQuestsCompleted ? (
           <Button
             as="a"
-            href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
+            href="https://app.galxe.com/quest/dango/GCMTJtfErm"
             target="_blank"
             rel="noreferrer"
           >
