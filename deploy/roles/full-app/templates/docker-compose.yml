@@ -14,7 +14,7 @@ services:
       - POSTGRES_PASSWORD={{ db_password }}
     tty: true
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
+      test: ["CMD", "pg_isready -q"]
       interval: 2s
       timeout: 5s
       retries: 10
