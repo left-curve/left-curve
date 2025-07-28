@@ -89,8 +89,8 @@ import {
 
 import {
   getUserKeys,
-  type getUserKeysParameters,
-  type getUserKeysReturnType,
+  type GetUserKeysParameters,
+  type GetUserKeysReturnType,
 } from "./queries/getUserKeys.js";
 
 export type AccountFactoryQueryActions = {
@@ -110,7 +110,7 @@ export type AccountFactoryQueryActions = {
   getKeysByUsername: (args: GetKeysByUsernameParameters) => GetKeysByUsernameReturnType;
   getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
   getUser: (args: GetUserParameters) => GetUserReturnType;
-  getUserKeys: (args: getUserKeysParameters) => getUserKeysReturnType;
+  getUserKeys: (args: GetUserKeysParameters) => GetUserKeysReturnType;
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
 };
 
