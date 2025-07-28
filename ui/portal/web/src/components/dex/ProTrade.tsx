@@ -295,7 +295,9 @@ const ProTradeOrders: React.FC = () => {
       header: () => (
         <Cell.Action
           isDisabled={!orders.data.length}
-          action={() => showModal(Modals.ProTradeCloseAll)}
+          action={() =>
+            showModal(Modals.ProTradeCloseAll, { ordersId: orders.data.map((o) => o.id) })
+          }
           label={m["common.cancelAll"]()}
           classNames={{
             cell: "items-end diatype-xs-regular",

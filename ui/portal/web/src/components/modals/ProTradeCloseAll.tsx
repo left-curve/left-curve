@@ -7,7 +7,9 @@ import { m } from "~/paraglide/messages";
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
-export const ProTradeCloseAll = forwardRef(() => {
+import type { OrderId } from "@left-curve/dango/types";
+
+export const ProTradeCloseAll = forwardRef<void, { ordersId: OrderId[] }>(({ ordersId }) => {
   const { hideModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
@@ -21,7 +23,10 @@ export const ProTradeCloseAll = forwardRef(() => {
     mutation: {
       mutationFn: async () => {
         if (!signingClient) throw new Error("No signing client available");
-        await signingClient.batchUpdateOrders({ cancels: "all", sender: account!.address });
+        await signingClient.batchUpdateOrders({
+          cancels: { some: ordersId },
+          sender: account!.address,
+        });
       },
       onSuccess: async () => {
         await queryClient.invalidateQueries({
