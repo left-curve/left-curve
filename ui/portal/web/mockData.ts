@@ -416,5 +416,3 @@ export type activeFilterType =
   | "Layer 1"
   | "Layer 2"
   | "Meme";
-
-const test = {};
