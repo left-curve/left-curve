@@ -214,7 +214,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                 )}
               </Command.Empty>
               {applets.length ? (
-                <Command.Group heading="Favorite Applets">
+                <Command.Group heading={isSearching ? "Applets" : "Favorite Applets"}>
                   {applets.map((applet) => (
                     <Command.Item
                       key={applet.title}
