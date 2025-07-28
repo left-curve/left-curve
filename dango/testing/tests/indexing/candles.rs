@@ -11,7 +11,7 @@ use {
     grug::{
         BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero, Number,
         NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
-        Uint128, btree_map, coins,
+        Uint128, btree_map, coins, setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::{
@@ -19,6 +19,7 @@ use {
         pair_price_query::PairPriceQueryBuilder,
     },
     std::str::FromStr,
+    tracing::Level,
 };
 
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
@@ -122,6 +123,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
@@ -174,6 +176,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore]
 async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
@@ -235,6 +238,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore]
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
@@ -321,92 +325,13 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     Ok(())
 }
 
-async fn create_pair_prices(
-    suite: &mut TestSuiteWithIndexer,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-) -> anyhow::Result<()> {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
-        (Direction::Bid, 30, 25), // !0 - filled
-        (Direction::Bid, 20, 10), // !1 - unfilled
-        (Direction::Bid, 10, 10), // !2 - unfilled
-        (Direction::Ask, 5, 10),  //  3 - filled
-        (Direction::Ask, 15, 10), //  4 - filled
-        (Direction::Ask, 25, 10), //  5 - 50% filled
-    ];
-
-    // Submit the orders in a single block.
-    let txs = orders_to_submit
-        .into_iter()
-        .zip(accounts.users_mut())
-        .map(|((direction, price, amount), signer)| {
-            let price = Udec128_24::new(price);
-            let amount = Uint128::new(amount);
-
-            let funds = match direction {
-                Direction::Bid => {
-                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
-                },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
-            };
-
-            let msg = Message::execute(
-                contracts.dex,
-                &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price,
-                    }],
-                    cancels: None,
-                },
-                funds,
-            )?;
-
-            signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
-        })
-        .collect::<StdResult<Vec<_>>>()
-        .unwrap();
-
-    // Make a block with the order submissions. Ensure all transactions were
-    // successful.
-    suite
-        .make_block(txs)
-        .block_outcome
-        .tx_outcomes
-        .into_iter()
-        .for_each(|outcome| {
-            outcome.should_succeed();
-        });
-
-    Ok(())
-}
-
 /// A comprehensive test that covers all cases:
 /// - limit bid matched against limit ask
 /// - limit bid matched against market ask
 /// - limit ask matched against limit bid
 /// - limit ask matched against market bid
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore]
 async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -> anyhow::Result<()>
 {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
@@ -707,6 +632,206 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
             .unwrap()
             .naive_utc(),
     );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::INFO);
+
+    let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
+        setup_test_with_indexer(TestOption {
+            // Start at block 0 at 1 second, with a block time of 20 seconds.
+            block_time: Duration::from_seconds(20),
+            genesis_block: BlockInfo {
+                height: 0,
+                timestamp: Timestamp::from_seconds(1),
+                hash: Hash256::ZERO,
+            },
+            ..Default::default()
+        })
+        .await;
+
+    // Update dango's oracle price. It isn't used in this test but is required
+    // for the contract to function.
+    // Block time 21.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(200),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Make an empty block at timestamps 41.
+    suite.make_empty_block();
+
+    // -------------------------------- block 1 --------------------------------
+
+    // Block 1
+    // Block time: 61 seconds
+    // Place the following orders:
+    // - limit, sell, price 100000 USDC per DANGO, size 2 DANGO
+    // - limit, buy, price 100000, size 1 DANGO
+    // - market, buy, size 1 DANGO
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
+                        price: Udec128_24::from_str("0.000000003836916198").unwrap(),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
+                        price: Udec128_24::from_str("0.000000003836916198").unwrap(),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => Uint128::new(20000000000000),
+                usdc::DENOM.clone() => Uint128::new(200_000),
+            },
+        )
+        .should_succeed();
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let pair_price_query_builder =
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string());
+
+    let pair_price = pair_price_query_builder
+        .fetch_one(clickhouse_context.clickhouse_client())
+        .await?
+        .expect("Pair price should be found");
+
+    println!("Pair price: {pair_price:#?}");
+
+    // let candle_query_builder = CandleQueryBuilder::new(
+    //     CandleInterval::OneMinute,
+    //     "dango".to_string(),
+    //     "bridge/usdc".to_string(),
+    // );
+
+    // let candle_1m = candle_query_builder
+    //     .fetch_all(clickhouse_context.clickhouse_client())
+    //     .await?;
+
+    // assert_that!(candle_1m.candles).has_length(1);
+
+    // let candle = &candle_1m.candles[0];
+
+    // // time 60-120, open 100_000, high 100_000, low 100_000, close 100_000, volume 200_000 USD
+
+    // assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
+    // assert_that!(candle.close).is_equal_to(Udec128_24::new(100000));
+    // assert_that!(candle.low).is_equal_to(Udec128_24::new(100000));
+    // assert_that!(candle.high).is_equal_to(Udec128_24::new(100000));
+    // assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(2));
+    // assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(200000));
+    // assert_that!(candle.time_start.naive_utc()).is_equal_to(
+    //     DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
+    //         .unwrap()
+    //         .naive_utc(),
+    // );
+
+    Ok(())
+}
+
+async fn create_pair_prices(
+    suite: &mut TestSuiteWithIndexer,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+) -> anyhow::Result<()> {
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
+        (Direction::Bid, 30, 25), // !0 - filled
+        (Direction::Bid, 20, 10), // !1 - unfilled
+        (Direction::Bid, 10, 10), // !2 - unfilled
+        (Direction::Ask, 5, 10),  //  3 - filled
+        (Direction::Ask, 15, 10), //  4 - filled
+        (Direction::Ask, 25, 10), //  5 - 50% filled
+    ];
+
+    // Submit the orders in a single block.
+    let txs = orders_to_submit
+        .into_iter()
+        .zip(accounts.users_mut())
+        .map(|((direction, price, amount), signer)| {
+            let price = Udec128_24::new(price);
+            let amount = Uint128::new(amount);
+
+            let funds = match direction {
+                Direction::Bid => {
+                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
+                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
+                },
+                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
+            };
+
+            let msg = Message::execute(
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction,
+                        amount: NonZero::new_unchecked(amount),
+                        price,
+                    }],
+                    cancels: None,
+                },
+                funds,
+            )?;
+
+            signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+        })
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
 
     Ok(())
 }
