@@ -1,5 +1,5 @@
 use {
-    crate::dex::{Direction, OrderId},
+    crate::dex::{Direction, OrderId, PairId},
     grug::{Addr, Coin, Denom, Udec128_6, Udec128_24, Uint128},
 };
 
@@ -71,6 +71,15 @@ pub struct OrderFilled {
     pub clearing_price: Udec128_24,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
+}
+
+impl From<&OrderFilled> for PairId {
+    fn from(order: &OrderFilled) -> Self {
+        PairId {
+            base_denom: order.base_denom.to_owned(),
+            quote_denom: order.quote_denom.to_owned(),
+        }
+    }
 }
 
 #[grug::derive(Serde)]

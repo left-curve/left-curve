@@ -6,12 +6,14 @@ use {
     },
     chrono::{DateTime, Utc},
     clickhouse::Client,
-    dango_types::{DangoQuerier, dex::OrderFilled},
+    dango_types::{
+        DangoQuerier,
+        dex::{OrderFilled, PairId},
+    },
     grug::{
         CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Number, NumberConst,
         Udec128_6,
     },
-    grug_types::Denom,
     std::{collections::HashMap, str::FromStr, time::Duration},
     strum::IntoEnumIterator,
     tokio::time::sleep,
@@ -33,10 +35,9 @@ impl Indexer {
 
         let dex = querier.as_ref().query_dex()?;
 
-        // (base_denom, quote_denom) -> clearing_price
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
-        let mut pair_prices = HashMap::<(Denom, Denom), PairPrice>::new();
+        let mut pair_prices = HashMap::<PairId, PairPrice>::new();
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
@@ -56,7 +57,7 @@ impl Indexer {
             }
 
             // Loop through the DEX events in the reverse order. Meaning, for each
-            // trading pair, its clearing price is determined by the last executed
+            // trading pair, its closing price is determined by the last executed
             // order in this block.
             for event in event.contract_events.iter().rev() {
                 // We look for the "order filled" event, regardless whether it's
@@ -69,18 +70,15 @@ impl Indexer {
                     // fully filled and cleared from the book. If so, we can add
                     // the volume to the map?
 
-                    let pair_id = (
-                        order_filled.base_denom.clone(),
-                        order_filled.quote_denom.clone(),
-                    );
-
-                    // If this trading pair doesn't have a clearing price recorded
-                    // yet, insert it into the map.
+                    let pair_id: PairId = (&order_filled).into();
 
                     let pair_price = pair_prices.entry(pair_id).or_insert(PairPrice {
                         quote_denom: order_filled.quote_denom.to_string(),
                         base_denom: order_filled.base_denom.to_string(),
-                        clearing_price: order_filled.clearing_price,
+                        open_price: order_filled.clearing_price,
+                        highest_price: order_filled.clearing_price,
+                        lowest_price: order_filled.clearing_price,
+                        close_price: order_filled.clearing_price,
                         volume_base: Udec128_6::ZERO,
                         volume_quote: Udec128_6::ZERO,
                         created_at: DateTime::<Utc>::from_naive_utc_and_offset(
@@ -101,6 +99,7 @@ impl Indexer {
                         },
                     }
 
+                    // If the volume overflows, set it to the maximum value.
                     match pair_price
                         .volume_quote
                         .checked_add(order_filled.filled_quote)
@@ -113,6 +112,26 @@ impl Indexer {
                             pair_price.volume_quote = Udec128_6::MAX;
                         },
                     }
+
+                    if order_filled.clearing_price > pair_price.highest_price {
+                        pair_price.highest_price = order_filled.clearing_price;
+                    }
+
+                    if order_filled.clearing_price < pair_price.lowest_price {
+                        pair_price.lowest_price = order_filled.clearing_price;
+                    }
+
+                    // The open price will be overwritten later with the last pair price closing price.
+                    // But if we don't have any (first pair price ever), we set it to the clearing
+                    // price of the first order filled.
+                    // And since we go through the events in reverse order,
+                    // the first event is actually the last event in the block.
+                    pair_price.open_price = order_filled.clearing_price;
+
+                    // We set the close price to the clearing price of the last but since
+                    // we loop through the events in reverse order, the last event
+                    // is actually the first event in the block.
+                    // pair_price.close_price = order_filled.clearing_price;
                 }
             }
         }
@@ -123,17 +142,9 @@ impl Indexer {
         let last_prices = PairPrice::last_prices(clickhouse_client)
             .await?
             .into_iter()
-            .map(|price| {
-                Ok((
-                    (
-                        Denom::from_str(&price.base_denom)?,
-                        Denom::from_str(&price.quote_denom)?,
-                    ),
-                    price,
-                ))
-            })
+            .map(|price| Ok(((&price).try_into()?, price)))
             .filter_map(Result::ok)
-            .collect::<HashMap<(Denom, Denom), PairPrice>>();
+            .collect::<HashMap<PairId, PairPrice>>();
 
         // Use Row binary inserter with the official clickhouse serde helpers
         let mut inserter = clickhouse_client
@@ -149,17 +160,25 @@ impl Indexer {
                 .volume_quote
                 .checked_div(Udec128_6::from_str("2.0")?)?;
 
+            // open price is the closing price of the previous pair price
+            if let Some(last_price) = last_prices.get(&(&pair_price).try_into()?) {
+                pair_price.open_price = last_price.close_price;
+            }
+
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
         }
 
+        // Manually injecting synthetic pair prices for pairs that
+        // didn't have any trades in this block.
+        // This is needed to ensure that the materialized views are up to date.
+        // We set the open price, lowest price, and highest price to previous
+        // closing price, and the volume to zero.
+        // The created_at and block_height are set to the current block.
         for (_, mut pair_price) in last_prices.into_iter() {
-            if pair_prices.contains_key(&(
-                Denom::from_str(&pair_price.base_denom)?,
-                Denom::from_str(&pair_price.quote_denom)?,
-            )) {
+            if pair_prices.contains_key(&(&pair_price).try_into()?) {
                 // If the pair price already exists, skip it.
                 continue;
             }
@@ -168,6 +187,9 @@ impl Indexer {
             pair_price.volume_quote = Udec128_6::ZERO;
             pair_price.created_at = block.info.timestamp.to_utc_date_time();
             pair_price.block_height = block.info.height;
+            pair_price.open_price = pair_price.close_price;
+            pair_price.lowest_price = pair_price.close_price;
+            pair_price.highest_price = pair_price.close_price;
 
             inserter.write(&pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]

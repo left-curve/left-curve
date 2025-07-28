@@ -82,7 +82,10 @@ impl PairPriceQueryBuilder {
           SELECT
             quote_denom,
             base_denom,
-            clearing_price,
+            open_price,
+            highest_price,
+            lowest_price,
+            close_price,
             volume_base,
             volume_quote,
             created_at,
