@@ -66,7 +66,6 @@ impl Indexer {
                     // Deserialize the event.
                     let order_filled = event.data.clone().deserialize_json::<OrderFilled>()?;
 
-                    tracing::info!("found event: {order_filled:#?}");
                     // TODO: look at `cleared` field to determine if the order was
                     // fully filled and cleared from the book. If so, we can add
                     // the volume to the map?
