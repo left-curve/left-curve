@@ -38,22 +38,25 @@ type CellAssetProps = Prettify<
 >;
 
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
-  const { coins } = useConfig();
+  const { coins, getCoinInfo } = useConfig();
 
-  const coin = asset || coins[denom as keyof typeof coins];
+  const coin = asset || getCoinInfo(denom as string);
 
   if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
-      {!noImage && (
-        <img
-          src={coin.logoURI}
-          alt={coin.symbol}
-          className="w-7 h-7 select-none drag-none"
-          loading="lazy"
-        />
-      )}
+      {!noImage &&
+        (coin.type === "lp" ? (
+          <PairAssets assets={[coin.base, coin.quote]} />
+        ) : (
+          <img
+            src={coin.logoURI}
+            alt={coin.symbol}
+            className="w-7 h-7 select-none drag-none"
+            loading="lazy"
+          />
+        ))}
       <p className="min-w-fit">{coin.symbol}</p>
     </div>
   );

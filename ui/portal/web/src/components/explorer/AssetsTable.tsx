@@ -13,13 +13,13 @@ export type AssetsTableProps = {
 };
 
 export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
-  const { coins } = useConfig();
+  const { getCoinInfo } = useConfig();
   const { settings } = useApp();
   const { getPrice } = usePrices();
   const { formatNumberOptions } = settings;
 
   const data = Object.entries(balances).map(([denom, amount]) => {
-    const coin = coins[denom];
+    const coin = getCoinInfo(denom);
     const price = getPrice(formatUnits(amount, coin.decimals).toString(), denom, {
       format: true,
       formatOptions: formatNumberOptions,
