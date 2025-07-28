@@ -29,3 +29,8 @@
       POSTGRES_PASSWORD: "{{ db_password }}"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

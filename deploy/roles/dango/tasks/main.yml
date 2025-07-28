@@ -178,6 +178,11 @@
     networks:
       - name: "{{ dango_network }}_backend"
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network
