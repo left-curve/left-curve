@@ -81,6 +81,24 @@ services:
       exec cometbft start
       "
 
+  faucet-bot:
+    image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    profiles: ["faucet"]
+    labels:
+      <<: *common-labels
+    depends_on:
+      dango:
+        condition: service_healthy
+    environment:
+      - HOME=/app
+    tty: true
+    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "{{ chain_id }}"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   prometheus:
     image: prom/prometheus:latest
     profiles: ["analytics"]
