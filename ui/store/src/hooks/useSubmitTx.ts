@@ -1,5 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
+import { useBalances } from "./useBalances.js";
+import { useAccount } from "./useAccount.js";
 
 import type {
   DefaultError,
@@ -49,12 +51,18 @@ export function useSubmitTx<
 ): UseSubmitTxReturnType<TData, TError, TVariables, TContext> {
   const { subscriptions } = useConfig();
   const { mutation, submission = {}, toast = {} } = parameters;
+  const { account } = useAccount();
+  const { refetch: refreshBalances } = useBalances({ address: account?.address });
 
   const { mutationFn } = mutation;
 
   return useMutation<TData, TError, TVariables, TContext>(
     {
       ...mutation,
+      onSuccess: (...params) => {
+        refreshBalances();
+        mutation.onSuccess?.(...params);
+      },
       mutationFn: async (variables: TVariables) => {
         const controller = new AbortController();
         subscriptions.emit("submitTx", { isSubmitting: true });
