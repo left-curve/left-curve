@@ -1,4 +1,4 @@
-import { type AppletMetadata, twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -19,6 +19,7 @@ import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
+import type { AppletMetadata } from "@left-curve/applets-kit";
 import type React from "react";
 import type { SearchBarResult } from "~/hooks/useSearchBar";
 
