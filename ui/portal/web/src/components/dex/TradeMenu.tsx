@@ -79,7 +79,11 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
           <p className="diatype-xs-medium text-secondary-700">
-            {formatNumber(availableCoin.amount, { ...formatNumberOptions })} {availableCoin.symbol}
+            {formatNumber(availableCoin.amount, {
+              ...formatNumberOptions,
+              maxSignificantDigits: 10,
+            })}{" "}
+            {availableCoin.symbol}
           </p>
         </div>
         {operation === "limit" ? (
