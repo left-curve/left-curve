@@ -518,5 +518,5 @@ cq-dropdown[config="studies"] .content {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-secondary-gray) transparent;
+  scrollbar-color: var(--color-secondary-gray);
 }

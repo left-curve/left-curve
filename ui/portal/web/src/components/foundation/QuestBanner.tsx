@@ -65,7 +65,7 @@ export const QuestBanner: React.FC = () => {
   if (!isQuestBannerVisible) return null;
 
   return (
-    <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
+    <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
         href="https://app.galxe.com/quest/dango/GCMTJtfErm"
@@ -75,7 +75,7 @@ export const QuestBanner: React.FC = () => {
         {m["quests.galxeQuest.title"]()}
       </a>
       <div className="flex flex-col lg:flex-row w-full justify-between gap-2">
-        <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
+        <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6 lg:flex-wrap">
           <Quest
             text={`${m["quests.galxeQuest.quest.connectEthereumWallet"]()} ${quests.eth_address ? `(${quests.eth_address})` : ""}`}
             completed={!!quests.eth_address}
