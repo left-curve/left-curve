@@ -133,7 +133,7 @@ jobs:
   push-manifest:
     permissions:
       packages: write
-    needs: [build]
+    needs: [docker-build]
     runs-on: [self-hosted]
     steps:
       - name: Log in to GHCR
