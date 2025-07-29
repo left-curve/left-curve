@@ -11,8 +11,10 @@ version       = { workspace = true }
 
 [dependencies]
 aes-gcm     = { workspace = true, features = ["std"] }
+alloy       = { workspace = true }
 anyhow      = { workspace = true }
 bip32       = { workspace = true }
+dango-auth  = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
 grug-crypto = { workspace = true }
@@ -23,4 +25,3 @@ sha2        = { workspace = true }
 
 [dev-dependencies]
 dango-account-factory = { workspace = true, features = ["library"] }
-dango-auth            = { workspace = true }
