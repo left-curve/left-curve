@@ -245,19 +245,19 @@ fn clear_orders_of_pair(
     // Prepend the left over market orders to the market order iterators, so
     // their refunds are processed properly later.
     if let Some(bid) = left_over_market_bid {
-        market_bids.prepend(bid);
+        market_bids.prepend(bid)?;
     }
     if let Some(ask) = left_over_market_ask {
-        market_asks.prepend(ask);
+        market_asks.prepend(ask)?;
     }
 
     // Prepend the left over limit orders to the merged limit iterators, so they
     // are included in the following limit order matching.
     if let Some(bid) = left_over_limit_bid {
-        merged_bid_iter.prepend(Ok(bid));
+        merged_bid_iter.prepend(Ok(bid))?;
     }
     if let Some(ask) = left_over_limit_ask {
-        merged_ask_iter.prepend(Ok(ask));
+        merged_ask_iter.prepend(Ok(ask))?;
     }
 
     // ------------------------- 3. Match limit orders -------------------------

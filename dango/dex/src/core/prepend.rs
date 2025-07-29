@@ -1,3 +1,5 @@
+use anyhow::ensure;
+
 pub struct Prepend<I, T>
 where
     I: Iterator<Item = T>,
@@ -10,9 +12,12 @@ impl<I, T> Prepend<I, T>
 where
     I: Iterator<Item = T>,
 {
-    pub fn prepend(&mut self, item: T) {
-        assert!(self.item.is_none(), "an item is already prepended");
+    pub fn prepend(&mut self, item: T) -> anyhow::Result<()> {
+        ensure!(self.item.is_none(), "an item is already prepended");
+
         self.item = Some(item);
+
+        Ok(())
     }
 }
 
