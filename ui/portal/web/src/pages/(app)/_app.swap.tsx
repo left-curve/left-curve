@@ -12,11 +12,11 @@ export const Route = createFileRoute("/(app)/_app/swap")({
   }),
   beforeLoad: async ({ context, search }) => {
     const { config } = context;
-    const { coinsBySymbol } = config;
+    const { coins } = config;
     const { from = BASE_DENOM, to = DEFAULT_QUOTE } = search;
 
-    const fromCoin = coinsBySymbol[from];
-    const toCoin = coinsBySymbol[to];
+    const fromCoin = coins.bySymbol[from];
+    const toCoin = coins.bySymbol[to];
     if (
       !fromCoin ||
       !toCoin ||
