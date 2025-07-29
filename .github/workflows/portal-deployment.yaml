@@ -88,6 +88,9 @@ jobs:
           # - [self-hosted, macOS]
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
+    env:
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       packages: write
     steps:
