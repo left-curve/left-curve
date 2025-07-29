@@ -9,7 +9,6 @@ clients:
   - url: {{ loki_url }}/loki/api/v1/push
 
 scrape_configs:
-  # System logs
   - job_name: system
     static_configs:
       - targets:
@@ -17,7 +16,7 @@ scrape_configs:
         labels:
           job: varlogs
           host: "{{ hostname }}"
-          __path__: /var/log/*log
+          __path__: /var/log/{syslog,auth.log,kern.log,fail2ban.log}
 
   # Docker container logs
   - job_name: containers

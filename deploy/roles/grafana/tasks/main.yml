@@ -1,55 +1,33 @@
-- name: Ensure grafana dir exists
+- name: Ensure directories exists
   file:
-    path: "{{ grafana_dir }}"
+    path: "{{ item }}"
     state: directory
     mode: '0755'
+  loop: ["{{ grafana_dir }}/config", "{{ grafana_dir }}/data", "{{ grafana_dir }}/dashboards"]
 
-- name: Ensure grafana data dir exists
-  file:
-    path: "{{ grafana_dir }}/data"
-    state: directory
-    mode: '0755'
-    owner: '472'
-    group: '472'
-
-- name: Ensure grafana config dir exists
-  file:
-    path: "{{ grafana_dir }}/config"
-    state: directory
-    mode: '0755'
-
-- name: Copy grafana config
-  template:
-    src: "{{ playbook_dir }}/roles/grafana/templates/grafana.ini"
-    dest: "{{ grafana_dir }}/config/grafana.ini"
-
-- name: Copy datasources config
-  template:
-    src: "{{ playbook_dir }}/roles/grafana/templates/datasources.yml"
-    dest: "{{ grafana_dir }}/config/datasources.yml"
-
-- name: Copy dashboard provisioning config
-  template:
-    src: "{{ playbook_dir }}/roles/grafana/templates/dashboards.yml"
-    dest: "{{ grafana_dir }}/config/dashboards.yml"
-
-- name: Ensure dashboards dir exists
-  file:
-    path: "{{ grafana_dir }}/dashboards"
-    state: directory
-    mode: '0755'
+- name: Copy files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/grafana.ini", dest: "{{ grafana_dir }}/config/grafana.ini" }
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/datasources.yml", dest: "{{ grafana_dir }}/config/datasources.yml" }
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/dashboards.yml", dest: "{{ grafana_dir }}/config/dashboards.yml" }
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/docker-compose.yml", dest: "{{ grafana_dir }}/docker-compose.yml" }
 
 - name: Copy dashboard files
+  become: true
+  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ grafana_dir }}/dashboards/{{ item | basename }}"
+    owner: "{{ deploy_user }}"
   with_fileglob:
     - "{{ playbook_dir }}/roles/grafana/templates/dashboards/*.json"
-
-- name: Copy docker-compose
-  template:
-    src: "{{ playbook_dir }}/roles/grafana/templates/docker-compose.yml"
-    dest: "{{ grafana_dir }}/docker-compose.yml"
 
 - name: Launch Grafana stack
   community.docker.docker_compose_v2:

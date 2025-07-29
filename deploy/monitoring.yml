@@ -6,5 +6,6 @@
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
   roles:
     - prometheus
-    # - grafana
-    # - loki
+    - loki
+    - promtail
+    - grafana

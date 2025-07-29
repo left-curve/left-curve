@@ -1,6 +1,7 @@
 services:
   grafana:
     image: grafana/grafana-oss:latest
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     container_name: grafana
     environment:
       - GF_SECURITY_ADMIN_USER={{ grafana_admin_user }}
@@ -14,5 +15,9 @@ services:
       - ./config/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
       - ./config/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
       - ./dashboards:/var/lib/grafana/dashboards
-    user: "472:472"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
