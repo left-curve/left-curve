@@ -1,10 +1,18 @@
-import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Outlet,
+  createRootRouteWithContext,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
 import { twMerge, useTheme } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
+import { UP_URI } from "~/store";
 
 import type { RouterContext } from "~/app.router";
 
@@ -20,12 +28,28 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       });
     }
   },
-  component: () => (
-    <>
-      {createPortal(<HeadContent />, document.querySelector("head")!)}
-      <Outlet />
-    </>
-  ),
+  component: () => {
+    const navigate = useNavigate();
+    const { location } = useRouterState();
+    const [isReady, setIsReady] = useState(false);
+    useEffect(() => {
+      if (location.pathname === "/maintenance") navigate({ to: "/" });
+      // Check chain is up
+      fetch(UP_URI).then(({ ok }) => {
+        if (!ok) navigate({ to: "/maintenance" });
+        setIsReady(true);
+      });
+    }, []);
+
+    if (!isReady) return null;
+
+    return (
+      <>
+        {createPortal(<HeadContent />, document.querySelector("head")!)}
+        <Outlet />
+      </>
+    );
+  },
   errorComponent: () => {
     const { theme } = useTheme();
     return (

@@ -6,6 +6,7 @@ const chain = local;
 
 export const FAUCET_URI = "http://localhost:8082/mint";
 export const QUEST_URI = "http://localhost:8081/check_username";
+export const UP_URI = "http://localhost:8080/up";
 
 export const coins = {
   dango: {
