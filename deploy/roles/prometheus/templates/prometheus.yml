@@ -26,7 +26,7 @@ scrape_configs:
 
   - job_name: 'node-exporter'
     static_configs:
-      - targets: 
+      - targets:
         - '100.96.253.40:9100'  # ovh1
         - '100.107.248.71:9100' # ovh2
         - '{{ tailscale_ip }}:9100' # ovh3
@@ -34,16 +34,28 @@ scrape_configs:
 
   - job_name: 'dango'
     static_configs:
-      - targets:
-        - '100.96.253.40:8080'  # ovh1
-        - '100.107.248.71:8080' # ovh2
-    scrape_interval: 30s
-    metrics_path: /metrics
+      - targets: ['100.107.248.40:9191'] # ovh1
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['100.107.248.71:9191'] # ovh2
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+    scrape_interval: 15s
 
   - job_name: 'cometbft'
     static_configs:
-      - targets:
-        - '100.96.253.40:26660'  # ovh1
-        - '100.107.248.71:26660' # ovh2
-    scrape_interval: 30s
-    metrics_path: /metrics
+      - targets: ['100.107.248.40:26660'] # ovh1
+        labels:
+          service: 'cometbft'
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['100.107.248.71:26660'] # ovh2
+        labels:
+          service: 'cometbft'
+          environment: 'production'
+          network: 'testnet'
+    scrape_interval: 15s

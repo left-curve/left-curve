@@ -22,3 +22,4 @@
     project_src: "{{ promtail_dir }}"
     pull: missing
     state: present
+    recreate: always

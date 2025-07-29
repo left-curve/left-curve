@@ -26,3 +26,4 @@
     project_src: "{{ prometheus_dir }}"
     pull: missing
     state: present
+    recreate: always

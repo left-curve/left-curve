@@ -34,3 +34,4 @@
     project_src: "{{ grafana_dir }}"
     pull: missing
     state: present
+    recreate: always

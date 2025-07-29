@@ -46,3 +46,8 @@ services:
     image: benjojo/alertmanager-discord
     environment:
       - DISCORD_WEBHOOK={{ discord_webhook }}
+
+networks:
+  default:
+    name: monitoring
+    external: true

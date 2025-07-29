@@ -18,95 +18,13 @@ scrape_configs:
           host: "{{ hostname }}"
           __path__: /var/log/{syslog,auth.log,kern.log,fail2ban.log}
 
-  # Docker container logs
-  - job_name: containers
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: containerlogs
-          host: "{{ hostname }}"
-          __path__: /var/lib/docker/containers/*/*log
-
-    pipeline_stages:
-      - json:
-          expressions:
-            output: log
-            stream: stream
-            attrs:
-            time: time
-      - json:
-          expressions:
-            tag:
-          source: attrs
-      - regex:
-          expression: (?P<container_name>(?:[^|])+)
-          source: tag
-      - timestamp:
-          format: RFC3339Nano
-          source: time
-      - labels:
-          stream:
-          container_name:
-      - output:
-          source: output
-
-  # Dango JSON logs (Rust application)
-  - job_name: dango-logs
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: dango
-          host: "{{ hostname }}"
-          __path__: /home/logs/dango/logs/*.log
-
-    pipeline_stages:
-      - json:
-          expressions:
-            timestamp: timestamp
-            level: level
-            target: target
-            message: message
-            module_path: module_path
-            file: file
-            line: line
-            span: span
-            fields: fields
-      - timestamp:
-          format: RFC3339Nano
-          source: timestamp
-      - labels:
-          level:
-          target:
-          module_path:
-          host:
-      - json:
-          expressions:
-            crate_name:
-          source: module_path
-      - regex:
-          expression: '^(?P<crate>[^:]+)'
-          source: module_path
-      - labels:
-          crate:
-
-  # CometBFT logs
-  - job_name: cometbft-logs
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: cometbft
-          host: "{{ hostname }}"
-          __path__: /home/logs/cometbft/logs/*.log
-
-    pipeline_stages:
-      - regex:
-          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z) \[(?P<level>\w+)\] (?P<message>.*)'
-      - timestamp:
-          format: RFC3339Nano
-          source: timestamp
-      - labels:
-          level:
-          host:
+  # Docker service discovery
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        target_label: container_name
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
