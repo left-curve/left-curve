@@ -58,17 +58,17 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
     setSizeCoin(coins.byDenom[pairId.quoteDenom]);
-    setValue("size", "0");
+    setValue("size", "");
   }, []);
 
   const changeAction = useCallback((action: "buy" | "sell") => {
     setAction(action);
-    setValue("size", "0");
+    setValue("size", "");
   }, []);
 
   const changeSizeCoin = useCallback((denom: string) => {
     setSizeCoin(coins.byDenom[denom]);
-    setValue("size", "0");
+    setValue("size", "");
   }, []);
 
   const baseCoin: WithAmount<AnyCoin> = useMemo(
