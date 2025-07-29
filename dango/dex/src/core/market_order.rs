@@ -112,8 +112,8 @@ where
                 .convert_precision::<24>()?; // TODO: Use other precision for amounts?
 
             println!(
-                "current_avg_price: {} | cutoff: {} | direction: {:?}",
-                current_avg_price, cutoff_price, market_order_direction
+                "current_avg_price: {} | cutoff: {} | price: {} | direction: {:?}",
+                current_avg_price, cutoff_price, price, market_order_direction
             );
 
             let price_ratio = current_avg_price
