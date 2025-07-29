@@ -3489,6 +3489,7 @@ dependencies = [
  "dango-types",
  "grug",
  "test-case",
+ "tracing",
 ]
 
 [[package]]
