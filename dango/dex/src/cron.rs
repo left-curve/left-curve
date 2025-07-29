@@ -1,8 +1,9 @@
 use {
     crate::{
         FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
-        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, RESERVES,
-        VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
+        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, Prependable,
+        RESERVES, VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders,
+        match_limit_orders,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -157,13 +158,13 @@ fn clear_orders_of_pair(
         .append(Direction::Bid)
         .drain(storage, None, None)?
         .into_iter()
-        .peekable();
+        .prependable();
     let mut market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .drain(storage, None, None)?
         .into_iter()
-        .peekable();
+        .prependable();
 
     // Create iterators over user orders.
     //
@@ -213,31 +214,51 @@ fn clear_orders_of_pair(
 
     // Merge the orders from users and from the passive pool.
     let mut merged_bid_iter =
-        MergedOrders::new(bid_iter, passive_bid_iter, IterationOrder::Descending).peekable();
+        MergedOrders::new(bid_iter, passive_bid_iter, IterationOrder::Descending).prependable();
     let mut merged_ask_iter =
-        MergedOrders::new(ask_iter, passive_ask_iter, IterationOrder::Ascending).peekable();
+        MergedOrders::new(ask_iter, passive_ask_iter, IterationOrder::Ascending).prependable();
 
     // -------------------- 2. Match and fill market orders --------------------
 
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
-    let market_bid_filling_outcomes = match_and_fill_market_orders(
-        &mut market_bids,
-        &mut merged_ask_iter,
-        Direction::Bid,
-        maker_fee_rate,
-        taker_fee_rate,
-        current_block_height,
-    )?;
-    let market_ask_filling_outcomes = match_and_fill_market_orders(
-        &mut market_asks,
-        &mut merged_bid_iter,
-        Direction::Ask,
-        maker_fee_rate,
-        taker_fee_rate,
-        current_block_height,
-    )?;
+    let (market_bid_filling_outcomes, left_over_market_bid, left_over_limit_ask) =
+        match_and_fill_market_orders(
+            &mut market_bids,
+            &mut merged_ask_iter,
+            Direction::Bid,
+            maker_fee_rate,
+            taker_fee_rate,
+            current_block_height,
+        )?;
+    let (market_ask_filling_outcomes, left_over_market_ask, left_over_limit_bid) =
+        match_and_fill_market_orders(
+            &mut market_asks,
+            &mut merged_bid_iter,
+            Direction::Ask,
+            maker_fee_rate,
+            taker_fee_rate,
+            current_block_height,
+        )?;
+
+    // Prepend the left over market orders to the market order iterators, so
+    // their refunds are processed properly later.
+    if let Some(bid) = left_over_market_bid {
+        market_bids.prepend(bid);
+    }
+    if let Some(ask) = left_over_market_ask {
+        market_asks.prepend(ask);
+    }
+
+    // Prepend the left over limit orders to the merged limit iterators, so they
+    // are included in the following limit order matching.
+    if let Some(bid) = left_over_limit_bid {
+        merged_bid_iter.prepend(Ok(bid));
+    }
+    if let Some(ask) = left_over_limit_ask {
+        merged_ask_iter.prepend(Ok(ask));
+    }
 
     // ------------------------- 3. Match limit orders -------------------------
 

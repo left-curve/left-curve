@@ -4,11 +4,12 @@ mod market_order;
 mod merged_orders;
 mod order_filling;
 mod order_matching;
+mod prepend;
 mod router;
 mod types;
 pub mod xyk;
 
 pub use {
     liquidity_pool::*, market_order::*, merged_orders::*, order_filling::*, order_matching::*,
-    router::*, types::*,
+    prepend::*, router::*, types::*,
 };
