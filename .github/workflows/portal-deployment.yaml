@@ -81,7 +81,6 @@ jobs:
           # - [self-hosted, macOS]
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
-    needs: [test]
     permissions:
       packages: write
     steps:
