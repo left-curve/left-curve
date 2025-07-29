@@ -80,6 +80,8 @@ export const ChartIQ = ({ coins }) => {
         { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
       );
 
+      stx.setPeriodicity(5, "minute", 0, true);
+
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
       stx.controls.mSticky = false;
@@ -107,6 +109,8 @@ export const ChartIQ = ({ coins }) => {
 
   useEffect(() => {
     if (!isMounted.current || !context) return;
+    context.stx.chartId = pairSymbol;
+    context.stx.chart.symbol = pairSymbol;
     context.changeSymbol({ symbol: pairSymbol });
   }, [pairSymbol]);
 

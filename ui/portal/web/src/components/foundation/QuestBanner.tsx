@@ -40,21 +40,21 @@ export const QuestBanner: React.FC = () => {
     queryFn: () => fetch(`${QUEST_URI}/${account?.username}`).then((res) => res.json()),
   });
 
-  const isTxCountCompleted = quests?.tx_count >= 10;
-  const isLimitOrdersCompleted = quests?.limit_orders;
-  const isMarketOrdersCompleted = quests?.market_orders;
-  const isTradingPairsCompleted = quests?.trading_pairs === 0;
-  const isTradingVolumesCompleted = quests?.trading_volumes === 0;
+  if (!isQuestBannerVisible || isLoading || !quests) return null;
+
+  const isTxCountCompleted = quests.tx_count >= 10;
+  const isLimitOrdersCompleted = quests.limit_orders;
+  const isMarketOrdersCompleted = quests.market_orders;
+  const isTradingPairsCompleted = quests.trading_pairs === 0;
+  const isTradingVolumesCompleted = Number(quests.trading_volumes) === 0;
 
   const areQuestsCompleted =
-    quests?.eth_address &&
+    quests.eth_address &&
     isTxCountCompleted &&
     isLimitOrdersCompleted &&
     isMarketOrdersCompleted &&
     isTradingPairsCompleted &&
     isTradingVolumesCompleted;
-
-  if (!isQuestBannerVisible || isLoading) return null;
 
   return (
     <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
@@ -84,25 +84,25 @@ export const QuestBanner: React.FC = () => {
                 { ...formatNumberOptions, currency: "USD" },
               ),
             })}
-            completed={isTxCountCompleted}
+            completed={isTradingVolumesCompleted}
           />
           <Quest
             text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({
               number: quests?.trading_pairs,
             })}
-            completed={isLimitOrdersCompleted}
-          />
-          <Quest
-            text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
-            completed={isMarketOrdersCompleted}
-          />
-          <Quest
-            text={m["quests.galxeQuest.quest.completeMarketOrder"]()}
             completed={isTradingPairsCompleted}
           />
           <Quest
+            text={m["quests.galxeQuest.quest.completeMarketOrder"]()}
+            completed={isMarketOrdersCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
+            completed={isLimitOrdersCompleted}
+          />
+          <Quest
             text={m["quests.galxeQuest.quest.completeTxsInEthereum"]()}
-            completed={isTradingVolumesCompleted}
+            completed={isTxCountCompleted}
           />
         </div>
         {areQuestsCompleted ? (

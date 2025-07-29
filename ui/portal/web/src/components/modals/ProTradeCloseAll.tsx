@@ -1,15 +1,19 @@
 import { Button, IconButton, IconClose } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
-export const ProTradeCloseAll = forwardRef(() => {
+import type { OrderId } from "@left-curve/dango/types";
+
+export const ProTradeCloseAll = forwardRef<void, { ordersId: OrderId[] }>(({ ordersId }) => {
   const { hideModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
+  const queryClient = useQueryClient();
 
   const { isPending, mutateAsync: cancelAllOrders } = useSubmitTx({
     submission: {
@@ -19,9 +23,17 @@ export const ProTradeCloseAll = forwardRef(() => {
     mutation: {
       mutationFn: async () => {
         if (!signingClient) throw new Error("No signing client available");
-        await signingClient.batchUpdateOrders({ cancels: "all", sender: account!.address });
+        await signingClient.batchUpdateOrders({
+          cancels: { some: ordersId },
+          sender: account!.address,
+        });
       },
-      onSuccess: () => hideModal(),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: ["ordersByUser", account?.address],
+        });
+        hideModal();
+      },
     },
   });
 

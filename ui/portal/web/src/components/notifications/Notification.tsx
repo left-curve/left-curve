@@ -64,7 +64,10 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   const { formatNumberOptions } = settings;
   const isSent = type === "sent";
 
-  const formattedAmount = formatNumber(formatUnits(amount, coin.decimals), formatNumberOptions);
+  const formattedAmount = formatNumber(formatUnits(amount, coin.decimals), {
+    ...formatNumberOptions,
+    maxSignificantDigits: 4,
+  });
 
   const originAddress = isSent ? fromAddress : toAddress;
   const targetAddress = isSent ? toAddress : fromAddress;
