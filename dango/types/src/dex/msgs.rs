@@ -52,7 +52,10 @@ pub struct CreateLimitOrderRequest {
     pub amount: NonZero<Uint128>,
     /// The limit price measured _in the quote asset_, i.e. how many units of
     /// quote asset is equal in value to 1 unit of base asset.
-    pub price: Udec128_24,
+    ///
+    /// Note: price must be non-zero, otherwise we get "division by zero" error
+    /// which causes cronjob to fail.
+    pub price: NonZero<Udec128_24>,
 }
 
 #[grug::derive(Serde)]
@@ -150,6 +153,10 @@ pub enum ExecuteMsg {
         route: SwapRoute,
         output: NonZero<Coin>,
     },
+    /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
+    ///
+    /// Can only be called by the chain owner. Used to recover from critical bugs.
+    ForceCancelOrders {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

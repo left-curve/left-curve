@@ -183,6 +183,7 @@
       SENTRY__ENVIRONMENT: "production-{{ dango_network }}"
     ports:
       - "{{ dango_port }}:8080"
+      - "{{ tailscale_ip }}:9191:9191"
     volumes:
       - "{{ dango_target_dir }}:/app/.dango"
     networks:

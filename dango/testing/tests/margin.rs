@@ -738,7 +738,7 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: dango_types::dex::Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128_24::ONE,
+                    price: NonZero::new_unchecked(Udec128_24::ONE),
                 }],
                 cancels: None,
             },
