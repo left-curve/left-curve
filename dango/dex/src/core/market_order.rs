@@ -110,6 +110,12 @@ where
                 .filled_quote
                 .checked_div(filling_outcome.filled_base)?
                 .convert_precision::<24>()?; // TODO: Use other precision for amounts?
+
+            println!(
+                "current_avg_price: {} | cutoff: {} | direction: {:?}",
+                current_avg_price, cutoff_price, market_order_direction
+            );
+
             let price_ratio = current_avg_price
                 .checked_into_signed()?
                 .checked_sub(cutoff_price.checked_into_signed()?)?
