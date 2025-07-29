@@ -2,7 +2,6 @@ services:
   prometheus:
     image: prom/prometheus:latest
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
-    container_name: prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -28,7 +27,6 @@ services:
   alertmanager:
     image: prom/alertmanager:latest
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
-    container_name: alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
@@ -43,3 +41,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  alertmanager-discord:
+    image: benjojo/alertmanager-discord
+    environment:
+      - DISCORD_WEBHOOK={{ discord_webhook }}

@@ -7,12 +7,12 @@ route:
   group_wait: 10s
   group_interval: 10s
   repeat_interval: 1h
-  receiver: 'web.hook'
+  receiver: discord_webhook
 
 receivers:
-- name: 'web.hook'
+- name: 'discord_webhook'
   webhook_configs:
-  - url: 'http://127.0.0.1:5001/'
+  - url: 'http://alertmanager-discord:9094'
 
 inhibit_rules:
   - source_match:
