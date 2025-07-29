@@ -106,10 +106,11 @@ where
             // Calculate how much of the market order can be filled without the average
             // price of the market order exceeding the cutoff price.
             // TODO: optimize the math here. See the jupyter notebook.
-            let current_avg_price = filling_outcome
-                .filled_quote
-                .checked_div(filling_outcome.filled_base)?
-                .convert_precision::<24>()?; // TODO: Use other precision for amounts?
+            let current_avg_price = Udec128_24::checked_from_ratio(
+                filling_outcome.filled_quote.0,
+                filling_outcome.filled_base.0,
+            )?;
+
             let price_ratio = current_avg_price
                 .checked_into_signed()?
                 .checked_sub(cutoff_price.checked_into_signed()?)?
@@ -118,6 +119,7 @@ where
                         .checked_into_signed()?
                         .checked_sub(price.checked_into_signed()?)?,
                 )?;
+
             let market_order_amount_to_match_in_base = filling_outcome
                 .filled_base
                 .checked_mul(price_ratio.checked_into_unsigned()?)?
