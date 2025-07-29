@@ -14,9 +14,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, NextNumber, Number,
-        NumberConst, Order as IterationOrder, PrevNumber, Response, StdError, StdResult, Storage,
-        SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
+        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
+        Udec128, Udec128_6, Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -412,7 +412,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            limit_order.price,
+                            *limit_order.price,
                             order_id,
                         ),
                     )?;
@@ -422,7 +422,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            limit_order.price,
+                            *limit_order.price,
                             order_id,
                         ),
                         &limit_order,
@@ -446,20 +446,9 @@ fn clear_orders_of_pair(
         };
 
         // Compute the clearing price.
-        //
-        // Notes:
-        //
-        // 1. `filled_{base,quote}` are in 6 decimals. We must convert them to
-        //    24 decimals first, then to the division. If we do the division
-        //    first then convert, we may lose precision.
-        //
-        // 2. Converting to 24 decimals with 128 bit may overflow, so we also
-        //    convert to 256 bit.
-        let clearing_price = filled_quote
-            .into_next()
-            .convert_precision()?
-            .checked_div(filled_base.into_next())?
-            .checked_into_prev()?;
+
+        let clearing_price = Udec128_24::checked_from_ratio(filled_quote.0, filled_base.0)?;
+
         let cleared = order.remaining().is_zero();
 
         // Emit event for filled orders to be used by the frontend.

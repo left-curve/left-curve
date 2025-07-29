@@ -97,6 +97,16 @@
   loop_control:
     loop_var: dango_network
 
+- name: Allow unlimited concurrent queries for dango
+  community.clickhouse.clickhouse_client:
+    login_host: 127.0.0.1
+    login_port: 9000
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
+    execute: >
+      ALTER USER dango
+      SETTINGS max_concurrent_queries_for_user = 0
+
 - name: Copy app.toml
   vars:
     dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
@@ -173,6 +183,7 @@
       SENTRY__ENVIRONMENT: "production-{{ dango_network }}"
     ports:
       - "{{ dango_port }}:8080"
+      - "{{ tailscale_ip }}:9191:9191"
     volumes:
       - "{{ dango_target_dir }}:/app/.dango"
     networks:
