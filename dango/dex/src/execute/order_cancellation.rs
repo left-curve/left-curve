@@ -166,11 +166,11 @@ fn cancel_market_order(
     let refund = match direction {
         Direction::Bid => Coin {
             denom: quote_denom,
-            amount: order.amount,
+            amount: *order.amount,
         },
         Direction::Ask => Coin {
             denom: base_denom,
-            amount: order.amount,
+            amount: *order.amount,
         },
     };
 
@@ -178,7 +178,7 @@ fn cancel_market_order(
         user,
         id: order_id,
         kind: OrderKind::Market,
-        remaining: order.amount,
+        remaining: *order.amount,
         refund: refund.clone(),
     })?;
 
