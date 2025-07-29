@@ -325,7 +325,7 @@ cq-drawing-palette .ciq-mini-widget span[label],
 :host(cq-dropdown.ciq-day) .item.separator-item hr,
 .ciq-day cq-dropdown .item.separator-item hr,
 cq-dialog.ciq-night hr,
-cq-dialog.ciq-day hr{
+cq-dialog.ciq-day hr {
   border-bottom-color: var(--color-border-secondary-rice);
 }
 
@@ -380,7 +380,7 @@ cq-side-panel {
   left: 50%;
   /* transform: translate(-50%, -50%); */
   @apply diatype-xs-medium;
-  color: var(--color-primary-900)
+  color: var(--color-primary-900);
 }
 
 html:not([ciq-last-interaction="touch"]) .ciq-night .ciq-context-menu div:hover {
@@ -388,8 +388,12 @@ html:not([ciq-last-interaction="touch"]) .ciq-night .ciq-context-menu div:hover 
 
 }
 
-cq-dialog.ciq-night[cq-drawing-context], cq-dialog.ciq-night[cq-study-context], cq-dialog.ciq-night[cq-yaxis-context],
-cq-dialog.ciq-day[cq-drawing-context], cq-dialog.ciq-day[cq-study-context], cq-dialog.ciq-day[cq-yaxis-context] {
+cq-dialog.ciq-night[cq-drawing-context],
+cq-dialog.ciq-night[cq-study-context],
+cq-dialog.ciq-night[cq-yaxis-context],
+cq-dialog.ciq-day[cq-drawing-context],
+cq-dialog.ciq-day[cq-study-context],
+cq-dialog.ciq-day[cq-yaxis-context] {
   box-shadow: var(--shadow-card);
 }
 
@@ -432,7 +436,7 @@ cq-dialog.ciq-day {
   background: var(--color-surface-primary-rice);
   color: var(--color-primary-900);
   border-radius: 20px;
-  overflow: hidden
+  overflow: hidden;
 }
 
 
