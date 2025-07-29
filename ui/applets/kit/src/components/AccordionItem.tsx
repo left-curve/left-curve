@@ -1,7 +1,5 @@
-import { useState } from "react";
-
 import { AnimatePresence, motion } from "framer-motion";
-import { IconChevronDown } from "./icons/IconChevronDown";
+import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { twMerge } from "#utils/twMerge.js";
 
@@ -36,7 +34,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
   return (
     <div
       className={twMerge(
-        "flex w-full flex-col bg-rice-50 rounded-md p-4 shadow-account-card overflow-hidden",
+        "flex w-full flex-col bg-surface-tertiary-rice rounded-md p-4 shadow-account-card overflow-hidden",
         classNames?.container,
       )}
     >
@@ -52,7 +50,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
             classNames?.icon,
           )}
         >
-          {icon ? icon : <IconChevronDown />}
+          {icon ? icon : <IconChevronDownFill className="w-4 h-4" />}
         </div>
       </div>
 

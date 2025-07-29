@@ -52,7 +52,7 @@ export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             )}
             <span className="h2-heavy">{m["accountCreation.title"]()}</span>
           </h2>
-          <p className="text-gray-500 diatype-m-medium">
+          <p className="text-tertiary-500 diatype-m-medium">
             {m["accountCreation.stepper.description"]({ step: activeStep })}
           </p>
         </div>
@@ -120,12 +120,10 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
         { "cursor-pointer": onClick },
         { " border border-red-bean-400": isSelected },
         {
-          "bg-[linear-gradient(98.89deg,_rgba(255,_251,_245,_0.5)_5.88%,_rgba(249,_226,_226,_0.5)_46.73%,_rgba(255,_251,_244,_0.5)_94.73%)]":
-            accountType === "spot",
+          "bg-account-card-red-2": accountType === "spot",
         },
         {
-          "bg-[linear-gradient(0deg,_#FFFCF6,_#FFFCF6),linear-gradient(98.89deg,_rgba(248,_249,_239,_0.5)_5.88%,_rgba(239,_240,_195,_0.5)_46.73%,_rgba(248,_249,_239,_0.5)_94.73%)]":
-            accountType === "margin",
+          "bg-account-card-green-2": accountType === "margin",
         },
       )}
       onClick={onClick}
@@ -133,13 +131,15 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
       <p className="capitalize exposure-m-italic">
         {m["accountCreation.accountType.title"]({ accountType })}
       </p>
-      <p className="diatype-sm-medium text-gray-500 relative max-w-[15.5rem] z-10">
+      <p className="diatype-sm-medium text-tertiary-500 relative max-w-[15.5rem] z-10">
         {m["accountCreation.accountType.description"]({ accountType })}
       </p>
       <img
         src={`/images/account-creation/${accountType}.svg`}
         alt={`create-account-${accountType}`}
-        className={twMerge("absolute right-0 bottom-0", { "right-2": accountType === "margin" })}
+        className={twMerge("absolute right-0 bottom-0  drag-none select-none", {
+          "right-2": accountType === "margin",
+        })}
       />
       <IconCheckedCircle
         className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {
@@ -192,13 +192,13 @@ export const Deposit: React.FC = () => {
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
 
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
+        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
 
         await signingClient.registerAccount({
           sender: account!.address,
           config: { [accountType as "spot"]: { owner: account!.username } },
           funds: {
-            "bridge/usdc": parsedAmount,
+            "bridge/usdc": parsedAmount.toString(),
           },
         });
 
@@ -206,7 +206,7 @@ export const Deposit: React.FC = () => {
       },
       onSuccess: async () => {
         await refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
         navigate({ to: "/" });
       },
     },
@@ -261,7 +261,7 @@ export const Deposit: React.FC = () => {
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
             <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
-            <span className="diatype-m-regular text-gray-500 pt-1">{coinInfo.symbol}</span>
+            <span className="diatype-m-regular text-tertiary-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }
         bottomComponent={

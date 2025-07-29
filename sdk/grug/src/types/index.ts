@@ -96,6 +96,7 @@ export type {
   Binary,
   JsonValue,
   Encoder,
+  DateTime,
 } from "./encoding.js";
 
 export type {
@@ -117,6 +118,7 @@ export type {
   KeyOfUnion,
   ExtractFromUnion,
   NestedOmit,
+  WithId,
 } from "./utils.js";
 
 export type {

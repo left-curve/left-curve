@@ -44,7 +44,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     <header
       className={twMerge(
         "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full transition-all",
-        isScrolled ? "lg:bg-white-100 lg:shadow-account-card" : "bg-transparent shadow-none",
+        isScrolled
+          ? "lg:bg-surface-primary-rice lg:shadow-account-card"
+          : "bg-transparent shadow-none",
       )}
     >
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
@@ -63,7 +65,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          {isProSwap && !isLg ? <TradeButtons /> : <SearchMenu />}
+          {isProSwap && !isLg ? (
+            <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" />
+          ) : (
+            <SearchMenu />
+          )}
           <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
@@ -75,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             className=""
             data-status={linkStatus("/settings")}
           >
-            <IconGear className="w-6 h-6 text-rice-700" />
+            <IconGear className="w-6 h-6" />
           </Button>
 
           {isConnected ? (
@@ -93,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 data-status={linkStatus("/notifications")}
                 onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
               >
-                <IconBell className="w-6 h-6 text-rice-700" />
+                <IconBell className="w-6 h-6" />
               </Button>
             </TxIndicator>
           ) : null}

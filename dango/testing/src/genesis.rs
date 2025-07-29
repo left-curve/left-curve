@@ -53,6 +53,7 @@ impl Preset for TestOption {
                 height: GENESIS_BLOCK_HEIGHT,
                 timestamp: MOCK_GENESIS_TIMESTAMP,
             },
+            mocked_clickhouse: false,
             // By default, give the owner and each user 100k USDC from Ethereum.
             bridge_ops: |accounts| {
                 vec![
@@ -341,6 +342,7 @@ impl Preset for DexOption {
                         lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
                         pool_type: PassiveLiquidity::Xyk {
                             order_spacing: Udec128::ONE,
+                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
@@ -352,6 +354,7 @@ impl Preset for DexOption {
                         lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
                         pool_type: PassiveLiquidity::Xyk {
                             order_spacing: Udec128::ONE,
+                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
@@ -363,6 +366,7 @@ impl Preset for DexOption {
                         lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
                         pool_type: PassiveLiquidity::Xyk {
                             order_spacing: Udec128::ONE,
+                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
@@ -374,6 +378,7 @@ impl Preset for DexOption {
                         lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
                         pool_type: PassiveLiquidity::Xyk {
                             order_spacing: Udec128::ONE,
+                            reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },

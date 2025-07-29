@@ -51,6 +51,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -72,13 +74,15 @@ jobs:
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
 
-
   check-no-features:
     needs: [format]
     name: Check compiling without features
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -94,6 +98,7 @@ jobs:
     needs: [format]
     name: Lint + Test
     runs-on: self-hosted
+    timeout-minutes: 20
     # Don't use this, it raises permissions issues on self hosted runners
     # container:
     #   image: ghcr.io/left-curve/left-curve/native-builder
@@ -102,19 +107,44 @@ jobs:
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
-    # services:
-    #   postgres:
-    #     image: postgres:17
-    #     env:
-    #       POSTGRES_PASSWORD: postgres
-    #     options: >-
-    #       --health-cmd pg_isready
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
+      CLICKHOUSE_HOST: localhost
+      CLICKHOUSE_PORT: 10123
+      POSTGRES_PORT: 6432
+      CLICKHOUSE_DATABASE: grug_test
+      CLICKHOUSE_USER: default
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          # Using a different port to not mess with the currently running psql
+          - 127.0.0.1:6432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        env:
+          CLICKHOUSE_DB: grug_test
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          # Using a different port to not mess with the currently running clickhouse
+          - 127.0.0.1:10123:8123
+        options: >-
+          --health-cmd "clickhouse-client --query 'SELECT 1'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+          --ulimit nofile=262144:262144
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -122,7 +152,7 @@ jobs:
           toolchain: stable
           components: clippy
 
-      # - name: Create database
+      # - name: Create psql database
       #   run: |
       #     createdb -U postgres -h postgres "$PGDATABASE"
 
@@ -140,7 +170,7 @@ jobs:
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
       - name: Build GraphQL schema
-        run: cargo run -p indexer-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+        run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
 
       - name: Check if schema is up-to-date
         run: |
@@ -172,6 +202,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Set build config
         id: config
@@ -318,6 +350,8 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -331,6 +365,7 @@ jobs:
         env:
           DANGO_TAG: ${{ env.GIT_COMMIT }}
           POSTGRES_PORT: 0
+          CLICKHOUSE_PORT: 0
           DANGO_PORT: 0
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.17
@@ -360,6 +395,8 @@ jobs:
     env:
       DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DANGO_CLICKHOUSE_PASSWORD: ${{ secrets.DANGO_CLICKHOUSE_PASSWORD }}
+      CLICKHOUSE_PASSWORD: ${{ secrets.CLICKHOUSE_PASSWORD }}
       DEVNET_COMETBFT_NODE_KEY: ${{ secrets.DEVNET_COMETBFT_NODE_KEY }}
       DEVNET_COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_ADDRESS }}
       DEVNET_COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PUB_KEY }}
@@ -370,6 +407,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
       - name: Check DEPLOY_KEY is set
         run: |
           if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
@@ -403,4 +442,4 @@ jobs:
             -e dango_image_tag=${{ env.GIT_COMMIT }} \
             -e "dango_db_password=$DANGO_DB_PASSWORD" \
             -e '{"dango_networks":["devnet"]}'
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e bot_version=0.1.5
+          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=latest

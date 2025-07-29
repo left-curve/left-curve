@@ -1,18 +1,19 @@
 use {
-    grug_app::NaiveProposalPreparer,
+    grug_app::{Indexer, NaiveProposalPreparer},
     grug_db_memory::MemDb,
+    grug_httpd::traits::QueryApp,
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
-    indexer_httpd::{context::Context, traits::QueryApp},
-    indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
+    indexer_httpd::context::Context,
+    indexer_sql::indexer::Indexer as IndexerTrait,
     std::{str::FromStr, sync::Arc},
     tokio::sync::Mutex,
 };
 
 pub async fn create_block() -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
     TestAccounts,
 )> {
     create_blocks(1).await
@@ -22,12 +23,12 @@ pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
     TestAccounts,
 )> {
     let denom = Denom::from_str("ugrug")?;
 
-    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
         .with_keep_blocks(true)
@@ -42,7 +43,7 @@ pub async fn create_blocks(
         .set_owner("owner")
         .build();
 
-    let chain_id = suite.chain_id().await?;
+    let chain_id = suite.app.chain_id().await?;
 
     let suite = Arc::new(Mutex::new(suite));
 
@@ -62,11 +63,24 @@ pub async fn create_blocks(
             .await?;
     }
 
-    suite.lock().await.app.indexer.wait_for_finish();
+    suite
+        .lock()
+        .await
+        .app
+        .indexer
+        .wait_for_finish()
+        .expect("Can't wait for indexer to finish");
 
     let client = Arc::new(mock_client);
 
-    let httpd_context = Context::new(context, suite, client.clone(), indexer_path);
+    let suite_guard = suite.lock().await;
+    let httpd_app = suite_guard.app.clone_without_indexer();
+    let httpd_context = Context::new(
+        context,
+        Arc::new(Mutex::new(httpd_app)),
+        client.clone(),
+        indexer_path,
+    );
 
     Ok((httpd_context, client, accounts))
 }

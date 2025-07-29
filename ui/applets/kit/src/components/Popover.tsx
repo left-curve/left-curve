@@ -3,7 +3,7 @@ import React, { useId, useImperativeHandle, useRef } from "react";
 import { Popover as HPopover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ResizerContainer } from "./ResizerContainer";
-import { IconChevronDown } from "./icons/IconChevronDown";
+import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { twMerge } from "#utils/twMerge.js";
 
@@ -44,8 +44,8 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
             >
               {trigger}
               {showArrow && (
-                <IconChevronDown
-                  className={twMerge("transition-all w-5 h-5", open && "rotate-180")}
+                <IconChevronDownFill
+                  className={twMerge("transition-all w-4 h-4", open && "rotate-180")}
                 />
               )}
             </PopoverButton>
@@ -57,7 +57,7 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
               <ResizerContainer
                 layoutId={`popover-menu-${id}`}
                 className={twMerge(
-                  "bg-rice-25 rounded-xl h-fit p-4 shadow-account-card",
+                  "bg-surface-secondary-rice rounded-xl h-fit p-4 shadow-account-card",
                   classNames?.menu,
                 )}
               >

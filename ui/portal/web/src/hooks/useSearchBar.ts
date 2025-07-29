@@ -54,6 +54,10 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const queryClient = useQueryClient();
   const client = usePublicClient();
 
+  const allNotFavApplets = useMemo(() => {
+    return Object.values(APPLETS).filter((applet) => !favApplets[applet.id]);
+  }, [favApplets]);
+
   const { data, ...query } = useQuery({
     queryKey: ["searchBar", searchText],
     queryFn: async ({ signal }) => {
@@ -126,5 +130,5 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
     },
   });
 
-  return { searchText, setSearchText, searchResult, ...query };
+  return { searchText, setSearchText, searchResult, allNotFavApplets, ...query };
 }

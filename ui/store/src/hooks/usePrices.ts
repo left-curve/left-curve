@@ -1,17 +1,12 @@
-import type { Denom, Funds, Price } from "@left-curve/dango/types";
-import {
-  type FormatNumberOptions,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-} from "@left-curve/dango/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
-
-import { Big } from "big.js";
-
-import type { AnyCoin } from "../types/coin.js";
 import { usePublicClient } from "./usePublicClient.js";
+
+import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
+
+import type { Denom, Funds, Price } from "@left-curve/dango/types";
+import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { AnyCoin } from "../types/coin.js";
 
 export type UsePricesParameters = {
   refetchInterval?: number;
@@ -68,11 +63,10 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     const fromPrice = getPrice(fromAmount, fromDenom);
     const targetPrice = getPrice(1, targetDenom);
 
-    const targetAmount = Big(fromPrice).div(targetPrice).toNumber();
+    const targetAmount = Decimal(fromPrice).div(targetPrice).toFixed();
+
     return (
-      parse
-        ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals).toString()
-        : targetAmount
+      parse ? parseUnits(targetAmount, coins[targetDenom].decimals).toString() : targetAmount
     ) as T extends false ? number : string;
   }
 

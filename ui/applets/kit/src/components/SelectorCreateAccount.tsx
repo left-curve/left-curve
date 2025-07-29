@@ -37,13 +37,15 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
       onClick={onClick}
     >
       <p className="capitalize exposure-m-italic">{accountType} Account</p>
-      <p className="diatype-sm-medium text-gray-500 relative max-w-[15.5rem] z-10 ">
+      <p className="diatype-sm-medium text-tertiary-500 relative max-w-[15.5rem] z-10 ">
         {subtext[accountType]}
       </p>
       <img
         src={`./images/account-creation/${accountType}.svg`}
         alt={`create-account-${accountType}`}
-        className={twMerge("absolute right-0 bottom-0", { "right-2": accountType === "margin" })}
+        className={twMerge("absolute right-0 bottom-0 drag-none select-none", {
+          "right-2": accountType === "margin",
+        })}
       />
       <IconCheckedCircle
         className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {

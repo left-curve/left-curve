@@ -22,6 +22,7 @@
     "@tanstack/zod-adapter": "catalog:",
     "@yudiel/react-qr-scanner": "^2.2.1",
     "big.js": "^7.0.1",
+    "@left-curve/chartiq": "^9.8.0",
     "date-fns": "^4.1.0",
     "framer-motion": "catalog:",
     "fuzzysort": "^3.1.0",

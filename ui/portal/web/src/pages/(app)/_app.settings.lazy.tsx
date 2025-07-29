@@ -1,3 +1,4 @@
+import { Input } from "@left-curve/applets-kit";
 import { createLazyFileRoute } from "@tanstack/react-router";
 
 import { MobileTitle } from "~/components/foundation/MobileTitle";
@@ -24,6 +25,7 @@ function SettingsApplet() {
       <DisplaySection>
         <DisplaySection.Language />
         <DisplaySection.FormatNumber />
+        <DisplaySection.Theme />
       </DisplaySection>
       <KeyManagementSection />
     </div>

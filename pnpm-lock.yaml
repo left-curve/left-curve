@@ -350,6 +350,9 @@ importers:
       '@left-curve/applets-kit':
         specifier: workspace:^
         version: link:../../applets/kit
+      '@left-curve/chartiq':
+        specifier: ^9.8.0
+        version: 9.8.0
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
@@ -2366,6 +2369,9 @@ packages:
     engines: {node: '>=10.0'}
     peerDependencies:
       tslib: '2'
+
+  '@left-curve/chartiq@9.8.0':
+    resolution: {integrity: sha512-upHGcJ4cMbx7RUvX0nlXiq9vUUHdNUreos7bxE2ksL1NuW39mG33iYOMWFr404xYTMBJwzWNvaIGWVsBrJCrLg==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.8.0/0e01e19dcfd0cb44a07222be2ca9eb2e2a5af0af}
 
   '@lix-js/sdk@0.4.1':
     resolution: {integrity: sha512-8v9gkLuEa/VXLkDwuXLr+wjZY1D7dPXVhez97jJULYoKurLVuhh2SH/Sv4jF43biV0wee44PGADrFPuU00lnsQ==}
@@ -10082,6 +10088,8 @@ snapshots:
   '@jsonjoy.com/util@1.5.0(tslib@2.8.1)':
     dependencies:
       tslib: 2.8.1
+
+  '@left-curve/chartiq@9.8.0': {}
 
   '@lix-js/sdk@0.4.1':
     dependencies:

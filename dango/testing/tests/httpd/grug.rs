@@ -29,7 +29,8 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
             )
             .await
             {
-                tracing::error!("Error running mock HTTP server: {error}");
+                // Using println! so even without `setup_tracing_subscriber` we can see the error
+                println!("Error running mock HTTP server: {error}");
             }
         });
     });

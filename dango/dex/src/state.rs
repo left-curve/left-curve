@@ -5,8 +5,8 @@ use {
         dex::{Direction, OrderId, PairParams},
     },
     grug::{
-        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, Timestamp, Udec128, Uint128,
-        UniqueIndex,
+        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, NumberConst, Timestamp,
+        Udec128_6, Udec128_24, Uint64, UniqueIndex,
     },
 };
 
@@ -16,7 +16,7 @@ pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 // (base_denom, quote_denom) => coin_pair
 pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
-pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 1, 1);
+pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", Uint64::ONE, Uint64::ONE);
 
 pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderIndex> =
     IndexedMap::new("market_order", MarketOrderIndex {
@@ -38,10 +38,10 @@ pub const INCOMING_ORDERS: Map<(Addr, OrderId), (LimitOrderKey, LimitOrder)> =
     Map::new("incoming_orders");
 
 /// Stores the total trading volume in USD for each account address and timestamp.
-pub const VOLUMES: Map<(&Addr, Timestamp), Uint128> = Map::new("volume");
+pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
 
 /// Stores the total trading volume in USD for each username and timestamp.
-pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Uint128> = Map::new("volume_by_user");
+pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("volume_by_user");
 
 /// Storage key for market orders.
 ///
@@ -55,7 +55,7 @@ pub type MarketOrderKey = ((Denom, Denom), Direction, OrderId);
 /// ```plain
 /// ((base_denom, quote_denom), direction, price, order_id)
 /// ```
-pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
+pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
 
 #[grug::index_list(MarketOrderKey, MarketOrder)]
 pub struct MarketOrderIndex<'a> {

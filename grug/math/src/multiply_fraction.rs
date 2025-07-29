@@ -1,4 +1,7 @@
-use crate::{Dec, Fraction, Int, IsZero, MathError, MathResult, MultiplyRatio, NumberConst};
+use crate::{
+    Dec, FixedPoint, Fraction, Int, IsZero, MathError, MathResult, MultiplyRatio, Number,
+    NumberConst,
+};
 
 /// Describes operations between a number and a decimal type.
 pub trait MultiplyFraction<F, U>: Sized + Copy
@@ -53,6 +56,8 @@ where
         Ok(())
     }
 }
+
+// ------------------------------------ int ------------------------------------
 
 impl<U, const S: u32> MultiplyFraction<Dec<U, S>, U> for Int<U>
 where
@@ -125,10 +130,47 @@ where
     }
 }
 
+// ------------------------------------ dec ------------------------------------
+
+impl<U, const S1: u32, const S2: u32> MultiplyFraction<Dec<U, S2>, U> for Dec<U, S1>
+where
+    Dec<U, S1>: Fraction<U> + Copy + Number<Dec<U, S2>> + FixedPoint<U>,
+    Dec<U, S2>: Fraction<U> + Copy,
+    Int<U>: MultiplyFraction<Dec<U, S2>, U> + MultiplyRatio,
+{
+    fn checked_mul_dec(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.checked_mul(rhs)
+    }
+
+    fn checked_mul_dec_floor(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.0.checked_mul_dec_floor(rhs).map(Self)
+    }
+
+    fn checked_mul_dec_ceil(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.0.checked_mul_dec_ceil(rhs).map(Self)
+    }
+
+    fn checked_div_dec(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.checked_div(rhs)
+    }
+
+    fn checked_div_dec_floor(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio_floor(Dec::<U, S2>::denominator(), rhs.numerator())
+            .map(Self)
+    }
+
+    fn checked_div_dec_ceil(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio_ceil(Dec::<U, S2>::denominator(), rhs.numerator())
+            .map(Self)
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
-mod tests {
+mod int_tests {
     use {
         crate::{
             Dec, Dec128, Dec256, Int, MathError, MultiplyFraction, NumberConst, Udec128, Udec256,
@@ -568,4 +610,167 @@ mod tests {
             assert!(matches!(base.checked_div_dec_ceil(_0d), Err(MathError::DivisionByZero { .. })));
         }
     );
+}
+
+#[cfg(test)]
+mod dec_tests {
+    use {
+        crate::{Dec, MultiplyFraction, Number, dec_test, dts, test_utils::dec},
+        std::str::FromStr,
+    };
+
+    /// Decimals with padding zeros
+    fn dec_p<U, const S: u32>(n: &str, d: &str) -> Dec<U, S>
+    where
+        Dec<U, S>: FromStr,
+        <Dec<U, S> as FromStr>::Err: std::fmt::Debug,
+    {
+        let padding_zero = S as usize - d.len();
+        let mut s = String::new();
+        s.push_str(n);
+        s.push('.');
+        s.push_str(&"0".repeat(padding_zero));
+        s.push_str(d);
+
+        Dec::<U, S>::from_str(&s).unwrap()
+    }
+
+    dec_test!( checked_mul_dec_ceil_floor
+        inputs = {
+            udec128 = {
+                passing: [
+                    (dec_p("0", "123"), dec("0.2"), dec_p("0", "24")),
+                    (dec_p("0", "567"), dec("0.3"), dec_p("0", "170")),
+                    (dec_p("10", "567"), dec("0.3"), dec_p("3", "170")),
+                    (dec_p("15", "123456"), dec_p("7","654321"), dec_p("105", "10679007")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (dec_p("0", "123"), dec("0.2"), dec_p("0", "24")),
+                    (dec_p("0", "567"), dec("0.3"), dec_p("0", "170")),
+                    (dec_p("10", "567"), dec("0.3"), dec_p("3", "170")),
+                    (dec_p("15", "123456"), dec_p("7","654321"), dec_p("105", "10679007")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (dec_p("-0", "123"), dec("-0.2"), dec_p("0", "24")),
+                    (dec_p("-0", "567"), dec("0.3"), dec_p("-0", "171")),
+                    (dec_p("10", "567"), dec("-0.3"), dec_p("-3", "171")),
+                    (dec_p("-15", "123456"), dec_p("-7","654321"), dec_p("105", "10679007")),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (dec_p("-0", "123"), dec("-0.2"), dec_p("0", "24")),
+                    (dec_p("-0", "567"), dec("0.3"), dec_p("-0", "171")),
+                    (dec_p("10", "567"), dec("-0.3"), dec_p("-3", "171")),
+                    (dec_p("-15", "123456"), dec_p("-7","654321"), dec_p("105", "10679007")),
+                ]
+            }
+        }
+        method = |_0: Dec<_, 18>, passing| {
+            for (a, b, expected) in passing {
+                dts!(_0, a, b, expected);
+
+                // floor
+                let result = a.checked_mul_dec_floor(b).unwrap();
+                assert_eq!(result, expected);
+
+                // ceil
+                let result = a.checked_mul_dec_ceil(b).unwrap();
+                assert_eq!(result, expected + dec_p("0", "1"));
+
+            }
+        }
+    );
+
+    dec_test!( checked_div_dec_floor_ceil
+        inputs = {
+            udec128 = {
+                passing: [
+                    (dec_p("0", "123"), dec("2.1"), dec_p("0", "58")),
+                    (dec_p("0", "567"), dec("3.3"), dec_p("0", "171")),
+                    (dec_p("10", "567"), dec("0.3"), dec("33.333333333333335223")),
+                    (dec_p("15", "80"), dec_p("1","30"), dec("14.999999999999999630")),
+                ]
+            }
+            udec256 = {
+                passing: [
+                    (dec_p("0", "123"), dec("2.1"), dec_p("0", "58")),
+                    (dec_p("0", "567"), dec("3.3"), dec_p("0", "171")),
+                    (dec_p("10", "567"), dec("0.3"), dec("33.333333333333335223")),
+                    (dec_p("15", "80"), dec_p("1","30"), dec("14.999999999999999630")),
+                ]
+            }
+            dec128 = {
+                passing: [
+                    (dec_p("0", "123"), dec("2.1"), dec_p("0", "58")),
+                    (dec_p("-0", "567"), dec("3.3"), dec_p("-0", "172")),
+                    (dec_p("10", "567"), dec("-0.3"), dec("-33.333333333333335224")),
+                    (dec_p("-15", "80"), dec_p("-1","30"), dec("14.999999999999999630")),
+                ]
+            }
+            dec256 = {
+                passing: [
+                    (dec_p("0", "123"), dec("2.1"), dec_p("0", "58")),
+                    (dec_p("-0", "567"), dec("3.3"), dec_p("-0", "172")),
+                    (dec_p("10", "567"), dec("-0.3"), dec("-33.333333333333335224")),
+                    (dec_p("-15", "80"), dec_p("-1","30"), dec("14.999999999999999630")),
+                ]
+            }
+        }
+        method = |_0: Dec<_, 18>, passing| {
+            for (a, b, expected) in passing {
+                dts!(_0, a, b, expected);
+
+                // floor
+                let result = a.checked_div_dec_floor(b).unwrap();
+                assert_eq!(result, expected);
+
+                // ceil
+                let result = a.checked_div_dec_ceil(b).unwrap();
+                assert_eq!(result, expected + dec_p("0", "1"));
+            }
+        }
+    );
+
+    #[test]
+    fn check_div_dec_floor_ceil_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_div(b).unwrap(), dec("445.164741"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_div_dec_floor(b).unwrap(), dec("445.164429"));
+        assert_eq!(a.checked_div_dec_ceil(b).unwrap(), dec("445.164430"));
+
+        let a = dec::<i128, 6>("-500.123");
+        let b = dec::<i128, 18>("1.123456789");
+
+        assert_eq!(a.checked_div_dec_floor(b).unwrap(), dec("-445.164430"));
+        assert_eq!(a.checked_div_dec_ceil(b).unwrap(), dec("-445.164429"));
+    }
+
+    #[test]
+    fn check_mul_dec_floor_ceil_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_mul(b).unwrap(), dec("561.866185"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_mul_dec_floor(b).unwrap(), dec("561.866579"));
+        assert_eq!(a.checked_mul_dec_ceil(b).unwrap(), dec("561.866580"));
+
+        let a = dec::<i128, 6>("-500.123");
+        let b = dec::<i128, 18>("1.123456789");
+
+        assert_eq!(a.checked_mul_dec_floor(b).unwrap(), dec("-561.866580"));
+        assert_eq!(a.checked_mul_dec_ceil(b).unwrap(), dec("-561.866579"));
+    }
 }

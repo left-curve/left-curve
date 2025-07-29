@@ -30,7 +30,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
               <span
                 className={twMerge(
                   "w-full h-[2px]  transition-all",
-                  i < activeStep ? "bg-red-bean-500" : "bg-gray-100",
+                  i < activeStep ? "bg-red-bean-500" : "bg-secondary-gray",
                 )}
               />
             )}
@@ -74,15 +74,17 @@ const StepIcon: React.FC<StepProps> = ({ index, active }) => {
     <div
       className={twMerge(
         "transition-all rounded-full flex items-center justify-center relative z-20",
-        "before:content-[''] before:absolute before:z-10 before:bg-white-100 before:border before:border-red-bean-400 before:w-7 before:h-7 before:rounded-full before:bg-reb-bean-400 before:transition-all",
-        "",
+        "before:content-[''] before:absolute before:z-10 before:bg-surface-primary-rice before:border-2 before:border-red-bean-400 before:w-7 before:h-7 before:rounded-full before:bg-red-bean-400 before:transition-all",
         active === index
-          ? "border-white bg-red-bean-400 before:scale-1 w-7 h-7 border-4"
-          : "border-gray-200 before:scale-0 bg-gray-25 w-6 h-6 border-2",
+          ? "border-surface-primary-rice bg-red-bean-400 before:scale-1 w-7 h-7 border-4 before:bg-transparent"
+          : "border-primary-gray before:scale-0 bg-secondary-gray w-6 h-6 border-2",
       )}
     >
       <div
-        className={twMerge("w-2 h-2 rounded-full", active === index ? "bg-white" : "bg-gray-300")}
+        className={twMerge(
+          "w-2 h-2 rounded-full z-10",
+          active === index ? "bg-white" : "bg-foreground-tertiary",
+        )}
       />
     </div>
   );

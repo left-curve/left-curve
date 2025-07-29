@@ -15,7 +15,7 @@ use {
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Uint128,
+        Timestamp, Udec128_6, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -277,13 +277,13 @@ fn query_orders_by_user(
 }
 
 #[inline]
-fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Uint128> {
+fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Udec128_6> {
     let volume_now = VOLUMES
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
-        .unwrap_or(Uint128::ZERO);
+        .unwrap_or(Udec128_6::ZERO);
 
     let volume_since = if let Some(since) = since {
         VOLUMES
@@ -296,9 +296,9 @@ fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdR
             )
             .next()
             .transpose()?
-            .unwrap_or(Uint128::ZERO)
+            .unwrap_or(Udec128_6::ZERO)
     } else {
-        Uint128::ZERO
+        Udec128_6::ZERO
     };
 
     Ok(volume_now.checked_sub(volume_since)?)
@@ -308,13 +308,13 @@ fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
     since: Option<Timestamp>,
-) -> StdResult<Uint128> {
+) -> StdResult<Udec128_6> {
     let volume_now = VOLUMES_BY_USER
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
-        .unwrap_or(Uint128::ZERO);
+        .unwrap_or(Udec128_6::ZERO);
 
     let volume_since = if let Some(since) = since {
         VOLUMES_BY_USER
@@ -327,9 +327,9 @@ fn query_volume_by_user(
             )
             .next()
             .transpose()?
-            .unwrap_or(Uint128::ZERO)
+            .unwrap_or(Udec128_6::ZERO)
     } else {
-        Uint128::ZERO
+        Udec128_6::ZERO
     };
 
     Ok(volume_now.checked_sub(volume_since)?)
@@ -372,11 +372,18 @@ fn query_simulate_swap_exact_amount_in(
     route: SwapRoute,
     input: Coin,
 ) -> anyhow::Result<Coin> {
+    let app_cfg = ctx.querier.query_dango_config()?;
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route.into_inner(), input)
-        .map(|(_updated_reserves, output)| output)
+    core::swap_exact_amount_in(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate,
+        route.into_inner(),
+        input,
+    )
+    .map(|(_, output, _)| output)
 }
 
 fn query_simulate_swap_exact_amount_out(
@@ -384,9 +391,16 @@ fn query_simulate_swap_exact_amount_out(
     route: SwapRoute,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Coin> {
+    let app_cfg = ctx.querier.query_dango_config()?;
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
-    core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route.into_inner(), output)
-        .map(|(_updated_reserves, input)| input)
+    core::swap_exact_amount_out(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate,
+        route.into_inner(),
+        output,
+    )
+    .map(|(_, input, _)| input)
 }

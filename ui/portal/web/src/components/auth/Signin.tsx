@@ -41,7 +41,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   return (
-    <div className="h-svh xl:h-screen w-screen flex items-center justify-center">
+    <div className="h-svh xl:h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-primary-900">
       <div className="flex items-center justify-center flex-1">
         <ResizerContainer layoutId="signin" className="w-full max-w-[22.5rem]">
           {children}
@@ -198,12 +198,12 @@ const UsernameStep: React.FC = () => {
         {existUsernames ? (
           <>
             <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
-            <p className="text-gray-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
+            <p className="text-tertiary-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
           </>
         ) : (
           <>
             <h1 className="h2-heavy">{m["signin.noUsernamesFound"]()}</h1>
-            <p className="text-gray-500 diatype-m-medium">{m["signin.noUsernameMessage"]()}</p>
+            <p className="text-tertiary-500 diatype-m-medium">{m["signin.noUsernameMessage"]()}</p>
           </>
         )}
       </div>

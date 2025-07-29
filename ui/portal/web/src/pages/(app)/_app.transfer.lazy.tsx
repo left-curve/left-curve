@@ -98,7 +98,7 @@ function TransferApplet() {
       mutationFn: async ({ address, amount }, { abort }) => {
         if (!signingClient) throw new Error("error: no signing client");
 
-        const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
+        const parsedAmount = parseUnits(amount, selectedCoin.decimals);
 
         const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
 
@@ -115,7 +115,7 @@ function TransferApplet() {
         await signingClient.transfer({
           transfer: {
             [address]: {
-              [selectedCoin.denom]: parsedAmount,
+              [selectedCoin.denom]: parsedAmount.toString(),
             },
           },
           sender: account!.address as Address,
@@ -124,7 +124,7 @@ function TransferApplet() {
       onSuccess: () => {
         reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });
@@ -185,7 +185,7 @@ function TransferApplet() {
                   }
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
-                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
+                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
                         <span>
                           {formatNumber(humanAmount, {
                             ...formatNumberOptions,
@@ -230,17 +230,17 @@ function TransferApplet() {
               </Button>
             </form>
           ) : (
-            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-rice-25 rounded-xl shadow-account-card p-4">
+            <div className="flex flex-col w-full gap-6 items-center justify-center text-center pb-10 bg-surface-secondary-rice rounded-xl shadow-account-card p-4">
               <div className="flex flex-col gap-1 items-center">
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">
                   <TruncateText
-                    className="diatype-sm-medium text-gray-500"
+                    className="diatype-sm-medium text-tertiary-500"
                     text={account?.address}
                   />
                   <TextCopy
                     copyText={account?.address}
-                    className="w-4 h-4 cursor-pointer text-gray-500"
+                    className="w-4 h-4 cursor-pointer text-tertiary-500"
                   />
                 </div>
               </div>

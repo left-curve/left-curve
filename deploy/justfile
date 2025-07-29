@@ -54,6 +54,9 @@ deploy-tailscale:
 deploy-db:
   ansible-playbook db.yml
 
+deploy-clickhouse:
+  ansible-playbook clickhouse.yml
+
 logs-cometbft:
   ansible cometbft -m shell -a "docker logs cometbft -f"
 

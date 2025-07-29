@@ -23,7 +23,7 @@ struct UpResponse<'a> {
 pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     // This ensures than grug is working
     let block_height = app_ctx
-        .grug_app
+        .grug_app()
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
         .await?
@@ -42,4 +42,14 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         indexed_block_height,
         git_commit: GIT_COMMIT,
     }))
+}
+
+#[get("/sentry-raise")]
+pub async fn sentry_raise() -> Result<impl Responder, Error> {
+    sentry::capture_message("Capturing a message before a crash", sentry::Level::Info);
+
+    let err = "NaN".parse::<usize>().unwrap_err();
+    sentry::capture_error(&err);
+
+    Ok(HttpResponse::Ok().body("Sending a sentry crash"))
 }

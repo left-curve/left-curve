@@ -5,6 +5,7 @@ import type { Config } from "@left-curve/store/types";
 const chain = testnet;
 
 export const FAUCET_URI = `${chain.urls.indexer.replace("graphql", "faucet")}/mint`;
+export const QUEST_URI = `${chain.urls.indexer.replace("graphql", "quests")}/check_username`;
 
 export const coins = {
   dango: {
@@ -73,7 +74,7 @@ export const coinsBySymbol = Object.values(coins).reduce((acc, coin) => {
 }, Object.create({}));
 
 export const config: Config = createConfig({
-  version: 0.4,
+  version: 0.5,
   multiInjectedProviderDiscovery: true,
   chain,
   transport: graphql(chain.urls.indexer, { batch: true }),

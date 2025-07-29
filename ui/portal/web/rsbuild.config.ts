@@ -27,6 +27,7 @@ export default defineConfig({
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": storePath[(process.env.CONFIG_ENVIRONMENT || "local") as keyof typeof storePath],
+      "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },
@@ -36,19 +37,32 @@ export default defineConfig({
     },
     define: {
       ...publicVars,
+      "import.meta.env.CONFIG_ENVIRONMENT": `"${process.env.CONFIG_ENVIRONMENT || "local"}"`,
       "process.env": {},
       "import.meta.env": {},
     },
   },
   server: { port: 5080 },
-  html: { template: "public/index.html" },
+  html: { template: "public/index.html", title: "" },
   performance: {
     prefetch: {
       type: "all-assets",
       include: [/.*\.woff2$/],
     },
   },
-  output: { distPath: { root: "build" } },
+  output: {
+    distPath: {
+      root: "build",
+    },
+    minify: {
+      jsOptions: {
+        exclude: [],
+        minimizerOptions: {
+          compress: false,
+        },
+      },
+    },
+  },
   plugins: [pluginReact()],
   tools: {
     rspack: {

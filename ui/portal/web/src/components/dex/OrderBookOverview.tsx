@@ -2,17 +2,26 @@ import { useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
-import { TradingViewChart } from "./TradingViewChart";
+import { ChartIQ } from "../foundation/ChartIQ";
 
-import type React from "react";
+import { m } from "~/paraglide/messages";
 
 import { mockTrades } from "~/mock";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
-export const OrderBookOverview: React.FC = () => {
+import type { useProTradeState } from "@left-curve/store";
+import type React from "react";
+
+type OrderBookOverviewProps = {
+  state: ReturnType<typeof useProTradeState>;
+};
+
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg } = useMediaQuery();
+
+  const { baseCoin, quoteCoin } = state;
 
   useEffect(() => {
     setActiveTab(isLg ? "order book" : "graph");
@@ -21,7 +30,7 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="p-4 shadow-card-shadow bg-rice-25 flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,422px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
@@ -32,9 +41,16 @@ export const OrderBookOverview: React.FC = () => {
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
       />
-      {activeTab === "graph" && <TradingViewChart />}
-      {activeTab === "order book" && <OrderBook />}
-      {activeTab === "trades" && <LiveTrades />}
+      {activeTab === "graph" && <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />}
+      {(activeTab === "trades" || activeTab === "order book") && (
+        <div className="relative w-full h-full">
+          {activeTab === "order book" && <OrderBook />}
+          {activeTab === "trades" && <LiveTrades />}
+          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[8px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center exposure-l-italic text-primary-rice">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        </div>
+      )}
     </ResizerContainer>
   );
 };
@@ -70,20 +86,22 @@ const OrderRow: React.FC<
     maxCumulativeTotal > 0 ? (cumulativeTotal / maxCumulativeTotal) * 100 : 0;
 
   const depthBarClass =
-    type === "bid" ? "bg-green-300 lg:-left-4" : "bg-red-300 -right-0 lg:-left-4 lg:right-auto";
+    type === "bid"
+      ? "bg-status-success lg:-left-4"
+      : "bg-status-fail -right-0 lg:-left-4 lg:right-auto";
 
   return (
-    <div className="relative flex-1 diatype-xs-medium text-gray-700 grid grid-cols-2 lg:grid-cols-3">
+    <div className="relative flex-1 diatype-xs-medium text-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
-        className={twMerge("absolute top-0 bottom-0 opacity-40 z-0", depthBarClass)}
+        className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
       />
       <div
         className={twMerge(
           "z-10",
           type === "bid"
-            ? "text-green-700 text-left"
-            : "text-red-bean-700 order-2 lg:order-none text-end lg:text-left",
+            ? "text-status-success text-left"
+            : "text-status-fail order-2 lg:order-none text-end lg:text-left",
         )}
       >
         {price.toFixed(1)}
@@ -112,7 +130,7 @@ const OrderBook: React.FC = () => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
         <p className="order-2 lg:order-none text-end lg:text-start">Price</p>
         <p className="text-end hidden lg:block">Size (ETH)</p>
         <p className="lg:text-end order-1 lg:order-none">Total (ETH)</p>
@@ -135,7 +153,7 @@ const OrderBook: React.FC = () => {
             <p className="diatype-xs-bold text-status-success relative z-20">
               {bids[bids.length - 1].price.toFixed(2)}
             </p>
-            <span className="bg-rice-50 w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
+            <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
           </div>
         )}
         <div className="bid-container flex flex-col w-full gap-1">
@@ -158,7 +176,7 @@ const LiveTrades: React.FC = () => {
   const numberOfTrades = isLg ? 24 : 16;
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-gray-500 w-full grid grid-cols-3 ">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
         <p>Price</p>
         <p className="text-end">Size (ETH)</p>
         <p className="text-end">Time</p>
@@ -169,7 +187,7 @@ const LiveTrades: React.FC = () => {
             <div
               key={trade.hash}
               className={
-                "grid grid-cols-3 diatype-xs-medium text-gray-700 w-full cursor-pointer group relative"
+                "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
             >
               <p
@@ -186,7 +204,7 @@ const LiveTrades: React.FC = () => {
                 <p>{trade.createdAt}</p>
                 <IconLink className="w-3 h-3" />
               </div>
-              <span className="group-hover:bg-rice-50 h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+              <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
             </div>
           );
         })}

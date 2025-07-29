@@ -31,6 +31,17 @@ enabled = true
 # Whether to store block respnonses.
 keep_blocks = true
 
+[indexer.clickhouse]
+
+# URL to the Clickhouse database to be used by the indexer.
+url = "http://clickhouse:8123"
+
+user = "dango"
+
+password = ""
+
+database = "dango_prod"
+
 [indexer.database]
 
 # URL to the SQL database to be used by the indexer.
@@ -39,7 +50,7 @@ url = "postgres://postgres@db:5432/grug_dev"
 
 max_connections = 10
 
-[indexer.httpd]
+[httpd]
 
 # Whether to enable the HTTP server.
 enabled = true
@@ -56,7 +67,7 @@ port = 8080
 # this line.
 #cors_allowed_origin = "*"
 
-[indexer.metrics_httpd]
+[metrics_httpd]
 
 # Whether to enable the HTTP server.
 enabled = true

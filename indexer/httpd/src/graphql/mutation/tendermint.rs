@@ -16,6 +16,16 @@ impl TendermintMutation {
     ) -> Result<BroadcastTxOutcome, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            sender = %tx.sender.to_string(),
+            username = tx
+                .data
+                .get("username")
+                .and_then(|v| v.as_str()),
+            "`broadcast_tx_sync` called",
+        );
+
         match app_ctx.consensus_client.broadcast_tx(tx.clone()).await {
             Ok(response) => Ok(response),
             Err(e) => {

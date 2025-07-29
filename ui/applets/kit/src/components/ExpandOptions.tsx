@@ -3,7 +3,7 @@ import { Children, useState } from "react";
 import { twMerge } from "#utils/twMerge.js";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { IconChevronDown } from "./icons/IconChevronDown";
+import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -26,21 +26,21 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
 
   return (
     <div className={twMerge("w-full", className)}>
-      <div className="flex items-center justify-center text-gray-500">
-        {showLine ? <span className="flex-1 h-[1px] bg-gray-100" /> : null}
+      <div className="flex items-center justify-center text-tertiary-500">
+        {showLine ? <span className="flex-1 h-[1px] bg-secondary-gray" /> : null}
         <div
           className="flex items-center justify-center gap-1 px-2 cursor-pointer"
           onClick={() => setOptionExpanded(!isOptionExpanded)}
         >
           <p>{showOptionText}</p>
-          <IconChevronDown
+          <IconChevronDownFill
             className={twMerge(
               "w-4 h-4 transition-all duration-300",
               isOptionExpanded ? "rotate-180" : "rotate-0",
             )}
           />
         </div>
-        {showLine ? <span className="flex-1 h-[1px] bg-gray-100" /> : null}
+        {showLine ? <span className="flex-1 h-[1px] bg-secondary-gray" /> : null}
       </div>
       <motion.div layout className="overflow-hidden">
         <AnimatePresence>

@@ -17,10 +17,10 @@
     username: "{{ ghcr_user }}"
     password: "{{ ghcr_token }}"
 
-- name: Deploy bots container
+- name: Deploy faucet container
   docker_container:
-    name: "{{ dango_network }}_bots"
-    image: "ghcr.io/left-curve/bots/bots:{{ bot_version }}"
+    name: "{{ dango_network }}_faucet"
+    image: "ghcr.io/left-curve/bots/faucet:{{ faucet_version }}"
     user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
     pull: always
     recreate: true
@@ -34,6 +34,11 @@
     networks:
       - name: "{{ dango_network }}_backend"
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network

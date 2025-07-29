@@ -4,7 +4,8 @@ use {
         dex::{Direction, OrderId, PairParams, PairUpdate},
     },
     grug::{
-        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Uint128, UniqueVec,
+        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
+        Uint128, UniqueVec,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -51,7 +52,7 @@ pub struct CreateLimitOrderRequest {
     pub amount: NonZero<Uint128>,
     /// The limit price measured _in the quote asset_, i.e. how many units of
     /// quote asset is equal in value to 1 unit of base asset.
-    pub price: Udec128,
+    pub price: Udec128_24,
 }
 
 #[grug::derive(Serde)]
@@ -202,7 +203,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Returns the trading volume of a user address since the specified timestamp.
-    #[returns(Uint128)]
+    #[returns(Udec128)]
     Volume {
         /// The user's address to query trading volume for.
         user: Addr,
@@ -211,7 +212,7 @@ pub enum QueryMsg {
         since: Option<Timestamp>,
     },
     /// Returns the trading volume of a username since the specified timestamp.
-    #[returns(Uint128)]
+    #[returns(Udec128)]
     VolumeByUser {
         /// The username to query trading volume for.
         user: Username,
@@ -269,9 +270,9 @@ pub struct OrderResponse {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub price: Udec128,
+    pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Uint128,
+    pub remaining: Udec128_6,
 }
 
 /// Response type of the `QueryMsg::OrdersByPair` query.
@@ -279,9 +280,9 @@ pub struct OrderResponse {
 pub struct OrdersByPairResponse {
     pub user: Addr,
     pub direction: Direction,
-    pub price: Udec128,
+    pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Uint128,
+    pub remaining: Udec128_6,
 }
 
 /// Response type of the `QueryMsg::OrdersByUser` query.
@@ -290,7 +291,7 @@ pub struct OrdersByUserResponse {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub price: Udec128,
+    pub price: Udec128_24,
     pub amount: Uint128,
-    pub remaining: Uint128,
+    pub remaining: Udec128_6,
 }

@@ -24,6 +24,7 @@ use {
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
+    std::sync::Arc,
 };
 
 /// The ABCI application.
@@ -86,7 +87,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn do_init_chain(
         &self,
@@ -229,7 +230,9 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        self.indexer.pre_indexing(block.info.height)?;
+        let mut indexer_ctx = crate::IndexerContext::new();
+        self.indexer
+            .pre_indexing(block.info.height, &mut indexer_ctx)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -376,12 +379,15 @@ where
         );
 
         let block_outcome = BlockOutcome {
+            height: block.info.height,
             app_hash: app_hash.unwrap(),
             cron_outcomes,
             tx_outcomes,
         };
 
-        self.indexer.index_block(&block, &block_outcome)?;
+        let mut indexer_ctx = crate::IndexerContext::new();
+        self.indexer
+            .index_block(&block, &block_outcome, &mut indexer_ctx)?;
 
         Ok(block_outcome)
     }
@@ -396,15 +402,21 @@ where
             let querier = {
                 let storage = self.db.state_storage(Some(block_height))?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-                Box::new(QuerierProviderImpl::new(
+                Arc::new(QuerierProviderImpl::new(
                     self.vm.clone(),
                     Box::new(storage),
                     GasTracker::new_limitless(),
                     block,
-                ))
+                )) as Arc<dyn crate::QuerierProvider>
             };
 
-            self.indexer.post_indexing(block_height, querier)?;
+            let mut indexer_ctx = crate::IndexerContext::new();
+            self.indexer
+                .post_indexing(block_height, querier, &mut indexer_ctx)
+                .inspect_err(|_err| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_err, "Error in `post_indexing`");
+                })?;
         }
 
         Ok(())
@@ -594,7 +606,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn do_init_chain_raw(
         &self,

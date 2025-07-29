@@ -2,8 +2,14 @@
 dango_db_user: dango
 dango_db_name: "dango_production"
 dango_db_password: "{{ lookup('env','DANGO_DB_PASSWORD') }}"
+dango_clickhouse_user: "dango"
+dango_clickhouse_name: "dango_production"
+dango_clickhouse_password: "{{ lookup('env','DANGO_CLICKHOUSE_PASSWORD') }}"
+clickhouse_user: "default"
+clickhouse_password: "{{ lookup('env','CLICKHOUSE_PASSWORD') }}"
 db_pass: "{{ lookup('env','DB_PASSWORD') }}"
 db_user: "{{ lookup('env','DB_USER', default='postgres') }}"
 db_host: "127.0.0.1"
 db_port: 5432
 docker_db_host: "postgres"
+docker_clickhouse_host: "clickhouse"

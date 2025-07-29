@@ -24,9 +24,9 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   });
 
   return (
-    <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] lg:flex rounded-xl p-4 gap-2 w-full h-full  min-h-[10rem] lg:justify-between">
+    <div className="flex-col bg-surface-secondary-rice shadow-account-card lg:flex rounded-xl p-4 gap-2 w-full h-full  min-h-[10rem] lg:justify-between">
       <div className="flex items-center justify-between w-full">
-        <p className="h4-bold">{m["common.assets"]()}</p>
+        <p className="h4-bold text-primary-900">{m["common.assets"]()}</p>
         {showAllAssets ? (
           <Button variant="link" size="xs" onClick={showAllAssets}>
             {m["common.viewAll"]()}
@@ -42,7 +42,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
               <img src={coin.logoURI} alt={coin.symbol} className="h-7 w-7 drag-none select-none" />
               <div className="flex flex-col text-xs">
                 <p>{coin.symbol}</p>
-                <p className="text-gray-500">
+                <p className="text-tertiary-500">
                   {amount
                     ? formatNumber(formatUnits(amount, coins[denom].decimals), formatNumberOptions)
                     : "0"}

@@ -11,7 +11,7 @@ import { useClickAway } from "react-use";
 import { useControlledState } from "#hooks/index.js";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { IconChevronDown } from "./icons/IconChevronDown";
+import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { tv } from "tailwind-variants";
 import { twMerge } from "#utils/index.js";
@@ -86,7 +86,9 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
                 )?.props.children
               }
             </span>
-            <IconChevronDown className={twMerge(icon(), classNames?.icon)} />
+            <IconChevronDownFill
+              className={twMerge(icon(), classNames?.icon, { "rotate-180": isOpen })}
+            />
           </button>
 
           <motion.div
@@ -134,7 +136,7 @@ const Item: React.FC<PropsWithChildren<SelectItemProps>> = ({ value, children })
       value={value}
       onClick={() => setSelected(value)}
       className={twMerge(
-        "rounded-sm py-2 px-3 text-base outline-none cursor-pointer flex items-center transition-all diatype-m-medium bg-rice-25 leading-none hover:bg-rice-50",
+        "rounded-sm py-2 px-3 text-base outline-none cursor-pointer flex items-center transition-all diatype-m-medium bg-surface-secondary-rice leading-none hover:bg-surface-tertiary-rice",
       )}
     >
       {children}
@@ -183,9 +185,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
       </select>
       <label htmlFor={selectId} className={trigger({ className: classNames?.trigger })}>
         <span>{SelectedItem?.props.children}</span>
-        <IconChevronDown
-          className={twMerge("min-w-[20px] min-h-[20px] transition-all duration-300")}
-        />
+        <IconChevronDownFill className={twMerge("w-4 h-4 transition-all duration-300")} />
       </label>
     </div>
   );
@@ -195,15 +195,15 @@ const selectVariants = tv({
   slots: {
     base: "group inline-flex flex-col relative w-fit min-w-[9rem] transition-all  duration-500 leading-none",
     listboxWrapper:
-      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-rice-25 absolute",
+      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card top-[3.375rem] bg-surface-secondary-rice absolute",
     trigger:
-      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-rice-25",
-    icon: "top-[10px] right-4 absolute pointer-events-none min-w-[20px] min-h-[20px] transition-all duration-300",
+      "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-account-card diatype-m-regular h-[46px] rounded-md bg-surface-secondary-rice",
+    icon: "top-1/2 -translate-y-1/2 right-4 absolute pointer-events-none w-4 h-4 transition-all duration-300",
   },
   variants: {
     isDisabled: {
       true: {
-        trigger: "bg-gray-200 text-gray-400 cursor-not-allowed",
+        trigger: "bg-secondary-gray text-tertiary-500 cursor-not-allowed",
       },
     },
   },

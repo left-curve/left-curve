@@ -1,29 +1,33 @@
+import type { TableColumn } from "@left-curve/applets-kit";
 import {
   AddressVisualizer,
+  Badge,
+  Cell,
+  IconChevronDownFill,
+  IconEmptyStar,
+  Table,
+  Tabs,
   createContext,
   twMerge,
   useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { useAppConfig, usePrices, useProTradeState } from "@left-curve/store";
-import { useAccount, useSigningClient } from "@left-curve/store";
+import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
+import type { PropsWithChildren } from "react";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
-
 import { m } from "~/paraglide/messages";
-
-import { Badge, Cell, IconChevronDown, IconEmptyStar, Table, Tabs } from "@left-curve/applets-kit";
-import { AnimatePresence, motion } from "framer-motion";
+import { ChartIQ } from "../foundation/ChartIQ";
+import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
+import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
+import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
-import { TradingViewChart } from "./TradingViewChart";
-
-import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { formatUnits } from "@left-curve/dango/utils";
-import type { PropsWithChildren } from "react";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   state: ReturnType<typeof useProTradeState>;
@@ -37,6 +41,8 @@ type ProTradeProps = {
   onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (orderType: "limit" | "market") => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
@@ -44,16 +50,22 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   onChangeAction,
   pairId,
   onChangePairId,
+  orderType,
+  onChangeOrderType,
   children,
 }) => {
   const controllers = useInputs();
+
   const state = useProTradeState({
     controllers,
     pairId,
     onChangePairId,
     action,
     onChangeAction,
+    orderType,
+    onChangeOrderType,
   });
+
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 
@@ -75,7 +87,7 @@ const ProTradeHeader: React.FC = () => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-rice-50 lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
@@ -88,13 +100,13 @@ const ProTradeHeader: React.FC = () => {
             className="cursor-pointer flex items-center justify-center lg:hidden"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            <IconChevronDown
-              className={twMerge("text-gray-500 w-5 h-5 transition-all", {
+            <IconChevronDownFill
+              className={twMerge("text-tertiary-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
           </div>
-          <IconEmptyStar className="w-5 h-5 text-gray-500" />
+          {/*   <IconEmptyStar className="w-5 h-5 text-tertiary-500" /> */}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -109,23 +121,27 @@ const ProTradeHeader: React.FC = () => {
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.price"]()}</p>
-              <p className="diatype-sm-bold text-gray-700">
+              <p className="diatype-xs-medium text-tertiary-500">
+                {m["dex.protrade.spot.price"]()}
+              </p>
+              <p className="diatype-sm-bold text-secondary-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">
+              <p className="diatype-xs-medium text-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.protrade.spot.volume"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">
+                {m["dex.protrade.spot.volume"]()}
+              </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-gray-500">{m["dex.contract"]()}</p>
+              <p className="diatype-xs-medium text-tertiary-500">{m["dex.contract"]()}</p>
               <AddressVisualizer
                 address={config?.addresses.dex || "0x"}
                 withIcon
@@ -140,69 +156,139 @@ const ProTradeHeader: React.FC = () => {
   );
 };
 
+const ProTradeOverview: React.FC = () => {
+  const { state } = useProTrade();
+  return <OrderBookOverview state={state} />;
+};
+
 const ProTradeChart: React.FC = () => {
+  const { state } = useProTrade();
   const { isLg } = useMediaQuery();
+  const { baseCoin, quoteCoin } = state;
 
   if (!isLg) return null;
 
   return (
-    <div className="shadow-card-shadow bg-rice-25 h-full">
-      <TradingViewChart />
+    <div className="shadow-account-card bg-surface-secondary-rice h-full">
+      <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />
     </div>
   );
 };
 
 const ProTradeMenu: React.FC = () => {
+  const { isLg } = useMediaQuery();
   const { state, controllers } = useProTrade();
-  return <TradeMenu state={state} controllers={controllers} />;
+  return (
+    <>
+      <TradeMenu state={state} controllers={controllers} />
+      {!isLg ? <TradeButtons state={state} /> : null}
+    </>
+  );
 };
 
 const ProTradeOrders: React.FC = () => {
-  const { showModal: _ } = useApp();
-  const { account } = useAccount();
-  const { data: signingClient } = useSigningClient();
+  const { showModal, settings } = useApp();
+  const { coins } = useConfig();
   const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
-  const { orders, quoteCoin, baseCoin } = state;
+  const { orders, baseCoin } = state;
+  const { formatNumberOptions } = settings;
 
-  const columns: TableColumn<OrdersByUserResponse & { id: number }> = [
+  const columns: TableColumn<OrdersByUserResponse & { id: OrderId }> = [
     /*  {
       header: "Time",
       cell: ({ row }) => <Cell.Time date={row.original.time} />,
     }, */
     {
+      header: m["dex.protrade.spot.ordersTable.id"](),
+      cell: ({ row }) => {
+        const orderId = Decimal(row.original.id);
+        const value = orderId.gte("9223372036854775807")
+          ? Decimal("18446744073709551615").minus(orderId).toString()
+          : orderId.toString();
+        return (
+          <Cell.Text
+            text={value}
+            className="diatype-xs-regular text-secondary-700 hover:text-primary-900 cursor-pointer"
+          />
+        );
+      },
+    },
+
+    {
       header: m["dex.protrade.spot.ordersTable.type"](),
       cell: ({ row }) => <Cell.Text text="Limit" />,
     },
     {
-      header: m["dex.protrade.spot.ordersTable.coin"](),
+      header: m["dex.protrade.spot.ordersTable.pair"](),
       cell: ({ row }) => {
-        return <Cell.Asset noImage denom={row.original.baseDenom} />;
+        return (
+          <div className="flex items-center gap-1">
+            <Cell.PairName
+              className="diatype-xs-medium"
+              pairId={{
+                baseDenom: row.original.baseDenom,
+                quoteDenom: row.original.quoteDenom,
+              }}
+            />
+          </div>
+        );
       },
     },
     {
       header: m["dex.protrade.spot.ordersTable.direction"](),
       cell: ({ row }) => (
         <Cell.OrderDirection
-          text={m["dex.protrade.spot.direction"]({ direction: row.original.direction })}
+          text={m["dex.protrade.spot.direction"]({
+            direction: row.original.direction,
+          })}
           direction={row.original.direction}
         />
       ),
     },
     {
-      header: m["dex.protrade.spot.ordersTable.size"](),
+      id: "remaining",
+      header: () =>
+        m["dex.protrade.spot.ordersTable.remaining"]({
+          symbol: baseCoin.symbol,
+        }),
       cell: ({ row }) => (
-        <Cell.Text text={formatUnits(row.original.remaining, baseCoin.decimals)} />
+        <Cell.Number
+          formatOptions={formatNumberOptions}
+          value={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
+        />
       ),
     },
     {
-      header: m["dex.protrade.spot.ordersTable.originalSize"](),
-      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.amount, baseCoin.decimals)} />,
+      id: "size",
+      header: () =>
+        m["dex.protrade.spot.ordersTable.size"]({
+          symbol: baseCoin.symbol,
+        }),
+      cell: ({ row }) => (
+        <Cell.Number
+          formatOptions={formatNumberOptions}
+          value={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
+        />
+      ),
     },
     {
       header: m["dex.protrade.spot.price"](),
-      cell: ({ row }) => <Cell.Text text={formatUnits(row.original.price, quoteCoin.decimals)} />,
+      cell: ({ row }) => (
+        <Cell.Text
+          text={formatNumber(
+            Decimal(row.original.price)
+              .times(
+                Decimal(10).pow(
+                  coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
+                ),
+              )
+              .toFixed(),
+            { ...formatNumberOptions, maxSignificantDigits: 10 },
+          )}
+        />
+      ),
     },
     {
       id: "cancel-order",
@@ -210,7 +296,7 @@ const ProTradeOrders: React.FC = () => {
         <Cell.Action
           isDisabled={!orders.data.length}
           action={() =>
-            signingClient?.batchUpdateOrders({ cancels: "all", sender: account!.address })
+            showModal(Modals.ProTradeCloseAll, { ordersId: orders.data.map((o) => o.id) })
           }
           label={m["common.cancelAll"]()}
           classNames={{
@@ -221,21 +307,19 @@ const ProTradeOrders: React.FC = () => {
       ),
       cell: ({ row }) => (
         <Cell.Action
-          action={() =>
-            signingClient?.batchUpdateOrders({
-              sender: account!.address,
-              cancels: { some: [row.original.id] },
-            })
-          }
+          action={() => showModal(Modals.ProTradeCloseOrder, { orderId: row.original.id })}
           label={m["common.cancel"]()}
-          classNames={{ cell: "items-end", button: "!exposure-xs-italic m-0 p-0 px-1 h-fit" }}
+          classNames={{
+            cell: "items-end",
+            button: "!exposure-xs-italic m-0 p-0 px-1 h-fit",
+          }}
         />
       ),
     },
   ];
 
   return (
-    <div className="flex-1 p-4 bg-rice-25 flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
@@ -243,10 +327,10 @@ const ProTradeOrders: React.FC = () => {
           selectedTab={activeTab}
           keys={["open order", "trade history"]}
           onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
-          classNames={{ button: "exposure-xs-italic" }}
+          classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         />
 
-        <span className="w-full absolute h-[1px] bg-gray-100 bottom-[0.25rem]" />
+        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
         {activeTab === "open order" ? (
@@ -258,21 +342,24 @@ const ProTradeOrders: React.FC = () => {
               row: "h-fit",
               header: "pt-0",
               base: "pb-0",
-              cell: twMerge("diatype-xs-regular", {
+              cell: twMerge("diatype-xs-regular py-1", {
                 "group-hover:bg-transparent": !orders.data.length,
               }),
             }}
             emptyComponent={
               activeTab === "open order" ? (
-                <div className="flex flex-col gap-1 items-center justify-center p-2 w-full bg-[url('./images/notifications/bubble-bg.svg')] bg-[50%_1rem] [background-size:100vw] bg-no-repeat rounded-xl bg-rice-50 h-[3.5rem]">
-                  <p className="diatype-xs-regular text-gray-700">
-                    {m["dex.protrade.spot.noOpenOrders"]()}
-                  </p>
-                </div>
+                <EmptyPlaceholder
+                  component={m["dex.protrade.spot.noOpenOrders"]()}
+                  className="h-[3.5rem]"
+                />
               ) : null
             }
           />
-        ) : null}
+        ) : (
+          <div className="min-h-[88.8px] w-full backdrop-blur-[8px] flex items-center justify-center exposure-l-italic text-primary-rice">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -282,6 +369,6 @@ export const ProTrade = Object.assign(ProTradeContainer, {
   Header: ProTradeHeader,
   Chart: ProTradeChart,
   Orders: ProTradeOrders,
-  OrderBook: OrderBookOverview,
+  OrderBook: ProTradeOverview,
   TradeMenu: ProTradeMenu,
 });

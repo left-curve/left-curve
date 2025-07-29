@@ -1,4 +1,10 @@
-import { numberMask, Skeleton, useInputs } from "@left-curve/applets-kit";
+import {
+  IconArrowDown,
+  IconChevronRight,
+  numberMask,
+  Skeleton,
+  useInputs,
+} from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
@@ -19,8 +25,9 @@ import Big from "big.js";
 import { m } from "~/paraglide/messages";
 
 import type { PairUpdate } from "@left-curve/dango/types";
-import type { PropsWithChildren } from "react";
+import { useEffect, type PropsWithChildren } from "react";
 import { Modals } from "../modals/RootModal";
+import { MobileTitle } from "../foundation/MobileTitle";
 
 const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{
   state: ReturnType<typeof usePoolLiquidityState>;
@@ -59,6 +66,7 @@ const PoolLiquidityContainer: React.FC<PropsWithChildren<PoolLiquidityProps>> = 
           state.userHasLiquidity ? "md:max-w-[50.1875rem]" : "md:max-w-[25rem]",
         )}
       >
+        <MobileTitle title={`Pool: ${state.coins.base.symbol}-${state.coins.quote.symbol}`} />
         {children}
       </motion.div>
     </PoolLiquidityProvider>
@@ -74,13 +82,13 @@ const PoolLiquidityHeader: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-rice-50 relative w-full overflow-hidden",
+        "flex flex-col gap-3 justify-between p-4 rounded-xl shadow-account-card bg-surface-tertiary-rice relative w-full overflow-hidden",
         { "lg:flex-row": userHasLiquidity },
       )}
     >
       <div className="flex gap-2 items-center">
         <PairAssets assets={[base, quote]} />
-        <p className="text-gray-700 h4-bold">
+        <p className="text-secondary-700 h4-bold">
           {base.symbol}/{quote.symbol}
         </p>
         <Badge color="green" size="s" text="Stable Strategy" />
@@ -95,30 +103,30 @@ const PoolLiquidityHeader: React.FC = () => {
             "lg:flex-row lg:gap-1 lg:items-center": userHasLiquidity,
           })}
         >
-          <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">-</p>
+          <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
+          <p className="text-secondary-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-center gap-0 ", {
             "lg:flex-row lg:gap-1": userHasLiquidity,
           })}
         >
-          <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">-</p>
+          <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
+          <p className="text-secondary-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-end gap-0 ", {
             "lg:flex-row lg:gap-1 lg:items-center": userHasLiquidity,
           })}
         >
-          <p className="text-gray-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
-          <p className="text-gray-700 diatype-sm-bold">-</p>
+          <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
+          <p className="text-secondary-700 diatype-sm-bold">-</p>
         </div>
       </div>
       <img
         src="/images/characters/hippo.svg"
         alt="dango-hippo"
-        className="max-w-[298px] absolute opacity-10 left-[8.75rem] top-0"
+        className="max-w-[298px] absolute opacity-10 left-[8.75rem] top-0 select-none drag-none"
       />
     </div>
   );
@@ -149,20 +157,20 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   });
 
   return (
-    <div className="flex p-4 flex-col gap-4 rounded-xl bg-rice-25 shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
+    <div className="flex p-4 flex-col gap-4 rounded-xl bg-surface-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
-        <p className="exposure-sm-italic text-gray-500">{m["poolLiquidity.liquidity"]()}</p>
-        <p className="h4-bold text-gray-900">{totalPrice}</p>
+        <p className="exposure-sm-italic text-tertiary-500">{m["poolLiquidity.liquidity"]()}</p>
+        <p className="h4-bold text-primary-900">{totalPrice}</p>
       </div>
       <div className="flex flex-col w-full gap-2">
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
             <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
-            <p className="text-gray-500 diatype-m-regular">{base.symbol}</p>
+            <p className="text-tertiary-500 diatype-m-regular">{base.symbol}</p>
           </div>
-          <p className="text-gray-700 diatype-m-regular">
+          <p className="text-secondary-700 diatype-m-regular">
             {formatNumber(innerBase, formatNumberOptions)}{" "}
-            <span className="text-gray-500">
+            <span className="text-tertiary-500">
               ({formatNumber(basePrice, { ...formatNumberOptions, currency: "USD" })})
             </span>
           </p>
@@ -170,11 +178,11 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
             <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
-            <p className="text-gray-500 diatype-m-regular">{quote.symbol}</p>
+            <p className="text-tertiary-500 diatype-m-regular">{quote.symbol}</p>
           </div>
-          <p className="text-gray-700 diatype-m-regular">
+          <p className="text-secondary-700 diatype-m-regular">
             {formatNumber(innerQuote, formatNumberOptions)}{" "}
-            <span className="text-gray-500">
+            <span className="text-tertiary-500">
               ({formatNumber(quotePrice, { ...formatNumberOptions, currency: "USD" })})
             </span>
           </p>
@@ -199,8 +207,8 @@ const PoolLiquidityDeposit: React.FC = () => {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.deposit"]()}</p>
-        <div className="flex flex-col rounded-xl bg-rice-25 shadow-account-card">
+        <p className="exposure-sm-italic text-secondary-700">{m["poolLiquidity.deposit"]()}</p>
+        <div className="flex flex-col rounded-xl bg-surface-secondary-rice shadow-account-card">
           <Input
             {...register("baseAmount", {
               validate: (v) => {
@@ -216,7 +224,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             startContent={
               <div className="flex items-center gap-2 pl-4">
                 <img src={base.logoURI} alt={base.symbol} className="w-8 h-8 rounded-full" />
-                <p className="text-gray-500 diatype-lg-medium">{base.symbol}</p>
+                <p className="text-tertiary-500 diatype-lg-medium">{base.symbol}</p>
               </div>
             }
             classNames={{
@@ -226,7 +234,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             }}
             insideBottomComponent={
               <div className="w-full flex justify-between pl-4 h-[22px]">
-                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
+                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
                   <span>
                     {base.balance} {base.symbol}
                   </span>
@@ -240,13 +248,13 @@ const PoolLiquidityDeposit: React.FC = () => {
                     {m["common.max"]()}
                   </Button>
                 </div>
-                <p className="text-gray-500 diatype-sm-regular">
+                <p className="text-tertiary-500 diatype-sm-regular">
                   {getPrice(base.amount, base.denom, { format: true })}
                 </p>
               </div>
             }
           />
-          <span className="w-full h-[1px] bg-gray-100" />
+          <span className="w-full h-[1px] bg-secondary-gray" />
           <Input
             {...register("quoteAmount", {
               mask: numberMask,
@@ -262,7 +270,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             startContent={
               <div className="flex items-center gap-2 pl-4">
                 <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8 rounded-full" />
-                <p className="text-gray-500 diatype-lg-medium">{quote.symbol}</p>
+                <p className="text-tertiary-500 diatype-lg-medium">{quote.symbol}</p>
               </div>
             }
             classNames={{
@@ -272,7 +280,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             }}
             insideBottomComponent={
               <div className="w-full flex justify-between pl-4 h-[22px]">
-                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
+                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
                   <span>
                     {quote.balance} {quote.symbol}
                   </span>
@@ -286,7 +294,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                     {m["common.max"]()}
                   </Button>
                 </div>
-                <p className="text-gray-500 diatype-sm-regular">
+                <p className="text-tertiary-500 diatype-sm-regular">
                   {getPrice(quote.amount, quote.denom, { format: true })}
                 </p>
               </div>
@@ -341,9 +349,11 @@ const PoolLiquidityWithdraw: React.FC = () => {
     <>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="exposure-sm-italic text-gray-700">{m["poolLiquidity.withdrawAmount"]()}</p>
-          <div className="flex rounded-xl bg-rice-25 shadow-account-card flex-col gap-2 p-4 items-center">
-            <p className="h1-regular text-gray-700">{withdrawPercent}%</p>
+          <p className="exposure-sm-italic text-secondary-700">
+            {m["poolLiquidity.withdrawAmount"]()}
+          </p>
+          <div className="flex rounded-xl bg-surface-secondary-rice shadow-account-card flex-col gap-2 p-4 items-center">
+            <p className="h1-regular text-secondary-700">{withdrawPercent}%</p>
             <Range
               isDisabled={withdraw.isPending}
               minValue={0}
@@ -423,6 +433,12 @@ const PoolLiquidityWithdraw: React.FC = () => {
 const PoolLiquidityHeaderTabs: React.FC = () => {
   const { state } = usePoolLiquidity();
   const { action, onChangeAction, userHasLiquidity } = state;
+
+  useEffect(() => {
+    if (!userHasLiquidity) {
+      onChangeAction("deposit");
+    }
+  }, [userHasLiquidity]);
 
   return (
     <Tabs

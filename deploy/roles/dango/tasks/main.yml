@@ -16,7 +16,7 @@
     name: python3-psycopg2
     state: present
 
-- name: Create Dango DB user
+- name: Create psql Dango DB user
   tags: setup
   community.postgresql.postgresql_user:
     name: "{{ dango_db_user }}"
@@ -27,7 +27,7 @@
     login_port: "{{ db_port }}"
     state: present
 
-- name: Create Dango production database
+- name: Create psql Dango production database
   tags: setup
   community.postgresql.postgresql_db:
     name: "{{ dango_network }}_{{ dango_db_name }}"
@@ -41,7 +41,7 @@
   loop_control:
     loop_var: dango_network
 
-- name: Grant ALL privileges on the Dango database to the Dango user
+- name: Grant psql ALL privileges on the Dango database to the Dango user
   tags: setup
   community.postgresql.postgresql_privs:
     type: database
@@ -53,6 +53,46 @@
     login_host: "{{ db_host }}"
     login_port: "{{ db_port }}"
     state: present
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
+- name: Debug variables
+  debug:
+    msg: "Network: {{ dango_network }}, DB name: {{ dango_network }}_{{ dango_clickhouse_name }} {{ clickhouse_password }}"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
+- name: Create clickhouse database
+  community.clickhouse.clickhouse_db:
+    name: "{{ dango_network }}_{{ dango_clickhouse_name }}"
+    state: present
+    login_host: 127.0.0.1
+    login_port: 9000
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
+  loop: "{{ dango_networks }}"
+  loop_control:
+    loop_var: dango_network
+
+- name: Create clickhouse dango user
+  community.clickhouse.clickhouse_user:
+    login_host: 127.0.0.1
+    login_port: 9000
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
+    name: dango
+    password: "{{ dango_clickhouse_password }}"
+    update_password: always
+
+- name: Grant clickhouse database access to user
+  community.clickhouse.clickhouse_client:
+    execute: "GRANT ALL ON {{ dango_network }}_{{ dango_clickhouse_name }}.* TO {{ dango_clickhouse_user }}"
+    login_host: 127.0.0.1
+    login_port: 9000
+    login_user: default
+    login_password: "{{ clickhouse_password }}"
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network
@@ -80,11 +120,12 @@
   loop_control:
     loop_var: dango_network
 
-- name: Connect Postgres container to extra network
+- name: Connect Postgres and Clickhouse container to extra network
   community.docker.docker_network:
     name: "{{ dango_network }}_backend"
     connected:
       - "{{ docker_db_host }}"
+      - "{{ docker_clickhouse_host }}"
     appends: true
   loop: "{{ dango_networks }}"
   loop_control:
@@ -103,6 +144,12 @@
   loop_control:
     loop_var: dango_network
 
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+
 - name: Deploy dango container
   vars:
     dango_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
@@ -118,6 +165,9 @@
     env:
       HOME: /app
       INDEXER__DATABASE__URL: "postgres://{{ dango_db_user }}:{{ dango_db_password }}@{{ docker_db_host }}:{{ db_port }}/{{ dango_network }}_{{ dango_db_name }}"
+      INDEXER__CLICKHOUSE__USER: "{{ dango_clickhouse_user }}"
+      INDEXER__CLICKHOUSE__PASSWORD: "{{ dango_clickhouse_password }}"
+      INDEXER__CLICKHOUSE__DATABASE: "{{ dango_network }}_{{ dango_clickhouse_name }}"
       SENTRY__ENABLED: "true"
       SENTRY__DSN: "{{ lookup('env','SENTRY__DSN') }}"
       SENTRY__ENVIRONMENT: "production-{{ dango_network }}"
@@ -128,6 +178,11 @@
     networks:
       - name: "{{ dango_network }}_backend"
     tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network

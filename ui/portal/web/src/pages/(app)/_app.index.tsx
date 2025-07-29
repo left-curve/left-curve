@@ -1,56 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useRef, useState } from "react";
+
+import { createFileRoute } from "@tanstack/react-router";
+import { m } from "~/paraglide/messages";
+
+import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
 import { AppletsSection } from "~/components/overview/AppletsSection";
 import { DotsIndicator } from "~/components/overview/SwippeableAccountCard";
 import { WelcomeSection } from "~/components/overview/WelcomeSection";
 
-const mockDataTable = [
-  {
-    vault: "ETH-USD",
-    type: "Lending",
-    apr: "17.72%",
-    liquidity: "15.63%",
-    tvl: "15.63%",
-    risk: "Low",
-  },
-  {
-    vault: "ETH-USD",
-    type: "Lending",
-    apr: "17.72%",
-    liquidity: "15.63%",
-    tvl: "15.63%",
-    risk: "Low",
-  },
-  {
-    vault: "ETH-USD",
-    type: "Lending",
-    apr: "17.72%",
-    liquidity: "15.63%",
-    tvl: "15.63%",
-    risk: "Low",
-  },
-  {
-    vault: "ETH-USD",
-    type: "Lending",
-    apr: "17.72%",
-    liquidity: "15.63%",
-    tvl: "15.63%",
-    risk: "Low",
-  },
-  {
-    vault: "ETH-USD",
-    type: "Lending",
-    apr: "17.72%",
-    liquidity: "15.63%",
-    tvl: "15.63%",
-    risk: "Low",
-  },
-];
-
 export const Route = createFileRoute("/(app)/_app/")({
+  head: () => ({
+    meta: [{ title: `Dango | ${m["common.overview"]()}` }],
+  }),
   component: OverviewComponent,
 });
 
@@ -87,7 +49,7 @@ function OverviewComponent() {
       </div>
       {/*   <div
         ref={topYieldsRef}
-        className="bg-rice-25 shadow-account-card flex flex-col rounded-xl w-full pt-4"
+        className="bg-surface-secondary-rice shadow-account-card flex flex-col rounded-xl w-full pt-4"
       >
         <p className="h3-heavy font-extrabold px-4 py-3">Top Yields</p>
 

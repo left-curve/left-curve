@@ -2,7 +2,7 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{MAX_ORACLE_STALENESS, PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PassiveLiquidityPool, RESERVES, core},
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -11,10 +11,11 @@ use {
             CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
             InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
         },
+        taxman::{self, FeeType},
     },
     grug::{
         Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, coins,
+        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
     },
 };
 
@@ -193,18 +194,37 @@ fn provide_liquidity(
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
-    Ok(Response::new().add_message({
-        let bank = ctx.querier.query_bank()?;
-        Message::execute(
+    let bank = ctx.querier.query_bank()?;
+
+    Ok(Response::new()
+        .add_message(Message::execute(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                coins: coins! { pair.lp_denom => lp_mint_amount },
+                coins: coins! { pair.lp_denom.clone() => lp_mint_amount },
             },
             Coins::new(), // No funds needed for minting
-        )?
-    }))
-    // TODO: add event
+        )?)
+        .may_add_message(if lp_token_supply.is_zero() {
+            // If this is the first liquidity provision, mint a minimum liquidity.
+            // to the contract itself and permanently lock it here. See the comment
+            // on `MINIMUM_LIQUIDITY` for more details.
+            //
+            // Our implementation of this is slightly different from Uniswap's, which
+            // mints 1000 tokens less to the user, while we mint 1000 extra to
+            // the contract. Slightly different math but similarly prevents the
+            // attack.
+            Some(Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    coins: coins! { pair.lp_denom => MINIMUM_LIQUIDITY },
+                },
+                Coins::new(), // No funds needed for minting
+            )?)
+        } else {
+            None
+        }))
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
@@ -253,7 +273,6 @@ fn withdraw_liquidity(
             )?
         })
         .add_message(Message::transfer(ctx.sender, refunds)?))
-    // TODO: add events
 }
 
 fn swap_exact_amount_in(
@@ -262,14 +281,20 @@ fn swap_exact_amount_in(
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     let input = ctx.funds.into_one_coin()?;
+    let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Perform the swap.
-    let (reserves, output) =
-        core::swap_exact_amount_in(ctx.storage, &mut oracle_querier, route, input.clone())?;
+    let (reserves, output, protocol_fee) = core::swap_exact_amount_in(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate, // Charge the taker fee rate for swaps.
+        route,
+        input.clone(),
+    )?;
 
     // Ensure the output is above the minimum.
     // If not minimum is specified, the output should at least be greater than zero.
@@ -291,6 +316,20 @@ fn swap_exact_amount_in(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, output.clone())?)
+        .may_add_message(if protocol_fee.is_non_zero() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
+                    },
+                },
+                coins! { output.denom.clone() => protocol_fee },
+            )?)
+        } else {
+            None
+        })
         .add_event(Swapped {
             user: ctx.sender,
             input,
@@ -303,13 +342,20 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    let app_cfg = ctx.querier.query_dango_config()?;
+
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Perform the swap.
-    let (reserves, input) =
-        core::swap_exact_amount_out(ctx.storage, &mut oracle_querier, route, output.clone())?;
+    let (reserves, input, protocol_fee) = core::swap_exact_amount_out(
+        ctx.storage,
+        &mut oracle_querier,
+        *app_cfg.taker_fee_rate, // Charge the taker fee rate for swaps.
+        route,
+        output.clone(),
+    )?;
 
     // The user must have sent no less than the required input amount.
     // Any extra is refunded.
@@ -323,13 +369,183 @@ fn swap_exact_amount_out(
         RESERVES.save(ctx.storage, (&pair.base_denom, &pair.quote_denom), &reserve)?;
     }
 
-    // Unlike `swap_exact_amount_in`, no need to check whether output is zero
-    // here, because we already ensure it's non-zero.
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .may_add_message(if protocol_fee.is_non_zero() {
+            Some(Message::execute(
+                app_cfg.addresses.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    ty: FeeType::Trade,
+                    payments: btree_map! {
+                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
+                    },
+                },
+                coins! { output.denom.clone() => protocol_fee },
+            )?)
+        } else {
+            None
+        })
         .add_event(Swapped {
             user: ctx.sender,
             input,
             output: output.into_inner(),
         })?)
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::{
+            constants::{dango, usdc},
+            dex::{Direction, PairParams, PassiveLiquidity},
+        },
+        grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    /// Ensure that if a user creates orders with more-than-sufficient funds, the
+    /// extra funds are properly refunded.
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![],
+            creates_limit: vec![CreateLimitOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                price: Udec128_24::new(2),
+            }],
+            cancels: None,
+        },
+        coins! { usdc::DENOM.clone() => 300 },
+        coins! { usdc::DENOM.clone() => 100 };
+        "overfunded limit bid: send 300, require 200"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![],
+            creates_limit: vec![CreateLimitOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                price: Udec128_24::new(2),
+            }],
+            cancels: None,
+        },
+        coins! { dango::DENOM.clone() => 300 },
+        coins! { dango::DENOM.clone() => 200 };
+        "overfunded limit ask: send 300, require 100"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![CreateMarketOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                max_slippage: Udec128::ZERO,
+            }],
+            creates_limit: vec![],
+            cancels: None,
+        },
+        coins! { usdc::DENOM.clone() => 300 },
+        coins! { usdc::DENOM.clone() => 200 };
+        "overfunded market bid: send 300, require 100"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![CreateMarketOrderRequest {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: NonZero::new_unchecked(Uint128::new(100)),
+                max_slippage: Udec128::ZERO,
+            }],
+            creates_limit: vec![],
+            cancels: None,
+        },
+        coins! { dango::DENOM.clone() => 300 },
+        coins! { dango::DENOM.clone() => 200 };
+        "overfunded market ask: send 300, require 100"
+    )]
+    #[test_case(
+        ExecuteMsg::BatchUpdateOrders {
+            creates_market: vec![
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    max_slippage: Udec128::ZERO,
+                },
+                CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    max_slippage: Udec128::ZERO,
+                },
+            ],
+            creates_limit: vec![
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    price: Udec128_24::new(2),
+                },
+                CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    price: Udec128_24::new(2),
+                },
+            ],
+            cancels: None,
+        },
+        coins! {
+            usdc::DENOM.clone() => 600,
+            dango::DENOM.clone() => 600,
+        },
+        coins! {
+            usdc::DENOM.clone() => 300,
+            dango::DENOM.clone() => 400,
+        };
+        "overfunded both in one tx; send 600 usdc + 600 dango, require 300 usdc + 200 dango"
+    )]
+    fn overfunded_order_refund_works(msg: ExecuteMsg, funds: Coins, expected_refunds: Coins) {
+        let sender = Addr::mock(1);
+        let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
+
+        // Create the dango-usdc pair.
+        // The specific parameters don't matter. We just need the pair to exist.
+        PAIRS
+            .save(
+                &mut ctx.storage,
+                (&dango::DENOM, &usdc::DENOM),
+                &PairParams {
+                    lp_denom: Denom::from_str("lp").unwrap(),
+                    pool_type: PassiveLiquidity::Xyk {
+                        order_spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                    },
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                },
+            )
+            .unwrap();
+
+        // The response should contain exactly 1 message, which is the refund.
+        let res = execute(ctx.as_mutable(), msg).unwrap();
+        assert_eq!(res.submsgs.len(), 1);
+        assert_eq!(
+            res.submsgs[0].msg,
+            Message::Transfer(btree_map! { sender => expected_refunds })
+        );
+    }
 }

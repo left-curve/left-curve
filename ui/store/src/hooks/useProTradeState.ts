@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
@@ -9,7 +9,7 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
 import { Direction } from "@left-curve/dango/types";
-import { capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { Decimal, capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
 import type { PairId } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
@@ -17,6 +17,8 @@ import type { AnyCoin, WithAmount } from "../types/coin.js";
 export type UseProTradeStateParameters = {
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (order_type: "limit" | "market") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
   controllers: {
@@ -27,24 +29,40 @@ export type UseProTradeStateParameters = {
 };
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
-  const { controllers, pairId, onChangePairId, action, onChangeAction } = parameters;
+  const {
+    controllers,
+    pairId,
+    onChangePairId,
+    onChangeAction,
+    action: initialAction,
+    orderType,
+    onChangeOrderType,
+  } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
   const { coins } = useConfig();
+  const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
 
-  const { convertAmount } = usePrices();
+  const { convertAmount, getPrice, isFetched } = usePrices();
 
   const [sizeCoin, setSizeCoin] = useState(coins[pairId.quoteDenom]);
-  const [operation, setOperation] = useState<"market" | "limit">("market");
+  const [operation, setOperation] = useState(orderType);
+  const [action, setAction] = useState(initialAction);
 
   const { data: balances = {}, refetch: updateBalance } = useBalances({
     address: account?.address,
   });
 
+  const changePairId = useCallback((pairId: PairId) => {
+    onChangePairId(pairId);
+    setSizeCoin(coins[pairId.quoteDenom]);
+    setValue("size", "0");
+  }, []);
+
   const changeAction = useCallback((action: "buy" | "sell") => {
-    onChangeAction(action);
+    setAction(action);
     setValue("size", "0");
   }, []);
 
@@ -73,12 +91,22 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const needsConversion = sizeCoin.denom !== availableCoin.denom;
 
+  const sizeValue = inputs.size?.value || "0";
+  const priceValue = inputs.price?.value || "0";
+
   const maxSizeAmount = useMemo(() => {
     if (availableCoin.amount === "0") return 0;
-    return needsConversion
-      ? convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom)
-      : +availableCoin.amount;
-  }, [sizeCoin, availableCoin, needsConversion]);
+    if (!needsConversion) return +availableCoin.amount;
+
+    return operation === "limit"
+      ? (() => {
+          if (priceValue === "0") return 0;
+          return action === "buy"
+            ? Decimal(availableCoin.amount).div(priceValue).toNumber()
+            : Decimal(availableCoin.amount).mul(priceValue).toNumber();
+        })()
+      : convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom);
+  }, [sizeCoin, availableCoin, needsConversion, priceValue]);
 
   const orders = useQuery({
     enabled: !!account,
@@ -88,12 +116,49 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       const response = await publicClient.ordersByUser({ user: account.address });
       return Object.entries(response).map(([id, order]) => ({
         ...order,
-        id: +id,
+        id,
       }));
     },
     initialData: [],
     refetchInterval: 1000 * 10,
   });
+
+  const orderAmount = useMemo(() => {
+    if (sizeValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+
+    const isBaseSize = sizeCoin.denom === pairId.baseDenom;
+    const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
+
+    if (operation === "market") {
+      return {
+        baseAmount: isBaseSize
+          ? sizeValue
+          : convertAmount(sizeValue, sizeCoin.denom, pairId.baseDenom).toString(),
+        quoteAmount: isQuoteSize
+          ? sizeValue
+          : convertAmount(sizeValue, sizeCoin.denom, pairId.quoteDenom).toString(),
+      };
+    }
+
+    if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+
+    return {
+      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toFixed(),
+      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toFixed(),
+    };
+  }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
+
+  useEffect(() => {
+    setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
+  }, [isFetched, pairId]);
+
+  useEffect(() => {
+    onChangeOrderType(operation);
+  }, [operation]);
+
+  useEffect(() => {
+    onChangeAction(action);
+  }, [action]);
 
   const submission = useSubmitTx({
     mutation: {
@@ -104,9 +169,28 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const direction = Direction[capitalize(action) as keyof typeof Direction];
         const { baseDenom, quoteDenom } = pairId;
 
-        const amount = needsConversion
-          ? convertAmount(inputs.size.value, sizeCoin.denom, availableCoin.denom, true)
-          : parseUnits(inputs.size.value, availableCoin.decimals).toString();
+        const limitAmount = Decimal(orderAmount.baseAmount)
+          .times(Decimal(10).pow(baseCoin.decimals))
+          .toFixed(0, 0);
+
+        const price = Decimal(priceValue)
+          .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
+          .toFixed();
+
+        const amount = (() => {
+          if (operation === "market") {
+            return (
+              baseCoin.denom === availableCoin.denom
+                ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
+                : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals)
+            ).toString();
+          }
+
+          if (baseCoin.denom === availableCoin.denom)
+            return parseUnits(orderAmount.baseAmount, baseCoin.decimals).toString();
+
+          return Decimal(limitAmount).mulCeil(price).toFixed(0, 3);
+        })();
 
         const order =
           operation === "market"
@@ -124,11 +208,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
             : {
                 createsLimit: [
                   {
-                    amount,
+                    amount: limitAmount,
                     baseDenom,
                     quoteDenom,
                     direction,
-                    price: parseUnits(inputs.price.value, quoteCoin.decimals).toString(),
+                    price,
                   },
                 ],
               };
@@ -138,17 +222,20 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           ...order,
           funds: { [availableCoin.denom]: amount },
         });
-
-        await orders.refetch();
-        await updateBalance();
+      },
+      onSuccess: () => {
+        orders.refetch();
+        updateBalance();
         controllers.reset();
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });
 
   return {
     pairId,
-    onChangePairId,
+    onChangePairId: changePairId,
+    orderAmount,
     maxSizeAmount,
     availableCoin,
     baseCoin,
@@ -159,7 +246,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     setOperation,
     action,
     changeAction,
-    orders,
+    orders: {
+      ...orders,
+      data: orders.data ? orders.data : [],
+    },
     submission,
     type: "spot",
   };

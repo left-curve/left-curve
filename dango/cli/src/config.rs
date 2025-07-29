@@ -4,11 +4,21 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub grug: GrugConfig,
     pub indexer: IndexerConfig,
+    pub httpd: HttpdConfig,
+    pub metrics_httpd: HttpdConfig,
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
     pub log_level: String,
     pub log_format: LogFormat,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ClickhouseConfig {
+    pub url: String,
+    pub database: String,
+    pub user: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -47,9 +57,8 @@ pub struct SentryConfig {
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
-    pub httpd: HttpdConfig,
-    pub metrics_httpd: HttpdConfig,
     pub database: IndexerDatabaseConfig,
+    pub clickhouse: ClickhouseConfig,
 }
 
 #[derive(Serialize, Deserialize)]

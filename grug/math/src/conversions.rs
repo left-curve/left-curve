@@ -1,5 +1,8 @@
 use {
-    crate::{Dec, FixedPoint, Int, MathError, MathResult, Number, NumberConst},
+    crate::{
+        Dec, Exponentiate, FixedPoint, Int, IsZero, MathError, MathResult, Number, NumberConst,
+        Sign,
+    },
     std::cmp::Ordering,
 };
 
@@ -24,11 +27,40 @@ where
 impl<U, const S: u32> Dec<U, S>
 where
     Self: FixedPoint<U>,
-    Int<U>: Number,
+    Int<U>: Number + NumberConst + Sign + IsZero,
 {
+    /// Convert the decimal number to an integer, rounded towards zero.
     pub fn into_int(self) -> Int<U> {
-        // We know the decimal fraction is non-zero, so safe to unwrap.
+        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
         self.0.checked_div(Self::PRECISION).unwrap()
+    }
+
+    /// Convert the decimal number to an integer, rounded towards negative infinity.
+    pub fn into_int_floor(self) -> Int<U> {
+        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
+        let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+        let int = self.into_int();
+
+        match (rem.is_zero(), rem.is_negative()) {
+            (true, _) | (false, false) => int,
+            // Safe to unwrap, because the biggest value supported by `Int<U>`
+            // is necessarily more than one unit bigger than that by `Dec<U, S>`.
+            (false, true) => int.checked_sub(Int::<U>::ONE).unwrap(),
+        }
+    }
+
+    /// Convert the decimal number to an integer, rounded towards positive infinity.
+    pub fn into_int_ceil(self) -> Int<U> {
+        // Safe to unwrap because we know `Self::PRECISION` is non-zero.
+        let rem = self.0.checked_rem(Self::PRECISION).unwrap();
+        let int = self.into_int();
+
+        match (rem.is_zero(), rem.is_negative()) {
+            (true, _) | (false, true) => int,
+            // Safe to unwrap, because the smallest value supported by `Int<U>`
+            // is necessarily more than one unit smaller than that by `Dec<U, S>`.
+            (false, false) => int.checked_add(Int::<U>::ONE).unwrap(),
+        }
     }
 }
 
@@ -36,9 +68,9 @@ where
 
 impl<U, const S: u32> Dec<U, S>
 where
-    U: Number + NumberConst,
+    U: Number + Exponentiate + NumberConst,
 {
-    pub fn conver_precision<const S1: u32>(self) -> MathResult<Dec<U, S1>> {
+    pub fn convert_precision<const S1: u32>(self) -> MathResult<Dec<U, S1>> {
         match S.cmp(&S1) {
             Ordering::Less => {
                 let diff = S1 - S;
@@ -137,11 +169,13 @@ mod int_tests {
 mod dec_tests {
     use {
         crate::{
-            Dec, Dec128, Dec256, FixedPoint, Int, Number, NumberConst, Udec128, Udec128_6, Udec256,
-            dec_test,
+            Dec, Dec128, Dec256, FixedPoint, Int, Int128, IsZero, Number, NumberConst, Sign,
+            Udec128, Udec256, Uint128, dec_test,
             test_utils::{bt, dec, dt},
         },
         bnum::types::{I256, U256},
+        std::str::FromStr,
+        test_case::test_case,
     };
 
     dec_test!( dec_to_int
@@ -205,13 +239,92 @@ mod dec_tests {
     #[test]
     fn convert_precision() {
         let dec_18: Udec128 = dec("123.123456789012345678");
-        let dec_6 = dec_18.conver_precision::<6>().unwrap();
+        let dec_6 = dec_18.convert_precision::<6>().unwrap();
         assert_eq!(dec_6, dec("123.123456"));
 
         // Try at max
         let dec_18 = Udec128::MAX;
         dec_18.checked_add(Udec128::TICK).unwrap_err();
-        let dec_6 = dec_18.conver_precision::<6>().unwrap();
-        dec_6.checked_add(Udec128_6::TICK).unwrap();
+        let dec_6 = dec_18.convert_precision::<6>().unwrap();
+        dec_6.checked_add(Dec::<_, 6>::TICK).unwrap();
+    }
+
+    #[test_case(
+        Udec128::ZERO
+        => (Uint128::ZERO, Uint128::ZERO, Uint128::ZERO);
+        "unsigned zero"
+    )]
+    #[test_case(
+        Udec128::ONE
+        => (Uint128::ONE, Uint128::ONE, Uint128::ONE);
+        "unsigned positive one"
+    )]
+    #[test_case(
+        Udec128::from_str("1.5").unwrap()
+        => (Uint128::ONE, Uint128::ONE, Uint128::new(2));
+        "unsigned positive one point five"
+    )]
+    #[test_case(
+        Udec128::MAX // (2^128 - 1) / 10^18 = 340,282,366,920,938,463,463.374607431768211455
+        => (
+            Uint128::new(340_282_366_920_938_463_463),
+            Uint128::new(340_282_366_920_938_463_463),
+            Uint128::new(340_282_366_920_938_463_464), // rounded up by 1
+        );
+        "unsigned positive max"
+    )]
+    #[test_case(
+        Dec128::ZERO
+        => (Int128::ZERO, Int128::ZERO, Int128::ZERO);
+        "signed zero"
+    )]
+    #[test_case(
+        Dec128::ONE
+        => (Int128::ONE, Int128::ONE, Int128::ONE);
+        "signed positive one"
+    )]
+    #[test_case(
+        Dec128::from_str("1.5").unwrap()
+        => (Int128::ONE, Int128::ONE, Int128::new(2));
+        "signed positive one point five"
+    )]
+    #[test_case(
+        Dec128::MAX // (2^127 - 1) / 10^18 = 170,141,183,460,469,231,731.687303715884105727
+        => (
+            Int128::new(170_141_183_460_469_231_731),
+            Int128::new(170_141_183_460_469_231_731),
+            Int128::new(170_141_183_460_469_231_732), // rounded up by 1
+        );
+        "signed positive max"
+    )]
+    #[test_case(
+        -Dec128::ONE
+        => (-Int128::ONE, -Int128::ONE, -Int128::ONE);
+        "signed negative one"
+    )]
+    #[test_case(
+        Dec128::from_str("-1.5").unwrap()
+        => (
+            -Int128::ONE,    // rounded towards zero
+            -Int128::new(2), // rounded down by 1
+            -Int128::ONE,    // rounded up by 1
+        );
+        "signed negative one point five"
+    )]
+    #[test_case(
+        Dec128::MIN // -2^127 / 10^18 = -170,141,183,460,469,231,731.687303715884105728
+        => (
+            -Int128::new(170_141_183_460_469_231_731), // rounded towards zero
+            -Int128::new(170_141_183_460_469_231_732), // rounded down by 1
+            -Int128::new(170_141_183_460_469_231_731), // rounded up by 1
+        );
+        "signed negative max"
+    )]
+    fn into_int<U, const S: u32>(dec: Dec<U, S>) -> (Int<U>, Int<U>, Int<U>)
+    where
+        Dec<U, S>: FixedPoint<U> + Copy,
+        Int<U>: Number + NumberConst + Sign + IsZero,
+    {
+        (dec.into_int(), dec.into_int_floor(), dec.into_int_ceil())
     }
 }

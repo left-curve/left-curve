@@ -1,15 +1,19 @@
 import { Button, IconButton, IconClose } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
-export const ProTradeCloseAll = forwardRef(() => {
-  const { hideModal, subscriptions } = useApp();
+import type { OrderId } from "@left-curve/dango/types";
+
+export const ProTradeCloseAll = forwardRef<void, { ordersId: OrderId[] }>(({ ordersId }) => {
+  const { hideModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
+  const queryClient = useQueryClient();
 
   const { isPending, mutateAsync: cancelAllOrders } = useSubmitTx({
     submission: {
@@ -19,16 +23,26 @@ export const ProTradeCloseAll = forwardRef(() => {
     mutation: {
       mutationFn: async () => {
         if (!signingClient) throw new Error("No signing client available");
-        await signingClient.batchUpdateOrders({ cancels: "all", sender: account!.address });
+        await signingClient.batchUpdateOrders({
+          cancels: { some: ordersId },
+          sender: account!.address,
+        });
       },
-      onSuccess: () => hideModal(),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: ["ordersByUser", account?.address],
+        });
+        hideModal();
+      },
     },
   });
 
   return (
-    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-      <h2 className="text-gray-900 h4-bold w-full">{m["modals.protradeCloseAllOrders.title"]()}</h2>
-      <p className="text-gray-500 diatype-sm-regular">
+    <div className="flex flex-col bg-surface-primary-rice md:border border-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+      <h2 className="text-primary-900 h4-bold w-full">
+        {m["modals.protradeCloseAllOrders.title"]()}
+      </h2>
+      <p className="text-tertiary-500 diatype-sm-regular">
         {m["modals.protradeCloseAllOrders.description"]()}
       </p>
       {/* <RadioGroup name="close-positions-all" defaultValue="market-close">
