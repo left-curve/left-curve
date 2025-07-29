@@ -72,6 +72,22 @@ services:
       timeout: 5s
       retries: 3
 
+  dango-frontend:
+    image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    labels:
+      <<: *common-labels
+    depends_on:
+      dango:
+        condition: service_healthy
+    ports:
+      - "{{ tailscale_ip }}:${DANGO_FRONTEND_PORT:-0}:80"
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     labels:

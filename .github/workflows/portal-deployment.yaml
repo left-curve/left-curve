@@ -95,8 +95,6 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
       # Need to fix permissions https://github.com/left-curve/left-curve/settings/actions
       # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    permissions:
-      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
