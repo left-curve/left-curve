@@ -123,6 +123,7 @@ jobs:
             --platform ${{ steps.config.outputs.platform }} \
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
             --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
+            --build-arg GITHUB_TOKEN=${{ env.GITHUB_TOKEN }} \
             --provenance=false \
             -t ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango-frontend/Dockerfile .
