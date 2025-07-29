@@ -86,6 +86,9 @@ pub(super) fn create_market_order(
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
+    println!("creating market order! user: {user}, order: {order:?}");
+    tracing::warn!("creating market order! user: {user}, order: {order:?}");
+
     ensure!(
         PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
         "pair not found with base `{}` and quote `{}`",
