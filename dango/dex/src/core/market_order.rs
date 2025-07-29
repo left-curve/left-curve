@@ -112,8 +112,10 @@ where
                 .convert_precision::<24>()?; // TODO: Use other precision for amounts?
 
             println!(
-                "filled_quote: {} | filled_base: {} | current_avg_price: {current_avg_price} | cutoff: {cutoff_price} | price: {price} | direction: {market_order_direction:?}",
-                filling_outcome.filled_quote, filling_outcome.filled_base
+                "filled_quote: {} | filled_base: {} | current_avg_price: {current_avg_price} | cutoff: {cutoff_price} | price: {price} | best_price: {best_price} | slippage: {} | direction: {market_order_direction:?}",
+                filling_outcome.filled_quote,
+                filling_outcome.filled_base,
+                market_order.max_slippage
             );
 
             let price_ratio = current_avg_price
