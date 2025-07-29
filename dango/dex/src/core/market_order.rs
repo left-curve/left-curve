@@ -61,6 +61,16 @@ where
             break;
         };
 
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                market_order_id = market_order_id.to_string(),
+                limit_order_id = ?limit_order.extended_id(),
+                best_price = best_price.to_string(),
+                "Matching market order"
+            );
+        }
+
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
             Direction::Bid => Udec128_24::ONE
