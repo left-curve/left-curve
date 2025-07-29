@@ -8,14 +8,14 @@ on:
       - "ui/testnet"
       - "ui/release"
     paths:
-      - ".github/workflows/portal-deployment.yml"
+      - ".github/workflows/portal-deployment.yaml"
       - "sdk/**"
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
   pull_request:
     paths:
-      - ".github/workflows/portal-deployment.yml"
+      - ".github/workflows/portal-deployment.yaml"
       - "sdk/**"
       - "ui/store/**"
       - "ui/portal/**"
