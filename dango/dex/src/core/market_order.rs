@@ -162,7 +162,9 @@ where
         // We do not refund the market order since that would allow spamming the
         // contract with tiny market orders at no cost.
         if filled_base.is_zero() {
-            market_orders.next();
+            current_market_order = market_orders.next();
+            current_best_price = Some(*price);
+
             continue;
         }
 
@@ -171,7 +173,9 @@ where
         if market_order_direction == Direction::Ask {
             let filled_quote = filled_base.checked_mul(*price)?;
             if filled_quote.is_zero() {
-                market_orders.next();
+                current_market_order = market_orders.next();
+                current_best_price = Some(*price);
+
                 continue;
             }
         }
