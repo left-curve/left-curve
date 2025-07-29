@@ -26,6 +26,10 @@ where
 
     // Match the market order to the opposite side of the resting limit order book.
     let limit_order_direction = -market_order_direction;
+    println!("market order direction: {market_order_direction:?}");
+    tracing::warn!("market order direction: {market_order_direction:?}");
+    println!("limit order direction: {limit_order_direction:?}");
+    tracing::warn!("limit order direction: {limit_order_direction:?}");
 
     // Find the best offer price in the resting limit order book.
     // This will be used to compute the market order's worst average execution
@@ -35,6 +39,8 @@ where
         Some(Err(e)) => return Err(e.clone().into()),
         None => return Ok(filling_outcomes), // Return early if there are no limit orders
     };
+    println!("best price: {best_price}");
+    tracing::warn!("best price: {best_price}");
 
     // Iterate over the limit orders and market orders until one of them is exhausted.
     // Since a market order can partially fill a limit order, and that limit order should
@@ -50,10 +56,14 @@ where
             Some(Err(e)) => return Err(e.clone().into()),
             None => break,
         };
+        println!("limit order price: {price}, limit order: {limit_order:?}");
+        tracing::warn!("limit order price: {price}, limit order: {limit_order:?}");
 
         let Some((ref market_order_id, market_order)) = market_orders.peek_mut() else {
             break;
         };
+        println!("market order id: {market_order_id}, market order: {market_order:?}");
+        tracing::warn!("market order id: {market_order_id}, market order: {market_order:?}");
 
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
@@ -64,6 +74,8 @@ where
                 .saturating_sub(market_order.max_slippage)
                 .saturating_mul(best_price),
         };
+        println!("cutoff price: {cutoff_price}");
+        tracing::warn!("cutoff price: {cutoff_price}");
 
         // The direction of the comparison depends on whether the market order
         // is a BUY or a SELL.
@@ -71,11 +83,15 @@ where
             Direction::Bid => *price > cutoff_price,
             Direction::Ask => *price < cutoff_price,
         };
+        println!("price is worse than cutoff: {price_is_worse_than_cutoff}");
+        tracing::warn!("price is worse than cutoff: {price_is_worse_than_cutoff}");
 
         let market_order_amount_in_base = match market_order_direction {
             Direction::Bid => market_order.remaining.checked_div(*price)?,
             Direction::Ask => market_order.remaining,
         };
+        println!("market order amount in base: {market_order_amount_in_base}");
+        tracing::warn!("market order amount in base: {market_order_amount_in_base}");
 
         // If the price is not worse than the cutoff price, we can match the market order
         // against the limit order in full. Otherwise, we need to calculate the amount of the
@@ -92,8 +108,14 @@ where
         // We round down the result to ensure that the average price of the market order
         // does not exceed the cutoff price.
         let filled_base = if !price_is_worse_than_cutoff {
+            println!("price is not worse than cutoff");
+            tracing::warn!("price is not worse than cutoff");
             market_order_amount_in_base
         } else {
+            println!("price is worse than cutoff");
+            tracing::warn!("price is worse than cutoff");
+            println!("`filling_outcomes` map at this point: {filling_outcomes:?}");
+            tracing::warn!("`filling_outcomes` map at this point: {filling_outcomes:?}");
             let extended_market_order_id = ExtendedOrderId::User(*market_order_id);
             let filling_outcome = filling_outcomes.get_mut(&extended_market_order_id).unwrap();
 
@@ -104,6 +126,8 @@ where
                 .filled_quote
                 .checked_div(filling_outcome.filled_base)?
                 .convert_precision::<24>()?; // TODO: Use other precision for amounts?
+            println!("current avg price: {current_avg_price}");
+            tracing::warn!("current avg price: {current_avg_price}");
             let price_ratio = current_avg_price
                 .checked_into_signed()?
                 .checked_sub(cutoff_price.checked_into_signed()?)?
@@ -112,13 +136,23 @@ where
                         .checked_into_signed()?
                         .checked_sub(price.checked_into_signed()?)?,
                 )?;
+            println!("price ratio: {price_ratio}");
+            tracing::warn!("price ratio: {price_ratio}");
             let market_order_amount_to_match_in_base = filling_outcome
                 .filled_base
                 .checked_mul(price_ratio.checked_into_unsigned()?)?
                 .min(market_order_amount_in_base);
+            println!(
+                "market order amount to match in base: {market_order_amount_to_match_in_base}"
+            );
+            tracing::warn!(
+                "market order amount to match in base: {market_order_amount_to_match_in_base}"
+            );
 
             // Since the order is only partially filled we update the filling outcome
             // to refund the amount that was not filled.
+            println!("incrementing refund quote or base depending on direction");
+            tracing::warn!("incrementing refund quote or base depending on direction");
             match market_order_direction {
                 Direction::Bid => {
                     filling_outcome.refund_quote.checked_add_assign(
@@ -143,6 +177,8 @@ where
         // be filled.
         // We do not refund the market order since that would allow spamming the
         // contract with tiny market orders at no cost.
+        println!("filled base: {filled_base}");
+        tracing::warn!("filled base: {filled_base}");
         if filled_base.is_zero() {
             market_orders.next();
             continue;
@@ -152,6 +188,8 @@ where
         // we skip it because it cannot be filled.
         if market_order_direction == Direction::Ask {
             let filled_quote = filled_base.checked_mul(*price)?;
+            println!("filled quote: {filled_quote}");
+            tracing::warn!("filled quote: {filled_quote}");
             if filled_quote.is_zero() {
                 market_orders.next();
                 continue;
@@ -165,6 +203,8 @@ where
                 // The market ask order is smaller than the limit order so we advance the market
                 // orders iterator and decrement the limit order remaining amount
                 Ordering::Less => {
+                    println!("market order is consumed");
+                    tracing::warn!("market order is consumed");
                     limit_order.fill(filled_base)?;
                     market_order.clear();
 
@@ -179,6 +219,8 @@ where
                 // The market order amount is equal to the limit order remaining amount, so we can
                 // match both in full, and advance both iterators.
                 Ordering::Equal => {
+                    println!("both the market and limit orders are consumed");
+                    tracing::warn!("both the market and limit orders are consumed");
                     limit_order.clear();
                     market_order.clear();
 
@@ -195,6 +237,8 @@ where
                 // so we advance fully match the limit, decrement the market order amount and
                 // advance the limit orders iterator
                 Ordering::Greater => {
+                    println!("limit order is consumed");
+                    tracing::warn!("limit order is consumed");
                     let fill_amount = limit_order.clear();
 
                     // Decrement the market order amount by the limit order remaining amount.
@@ -232,6 +276,8 @@ where
             Some(block_height) if block_height < current_block_height => maker_fee_rate,
             Some(_) => taker_fee_rate,
         };
+        println!("limit order fee rate: {limit_order_fee_rate}");
+        tracing::warn!("limit order fee rate: {limit_order_fee_rate}");
 
         update_filling_outcome(
             &mut filling_outcomes,
@@ -263,6 +309,12 @@ fn update_filling_outcome(
     price: Udec128_24,
     fee_rate: Udec128,
 ) -> StdResult<()> {
+    println!(
+        "updating filling outcome for order: {order:?}, direction: {order_direction:?}, filled base: {filled_base}, price: {price}, fee rate: {fee_rate}"
+    );
+    tracing::warn!(
+        "updating filling outcome for order: {order:?}, direction: {order_direction:?}, filled base: {filled_base}, price: {price}, fee rate: {fee_rate}"
+    );
     let filling_outcome = filling_outcomes
         .entry(order.extended_id())
         .or_insert_with(|| FillingOutcome {

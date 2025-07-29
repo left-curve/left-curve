@@ -23,6 +23,7 @@ dango-account-factory = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
+tracing               = { workspace = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

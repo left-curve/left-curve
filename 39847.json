@@ -1,0 +1,1046 @@
+{
+  "block": {
+    "info": {
+      "height": 39847,
+      "timestamp": "1753756008.370661812",
+      "hash": "7A633C78A651672A1121B9D5496594F0967E926A1E70363C080F21F0CB785E01"
+    },
+    "txs": [
+      [
+        {
+          "sender": "0xfd3de90306e28197f277096fad988f38af1586b8",
+          "gas_limit": 50000000,
+          "msgs": [
+            {
+              "execute": {
+                "contract": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                "msg": {
+                  "feed_prices": [
+                    "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"
+                  ]
+                },
+                "funds": {}
+              }
+            }
+          ],
+          "data": null,
+          "credential": null
+        },
+        "B5AF7B0F42774DA078B7B2E1B5C7166DEB3BDEDA764BB43F82457C9309C6B9F9"
+      ],
+      [
+        {
+          "sender": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+          "gas_limit": 15610,
+          "msgs": [
+            {
+              "execute": {
+                "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                "msg": {
+                  "swap_exact_amount_in": {
+                    "route": [
+                      {
+                        "base_denom": "bridge/eth",
+                        "quote_denom": "bridge/usdc"
+                      }
+                    ]
+                  }
+                },
+                "funds": {
+                  "bridge/eth": "40000000000000000000"
+                }
+              }
+            }
+          ],
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 7,
+            "username": "gen25"
+          },
+          "credential": {
+            "standard": {
+              "key_hash": "F6FCBD4599DE1C12B210CBD5F78941AF044F6D4DCF85D5451736B227FB486FBE",
+              "signature": {
+                "eip712": {
+                  "sig": "qTsZDNsl4rucTGDAO2G4J+++F57LF7sIcOrNC3TG26s8JsOIB9kvbCYDjLQEzmtX9LRteiuJo/3x9Xb4VF2vSBw=",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImNoYWluSWQiLCJ0eXBlIjoidWludDI1NiJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZW5kZXIiLCJ0eXBlIjoiYWRkcmVzcyJ9LHsibmFtZSI6ImRhdGEiLCJ0eXBlIjoiTWV0YWRhdGEifSx7Im5hbWUiOiJnYXNfbGltaXQiLCJ0eXBlIjoidWludDMyIn0seyJuYW1lIjoibWVzc2FnZXMiLCJ0eXBlIjoiVHhNZXNzYWdlW10ifV0sIk1ldGFkYXRhIjpbeyJuYW1lIjoidXNlcm5hbWUiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiY2hhaW5faWQiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoibm9uY2UiLCJ0eXBlIjoidWludDMyIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJleGVjdXRlIiwidHlwZSI6IkV4ZWN1dGUwIn1dLCJFeGVjdXRlMCI6W3sibmFtZSI6ImNvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifSx7Im5hbWUiOiJtc2ciLCJ0eXBlIjoiRXhlY3V0ZU1lc3NhZ2UwIn0seyJuYW1lIjoiZnVuZHMiLCJ0eXBlIjoiRnVuZHMwIn1dLCJFeGVjdXRlTWVzc2FnZTAiOlt7Im5hbWUiOiJzd2FwX2V4YWN0X2Ftb3VudF9pbiIsInR5cGUiOiJTd2FwRXhhY3RBbW91bnRJbiJ9XSwiRnVuZHMwIjpbeyJuYW1lIjoiYnJpZGdlL2V0aCIsInR5cGUiOiJzdHJpbmcifV0sIlN3YXBFeGFjdEFtb3VudEluIjpbeyJuYW1lIjoicm91dGUiLCJ0eXBlIjoiU3dhcFJvdXRlW10ifV0sIlN3YXBSb3V0ZSI6W3sibmFtZSI6ImJhc2VfZGVub20iLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoicXVvdGVfZGVub20iLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJkYW5nbyIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHhhMTlkNzg2NTU1ZjJiMWRhYTlhODUzM2I3OTMwMWFiZGE3MTJjM2FlIn0sIm1lc3NhZ2UiOnsic2VuZGVyIjoiMHhhMTlkNzg2NTU1ZjJiMWRhYTlhODUzM2I3OTMwMWFiZGE3MTJjM2FlIiwiZGF0YSI6eyJjaGFpbl9pZCI6ImRldi02IiwidXNlcm5hbWUiOiJnZW4yNSIsIm5vbmNlIjo3fSwiZ2FzX2xpbWl0IjoxNTYxMCwibWVzc2FnZXMiOlt7ImV4ZWN1dGUiOnsiY29udHJhY3QiOiIweDhkZDM3YjdlMTJkMzZiYmUxYzAwY2U5ZjBjMzQxYmZlMTcxMmU3M2YiLCJtc2ciOnsic3dhcF9leGFjdF9hbW91bnRfaW4iOnsicm91dGUiOlt7ImJhc2VfZGVub20iOiJicmlkZ2UvZXRoIiwicXVvdGVfZGVub20iOiJicmlkZ2UvdXNkYyJ9XX19LCJmdW5kcyI6eyJicmlkZ2UvZXRoIjoiNDAwMDAwMDAwMDAwMDAwMDAwMDAifX19XX19"
+                }
+              }
+            }
+          }
+        },
+        "A493F0D3291766C626B6D1C71388762304A9264496EAE380880571AD038314FF"
+      ],
+      [
+        {
+          "sender": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+          "gas_limit": 5491,
+          "msgs": [
+            {
+              "execute": {
+                "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                "msg": {
+                  "batch_update_orders": {
+                    "creates_limit": [],
+                    "creates_market": [
+                      {
+                        "amount": "150000000",
+                        "base_denom": "bridge/btc",
+                        "direction": "ask",
+                        "max_slippage": "0.08",
+                        "quote_denom": "bridge/usdc"
+                      }
+                    ]
+                  }
+                },
+                "funds": {
+                  "bridge/btc": "150000000"
+                }
+              }
+            }
+          ],
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 15,
+            "username": "jul0901"
+          },
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "E70057ABC0545EE31116310E1B3298D48D003B963E14BC400933F490A0A16CF7",
+                "signature": {
+                  "eip712": {
+                    "sig": "3T5cwGkiU4yPsV7hG9RSWid2wAE70zbOPb3LCt5X+itjpRy7ahX89ZXr4CsmxwF0JXlLd8I+6rNyG2pc0xduJRs=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBL250cDU5bitNSDA2ZkVTekU4NHFtaTRBQjZZSXNqaDRNcElsTERUOTNDYSIsImV4cGlyZV9hdCI6IjE3NTM4NDIxODAyNTkifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                  }
+                }
+              },
+              "session_info": {
+                "expire_at": "1753842180259",
+                "session_key": "A/ntp59n+MH06fESzE84qmi4AB6YIsjh4MpIlLDT93Ca"
+              },
+              "session_signature": "2T741vB/o+J5Wh84uv5/vX9rHrTlH+UW6dBo8XY9eYwgnM9cUdhOldk4CULP1i6pn7wiNcbPuPBV8bzJg6Krlw=="
+            }
+          }
+        },
+        "3A478DBB3EBCDF111578B3EEEB4227738259C8DBA962FF3797B61B21A593C4F9"
+      ],
+      [
+        {
+          "sender": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+          "gas_limit": 5491,
+          "msgs": [
+            {
+              "execute": {
+                "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                "msg": {
+                  "batch_update_orders": {
+                    "creates_limit": [
+                      {
+                        "amount": "8477399",
+                        "base_denom": "bridge/btc",
+                        "direction": "bid",
+                        "price": "1177.230874",
+                        "quote_denom": "bridge/usdc"
+                      }
+                    ],
+                    "creates_market": []
+                  }
+                },
+                "funds": {
+                  "bridge/usdc": "9979855835"
+                }
+              }
+            }
+          ],
+          "data": {
+            "chain_id": "dev-6",
+            "nonce": 18,
+            "username": "oximam"
+          },
+          "credential": {
+            "session": {
+              "authorization": {
+                "key_hash": "21225A6E8D0465AC7DE55351B2848052AFD76055944E3E379953C0ACE69086C5",
+                "signature": {
+                  "eip712": {
+                    "sig": "JbxJ+SJrZCagIvNW6/QCjhHtaO8XorqKRS1trUjr3OZVEAXR6B0N3AOqe/G6Eb0Dbb5ECiRJpohSn4yv/eFcAhw=",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSIsImNoYWluSWQiOjEsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0sIm1lc3NhZ2UiOnsic2Vzc2lvbl9rZXkiOiJBL0tsS050SVlNTC9za05zZmpaZTg3ckNORlJRV0czSFZ6RVYzSEFRL0ErdyIsImV4cGlyZV9hdCI6IjE3NTM4NDIyMzI4MjAifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InVpbnQyNTYifSx7Im5hbWUiOiJ2ZXJpZnlpbmdDb250cmFjdCIsInR5cGUiOiJhZGRyZXNzIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                  }
+                }
+              },
+              "session_info": {
+                "expire_at": "1753842232820",
+                "session_key": "A/KlKNtIYML/skNsfjZe87rCNFRQWG3HVzEV3HAQ/A+w"
+              },
+              "session_signature": "EJO4Zuq2YaE6wykipz1wNye5Sg0eVTj/W9kYZjFN5hRrQIgrdjzh3+xwe1UiGkYf1B3Ja2ddRJxfhYNEWfqBuw=="
+            }
+          }
+        },
+        "01905BA9CCAFB253A213F3EDBE7D262A1CDED3D3B5BF80F0608AE4E3EA631E42"
+      ]
+    ]
+  },
+  "block_outcome": {
+    "height": 39847,
+    "app_hash": "DE91D817F87DE5F26F716E590FB2D8BAB31A1C8B6821A1E8F443F803592886C3",
+    "cron_outcomes": [
+      {
+        "gas_limit": null,
+        "gas_used": 44728,
+        "cron_event": {
+          "failed": {
+            "event": {
+              "nested_failed": {
+                "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                "time": "1753756007.322709736",
+                "next": "1753756008.370661812",
+                "guest_event": {
+                  "failed": {
+                    "event": {
+                      "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                      "method": "cron_execute",
+                      "contract_events": [],
+                      "sub_events": []
+                    },
+                    "error": "contract returned error! address: 0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f, method: cron_execute, msg: conversion overflow: grug_math::int::Int<i128>(-1122188187108678799280949) > grug_math::int::Int<u128>::MAX"
+                  }
+                }
+              }
+            },
+            "error": "contract returned error! address: 0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f, method: cron_execute, msg: conversion overflow: grug_math::int::Int<i128>(-1122188187108678799280949) > grug_math::int::Int<u128>::MAX"
+          }
+        }
+      }
+    ],
+    "tx_outcomes": [
+      {
+        "gas_limit": 50000000,
+        "gas_used": 0,
+        "result": {
+          "Ok": null
+        },
+        "events": {
+          "withhold": {
+            "committed": {
+              "ok": {
+                "sender": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                "gas_limit": 50000000,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "withhold_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "authenticate": {
+            "committed": {
+              "ok": {
+                "sender": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                "backrun": false,
+                "guest_event": {
+                  "ok": {
+                    "contract": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                    "method": "authenticate",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "msgs_and_backrun": {
+            "committed": {
+              "msgs": [
+                {
+                  "ok": {
+                    "execute": {
+                      "sender": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                      "contract": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                      "funds": {},
+                      "execute_msg": {
+                        "feed_prices": [
+                          "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"
+                        ]
+                      },
+                      "transfer_event": "not_reached",
+                      "guest_event": {
+                        "ok": {
+                          "contract": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                          "method": "execute",
+                          "contract_events": [],
+                          "sub_events": []
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "backrun": "not_reached"
+            }
+          },
+          "finalize": {
+            "committed": {
+              "ok": {
+                "sender": "0xfd3de90306e28197f277096fad988f38af1586b8",
+                "gas_limit": 50000000,
+                "gas_used": 0,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "finalize_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "gas_limit": 15610,
+        "gas_used": 12646,
+        "result": {
+          "Ok": null
+        },
+        "events": {
+          "withhold": {
+            "committed": {
+              "ok": {
+                "sender": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                "gas_limit": 15610,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "withhold_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "authenticate": {
+            "committed": {
+              "ok": {
+                "sender": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                "backrun": false,
+                "guest_event": {
+                  "ok": {
+                    "contract": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                    "method": "authenticate",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "msgs_and_backrun": {
+            "committed": {
+              "msgs": [
+                {
+                  "ok": {
+                    "execute": {
+                      "sender": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                      "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                      "funds": {
+                        "bridge/eth": "40000000000000000000"
+                      },
+                      "execute_msg": {
+                        "swap_exact_amount_in": {
+                          "route": [
+                            {
+                              "base_denom": "bridge/eth",
+                              "quote_denom": "bridge/usdc"
+                            }
+                          ]
+                        }
+                      },
+                      "transfer_event": {
+                        "ok": {
+                          "sender": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                          "transfers": {
+                            "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": {
+                              "bridge/eth": "40000000000000000000"
+                            }
+                          },
+                          "bank_guest": {
+                            "ok": {
+                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                              "method": "bank_execute",
+                              "contract_events": [
+                                {
+                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                  "type": "sent",
+                                  "data": {
+                                    "coins": {
+                                      "bridge/eth": "40000000000000000000"
+                                    },
+                                    "to": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                    "user": "0xa19d786555f2b1daa9a8533b79301abda712c3ae"
+                                  }
+                                },
+                                {
+                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                  "type": "received",
+                                  "data": {
+                                    "coins": {
+                                      "bridge/eth": "40000000000000000000"
+                                    },
+                                    "from": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                                    "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                  }
+                                }
+                              ],
+                              "sub_events": []
+                            }
+                          },
+                          "receive_guests": {
+                            "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "not_reached"
+                          }
+                        }
+                      },
+                      "guest_event": {
+                        "ok": {
+                          "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                          "method": "execute",
+                          "contract_events": [
+                            {
+                              "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                              "type": "swapped",
+                              "data": {
+                                "input": {
+                                  "amount": "40000000000000000000",
+                                  "denom": "bridge/eth"
+                                },
+                                "output": {
+                                  "amount": "149303504843",
+                                  "denom": "bridge/usdc"
+                                },
+                                "user": "0xa19d786555f2b1daa9a8533b79301abda712c3ae"
+                              }
+                            }
+                          ],
+                          "sub_events": [
+                            {
+                              "ok": {
+                                "event": {
+                                  "ok": {
+                                    "transfer": {
+                                      "sender": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                      "transfers": {
+                                        "0xa19d786555f2b1daa9a8533b79301abda712c3ae": {
+                                          "bridge/usdc": "149303504843"
+                                        }
+                                      },
+                                      "bank_guest": {
+                                        "ok": {
+                                          "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                          "method": "bank_execute",
+                                          "contract_events": [
+                                            {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "type": "sent",
+                                              "data": {
+                                                "coins": {
+                                                  "bridge/usdc": "149303504843"
+                                                },
+                                                "to": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                                                "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                              }
+                                            },
+                                            {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "type": "received",
+                                              "data": {
+                                                "coins": {
+                                                  "bridge/usdc": "149303504843"
+                                                },
+                                                "from": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                                "user": "0xa19d786555f2b1daa9a8533b79301abda712c3ae"
+                                              }
+                                            }
+                                          ],
+                                          "sub_events": []
+                                        }
+                                      },
+                                      "receive_guests": {
+                                        "0xa19d786555f2b1daa9a8533b79301abda712c3ae": {
+                                          "ok": {
+                                            "contract": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                                            "method": "receive",
+                                            "contract_events": [],
+                                            "sub_events": []
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "reply": null
+                              }
+                            },
+                            {
+                              "ok": {
+                                "event": {
+                                  "ok": {
+                                    "execute": {
+                                      "sender": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                      "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                                      "funds": {
+                                        "bridge/usdc": "599612470"
+                                      },
+                                      "execute_msg": {
+                                        "pay": {
+                                          "payments": {
+                                            "0xa19d786555f2b1daa9a8533b79301abda712c3ae": {
+                                              "bridge/usdc": "599612470"
+                                            }
+                                          },
+                                          "type": "trade"
+                                        }
+                                      },
+                                      "transfer_event": {
+                                        "ok": {
+                                          "sender": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                          "transfers": {
+                                            "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03": {
+                                              "bridge/usdc": "599612470"
+                                            }
+                                          },
+                                          "bank_guest": {
+                                            "ok": {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "method": "bank_execute",
+                                              "contract_events": [
+                                                {
+                                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                                  "type": "sent",
+                                                  "data": {
+                                                    "coins": {
+                                                      "bridge/usdc": "599612470"
+                                                    },
+                                                    "to": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                                                    "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                                  }
+                                                },
+                                                {
+                                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                                  "type": "received",
+                                                  "data": {
+                                                    "coins": {
+                                                      "bridge/usdc": "599612470"
+                                                    },
+                                                    "from": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                                    "user": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03"
+                                                  }
+                                                }
+                                              ],
+                                              "sub_events": []
+                                            }
+                                          },
+                                          "receive_guests": {
+                                            "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03": "not_reached"
+                                          }
+                                        }
+                                      },
+                                      "guest_event": {
+                                        "ok": {
+                                          "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                                          "method": "execute",
+                                          "contract_events": [
+                                            {
+                                              "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                                              "type": "receive_fee",
+                                              "data": {
+                                                "amount": {
+                                                  "bridge/usdc": "599612470"
+                                                },
+                                                "handler": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                                "type": "trade",
+                                                "user": "0xa19d786555f2b1daa9a8533b79301abda712c3ae"
+                                              }
+                                            }
+                                          ],
+                                          "sub_events": []
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "reply": null
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "backrun": "not_reached"
+            }
+          },
+          "finalize": {
+            "committed": {
+              "ok": {
+                "sender": "0xa19d786555f2b1daa9a8533b79301abda712c3ae",
+                "gas_limit": 15610,
+                "gas_used": 12646,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "finalize_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "gas_limit": 5491,
+        "gas_used": 4862,
+        "result": {
+          "Ok": null
+        },
+        "events": {
+          "withhold": {
+            "committed": {
+              "ok": {
+                "sender": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                "gas_limit": 5491,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "withhold_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "authenticate": {
+            "committed": {
+              "ok": {
+                "sender": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                "backrun": false,
+                "guest_event": {
+                  "ok": {
+                    "contract": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                    "method": "authenticate",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "msgs_and_backrun": {
+            "committed": {
+              "msgs": [
+                {
+                  "ok": {
+                    "execute": {
+                      "sender": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                      "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                      "funds": {
+                        "bridge/btc": "150000000"
+                      },
+                      "execute_msg": {
+                        "batch_update_orders": {
+                          "creates_limit": [],
+                          "creates_market": [
+                            {
+                              "amount": "150000000",
+                              "base_denom": "bridge/btc",
+                              "direction": "ask",
+                              "max_slippage": "0.08",
+                              "quote_denom": "bridge/usdc"
+                            }
+                          ]
+                        }
+                      },
+                      "transfer_event": {
+                        "ok": {
+                          "sender": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                          "transfers": {
+                            "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": {
+                              "bridge/btc": "150000000"
+                            }
+                          },
+                          "bank_guest": {
+                            "ok": {
+                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                              "method": "bank_execute",
+                              "contract_events": [
+                                {
+                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                  "type": "sent",
+                                  "data": {
+                                    "coins": {
+                                      "bridge/btc": "150000000"
+                                    },
+                                    "to": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                    "user": "0xfc439c0904be2479e1469c515a62571b1dae6e7a"
+                                  }
+                                },
+                                {
+                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                  "type": "received",
+                                  "data": {
+                                    "coins": {
+                                      "bridge/btc": "150000000"
+                                    },
+                                    "from": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                                    "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                  }
+                                }
+                              ],
+                              "sub_events": []
+                            }
+                          },
+                          "receive_guests": {
+                            "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "not_reached"
+                          }
+                        }
+                      },
+                      "guest_event": {
+                        "ok": {
+                          "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                          "method": "execute",
+                          "contract_events": [
+                            {
+                              "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                              "type": "order_created",
+                              "data": {
+                                "amount": "150000000",
+                                "base_denom": "bridge/btc",
+                                "deposit": {
+                                  "amount": "150000000",
+                                  "denom": "bridge/btc"
+                                },
+                                "direction": "ask",
+                                "id": "47584",
+                                "kind": "market",
+                                "quote_denom": "bridge/usdc",
+                                "user": "0xfc439c0904be2479e1469c515a62571b1dae6e7a"
+                              }
+                            }
+                          ],
+                          "sub_events": [
+                            {
+                              "ok": {
+                                "event": {
+                                  "ok": {
+                                    "transfer": {
+                                      "sender": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                      "transfers": {
+                                        "0xfc439c0904be2479e1469c515a62571b1dae6e7a": {}
+                                      },
+                                      "bank_guest": {
+                                        "ok": {
+                                          "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                          "method": "bank_execute",
+                                          "contract_events": [
+                                            {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "type": "sent",
+                                              "data": {
+                                                "coins": {},
+                                                "to": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                                                "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                              }
+                                            },
+                                            {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "type": "received",
+                                              "data": {
+                                                "coins": {},
+                                                "from": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                                "user": "0xfc439c0904be2479e1469c515a62571b1dae6e7a"
+                                              }
+                                            }
+                                          ],
+                                          "sub_events": []
+                                        }
+                                      },
+                                      "receive_guests": {
+                                        "0xfc439c0904be2479e1469c515a62571b1dae6e7a": {
+                                          "ok": {
+                                            "contract": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                                            "method": "receive",
+                                            "contract_events": [],
+                                            "sub_events": []
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "reply": null
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "backrun": "not_reached"
+            }
+          },
+          "finalize": {
+            "committed": {
+              "ok": {
+                "sender": "0xfc439c0904be2479e1469c515a62571b1dae6e7a",
+                "gas_limit": 5491,
+                "gas_used": 4862,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "finalize_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "gas_limit": 5491,
+        "gas_used": 4862,
+        "result": {
+          "Ok": null
+        },
+        "events": {
+          "withhold": {
+            "committed": {
+              "ok": {
+                "sender": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                "gas_limit": 5491,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "withhold_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "authenticate": {
+            "committed": {
+              "ok": {
+                "sender": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                "backrun": false,
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                    "method": "authenticate",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          },
+          "msgs_and_backrun": {
+            "committed": {
+              "msgs": [
+                {
+                  "ok": {
+                    "execute": {
+                      "sender": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                      "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                      "funds": {
+                        "bridge/usdc": "9979855835"
+                      },
+                      "execute_msg": {
+                        "batch_update_orders": {
+                          "creates_limit": [
+                            {
+                              "amount": "8477399",
+                              "base_denom": "bridge/btc",
+                              "direction": "bid",
+                              "price": "1177.230874",
+                              "quote_denom": "bridge/usdc"
+                            }
+                          ],
+                          "creates_market": []
+                        }
+                      },
+                      "transfer_event": {
+                        "ok": {
+                          "sender": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                          "transfers": {
+                            "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": {
+                              "bridge/usdc": "9979855835"
+                            }
+                          },
+                          "bank_guest": {
+                            "ok": {
+                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                              "method": "bank_execute",
+                              "contract_events": [
+                                {
+                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                  "type": "sent",
+                                  "data": {
+                                    "coins": {
+                                      "bridge/usdc": "9979855835"
+                                    },
+                                    "to": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                    "user": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e"
+                                  }
+                                },
+                                {
+                                  "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                  "type": "received",
+                                  "data": {
+                                    "coins": {
+                                      "bridge/usdc": "9979855835"
+                                    },
+                                    "from": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                                    "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                  }
+                                }
+                              ],
+                              "sub_events": []
+                            }
+                          },
+                          "receive_guests": {
+                            "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f": "not_reached"
+                          }
+                        }
+                      },
+                      "guest_event": {
+                        "ok": {
+                          "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                          "method": "execute",
+                          "contract_events": [
+                            {
+                              "contract": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                              "type": "order_created",
+                              "data": {
+                                "amount": "8477399",
+                                "base_denom": "bridge/btc",
+                                "deposit": {
+                                  "amount": "9979855835",
+                                  "denom": "bridge/usdc"
+                                },
+                                "direction": "bid",
+                                "id": "18446744073709504030",
+                                "kind": "limit",
+                                "price": "1177.230874",
+                                "quote_denom": "bridge/usdc",
+                                "user": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e"
+                              }
+                            }
+                          ],
+                          "sub_events": [
+                            {
+                              "ok": {
+                                "event": {
+                                  "ok": {
+                                    "transfer": {
+                                      "sender": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                      "transfers": {
+                                        "0x1e81ab06dddc0b0004dbdd37872455c3f461361e": {}
+                                      },
+                                      "bank_guest": {
+                                        "ok": {
+                                          "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                          "method": "bank_execute",
+                                          "contract_events": [
+                                            {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "type": "sent",
+                                              "data": {
+                                                "coins": {},
+                                                "to": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                                                "user": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+                                              }
+                                            },
+                                            {
+                                              "contract": "0xb75a9c68d94f42c65287e0f9529e387ce133b3dc",
+                                              "type": "received",
+                                              "data": {
+                                                "coins": {},
+                                                "from": "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f",
+                                                "user": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e"
+                                              }
+                                            }
+                                          ],
+                                          "sub_events": []
+                                        }
+                                      },
+                                      "receive_guests": {
+                                        "0x1e81ab06dddc0b0004dbdd37872455c3f461361e": {
+                                          "ok": {
+                                            "contract": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                                            "method": "receive",
+                                            "contract_events": [],
+                                            "sub_events": []
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "reply": null
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "backrun": "not_reached"
+            }
+          },
+          "finalize": {
+            "committed": {
+              "ok": {
+                "sender": "0x1e81ab06dddc0b0004dbdd37872455c3f461361e",
+                "gas_limit": 5491,
+                "gas_used": 4862,
+                "taxman": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                "guest_event": {
+                  "ok": {
+                    "contract": "0x7c75e598571cc1aa1cad0d763f48aa9f667edc03",
+                    "method": "finalize_fee",
+                    "contract_events": [],
+                    "sub_events": []
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

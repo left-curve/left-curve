@@ -3489,6 +3489,7 @@ dependencies = [
  "dango-types",
  "grug",
  "test-case",
+ "tracing",
 ]
 
 [[package]]
@@ -3674,6 +3675,8 @@ dependencies = [
  "grug-app",
  "hex-literal",
  "indexer-client",
+ "indexer-sql",
+ "lzma-rs",
  "tokio",
 ]
 

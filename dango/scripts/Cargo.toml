@@ -9,7 +9,7 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[dependencies]
+[dev-dependencies]
 anyhow         = { workspace = true }
 dango-client   = { workspace = true }
 dango-types    = { workspace = true }
@@ -17,4 +17,6 @@ grug           = { workspace = true }
 grug-app       = { workspace = true }
 hex-literal    = { workspace = true }
 indexer-client = { workspace = true }
+indexer-sql    = { workspace = true }
+lzma-rs        = { workspace = true }
 tokio          = { workspace = true }
