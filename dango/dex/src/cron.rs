@@ -646,3 +646,13 @@ fn update_trading_volumes(
 
     Ok(())
 }
+
+#[test]
+fn lol() {
+    let err = anyhow::anyhow!("test");
+    println!("Display");
+    println!("{}", err);
+
+    println!("Debug");
+    println!("{:?}", err);
+}
