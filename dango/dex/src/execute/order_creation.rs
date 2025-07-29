@@ -25,7 +25,7 @@ pub(super) fn create_limit_order(
     let deposit = match order.direction {
         Direction::Bid => Coin {
             denom: order.quote_denom.clone(),
-            amount: order.amount.checked_mul_dec_ceil(order.price)?,
+            amount: order.amount.checked_mul_dec_ceil(*order.price)?,
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
@@ -48,7 +48,7 @@ pub(super) fn create_limit_order(
         base_denom: order.base_denom.clone(),
         quote_denom: order.quote_denom.clone(),
         direction: order.direction,
-        price: Some(order.price),
+        price: Some(*order.price),
         amount: *order.amount,
         deposit: deposit.clone(),
     })?;
@@ -62,14 +62,14 @@ pub(super) fn create_limit_order(
             (
                 (order.base_denom, order.quote_denom),
                 order.direction,
-                order.price,
+                *order.price,
                 order_id,
             ),
             LimitOrder {
                 user,
                 id: order_id,
                 price: order.price,
-                amount: *order.amount,
+                amount: order.amount,
                 remaining: order.amount.checked_into_dec()?,
                 created_at_block_height: current_block_height,
             },
@@ -130,7 +130,7 @@ pub(super) fn create_market_order(
         &MarketOrder {
             user,
             id: order_id,
-            amount: *order.amount,
+            amount: order.amount,
             remaining: order.amount.checked_into_dec()?,
             max_slippage: order.max_slippage,
         },

@@ -524,7 +524,7 @@ async fn create_pair_prices(
                         quote_denom: usdc::DENOM.clone(),
                         direction,
                         amount: NonZero::new_unchecked(amount),
-                        price,
+                        price: NonZero::new_unchecked(price),
                     }],
                     cancels: None,
                 },

@@ -239,7 +239,7 @@ impl DexAction {
                             quote_denom: quote_denom.clone(),
                             direction: *direction,
                             amount: NonZero::new(*amount)?,
-                            price: *price,
+                            price: NonZero::new(*price)?,
                         }],
                         cancels: None,
                     },
