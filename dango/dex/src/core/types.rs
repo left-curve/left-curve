@@ -1,8 +1,7 @@
 use {
     dango_types::dex::{OrderId, OrderKind},
     grug::{
-        Addr, MathResult, NonZero, Number, NumberConst, Udec128, Udec128_6, Udec128_24, Uint64,
-        Uint128,
+        Addr, MathResult, Number, NumberConst, Udec128, Udec128_6, Udec128_24, Uint64, Uint128,
     },
 };
 
@@ -121,9 +120,9 @@ pub struct LimitOrder {
     /// The order's identifier.
     pub id: OrderId,
     /// The order's limit price, measured in quote asset per base asset.
-    pub price: NonZero<Udec128_24>,
+    pub price: Udec128_24,
     /// The order's total size, measured in the _base asset_.
-    pub amount: NonZero<Uint128>,
+    pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.
     pub remaining: Udec128_6,
     /// The block height at which the order was submitted.
@@ -164,7 +163,7 @@ pub struct MarketOrder {
     pub id: OrderId,
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
     /// base asset.
-    pub amount: NonZero<Uint128>,
+    pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the unit as the
     /// `amount` field.
     pub remaining: Udec128_6,

@@ -175,7 +175,7 @@ fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse>
         direction,
         price,
         user: order.user,
-        amount: *order.amount,
+        amount: order.amount,
         remaining: order.remaining,
     })
 }
@@ -201,7 +201,7 @@ fn query_orders(
                 direction,
                 price,
                 user: order.user,
-                amount: *order.amount,
+                amount: order.amount,
                 remaining: order.remaining,
             }))
         })
@@ -234,7 +234,7 @@ fn query_orders_by_pair(
                 user: order.user,
                 direction,
                 price,
-                amount: *order.amount,
+                amount: order.amount,
                 remaining: order.remaining,
             }))
         })
@@ -269,7 +269,7 @@ fn query_orders_by_user(
                 quote_denom,
                 direction,
                 price,
-                amount: *order.amount,
+                amount: order.amount,
                 remaining: order.remaining,
             }))
         })

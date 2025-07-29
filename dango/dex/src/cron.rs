@@ -412,7 +412,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            *limit_order.price,
+                            limit_order.price,
                             order_id,
                         ),
                     )?;
@@ -422,7 +422,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            *limit_order.price,
+                            limit_order.price,
                             order_id,
                         ),
                         &limit_order,

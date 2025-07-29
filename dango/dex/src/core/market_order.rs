@@ -343,7 +343,7 @@ mod tests {
     use {
         super::*,
         crate::LimitOrder,
-        grug::{Addr, NonZero, Uint128},
+        grug::{Addr, Uint128},
     };
 
     /// Two SELL limit orders, one with a price significantly lower than the other.
@@ -371,8 +371,8 @@ mod tests {
                 Order::Limit(LimitOrder {
                     user: Addr::mock(1),
                     id: OrderId::new(1),
-                    price: NonZero::new_unchecked(Udec128_24::new(10)),
-                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                    price: Udec128_24::new(10),
+                    amount: Uint128::new(1),
                     remaining: Udec128_6::new(1),
                     created_at_block_height: 0,
                 }),
@@ -382,8 +382,8 @@ mod tests {
                 Order::Limit(LimitOrder {
                     user: Addr::mock(2),
                     id: OrderId::new(2),
-                    price: NonZero::new_unchecked(Udec128_24::new(1000)),
-                    amount: NonZero::new_unchecked(Uint128::new(2)),
+                    price: Udec128_24::new(1000),
+                    amount: Uint128::new(2),
                     remaining: Udec128_6::new(2),
                     created_at_block_height: 0,
                 }),
@@ -396,14 +396,14 @@ mod tests {
             (OrderId::new(3), MarketOrder {
                 user: Addr::mock(3),
                 id: OrderId::new(3),
-                amount: NonZero::new_unchecked(Uint128::new(10)), /* base amount 1 * price 10, should exactly consume limit order 1 */
+                amount: Uint128::new(10), /* base amount 1 * price 10, should exactly consume limit order 1 */
                 remaining: Udec128_6::new(10),
                 max_slippage: Udec128::ZERO,
             }),
             (OrderId::new(4), MarketOrder {
                 user: Addr::mock(4),
                 id: OrderId::new(4),
-                amount: NonZero::new_unchecked(Uint128::new(1000)), // should consume 1 of the 2 base tokens for sale by limit order #2
+                amount: Uint128::new(1000), // should consume 1 of the 2 base tokens for sale by limit order #2
                 remaining: Udec128_6::new(1000),
                 max_slippage: Udec128::ZERO,
             }),
