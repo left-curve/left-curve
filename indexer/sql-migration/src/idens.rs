@@ -72,3 +72,13 @@ pub enum Event {
     BlockHeight,
     CreatedAt,
 }
+
+#[derive(DeriveIden)]
+pub enum EventAddress {
+    #[sea_orm(iden = "event_addresses")]
+    Table,
+    Id,
+    EventId,
+    Address,
+    BlockHeight,
+}

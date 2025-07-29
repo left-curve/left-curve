@@ -1,11 +1,11 @@
 use {
-    crate::{AddressFinder, entity, error::Result},
+    crate::{entity, error::Result, find_addresses_in_event},
     grug_types::{
-        Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
-        Inner, JsonSerExt, flatten_commitment_status,
+        Addr, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo,
+        FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
-    std::collections::HashMap,
+    std::collections::{HashMap, HashSet},
 };
 
 #[derive(Debug, Default)]
@@ -14,21 +14,18 @@ pub struct Models {
     pub transactions: Vec<entity::transactions::ActiveModel>,
     pub messages: Vec<entity::messages::ActiveModel>,
     pub events: Vec<entity::events::ActiveModel>,
+    pub event_addresses: Vec<entity::event_addresses::ActiveModel>,
 }
 
 impl Models {
-    pub fn build(
-        address_finder: &AddressFinder,
-        block: &Block,
-        block_outcome: &BlockOutcome,
-    ) -> Result<Self> {
+    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
         let created_at = block.info.timestamp.to_naive_date_time();
 
         let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
 
         let mut transactions = vec![];
         let mut messages = vec![];
-        let mut events = vec![];
+        let mut events = FlatEventsModels::default();
 
         // 1. Storing cron events
         {
@@ -36,7 +33,6 @@ impl Models {
                 event_id.category_index = cron_idx as u32;
 
                 let active_models = flatten_events(
-                    address_finder,
                     block,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
@@ -83,7 +79,6 @@ impl Models {
                 event_id.category_index = transaction_idx as u32;
 
                 let active_models = flatten_events(
-                    address_finder,
                     block,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
@@ -95,7 +90,6 @@ impl Models {
                 events.extend(active_models);
 
                 let active_models = flatten_events(
-                    address_finder,
                     block,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
@@ -145,7 +139,6 @@ impl Models {
                 // 4. Storing events
                 {
                     let active_models = flatten_events(
-                        address_finder,
                         block,
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
@@ -157,7 +150,6 @@ impl Models {
                     events.extend(active_models);
 
                     let active_models = flatten_events(
-                        address_finder,
                         block,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
@@ -182,7 +174,8 @@ impl Models {
 
         Ok(Self {
             block,
-            events,
+            events: events.events,
+            event_addresses: events.event_addresses,
             transactions,
             messages,
         })
@@ -190,14 +183,13 @@ impl Models {
 }
 
 fn flatten_events<T>(
-    address_finder: &AddressFinder,
     block: &Block,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
     message_ids: &[uuid::Uuid],
     created_at: NaiveDateTime,
-) -> Result<Vec<entity::events::ActiveModel>>
+) -> Result<FlatEventsModels>
 where
     T: FlattenStatus,
 {
@@ -205,6 +197,7 @@ where
     next_id.increment_idx(&flatten_events);
 
     let mut active_models = vec![];
+    let mut active_event_addresses = vec![];
     // Store previous events ids to link current event to optional parent uuid
     let mut events_ids = HashMap::new();
 
@@ -225,6 +218,8 @@ where
             None => None,
         };
 
+        let addresses = find_addresses_in_event(&event);
+
         events_ids.insert(event.id.event_index, db_event_id);
 
         let db_event = build_event_active_model(
@@ -238,9 +233,30 @@ where
         )?;
 
         active_models.push(db_event);
+
+        let models =
+            build_event_address_active_model(db_event_id, block.info.height as i64, addresses);
+
+        active_event_addresses.extend(models);
     }
 
-    Ok(active_models)
+    Ok(FlatEventsModels {
+        events: active_models,
+        event_addresses: active_event_addresses,
+    })
+}
+
+#[derive(Default)]
+struct FlatEventsModels {
+    pub events: Vec<entity::events::ActiveModel>,
+    pub event_addresses: Vec<entity::event_addresses::ActiveModel>,
+}
+
+impl FlatEventsModels {
+    pub fn extend(&mut self, other: Self) {
+        self.events.extend(other.events);
+        self.event_addresses.extend(other.event_addresses);
+    }
 }
 
 fn build_event_active_model(
@@ -293,4 +309,20 @@ fn build_event_active_model(
         event_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),
     })
+}
+
+fn build_event_address_active_model(
+    event_id: uuid::Uuid,
+    block_height: i64,
+    addresses: HashSet<Addr>,
+) -> Vec<entity::event_addresses::ActiveModel> {
+    addresses
+        .into_iter()
+        .map(|address| entity::event_addresses::ActiveModel {
+            id: Set(uuid::Uuid::new_v4()),
+            event_id: Set(event_id),
+            address: Set(address.to_string()),
+            block_height: Set(block_height),
+        })
+        .collect()
 }

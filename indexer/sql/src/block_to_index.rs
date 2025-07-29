@@ -2,7 +2,7 @@
 use metrics::counter;
 
 use {
-    crate::{AddressFinder, active_model::Models, entity, error},
+    crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
@@ -33,7 +33,6 @@ impl BlockToIndex {
     /// Takes care of inserting the data in the database in a single DB transaction
     pub async fn save(
         &self,
-        address_finder: &AddressFinder,
         db: DatabaseConnection,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
@@ -44,7 +43,7 @@ impl BlockToIndex {
             "Indexing block"
         );
 
-        let models = Models::build(address_finder, &self.block, &self.block_outcome)?;
+        let models = Models::build(&self.block, &self.block_outcome)?;
 
         let db = db.begin().await?;
 
@@ -88,6 +87,12 @@ impl BlockToIndex {
 
         if !models.events.is_empty() {
             entity::events::Entity::insert_many(models.events)
+                .exec_without_returning(&db)
+                .await?;
+        }
+
+        if !models.event_addresses.is_empty() {
+            entity::event_addresses::Entity::insert_many(models.event_addresses)
                 .exec_without_returning(&db)
                 .await?;
         }
