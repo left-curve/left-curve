@@ -90,7 +90,9 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       GITHUB_USER: ${{ github.actor }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
+      # Need to fix permissions https://github.com/left-curve/left-curve/settings/actions
+      # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       packages: write
     steps:
