@@ -28,7 +28,7 @@ where
     }
 
     pub fn get_mut(&mut self, user: Addr) -> &mut T {
-        self.batch.entry(user).or_insert_with(Default::default)
+        self.batch.entry(user).or_default()
     }
 }
 
