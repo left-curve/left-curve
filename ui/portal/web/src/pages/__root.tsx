@@ -35,10 +35,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     useEffect(() => {
       if (location.pathname === "/maintenance") navigate({ to: "/" });
       // Check chain is up
-      fetch(UP_URI).then(({ ok }) => {
-        if (!ok) navigate({ to: "/maintenance" });
-        setIsReady(true);
-      });
+      fetch(UP_URI)
+        .then(({ ok }) => {
+          if (!ok) navigate({ to: "/maintenance" });
+          setIsReady(true);
+        })
+        .catch(() => navigate({ to: "/maintenance" }));
     }, []);
 
     if (!isReady) return null;
