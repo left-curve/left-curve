@@ -256,7 +256,10 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
-          value={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
+          value={formatUnits(
+            row.original.remaining,
+            coins.byDenom[row.original.baseDenom].decimals,
+          )}
         />
       ),
     },
@@ -269,7 +272,7 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
-          value={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
+          value={formatUnits(row.original.amount, coins.byDenom[row.original.baseDenom].decimals)}
         />
       ),
     },
@@ -281,7 +284,8 @@ const ProTradeOrders: React.FC = () => {
             Decimal(row.original.price)
               .times(
                 Decimal(10).pow(
-                  coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
+                  coins.byDenom[row.original.baseDenom].decimals -
+                    coins.byDenom[row.original.quoteDenom].decimals,
                 ),
               )
               .toFixed(),

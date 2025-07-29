@@ -12,7 +12,6 @@ import { NotFound } from "~/components/foundation/NotFound";
 
 import { twMerge, useTheme } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
-import { UP_URI } from "~/store";
 
 import type { RouterContext } from "~/app.router";
 
@@ -35,12 +34,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     useEffect(() => {
       if (location.pathname === "/maintenance") navigate({ to: "/" });
       // Check chain is up
-      fetch(UP_URI)
+      fetch(window.dango.urls.upUrl)
         .then(({ ok }) => {
           if (!ok) navigate({ to: "/maintenance" });
-          setIsReady(true);
         })
-        .catch(() => navigate({ to: "/maintenance" }));
+        .catch(() => navigate({ to: "/maintenance" }))
+        .finally(() => setIsReady(true));
     }, []);
 
     if (!isReady) return null;

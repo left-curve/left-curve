@@ -38,7 +38,10 @@ export type State = {
 
 export type Config<transport extends Transport = Transport, coin extends AnyCoin = AnyCoin> = {
   readonly chain: Chain;
-  readonly coins: Record<Denom, coin>;
+  readonly coins: {
+    byDenom: Record<Denom, coin>;
+    bySymbol: Record<string, coin>;
+  };
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
   readonly state: State;

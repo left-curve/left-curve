@@ -26,8 +26,8 @@ type SearchTokenHeaderProps = {
 
 const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen }) => {
   const { coins } = useConfig();
-  const baseCoin = coins[pairId.baseDenom];
-  const quoteCoin = coins[pairId.quoteDenom];
+  const baseCoin = coins.byDenom[pairId.baseDenom];
+  const quoteCoin = coins.byDenom[pairId.quoteDenom];
 
   return (
     <div className="flex gap-2 items-center">

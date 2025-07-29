@@ -1,11 +1,14 @@
-import { Button } from "@left-curve/applets-kit";
-import type { Coins } from "@left-curve/dango/types";
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { useChainId, useConfig } from "@left-curve/store";
-import type React from "react";
+import { useConfig } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
+
+import { Button } from "@left-curve/applets-kit";
 import { ButtonLink } from "../foundation/ButtonLink";
+
+import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { m } from "~/paraglide/messages";
+
+import type { Coins } from "@left-curve/dango/types";
+import type React from "react";
 
 interface Props {
   balances: Coins;
@@ -17,7 +20,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const sortedCoinsByBalance = Object.entries(coins).sort(([denomA], [denomB]) => {
+  const sortedCoinsByBalance = Object.entries(coins.byDenom).sort(([denomA], [denomB]) => {
     const balanceA = BigInt(balances[denomA] || "0");
     const balanceB = BigInt(balances[denomB] || "0");
     return balanceB > balanceA ? 1 : -1;
@@ -44,7 +47,10 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
                 <p>{coin.symbol}</p>
                 <p className="text-tertiary-500">
                   {amount
-                    ? formatNumber(formatUnits(amount, coins[denom].decimals), formatNumberOptions)
+                    ? formatNumber(
+                        formatUnits(amount, coins.byDenom[denom].decimals),
+                        formatNumberOptions,
+                      )
                     : "0"}
                 </p>
               </div>

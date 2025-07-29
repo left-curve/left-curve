@@ -20,7 +20,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
     const { formatNumberOptions } = settings;
 
     const { coins } = useConfig();
-    const coin = coins[denom];
+    const coin = coins.byDenom[denom];
 
     const { getPrice } = usePrices();
 

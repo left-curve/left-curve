@@ -23,7 +23,7 @@ export const ConfirmSend = forwardRef(
     const { formatNumberOptions } = settings;
     const { coins } = useConfig();
     const client = usePublicClient();
-    const coin = coins[denom];
+    const coin = coins.byDenom[denom];
 
     const { data: username, isLoading } = useQuery({
       queryKey: ["username", to],
