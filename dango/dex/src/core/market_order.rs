@@ -112,8 +112,8 @@ where
                 .convert_precision::<24>()?; // TODO: Use other precision for amounts?
 
             println!(
-                "current_avg_price: {} | cutoff: {} | price: {} | direction: {:?}",
-                current_avg_price, cutoff_price, price, market_order_direction
+                "filled_quote: {} | filled_base: {} | current_avg_price: {current_avg_price} | cutoff: {cutoff_price} | price: {price} | direction: {market_order_direction:?}",
+                filling_outcome.filled_quote, filling_outcome.filled_base
             );
 
             let price_ratio = current_avg_price
@@ -432,5 +432,36 @@ mod tests {
         assert!(
             left_over_limit_order.is_some_and(|(_, order)| *order.remaining() == Udec128_6::new(1))
         );
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use grug::Dec128;
+
+    #[test]
+    fn lol() {
+        let f = Dec128::from_str("70000").unwrap();
+        let ap = Dec128::from_str("1.2").unwrap();
+        let co = Dec128::from_str("1.15").unwrap();
+        let lp = Dec128::from_str("1.1").unwrap();
+
+        let a = f * (-ap + co) / (lp - co);
+        println!("a: {}", a);
+
+        let a = f * (ap - co) / (co - lp);
+
+        println!("a: {}", a);
+
+        let f = Dec128::from_str("70000").unwrap();
+        let ap = Dec128::from_str("1.1").unwrap();
+        let co = Dec128::from_str("1.15").unwrap();
+        let lp = Dec128::from_str("1.2").unwrap();
+
+        let a = f * (-ap + co) / (lp - co);
+
+        println!("a: {}", a);
     }
 }
