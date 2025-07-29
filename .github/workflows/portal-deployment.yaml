@@ -8,12 +8,14 @@ on:
       - "ui/testnet"
       - "ui/release"
     paths:
+      - ".github/workflows/portal-deployment.yml"
       - "sdk/**"
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
   pull_request:
     paths:
+      - ".github/workflows/portal-deployment.yml"
       - "sdk/**"
       - "ui/store/**"
       - "ui/portal/**"
@@ -66,3 +68,52 @@ jobs:
           directory: ./ui/portal/web/build
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}
+  docker-build:
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        runner:
+          [self-hosted]
+          # when needing to try on all runner types
+          # - [self-hosted, Linux]
+          # - [self-hosted, macOS]
+    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    runs-on: ${{ matrix.runner }}
+    needs: [test]
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Set build config
+        id: config
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.arch }}" == "amd64" ]]; then
+            echo "target=x86_64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+            echo "platform=linux/amd64" >> $GITHUB_OUTPUT
+            echo "suffix=amd64" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            echo "target=aarch64-unknown-linux-gnu" >> $GITHUB_OUTPUT
+            echo "platform=linux/arm64" >> $GITHUB_OUTPUT
+            echo "suffix=arm64" >> $GITHUB_OUTPUT
+          else
+              echo "Unsupported matrix ${{ matrix.arch }}"
+              exit 1
+          fi
+
+      - name: build docker image
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --push \
+            --platform ${{ steps.config.outputs.platform }} \
+            --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
+            --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
+            --provenance=false \
+            -t ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
+            -f docker/dango-frontend/Dockerfile .
