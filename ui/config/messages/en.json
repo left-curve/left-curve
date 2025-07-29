@@ -506,7 +506,7 @@
         "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more transactions on Ethereum mainnet",
         "completeLimitOrder": "Complete a limit order",
         "completeMarketOrder": "Complete a market order",
-        "swapAtLeastInPairs": "Trade in {number} different token pairs",
+        "swapAtLeastInPairs": "Trade in 3 different token pairs ({number} remaining)",
         "swapAtLeastForUSD": "Trade $1M in volume (current: {number})"
       }
     }

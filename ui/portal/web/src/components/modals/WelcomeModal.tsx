@@ -42,7 +42,7 @@ export const WelcomeModal: React.FC = () => {
               <span className="font-bold">onchain order book exchange</span>
               <Button
                 as="a"
-                href="https://x.com/larry0x/status/1947685791167353284%7D"
+                href="https://x.com/larry0x/status/1947685791167353284"
                 target="_blank"
                 rel="noreferrer"
                 variant="link"
@@ -58,7 +58,7 @@ export const WelcomeModal: React.FC = () => {
               There is a quest on the
               <Button
                 as="a"
-                href="https://app.galxe.com/quest/dango/GCMTJtfErm%7D"
+                href="https://app.galxe.com/quest/dango/GCMTJtfErm"
                 target="_blank"
                 rel="noreferrer"
                 variant="link"
@@ -76,7 +76,16 @@ export const WelcomeModal: React.FC = () => {
               Please be aware this is <span className="font-bold">pre-alpha software</span>, which
               doesn't represent final mainnet experience. Expect missing features, bugs, and
               hiccups. Don't hesitate to send us feedback on{" "}
-              <a href="https://discord.gg/4uB9UDzYhz%7D">Discord</a>
+              <Button
+                as="a"
+                href="https://discord.gg/4uB9UDzYhz"
+                target="_blank"
+                rel="noreferrer"
+                variant="link"
+                className="p-0 pr-1 h-fit"
+              >
+                Discord
+              </Button>
             </p>
 
             <p>Have fun and g🍡</p>

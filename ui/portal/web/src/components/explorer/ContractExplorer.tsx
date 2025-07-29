@@ -1,4 +1,4 @@
-import { useConfig, useInfiniteGraphqlQuery, usePrices, usePublicClient } from "@left-curve/store";
+import { useConfig, usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -153,20 +153,17 @@ const Transactions: React.FC = () => {
   const { isLoading, data: contract, address } = useContractExplorer();
   const client = usePublicClient();
 
-  const { data, pagination, ...transactions } = useInfiniteGraphqlQuery<IndexedTransaction>({
-    limit: 10,
-    query: {
-      enabled: !!contract,
-      queryKey: ["contract_transactions", address],
-      queryFn: async ({ pageParam }) => client.searchTxs({ senderAddress: address, ...pageParam }),
-    },
+  const { data, pagination, ...transactions } = useQueryWithPagination({
+    enabled: !!contract,
+    queryKey: ["contract_transactions", address],
+    queryFn: async ({ pageParam }) => client.searchTxs({ senderAddress: address, ...pageParam }),
   });
 
   if (isLoading || !contract) return null;
 
   return (
     <TransactionsTable
-      transactions={data?.pages[pagination?.currentPage - 1]?.nodes || []}
+      transactions={data?.nodes || []}
       pagination={{ ...pagination, isLoading: transactions.isLoading }}
     />
   );

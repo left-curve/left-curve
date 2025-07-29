@@ -4,6 +4,7 @@ import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 
 import type { OrderId } from "@left-curve/dango/types";
@@ -11,8 +12,8 @@ import type { OrderId } from "@left-curve/dango/types";
 export const ProTradeCloseOrder = forwardRef<void, { orderId: OrderId }>(({ orderId }) => {
   const { hideModal } = useApp();
   const { account } = useAccount();
+  const queryClient = useQueryClient();
   const { data: signingClient } = useSigningClient();
-
   const { isPending, mutateAsync: cancelOrder } = useSubmitTx({
     submission: {
       success: m["dex.protrade.allOrdersCancelled"](),
@@ -26,7 +27,12 @@ export const ProTradeCloseOrder = forwardRef<void, { orderId: OrderId }>(({ orde
           sender: account!.address,
         });
       },
-      onSuccess: () => hideModal(),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: ["ordersByUser", account?.address],
+        });
+        hideModal();
+      },
     },
   });
 
