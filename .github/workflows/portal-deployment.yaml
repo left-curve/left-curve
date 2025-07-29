@@ -76,6 +76,8 @@ jobs:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}
   docker-build:
+    permissions:
+      packages: write
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -129,3 +131,32 @@ jobs:
             --provenance=false \
             -t ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango-frontend/Dockerfile .
+
+  push-manifest:
+    permissions:
+      packages: write
+    needs: [build]
+    runs-on: [self-hosted]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch Docker manifest
+        run: |
+          docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }} \
+            --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-amd64 \
+            --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-arm64
+
+          docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}
+
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:latest \
+              --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-amd64 \
+              --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-arm64
+
+            docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:latest
+          fi

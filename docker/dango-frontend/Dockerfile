@@ -30,8 +30,6 @@ ENV GITHUB_COMMIT=$GITHUB_COMMIT
 # Install dependencies
 RUN pnpm i --frozen-lockfile
 
-# RUN pnpm add -D @rollup/rollup-linux-arm64-gnu && pnpm run build
-
 # Build the website
 RUN pnpm build:portal-web
 
