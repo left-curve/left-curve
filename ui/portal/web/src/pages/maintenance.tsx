@@ -29,7 +29,7 @@ function RouteComponent() {
       </div>
       <img
         src="/images/characters/grugo.svg"
-        alt="Maintentance"
+        alt="Maintenance"
         className="w-full max-w-[14.75rem] md:max-w-[22.5rem] opacity-80"
       />
       <div className="flex flex-col gap-2 items-center justify-center">
