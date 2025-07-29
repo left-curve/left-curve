@@ -34,7 +34,7 @@ scrape_configs:
 
   - job_name: 'dango'
     static_configs:
-      - targets: ['100.107.248.40:9191'] # ovh1
+      - targets: ['100.96.253.40:9191'] # ovh1
         labels:
           service: 'dango'
           environment: 'production'
@@ -48,7 +48,7 @@ scrape_configs:
 
   - job_name: 'cometbft'
     static_configs:
-      - targets: ['100.107.248.40:26660'] # ovh1
+      - targets: ['100.96.253.40:26660'] # ovh1
         labels:
           service: 'cometbft'
           environment: 'production'
