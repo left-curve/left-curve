@@ -106,26 +106,10 @@ where
             // Calculate how much of the market order can be filled without the average
             // price of the market order exceeding the cutoff price.
             // TODO: optimize the math here. See the jupyter notebook.
-
-            // This is wrong and it makes the crongboj fails!
-
-            // let current_avg_price = filling_outcome
-            //     .filled_quote
-            //     .checked_div(filling_outcome.filled_base)?
-            //     .convert_precision::<24>()?; // TODO: Use other precision for amounts?
-
-            // This is the correct way to calculate the current average price.
             let current_avg_price = Udec128_24::checked_from_ratio(
                 filling_outcome.filled_quote.0,
                 filling_outcome.filled_base.0,
             )?;
-
-            println!(
-                "filled_quote: {} | filled_base: {} | current_avg_price: {current_avg_price} | cutoff: {cutoff_price} | price: {price} | best_price: {best_price} | slippage: {} | direction: {market_order_direction:?}",
-                filling_outcome.filled_quote,
-                filling_outcome.filled_base,
-                market_order.max_slippage
-            );
 
             let price_ratio = current_avg_price
                 .checked_into_signed()?
@@ -135,6 +119,7 @@ where
                         .checked_into_signed()?
                         .checked_sub(price.checked_into_signed()?)?,
                 )?;
+
             let market_order_amount_to_match_in_base = filling_outcome
                 .filled_base
                 .checked_mul(price_ratio.checked_into_unsigned()?)?
