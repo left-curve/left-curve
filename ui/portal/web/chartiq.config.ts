@@ -14,7 +14,7 @@ import type { AnyCoin } from "@left-curve/store/types";
 type CreateChartIQDataFeedParameters = {
   client: PublicClient;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
-  coins: AnyCoin[];
+  coins: Record<string, AnyCoin>;
   updateChartData: (
     appendQuotes: CIQ.ChartEngine.OHLCQuote[] | CIQ.ChartEngine.LastSale,
     chart?: CIQ.ChartEngine.Chart,
@@ -44,8 +44,6 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
 
   let context: CIQ.ChartEngine;
 
-  const coinsBySymbol = Object.fromEntries(Object.values(coins).map((coin) => [coin.symbol, coin]));
-
   type FetchInitialDataCallback = (params: {
     quotes: any[];
     moreAvailable: boolean;
@@ -59,8 +57,8 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
     params: { stx: CIQ.ChartEngine; symbol: string },
   ) {
     const [baseSymbol, quoteSymbol] = pairSymbol.split("-");
-    const baseCoin = coinsBySymbol[baseSymbol];
-    const quoteCoin = coinsBySymbol[quoteSymbol];
+    const baseCoin = coins[baseSymbol];
+    const quoteCoin = coins[quoteSymbol];
     const { periodicity: period, interval, timeUnit } = params.stx.layout;
 
     const candleInterval = convertPeriodicityToCandleInterval({
@@ -135,8 +133,8 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
     const { periodicity: period, interval, timeUnit } = stx.layout;
 
     const [baseSymbol, quoteSymbol] = symbol.split("-");
-    const baseCoin = coinsBySymbol[baseSymbol];
-    const quoteCoin = coinsBySymbol[quoteSymbol];
+    const baseCoin = coins[baseSymbol];
+    const quoteCoin = coins[quoteSymbol];
 
     const candleInterval = convertPeriodicityToCandleInterval({
       interval: interval,

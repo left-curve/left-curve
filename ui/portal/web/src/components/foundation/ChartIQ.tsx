@@ -38,7 +38,7 @@ export const ChartIQ = ({ coins }) => {
       client: publicClient,
       subscriptions,
       updateChartData: (params) => context?.stx?.updateChartData(params),
-      coins: allCoins,
+      coins: allCoins.bySymbol,
     }),
   );
 
