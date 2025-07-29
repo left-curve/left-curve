@@ -2,12 +2,12 @@ import { twMerge, useTheme } from "@left-curve/applets-kit";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/maintenance")({
-  component: MaintinanceApplet,
+  component: MaintenanceApplet,
 });
 
 import { m } from "~/paraglide/messages";
 
-function MaintinanceApplet() {
+function MaintenanceApplet() {
   const { theme } = useTheme();
   return (
     <div className="w-full flex flex-1 justify-center items-center p-4 flex-col gap-6 text-center pb-[76px] min-h-svh text-primary-900">
