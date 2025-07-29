@@ -436,34 +436,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(test)]
-mod test {
-    use std::str::FromStr;
-
-    use grug::Dec128;
-
-    #[test]
-    fn lol() {
-        let f = Dec128::from_str("70000").unwrap();
-        let ap = Dec128::from_str("1.2").unwrap();
-        let co = Dec128::from_str("1.15").unwrap();
-        let lp = Dec128::from_str("1.1").unwrap();
-
-        let a = f * (-ap + co) / (lp - co);
-        println!("a: {}", a);
-
-        let a = f * (ap - co) / (co - lp);
-
-        println!("a: {}", a);
-
-        let f = Dec128::from_str("70000").unwrap();
-        let ap = Dec128::from_str("1.1").unwrap();
-        let co = Dec128::from_str("1.15").unwrap();
-        let lp = Dec128::from_str("1.2").unwrap();
-
-        let a = f * (-ap + co) / (lp - co);
-
-        println!("a: {}", a);
-    }
-}
