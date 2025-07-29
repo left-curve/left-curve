@@ -307,3 +307,76 @@ fn update_filling_outcome(
 
     Ok(())
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::LimitOrder,
+        grug::{Addr, Uint128},
+    };
+
+    /// Two SELL limit orders, one with a price significantly lower than the other.
+    /// Two BUY market orders. The first one exactly consumes the lower limit order.
+    /// The second market order should panic.
+    #[test]
+    fn panic_case_found_on_testnet() {
+        let mut limit_orders = [
+            Ok((
+                Udec128_24::new(10),
+                Order::Limit(LimitOrder {
+                    user: Addr::mock(1),
+                    id: OrderId::new(1),
+                    price: Udec128_24::new(10),
+                    amount: Uint128::new(1),
+                    remaining: Udec128_6::new(1),
+                    created_at_block_height: 0,
+                }),
+            )),
+            Ok((
+                Udec128_24::new(1000),
+                Order::Limit(LimitOrder {
+                    user: Addr::mock(2),
+                    id: OrderId::new(2),
+                    price: Udec128_24::new(1000),
+                    amount: Uint128::new(1),
+                    remaining: Udec128_6::new(1),
+                    created_at_block_height: 0,
+                }),
+            )),
+        ]
+        .into_iter()
+        .peekable();
+
+        let mut market_orders = [
+            (OrderId::new(3), MarketOrder {
+                user: Addr::mock(3),
+                id: OrderId::new(3),
+                amount: Uint128::new(10), /* base amount 1 * price 10, should exactly consume limit order 1 */
+                remaining: Udec128_6::new(10),
+                max_slippage: Udec128::ZERO,
+            }),
+            (OrderId::new(4), MarketOrder {
+                user: Addr::mock(4),
+                id: OrderId::new(4),
+                amount: Uint128::new(1000),
+                remaining: Udec128_6::new(1000),
+                max_slippage: Udec128::ZERO,
+            }),
+        ]
+        .into_iter()
+        .peekable();
+
+        match_and_fill_market_orders(
+            &mut market_orders,
+            &mut limit_orders,
+            Direction::Bid,
+            Udec128::ZERO,
+            Udec128::ZERO,
+            0,
+        )
+        .unwrap();
+    }
+}
