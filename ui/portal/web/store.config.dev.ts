@@ -6,6 +6,7 @@ const chain = devnet;
 
 export const FAUCET_URI = `${chain.urls.indexer.replace("graphql", "faucet")}/mint`;
 export const QUEST_URI = `${chain.urls.indexer.replace("graphql", "quests")}/check_username`;
+export const UP_URI = `${chain.urls.indexer.replace("graphql", "up")}`;
 
 export const coins = {
   dango: {
