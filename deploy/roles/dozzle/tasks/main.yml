@@ -5,9 +5,12 @@
     mode: '0755'
 
 - name: Copy docker-compose
+  become: true
+  become_user: root
   template:
     src: "{{ playbook_dir }}/roles/dozzle/templates/docker-compose.yml"
     dest: "{{ dozzle_dir }}/docker-compose.yml"
+    owner: "{{ deploy_user }}"
 
 - name: Launch Dozzle stack
   community.docker.docker_compose_v2:
