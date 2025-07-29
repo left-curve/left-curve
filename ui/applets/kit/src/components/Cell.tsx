@@ -313,8 +313,8 @@ type CellPairNameProps = {
 const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
-  const baseCoin = coins[baseDenom];
-  const quoteCoin = coins[quoteDenom];
+  const baseCoin = coins.byDenom[baseDenom];
+  const quoteCoin = coins.byDenom[quoteDenom];
 
   return (
     <div

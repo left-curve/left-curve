@@ -1,14 +1,10 @@
-import { createConfig, graphql, local, passkey, session } from "@left-curve/store";
+import { createConfig, graphql, passkey, session } from "@left-curve/store";
 
 import type { Config } from "@left-curve/store/types";
 
-const chain = local;
+const chain = window.dango.chain;
 
-export const FAUCET_URI = "http://localhost:8082/mint";
-export const QUEST_URI = "http://localhost:8081/check_username";
-export const UP_URI = "http://localhost:8080/up";
-
-export const coins = {
+const coins = {
   dango: {
     type: "native",
     name: "Dango",
@@ -68,11 +64,6 @@ export const coins = {
     coingeckoId: "solana",
   },
 } as const;
-
-export const coinsBySymbol = Object.values(coins).reduce((acc, coin) => {
-  acc[coin.symbol] = coin;
-  return acc;
-}, Object.create({}));
 
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,

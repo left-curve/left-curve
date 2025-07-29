@@ -47,7 +47,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const { convertAmount, getPrice, isFetched } = usePrices();
 
-  const [sizeCoin, setSizeCoin] = useState(coins[pairId.quoteDenom]);
+  const [sizeCoin, setSizeCoin] = useState(coins.byDenom[pairId.quoteDenom]);
   const [operation, setOperation] = useState(orderType);
   const [action, setAction] = useState(initialAction);
 
@@ -57,7 +57,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
-    setSizeCoin(coins[pairId.quoteDenom]);
+    setSizeCoin(coins.byDenom[pairId.quoteDenom]);
     setValue("size", "0");
   }, []);
 
@@ -67,22 +67,28 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   }, []);
 
   const changeSizeCoin = useCallback((denom: string) => {
-    setSizeCoin(coins[denom]);
+    setSizeCoin(coins.byDenom[denom]);
     setValue("size", "0");
   }, []);
 
   const baseCoin: WithAmount<AnyCoin> = useMemo(
     () =>
-      Object.assign({}, coins[pairId.baseDenom], {
-        amount: formatUnits(balances[pairId.baseDenom] || "0", coins[pairId.baseDenom].decimals),
+      Object.assign({}, coins.byDenom[pairId.baseDenom], {
+        amount: formatUnits(
+          balances[pairId.baseDenom] || "0",
+          coins.byDenom[pairId.baseDenom].decimals,
+        ),
       }),
     [balances, coins, pairId],
   );
 
   const quoteCoin: WithAmount<AnyCoin> = useMemo(
     () =>
-      Object.assign({}, coins[pairId.quoteDenom], {
-        amount: formatUnits(balances[pairId.quoteDenom] || "0", coins[pairId.quoteDenom].decimals),
+      Object.assign({}, coins.byDenom[pairId.quoteDenom], {
+        amount: formatUnits(
+          balances[pairId.quoteDenom] || "0",
+          coins.byDenom[pairId.quoteDenom].decimals,
+        ),
       }),
     [balances, coins, pairId],
   );

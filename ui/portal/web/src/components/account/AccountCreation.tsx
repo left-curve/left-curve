@@ -170,7 +170,7 @@ export const Deposit: React.FC = () => {
   });
 
   const { accountType } = data;
-  const coinInfo = coins["bridge/usdc"];
+  const coinInfo = coins.byDenom["bridge/usdc"];
   const humanBalance = formatUnits(balances["bridge/usdc"] || 0, coinInfo.decimals);
 
   const { mutateAsync: send, isPending } = useSubmitTx({

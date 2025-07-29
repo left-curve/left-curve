@@ -8,7 +8,6 @@ import { usePublicClient } from "./usePublicClient.js";
 import { formatUnits } from "@left-curve/dango/utils";
 
 import type { Coin, PairUpdate } from "@left-curve/dango/types";
-import type { AnyCoin } from "../types/coin.js";
 
 const BASE_DENOM = "USDC";
 
@@ -50,17 +49,8 @@ export function useSimpleSwapState(parameters: UseSimpleSwapStateParameters) {
 
   const isReverse = direction === "reverse";
 
-  const coinsBySymbol: Record<string, AnyCoin> = useMemo(
-    () =>
-      Object.values(coins).reduce((acc, coin) => {
-        acc[coin.symbol] = coin;
-        return acc;
-      }, Object.create({})),
-    [coins],
-  );
-
-  const baseCoin = coinsBySymbol[isReverse ? to : from];
-  const quoteCoin = coinsBySymbol[isReverse ? from : to];
+  const baseCoin = coins.bySymbol[isReverse ? to : from];
+  const quoteCoin = coins.bySymbol[isReverse ? from : to];
 
   const pair = config?.pairs?.[quoteCoin.denom];
 
@@ -92,8 +82,9 @@ export function useSimpleSwapState(parameters: UseSimpleSwapStateParameters) {
     if (!simulation.data || !pair) return 0;
     const { output } = simulation.data;
     return (
-      Math.round(getPrice(formatUnits(output.amount, coins[output.denom].decimals), output.denom)) *
-      Number(pair.params.swapFeeRate)
+      Math.round(
+        getPrice(formatUnits(output.amount, coins.byDenom[output.denom].decimals), output.denom),
+      ) * Number(pair.params.swapFeeRate)
     );
   }, [pair, simulation.data]);
 

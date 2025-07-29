@@ -42,8 +42,8 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
         />
       ),
       filterFn: (row, _, value) => {
-        const baseCoin = coins[row.original.baseDenom];
-        const quoteCoin = coins[row.original.quoteDenom];
+        const baseCoin = coins.byDenom[row.original.baseDenom];
+        const quoteCoin = coins.byDenom[row.original.quoteDenom];
 
         return baseCoin.symbol.includes(value) || quoteCoin.symbol.includes(value);
       },

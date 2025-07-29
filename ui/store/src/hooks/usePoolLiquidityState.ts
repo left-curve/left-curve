@@ -35,8 +35,8 @@ export function usePoolLiquidityState(parameters: UsePoolLiquidityStateParameter
     address: account?.address,
   });
 
-  const baseCoin = coins[pair.baseDenom];
-  const quoteCoin = coins[pair.quoteDenom];
+  const baseCoin = coins.byDenom[pair.baseDenom];
+  const quoteCoin = coins.byDenom[pair.quoteDenom];
 
   const lpDenom = `dex/pool${baseCoin.denom.replace("bridge", "")}${quoteCoin.denom.replace("bridge", "")}`;
 
