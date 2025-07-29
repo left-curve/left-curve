@@ -150,6 +150,15 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Processing pair"
+        );
+    }
+
     // --------------------------- 1. Prepare orders ---------------------------
 
     // Load the market orders for this pair.
@@ -260,6 +269,17 @@ fn clear_orders_of_pair(
         merged_ask_iter.prepend(Ok(ask))?;
     }
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            num_bid_filling_outcomes = market_bid_filling_outcomes.len(),
+            num_ask_filling_outcomes = market_ask_filling_outcomes.len(),
+            "Processed market orders"
+        );
+    }
+
     // ------------------------- 3. Match limit orders -------------------------
 
     // Run the limit order matching algorithm.
@@ -269,6 +289,24 @@ fn clear_orders_of_pair(
         bids,
         asks,
     } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
+
+    #[cfg(feature = "tracing")]
+    {
+        let range_str = match range {
+            Some((lower_price, upper_price)) => format!("{lower_price}-{upper_price}"),
+            None => "None".to_string(),
+        };
+
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            range = range_str,
+            volume = volume.to_string(),
+            num_matched_bids = bids.len(),
+            num_matched_asks = asks.len(),
+            "Matched limit orders"
+        );
+    }
 
     // ------------------------- 4. Fill limit orders --------------------------
 
@@ -304,6 +342,16 @@ fn clear_orders_of_pair(
     } else {
         vec![]
     };
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            num_limit_order_filling_outcomes = limit_order_filling_outcomes.len(),
+            "Filled limit orders"
+        );
+    }
 
     // ----------------------- 5. Update contract state ------------------------
 
@@ -460,6 +508,15 @@ fn clear_orders_of_pair(
 
             Ok::<_, StdError>(reserve)
         })?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Updated contract state"
+        );
     }
 
     Ok(())

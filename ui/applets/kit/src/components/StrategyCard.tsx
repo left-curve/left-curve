@@ -66,8 +66,8 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
   const { baseDenom, quoteDenom } = pair;
   const { coins } = useConfig();
 
-  const baseCoin = coins[baseDenom];
-  const quoteCoin = coins[quoteDenom];
+  const baseCoin = coins.byDenom[baseDenom];
+  const quoteCoin = coins.byDenom[quoteDenom];
 
   return (
     <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-surface-tertiary-rice shadow-account-card rounded-xl overflow-hidden">

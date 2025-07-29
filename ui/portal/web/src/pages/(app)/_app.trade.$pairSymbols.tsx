@@ -2,7 +2,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { z } from "zod";
 import { m } from "~/paraglide/messages";
-import { coinsBySymbol } from "~/store";
 
 import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,11 +15,12 @@ export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
     meta: [{ title: `Dango | ${m["applets.0.title"]()}` }],
   }),
   beforeLoad: async ({ context, params }) => {
-    const { client } = context;
+    const { client, config } = context;
+    const { coins } = config;
     const { pairSymbols } = params;
     const [baseSymbol, quoteSymbol] = pairSymbols.split("-");
-    const baseDenom = coinsBySymbol[baseSymbol]?.denom;
-    const quoteDenom = coinsBySymbol[quoteSymbol]?.denom;
+    const baseDenom = coins.bySymbol[baseSymbol]?.denom;
+    const quoteDenom = coins.bySymbol[quoteSymbol]?.denom;
 
     const pair = await client?.getPair({ baseDenom, quoteDenom }).catch(() => null);
     if (!pair)
@@ -44,8 +44,8 @@ function ProTradeApplet() {
   const { action = "buy", order_type = "market" } = Route.useSearch();
 
   const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
-    const baseSymbol = coins[baseDenom]?.symbol;
-    const quoteSymbol = coins[quoteDenom]?.symbol;
+    const baseSymbol = coins.byDenom[baseDenom]?.symbol;
+    const quoteSymbol = coins.byDenom[quoteDenom]?.symbol;
 
     navigate({
       to: "/trade/$pairSymbols",
@@ -75,8 +75,8 @@ function ProTradeApplet() {
   const [baseSymbol, quoteSymbol] = pairSymbols.split("-");
 
   const pairId = {
-    baseDenom: coinsBySymbol[baseSymbol]?.denom,
-    quoteDenom: coinsBySymbol[quoteSymbol]?.denom,
+    baseDenom: coins.bySymbol[baseSymbol]?.denom,
+    quoteDenom: coins.bySymbol[quoteSymbol]?.denom,
   };
 
   return (

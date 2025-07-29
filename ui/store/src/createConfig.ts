@@ -53,7 +53,14 @@ export function createConfig<
   const mipd =
     typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipdStore() : undefined;
 
-  const coins = createStore(() => rest.coins);
+  const coins = createStore(() => ({
+    byDenom: rest.coins || {},
+    bySymbol: Object.values(rest.coins || {}).reduce((acc, coin) => {
+      acc[coin.symbol] = coin;
+      return acc;
+    }, Object.create({})),
+  }));
+
   const connectors = createStore(() => {
     const collection = [];
     const rdnsSet = new Set<string>();
@@ -327,7 +334,7 @@ export function createConfig<
 
   function getCoinInfo(denom: Denom): AnyCoin {
     const allCoins = coins.getState()!;
-    if (!denom.includes("dex")) return allCoins[denom];
+    if (!denom.includes("dex")) return allCoins.byDenom[denom];
     const [_, __, baseDenom, quoteDenom] = denom.split("/");
     const coinsArray = Object.values(allCoins);
     const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
@@ -345,7 +352,8 @@ export function createConfig<
 
   return {
     get coins() {
-      return coins.getState() ?? {};
+      const state = coins.getState() ?? { byDenom: {}, bySymbol: {} };
+      return state;
     },
     get subscriptions() {
       return sbStore;

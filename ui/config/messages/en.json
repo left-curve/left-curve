@@ -392,6 +392,10 @@
     "next": "Next",
     "previous": "Previous"
   },
+  "maintenance": {
+    "title": "Website Under Maintenance",
+    "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
+  },
   "notFound": {
     "title": "Page not found!",
     "description": "Sorry! We couldn’t find what you were looking for...",

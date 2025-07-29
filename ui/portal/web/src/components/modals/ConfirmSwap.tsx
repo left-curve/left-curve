@@ -37,8 +37,8 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
       triggerOnClose: () => rejectSwap(),
     }));
 
-    const inputCoin = coins[input.coin.denom];
-    const outputCoin = coins[output.coin.denom];
+    const inputCoin = coins.byDenom[input.coin.denom];
+    const outputCoin = coins.byDenom[output.coin.denom];
 
     const inputAmount = formatUnits(input.amount, inputCoin.decimals);
     const outputAmount = formatUnits(output.amount, outputCoin.decimals);
