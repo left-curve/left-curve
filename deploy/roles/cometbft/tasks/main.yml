@@ -66,6 +66,7 @@
     cometbft_target_dir: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
     cometbft_rpc_port: "{{ ports[dango_network].cometbft_rpc_port }}"
     cometbft_p2p_port: "{{ ports[dango_network].cometbft_p2p_port }}"
+    cometbft_metrics_port: "{{ ports[dango_network].cometbft_metrics_port }}"
   docker_container:
     name: "{{ dango_network }}_cometbft"
     image: ghcr.io/left-curve/left-curve/cometbft:v0.38.17
@@ -79,6 +80,7 @@
     ports:
       - "{{ cometbft_p2p_port }}:26656"
       - "{{ tailscale_ip }}:{{ cometbft_rpc_port }}:26657"
+      - "{{ tailscale_ip }}:{{ cometbft_metrics_port }}:26660"
     volumes:
       - "{{ cometbft_target_dir }}:/app/.cometbft"
     networks:
