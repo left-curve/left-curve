@@ -4,37 +4,41 @@ use {
     grug::{
         IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_6, Udec128_24, Unsigned,
     },
-    std::{cmp::Ordering, collections::HashMap, iter::Peekable},
+    std::{cmp::Ordering, collections::HashMap},
 };
 
 /// Match and fill market orders against the limit order book.
 ///
-/// Returns a tuple containing the filling outcomes.
+/// ## Returns
+///
+/// - A map containing the filling outcomes (for both market and limit orders).
+/// - In case a market order is left partially filled, it is returned, so the
+///   refund can be handled properly.
+/// - Similarly, in case a limit order is left partially filled, it is returned,
+///   so it can later be used in limit order matching.
 pub fn match_and_fill_market_orders<M, L>(
-    market_orders: &mut Peekable<M>,
-    limit_orders: &mut Peekable<L>,
+    market_orders: &mut M,
+    limit_orders: &mut L,
     market_order_direction: Direction,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
     current_block_height: u64,
-) -> anyhow::Result<HashMap<ExtendedOrderId, FillingOutcome>>
+) -> anyhow::Result<(
+    HashMap<ExtendedOrderId, FillingOutcome>,
+    Option<(OrderId, MarketOrder)>,
+    Option<(Udec128_24, Order)>,
+)>
 where
     M: Iterator<Item = (OrderId, MarketOrder)>,
     L: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    let mut filling_outcomes = HashMap::new();
+    let mut current_market_order = market_orders.next();
+    let mut current_limit_order = limit_orders.next().transpose()?;
+    let mut current_best_price = current_limit_order.map(|(price, _)| price);
+    let mut filling_outcomes = HashMap::<ExtendedOrderId, FillingOutcome>::new();
 
     // Match the market order to the opposite side of the resting limit order book.
     let limit_order_direction = -market_order_direction;
-
-    // Find the best offer price in the resting limit order book.
-    // This will be used to compute the market order's worst average execution
-    // price, based on its max slippage.
-    let best_price = match limit_orders.peek_mut() {
-        Some(Ok((price, _))) => *price,
-        Some(Err(e)) => return Err(e.clone().into()),
-        None => return Ok(filling_outcomes), // Return early if there are no limit orders
-    };
 
     // Iterate over the limit orders and market orders until one of them is exhausted.
     // Since a market order can partially fill a limit order, and that limit order should
@@ -45,13 +49,15 @@ where
     // This is not the case for the market orders. They are matched in the order they were
     // received, and do not remain after matching is completed.
     loop {
-        let (price, limit_order) = match limit_orders.peek_mut() {
-            Some(Ok((price, ref mut limit_order))) => (price, limit_order),
-            Some(Err(e)) => return Err(e.clone().into()),
-            None => break,
+        let Some((price, limit_order)) = current_limit_order.as_mut() else {
+            break;
         };
 
-        let Some((ref market_order_id, market_order)) = market_orders.peek_mut() else {
+        let Some((market_order_id, market_order)) = current_market_order.as_mut() else {
+            break;
+        };
+
+        let Some(best_price) = current_best_price else {
             break;
         };
 
@@ -172,7 +178,10 @@ where
                     let return_tuple = (filled_base, *price, *limit_order, *market_order);
 
                     // Advance the market orders iterator
-                    market_orders.next();
+                    current_market_order = market_orders.next();
+
+                    // Set the best price to the current limit order's price.
+                    current_best_price = Some(*price);
 
                     return_tuple
                 },
@@ -186,8 +195,11 @@ where
                     let return_tuple = (filled_base, *price, *limit_order, *market_order);
 
                     // Advance the both order iterators
-                    limit_orders.next();
-                    market_orders.next();
+                    current_limit_order = limit_orders.next().transpose()?;
+                    current_market_order = market_orders.next();
+
+                    // Set the best price to the new limit order's price.
+                    current_best_price = current_limit_order.map(|(price, _)| price);
 
                     return_tuple
                 },
@@ -217,7 +229,7 @@ where
                     let return_tuple = (fill_amount, *price, *limit_order, *market_order);
 
                     // Pop the limits iterator
-                    limit_orders.next();
+                    current_limit_order = limit_orders.next().transpose()?;
 
                     return_tuple
                 },
@@ -252,7 +264,21 @@ where
         )?;
     }
 
-    Ok(filling_outcomes)
+    let left_over_market_order = match current_market_order {
+        Some((id, order)) if order.remaining.is_non_zero() => Some((id, order)),
+        _ => None,
+    };
+
+    let left_over_limit_order = match current_limit_order {
+        Some((price, order)) if order.remaining().is_non_zero() => Some((price, order)),
+        _ => None,
+    };
+
+    Ok((
+        filling_outcomes,
+        left_over_market_order,
+        left_over_limit_order,
+    ))
 }
 
 fn update_filling_outcome(
@@ -306,4 +332,99 @@ fn update_filling_outcome(
     }
 
     Ok(())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::LimitOrder,
+        grug::{Addr, Uint128},
+    };
+
+    /// Two SELL limit orders, one with a price significantly lower than the other.
+    /// Two BUY market orders.
+    ///
+    /// Market order #1 exactly consumes limit order #1. Market order #2 partially
+    /// consumes limit order #2.
+    ///
+    /// Under the old logic, the fact that 1) limit order #1 has a price significantly
+    /// lower than limit order #2, and 2) it's consumed exactly, triggers an edge
+    /// case where the code panics on this `unwrap` statement:
+    ///
+    /// ```rust
+    /// let filling_outcome = filling_outcomes.get_mut(&extended_market_order_id).unwrap();
+    /// ```
+    ///
+    /// A better fix is to not use `unwrap` at all, but we don't have enough time
+    /// for a large refactor like that, so for now we do a quick and easy fix,
+    /// to ensure it at least doesn't panic.
+    #[test]
+    fn panic_case_found_on_testnet() {
+        let mut limit_orders = [
+            Ok((
+                Udec128_24::new(10),
+                Order::Limit(LimitOrder {
+                    user: Addr::mock(1),
+                    id: OrderId::new(1),
+                    price: Udec128_24::new(10),
+                    amount: Uint128::new(1),
+                    remaining: Udec128_6::new(1),
+                    created_at_block_height: 0,
+                }),
+            )),
+            Ok((
+                Udec128_24::new(1000),
+                Order::Limit(LimitOrder {
+                    user: Addr::mock(2),
+                    id: OrderId::new(2),
+                    price: Udec128_24::new(1000),
+                    amount: Uint128::new(2),
+                    remaining: Udec128_6::new(2),
+                    created_at_block_height: 0,
+                }),
+            )),
+        ]
+        .into_iter()
+        .peekable();
+
+        let mut market_orders = [
+            (OrderId::new(3), MarketOrder {
+                user: Addr::mock(3),
+                id: OrderId::new(3),
+                amount: Uint128::new(10), /* base amount 1 * price 10, should exactly consume limit order 1 */
+                remaining: Udec128_6::new(10),
+                max_slippage: Udec128::ZERO,
+            }),
+            (OrderId::new(4), MarketOrder {
+                user: Addr::mock(4),
+                id: OrderId::new(4),
+                amount: Uint128::new(1000), // should consume 1 of the 2 base tokens for sale by limit order #2
+                remaining: Udec128_6::new(1000),
+                max_slippage: Udec128::ZERO,
+            }),
+        ]
+        .into_iter()
+        .peekable();
+
+        // With the old logic, this function call panics. Here we just ensure it
+        // doesn't panic, and 4 filling outcomes are returned.
+        let (outcomes, left_over_market_order, left_over_limit_order) =
+            match_and_fill_market_orders(
+                &mut market_orders,
+                &mut limit_orders,
+                Direction::Bid,
+                Udec128::ZERO,
+                Udec128::ZERO,
+                0,
+            )
+            .unwrap();
+        assert_eq!(outcomes.len(), 4);
+        assert!(left_over_market_order.is_none());
+        assert!(
+            left_over_limit_order.is_some_and(|(_, order)| *order.remaining() == Udec128_6::new(1))
+        );
+    }
 }
