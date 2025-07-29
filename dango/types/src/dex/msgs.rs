@@ -153,6 +153,10 @@ pub enum ExecuteMsg {
         route: SwapRoute,
         output: NonZero<Coin>,
     },
+    /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
+    ///
+    /// Can only be called by the chain owner. Used to recover from critical bugs.
+    ForceCancelOrders {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

@@ -14,8 +14,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
+        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
     },
 };
 
@@ -48,6 +48,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SwapExactAmountOut { route, output } => {
             swap_exact_amount_out(ctx, route.into_inner(), output)
         },
+        ExecuteMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
     }
 }
 
@@ -85,7 +86,7 @@ fn batch_update_orders(
     cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
     let mut deposits = Coins::new();
-    let mut refunds = Coins::new();
+    let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
 
     match cancels {
@@ -141,7 +142,7 @@ fn batch_update_orders(
     // amount that are to be refunded from the cancelled orders, and the amount
     // that the user is supposed to deposit for creating the new orders.
     ctx.funds
-        .insert_many(refunds)?
+        .insert_many(refunds.into_coins_floor())?
         .deduct_many(deposits)
         .map_err(|e| anyhow!("insufficient funds for batch updating orders: {e}"))?;
 
@@ -390,6 +391,19 @@ fn swap_exact_amount_out(
             input,
             output: output.into_inner(),
         })?)
+}
+
+fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
+
+    Ok(Response::new()
+        .add_events(events)?
+        .add_message(refunds.into_message()))
 }
 
 // ----------------------------------- tests -----------------------------------

@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId, PairId},
-    grug::{Addr, Coin, Denom, Udec128_6, Udec128_24, Uint128},
+    grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Udec128_24, Uint128},
 };
 
 #[grug::derive(Serde)]
@@ -37,8 +37,8 @@ pub struct OrderCanceled {
     ///
     /// This can be either denominated in the base or the quote asset, depending
     /// on order type.
-    pub remaining: Uint128,
-    pub refund: Coin,
+    pub remaining: Udec128_6,
+    pub refund: DecCoin<6>,
 }
 
 #[grug::derive(Serde)]
