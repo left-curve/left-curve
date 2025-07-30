@@ -13,8 +13,7 @@ pub struct CandleSubscription;
 
 #[Subscription]
 impl CandleSubscription {
-    /// Get candles for a given base and quote denom, interval, and later than time.
-    /// If `later_than` is provided, it will be used to filter the candles returned.
+    /// Get candles for a given base and quote denom, interval
     async fn candles<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
