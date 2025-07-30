@@ -5,14 +5,13 @@ import "@left-curve/chartiq/js/advanced";
 import "@left-curve/chartiq/js/componentUI";
 import "@left-curve/chartiq/js/addOns";
 
-import { CIQ } from "@left-curve/chartiq/js/components";
 
 import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { CIQ } from "@left-curve/chartiq/js/components";
 import { useConfig, usePublicClient } from "@left-curve/store";
 import { useEffect, useRef, useState } from "react";
-import { useApp } from "~/hooks/useApp";
-
 import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
+import { useApp } from "~/hooks/useApp";
 
 import "@left-curve/chartiq/examples/translations/translationSample";
 
@@ -24,7 +23,7 @@ import "@left-curve/chartiq/css/webcomponents.css";
 import type React from "react";
 
 export const ChartIQ = ({ coins }) => {
-  const [context, setContext] = useState<CIQ.UI.Context | null>(null);
+  const uiContextRef = useRef<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const isMounted = useRef(false);
   const { isMd } = useMediaQuery();
@@ -59,7 +58,7 @@ export const ChartIQ = ({ coins }) => {
         }),
       });
 
-      setContext(uiContext);
+      uiContextRef.current = uiContext;
 
       const { stx } = uiContext;
 
@@ -99,19 +98,19 @@ export const ChartIQ = ({ coins }) => {
     }
 
     return () => {
-      if (context) {
-        context.stx.destroy();
-        context.stx.draw = () => {};
-        setContext(null);
+      if (uiContextRef.current) {
+        uiContextRef.current.stx.destroy();
+        uiContextRef.current.stx.draw = () => {};
+        uiContextRef.current = null;
       }
     };
-  }, [context]);
+  }, []);
 
   useEffect(() => {
-    if (!isMounted.current || !context) return;
-    context.stx.chartId = pairSymbol;
-    context.stx.chart.symbol = pairSymbol;
-    context.changeSymbol({ symbol: pairSymbol });
+    if (!isMounted.current || !uiContextRef.current) return;
+    uiContextRef.current.stx.chartId = pairSymbol;
+    uiContextRef.current.stx.chart.symbol = pairSymbol;
+    uiContextRef.current.changeSymbol({ symbol: pairSymbol });
   }, [pairSymbol]);
 
   return (
