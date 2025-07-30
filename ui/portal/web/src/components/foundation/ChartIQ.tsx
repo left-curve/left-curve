@@ -105,7 +105,7 @@ export const ChartIQ = ({ coins }) => {
         setContext(null);
       }
     };
-  }, []);
+  }, [context]);
 
   useEffect(() => {
     if (!isMounted.current || !context) return;
