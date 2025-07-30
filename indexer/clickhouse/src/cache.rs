@@ -1,3 +1,6 @@
+#[cfg(feature = "metrics")]
+use metrics::{counter, gauge, histogram};
+
 use {
     crate::entities::{
         CandleInterval,
@@ -7,7 +10,6 @@ use {
     chrono::{DateTime, Utc},
     dango_types::dex::PairId,
     futures::future::join_all,
-    metrics::{counter, gauge, histogram},
     std::{collections::HashMap, time::Instant},
     strum::IntoEnumIterator,
 };
