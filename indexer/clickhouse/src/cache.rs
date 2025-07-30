@@ -150,19 +150,57 @@ impl CandleCache {
         pairs: &[PairId],
         block_height: u64,
     ) -> crate::error::Result<()> {
-        // TODO: This is a naive implementation that fetches all pairs and updates them.
-        // Could potentially be optimized by single query to fetch all candles for all pairs.
+        // NOTE: Could potentially be optimized by using a single query to fetch all candles for
+        // all pairs.
 
-        for pair in pairs {
-            for interval in CandleInterval::iter() {
-                let key = CandleCacheKey::new(
-                    pair.base_denom.to_string(),
-                    pair.quote_denom.to_string(),
-                    interval,
-                );
-                self.get_or_save_new_candle(&key, clickhouse_client, Some(block_height))
-                    .await
-                    .ok();
+        let fetch_tasks = pairs
+            .iter()
+            .flat_map(|pair| {
+                CandleInterval::iter().map(move |interval| {
+                    let key = CandleCacheKey::new(
+                        pair.base_denom.to_string(),
+                        pair.quote_denom.to_string(),
+                        interval,
+                    );
+
+                    async move {
+                        let query_builder = CandleQueryBuilder::new(
+                            key.interval,
+                            key.base_denom.clone(),
+                            key.quote_denom.clone(),
+                        );
+
+                        let candle = query_builder.fetch_one(clickhouse_client).await?;
+
+                        Ok::<_, crate::error::IndexerError>((key, candle))
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+
+        // Execute all fetches in parallel
+        let results = join_all(fetch_tasks).await;
+
+        // Process results
+        for result in results {
+            match result {
+                Ok((key, None)) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        block_height,
+                        base_denom = %key.base_denom,
+                        quote_denom = %key.quote_denom,
+                        interval = %key.interval,
+                        "No candle found",
+                    );
+                },
+                Ok((key, Some(fetched_candle))) => {
+                    self.add_candle(key.clone(), fetched_candle.clone());
+                },
+                Err(_err) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_err, "Failed to preload candles");
+                },
             }
         }
 

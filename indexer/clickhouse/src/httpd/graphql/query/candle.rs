@@ -90,15 +90,11 @@ impl CandleQuery {
                     query_builder = query_builder.with_limit(first);
                 }
 
-                if let Some(after) = after.as_ref() {
+                if let Some(after) = after {
                     query_builder = query_builder.with_after(after.time_start);
                 }
 
                 let result = query_builder.fetch_all(clickhouse_client).await?;
-
-                // if after.is_none() && earlier_than.is_none() && later_than.is_none() {
-                //     candle_cache.map(|mut c| c.add_candles(cache_key, &result.candles));
-                // }
 
                 let mut connection =
                     Connection::new(result.has_previous_page, result.has_next_page);

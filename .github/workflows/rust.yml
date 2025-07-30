@@ -75,7 +75,7 @@ jobs:
         run: rustup run nightly cargo fmt --check --all
 
   check-no-features:
-    needs: [format]
+    needs: [localdango]
     name: Check compiling without features
     runs-on: self-hosted
     steps:
