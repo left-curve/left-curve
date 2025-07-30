@@ -7,7 +7,7 @@ use {
     strum_macros::{Display, EnumString},
 };
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Display, EnumString, EnumIter)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Display, EnumString, EnumIter)]
 #[cfg_attr(feature = "async-graphql", derive(Enum))]
 #[cfg_attr(feature = "async-graphql", graphql(name = "CandleInterval"))]
 pub enum CandleInterval {

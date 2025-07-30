@@ -1,7 +1,7 @@
 use {
-    crate::entities::{
-        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
-        pair_price_query::PairPriceQueryBuilder,
+    crate::{
+        cache,
+        entities::{CandleInterval, candle::Candle},
     },
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
@@ -11,57 +11,9 @@ use {
 #[derive(Default)]
 pub struct CandleSubscription;
 
-impl CandleSubscription {
-    /// Get candles for a given base and quote denom, interval, and later than time.
-    async fn get_candles(
-        app_ctx: &crate::context::Context,
-        base_denom: String,
-        quote_denom: String,
-        interval: CandleInterval,
-        later_than: Option<DateTime<Utc>>,
-        limit: Option<usize>,
-        block_height: Option<u64>,
-    ) -> Result<Vec<Candle>> {
-        // We will be called for every block minted, so we need to check if there
-        // is a new pair price later than the given block height. If there is no new
-        // pair price, we don't want to return any candles.
-        if let Some(block_height) = block_height {
-            let pair_price_query_builder =
-                PairPriceQueryBuilder::new(base_denom.clone(), quote_denom.clone())
-                    .with_later_block_height(block_height);
-
-            let pair_price = pair_price_query_builder
-                .fetch_one(app_ctx.clickhouse_client())
-                .await?;
-
-            if pair_price.is_none() {
-                return Ok(vec![]);
-            }
-        }
-
-        let mut query_builder =
-            CandleQueryBuilder::new(interval, base_denom.clone(), quote_denom.clone());
-
-        if let Some(later_than) = later_than {
-            query_builder = query_builder.with_later_than(later_than);
-        }
-
-        if let Some(limit) = limit {
-            query_builder = query_builder.with_limit(limit);
-        }
-
-        let result = query_builder.fetch_all(app_ctx.clickhouse_client()).await?;
-
-        Ok(result.candles)
-    }
-}
-
 #[Subscription]
 impl CandleSubscription {
     /// Get candles for a given base and quote denom, interval, and later than time.
-    /// If `limit` is provided, it will be used to limit the number of candles returned.
-    /// If `limit` is not provided, it will default to MAX_PAST_CANDLES.
-    /// If `limit` is greater than MAX_PAST_CANDLES, it will be set to MAX_PAST_CANDLES.
     /// If `later_than` is provided, it will be used to filter the candles returned.
     async fn candles<'a>(
         &self,
@@ -69,25 +21,36 @@ impl CandleSubscription {
         base_denom: String,
         quote_denom: String,
         interval: CandleInterval,
+        #[allow(unused_variables)]
+        #[graphql(deprecation)]
         later_than: Option<DateTime<Utc>>,
+        #[allow(unused_variables)]
+        #[graphql(deprecation)]
         limit: Option<usize>,
     ) -> Result<impl Stream<Item = Vec<Candle>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
-
-        let base_denom_clone = base_denom.clone();
-        let quote_denom_clone = quote_denom.clone();
+        let candle_cache = app_ctx.candle_cache.clone();
+        let cache_key =
+            cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
 
         Ok(once(async move {
-            Self::get_candles(
-                app_ctx,
-                base_denom_clone,
-                quote_denom_clone,
-                interval,
-                later_than,
-                limit,
-                None,
-            )
-            .await
+            // We first check the cache for the last candle since this will
+            // always match except at the start of the httpd process, avoid unnecessary
+            // write lock.
+            if let Some(candle_cache) = candle_cache.read().await.get_last_candle(&cache_key) {
+                return Ok(vec![candle_cache.clone()]);
+            }
+
+            if let Some(candle) = candle_cache
+                .write()
+                .await
+                .get_or_save_new_candle(cache_key, app_ctx.clickhouse_client(), None)
+                .await?
+            {
+                return Ok(vec![candle]);
+            }
+
+            Ok(vec![])
         })
         .chain(
             app_ctx
@@ -95,26 +58,34 @@ impl CandleSubscription {
                 .subscribe_block_minted()
                 .await?
                 .then(move |block_height| {
-                    let base_denom = base_denom.clone();
-                    let quote_denom = quote_denom.clone();
-                    let interval = interval;
-                    let later_than = later_than;
+                    let cache_key = cache::CandleCacheKey::new(
+                        base_denom.clone(),
+                        quote_denom.clone(),
+                        interval,
+                    );
+                    let candle_cache = app_ctx.candle_cache.clone();
 
                     async move {
-                        Self::get_candles(
-                            app_ctx,
-                            base_denom,
-                            quote_denom,
-                            interval,
-                            later_than,
-                            limit,
-                            Some(block_height),
-                        )
-                        .await
+                        let mut candle_cache = candle_cache.write().await;
+
+                        if let Some(candle) = candle_cache
+                            .get_or_save_new_candle(
+                                cache_key.clone(),
+                                app_ctx.clickhouse_client(),
+                                Some(block_height),
+                            )
+                            .await?
+                        {
+                            candle_cache.compact_for_key(&cache_key);
+
+                            return Ok(vec![candle]);
+                        }
+
+                        Ok(vec![])
                     }
                 }),
         )
-        .filter_map(|candles| async move {
+        .filter_map(|candles: Result<Vec<Candle>>| async move {
             match candles {
                 Ok(candles) => {
                     if candles.is_empty() {

@@ -1,6 +1,9 @@
 #[cfg(feature = "testing")]
 use clickhouse::test;
-use {clickhouse::Client, indexer_sql::pubsub::PubSub, std::sync::Arc};
+use {
+    crate::cache::CandleCache, clickhouse::Client, indexer_sql::pubsub::PubSub, std::sync::Arc,
+    tokio::sync::RwLock,
+};
 
 #[derive(Clone)]
 pub struct Context {
@@ -13,6 +16,7 @@ pub struct Context {
     #[allow(dead_code)]
     clickhouse_client: Client,
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
+    pub candle_cache: Arc<RwLock<CandleCache>>,
 }
 
 impl Context {
@@ -61,6 +65,7 @@ impl Context {
             clickhouse_database: database,
             clickhouse_client,
             pubsub: indexer_context.pubsub,
+            candle_cache: Default::default(),
         }
     }
 
@@ -73,6 +78,7 @@ impl Context {
             mock: Some(Arc::new(mock)),
             clickhouse_database: self.clickhouse_database.clone(),
             pubsub: self.pubsub.clone(),
+            candle_cache: Default::default(),
         }
     }
 
@@ -96,6 +102,7 @@ impl Context {
             clickhouse_database: test_database,
             clickhouse_client,
             pubsub: self.pubsub,
+            candle_cache: Default::default(),
         })
     }
 

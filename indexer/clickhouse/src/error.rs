@@ -16,6 +16,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     GrugMathError(#[from] grug::MathError),
+
+    #[error("rwlock poisoned")]
+    RwLockPoisoned,
 }
 
 impl From<IndexerError> for grug_app::IndexerError {

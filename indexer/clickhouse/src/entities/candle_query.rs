@@ -60,6 +60,7 @@ impl CandleQueryBuilder {
         self
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn fetch_all(
         &self,
         clickhouse_client: &clickhouse::Client,
@@ -91,6 +92,7 @@ impl CandleQueryBuilder {
         })
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn fetch_one(
         &self,
         clickhouse_client: &clickhouse::Client,
@@ -105,6 +107,7 @@ impl CandleQueryBuilder {
         Ok(cursor_query.fetch_optional().await?)
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn get_max_block_height(
         &self,
         clickhouse_client: &clickhouse::Client,
