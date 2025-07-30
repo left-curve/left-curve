@@ -112,10 +112,13 @@ export function graphql(
         query: `
         subscription {
           eventByAddresses(
-            addresses: ["0x6e8fdeefaa7b8fb1f559e6e944050cdbeb0f4358"]
+            addresses: ["0x63707b5f3fa0c9af30c84077fd3cb78d8e64411f"]
           ) {
             data
             type
+            transaction {
+              hash
+            }
           }
         }
         `,

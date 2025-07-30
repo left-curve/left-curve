@@ -28,3 +28,7 @@ indexer-httpd           = { workspace = true, features = ["tracing"] }
 indexer-sql             = { workspace = true, features = ["tracing"] }
 tokio                   = { workspace = true }
 tracing                 = { workspace = true }
+
+[[bin]]
+name = "mock-httpd"
+path = "src/bin/mock.rs"

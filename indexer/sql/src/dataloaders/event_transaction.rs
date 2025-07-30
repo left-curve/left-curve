@@ -2,7 +2,10 @@ use {
     crate::entity,
     async_graphql::{dataloader::*, *},
     sea_orm::{DatabaseConnection, entity::prelude::*},
-    std::{collections::HashMap, sync::Arc},
+    std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    },
 };
 
 pub struct EventTransactionDataLoader {
@@ -18,11 +21,10 @@ impl Loader<entity::events::Model> for EventTransactionDataLoader {
         &self,
         keys: &[entity::events::Model],
     ) -> Result<HashMap<entity::events::Model, Self::Value>, Self::Error> {
-        let transaction_ids = keys.iter().map(|m| m.transaction_id).collect::<Vec<_>>();
-        let events_by_transaction_id = keys
+        let transaction_ids = keys
             .iter()
-            .filter_map(|m| m.transaction_id.map(|id| (id, m.clone())))
-            .collect::<HashMap<_, _>>();
+            .filter_map(|m| m.transaction_id)
+            .collect::<HashSet<_>>();
 
         let transactions_by_transaction_ids: HashMap<uuid::Uuid, Self::Value> =
             entity::transactions::Entity::find()
@@ -33,12 +35,16 @@ impl Loader<entity::events::Model> for EventTransactionDataLoader {
                 .map(|t| (t.id, t))
                 .collect();
 
-        Ok(events_by_transaction_id
-            .into_iter()
-            .filter_map(|(id, event)| {
-                transactions_by_transaction_ids
-                    .get(&id)
-                    .map(|transaction| (event, transaction.clone()))
+        Ok(keys
+            .iter()
+            .filter_map(|key| {
+                key.transaction_id
+                    .map(|id| {
+                        transactions_by_transaction_ids
+                            .get(&id)
+                            .map(|t| (key.clone(), t.clone()))
+                    })
+                    .flatten()
             })
             .collect())
     }

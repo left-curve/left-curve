@@ -168,7 +168,7 @@ impl Extractable for Json {
                             }
 
                             if has_address {
-                                has_address = recursive(json, addresses) || has_address;
+                                has_address = recursive(json, addresses);
                             }
                         }
 

@@ -141,7 +141,6 @@ pub enum Relation {
         from = "crate::entity::events::Column::Id",
         to = "crate::entity::event_addresses::Column::EventId"
     )]
-    // #[sea_orm(has_many = "crate::entity::event_addresses::Entity")]
     EventAddresses,
 }
 
