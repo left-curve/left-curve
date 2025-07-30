@@ -89,20 +89,16 @@ const executeSchema = {
         properties: {
           contract: {
             type: "string",
-            description: "La dirección del contrato al que se le enviará el mensaje.",
+            description: "The address of the contract to which the message will be sent.",
           },
           msg: {
             type: "object",
-            description: "El mensaje en formato JSON que se enviará al contrato.",
+            description: "The message in JSON format that will be sent to the contract.",
             additionalProperties: true,
-          },
-          typedData: {
-            type: "object",
-            description: "(Opcional) Datos estructurados para la firma (ej. EIP-712).",
           },
           funds: {
             type: "array",
-            description: "(Opcional) Fondos (monedas) que se enviarán con la ejecución.",
+            description: "(Optional) Funds (coins) to be sent with the execution.",
             items: {
               type: "object",
               properties: {
