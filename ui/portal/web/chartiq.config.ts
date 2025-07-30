@@ -52,7 +52,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
 
   async function queryCandles(
     pairSymbol: string,
-    startDate: Date,
+    _startDate: Date,
     endDate: Date,
     params: { stx: CIQ.ChartEngine; symbol: string },
   ) {
@@ -71,7 +71,6 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       baseDenom: baseCoin.denom,
       quoteDenom: quoteCoin.denom,
       interval: candleInterval,
-      laterThan: startDate.toJSON(),
       earlierThan: endDate.toJSON(),
     });
 
