@@ -96,7 +96,7 @@ const CredentialStep: React.FC = () => {
         <img
           src="./favicon.svg"
           alt="dango-logo"
-          className="h-12 rounded-full shadow-btn-shadow-gradient"
+          className="h-12 rounded-full shadow-account-card"
         />
         <h1 className="h2-heavy">{m["common.signin"]()}</h1>
       </div>
@@ -193,7 +193,7 @@ const UsernameStep: React.FC = () => {
         <img
           src="./favicon.svg"
           alt="dango-logo"
-          className="h-12 rounded-full shadow-btn-shadow-gradient"
+          className="h-12 rounded-full shadow-account-card"
         />
         {existUsernames ? (
           <>
