@@ -1,9 +1,7 @@
-#[cfg(feature = "testing")]
-use clickhouse::test;
-
 #[cfg(feature = "async-graphql")]
 use crate::httpd::graphql::update_candle_cache;
-
+#[cfg(feature = "testing")]
+use clickhouse::test;
 use {
     crate::{cache::CandleCache, entities::pair_price::PairPrice, pubsub::PubSub},
     clickhouse::Client,
@@ -92,9 +90,7 @@ impl Context {
 
         candle_cache
             .preload_pairs(&all_pairs, self.clickhouse_client())
-            .await?;
-
-        Ok(())
+            .await
     }
 
     #[cfg(feature = "async-graphql")]
@@ -106,9 +102,7 @@ impl Context {
             update_candle_cache(self_clone).await;
         });
 
-        self.preload_candle_cache().await?;
-
-        Ok(())
+        self.preload_candle_cache().await
     }
 
     #[cfg(feature = "testing")]

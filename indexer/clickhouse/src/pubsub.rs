@@ -1,8 +1,8 @@
 pub mod memory;
 
 pub use memory::MemoryPubSub;
-
 use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
+
 #[async_trait]
 pub trait PubSub {
     async fn subscribe_candles_cached(

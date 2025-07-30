@@ -214,6 +214,7 @@ impl CandleCache {
                 // Keep only last N candles
                 let start = candles.len().saturating_sub(n);
                 candles.drain(..start);
+
                 true
             }
         });

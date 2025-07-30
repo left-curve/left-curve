@@ -1,6 +1,5 @@
 #[cfg(feature = "metrics")]
 use indexer_httpd::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
-
 use {
     crate::{
         context::Context,
