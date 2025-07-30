@@ -36,6 +36,7 @@ impl PairPriceQueryBuilder {
         self
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn fetch_all(
         &self,
         clickhouse_client: &clickhouse::Client,
@@ -61,6 +62,7 @@ impl PairPriceQueryBuilder {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn fetch_one(
         &self,
         clickhouse_client: &clickhouse::Client,

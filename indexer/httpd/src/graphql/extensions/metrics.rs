@@ -5,7 +5,7 @@ use {
             Extension, ExtensionContext, ExtensionFactory, NextExecute, NextResolve, ResolveInfo,
         },
     },
-    metrics::{counter, describe_counter, describe_histogram, histogram},
+    metrics::{counter, describe_counter, describe_gauge, describe_histogram, histogram},
     std::{sync::Arc, time::Instant},
 };
 
@@ -131,5 +131,9 @@ pub fn init_graphql_metrics() {
     describe_histogram!(
         "graphql.field.duration",
         "GraphQL field resolution duration in seconds"
+    );
+    describe_gauge!(
+        "graphql.subscriptions.active",
+        "Number of active GraphQL subscriptions"
     );
 }

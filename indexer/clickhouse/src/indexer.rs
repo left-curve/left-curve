@@ -167,8 +167,35 @@ impl Drop for Indexer {
 }
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
+    use metrics::{describe_counter, describe_gauge};
+
     describe_histogram!(
         "indexer.clickhouse.post_indexing.duration",
         "Post indexing duration in seconds"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.candles.cache.hits",
+        "Number of candle cache hits"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.candles.cache.misses",
+        "Number of candle cache misses"
+    );
+
+    describe_histogram!(
+        "indexer.clickhouse.candles.cache.lookup.duration.seconds",
+        "Time spent on cache lookups"
+    );
+
+    describe_gauge!(
+        "indexer.clickhouse.candles.cache.size.entries",
+        "Current number of keys in cache"
+    );
+
+    describe_gauge!(
+        "indexer.clickhouse.candles.cache.size.candles",
+        "Total number of candles in cache"
     );
 }

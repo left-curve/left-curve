@@ -5865,6 +5865,7 @@ dependencies = [
  "futures",
  "grug",
  "grug-app",
+ "grug-httpd",
  "grug-types",
  "indexer-hooked",
  "indexer-httpd",
