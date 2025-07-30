@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2021"
+    "target": "es2022"
   },
   "exclude": ["node_modules", "build", "dist"]
 }

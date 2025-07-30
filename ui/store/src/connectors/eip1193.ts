@@ -77,7 +77,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           transport,
         });
       },
-      async createNewKey(challenge = "Please sign this message to confirm your identity.") {
+      async createNewKey(_challenge = "Please sign this message to confirm your identity.") {
         const provider = await this.getProvider();
 
         const [controllerAddress] = await provider.request({

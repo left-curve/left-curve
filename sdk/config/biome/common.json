@@ -39,17 +39,49 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/build/**", "!**/package.json"]
+    "includes": ["**", "!**/build/**", "!**/package.json", "!**/*.test.ts", "!**/*.spec.ts"]
   },
   "overrides": [
+    {
+      "includes": ["**/sdk/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "off",
+            "noUnusedVariables": {
+              "level": "warn",
+              "options": {
+                "ignoreRestSiblings": true
+              }
+            }
+          },
+          "suspicious": {
+            "noTemplateCurlyInString": "off"
+          },
+          "performance": {
+            "noDelete": "off"
+          },
+          "complexity": {
+            "noForEach": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["**/ui/**"],
       "linter": {
         "rules": {
           "correctness": {
-            "useExhaustiveDependencies": "off"
+            "useExhaustiveDependencies": "off",
+            "noUnusedVariables": {
+              "level": "warn",
+              "options": {
+                "ignoreRestSiblings": true
+              }
+            }
           },
           "a11y": {
+            "noStaticElementInteractions": "off",
             "noSvgWithoutTitle": "off",
             "useKeyWithClickEvents": "off"
           }
