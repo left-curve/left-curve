@@ -17,4 +17,5 @@ grug           = { workspace = true }
 grug-app       = { workspace = true }
 hex-literal    = { workspace = true }
 indexer-client = { workspace = true }
+num-format     = { workspace = true }
 tokio          = { workspace = true }
