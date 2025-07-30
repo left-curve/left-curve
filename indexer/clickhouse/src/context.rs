@@ -1,6 +1,8 @@
-use crate::httpd::graphql::update_candle_cache;
 #[cfg(feature = "testing")]
 use clickhouse::test;
+
+#[cfg(feature = "async-graphql")]
+use crate::httpd::graphql::update_candle_cache;
 
 use {
     crate::{cache::CandleCache, entities::pair_price::PairPrice, pubsub::PubSub},
@@ -95,6 +97,7 @@ impl Context {
         Ok(())
     }
 
+    #[cfg(feature = "async-graphql")]
     pub async fn start_candle_cache(&self) -> crate::error::Result<()> {
         let self_clone = self.clone();
 
