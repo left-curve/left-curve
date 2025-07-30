@@ -35,7 +35,8 @@ export type UseSigninReturnType = UseSubmitTxReturnType<
 
 export function useSignin(parameters: UseSigninParameters) {
   const { mutation, session } = parameters;
-  const connectors = parameters?.connectors ?? useConnectors();
+  const fallbackConnectors = useConnectors();
+  const connectors = parameters?.connectors ?? fallbackConnectors;
   const chainId = useChainId();
   const { createSessionKey, setSession } = useSessionKey();
 

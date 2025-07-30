@@ -77,7 +77,7 @@ export const AccountSearchInput = forwardRef<HTMLInputElement, AccountSearchInpu
           )}
         >
           <p className="diatype-sm-medium text-tertiary-500 px-3 pt-2">Accounts</p>
-          {options.map(({ accountName, address }, i) => (
+          {options.map(({ accountName, address }) => (
             <div
               onClick={() => [setInputValue(address), setShowMenu(false)]}
               className="w-full px-3 py-2 hover:bg-surface-tertiary-rice rounded-md text-left cursor-pointer"
