@@ -29,6 +29,11 @@ fn build_actix_app(
 > {
     let graphql_schema = build_schema(dango_httpd_context.clone());
 
+    let clickhouse_context = dango_httpd_context.indexer_clickhouse_context.clone();
+    tokio::spawn(async move {
+        indexer_clickhouse::httpd::graphql::update_candle_cache(clickhouse_context).await;
+    });
+
     App::new()
         .app_data(web::Data::new(dango_httpd_context.clone()))
         .app_data(web::Data::new(

@@ -33,30 +33,19 @@ impl CandleSubscription {
             cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
 
         Ok(once(async move {
-            // We first check the cache for the last candle since this will
-            // always match except at the start of the httpd process, avoid unnecessary
-            // write lock.
-            if let Some(candle_cache) = candle_cache.read().await.get_last_candle(&cache_key) {
-                return Ok(vec![candle_cache.clone()]);
-            }
-
-            if let Some(candle) = candle_cache
-                .write()
+            Ok(candle_cache
+                .read()
                 .await
-                .get_or_save_new_candle(cache_key, app_ctx.clickhouse_client(), None)
-                .await?
-            {
-                return Ok(vec![candle]);
-            }
-
-            Ok(vec![])
+                .get_last_candle(&cache_key)
+                .map(|candle| vec![candle.clone()])
+                .unwrap_or_default())
         })
         .chain(
             app_ctx
-                .pubsub
-                .subscribe_block_minted()
+                .candle_pubsub
+                .subscribe_candles_cached()
                 .await?
-                .then(move |block_height| {
+                .then(move |_block_height| {
                     let cache_key = cache::CandleCacheKey::new(
                         base_denom.clone(),
                         quote_denom.clone(),
@@ -65,22 +54,12 @@ impl CandleSubscription {
                     let candle_cache = app_ctx.candle_cache.clone();
 
                     async move {
-                        let mut candle_cache = candle_cache.write().await;
-
-                        if let Some(candle) = candle_cache
-                            .get_or_save_new_candle(
-                                cache_key.clone(),
-                                app_ctx.clickhouse_client(),
-                                Some(block_height),
-                            )
-                            .await?
-                        {
-                            candle_cache.compact_for_key(&cache_key);
-
-                            return Ok(vec![candle]);
-                        }
-
-                        Ok(vec![])
+                        Ok(candle_cache
+                            .read()
+                            .await
+                            .get_last_candle(&cache_key)
+                            .map(|candle| vec![candle.clone()])
+                            .unwrap_or_default())
                     }
                 }),
         )

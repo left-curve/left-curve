@@ -227,6 +227,14 @@ pub async fn setup_test_with_indexer(
         GenesisOption::preset_test(),
     );
 
+    let cc = clickhouse_context.clone();
+    tokio::spawn(async move {
+        // Update the candle cache automatically
+        indexer_clickhouse::httpd::graphql::update_candle_cache(cc).await;
+    });
+
+    clickhouse_context.preload_candle_cache().await.unwrap();
+
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(

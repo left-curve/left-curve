@@ -7,5 +7,6 @@ pub mod error;
 pub mod httpd;
 pub mod indexer;
 pub mod migrations;
+pub mod pubsub;
 
 pub use indexer::Indexer;
