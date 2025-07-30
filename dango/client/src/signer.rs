@@ -77,20 +77,24 @@ impl SingleSigner<Undefined<u32>> {
     ) -> anyhow::Result<Self> {
         let username = Username::from_str(username)?;
 
-        let key = match credential_type {
-            CredentialType::Secp256k1 => Key::Secp256k1(ByteArray::from_inner(sk.public_key())),
-            CredentialType::Ethereum => Key::Ethereum(Addr::from_inner(
-                keccak256(&sk.extended_public_key()[1..])[12..]
-                    .try_into()
-                    .unwrap(),
-            )),
+        let (key, key_hash) = match credential_type {
+            CredentialType::Secp256k1 => (
+                Key::Secp256k1(ByteArray::from_inner(sk.public_key())),
+                sk.public_key().hash256(),
+            ),
+            CredentialType::Ethereum => {
+                let addr =
+                    Addr::from_inner(keccak256(&sk.extended_public_key()[1..])[12..].try_into()?);
+
+                (Key::Ethereum(addr), addr.hash256())
+            },
         };
 
         Ok(Self {
             username,
             address,
             key,
-            key_hash: sk.public_key().hash256(),
+            key_hash,
             nonce: Undefined::new(),
             sk,
         })
