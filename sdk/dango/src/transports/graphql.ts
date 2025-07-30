@@ -107,6 +107,32 @@ export function graphql(
       );
     };
 
+    subscribe(
+      {
+        query: `
+        subscription {
+          eventByAddresses(
+            addresses: ["0x6e8fdeefaa7b8fb1f559e6e944050cdbeb0f4358"]
+          ) {
+            data
+            type
+          }
+        }
+        `,
+      },
+      {
+        next: (data) => {
+          console.log("events received", data);
+        },
+        error: (error) => {
+          console.error(error);
+        },
+        complete: () => {
+          console.log("complete");
+        },
+      },
+    );
+
     return createTransport<"http-graphql">({
       type: "http-graphql",
       name,

@@ -1,8 +1,8 @@
 use {
-    crate::{entity, error::Result, find_addresses_in_event},
+    crate::{entity, error::Result},
     grug_types::{
-        Addr, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo,
-        FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
+        Addr, Block, BlockOutcome, CommitmentStatus, EventId, Extractable, FlatCategory,
+        FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
     std::collections::{HashMap, HashSet},
@@ -218,7 +218,7 @@ where
             None => None,
         };
 
-        let addresses = find_addresses_in_event(&event);
+        let addresses = event.event.extract_addresses();
 
         events_ids.insert(event.id.event_index, db_event_id);
 

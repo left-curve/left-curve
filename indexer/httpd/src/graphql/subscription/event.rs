@@ -2,13 +2,14 @@ use {
     super::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
+    grug_types::Addr,
     indexer_sql::entity,
     itertools::Itertools,
     sea_orm::{
-        ColumnTrait, DatabaseConnection, EntityTrait, Iterable, JoinType, QueryFilter, QueryOrder,
-        QuerySelect, RelationTrait, prelude::Expr, sea_query::extension::postgres::PgExpr,
+        ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+        RelationTrait, prelude::Expr, sea_query::extension::postgres::PgExpr,
     },
-    std::{collections::VecDeque, ops::RangeInclusive},
+    std::{collections::VecDeque, ops::RangeInclusive, str::FromStr},
 };
 
 #[derive(Clone, InputObject)]
@@ -186,14 +187,16 @@ fn parse_filter(filter: Vec<Filter>) -> Result<Vec<ParsedFilter>, async_graphql:
 
 fn precompute_query_by_addresses(
     addresses: Vec<String>,
-) -> sea_orm::Select<entity::event_addresses::Entity> {
-    let mut query = entity::event_addresses::Entity::find()
-        .order_by_asc(entity::event_addresses::Column::BlockHeight)
-        .order_by_asc(entity::event_addresses::Column::EventId)
+) -> sea_orm::Select<entity::events::Entity> {
+    entity::events::Entity::find()
+        .distinct_on(vec![entity::events::Column::Id])
+        .order_by_asc(entity::events::Column::Id)
+        .order_by_asc(entity::events::Column::BlockHeight)
+        .join(
+            sea_orm::JoinType::Join,
+            entity::events::Relation::EventAddresses.def(),
+        )
         .filter(entity::event_addresses::Column::Address.is_in(addresses))
-        .find_with_related(entity::events::Entity);
-
-    query
 }
 
 impl EventSubscription {
@@ -285,6 +288,10 @@ impl EventSubscription {
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
+        for address in &addresses {
+            Addr::from_str(address)?;
+        }
+
         let latest_block_height = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)
             .one(&app_ctx.db)
@@ -300,15 +307,6 @@ impl EventSubscription {
         if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
             return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
-
-        let events = entity::event_addresses::Entity::find()
-            .filter(entity::event_addresses::Column::Address.is_in(addresses))
-            .join(
-                JoinType::InnerJoin,
-                entity::event_addresses::Relation::Event.def(),
-            )
-            .all(&app_ctx.db)
-            .await?;
 
         let query = precompute_query_by_addresses(addresses);
 
@@ -347,7 +345,12 @@ impl EventSubscription {
 #[cfg(test)]
 mod tests {
     use {
-        super::*, chrono::NaiveDateTime, sea_orm::ActiveValue::Set, serde_json::json, uuid::Uuid,
+        super::*,
+        chrono::NaiveDateTime,
+        grug_types::{Addr, Extractable},
+        sea_orm::ActiveValue::Set,
+        serde_json::json,
+        uuid::Uuid,
     };
 
     mod db_utils {
@@ -615,6 +618,127 @@ mod tests {
             ParsedCheckValue::Equal(json!("rhaki")),
         )])]);
         let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
+        assert_eq!(events.len(), 2);
+    }
+
+    #[tokio::test]
+    #[ignore = "not working in CI"]
+    async fn events_filter2() {
+        let db = db_utils::create_db().await.unwrap();
+
+        db_utils::migrate_db::<indexer_sql_migration::Migrator>(db.db_connection())
+            .await
+            .unwrap();
+
+        let (events, event_addresses) = [
+            (
+                "contract_event",
+                json!({
+                    "type": "order_filled",
+                    "data": {
+                      "user": Addr::mock(1)
+                    },
+                    "foo": Addr::mock(3)
+                }),
+            ),
+            (
+                "contract_event",
+                json!({
+                    "type": "order_filled",
+                    "data": {
+                      "user": Addr::mock(2)
+                    }
+                }),
+            ),
+            (
+                "contract_event",
+                json!({
+                    "type": "order_created",
+                    "data": {
+                      "user": Addr::mock(1)
+                    }
+                }),
+            ),
+            (
+                "transfer",
+                json!({
+                    "from": Addr::mock(1),
+                    "to": {
+                      Addr::mock(2): "200",
+                      Addr::mock(3): "200",
+                      Addr::mock(4): "200",
+                    }
+                }),
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        .fold(
+            (vec![], vec![]),
+            |(mut events, mut event_addresses), (i, (r#type, data))| {
+                let id = Uuid::new_v4();
+                let addresses = grug_types::Json::from_inner(data.clone()).extract_addresses();
+
+                let event = entity::events::ActiveModel {
+                    id: Set(id),
+                    parent_id: Set(None),
+                    transaction_id: Set(None),
+                    message_id: Set(None),
+                    created_at: Set(NaiveDateTime::default()),
+                    r#type: Set(r#type.to_string()),
+                    method: Set(None),
+                    event_status: Set(entity::events::EventStatus::Ok),
+                    commitment_status: Set(grug_types::FlatCommitmentStatus::Committed),
+                    transaction_type: Set(0),
+                    transaction_idx: Set(0),
+                    message_idx: Set(None),
+                    event_idx: Set(0),
+                    data: Set(data),
+                    block_height: Set(i as i64),
+                };
+
+                events.push(event);
+                event_addresses.extend(addresses.into_iter().map(|address| {
+                    entity::event_addresses::ActiveModel {
+                        id: Set(Uuid::new_v4()),
+                        event_id: Set(id),
+                        address: Set(address.to_string()),
+                        block_height: Set(1),
+                    }
+                }));
+
+                (events, event_addresses)
+            },
+        );
+
+        entity::events::Entity::insert_many(events)
+            .exec(db.db_connection())
+            .await
+            .unwrap();
+
+        entity::event_addresses::Entity::insert_many(event_addresses)
+            .exec(db.db_connection())
+            .await
+            .unwrap();
+
+        for (addresses, count) in [
+            (vec![Addr::mock(1)], 3),
+            (vec![Addr::mock(2)], 2),
+            (vec![Addr::mock(3)], 2),
+            (vec![Addr::mock(4)], 1),
+            (vec![Addr::mock(1), Addr::mock(2)], 4),
+        ] {
+            let entities =
+                precompute_query_by_addresses(addresses.iter().map(|a| a.to_string()).collect())
+                    .all(db.db_connection())
+                    .await
+                    .unwrap();
+
+            assert_eq!(entities.len(), count, "{:?}", addresses);
+        }
+
+        let query = precompute_query_by_addresses(vec![Addr::mock(1).to_string()]);
+        let events = EventSubscription::get_events(db.db_connection(), 1..=3, query).await;
         assert_eq!(events.len(), 2);
     }
 }

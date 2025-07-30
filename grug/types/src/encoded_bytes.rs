@@ -207,6 +207,17 @@ where
     }
 }
 
+impl<B, E> From<EncodedBytes<B, E>> for String
+where
+    B: Bytes,
+    E: Encoder,
+    EncodedBytes<B, E>: Display,
+{
+    fn from(encoded_bytes: EncodedBytes<B, E>) -> Self {
+        encoded_bytes.to_string()
+    }
+}
+
 impl<B, E> Debug for EncodedBytes<B, E>
 where
     B: Bytes,
