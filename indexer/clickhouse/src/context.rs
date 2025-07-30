@@ -37,6 +37,7 @@ impl Context {
         Self {
             clickhouse_client,
             pubsub: indexer_context.pubsub,
+            candle_cache: Default::default(),
         }
     }
 
