@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="flex flex-col min-h-screen w-full h-full bg-white relative scrollbar-none items-center justify-center overflow-y-hidden">
         <div className="fixed mx-0 top-6 z-50">
-          <img src="/images/dango.svg" alt="logo" className="h-6 md:h-12 object-contain" />
+          <img src="/images/dango.svg" alt="logo" className="h-10 md:h-16 object-contain" />
         </div>
         {children}
       </body>
