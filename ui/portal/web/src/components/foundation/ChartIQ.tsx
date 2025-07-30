@@ -5,11 +5,10 @@ import "@left-curve/chartiq/js/advanced";
 import "@left-curve/chartiq/js/componentUI";
 import "@left-curve/chartiq/js/addOns";
 
-
 import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { CIQ } from "@left-curve/chartiq/js/components";
 import { useConfig, usePublicClient } from "@left-curve/store";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
 import { useApp } from "~/hooks/useApp";
 
@@ -19,8 +18,6 @@ import "@left-curve/chartiq/css/normalize.css";
 import "@left-curve/chartiq/css/stx-chart.css";
 import "@left-curve/chartiq/css/chartiq.css";
 import "@left-curve/chartiq/css/webcomponents.css";
-
-import type React from "react";
 
 export const ChartIQ = ({ coins }) => {
   const uiContextRef = useRef<CIQ.UI.Context | null>(null);
@@ -83,6 +80,7 @@ export const ChartIQ = ({ coins }) => {
 
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
+      stx.chart.maxTicks = 100;
       stx.controls.mSticky = false;
 
       stx.animations.zoom = new CIQ.EaseMachine("easeOutCubic", 1);
@@ -120,16 +118,14 @@ export const ChartIQ = ({ coins }) => {
 
         <nav className="ciq-nav full-screen-hide">
           {!isMd ? (
-            <>
-              <cq-toggle
-                class="ciq-draw"
-                member="drawing"
-                reader="Draw"
-                tooltip="Draw"
-                icon="draw"
-                help-id="drawing_tools_toggle"
-              />
-            </>
+            <cq-toggle
+              class="ciq-draw"
+              member="drawing"
+              reader="Draw"
+              tooltip="Draw"
+              icon="draw"
+              help-id="drawing_tools_toggle"
+            />
           ) : null}
 
           <cq-menu
