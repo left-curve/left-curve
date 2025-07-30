@@ -1,5 +1,7 @@
+use crate::httpd::graphql::update_candle_cache;
 #[cfg(feature = "testing")]
 use clickhouse::test;
+
 use {
     crate::{cache::CandleCache, entities::pair_price::PairPrice, pubsub::PubSub},
     clickhouse::Client,
@@ -81,7 +83,7 @@ impl Context {
         }
     }
 
-    pub async fn preload_candle_cache(&self) -> anyhow::Result<()> {
+    pub async fn preload_candle_cache(&self) -> crate::error::Result<()> {
         let all_pairs = PairPrice::all_pairs(self.clickhouse_client()).await?;
 
         let mut candle_cache = self.candle_cache.write().await;
@@ -89,6 +91,19 @@ impl Context {
         candle_cache
             .preload_pairs(&all_pairs, self.clickhouse_client())
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn start_candle_cache(&self) -> crate::error::Result<()> {
+        let self_clone = self.clone();
+
+        tokio::spawn(async move {
+            // Update the candle cache automatically
+            update_candle_cache(self_clone).await;
+        });
+
+        self.preload_candle_cache().await?;
 
         Ok(())
     }

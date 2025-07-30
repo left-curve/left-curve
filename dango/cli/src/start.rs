@@ -289,14 +289,10 @@ impl StartCmd {
             cfg.port
         );
 
-        let clickhouse_context = dango_httpd_context.indexer_clickhouse_context.clone();
-        tokio::spawn(async move {
-            // Update the candle cache automatically
-            indexer_clickhouse::httpd::graphql::update_candle_cache(clickhouse_context).await;
-        });
-
-        let clickhouse_context = dango_httpd_context.indexer_clickhouse_context.clone();
-        clickhouse_context.preload_candle_cache().await?;
+        dango_httpd_context
+            .indexer_clickhouse_context
+            .start_candle_cache()
+            .await?;
 
         dango_httpd::server::run_server(
             &cfg.ip,
