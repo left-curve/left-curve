@@ -1,12 +1,9 @@
-import { useTheme } from "@left-curve/applets-kit";
+import { Button, twMerge, useTheme } from "@left-curve/applets-kit";
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
+import Editor from "@monaco-editor/react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
-
 import { m } from "~/paraglide/messages";
-
-import { Button, twMerge } from "@left-curve/applets-kit";
-import Editor from "@monaco-editor/react";
 
 export const MsgBuilder: React.FC = () => {
   const [msg, setMsg] = useState<string>("");
@@ -23,9 +20,11 @@ export const MsgBuilder: React.FC = () => {
     },
     mutation: {
       mutationFn: async () => {
-        if (!signingClient || !account)
+        if (!signingClient || !account) {
           throw new Error("Signing client or account address is not available");
-        await signingClient?.execute({ sender: account.address, execute: JSON.parse(msg) });
+        }
+        
+        await signingClient.execute({ sender: account.address, execute: JSON.parse(msg) });
       },
     },
   });
