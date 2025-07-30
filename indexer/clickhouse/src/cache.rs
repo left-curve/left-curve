@@ -7,7 +7,8 @@ use {
     chrono::{DateTime, Utc},
     dango_types::dex::PairId,
     futures::future::join_all,
-    std::collections::HashMap,
+    metrics::{counter, gauge, histogram},
+    std::{collections::HashMap, time::Instant},
     strum::IntoEnumIterator,
 };
 
@@ -34,6 +35,7 @@ pub struct CandleCache {
 }
 
 impl CandleCache {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn add_candle(&mut self, key: CandleCacheKey, candle: Candle) {
         let candles = self.candles.entry(key).or_default();
 
@@ -50,6 +52,7 @@ impl CandleCache {
     }
 
     /// Does the cache have all candles for the given dates?
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn date_interval_available(
         &self,
         key: &CandleCacheKey,
@@ -79,16 +82,36 @@ impl CandleCache {
         false
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn get_candles(&self, key: &CandleCacheKey) -> Option<&Vec<Candle>> {
         self.candles.get(key)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn get_last_candle(&self, key: &CandleCacheKey) -> Option<&Candle> {
-        self.candles.get(key).and_then(|candles| candles.last())
+        let _start = Instant::now();
+
+        let result = self.candles.get(key).and_then(|candles| candles.last());
+
+        #[cfg(feature = "metrics")]
+        {
+            if result.is_some() {
+                counter!("indexer.clickhouse.candles.cache.hits").increment(1);
+            } else {
+                counter!("indexer.clickhouse.candles.cache.misses").increment(1);
+            }
+
+            let duration = _start.elapsed();
+            histogram!("indexer.clickhouse.candles.cache.lookup.duration.seconds")
+                .record(duration.as_secs_f64());
+        }
+
+        result
     }
 
     /// Updates all existing pairs in the cache for a given block height.
     /// This will fetch the latest candles in parallel.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn update_pairs(
         &mut self,
         clickhouse_client: &clickhouse::Client,
@@ -129,18 +152,30 @@ impl CandleCache {
         // Process results
         for result in results {
             match result {
-                Ok((key, None)) => {
+                Ok((_key, None)) => {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
                         block_height,
-                        base_denom = %key.base_denom,
-                        quote_denom = %key.quote_denom,
-                        interval = %key.interval,
+                        base_denom = %_key.base_denom,
+                        quote_denom = %_key.quote_denom,
+                        interval = %_key.interval,
                         "No candle found",
                     );
                 },
                 Ok((key, Some(fetched_candle))) => {
-                    self.add_candle(key.clone(), fetched_candle.clone());
+                    if fetched_candle.block_height != block_height {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(
+                            block_height,
+                            fetched_block_height = fetched_candle.block_height,
+                            base_denom = %key.base_denom,
+                            quote_denom = %key.quote_denom,
+                            interval = %key.interval,
+                            "fetched candle doesn't match block_height",
+                        );
+                    } else {
+                        self.add_candle(key.clone(), fetched_candle.clone());
+                    }
                 },
                 Err(_err) => {
                     #[cfg(feature = "tracing")]
@@ -149,10 +184,13 @@ impl CandleCache {
             }
         }
 
+        self.update_metrics();
+
         Ok(())
     }
 
     /// Preloads candles in parallel.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn preload_pairs(
         &mut self,
         pairs: &[PairId],
@@ -202,10 +240,13 @@ impl CandleCache {
             }
         }
 
+        self.update_metrics();
+
         Ok(())
     }
 
     // Keep last N candles
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn compact_keep_n(&mut self, n: usize) {
         self.candles.retain(|_key, candles| {
             if candles.is_empty() {
@@ -218,5 +259,17 @@ impl CandleCache {
                 true
             }
         });
+    }
+
+    fn update_metrics(&self) {
+        #[cfg(feature = "metrics")]
+        {
+            // Number of unique cache keys (trading pairs × intervals)
+            gauge!("indexer.clickhouse.candles.cache.size.entries").set(self.candles.len() as f64);
+
+            // Total individual candles stored
+            let total_candles: usize = self.candles.values().map(Vec::len).sum();
+            gauge!("indexer.clickhouse.candles.cache.size.candles").set(total_candles as f64);
+        }
     }
 }

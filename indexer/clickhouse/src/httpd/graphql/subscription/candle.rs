@@ -1,3 +1,6 @@
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
+
 use {
     crate::{
         cache,
@@ -32,13 +35,25 @@ impl CandleSubscription {
         let cache_key =
             cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
 
-        Ok(once(async move {
-            Ok(candle_cache
-                .read()
-                .await
-                .get_last_candle(&cache_key)
-                .map(|candle| vec![candle.clone()])
-                .unwrap_or_default())
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "candles",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move {
+                Ok(candle_cache
+                    .read()
+                    .await
+                    .get_last_candle(&cache_key)
+                    .map(|candle| vec![candle.clone()])
+                    .unwrap_or_default())
+            }
         })
         .chain(
             app_ctx
@@ -46,6 +61,9 @@ impl CandleSubscription {
                 .subscribe_candles_cached()
                 .await?
                 .then(move |_block_height| {
+                    #[cfg(feature = "metrics")]
+                    let _guard = gauge_guard.clone();
+
                     let cache_key = cache::CandleCacheKey::new(
                         base_denom.clone(),
                         quote_denom.clone(),

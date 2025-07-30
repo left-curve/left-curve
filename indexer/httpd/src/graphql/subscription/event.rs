@@ -10,6 +10,8 @@ use {
     },
     std::{collections::VecDeque, ops::RangeInclusive},
 };
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Clone, InputObject)]
 struct Filter {
@@ -235,33 +237,47 @@ impl EventSubscription {
 
         let once_query = query.clone();
 
-        Ok(
-            once(async move { Self::get_events(&app_ctx.db, block_range, once_query).await })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .await?
-                        .then(move |block_height| {
-                            let query = query.clone();
-                            async move {
-                                Self::get_events(
-                                    &app_ctx.db,
-                                    block_height as i64..=block_height as i64,
-                                    query,
-                                )
-                                .await
-                            }
-                        }),
-                )
-                .filter_map(|events| async move {
-                    if events.is_empty() {
-                        None
-                    } else {
-                        Some(events)
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "events",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
+        })
+        .chain(
+            app_ctx
+                .pubsub
+                .subscribe_block_minted()
+                .await?
+                .then(move |block_height| {
+                    let query = query.clone();
+
+                    #[cfg(feature = "metrics")]
+                    let _guard = gauge_guard.clone();
+
+                    async move {
+                        Self::get_events(
+                            &app_ctx.db,
+                            block_height as i64..=block_height as i64,
+                            query,
+                        )
+                        .await
                     }
                 }),
         )
+        .filter_map(|events| async move {
+            if events.is_empty() {
+                None
+            } else {
+                Some(events)
+            }
+        }))
     }
 }
 

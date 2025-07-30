@@ -7,6 +7,8 @@ use {
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::ops::RangeInclusive,
 };
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct MessageSubscription;
@@ -51,20 +53,39 @@ impl MessageSubscription {
             return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
-        Ok(
-            once(async move { Self::get_messages(app_ctx, block_range).await })
-                .chain(app_ctx.pubsub.subscribe_block_minted().await?.then(
-                    move |block_height| async move {
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "messages",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_messages(app_ctx, block_range).await }
+        })
+        .chain(
+            app_ctx
+                .pubsub
+                .subscribe_block_minted()
+                .await?
+                .then(move |block_height| {
+                    #[cfg(feature = "metrics")]
+                    let _guard = gauge_guard.clone();
+
+                    async move {
                         Self::get_messages(app_ctx, block_height as i64..=block_height as i64).await
-                    },
-                ))
-                .filter_map(|messages| async move {
-                    if messages.is_empty() {
-                        None
-                    } else {
-                        Some(messages)
                     }
                 }),
         )
+        .filter_map(|messages| async move {
+            if messages.is_empty() {
+                None
+            } else {
+                Some(messages)
+            }
+        }))
     }
 }
