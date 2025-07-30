@@ -159,6 +159,14 @@
       "description": "View recent transactions.",
       "path": "/notifications",
       "keywords": "notifications,alerts"
+    },
+    "7": {
+      "id": "devtool",
+      "img": "/images/emojis/simple/factory-2.svg",
+      "title": "DevTool",
+      "description": "Access developer tools.",
+      "path": "/devtool",
+      "keywords": "devtool,developer,tools"
     }
   },
   "explorer": {
@@ -714,5 +722,12 @@
       "invalidAddress": "Invalid address"
     },
     "failureRequest": "Couldn't complete the request"
+  },
+  "devtools": {
+    "title": "Devtools",
+    "description": "This is a tool for developers to test and debug Dango.",
+    "msgBuilder": {
+      "trigger": "Execute Message"
+    }
   }
 }
