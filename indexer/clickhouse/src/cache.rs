@@ -4,6 +4,7 @@ use {
         candle::Candle,
         candle_query::{CandleQueryBuilder, MAX_ITEMS},
     },
+    chrono::{DateTime, Utc},
     dango_types::dex::PairId,
     futures::future::join_all,
     std::collections::HashMap,
@@ -103,9 +104,35 @@ impl CandleCache {
         candles.push(candle);
     }
 
-    // pub fn add_candles(&mut self, _key: CandleCacheKey, _candles: &[Candle]) {
-    //     //
-    // }
+    /// Does the cache have all candles for the given dates?
+    pub fn date_interval_available(
+        &self,
+        key: &CandleCacheKey,
+        earlier_than: Option<DateTime<Utc>>,
+        later_than: Option<DateTime<Utc>>,
+    ) -> bool {
+        if let Some(candles) = self.candles.get(key) {
+            if candles.is_empty() {
+                return false;
+            }
+
+            if let Some(earlier_than) = earlier_than {
+                if candles.last().is_some_and(|c| c.time_start > earlier_than) {
+                    return false;
+                }
+            }
+
+            if let Some(later_than) = later_than {
+                if candles.first().is_some_and(|c| c.time_start < later_than) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        false
+    }
 
     pub fn get_candles(&self, key: &CandleCacheKey) -> Option<&Vec<Candle>> {
         self.candles.get(key)

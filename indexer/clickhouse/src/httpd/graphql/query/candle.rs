@@ -42,41 +42,36 @@ impl CandleQuery {
         let app_ctx = ctx.data::<Context>()?;
         let clickhouse_client = app_ctx.clickhouse_client();
 
-        let mut candle_cache = None;
-        let cache_key =
-            cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
-
-        // If no filters are provided, we can use cache. To avoid first queries to
-        // generate clickhouse queries, we use a write lock on the cache asap.
-        if after.is_none() && earlier_than.is_none() && later_than.is_none() {
-            candle_cache = Some(app_ctx.candle_cache.write().await);
-        }
-
         query_with::<OpaqueCursor<CandleCursor>, _, _, _, _>(
             after,
             None,
             first,
             None,
             |after, _, first, _| async move {
-                if after.is_none() && earlier_than.is_none() && later_than.is_none() {
-                    // We first check the cache for the last candle since this will
-                    // always match except at the start of the httpd process, avoid unnecessary
-                    // write lock.
-                    if let Some(cached_candles) = candle_cache
-                        .as_ref()
-                        .and_then(|c| c.get_candles(&cache_key))
-                    {
-                        let mut connection = Connection::new(false, true);
+                // Can use cache
+                if after.is_none() && first.is_none() {
+                    let candle_cache = app_ctx.candle_cache.read().await;
 
-                        connection.edges.extend(cached_candles.iter().map(|candle| {
-                            Edge::with_additional_fields(
-                                OpaqueCursor(candle.clone().into()),
-                                candle.clone(),
-                                EmptyFields,
-                            )
-                        }));
+                    let cache_key = cache::CandleCacheKey::new(
+                        base_denom.clone(),
+                        quote_denom.clone(),
+                        interval,
+                    );
 
-                        return Ok::<_, async_graphql::Error>(connection);
+                    if candle_cache.date_interval_available(&cache_key, earlier_than, later_than) {
+                        if let Some(cached_candles) = candle_cache.get_candles(&cache_key) {
+                            let mut connection = Connection::new(false, true);
+
+                            connection.edges.extend(cached_candles.iter().map(|candle| {
+                                Edge::with_additional_fields(
+                                    OpaqueCursor(candle.clone().into()),
+                                    candle.clone(),
+                                    EmptyFields,
+                                )
+                            }));
+
+                            return Ok::<_, async_graphql::Error>(connection);
+                        }
                     }
                 }
 
