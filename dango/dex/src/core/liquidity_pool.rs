@@ -7,8 +7,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
-        Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Sign, Udec128,
-        Udec128_24, Uint128,
+        Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
+        PrevNumber, Sign, Udec128, Udec128_24, Uint128,
     },
     std::ops::Sub,
 };
@@ -216,20 +216,37 @@ impl PassiveLiquidityPool for PairParams {
         // Our oracle approach is more generalizable to different pool types.
         let fee_rate = {
             let price = oracle_querier.query_price(reserve.first().denom, None)?;
-            let a: Udec128_24 = price.value_of_unit_amount(*deposit.first().amount)?;
-            let reserve_a: Udec128_24 = price.value_of_unit_amount(*reserve.first().amount)?;
+            let a = price
+                .value_of_unit_amount::<24>(*deposit.first().amount)?
+                .into_next();
+            let reserve_a = price
+                .value_of_unit_amount::<24>(*reserve.first().amount)?
+                .into_next();
 
             let price = oracle_querier.query_price(reserve.second().denom, None)?;
-            let b: Udec128_24 = price.value_of_unit_amount(*deposit.second().amount)?;
-            let reserve_b: Udec128_24 = price.value_of_unit_amount(*reserve.second().amount)?;
+            let b = price
+                .value_of_unit_amount::<24>(*deposit.second().amount)?
+                .into_next();
+            let reserve_b = price
+                .value_of_unit_amount::<24>(*reserve.second().amount)?
+                .into_next();
 
             let deposit_value = a.checked_add(b)?;
             let reserve_value = reserve_a.checked_add(reserve_b)?;
 
+            // IMPORTANT!
+            // we have to be sure that abs( a * reserve_b - b * reserve_a ) is not approxed to 0
+            // because the low precision.
+            // For this reason, it make sense to keep 24 decimal places in value_of_unit_amount
+            // and use into_next() to avoid overflows.
+            // Otherwise the fee rate could be 0 even if very low amount of tokens are deposited even unbalance.
+            // Since we don't have gas price, this can be an attack vector.
+            // TODO: This is a temporary fix, we should find a better solution.
             abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
                 .checked_div(deposit_value.checked_add(reserve_value)?)?
-                .checked_mul(*self.swap_fee_rate)?
+                .checked_mul(self.swap_fee_rate.into_next())?
                 .checked_div(deposit_value)?
+                .checked_into_prev()?
         };
 
         let mint_ratio = match &self.pool_type {
