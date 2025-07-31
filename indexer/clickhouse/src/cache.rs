@@ -133,7 +133,8 @@ impl CandleCache {
                             key.interval,
                             key.base_denom.clone(),
                             key.quote_denom.clone(),
-                        );
+                        )
+                        .with_limit(1);
 
                         let candle = query_builder.fetch_one(clickhouse_client).await?;
 
