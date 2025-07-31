@@ -109,7 +109,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
   }
 
   function candlesToChartIQData(candles: Candle[], baseCoin: AnyCoin, quoteCoin: AnyCoin) {
-    return candles.reverse().map((candle) => ({
+    return candles.map((candle) => ({
       Volume: +Decimal(candle.volumeQuote).div(Decimal(10).pow(6)).toFixed(0, 0),
       DT: new Date(candle.timeStart),
       Open: +Decimal(candle.open)
