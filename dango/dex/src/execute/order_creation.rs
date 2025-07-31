@@ -1,8 +1,9 @@
 use {
-    crate::{INCOMING_ORDERS, LimitOrder, MARKET_ORDERS, MarketOrder, NEXT_ORDER_ID, PAIRS},
+    crate::{INCOMING_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS},
     anyhow::ensure,
     dango_types::dex::{
-        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderCreated, OrderKind,
+        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, LimitOrder, MarketOrder,
+        OrderCreated, OrderKind,
     },
     grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
 };

@@ -1,6 +1,5 @@
 use {
-    crate::{Order, OrderTrait},
-    dango_types::dex::Direction,
+    dango_types::dex::{Direction, Order, OrderTrait},
     grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6, Udec128_24},
 };
 
