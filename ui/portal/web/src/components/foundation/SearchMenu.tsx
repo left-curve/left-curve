@@ -1,5 +1,5 @@
 import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { useSearchBar } from "~/hooks/useSearchBar";
@@ -25,6 +25,7 @@ import type { SearchBarResult } from "~/hooks/useSearchBar";
 
 const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
+  const location = useLocation();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
   const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
     useSearchBar();
