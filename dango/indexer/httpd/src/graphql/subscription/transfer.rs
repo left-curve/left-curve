@@ -112,29 +112,17 @@ impl TransferSubscription {
 
             async move { Self::get_transfers(app_ctx, block_range, a, u).await }
         })
-        .chain(
-            app_ctx
-                .pubsub
-                .subscribe()
-                .await?
-                .then(move |block_height| {
-                    let a = address.clone();
-                    let u = username.clone();
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let a = address.clone();
+            let u = username.clone();
 
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
 
-                    async move {
-                        Self::get_transfers(
-                            app_ctx,
-                            block_height as i64..=block_height as i64,
-                            a,
-                            u,
-                        )
-                        .await
-                    }
-                }),
-        )
+            async move {
+                Self::get_transfers(app_ctx, block_height as i64..=block_height as i64, a, u).await
+            }
+        }))
         .filter_map(|transfers| async move { transfers }))
     }
 }

@@ -86,23 +86,16 @@ impl AccountSubscription {
 
             async { Self::get_accounts(app_ctx, block_range, u).await }
         })
-        .chain(
-            app_ctx
-                .pubsub
-                .subscribe()
-                .await?
-                .then(move |block_height| {
-                    let u = username.clone();
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let u = username.clone();
 
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
 
-                    async move {
-                        Self::get_accounts(app_ctx, block_height as i64..=block_height as i64, u)
-                            .await
-                    }
-                }),
-        )
+            async move {
+                Self::get_accounts(app_ctx, block_height as i64..=block_height as i64, u).await
+            }
+        }))
         .filter_map(|maybe_accounts| async move {
             if maybe_accounts.is_empty() {
                 None

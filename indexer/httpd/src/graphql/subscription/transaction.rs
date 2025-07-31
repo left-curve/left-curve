@@ -74,36 +74,30 @@ impl TransactionSubscription {
 
             async move { Self::get_transactions(app_ctx, block_range).await }
         })
-        .chain(
-            app_ctx
-                .pubsub
-                .subscribe()
-                .await?
-                .then(move |block_height| {
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
 
-                    let received_height = received_block_height.clone();
+            let received_height = received_block_height.clone();
 
-                    async move {
-                        let current_received = received_height.load(Ordering::Acquire);
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
 
-                        if block_height < current_received {
-                            return vec![];
-                        }
+                if block_height < current_received {
+                    return vec![];
+                }
 
-                        let transactions = Self::get_transactions(
-                            app_ctx,
-                            (current_received + 1) as i64..=block_height as i64,
-                        )
-                        .await;
+                let transactions = Self::get_transactions(
+                    app_ctx,
+                    (current_received + 1) as i64..=block_height as i64,
+                )
+                .await;
 
-                        received_height.store(block_height, Ordering::Release);
+                received_height.store(block_height, Ordering::Release);
 
-                        transactions
-                    }
-                }),
-        )
+                transactions
+            }
+        }))
         .filter_map(|transactions| async move {
             if transactions.is_empty() {
                 None
