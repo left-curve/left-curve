@@ -35,7 +35,12 @@ impl BlockSubscription {
             "subscription",
         ));
 
-        let received_block_height = Arc::new(AtomicU64::new(0));
+        let received_block_height = Arc::new(AtomicU64::new(
+            last_block.as_ref().map_or(0, |block| block.block_height) as u64,
+        ));
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(?received_block_height, "Subscribing to block events");
 
         Ok(once({
             #[cfg(feature = "metrics")]
@@ -57,13 +62,18 @@ impl BlockSubscription {
                     async move {
                         let current_received = received_height.load(Ordering::Acquire);
                         if block_height < current_received {
+                            #[cfg(feature = "tracing")]
+                            tracing::debug!(current_received, block_height, "Skip block");
                             return None;
                         }
+
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!(current_received, block_height, "Streaming blocks");
 
                         let blocks = entity::blocks::Entity::find()
                             .filter(
                                 entity::blocks::Column::BlockHeight
-                                    .gte(current_received as i64)
+                                    .gt(current_received as i64)
                                     .and(
                                         entity::blocks::Column::BlockHeight
                                             .lte(block_height as i64),
