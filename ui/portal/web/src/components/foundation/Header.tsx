@@ -40,6 +40,8 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
   const isProSwap = location.pathname.includes("trade");
 
+  const hideSearchBar = isProSwap && !isLg || location.pathname === "/" && isLg;
+
   return (
     <header
       className={twMerge(
@@ -65,11 +67,10 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          {isProSwap && !isLg ? (
-            <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" />
-          ) : (
+          {!hideSearchBar ?  (
             <SearchMenu />
-          )}
+          ) : null}
+          { isProSwap && !isLg ? <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" /> : null }
           <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
