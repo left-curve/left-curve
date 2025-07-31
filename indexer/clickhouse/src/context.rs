@@ -5,6 +5,7 @@ use clickhouse::test;
 use {
     crate::{cache::CandleCache, entities::pair_price::PairPrice},
     clickhouse::Client,
+    indexer_sql::pubsub::{self, PubSub},
     std::sync::Arc,
     tokio::sync::RwLock,
 };
@@ -33,13 +34,11 @@ impl Context {
             .with_password(&password)
             .with_database(&database);
 
-        let pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(crate::pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub + Send + Sync> =
-            Arc::new(crate::pubsub::MemoryPubSub::new(100));
+        let pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let candle_pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             clickhouse_client,
-            candle_pubsub,
             pubsub,
             candle_pubsub,
             candle_cache: Default::default(),
@@ -48,8 +47,6 @@ impl Context {
 
     #[cfg(feature = "testing")]
     pub fn new(url: String, database: String, user: String, password: String) -> Self {
-        use indexer_sql::pubsub::PubSub;
-
         let clickhouse_client = Client::default()
             .with_url(&url)
             .with_user(&user)
@@ -62,10 +59,8 @@ impl Context {
             password.len()
         );
 
-        let pubsub: Arc<dyn PubSub + Send + Sync> =
-            Arc::new(indexer_sql::pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub + Send + Sync> =
-            Arc::new(indexer_sql::pubsub::MemoryPubSub::new(100));
+        let pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let candle_pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             mock: None,
