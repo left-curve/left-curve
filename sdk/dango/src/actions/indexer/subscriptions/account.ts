@@ -46,5 +46,8 @@ export function accountSubscription<
     }
   `;
 
-  return client.subscribe({ query, variables: { username, sinceBlockHeight } }, callbacks);
+  return client.subscribe(
+    { query, variables: { username, sinceBlockHeight }, operationName: "accounts" },
+    callbacks,
+  );
 }

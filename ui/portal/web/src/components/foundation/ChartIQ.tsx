@@ -33,7 +33,7 @@ export const ChartIQ = ({ coins }) => {
     createChartIQDataFeed({
       client: publicClient,
       subscriptions,
-      updateChartData: (params) => context?.stx?.updateChartData(params),
+      updateChartData: (params) => uiContextRef.current?.stx?.updateChartData(params),
       coins: allCoins.bySymbol,
     }),
   );
