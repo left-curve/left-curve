@@ -55,9 +55,9 @@ impl BlockToIndex {
             .filter(entity::blocks::Column::BlockHeight.eq(self.block.info.height))
             .one(&db)
             .await
-            .inspect_err(|e| {
+            .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %e, "Failed to check if block exists");
+                tracing::error!(err = %_e, "Failed to check if block exists");
             })?;
 
         if existing_block.is_some() {
@@ -67,9 +67,9 @@ impl BlockToIndex {
         entity::blocks::Entity::insert(models.block)
             .exec_without_returning(&db)
             .await
-            .inspect_err(|e| {
+            .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %e, "Failed to insert block");
+                tracing::error!(err = %_e, "Failed to insert block");
             })?;
 
         #[cfg(feature = "metrics")]
@@ -86,9 +86,9 @@ impl BlockToIndex {
 
             entity::transactions::Entity::insert_many(models.transactions)
                 .exec_without_returning(&db)
-                .await.inspect_err(|e| {
+                .await.inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(err = %e, transactions_len=transactions_len, "Failed to insert transactions");
+                    tracing::error!(err = %_e, transactions_len=transactions_len, "Failed to insert transactions");
                 })?;
         }
 
@@ -98,9 +98,9 @@ impl BlockToIndex {
 
             entity::messages::Entity::insert_many(models.messages)
                 .exec_without_returning(&db)
-                .await.inspect_err(|e| {
+                .await.inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(err = %e, messages_len=messages_len, "Failed to insert messages");
+                    tracing::error!(err = %_e, messages_len=messages_len, "Failed to insert messages");
                 })?;
         }
 
@@ -111,9 +111,9 @@ impl BlockToIndex {
             entity::events::Entity::insert_many(models.events)
                 .exec_without_returning(&db)
                 .await
-                .inspect_err(|e| {
+                .inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(err = %e, events_len=events_len, "Failed to insert events");
+                    tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
                 })?;
         }
 
