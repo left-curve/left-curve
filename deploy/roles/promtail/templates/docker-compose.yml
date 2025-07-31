@@ -1,0 +1,25 @@
+services:
+  promtail:
+    image: grafana/promtail:latest
+    # user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    ports:
+      - "{{ tailscale_ip }}:{{ promtail_port }}:9080"
+    volumes:
+      - ./config/promtail-config.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    # Sadly curl nor wget are available
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "promtail"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: monitoring
+    external: true

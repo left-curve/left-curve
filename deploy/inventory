@@ -8,6 +8,7 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 [dozzle]
 100.96.253.40 ansible_user=debian
 100.107.248.71 ansible_user=debian
+100.122.37.57 ansible_user=debian
 
 [clickhouse]
 100.96.253.40 ansible_user=debian
@@ -28,3 +29,6 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 [bots]
 100.96.253.40 ansible_user=debian
 100.107.248.71 ansible_user=debian
+
+[monitoring]
+100.122.37.57 hostname=ovh3 ansible_user=debian

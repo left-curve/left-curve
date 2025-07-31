@@ -1,12 +1,14 @@
 - hosts: all
   become: true
+  become_user: "{{ deploy_user }}"
   vars:
     tailscale_iface: tailscale0
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
+  pre_tasks:
+    - name: Create monitoring network
+      community.docker.docker_network:
+        name: monitoring
+        state: present
   roles:
-    - common
-    - users
-    - docker
-    - tailscale
     - node-exporter
     - promtail
