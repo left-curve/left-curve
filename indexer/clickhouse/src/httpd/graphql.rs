@@ -49,7 +49,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 /// Must be called to ensure the candle cache is updated
 pub async fn update_candle_cache(app_ctx: Context) {
     loop {
-        if let Ok(mut subscription) = app_ctx.pubsub.subscribe().await {
+        if let Ok(mut subscription) = app_ctx.candle_pubsub.subscribe().await {
             while let Some(block_height) = subscription.next().await {
                 // TODO: get pairs from dex contract
                 let pairs = PairPrice::all_pairs(app_ctx.clickhouse_client())
