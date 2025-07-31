@@ -115,7 +115,7 @@ impl TransferSubscription {
         .chain(
             app_ctx
                 .pubsub
-                .subscribe_block_minted()
+                .subscribe()
                 .await?
                 .then(move |block_height| {
                     let a = address.clone();

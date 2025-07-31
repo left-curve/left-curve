@@ -140,7 +140,7 @@ impl grug_app::Indexer for Indexer {
             )
             .record(start.elapsed().as_secs_f64());
 
-            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
+            if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %_err, block_height, "Can't publish block minted in `post_indexing`");
                 return Ok(());

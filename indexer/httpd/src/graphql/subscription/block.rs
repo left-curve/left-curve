@@ -51,7 +51,7 @@ impl BlockSubscription {
         .chain(
             app_ctx
                 .pubsub
-                .subscribe_block_minted()
+                .subscribe()
                 .await?
                 .filter_map(move |block_height| {
                     #[cfg(feature = "metrics")]

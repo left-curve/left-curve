@@ -591,7 +591,7 @@ impl IndexerTrait for Indexer {
                 return Ok(());
             }
 
-            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
+            if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
                     err = %_err,

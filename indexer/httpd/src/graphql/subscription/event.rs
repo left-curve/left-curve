@@ -261,39 +261,33 @@ impl EventSubscription {
 
             async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
         })
-        .chain(
-            app_ctx
-                .pubsub
-                .subscribe_block_minted()
-                .await?
-                .then(move |block_height| {
-                    let query = query.clone();
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let query = query.clone();
 
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
 
-                    let received_height = received_block_height.clone();
+            let received_height = received_block_height.clone();
 
-                    async move {
-                        let current_received = received_height.load(Ordering::Acquire);
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
 
-                        if block_height < current_received {
-                            return vec![];
-                        }
+                if block_height < current_received {
+                    return vec![];
+                }
 
-                        let events = Self::get_events(
-                            &app_ctx.db,
-                            (current_received + 1) as i64..=block_height as i64,
-                            query,
-                        )
-                        .await;
+                let events = Self::get_events(
+                    &app_ctx.db,
+                    (current_received + 1) as i64..=block_height as i64,
+                    query,
+                )
+                .await;
 
-                        received_height.store(block_height, Ordering::Release);
+                received_height.store(block_height, Ordering::Release);
 
-                        events
-                    }
-                }),
-        )
+                events
+            }
+        }))
         .filter_map(|events| async move {
             if events.is_empty() {
                 None

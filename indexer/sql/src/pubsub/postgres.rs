@@ -73,7 +73,7 @@ impl PostgresPubSub {
 
 #[async_trait]
 impl PubSub for PostgresPubSub {
-    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let rx = self.sender.subscribe();
 
         Ok(Box::pin(
@@ -81,7 +81,7 @@ impl PubSub for PostgresPubSub {
         ))
     }
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
+    async fn publish(&self, block_height: u64) -> Result<usize> {
         sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
             .bind(block_height as i64)
             .execute(&self.pool)
