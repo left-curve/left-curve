@@ -48,5 +48,8 @@ export function transferSubscription<
     }
   `;
 
-  return client.subscribe({ query, variables: { username, sinceBlockHeight } }, callbacks);
+  return client.subscribe(
+    { query, variables: { username, sinceBlockHeight }, operationName: "transfers" },
+    callbacks,
+  );
 }

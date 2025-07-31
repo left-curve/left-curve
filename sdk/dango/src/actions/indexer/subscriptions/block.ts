@@ -40,5 +40,5 @@ export function blockSubscription<
     }
   `;
 
-  return client.subscribe({ query }, parameters);
+  return client.subscribe({ query, operationName: "block" }, parameters);
 }
