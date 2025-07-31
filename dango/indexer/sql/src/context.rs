@@ -1,4 +1,8 @@
-use {indexer_sql::pubsub::PubSub, sea_orm::DatabaseConnection, std::sync::Arc};
+use {
+    indexer_sql::pubsub::{MemoryPubSub, PubSub},
+    sea_orm::DatabaseConnection,
+    std::sync::Arc,
+};
 
 #[derive(Clone)]
 pub struct Context {
@@ -10,7 +14,7 @@ impl From<indexer_sql::context::Context> for Context {
     fn from(ctx: indexer_sql::context::Context) -> Self {
         Self {
             db: ctx.db.clone(),
-            pubsub: ctx.pubsub.clone(),
+            pubsub: Arc::new(MemoryPubSub::new(100)),
         }
     }
 }

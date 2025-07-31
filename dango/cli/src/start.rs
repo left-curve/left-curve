@@ -216,13 +216,6 @@ impl StartCmd {
         );
 
         let clickhouse_context = indexer_clickhouse::context::Context::new(
-            sql_indexer
-                .context
-                .with_separate_pubsub()
-                .await
-                .map_err(|e| {
-                    anyhow!("failed to create separate context for clickhouse indexer: {e}")
-                })?,
             cfg.indexer.clickhouse.url.clone(),
             cfg.indexer.clickhouse.database.clone(),
             cfg.indexer.clickhouse.user.clone(),

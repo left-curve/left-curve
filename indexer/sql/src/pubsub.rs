@@ -7,9 +7,9 @@ pub use {memory::MemoryPubSub, postgres::PostgresPubSub};
 use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
 #[async_trait]
 pub trait PubSub {
-    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>>;
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>>;
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize>;
+    async fn publish(&self, block_height: u64) -> Result<usize>;
 }
 
 pub enum PubSubType {
@@ -43,7 +43,7 @@ mod tests {
         {
             tokio::task::spawn(async move {
                 for idx in 1..10 {
-                    pubsub.publish_block_minted(idx).await?;
+                    pubsub.publish(idx).await?;
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
 
@@ -52,7 +52,7 @@ mod tests {
         }
 
         {
-            let mut stream = pubsub_clone.subscribe_block_minted().await?;
+            let mut stream = pubsub_clone.subscribe().await?;
 
             tokio::select! {
                 block_height = stream.next() => {

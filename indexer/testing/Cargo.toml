@@ -26,6 +26,7 @@ sea-orm        = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }
 tokio          = { workspace = true }
+tracing        = { workspace = true }
 
 [dev-dependencies]
 assert-json-diff = { workspace = true }
@@ -34,4 +35,3 @@ base64           = { workspace = true }
 chrono           = { workspace = true }
 grug-storage     = { workspace = true }
 itertools        = { workspace = true }
-tracing          = { workspace = true }

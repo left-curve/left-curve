@@ -103,7 +103,7 @@ impl grug_app::Indexer for Indexer {
                 // Save accounts
                 accounts::save_accounts(&context, &block_to_index, &*querier).await?;
 
-                context.pubsub.publish_block_minted(block_height).await?;
+                context.pubsub.publish(block_height).await?;
 
                 Ok::<(), grug_app::IndexerError>(())
             }

@@ -184,11 +184,6 @@ pub async fn setup_test_with_indexer(
         dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
 
     let mut clickhouse_context = indexer_clickhouse::context::Context::new(
-        indexer
-            .context
-            .with_separate_pubsub()
-            .await
-            .expect("Failed to create separate context for dango indexer in test setup"),
         format!(
             "http://{}:{}",
             std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),

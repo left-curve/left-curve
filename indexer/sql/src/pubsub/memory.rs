@@ -21,7 +21,7 @@ impl MemoryPubSub {
 
 #[async_trait]
 impl PubSub for MemoryPubSub {
-    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let rx = self.sender.subscribe();
 
         Ok(Box::pin(
@@ -29,7 +29,7 @@ impl PubSub for MemoryPubSub {
         ))
     }
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
+    async fn publish(&self, block_height: u64) -> Result<usize> {
         // NOTE: Discarding the error as it happens if no receivers are connected.
         // There is no way to know if there are any receivers connected without RACE conditions.
         Ok(self.sender.send(block_height).unwrap_or_default())

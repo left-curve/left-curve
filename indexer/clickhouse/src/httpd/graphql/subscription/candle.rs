@@ -58,7 +58,7 @@ impl CandleSubscription {
         .chain(
             app_ctx
                 .candle_pubsub
-                .subscribe_candles_cached()
+                .subscribe()
                 .await?
                 .then(move |_block_height| {
                     #[cfg(feature = "metrics")]
