@@ -1,7 +1,7 @@
 use {crate::entities::CandleInterval, strum::IntoEnumIterator};
 
 pub const CREATE_TABLES: &str = r#"
-  CREATE OR REPLACE TABLE pair_prices (
+  CREATE TABLE IF NOT EXISTS pair_prices (
     quote_denom String,
     base_denom String,
     open_price UInt128,
@@ -82,7 +82,7 @@ impl MigrationBuilder {
 fn create_aggregated_table(timeframe: &str) -> String {
     format!(
         r#"
-          CREATE OR REPLACE TABLE pair_prices_{timeframe} (
+          CREATE TABLE IF NOT EXISTS pair_prices_{timeframe} (
             quote_denom String,
             base_denom String,
             time_start DateTime64(6),
