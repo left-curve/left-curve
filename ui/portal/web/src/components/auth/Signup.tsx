@@ -65,7 +65,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                 <img
                   src="./favicon.svg"
                   alt="dango-logo"
-                  className="h-12 rounded-full shadow-btn-shadow-gradient"
+                  className="h-12 rounded-full shadow-account-card"
                 />
                 {activeStep !== 2 ? (
                   <div className="flex flex-col gap-3 items-center justify-center text-center w-full">

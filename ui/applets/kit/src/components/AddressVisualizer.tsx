@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: it uses template literals for URL replacement */
+
 import {
   useAccount,
   useAppConfig,

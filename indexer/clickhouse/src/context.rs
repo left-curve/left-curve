@@ -1,6 +1,13 @@
+#[cfg(feature = "async-graphql")]
+use crate::httpd::graphql::update_candle_cache;
 #[cfg(feature = "testing")]
 use clickhouse::test;
-use {clickhouse::Client, indexer_sql::pubsub::PubSub, std::sync::Arc};
+use {
+    crate::{cache::CandleCache, entities::pair_price::PairPrice, pubsub::PubSub},
+    clickhouse::Client,
+    std::sync::Arc,
+    tokio::sync::RwLock,
+};
 
 #[derive(Clone)]
 pub struct Context {
@@ -12,7 +19,9 @@ pub struct Context {
     pub clickhouse_database: String,
     #[allow(dead_code)]
     clickhouse_client: Client,
-    pub pubsub: Arc<dyn PubSub + Send + Sync>,
+    pub pubsub: Arc<dyn indexer_sql::pubsub::PubSub + Send + Sync>,
+    pub candle_pubsub: Arc<dyn crate::pubsub::PubSub + Send + Sync>,
+    pub candle_cache: Arc<RwLock<CandleCache>>,
 }
 
 impl Context {
@@ -30,9 +39,14 @@ impl Context {
             .with_password(&password)
             .with_database(&database);
 
+        let candle_pubsub: Arc<dyn PubSub + Send + Sync> =
+            Arc::new(crate::pubsub::MemoryPubSub::new(100));
+
         Self {
             clickhouse_client,
+            candle_pubsub,
             pubsub: indexer_context.pubsub,
+            candle_cache: Default::default(),
         }
     }
 
@@ -56,12 +70,39 @@ impl Context {
             password.len()
         );
 
+        let candle_pubsub: Arc<dyn PubSub + Send + Sync> =
+            Arc::new(crate::pubsub::MemoryPubSub::new(100));
+
         Self {
             mock: None,
             clickhouse_database: database,
             clickhouse_client,
             pubsub: indexer_context.pubsub,
+            candle_pubsub,
+            candle_cache: Default::default(),
         }
+    }
+
+    pub async fn preload_candle_cache(&self) -> crate::error::Result<()> {
+        let all_pairs = PairPrice::all_pairs(self.clickhouse_client()).await?;
+
+        let mut candle_cache = self.candle_cache.write().await;
+
+        candle_cache
+            .preload_pairs(&all_pairs, self.clickhouse_client())
+            .await
+    }
+
+    #[cfg(feature = "async-graphql")]
+    pub async fn start_candle_cache(&self) -> crate::error::Result<()> {
+        let self_clone = self.clone();
+
+        tokio::spawn(async move {
+            // Update the candle cache automatically
+            update_candle_cache(self_clone).await;
+        });
+
+        self.preload_candle_cache().await
     }
 
     #[cfg(feature = "testing")]
@@ -73,6 +114,8 @@ impl Context {
             mock: Some(Arc::new(mock)),
             clickhouse_database: self.clickhouse_database.clone(),
             pubsub: self.pubsub.clone(),
+            candle_pubsub: self.candle_pubsub.clone(),
+            candle_cache: Default::default(),
         }
     }
 
@@ -96,6 +139,8 @@ impl Context {
             clickhouse_database: test_database,
             clickhouse_client,
             pubsub: self.pubsub,
+            candle_pubsub: self.candle_pubsub,
+            candle_cache: Default::default(),
         })
     }
 

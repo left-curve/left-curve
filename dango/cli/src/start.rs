@@ -251,6 +251,8 @@ impl StartCmd {
             dango_context,
         );
 
+        hooked_indexer.start(&app.db.state_storage(None)?)?;
+
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }
 
@@ -287,6 +289,11 @@ impl StartCmd {
             cfg.port
         );
 
+        dango_httpd_context
+            .indexer_clickhouse_context
+            .start_candle_cache()
+            .await?;
+
         dango_httpd::server::run_server(
             &cfg.ip,
             cfg.port,
@@ -319,15 +326,11 @@ impl StartCmd {
         tendermint_cfg: TendermintConfig,
         db: DiskDbLite,
         vm: HybridVm,
-        mut indexer: ID,
+        indexer: ID,
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
     {
-        indexer
-            .start(&db.state_storage(None)?)
-            .expect("Can't start indexer");
-
         let app = App::new(
             db,
             vm,

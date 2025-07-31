@@ -46,6 +46,7 @@ jobs:
         env:
           NEXT_PUBLIC_FULLPAGE_KEY: ${{secrets.PUBLIC_FULLPAGE_KEY}}
           VERCEL_PROJECT_PRODUCTION_URL: ${{ github.ref == 'refs/heads/main' && secrets.PREVIEW_BASE_URL || secrets.PROD_BASE_URL }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1

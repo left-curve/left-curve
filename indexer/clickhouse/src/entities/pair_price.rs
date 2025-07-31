@@ -95,6 +95,22 @@ impl PairPrice {
         Ok(clickhouse_client.query(query).fetch_all().await?)
     }
 
+    pub async fn all_pairs(clickhouse_client: &clickhouse::Client) -> Result<Vec<PairId>> {
+        let query = "SELECT DISTINCT quote_denom, base_denom FROM pair_prices";
+
+        let pairs: Vec<(String, String)> = clickhouse_client.query(query).fetch_all().await?;
+
+        pairs
+            .into_iter()
+            .map(|(quote_denom, base_denom)| {
+                Ok(PairId {
+                    quote_denom: Denom::from_str(&quote_denom)?,
+                    base_denom: Denom::from_str(&base_denom)?,
+                })
+            })
+            .collect()
+    }
+
     pub async fn cleanup_old_synthetic_data(
         clickhouse_client: &clickhouse::Client,
         current_block: u64,
