@@ -79,7 +79,7 @@ pub(crate) async fn save_transfers(
                 .flat_map(|(recipient, coins)| {
                     #[cfg(feature = "tracing")]
                     if coins.is_empty() {
-                        tracing::warn!(
+                        tracing::debug!(
                             "Transfer detected but coins is empty, won't create transfers",
                         );
                     }

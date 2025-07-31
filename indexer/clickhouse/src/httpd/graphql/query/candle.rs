@@ -62,13 +62,15 @@ impl CandleQuery {
                         if let Some(cached_candles) = candle_cache.get_candles(&cache_key) {
                             let mut connection = Connection::new(false, true);
 
-                            connection.edges.extend(cached_candles.iter().map(|candle| {
-                                Edge::with_additional_fields(
-                                    OpaqueCursor(candle.clone().into()),
-                                    candle.clone(),
-                                    EmptyFields,
-                                )
-                            }));
+                            connection
+                                .edges
+                                .extend(cached_candles.iter().rev().map(|candle| {
+                                    Edge::with_additional_fields(
+                                        OpaqueCursor(candle.clone().into()),
+                                        candle.clone(),
+                                        EmptyFields,
+                                    )
+                                }));
 
                             return Ok::<_, async_graphql::Error>(connection);
                         }

@@ -145,7 +145,6 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
         baseDenom: baseCoin.denom,
         quoteDenom: quoteCoin.denom,
         interval: candleInterval,
-        limit: 1,
       },
       listener: ({ candles }) => {
         const chartData = candlesToChartIQData(candles, baseCoin, quoteCoin);

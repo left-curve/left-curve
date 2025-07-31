@@ -14,7 +14,7 @@ use {
     },
     grug::{
         Addressable, Coin, Coins, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
-        QueryResponse, ResultExt,
+        QueryResponse, ResultExt, setup_tracing_subscriber,
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
@@ -24,6 +24,7 @@ use {
     },
     std::collections::BTreeSet,
     tokio::sync::mpsc,
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -245,6 +246,8 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::INFO);
+
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
@@ -306,10 +309,10 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     .map(|e| e.node)
                     .collect::<Vec<_>>();
 
-                if received_accounts.len() != 2 {
-                    println!("\nReceived accounts: {received_accounts:#?}",);
-                    assert_that!(received_accounts.len()).is_equal_to(2);
-                }
+                assert!(
+                    received_accounts.len() == 2,
+                    "Received accounts: {received_accounts:#?}"
+                );
 
                 let expected_account = serde_json::json!(
                 {
@@ -326,14 +329,14 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
 
                 let expected_account = serde_json::json!(
                 {
-                        "accountType": "spot",
-                        "address": test_account1.address.inner().to_string(),
-                        "users": [
-                            {
-                                "username": "user",
-                            },
-                        ],
-                    });
+                    "accountType": "spot",
+                    "address": test_account1.address.inner().to_string(),
+                    "users": [
+                        {
+                            "username": "user",
+                        },
+                    ],
+                });
 
                 assert_json_include!(actual: received_accounts[1], expected: expected_account);
 

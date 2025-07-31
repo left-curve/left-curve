@@ -37,7 +37,6 @@ pub struct CandleCache {
 }
 
 impl CandleCache {
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn add_candle(&mut self, key: CandleCacheKey, candle: Candle) {
         let candles = self.candles.entry(key).or_default();
 
@@ -54,7 +53,6 @@ impl CandleCache {
     }
 
     /// Does the cache have all candles for the given dates?
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn date_interval_available(
         &self,
         key: &CandleCacheKey,
@@ -84,12 +82,10 @@ impl CandleCache {
         false
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn get_candles(&self, key: &CandleCacheKey) -> Option<&Vec<Candle>> {
         self.candles.get(key)
     }
 
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn get_last_candle(&self, key: &CandleCacheKey) -> Option<&Candle> {
         let _start = Instant::now();
 
@@ -113,7 +109,6 @@ impl CandleCache {
 
     /// Updates all existing pairs in the cache for a given block height.
     /// This will fetch the latest candles in parallel.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn update_pairs(
         &mut self,
         clickhouse_client: &clickhouse::Client,
@@ -192,7 +187,6 @@ impl CandleCache {
     }
 
     /// Preloads candles in parallel.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn preload_pairs(
         &mut self,
         pairs: &[PairId],
@@ -248,7 +242,6 @@ impl CandleCache {
     }
 
     // Keep last N candles
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn compact_keep_n(&mut self, n: usize) {
         self.candles.retain(|_key, candles| {
             if candles.is_empty() {

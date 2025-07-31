@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
     let fmt_layer = match cfg.log_format {
         config::LogFormat::Json => tracing_subscriber::fmt::layer()
             .json()
-            .with_span_events(FmtSpan::CLOSE)
+            .with_span_events(FmtSpan::NONE)
             .with_target(true)
             .with_thread_ids(true)
             .with_file(true)

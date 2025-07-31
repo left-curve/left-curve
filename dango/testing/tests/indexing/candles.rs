@@ -420,7 +420,10 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    assert_that!(candle_1m.candles).has_length(1);
+    assert!(
+        candle_1m.candles.len() == 1,
+        "Expected one candle after first block, received: {candle_1m:#?}"
+    );
 
     let candle = &candle_1m.candles[0];
 

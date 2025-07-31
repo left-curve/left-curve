@@ -5985,6 +5985,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
+ "futures",
  "futures-util",
  "grug-app",
  "grug-httpd",

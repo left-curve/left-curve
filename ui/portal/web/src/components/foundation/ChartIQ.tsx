@@ -33,7 +33,7 @@ export const ChartIQ = ({ coins }) => {
     createChartIQDataFeed({
       client: publicClient,
       subscriptions,
-      updateChartData: (params) => context?.stx?.updateChartData(params),
+      updateChartData: (params) => uiContextRef.current?.stx?.updateChartData(params),
       coins: allCoins.bySymbol,
     }),
   );
@@ -80,7 +80,7 @@ export const ChartIQ = ({ coins }) => {
 
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
-      stx.chart.maxTicks = 100;
+      stx.chart.maxTicks = 40;
       stx.controls.mSticky = false;
 
       stx.animations.zoom = new CIQ.EaseMachine("easeOutCubic", 1);
