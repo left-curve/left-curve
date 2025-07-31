@@ -37,7 +37,7 @@ export function candlesSubscription<
   const { baseDenom, quoteDenom, interval, ...callbacks } = parameters;
 
   const query = /* GraphQL */ `
-    subscription (
+    subscription CandlesSubscription (
       $baseDenom: String!
       $quoteDenom: String!
       $interval: CandleInterval!
@@ -64,8 +64,5 @@ export function candlesSubscription<
       }
     }
   `;
-  return client.subscribe(
-    { query, variables: { baseDenom, quoteDenom, interval }, operationName: "candles" },
-    callbacks,
-  );
+  return client.subscribe({ query, variables: { baseDenom, quoteDenom, interval } }, callbacks);
 }

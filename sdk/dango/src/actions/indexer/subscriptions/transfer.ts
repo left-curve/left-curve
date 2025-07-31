@@ -34,7 +34,7 @@ export function transferSubscription<
   const { username, sinceBlockHeight, ...callbacks } = parameters;
 
   const query = /* GraphQL */ `
-    subscription ($username: String, $sinceBlockHeight: Int) {
+    subscription TransferSubscription ($username: String, $sinceBlockHeight: Int) {
       transfers(username: $username, sinceBlockHeight: $sinceBlockHeight) {
         id
         txHash
@@ -48,8 +48,5 @@ export function transferSubscription<
     }
   `;
 
-  return client.subscribe(
-    { query, variables: { username, sinceBlockHeight }, operationName: "transfers" },
-    callbacks,
-  );
+  return client.subscribe({ query, variables: { username, sinceBlockHeight } }, callbacks);
 }
