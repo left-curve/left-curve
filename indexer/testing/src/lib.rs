@@ -19,13 +19,15 @@ use {
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
-    std::collections::HashMap,
+    std::{collections::HashMap, time::Instant},
     tokio::time::{Duration, timeout},
 };
 
 pub mod block;
 pub mod graphql;
 pub mod setup;
+
+const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
 
 // Re-export the configurable pagination function for use by other crates
 pub use graphql::paginate_models_with_app_builder;
@@ -252,7 +254,7 @@ where
         ))
         .await?;
 
-    let res = timeout(Duration::from_secs(2), framed.next()).await;
+    let res = timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECONDS), framed.next()).await;
 
     // Wait for connection_ack
     match res {
@@ -315,8 +317,14 @@ pub async fn parse_graphql_subscription_response<R>(
 where
     R: DeserializeOwned,
 {
+    let start = Instant::now();
+
     loop {
-        let res = timeout(Duration::from_secs(2), framed.next()).await;
+        let res = timeout(
+            Duration::from_secs(DEFAULT_TIMEOUT_SECONDS - start.elapsed().as_secs()),
+            framed.next(),
+        )
+        .await;
 
         match res {
             Ok(Some(Ok(ws::Frame::Text(text)))) => {
@@ -339,13 +347,14 @@ where
                 }
             },
             Ok(Some(Ok(ws::Frame::Ping(ping)))) => {
+                tracing::info!("Received ping for {name}");
                 framed.send(ws::Message::Pong(ping)).await?;
                 continue;
             },
             Ok(Some(Err(e))) => return Err(e.into()),
             Ok(None) => bail!("connection closed unexpectedly"),
             Ok(res) => bail!("unexpected message type: {res:?}"),
-            Err(_) => bail!("connection timed out"),
+            Err(_) => bail!("timeout while waiting for response for {name}"),
         }
     }
 }
