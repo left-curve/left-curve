@@ -29,7 +29,7 @@ export function blockSubscription<
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const query = /* GraphQL */ `
-    subscription {
+    subscription BlockSubscription {
       block {
         blockHeight
         createdAt
@@ -40,5 +40,5 @@ export function blockSubscription<
     }
   `;
 
-  return client.subscribe({ query, operationName: "block" }, parameters);
+  return client.subscribe({ query }, parameters);
 }

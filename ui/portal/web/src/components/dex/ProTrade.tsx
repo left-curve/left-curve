@@ -4,7 +4,6 @@ import {
   Badge,
   Cell,
   IconChevronDownFill,
-  IconEmptyStar,
   Table,
   Tabs,
   createContext,
@@ -13,7 +12,7 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
@@ -218,7 +217,7 @@ const ProTradeOrders: React.FC = () => {
 
     {
       header: m["dex.protrade.spot.ordersTable.type"](),
-      cell: ({ row }) => <Cell.Text text="Limit" />,
+      cell: (_) => <Cell.Text text="Limit" />,
     },
     {
       header: m["dex.protrade.spot.ordersTable.pair"](),
@@ -256,9 +255,14 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
-          value={formatUnits(
-            row.original.remaining,
-            coins.byDenom[row.original.baseDenom].decimals,
+          value={formatNumber(
+            Decimal(row.original.remaining)
+              .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+              .toFixed(),
+            {
+              ...formatNumberOptions,
+              maxSignificantDigits: 10,
+            },
           )}
         />
       ),
@@ -272,7 +276,15 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={formatNumberOptions}
-          value={formatUnits(row.original.amount, coins.byDenom[row.original.baseDenom].decimals)}
+          value={formatNumber(
+            Decimal(row.original.amount)
+              .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+              .toFixed(),
+            {
+              ...formatNumberOptions,
+              maxSignificantDigits: 10,
+            },
+          )}
         />
       ),
     },

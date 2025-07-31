@@ -57,11 +57,7 @@ export type RequestFn<transportSchema extends TransportSchema | undefined = unde
 ) => Promise<_returnType>;
 
 export type SubscribeFn = <T>(
-  {
-    query,
-    operationName,
-    variables,
-  }: { query: string; operationName: string; variables?: Record<string, unknown> },
+  { query, variables }: { query: string; variables?: Record<string, unknown> },
   callback: SubscriptionCallbacks<T>,
 ) => () => void;
 
