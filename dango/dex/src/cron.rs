@@ -1,16 +1,18 @@
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
-        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, Prependable,
-        RESERVES, VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders,
-        match_limit_orders,
+        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES,
+        VOLUMES, VOLUMES_BY_USER,
+        core::{
+            FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, Prependable,
+            fill_orders, match_and_fill_market_orders, match_limit_orders,
+        },
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, OrderFilled},
+        dex::{Direction, LimitOrdersMatched, Order, OrderFilled, OrderTrait},
         taxman::{self, FeeType},
     },
     grug::{

@@ -1,21 +1,21 @@
 use {
     crate::{
-        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PassiveLiquidityPool, RESERVES, VOLUMES,
-        VOLUMES_BY_USER, core,
+        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER,
+        core::{self, PassiveLiquidityPool},
     },
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
         dex::{
-            OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
-            PairUpdate, QueryMsg, ReservesResponse, SwapRoute,
+            Direction, OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId,
+            PairParams, PairUpdate, PassiveOrder, QueryMsg, ReservesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Uint128,
+        Timestamp, Udec128_6, Udec128_24, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -101,6 +101,15 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::SimulateSwapExactAmountOut { route, output } => {
             let res = query_simulate_swap_exact_amount_out(ctx, route, output)?;
+            res.to_json_value()
+        },
+        QueryMsg::ReflectCurve {
+            base_denom,
+            quote_denom,
+            direction,
+            limit,
+        } => {
+            let res = query_reflect_curve(ctx, base_denom, quote_denom, direction, limit)?;
             res.to_json_value()
         },
     }
@@ -403,4 +412,33 @@ fn query_simulate_swap_exact_amount_out(
         output,
     )
     .map(|(_, input, _)| input)
+}
+
+fn query_reflect_curve(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    direction: Direction,
+    limit: Option<u32>,
+) -> anyhow::Result<BTreeMap<Udec128_24, PassiveOrder>> {
+    // Create oracle querier.
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
+    // Load the pool's params and reserve.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+    let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Reflect the curve.
+    let (bids, asks) =
+        pair.reflect_curve(&mut oracle_querier, base_denom, quote_denom, &reserve)?;
+
+    let orders = match direction {
+        Direction::Bid => bids,
+        Direction::Ask => asks,
+    };
+
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    Ok(orders.take(limit).collect())
 }

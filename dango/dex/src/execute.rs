@@ -2,7 +2,10 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{
+        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, RESERVES,
+        core::{self, PassiveLiquidityPool},
+    },
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{

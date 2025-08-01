@@ -1,6 +1,6 @@
 use {
-    crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
-    dango_types::dex::{Direction, OrderId},
+    super::FillingOutcome,
+    dango_types::dex::{Direction, ExtendedOrderId, MarketOrder, Order, OrderId, OrderTrait},
     grug::{
         IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_6, Udec128_24, Unsigned,
     },
@@ -356,7 +356,7 @@ fn update_filling_outcome(
 mod tests {
     use {
         super::*,
-        crate::LimitOrder,
+        dango_types::dex::LimitOrder,
         grug::{Addr, Uint128},
     };
 

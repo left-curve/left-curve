@@ -1,14 +1,7 @@
 use {
-    crate::dex::{Direction, OrderId, PairId},
+    crate::dex::{Direction, OrderId, OrderKind, PairId},
     grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Udec128_24, Uint128},
 };
-
-#[grug::derive(Serde)]
-pub enum OrderKind {
-    Limit,
-    Market,
-    Passive,
-}
 
 #[grug::derive(Serde)]
 #[grug::event("order_created")]

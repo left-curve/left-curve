@@ -1,11 +1,8 @@
 use {
-    crate::{
-        PassiveOrder,
-        core::{geometric, xyk},
-    },
+    super::{geometric, xyk},
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
-    dango_types::dex::{PairParams, PassiveLiquidity},
+    dango_types::dex::{PairParams, PassiveLiquidity, PassiveOrder},
     grug::{
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
         PrevNumber, Sign, Udec128, Udec128_24, Uint128,
