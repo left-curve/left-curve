@@ -44,6 +44,7 @@ members = [
   "grug/tester",
   "grug/testing",
   "grug/types",
+  "grug/types-base",
   "grug/vm/rust",
   "grug/vm/wasm",
   "hyperlane/isms/multisig",
@@ -102,6 +103,7 @@ async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
 axum                        = "0.8"
+backtrace                   = "0.3"
 base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
@@ -235,6 +237,7 @@ grug-storage                = { path = "grug/storage" }
 grug-tester                 = { path = "grug/tester" }
 grug-testing                = { path = "grug/testing" }
 grug-types                  = { path = "grug/types" }
+grug-types-base             = { path = "grug/types-base" }
 grug-vm-hybrid              = { path = "grug/vm/hybrid" }
 grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }

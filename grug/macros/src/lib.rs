@@ -1,3 +1,4 @@
+mod backtrace;
 mod derive;
 mod event;
 mod export;
@@ -59,4 +60,15 @@ pub fn index_list(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(QueryRequest, attributes(returns))]
 pub fn derive_query(input: TokenStream) -> TokenStream {
     query::process(input)
+}
+
+#[proc_macro_attribute]
+pub fn backtrace(attr: TokenStream, input: TokenStream) -> TokenStream {
+    backtrace::process(attr, input)
+}
+
+#[proc_macro_attribute]
+pub fn backtrace_variant(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    // non fa nulla, è solo per permettere sintassi come #[backtrace_variant(fresh)]
+    item
 }

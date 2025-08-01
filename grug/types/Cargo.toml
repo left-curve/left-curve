@@ -26,6 +26,7 @@ tendermint = ["dep:tendermint", "tendermint-rpc"]
 
 [dependencies]
 async-graphql  = { workspace = true, optional = true }
+backtrace      = { workspace = true }
 bnum           = { workspace = true, features = ["borsh"] }
 borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono         = { workspace = true, optional = true }
