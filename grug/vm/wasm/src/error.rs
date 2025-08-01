@@ -2,32 +2,36 @@ use {
     grug_app::AppError,
     grug_types::StdError,
     std::string::FromUtf8Error,
-    thiserror::Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
 };
 
-#[derive(Debug, Error)]
+// #[derive(Debug, Error)]
+#[grug_macros::backtrace]
 pub enum VmError {
     #[error(transparent)]
-    Std(#[from] StdError),
+    Std(StdError),
 
     #[error(transparent)]
-    FromUtf8(#[from] FromUtf8Error),
+    #[backtrace(fresh)]
+    FromUtf8(FromUtf8Error),
 
     #[error(transparent)]
-    Export(#[from] ExportError),
+    #[backtrace(fresh)]
+    Export(ExportError),
 
     #[error(transparent)]
-    MemoryAccess(#[from] MemoryAccessError),
+    #[backtrace(fresh)]
+    MemoryAccess(MemoryAccessError),
 
     #[error(transparent)]
-    Runtime(#[from] RuntimeError),
+    #[backtrace(fresh)]
+    Runtime(RuntimeError),
 
     // The wasmer `CompileError` and `InstantiateError` are big (56 and 128 bytes,
     // respectively). We get a clippy warning if we wrap them directly here in
     // VmError (result_large_err). To avoid this, we cast them to strings instead.
-    #[error("failed to instantiate Wasm module: {0}")]
-    Instantiation(String),
+    #[error("failed to instantiate Wasm module: {message}")]
+    Instantiation { message: String },
 
     #[error("Wasmer memory not set in Environment")]
     WasmerMemoryNotSet,
@@ -67,8 +71,8 @@ pub enum VmError {
         actual: usize,
     },
 
-    #[error("unexpected return type: {0}")]
-    ReturnType(&'static str),
+    #[error("unexpected return type: {message}")]
+    ReturnType { message: &'static str },
 
     #[error("attempt to write to storage during an state immutable call")]
     ImmutableState,
@@ -79,13 +83,13 @@ pub enum VmError {
 
 impl From<CompileError> for VmError {
     fn from(err: CompileError) -> Self {
-        Self::Instantiation(err.to_string())
+        Self::instantiation(err.to_string())
     }
 }
 
 impl From<InstantiationError> for VmError {
     fn from(err: InstantiationError) -> Self {
-        Self::Instantiation(err.to_string())
+        Self::instantiation(err.to_string())
     }
 }
 

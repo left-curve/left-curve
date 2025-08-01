@@ -204,7 +204,7 @@ pub trait QueryClientExt: QueryClient {
                 std::array::from_fn(|_| {
                     iter.next()
                         .unwrap() // unwrap is safe because we've checked the length.
-                        .map_err(StdError::host)
+                        .map_err(StdError::Host)
                         .map_err(Into::into)
                 })
             })

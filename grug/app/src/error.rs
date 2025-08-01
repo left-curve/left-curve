@@ -4,25 +4,25 @@ use {
         collections::HashMap,
         sync::{MutexGuard, PoisonError},
     },
-    thiserror::Error,
 };
 
-#[derive(Clone, Debug, Error)]
+// #[derive(Clone, Debug, Error)]
+#[grug_macros::backtrace]
 pub enum AppError {
     #[error(transparent)]
-    Std(#[from] StdError),
+    Std(StdError),
 
-    #[error("VM error: {0}")]
-    Vm(String),
+    #[error(transparent)]
+    Indexer(IndexerError),
 
-    #[error("DB error: {0}")]
-    Db(String),
+    #[error("VM error: {error}")]
+    Vm { error: String },
 
-    #[error("proposal preparer error: {0}")]
-    PrepareProposal(String),
+    #[error("DB error: {error}")]
+    Db { error: String },
 
-    #[error("indexer error: {0}")]
-    Indexer(#[from] IndexerError),
+    #[error("proposal preparer error: {error}")]
+    PrepareProposal { error: String },
 
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {
@@ -63,7 +63,8 @@ pub enum AppError {
 }
 
 /// Dedicated error type for indexer operations
-#[derive(Clone, Debug, Error)]
+// #[derive(Clone, Debug, Error)]
+#[grug_macros::backtrace]
 pub enum IndexerError {
     #[error("indexer is already running")]
     AlreadyRunning,
@@ -71,29 +72,30 @@ pub enum IndexerError {
     #[error("indexer is not running")]
     NotRunning,
 
-    #[error("storage error: {0}")]
-    Storage(String),
-
-    #[error("database error: {0}")]
-    Database(String),
-
-    #[error("serialization error: {0}")]
-    Serialization(String),
-
     #[error("I/O error: {0}")]
-    Io(String),
+    #[backtrace(fresh)]
+    Io(std::io::Error),
 
-    #[error("configuration error: {0}")]
-    Config(String),
+    #[error("storage error: {error}")]
+    Storage { error: String },
 
-    #[error("hook error: {0}")]
-    Hook(String),
+    #[error("database error: {error}")]
+    Database { error: String },
 
-    #[error("multiple errors: {0:?}")]
-    Multiple(Vec<String>),
+    #[error("serialization error: {error}")]
+    Serialization { error: String },
 
-    #[error("generic indexer error: {0}")]
-    Generic(String),
+    #[error("configuration error: {error}")]
+    Config { error: String },
+
+    #[error("hook error: {error}")]
+    Hook { error: String },
+
+    #[error("multiple errors: {errors:?}")]
+    Multiple { errors: Vec<String> },
+
+    #[error("generic indexer error: {error}")]
+    Generic { error: String },
 
     #[error("mutex for the indexers is poisoned")]
     MutexPoisoned,
@@ -102,15 +104,9 @@ pub enum IndexerError {
     RwlockPoisoned,
 }
 
-impl From<std::io::Error> for IndexerError {
-    fn from(err: std::io::Error) -> Self {
-        IndexerError::Io(err.to_string())
-    }
-}
-
 impl From<PoisonError<MutexGuard<'_, HashMap<u64, bool>>>> for IndexerError {
     fn from(_: PoisonError<MutexGuard<'_, HashMap<u64, bool>>>) -> Self {
-        Self::MutexPoisoned
+        Self::mutex_poisoned()
     }
 }
 

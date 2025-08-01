@@ -15,18 +15,20 @@ ibc     = ["ics23"]
 tracing = ["dep:tracing", "grug-types/chrono"]
 
 [dependencies]
-borsh         = { workspace = true }
-data-encoding = { workspace = true, optional = true }
-dyn-event     = { workspace = true }
-grug-storage  = { workspace = true }
-grug-types    = { workspace = true }
-http          = { workspace = true }
-ics23         = { workspace = true, optional = true }
-prost         = { workspace = true }
-tendermint    = { workspace = true, optional = true }
-thiserror     = { workspace = true }
-tower         = { workspace = true, optional = true }
-tower-abci    = { workspace = true, optional = true }
-tracing       = { workspace = true, optional = true }
+borsh           = { workspace = true }
+data-encoding   = { workspace = true, optional = true }
+dyn-event       = { workspace = true }
+grug-macros     = { workspace = true }
+grug-storage    = { workspace = true }
+grug-types      = { workspace = true }
+grug-types-base = { workspace = true }
+http            = { workspace = true }
+ics23           = { workspace = true, optional = true }
+prost           = { workspace = true }
+tendermint      = { workspace = true, optional = true }
+thiserror       = { workspace = true }
+tower           = { workspace = true, optional = true }
+tower-abci      = { workspace = true, optional = true }
+tracing         = { workspace = true, optional = true }
 
 [dev-dependencies]

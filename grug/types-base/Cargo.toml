@@ -4,19 +4,16 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-storage"
+name          = "grug-types-base"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-bnum       = { workspace = true }
-borsh      = { workspace = true }
-grug-math  = { workspace = true }
-grug-types = { workspace = true }
-prost      = { workspace = true }
-serde      = { workspace = true }
+anyhow      = { workspace = true }
+borsh       = { workspace = true }
+grug-macros = { workspace = true }
+serde       = { workspace = true }
 
 [dev-dependencies]
-grug-types-base = { workspace = true }
-test-case       = { workspace = true }
+thiserror = { workspace = true }

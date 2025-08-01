@@ -453,7 +453,7 @@ impl Querier for ExternalQuerier {
         let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
         let res: GenericResult<QueryResponse> = res_bytes.deserialize_borsh()?;
 
-        res.map_err(StdError::host)
+        res.map_err(StdError::Host)
     }
 }
 

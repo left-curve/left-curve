@@ -4799,8 +4799,10 @@ dependencies = [
  "borsh 1.5.7",
  "data-encoding",
  "dyn-event",
+ "grug-macros",
  "grug-storage",
  "grug-types",
+ "grug-types-base",
  "http 1.3.1",
  "ics23",
  "prost",
@@ -4962,6 +4964,8 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh 1.5.7",
+ "grug-macros",
+ "grug-types-base",
  "paste",
  "proptest",
  "serde",
@@ -5016,6 +5020,7 @@ dependencies = [
  "borsh 1.5.7",
  "grug-math",
  "grug-types",
+ "grug-types-base",
  "prost",
  "serde",
  "test-case",
@@ -5064,6 +5069,7 @@ version = "0.0.0"
 dependencies = [
  "async-graphql",
  "async-trait",
+ "backtrace",
  "bnum",
  "borsh 1.5.7",
  "chrono",
@@ -5071,7 +5077,9 @@ dependencies = [
  "digest 0.10.7",
  "dyn-clone",
  "grug-crypto",
+ "grug-macros",
  "grug-math",
+ "grug-types-base",
  "hex-literal",
  "paste",
  "prost",
@@ -5087,6 +5095,17 @@ dependencies = [
  "tendermint",
  "tendermint-rpc",
  "test-case",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "grug-types-base"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh 1.5.7",
+ "grug-macros",
+ "serde",
  "thiserror 2.0.12",
 ]
 
@@ -5127,11 +5146,13 @@ dependencies = [
  "grug-app",
  "grug-crypto",
  "grug-db-memory",
+ "grug-macros",
  "grug-math",
  "grug-mock-bank",
  "grug-tester",
  "grug-testing",
  "grug-types",
+ "grug-types-base",
  "grug-vm-wasm",
  "k256",
  "p256",
